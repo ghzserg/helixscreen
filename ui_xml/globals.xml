@@ -1,0 +1,49 @@
+<component>
+	<!-- Global theme colors and dimensions -->
+	<consts>
+		<!-- Main colors -->
+		<color name="bg_dark" value="0x1a1a1a"/>
+		<color name="panel_bg" value="0x111410"/>
+		<color name="card_bg" value="0x202020"/>
+
+		<!-- Text colors -->
+		<color name="text_primary" value="0xffffff"/>
+		<color name="text_secondary" value="0x909090"/>
+
+		<!-- Brand colors -->
+		<color name="primary_color" value="0xff4444"/>
+		<color name="accent_color" value="0x00aaff"/>
+
+		<!-- UI dimensions -->
+		<px name="nav_width" value="102"/>
+		<px name="nav_padding" value="16"/>
+		<px name="nav_button_size" value="70"/>
+		<px name="card_radius" value="8"/>
+		<px name="padding_normal" value="20"/>
+		<px name="padding_small" value="10"/>
+		<px name="printer_img_size" value="400"/>
+		<percent name="card_width" value="45%"/>
+		<percent name="card_height" value="80%"/>
+
+		<!-- ===================================================================== -->
+		<!-- FontAwesome icon constants - AUTO-GENERATED - DO NOT EDIT MANUALLY   -->
+		<!-- Run: python3 scripts/generate-icon-consts.py                         -->
+		<!-- ===================================================================== -->
+		<str name="icon_advanced" value=""/>  <!-- U+F142 ellipsis-vertical -->
+		<str name="icon_controls" value=""/>  <!-- U+F1DE sliders -->
+		<str name="icon_ethernet" value=""/>  <!-- U+F796 ethernet -->
+		<str name="icon_filament" value=""/>  <!-- U+F576 fill-drip -->
+		<str name="icon_home" value=""/>  <!-- U+F015 house -->
+		<str name="icon_lightbulb" value=""/>  <!-- U+F0EB lightbulb -->
+		<str name="icon_settings" value=""/>  <!-- U+F013 gear -->
+		<str name="icon_temperature" value=""/>  <!-- U+F2C7 thermometer-half -->
+		<str name="icon_wifi" value=""/>  <!-- U+F1EB wifi -->
+		<str name="icon_wifi_slash" value=""/>  <!-- U+F127 wifi-slash -->	</consts>
+
+	<!-- ===================================================================== -->
+	<!-- Subjects for reactive data binding                                   -->
+	<!-- Subjects are initialized in C++ code before XML loading              -->
+	<!-- ===================================================================== -->
+
+	<view extends="lv_obj"/>
+</component>

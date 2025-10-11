@@ -4,5 +4,9 @@ build/
 # LVGL library (cloned from git)
 lvgl/
 
+# Node.js
+node_modules/
+package-lock.json
+
 # macOS
 .DS_Store

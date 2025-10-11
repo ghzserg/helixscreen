@@ -1,7 +1,6 @@
 #pragma once
 
 #include "lvgl/lvgl.h"
-#include "ui_theme.h"
 
 // Navigation panel IDs
 typedef enum {
@@ -13,12 +12,21 @@ typedef enum {
     UI_PANEL_COUNT
 } ui_panel_id_t;
 
-// Create the navigation bar (left side vertical bar)
-lv_obj_t* ui_nav_create(lv_obj_t* parent);
+// Initialize navigation system with reactive subjects
+// MUST be called BEFORE creating navigation bar XML
+void ui_nav_init();
 
-// Set active panel (highlights nav button, switches content)
+// Wire up event handlers to an existing navbar widget created from XML
+// Call this after creating navigation_bar component from XML
+void ui_nav_wire_events(lv_obj_t* navbar);
+
+// Set active panel (triggers reactive icon color updates)
 void ui_nav_set_active(ui_panel_id_t panel_id);
 
-// Get the content area where panels should be displayed
-lv_obj_t* ui_nav_get_content_area(void);
+// Get current active panel
+ui_panel_id_t ui_nav_get_active();
+
+// Set panel widgets for show/hide management
+// panels array should have UI_PANEL_COUNT elements (can have NULLs for not-yet-created panels)
+void ui_nav_set_panels(lv_obj_t** panels);
 

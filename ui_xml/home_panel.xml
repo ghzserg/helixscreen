@@ -1,0 +1,42 @@
+<component>
+	<!-- Now references global constants from globals.xml -->
+	<view extends="lv_obj" width="100%" height="100%" style_bg_color="#panel_bg" style_pad_all="0" style_border_width="0" flex_flow="column">
+		<!-- Top section: Printer visualization -->
+		<lv_obj width="100%" flex_grow="2" style_bg_opa="0%" style_border_width="0" style_pad_all="#padding_normal" flex_flow="column" flex_align="center center center">
+			<!-- Printer Image -->
+			<lv_image src="A:/Users/pbrown/code/guppyscreen/prototype-ui9/assets/images/printer_400.png" width="#printer_img_size" height="#printer_img_size"/>
+
+			<!-- Status Message (bound to status_text subject) -->
+			<lv_label bind_text="status_text" style_text_color="#text_primary" style_text_font="montserrat_20" style_margin_top="#padding_normal"/>
+		</lv_obj>
+
+		<!-- Bottom section: Info cards -->
+		<lv_obj width="100%" flex_grow="1" style_bg_opa="0%" style_border_width="0" style_pad_all="#padding_normal" flex_flow="row" flex_align="space_evenly center center">
+			<!-- Print Files Card -->
+			<lv_obj width="#card_width" height="#card_height" style_bg_color="#card_bg" style_radius="#card_radius" style_border_width="0" style_pad_all="#padding_normal" flex_flow="column" flex_align="center center center">
+				<lv_label text="Print Files" style_text_color="#text_primary" style_text_font="montserrat_16"/>
+			</lv_obj>
+
+			<!-- Status Card (Temperature, Network, Light) -->
+			<lv_obj width="#card_width" height="#card_height" style_bg_color="#card_bg" style_radius="#card_radius" style_border_width="0" style_pad_all="#padding_normal">
+				<!-- Temperature display (top-left) - using absolute positioning -->
+				<lv_obj width="150" height="40" style_bg_opa="0%" style_border_width="0" style_pad_all="0" x="0" y="0" flex_flow="row" flex_align="start center start">
+					<lv_label text="#icon_temperature" style_text_color="#text_secondary" style_text_font="fa_icons_32"/>
+					<lv_label bind_text="temp_text" style_text_color="#text_primary" style_text_font="montserrat_16" style_pad_left="8"/>
+				</lv_obj>
+
+				<!-- Network status (center) - using alignment -->
+				<lv_obj width="120" height="100" style_bg_opa="0%" style_border_width="0" style_pad_all="0" align="center" flex_flow="column" flex_align="center center center">
+					<lv_label name="network_icon" text="#icon_wifi" style_text_color="#primary_color" style_text_font="fa_icons_48"/>
+					<lv_label name="network_label" text="Wi-Fi" style_text_color="#text_secondary" style_text_font="montserrat_16" style_margin_top="8"/>
+				</lv_obj>
+
+				<!-- Light control button (right) - using alignment -->
+				<lv_obj width="80" height="80" style_bg_opa="0%" style_border_width="0" style_pad_all="0" align="right_mid" flag_clickable="true">
+					<lv_label name="light_icon" text="#icon_lightbulb" style_text_color="#text_secondary" style_text_font="fa_icons_48" align="center"/>
+					<lv_event-call_function trigger="clicked" callback="light_toggle_cb"/>
+				</lv_obj>
+			</lv_obj>
+		</lv_obj>
+	</view>
+</component>
