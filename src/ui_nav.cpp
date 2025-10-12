@@ -118,9 +118,9 @@ void ui_nav_wire_events(lv_obj_t* navbar) {
     // Ensure navbar container doesn't block clicks to children
     lv_obj_remove_flag(navbar, LV_OBJ_FLAG_CLICKABLE);
 
-    // Name-based widget lookup for navigation buttons and icons
-    const char* button_names[] = {"nav_btn_home", "nav_btn_controls", "nav_btn_filament", "nav_btn_settings", "nav_btn_advanced", "nav_btn_print_select"};
-    const char* icon_names[] = {"nav_icon_home", "nav_icon_controls", "nav_icon_filament", "nav_icon_settings", "nav_icon_advanced", "nav_icon_print_select"};
+    // Name-based widget lookup for navigation buttons and icons (order matches ui_panel_id_t enum)
+    const char* button_names[] = {"nav_btn_home", "nav_btn_print_select", "nav_btn_controls", "nav_btn_filament", "nav_btn_settings", "nav_btn_advanced"};
+    const char* icon_names[] = {"nav_icon_home", "nav_icon_print_select", "nav_icon_controls", "nav_icon_filament", "nav_icon_settings", "nav_icon_advanced"};
 
     // Bind colors to icon widgets and add click event handlers to buttons
     for (int i = 0; i < UI_PANEL_COUNT; i++) {

@@ -10,16 +10,19 @@
 			<!-- Panel 0: Home (visible by default) -->
 			<home_panel/>
 
-			<!-- Panel 1: Controls (hidden by default) -->
+			<!-- Panel 1: Print Select (hidden by default) -->
+			<print_select_panel/>
+
+			<!-- Panel 2: Controls (hidden by default) -->
 			<controls_panel/>
 
-			<!-- Panel 2: Filament (hidden by default) -->
+			<!-- Panel 3: Filament (hidden by default) -->
 			<filament_panel/>
 
-			<!-- Panel 3: Settings (hidden by default) -->
+			<!-- Panel 4: Settings (hidden by default) -->
 			<settings_panel/>
 
-			<!-- Panel 4: Advanced (hidden by default) -->
+			<!-- Panel 5: Advanced (hidden by default) -->
 			<advanced_panel/>
 		</lv_obj>
 	</view>

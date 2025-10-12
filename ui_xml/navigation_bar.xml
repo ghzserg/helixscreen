@@ -7,29 +7,29 @@
 			<lv_label name="nav_icon_home" text="#icon_home" style_text_font="fa_icons_64" align="center"/>
 		</lv_button>
 
-		<!-- Controls Button (Panel 1) -->
+		<!-- Print Select Button (Panel 1 - beneath Home) -->
+		<lv_button name="nav_btn_print_select" width="#nav_button_size" height="#nav_button_size" style_bg_opa="0" style_shadow_width="0" style_border_width="0" style_radius="0" style_pad_all="0">
+			<lv_label name="nav_icon_print_select" text="#icon_folder" style_text_font="fa_icons_64" align="center"/>
+		</lv_button>
+
+		<!-- Controls Button (Panel 2) -->
 		<lv_button name="nav_btn_controls" width="#nav_button_size" height="#nav_button_size" style_bg_opa="0" style_shadow_width="0" style_border_width="0" style_radius="0" style_pad_all="0">
 			<lv_label name="nav_icon_controls" text="#icon_controls" style_text_font="fa_icons_64" align="center"/>
 		</lv_button>
 
-		<!-- Filament Button (Panel 2) -->
+		<!-- Filament Button (Panel 3) -->
 		<lv_button name="nav_btn_filament" width="#nav_button_size" height="#nav_button_size" style_bg_opa="0" style_shadow_width="0" style_border_width="0" style_radius="0" style_pad_all="0">
 			<lv_image name="nav_icon_filament" src="filament_spool" align="center" style_img_recolor_opa="255"/>
 		</lv_button>
 
-		<!-- Settings Button (Panel 3) -->
+		<!-- Settings Button (Panel 4) -->
 		<lv_button name="nav_btn_settings" width="#nav_button_size" height="#nav_button_size" style_bg_opa="0" style_shadow_width="0" style_border_width="0" style_radius="0" style_pad_all="0">
 			<lv_label name="nav_icon_settings" text="#icon_settings" style_text_font="fa_icons_64" align="center"/>
 		</lv_button>
 
-		<!-- Advanced Button (Panel 4) -->
+		<!-- Advanced Button (Panel 5) -->
 		<lv_button name="nav_btn_advanced" width="#nav_button_size" height="#nav_button_size" style_bg_opa="0" style_shadow_width="0" style_border_width="0" style_radius="0" style_pad_all="0">
 			<lv_label name="nav_icon_advanced" text="#icon_advanced" style_text_font="fa_icons_64" align="center"/>
-		</lv_button>
-
-		<!-- Print Select Button (Panel 5) -->
-		<lv_button name="nav_btn_print_select" width="#nav_button_size" height="#nav_button_size" style_bg_opa="0" style_shadow_width="0" style_border_width="0" style_radius="0" style_pad_all="0">
-			<lv_label name="nav_icon_print_select" text="#icon_folder" style_text_font="fa_icons_64" align="center"/>
 		</lv_button>
 
 	</view>

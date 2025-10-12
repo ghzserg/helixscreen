@@ -145,6 +145,7 @@ int main(int, char**) {
     lv_xml_component_register_from_file("A:/Users/pbrown/code/guppyscreen/prototype-ui9/ui_xml/filament_panel.xml");
     lv_xml_component_register_from_file("A:/Users/pbrown/code/guppyscreen/prototype-ui9/ui_xml/settings_panel.xml");
     lv_xml_component_register_from_file("A:/Users/pbrown/code/guppyscreen/prototype-ui9/ui_xml/advanced_panel.xml");
+    lv_xml_component_register_from_file("A:/Users/pbrown/code/guppyscreen/prototype-ui9/ui_xml/print_select_panel.xml");
     lv_xml_component_register_from_file("A:/Users/pbrown/code/guppyscreen/prototype-ui9/ui_xml/app_layout.xml");
 
     // Initialize reactive subjects BEFORE creating XML

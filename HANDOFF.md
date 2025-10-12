@@ -1,8 +1,8 @@
 # Session Handoff - Print Select Panel Implementation
 
-**Date:** 2025-10-11 23:30
+**Date:** 2025-10-11 23:45
 **Branch:** ui-redesign
-**Last Commit:** 5f294d7 - Complete Phase 1: Print Select Panel Prerequisites & Prototype
+**Last Commit:** (pending) - Complete Phase 2: Static Panel Structure
 
 ---
 
@@ -74,52 +74,112 @@ lv_label_set_text(time_label, time_str);
 lv_label_set_text(filament_label, weight_str);
 ```
 
+### ✅ Phase 2: Static Panel Structure - COMPLETE
+
+**1. Panel XML Created**
+- Created `ui_xml/print_select_panel.xml` with scrollable grid container
+- **DECISION:** Skipped tab bar for v1 (single storage source only)
+- Full-height scrollable container with `row_wrap` flex layout
+- Padding: 16px all sides, 20px gap between cards
+
+**2. Registration & Integration**
+- Registered print_select_panel component in `src/main.cpp` (line 148)
+- Added panel to `ui_xml/app_layout.xml` as Panel 5
+- Navigation already supports 6 panels from Phase 1
+
+**3. Build System Fixed**
+- Fixed Makefile to exclude test_dynamic_cards.cpp from main binary
+- Resolved duplicate main() symbol error
+- LVGL 9.3 cloned locally (parent uses LVGL 8.3, not compatible)
+
+**4. Build Status**
+- ✅ Clean compilation successful
+- ✅ All warnings expected (deprecation notices)
+- ✅ Ready for Phase 3 (card population)
+
 ---
 
-## 🎯 What's Next - Phase 2
+## 🎯 What's Next - Phase 3
 
-**Phase 2: Static Panel Structure (Estimated: 30 minutes)**
+**Phase 3: Card Population with Mock Data (Estimated: 60-75 minutes)**
 
-Create the print select panel XML layout with:
+Populate the print select panel with file cards using the validated dynamic instantiation pattern from Phase 1.
 
-1. **Create `ui_xml/print_select_panel.xml`:**
-   ```xml
-   <component>
-       <view flex_flow="column" width="100%" height="100%">
-           <!-- Tab bar (56px height) -->
-           <lv_obj height="56" flex_flow="row" style_pad_gap="32">
-               <lv_label name="tab_internal" text="Internal"
-                         style_text_color="#text_primary"/>
-               <lv_label name="tab_sd" text="SD card"
-                         style_text_color="#text_secondary"/>
-           </lv_obj>
+**Approach:**
+1. Create C++ wrapper (`ui_panel_print_select.cpp/h`)
+2. Define mock file data structure (16-20 test files)
+3. Use `lv_xml_create()` to instantiate cards from `test_card.xml` component
+4. Populate card data using `lv_obj_find_by_name()` pattern
+5. Format print times (19m, 1h20m, 2h1m) and filament weights (4g, 30g, 12.04g)
 
-           <!-- Scrollable grid container -->
-           <lv_obj flex_grow="1" flag_scrollable="true"
-                   flex_flow="row_wrap"
-                   style_pad_all="16" style_pad_gap="20">
-               <!-- Cards will be added dynamically here -->
-           </lv_obj>
-       </view>
-   </component>
-   ```
+**Files to Create:**
+- `src/ui_panel_print_select.cpp` - Card generation logic
+- `include/ui_panel_print_select.h` - Public API
 
-2. **Register component in `src/main.cpp`:**
-   ```cpp
-   // After other panel registrations (line ~147)
-   lv_xml_component_register_from_file(
-       "A:/Users/pbrown/code/guppyscreen/prototype-ui9/ui_xml/print_select_panel.xml");
-   ```
+**Pattern Already Validated:**
+See `src/test_dynamic_cards.cpp` for working example of:
+- XML component instantiation (`lv_xml_create()`)
+- Widget lookup by name (`lv_obj_find_by_name()`)
+- Data population (`lv_label_set_text()`)
 
-3. **Verify structure:**
-   - Build and run: `make && ./build/bin/guppy-ui-proto`
-   - Click 6th navigation icon (folder)
-   - Should see blank panel with tab bar at top
+**Expected Result:**
+- 16-20 cards in responsive grid (3-5 columns based on width)
+- Vertical scrolling functional
+- All metadata formatted correctly
 
 **Reference Files:**
 - Requirements: `docs/requirements/print-select-panel-v1.md`
 - Implementation plan: `docs/changelogs/print-select-panel-implementation.md` (lines 96-127)
 - Test card component: `ui_xml/test_card.xml` (working example)
+
+---
+
+## 🛠️ Development Tools Required
+
+### macOS Development Environment
+
+```bash
+# Core build tools
+brew install sdl2          # Display backend for simulator
+brew install coreutils     # GNU tools (timeout, etc.)
+brew install imagemagick   # BMP → PNG screenshot conversion
+
+# Python tools for asset generation
+pip3 install pillow        # Image processing for icons/screenshots
+
+# Node.js for font conversion (if not installed)
+brew install node          # Node.js runtime
+npm install -g lv_font_conv  # FontAwesome → LVGL font conversion
+```
+
+### Debian/Ubuntu Development Environment
+
+```bash
+# Core build tools
+sudo apt-get update
+sudo apt-get install -y build-essential clang git make
+
+# SDL2 development libraries
+sudo apt-get install -y libsdl2-dev
+
+# GNU coreutils (timeout already included)
+# imagemagick for screenshot conversion
+sudo apt-get install -y imagemagick
+
+# Python tools
+sudo apt-get install -y python3-pip
+pip3 install pillow
+
+# Node.js for font conversion
+sudo apt-get install -y nodejs npm
+npm install -g lv_font_conv
+```
+
+### Build System Requirements
+- **Make:** GNU Make 3.81+ (included in build-essential on Linux, pre-installed on macOS)
+- **Compiler:** Clang/Clang++ with C11/C++17 support
+- **Git:** For repository and submodule management
+- **LVGL 9.3:** Clone locally (`git clone --depth 1 --branch release/v9.3 https://github.com/lvgl/lvgl.git`)
 
 ---
 

@@ -24,8 +24,8 @@ LVGL_OBJS := $(patsubst $(LVGL_DIR)/%.c,$(OBJ_DIR)/lvgl/%.o,$(LVGL_SRCS))
 LVGL_DEMO_SRCS := $(shell find $(LVGL_DIR)/demos -name "*.c")
 LVGL_DEMO_OBJS := $(patsubst $(LVGL_DIR)/%.c,$(OBJ_DIR)/lvgl/%.o,$(LVGL_DEMO_SRCS))
 
-# Application
-APP_SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+# Application (exclude test binaries)
+APP_SRCS := $(filter-out $(SRC_DIR)/test_dynamic_cards.cpp,$(wildcard $(SRC_DIR)/*.cpp))
 APP_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(APP_SRCS))
 
 # Fonts
