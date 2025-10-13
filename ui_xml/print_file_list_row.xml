@@ -16,7 +16,7 @@
           style_bg_opa="255"
           style_radius="4"
           style_border_width="0"
-          style_pad_all="12"
+          style_pad_all="#file_card_padding"
           style_pad_left="16"
           style_pad_right="16"
           flex_flow="row"

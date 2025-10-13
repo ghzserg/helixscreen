@@ -21,6 +21,7 @@
 		<px name="nav_button_size" value="70"/>
 		<px name="card_radius" value="8"/>
 		<px name="padding_normal" value="20"/>
+		<px name="padding_medium" value="12"/>  <!-- Medium padding/gap for buttons and flex items -->
 		<px name="padding_small" value="10"/>
 		<px name="printer_img_size" value="400"/>
 		<px name="accent_bar_width" value="4"/>

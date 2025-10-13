@@ -24,12 +24,14 @@
               flag_scrollable="false"
               flex_flow="row"
               style_flex_cross_place="center"
-              style_pad_gap="12">
+              style_pad_gap="#padding_medium">
 
         <lv_label name="back_button"
                   text="&lt;"
                   style_text_font="montserrat_28"
                   style_text_color="#text_primary"
+                  style_pad_left="#button_padding"
+                  style_pad_right="#button_padding"
                   flag_clickable="true"
                   flag_scrollable="false"/>
 
@@ -64,13 +66,13 @@
                 style_border_width="0" style_border_opa="0"
                 flag_scrollable="false"
                 flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
-                style_pad_gap="12">
+                style_pad_gap="#padding_medium">
 
           <!-- Row 1: NW, N, NE -->
           <lv_obj width="100%" height="80"
                   flag_scrollable="false"
                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
-                  style_bg_opa="0" style_border_width="0" style_border_opa="0" style_pad_all="0" style_pad_gap="12">
+                  style_bg_opa="0" style_border_width="0" style_border_opa="0" style_pad_all="0" style_pad_gap="#padding_medium">
             <lv_button name="jog_nw" width="#jog_button_size" height="#jog_button_size"
                     style_bg_color="#jog_button_bg" style_radius="8" style_border_width="0">
               <lv_label text="#icon_arrow_up_left" style_text_font="diagonal_arrows_40" style_text_color="#text_primary" align="center"/>
@@ -89,7 +91,7 @@
           <lv_obj width="100%" height="80"
                   flag_scrollable="false"
                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
-                  style_bg_opa="0" style_border_width="0" style_border_opa="0" style_pad_all="0" style_pad_gap="12">
+                  style_bg_opa="0" style_border_width="0" style_border_opa="0" style_pad_all="0" style_pad_gap="#padding_medium">
             <lv_button name="jog_w" width="#jog_button_size" height="#jog_button_size"
                     style_bg_color="#jog_button_bg" style_radius="8" style_border_width="0">
               <lv_label text="#icon_arrow_left" style_text_font="diagonal_arrows_40" style_text_color="#text_primary" align="center"/>
@@ -108,7 +110,7 @@
           <lv_obj width="100%" height="80"
                   flag_scrollable="false"
                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
-                  style_bg_opa="0" style_border_width="0" style_border_opa="0" style_pad_all="0" style_pad_gap="12">
+                  style_bg_opa="0" style_border_width="0" style_border_opa="0" style_pad_all="0" style_pad_gap="#padding_medium">
             <lv_button name="jog_sw" width="#jog_button_size" height="#jog_button_size"
                     style_bg_color="#jog_button_bg" style_radius="8" style_border_width="0">
               <lv_label text="#icon_arrow_down_left" style_text_font="diagonal_arrows_40" style_text_color="#text_primary" align="center"/>
@@ -153,7 +155,7 @@
                 style_bg_opa="0" style_pad_all="0" style_border_width="0" style_border_opa="0"
                 flag_scrollable="false"
                 flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
-                style_pad_gap="12">
+                style_pad_gap="#padding_medium">
           <lv_button name="home_all" width="#home_button_width" height="#home_button_height"
                   style_bg_color="#jog_button_bg" style_radius="6" style_border_width="0">
             <lv_label text="Home All" style_text_font="montserrat_14" style_text_color="#text_primary" align="center"/>
@@ -197,7 +199,7 @@
                 style_bg_opa="0" style_pad_all="0" style_border_width="0" style_border_opa="0"
                 flag_scrollable="false"
                 flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center"
-                style_pad_gap="12">
+                style_pad_gap="#padding_medium">
 
           <lv_button name="z_up_10" width="#z_button_width" height="#z_button_height"
                   style_bg_color="#jog_button_bg" style_radius="6" style_border_width="0"

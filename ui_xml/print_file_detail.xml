@@ -41,7 +41,7 @@
 			        style_pad_bottom="0"
 			        style_pad_left="0"
 			        style_pad_right="0"
-			        style_pad_gap="12"
+			        style_pad_gap="#padding_medium"
 			        flex_flow="row"
 			        style_flex_main_place="start"
 			        style_flex_cross_place="center"
@@ -52,8 +52,8 @@
 				          text="&lt;"
 				          style_text_font="montserrat_28"
 				          style_text_color="#text_primary"
-				          style_pad_left="12"
-				          style_pad_right="12"
+				          style_pad_left="#button_padding"
+				          style_pad_right="#button_padding"
 				          flag_clickable="true"/>
 
 				<!-- Title label -->

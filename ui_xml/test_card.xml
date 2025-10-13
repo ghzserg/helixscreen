@@ -4,7 +4,7 @@
 	      width="200"
 	      style_bg_color="#card_bg"
 	      style_radius="8"
-	      style_pad_all="12"
+	      style_pad_all="#file_card_padding"
 	      flex_flow="column">
 
 		<!-- Placeholder thumbnail (gray square) -->
@@ -22,7 +22,7 @@
 		          style_pad_top="8"/>
 
 		<!-- Metadata row -->
-		<lv_obj flex_flow="row" style_pad_gap="12" style_pad_top="4">
+		<lv_obj flex_flow="row" style_pad_gap="#padding_medium" style_pad_top="4">
 			<!-- Print time -->
 			<lv_obj flex_flow="row" style_pad_gap="4">
 				<lv_label text="#icon_clock"
