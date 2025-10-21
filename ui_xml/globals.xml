@@ -81,6 +81,13 @@
 	<px name="print_file_card_thumb_3col" value="83" />
 	<px name="print_file_card_gap_3col" value="12" />
 
+	<!-- Generic label heights for consistent text sizing -->
+	<!-- TODO: Refactor panels to use these instead of hardcoded heights -->
+	<px name="label_height_xs" value="16" />
+	<px name="label_height_sm" value="20" />
+	<px name="label_height_md" value="24" />
+	<px name="label_height_lg" value="32" />
+
 	<!-- Button dimensions -->
 	<px name="button_height" value="50" />
 	<px name="button_padding" value="12" />

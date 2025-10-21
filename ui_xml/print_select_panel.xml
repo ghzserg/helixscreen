@@ -20,6 +20,25 @@
 
 <component>
 	<!-- Print Select Panel - Dual view: Card grid or List view -->
+
+	<!-- Panel-specific constants -->
+	<consts>
+		<!-- List view dimensions -->
+		<px name="list_header_height" value="40"/>
+		<px name="list_row_height" value="48"/>
+
+		<!-- Column min widths for responsive list view -->
+		<px name="col_size_width" value="80"/>
+		<px name="col_modified_width" value="130"/>
+		<px name="col_time_width" value="90"/>
+
+		<!-- Metadata dimensions for cards -->
+		<px name="metadata_row_height" value="24"/>
+
+		<!-- Minimum widths to prevent text crushing -->
+		<px name="metadata_label_min_width" value="30"/>
+	</consts>
+
 	<view extends="lv_obj"
 	      width="100%"
 	      height="100%"
@@ -31,13 +50,13 @@
 
 		<!-- Top bar with view toggle -->
 		<lv_obj width="100%"
-		        height="56"
+		        height="60"
 		        style_bg_color="#panel_bg"
 		        style_border_width="0"
-		        style_pad_left="16"
-		        style_pad_right="16"
-		        style_pad_top="8"
-		        style_pad_bottom="8"
+		        style_pad_left="#nav_padding"
+		        style_pad_right="#nav_padding"
+		        style_pad_top="#padding_small"
+		        style_pad_bottom="#padding_small"
 		        flex_flow="row"
 		        style_flex_main_place="end"
 		        style_flex_cross_place="center">
@@ -50,11 +69,10 @@
 			           style_border_width="0"
 			           style_shadow_width="0"
 			           style_pad_all="0">
-				<lv_label name="view_toggle_icon"
-				          text="#icon_list"
-				          style_text_font="fa_icons_32"
-				          style_text_color="#text_primary"
-				          align="center"/>
+				<icon name="view_toggle_icon"
+				      src="mat_list"
+				      size="md"
+				      variant="primary"/>
 			</lv_button>
 		</lv_obj>
 
@@ -63,7 +81,7 @@
 		        width="100%"
 		        height="100%"
 		        style_bg_color="#panel_bg"
-		        style_pad_all="16"
+		        style_pad_all="#nav_padding"
 		        style_pad_gap="#padding_normal"
 		        style_border_width="0"
 		        flex_flow="row_wrap"
@@ -87,32 +105,28 @@
 			<!-- Column headers -->
 			<lv_obj name="list_header"
 			        width="100%"
-			        height="40"
+			        height="#list_header_height"
 			        style_bg_color="#panel_bg"
 			        style_border_width="0"
 			        style_border_side="2"
 			        style_border_color="#card_bg"
-			        style_pad_left="16"
-			        style_pad_right="16"
-			        style_pad_top="8"
-			        style_pad_bottom="8"
+			        style_pad_left="#nav_padding"
+			        style_pad_right="#nav_padding"
+			        style_pad_top="#gap_small"
+			        style_pad_bottom="#gap_small"
 			        flex_flow="row"
 			        style_flex_main_place="start"
 			        style_flex_cross_place="center">
 
 				<!-- Filename header (flex-grow) -->
 				<lv_button name="header_filename"
-				          width="510"
 				          height="32"
 				          style_bg_opa="0"
 				          style_border_width="0"
 				          style_shadow_width="0"
 				          style_pad_all="0"
-				          flex_grow="1"
-				          flag_clickable="true">
+				          flex_grow="1">
 					<lv_label text="Filename"
-					          width="510"
-					          height="24"
 					          style_text_font="#font_body"
 					          style_text_color="#text_primary"
 					          style_text_align="left"
@@ -121,17 +135,13 @@
 
 				<!-- Size header -->
 				<lv_button name="header_size"
-				          width="80"
+				          width="#col_size_width"
 				          height="32"
 				          style_bg_opa="0"
 				          style_border_width="0"
 				          style_shadow_width="0"
-				          style_pad_all="0"
-				          flex_grow="0"
-				          flag_clickable="true">
+				          style_pad_all="0">
 					<lv_label text="Size"
-					          width="80"
-					          height="24"
 					          style_text_font="#font_body"
 					          style_text_color="#text_primary"
 					          style_text_align="right"
@@ -140,17 +150,13 @@
 
 				<!-- Modified header -->
 				<lv_button name="header_modified"
-				          width="130"
+				          width="#col_modified_width"
 				          height="32"
 				          style_bg_opa="0"
 				          style_border_width="0"
 				          style_shadow_width="0"
-				          style_pad_all="0"
-				          flex_grow="0"
-				          flag_clickable="true">
+				          style_pad_all="0">
 					<lv_label text="Modified"
-					          width="130"
-					          height="24"
 					          style_text_font="#font_body"
 					          style_text_color="#text_primary"
 					          style_text_align="right"
@@ -159,17 +165,13 @@
 
 				<!-- Print Time header -->
 				<lv_button name="header_print_time"
-				          width="90"
+				          width="#col_time_width"
 				          height="32"
 				          style_bg_opa="0"
 				          style_border_width="0"
 				          style_shadow_width="0"
-				          style_pad_all="0"
-				          flex_grow="0"
-				          flag_clickable="true">
+				          style_pad_all="0">
 					<lv_label text="Time"
-					          width="90"
-					          height="24"
 					          style_text_font="#font_body"
 					          style_text_color="#text_primary"
 					          style_text_align="right"
@@ -182,11 +184,11 @@
 			        width="100%"
 			        height="100%"
 			        style_bg_color="#panel_bg"
-			        style_pad_left="16"
-			        style_pad_right="16"
-			        style_pad_top="8"
-			        style_pad_bottom="16"
-			        style_pad_gap="8"
+			        style_pad_left="#nav_padding"
+			        style_pad_right="#nav_padding"
+			        style_pad_top="#gap_small"
+			        style_pad_bottom="#nav_padding"
+			        style_pad_gap="#gap_small"
 			        style_border_width="0"
 			        flex_flow="column"
 			        flag_scrollable="true"

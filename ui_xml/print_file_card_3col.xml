@@ -31,15 +31,28 @@
 		<prop type="string" name="filament_weight"/>
 	</api>
 
+	<consts>
+		<!-- Consistent spacing values -->
+		<px name="filename_top_pad" value="6"/>
+		<px name="metadata_top_pad" value="4"/>
+		<px name="icon_text_gap" value="2"/>
+		<px name="metadata_item_gap" value="3"/>
+
+		<!-- Thumbnail styling -->
+		<px name="thumbnail_radius" value="4"/>
+
+		<!-- Metadata label minimum width to prevent crushing -->
+		<px name="metadata_label_min_width" value="25"/>
+	</consts>
+
 	<view extends="lv_obj"
 	      width="#print_file_card_width_3col"
 	      height="#print_file_card_height_3col"
 	      style_bg_color="#card_bg"
 	      style_radius="#card_radius"
 	      style_border_width="0"
-	      style_pad_all="8"
+	      style_pad_all="#gap_small"
 	      flex_flow="column"
-	      flex_align="start,start,start"
 	      flag_clickable="true"
 	      flag_scrollable="false">
 
@@ -47,86 +60,67 @@
 		<lv_image src="$thumbnail_src"
 		          width="100%"
 		          height="#print_file_card_thumb_3col"
-		          style_radius="4"
-		          inner_align="center"
+		          style_radius="#thumbnail_radius"
 		          style_bg_color="#print_file_card_thumbnail_bg"
 		          name="thumbnail"/>
 
 		<!-- Filename label (single line, truncated with ...) -->
 		<lv_label text="$filename"
 		          width="100%"
-		          height="16"
 		          long_mode="dots"
-		          flex_grow="0"
 		          style_text_color="#text_primary"
 		          style_text_font="montserrat_14"
-		          style_pad_top="6"
-		          style_pad_all="0"
+		          style_pad_top="#filename_top_pad"
 		          name="filename_label"/>
 
-		<!-- Metadata row (time + filament, stacked vertically on tiny screens) -->
+		<!-- Metadata row (horizontal layout, responsive) -->
 		<lv_obj width="100%"
-		        height="40"
-		        style_bg_opa="0%"
+		        style_bg_opa="0"
 		        style_border_width="0"
 		        style_pad_all="0"
-		        style_pad_top="4"
-		        flex_flow="column"
-		        flex_align="start,start,start"
-		        style_pad_gap="4"
+		        style_pad_top="#metadata_top_pad"
+		        flex_flow="row"
+		        style_pad_gap="#metadata_item_gap"
+		        flex_grow="1"
 		        name="metadata_row">
 
 			<!-- Print time (icon + text) -->
-			<lv_obj width="100%"
-			        height="16"
-			        style_bg_opa="0%"
+			<lv_obj flex_grow="1"
+			        height="100%"
+			        style_bg_opa="0"
 			        style_border_width="0"
 			        style_pad_all="0"
 			        flex_flow="row"
-			        style_pad_gap="3"
-			        flex_align="start,center,center">
-				<lv_image src="mat_clock"
-				          name="time_icon"
-				          width="12"
-				          height="12"
-				          scale_x="48" scale_y="48"
-				          style_image_recolor="#primary_color"
-				          style_image_recolor_opa="255"
-				          align="center"/>
+			        style_pad_gap="#icon_text_gap"
+			        style_flex_cross_place="center">
+				<icon src="mat_clock"
+				      size="xs"
+				      variant="accent"/>
 				<lv_label text="$print_time"
-				          width="70"
-				          height="16"
+				          flex_grow="1"
+				          style_min_width="#metadata_label_min_width"
 				          style_text_color="#text_secondary"
 				          style_text_font="montserrat_14"
-				          style_pad_all="0"
-				          flex_grow="0"
 				          name="time_label"/>
 			</lv_obj>
 
 			<!-- Filament weight (icon + text) -->
-			<lv_obj width="100%"
-			        height="16"
-			        style_bg_opa="0%"
+			<lv_obj flex_grow="1"
+			        height="100%"
+			        style_bg_opa="0"
 			        style_border_width="0"
 			        style_pad_all="0"
 			        flex_flow="row"
-			        style_pad_gap="3"
-			        flex_align="start,center,center">
-				<lv_image src="mat_layers"
-				          name="filament_icon"
-				          width="12"
-				          height="12"
-				          scale_x="48" scale_y="48"
-				          style_image_recolor="#primary_color"
-				          style_image_recolor_opa="255"
-				          align="center"/>
+			        style_pad_gap="#icon_text_gap"
+			        style_flex_cross_place="center">
+				<icon src="mat_layers"
+				      size="xs"
+				      variant="accent"/>
 				<lv_label text="$filament_weight"
-				          width="70"
-				          height="16"
+				          flex_grow="1"
+				          style_min_width="#metadata_label_min_width"
 				          style_text_color="#text_secondary"
 				          style_text_font="montserrat_14"
-				          style_pad_all="0"
-				          flex_grow="0"
 				          name="filament_label"/>
 			</lv_obj>
 		</lv_obj>
