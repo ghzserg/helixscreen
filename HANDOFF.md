@@ -1,440 +1,406 @@
-# Session Handoff - Motion Panel XYZ Controls
+# Session Handoff Document
 
-**Date:** 2025-10-13
-**Branch:** ui-redesign
-**Last Commit:** (pending) - Complete Phase 5.3: Motion Panel with Bold Arrow Icons
-
----
-
-## 📋 What Was Accomplished This Session
-
-### ✅ Phase 5.3: Motion Panel XYZ Controls - COMPLETE
-
-**Implemented a complete motion control sub-screen with 8-direction jog pad, Z-axis controls, distance selector, and position display.**
-
-**1. Custom Arrow Font Generation**
-- Created `diagonal_arrows_40.c` font from Arial Unicode MS (40px for boldness)
-- Includes all 8 arrow directions: ←↑→↓↖↗↙↘ (U+2190-2193, U+2196-2199)
-- Updated `generate-icon-consts.py` to use Unicode codepoints instead of FontAwesome
-- Regenerated globals.xml with UTF-8 byte sequences for all arrows
-- Result: Consistent bold arrows across all directional buttons
-
-**2. Motion Panel XML Layout** (`ui_xml/motion_panel.xml`)
-- Header bar with back button and "Motion: XYZ" title
-- Two-column layout: 65% left (jog pad + controls), 35% right (position + Z-axis)
-- 3×3 jog pad grid with centered buttons (76×76px)
-- Distance selector: 0.1mm, 1mm, 10mm, 100mm buttons with visual feedback
-- Home buttons row: All, X, Y, Z
-- Position display card with reactive subject bindings
-- Z-axis controls: +10mm, +1mm, -1mm, -10mm with chevron icons
-
-**3. Button Layout Pattern Fix**
-- **Problem:** Z-axis buttons had nested `lv_obj` containers for icon+text layout
-- **Symptom:** Click events captured by container, button callbacks didn't fire
-- **Solution:** Apply flex layout directly to `lv_button`, put labels directly inside
-- **Pattern:**
-  ```xml
-  <lv_button flex_flow="row" style_flex_main_place="center">
-    <lv_label text="#icon"/>
-    <lv_label text="10mm"/>
-  </lv_button>
-  ```
-- No unnecessary container layers, clicks work reliably
-
-**4. C++ Integration** (`ui_panel_motion.cpp/h`)
-- Three reactive subjects: `pos_x`, `pos_y`, `pos_z` (string subjects for formatted display)
-- Distance state management: Radio button behavior (only one selected)
-- Event handlers for all buttons:
-  - Jog pad: 8 directions + center home (9 buttons)
-  - Distance selector: 4 buttons with visual feedback
-  - Home buttons: All, X, Y, Z (4 buttons)
-  - Z-axis: +10mm, +1mm, -1mm, -10mm (4 buttons)
-- Mock position simulation: X/Y jog updates coordinates, Z buttons increment/decrement
-- Back button returns to Controls launcher
-
-**5. Font Generation Workflow Refined**
-```bash
-# Generate custom font from system font
-npm run convert-arrows
-
-# Update globals.xml with Unicode sequences
-python3 scripts/generate-icon-consts.py
-
-# Rebuild
-make
-```
-
-**6. Theme Constants Added** (globals.xml)
-- `jog_button_size` = 76px (reduced from 80 to fit 3 buttons + gaps)
-- `jog_pad_size` = 320px
-- `jog_pad_padding` = 20px
-- `jog_pad_gap` = 12px
-- `distance_button_width` = 85px
-- `distance_button_height` = 42px
-- `home_button_width` = 120px
-- `home_button_height` = 44px
-- `z_button_width` = 140px
-- `z_button_height` = 58px
-- `position_card_height` = 140px
-- `z_controls_height` = 280px
-- `jog_button_bg` = 0x505050 (light gray)
-- `jog_selected_distance` = 0xcc3333 (softer red for active distance)
-
-**7. Key Lessons Learned**
-- **Arrow icon sourcing:** FontAwesome Free lacks diagonal arrows, custom font generation required
-- **Button layout:** Avoid unnecessary container layers - apply flex to button directly
-- **Click event flow:** Nested containers capture events unless marked `flag_clickable="false"`
-- **Consistent styling:** Use single font at one size for icon families to maintain visual consistency
+**Last Updated:** 2025-10-15
+**Current Focus:** Interactive button wiring and Moonraker integration prep
 
 ---
 
-## 🎯 What's Next - Phase 5.4: Temperature Sub-Screens
+## Current State
 
-**Implement Nozzle and Bed temperature control sub-screens using the numeric keypad modal.**
+**Completed Phases:**
+- ✅ Phase 5.5: Extrusion Panel with safety checks
+- ✅ Phase 5.4: Temperature Sub-Screens (Nozzle + Bed)
+- ✅ Phase 5.3: Motion Panel with 8-direction jog pad
+- ✅ Phase 5.2: Numeric Keypad modal component
+- ✅ Phase 5.1: Controls Panel launcher
+- ✅ Phase 4: Print Select Panel (dual views, sorting, responsive cards)
 
-### Approach
+**What Works:**
+- Navigation between all 6 main panels
+- Home panel with temperature/network/light displays
+- Controls launcher → sub-screens (motion, temps, extrusion)
+- Print Select panel with card/list views, sorting, file operations
+- Responsive design across tiny/small/medium/large screens
+- Material Design icon system with dynamic recoloring
+- Reactive Subject-Observer data binding
 
-**1. Temperature Sub-Screen Pattern**
-- Reuse numeric keypad modal component (already complete)
-- Wire Nozzle Temp card click handler to show keypad with config:
-  - Title: "Nozzle Temperature"
-  - Unit: "°C"
-  - Min: 0, Max: 300
-  - Callback updates mock nozzle temp state
-- Wire Bed Temp card click handler similarly:
-  - Title: "Bed Temperature"
-  - Min: 0, Max: 120
-- No new XML files needed - leveraging existing keypad modal
+**What Needs Wiring:**
+- Temperature panel preset buttons → update target temps
+- Custom temp button → open numeric keypad
+- Confirm/back buttons on all sub-screens
+- Extrusion/retract buttons
+- Motion jog buttons → position updates
+- All interactive flows need end-to-end testing
 
-**2. Mock State Management**
-- Add nozzle/bed temperature subjects in Controls panel
-- Display current/target temps on cards
-- Keypad callback updates target temperature
-- Future: Wire to Moonraker API for real control
+See **STATUS.md** for complete chronological development history.
 
-**3. Testing**
-- Click Nozzle Temp card → keypad appears with "Nozzle Temperature" title
-- Enter value → OK → card updates with new target temp
-- Click Bed Temp card → keypad appears with "Bed Temperature" title
-- Verify min/max clamping (300°C for nozzle, 120°C for bed)
+---
 
-### Implementation Plan
+## Critical Architecture Patterns
 
-**Step 1: Add Temperature State (15 min)**
-- Add nozzle_temp and bed_temp subjects to ui_panel_controls.cpp
-- Update card labels to show current temps
+### 1. Name-Based Widget Lookup (CRITICAL)
 
-**Step 2: Wire Keypad Handlers (20 min)**
-- Add click handlers for Nozzle and Bed cards
-- Configure keypad with appropriate titles/limits
-- Implement callbacks to update state
-
-**Step 3: Testing (10 min)**
-- Test both temperature cards
-- Verify keypad configuration
-- Confirm state updates
-
-**Total Estimated Time:** 45 minutes
-
-### Previous Session (Phase 5.2): Numeric Keypad Modal Component - COMPLETE
-
-**Implemented a fully functional, reusable numeric keypad for temperature and extrusion value input.**
-
-**1. XML Component Design**
-- Created `ui_xml/numeric_keypad_modal.xml` with complete modal structure
-- Full-screen semi-transparent backdrop (#000000 opacity 128)
-- Right-docked modal panel (700px width, full height)
-- Header bar with back button, dynamic title label, and OK button
-- Large input display card (montserrat_48 font) with unit labels
-- 3×4 button grid layout with proper centering
-
-**2. Button Grid Layout**
-```
-Row 1:  [7]  [8]  [9]
-Row 2:  [4]  [5]  [6]
-Row 3:  [1]  [2]  [3]
-Row 4:  [ ]  [0]  [⌫]
-```
-- Empty spacer left of 0 button to center it under the 2 button
-- Backspace button uses FontAwesome delete-left icon (U+F55A)
-- All buttons: 140×100px with 20px gaps
-
-**3. C++ Integration**
-Created clean callback-based API in `src/ui_component_keypad.cpp/h`:
+**Always use names, never indices:**
 
 ```cpp
-// Configuration structure
-struct ui_keypad_config_t {
-    float initial_value;
-    float min_value;
-    float max_value;
-    const char* title_label;      // "Nozzle Temp", "Bed Temp", etc.
-    const char* unit_label;       // "°C", "mm", etc.
-    bool allow_decimal;           // Not used in current integer-only design
-    bool allow_negative;          // Not used in current design
-    ui_keypad_callback_t callback;
-    void* user_data;
-};
+// ✓ CORRECT - Resilient to layout changes
+lv_obj_t* widget = lv_obj_find_by_name(parent, "widget_name");
 
-// API functions
-void ui_keypad_init(lv_obj_t* parent);
-void ui_keypad_show(const ui_keypad_config_t* config);
-void ui_keypad_hide();
-bool ui_keypad_is_visible();
+// ✗ WRONG - Breaks when XML changes
+lv_obj_t* widget = lv_obj_get_child(parent, 3);
 ```
 
-**4. Event Handling**
-- All 10 digit buttons wired with event callbacks
-- Backspace button removes last digit, resets to "0" when empty
-- OK button validates (clamps to min/max) and invokes callback
-- Back button cancels without invoking callback
-- Backdrop click dismisses modal
-- Initial "0" replaced on first digit entry
+### 2. Component Instantiation Names (CRITICAL)
 
-**5. Font Generation Workflow**
-Established repeatable process for adding FontAwesome icons:
+**Always add explicit `name` attributes when instantiating components:**
 
-```bash
-# 1. Edit package.json to add icon codepoint to font range
-vim package.json
-
-# 2. Install lv_font_conv if not present
-npm install lv_font_conv
-
-# 3. Regenerate font file
-npm run convert-font-32
-
-# 4. Update globals.xml with UTF-8 bytes
-python3 scripts/generate-icon-consts.py
-
-# 5. Rebuild binary
-make
+```xml
+<!-- app_layout.xml -->
+<lv_obj name="content_area">
+  <controls_panel name="controls_panel"/>  <!-- Explicit name required -->
+  <home_panel name="home_panel"/>
+</lv_obj>
 ```
 
-**6. Theme Constants Added**
-Added to `ui_xml/globals.xml`:
-- `keypad_width` = 700px
-- `keypad_padding` = 40px
-- `keypad_section_gap` = 40px
-- `keypad_input_height` = 120px
-- `keypad_button_width` = 140px
-- `keypad_button_height` = 100px
-- `keypad_button_gap` = 20px
-- `keypad_bg` = 0x2a2a2a (dark card background)
-- `keypad_input_bg` = 0x1e1e1e (darker input display)
-- `keypad_button_bg` = 0x505050 (light gray buttons)
-- `keypad_accent_orange` = 0xff9800 (backspace icon color)
+**Why:** Component names in `<view name="...">` definitions do NOT propagate to `<component_tag/>` instantiations. Without explicit names, `lv_obj_find_by_name()` returns NULL.
 
-**7. FontAwesome Icon Integration**
-- Added U+F55A (delete-left/backspace) to fa_icons_32 font
-- Regenerated `assets/fonts/fa_icons_32.c` with lv_font_conv
-- Updated icon constants in globals.xml with UTF-8 bytes
-- Icon displays correctly in orange accent color
+### 3. Subject Initialization Order (CRITICAL)
 
----
+**Subjects MUST be initialized BEFORE XML creation:**
 
-## 🎯 What's Next - Phase 5.3: Motion Sub-Screen
+```cpp
+// 1. Register XML components
+lv_xml_component_register_from_file("A:/ui_xml/globals.xml");
+lv_xml_component_register_from_file("A:/ui_xml/home_panel.xml");
 
-**Implement the Movement/Jog controls sub-screen (first interactive Controls sub-screen).**
+// 2. Initialize subjects FIRST
+ui_nav_init();
+ui_panel_home_init_subjects();
 
-### Approach
+// 3. NOW create UI
+lv_obj_t* screen = lv_xml_create(NULL, "app_layout", NULL);
+```
 
-**1. Motion Sub-Screen XML** (`ui_xml/motion_panel.xml`)
-- Back button in top-left
-- Title label "Movement" in header
-- XY jog pad: 3×3 button grid (↖ ↑ ↗, ← ⊙ →, ↙ ↓ ↘)
-- Z-axis controls: ↑10, ↑1, ↓1, ↓10 buttons
-- Distance selector: Radio buttons (0.1mm, 1mm, 10mm, 100mm)
-- Position display: X/Y/Z coordinates with reactive subjects
-- Home buttons: All, X, Y, Z
+If subjects are created in XML before C++ initialization, they'll have empty/default values.
 
-**2. C++ Wrapper** (`ui_panel_motion.cpp/h`)
-- `ui_panel_motion_init_subjects()` - Initialize position subjects
-- `ui_panel_motion_setup(lv_obj_t* panel)` - Wire events
-- Movement command generators (mock API calls)
-- Position update simulation for testing
+### 4. LVGL XML Event Callbacks (CRITICAL)
 
-**3. Integration**
-- Wire motion card click handler to show motion panel
-- Create overlay pattern (show motion panel, hide controls launcher)
-- Add back button to return to launcher
+**Use `<lv_event-call_function>`, NOT `<event_cb>`:**
 
-### Implementation Plan
+```xml
+<!-- CORRECT (matches LVGL source code) -->
+<lv_button name="my_button">
+    <lv_event-call_function trigger="clicked" callback="my_handler"/>
+</lv_button>
 
-**Step 1: Create XML Layout (30 min)**
-- Define motion_panel.xml structure
-- Use flex layouts for button grids
-- Add header with back button + title
+<!-- WRONG (online docs show this, but it doesn't exist) -->
+<lv_button name="my_button">
+    <event_cb trigger="clicked" callback="my_handler"/>
+</lv_button>
+```
 
-**Step 2: C++ Wrapper (30 min)**
-- Create ui_panel_motion.cpp/h files
-- Define subjects for X/Y/Z positions
-- Implement button click handlers
+**Registration in C++ (BEFORE XML loads):**
+```cpp
+lv_xml_register_event_cb(NULL, "my_handler", my_handler_function);
+```
 
-**Step 3: Integration (15 min)**
-- Wire motion card in ui_panel_controls.cpp
-- Show/hide panel switching logic
-- Test back navigation
+**Source:** `lvgl/src/others/xml/lv_xml.c:113` - LVGL registers `"lv_event-call_function"`, not `"event_cb"`. Online docs are incorrect.
 
-**Step 4: Testing (15 min)**
-- Verify all button interactions
-- Test distance selector radio buttons
-- Confirm position display updates
-- Screenshot and review
+### 5. LVGL 9 XML Attribute Names (CRITICAL)
 
-**Total Estimated Time:** 90 minutes
+**Two systematic bugs to avoid:**
 
----
+1. **No abbreviations - Use full words:**
+   ```xml
+   <!-- ✗ WRONG - Parser silently ignores -->
+   <lv_image style_img_recolor="#primary_color" style_img_recolor_opa="255"/>
 
-## 📁 Important File Locations
+   <!-- ✓ CORRECT - Full word "image" -->
+   <lv_image style_image_recolor="#primary_color" style_image_recolor_opa="255"/>
+   ```
 
-**New Files Created This Session:**
-- `ui_xml/motion_panel.xml` - Motion control sub-screen (250 lines)
-- `src/ui_panel_motion.cpp` - Motion panel implementation (295 lines)
-- `include/ui_panel_motion.h` - Motion panel API
-- `assets/fonts/diagonal_arrows_40.c` - Custom arrow font (8 directions)
+2. **No `zoom` attribute - Use `scale_x`/`scale_y`:**
+   ```xml
+   <!-- ✗ WRONG - zoom doesn't exist in LVGL 9 -->
+   <lv_image src="mat_clock" zoom="180"/>
 
-**Modified Files:**
-- `ui_xml/globals.xml` - Added motion panel constants (lines 51-64), updated arrow icons (lines 91-99)
-- `scripts/generate-icon-consts.py` - Changed arrow icons to Unicode codepoints (lines 55-63)
-- `package.json` - Added convert-arrows script (line 14)
-- `src/ui_panel_controls.cpp` - Wired motion card click handler
-- `src/main.cpp` - Added motion panel initialization and command-line support
-- `include/ui_fonts.h` - Declared diagonal_arrows_40 font, updated arrow icon defines
-- `Makefile` - Added diagonal_arrows_40.c to FONT_SRCS
-- `STATUS.md` - Updated with Phase 5.3 completion
-- `HANDOFF.md` - This file
+   <!-- ✓ CORRECT - scale where 256 = 100% -->
+   <lv_image src="mat_clock" scale_x="72" scale_y="72"/>
+   ```
 
-**Files from Previous Session:**
-- `ui_xml/numeric_keypad_modal.xml` - Modal component with backdrop
-- `src/ui_component_keypad.cpp` - Implementation with state management
-- `include/ui_component_keypad.h` - Public API and config struct
+**When attributes don't work:** Check the parser source code in `/lvgl/src/others/xml/parsers/`, not just online docs.
 
-**Requirements Documentation:**
-- `docs/requirements/controls-panel-v1.md` - Complete Controls Panel spec (70 pages)
-  - Motion sub-screen: Lines 200-350
-  - Temperature sub-screens: Lines 400-550
-  - Extrusion sub-screen: Lines 600-700
+### 6. Margin vs Padding for Dividers
+
+**Critical distinction for thin elements:**
+
+```xml
+<!-- ✗ WRONG - Padding adds to height, causes overflow -->
+<lv_obj width="1" height="100%" style_pad_ver="12"/>  <!-- 100% + 24px = overflow -->
+
+<!-- ✓ CORRECT - Margin pushes inward, no overflow -->
+<lv_obj width="1" height="100%" style_margin_ver="12"/>  <!-- Creates inset -->
+```
+
+**Pattern:** Use **margin for insets**, **padding for internal spacing**.
+
+### 7. Responsive Design Philosophy
+
+**Use responsive percentages for layout, fixed pixels for interactions:**
+
+```xml
+<!-- ✓ Responsive layouts -->
+<percent name="overlay_panel_width" value="68%"/>
+<percent name="file_card_width" value="22%"/>
+
+<!-- ✓ Fixed interactive elements -->
+<px name="button_height_normal" value="56"/>  <!-- Minimum touch target -->
+<px name="padding_normal" value="20"/>        <!-- Visual consistency -->
+```
+
+**Benefits:** Single codebase supports tiny/small/medium/large screens without duplication.
 
 ---
 
-## 🔧 Build Commands
+## Material Design Icon System
+
+**Icon Format:** RGB565A8 (16-bit color + 8-bit alpha) LVGL 9 C arrays
+
+**Conversion Workflow:**
+```bash
+# Automated: SVG → PNG (Inkscape) → LVGL 9 C array
+./scripts/convert-material-icons-lvgl9.sh
+```
+
+**CRITICAL:** Use **Inkscape** for SVG→PNG conversion. ImageMagick loses alpha channel, causing icons to render as solid squares.
+
+**Dynamic Recoloring in XML:**
+```xml
+<lv_image src="mat_heater"
+          style_image_recolor="#primary_color"
+          style_image_recolor_opa="255"/>
+```
+
+**Dynamic Recoloring in C++:**
+```cpp
+lv_obj_set_style_img_recolor(icon, UI_COLOR_PRIMARY, LV_PART_MAIN);
+lv_obj_set_style_img_recolor_opa(icon, 255, LV_PART_MAIN);
+```
+
+**Scaling:**
+- Material icons are 64×64px at scale 256 (100%)
+- For 14px icons: `scale_x="56" scale_y="56"` (14/64 × 256 = 56)
+- For 32px icons: `scale_x="128" scale_y="128"`
+
+---
+
+## Component Registration & Initialization
+
+**Order matters in main.cpp:**
+
+```cpp
+int main() {
+    // 1. Register custom widgets FIRST
+    material_icons_register();
+    ui_icon_register_widget();
+
+    // 2. Register XML components
+    lv_xml_component_register_from_file("A:/ui_xml/globals.xml");
+    lv_xml_component_register_from_file("A:/ui_xml/navigation_bar.xml");
+    lv_xml_component_register_from_file("A:/ui_xml/home_panel.xml");
+    // ... all other panels
+
+    // 3. Initialize subjects BEFORE creating UI
+    ui_nav_init();
+    ui_panel_home_init_subjects();
+    ui_panel_controls_temp_init_subjects();
+    // ... all panel subjects
+
+    // 4. Create UI
+    lv_obj_t* screen = lv_xml_create(NULL, "app_layout", NULL);
+
+    // 5. Setup observers and wire events
+    ui_panel_home_setup_observers(panels[UI_PANEL_HOME]);
+    ui_panel_controls_wire_events(panels[UI_PANEL_CONTROLS]);
+
+    // 6. Start event loop
+    while (lv_display_get_next(NULL)) {
+        lv_timer_handler();
+        SDL_Delay(5);
+    }
+}
+```
+
+**Component Naming:** LVGL uses **filename** as component name:
+- File: `nozzle_temp_panel.xml` → Component: `nozzle_temp_panel`
+- File: `controls_panel.xml` → Component: `controls_panel`
+
+---
+
+## Testing Commands
 
 ```bash
-# Incremental build
-make
+# Build
+make                          # Incremental build (auto-parallel)
+make clean && make            # Clean rebuild
 
-# Full rebuild
-make clean && make
-
-# Run with keypad test
-./build/bin/guppy-ui-proto
+# Run with different configs
+./build/bin/guppy-ui-proto                    # Default (medium screen, home panel)
+./build/bin/guppy-ui-proto -s tiny            # 480x320 screen
+./build/bin/guppy-ui-proto -s large           # 1280x720 screen
+./build/bin/guppy-ui-proto -p controls        # Start at Controls panel
+./build/bin/guppy-ui-proto -s small -p print-select  # Combined options
 
 # Screenshot
-./scripts/screenshot.sh
+./scripts/screenshot.sh guppy-ui-proto output-name [panel-name]
 
-# Regenerate fonts (after adding icons)
-npm run convert-font-32
-python3 scripts/generate-icon-consts.py
-make
+# Examples:
+./scripts/screenshot.sh guppy-ui-proto home-test home
+./scripts/screenshot.sh guppy-ui-proto controls-launcher controls
+./scripts/screenshot.sh guppy-ui-proto motion-panel motion
+
+# Unit tests
+make test                     # Run all tests
 ```
+
+**Screen Size Mappings:**
+- `tiny` = 480x320
+- `small` = 800x480
+- `medium` = 1024x600 (default)
+- `large` = 1280x720
 
 ---
 
-## 🔑 Key Technical Insights
+## Next Priorities
 
-### 1. FontAwesome Icon Workflow
-**Problem:** Icons not appearing in custom fonts.
-**Solution:**
-1. Add codepoint to package.json font range
-2. Run `npm run convert-font-XX` to regenerate C file
-3. Run `python3 scripts/generate-icon-consts.py` to update XML
-4. Rebuild binary
+### Priority 1: Interactive Button Wiring
 
-### 2. Single Reusable Instance Pattern
-**Pattern:** Create widget once, reconfigure on show
+**Temperature Panels:**
+- Wire preset buttons (PLA/PETG/ABS/Off) → update target temperature subjects
+- Wire Custom button → open numeric keypad with callback
+- Wire Confirm button → apply temperature and close panel
+- Wire back button → hide panel, show Controls launcher
+
+**Motion Panel:**
+- Wire jog pad buttons → update position subjects
+- Wire distance selector → change jog increment
+- Wire home buttons → mock homing operations
+- Wire back button
+
+**Extrusion Panel:**
+- Wire amount selector → set extrusion distance
+- Wire extrude/retract buttons → check temp, simulate extrusion
+- Wire back button
+
+**Test End-to-End Flows:**
+1. Controls → Nozzle Temp → PLA preset → Custom (keypad) → Confirm → Back
+2. Controls → Motion → jog XY → change distance → jog Z → Home All → Back
+3. Controls → Extrusion → select 25mm → verify temp check → Extrude → Back
+
+### Priority 2: Moonraker Integration Prep
+
+**Dynamic Temperature Limits:**
+APIs already implemented, ready to wire to Moonraker config:
+
 ```cpp
-// Init once at startup
-ui_keypad_init(screen);
+// Query printer heater config on startup:
+// GET /printer/objects/query?heater_bed&extruder
 
-// Reuse with different configs
-ui_keypad_config_t config = {...};
-ui_keypad_show(&config);
+// Then configure UI with actual printer limits:
+ui_panel_controls_temp_set_nozzle_limits(extruder.min_temp, extruder.max_temp);
+ui_panel_controls_temp_set_bed_limits(heater_bed.min_temp, heater_bed.max_temp);
+ui_panel_controls_extrusion_set_limits(extruder.min_temp, extruder.max_temp);
 ```
 
-### 3. Callback-Based API
-**Benefits:**
-- Decouples modal from caller
-- Reusable across different contexts
-- Type-safe with config struct
-- Easy to test
+**Default Safe Limits:**
+- Nozzle: 0-500°C (covers all hotends)
+- Bed: 0-150°C (covers all heatbeds)
+- Extrusion min: 170°C (safety threshold)
 
-### 4. Input Validation
-**Pattern:** Always clamp values in OK handler
+### Priority 3: Future Enhancements
+
+- Temperature graph visualization (replace static fire icon)
+- Print status panel real-time updates
+- File browser pagination/search
+- Multi-language support
+- Animations and transitions
+
+---
+
+## Known Gotchas
+
+### LV_SIZE_CONTENT Width Bug
+
+**Problem:** Labels inside XML components with property substitution render with zero width despite having content.
+
+**Solution:** Use explicit pixel dimensions instead of `width="LV_SIZE_CONTENT"`:
+
+```xml
+<!-- ✗ WRONG - Renders with zero width -->
+<lv_label width="LV_SIZE_CONTENT" bind_text="time_text"/>
+
+<!-- ✓ CORRECT - Use explicit dimensions -->
+<lv_label width="65" bind_text="time_text"/>  <!-- Fits "2h30m" -->
+```
+
+See `docs/LVGL9_XML_GUIDE.md` for complete troubleshooting.
+
+### Subject Type Must Match API
+
+**Image recoloring requires color subjects:**
 ```cpp
-float value = atof(input_buffer);
-if (value < config.min_value) value = config.min_value;
-if (value > config.max_value) value = config.max_value;
+// ✓ CORRECT - Color subject + image recolor API
+lv_subject_init_color(&subject, lv_color_hex(0xFFD700));
+lv_obj_set_style_img_recolor(widget, color, LV_PART_MAIN);
+lv_obj_set_style_img_recolor_opa(widget, 255, LV_PART_MAIN);
+
+// ✗ WRONG - String subject + text color (doesn't work on images)
+lv_subject_init_string(&subject, buffer, NULL, size, "0xFFD700");
+lv_obj_set_style_text_color(widget, color, 0);
 ```
 
----
+### Component Instantiation Requires Explicit Names
 
-## 🎨 Design Decisions
+Always add `name` attributes to component tags in XML or `lv_obj_find_by_name()` will return NULL.
 
-**1. Integer-Only Input**
-- Removed decimal and minus buttons
-- Simplified to 0-9 + backspace
-- Suitable for temperature values (whole numbers)
-- Can add decimal support later if needed
+### LVGL 9 XML Silent Failures
 
-**2. Right-Docked Modal**
-- Keeps left side visible for context
-- Consistent with Bambu X1C design language
-- Easy to dismiss (click backdrop or back)
-
-**3. OK Button Placement**
-- Moved from bottom grid to top-right header
-- More prominent, easier to reach
-- Clearer separation from number grid
-
-**4. Button Centering**
-- 0 button centered under 2 (empty spacer on left)
-- Backspace on right (common keyboard pattern)
-- All rows use flex center alignment
+Parser ignores unknown attributes without warnings. When attributes don't work, verify against source code in `/lvgl/src/others/xml/parsers/`.
 
 ---
 
-## 🚨 Known Issues / Warnings
+## Documentation
 
-**None!** Phase 5.2 completed successfully with no blocking issues.
-
-**Compiler Warnings (non-blocking):**
-- `handle_decimal()` and `handle_minus()` unused (removed from UI)
-- Several unused event parameters in controls panel handlers
-
----
-
-## 📞 Picking Up Next Session
-
-**Quick Start:**
-1. Read this handoff document
-2. Review motion sub-screen requirements: `docs/requirements/controls-panel-v1.md` (lines 200-350)
-3. Create `ui_xml/motion_panel.xml` using jog pad layout
-4. Implement C++ wrapper in `src/ui_panel_motion.cpp/h`
-5. Wire motion card click handler in `ui_panel_controls.cpp`
-
-**If Stuck:**
-- Reference keypad modal implementation as pattern example
-- Check LVGL XML guide: `docs/LVGL9_XML_GUIDE.md`
-- Review home panel implementation: `src/ui_panel_home.cpp`
-
-**Testing Strategy:**
-1. Build and verify motion panel displays
-2. Test each button logs correct movement command
-3. Verify distance selector radio buttons
-4. Confirm back button returns to launcher
-5. Screenshot and compare to mockup
+- **[STATUS.md](STATUS.md)** - Complete chronological development journal
+- **[ROADMAP.md](docs/ROADMAP.md)** - Planned features and milestones
+- **[LVGL9_XML_GUIDE.md](docs/LVGL9_XML_GUIDE.md)** - Complete LVGL 9 XML reference
+- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** - Common patterns quick lookup
+- **[COPYRIGHT_HEADERS.md](docs/COPYRIGHT_HEADERS.md)** - Required GPL v3 headers for new files
 
 ---
 
-**Good luck with Phase 5.3! The foundation is solid. 🚀**
+## File Organization
+
+```
+prototype-ui9/
+├── src/              # C++ business logic
+├── include/          # Headers
+├── ui_xml/           # XML component definitions
+├── assets/           # Fonts, images, Material Design icons
+├── scripts/          # Build/screenshot/icon conversion automation
+├── docs/             # Documentation
+└── Makefile          # Build system
+```
+
+**Key Files:**
+- `src/main.cpp` - Entry point, initialization order, CLI args
+- `ui_xml/globals.xml` - Theme constants, color definitions, icon variants
+- `ui_xml/app_layout.xml` - Root layout (navbar + content area)
+- `lv_conf.h` - LVGL configuration (has `LV_USE_OBJ_NAME=1`)
+
+---
+
+**End of Handoff Document**
+
+For complete development history, see **STATUS.md**.
+For implementation patterns and troubleshooting, see **docs/LVGL9_XML_GUIDE.md**.

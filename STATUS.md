@@ -1353,13 +1353,6 @@ make
 ./scripts/screenshot.sh
 ```
 
-## Documentation
-
-- **[README.md](README.md)** - Overview and quick start
-- **[ROADMAP.md](docs/ROADMAP.md)** - Detailed development roadmap
-- **[XML_UI_SYSTEM.md](docs/XML_UI_SYSTEM.md)** - Complete XML guide
-- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** - Common patterns
-
 ## Key Metrics
 
 - **Lines of XML:** ~550 (entire UI layout)

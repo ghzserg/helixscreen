@@ -121,25 +121,7 @@ lv_obj_t* label = lv_obj_find_by_name(panel, "temp_display");
 
 See **docs/QUICK_REFERENCE.md** for common patterns.
 
-### 4. FontAwesome Icon Generation
-
-Icons are auto-generated to avoid UTF-8 encoding issues:
-
-```bash
-# After adding icons to include/ui_fonts.h:
-python3 scripts/generate-icon-consts.py  # Updates globals.xml
-make                                      # Rebuild
-```
-
-**Adding new icons:**
-1. Edit `package.json` to add Unicode codepoint to font range
-2. Run `npm run convert-font-XX` (XX = 16/32/48/64)
-3. Run `python3 scripts/generate-icon-consts.py`
-4. Rebuild with `make`
-
-See **docs/LVGL9_XML_GUIDE.md** for font generation details.
-
-### 5. Copyright Headers ⚠️
+### 4. Copyright Headers ⚠️
 
 **CRITICAL:** All new source files MUST include the GPL v3 copyright header.
 
@@ -198,13 +180,56 @@ For automated UI verification against requirements:
 
 Templates available in `docs/templates/`. See section in original CLAUDE.md for full details if needed.
 
-## Documentation
+## Documentation Structure
 
-- **[LVGL9_XML_GUIDE.md](docs/LVGL9_XML_GUIDE.md)** - Complete LVGL 9 XML reference, patterns, troubleshooting
-- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** - Common patterns, quick lookup
-- **[STATUS.md](STATUS.md)** - Development journal, recent updates
-- **[HANDOFF.md](docs/HANDOFF.md)** - Architecture patterns, established conventions
-- **[ROADMAP.md](docs/ROADMAP.md)** - Planned features, milestones
+**IMPORTANT:** Each documentation file has a specific purpose. Do NOT duplicate content across files.
+
+### Development History & Planning
+
+**[STATUS.md](STATUS.md)** - **COMPREHENSIVE DEVELOPMENT JOURNAL**
+- Chronological history of all development work (newest first)
+- What was accomplished each session
+- Bugs fixed, features added, decisions made
+- **Update this:** After every significant change or session
+- **Do NOT duplicate:** Anywhere else - this is the single source of truth for "what happened"
+
+**[ROADMAP.md](docs/ROADMAP.md)** - **PLANNED FEATURES & MILESTONES**
+- Future work, planned phases
+- Feature prioritization
+- Long-term architecture goals
+- **Update this:** When planning new features or completing major milestones
+- **Do NOT update:** With completed work details (that goes in STATUS.md)
+
+### Quick-Start & Patterns
+
+**[HANDOFF.md](HANDOFF.md)** - **QUICK-START FOR NEXT DEVELOPER**
+- Brief current state summary (2-3 paragraphs max)
+- Critical architecture patterns (how-to sections)
+- Next priorities (what to work on)
+- Known gotchas
+- **Update this:** When adding new critical patterns or changing priorities
+- **Do NOT put:** Historical session details, chronological updates (use STATUS.md)
+- **Rule:** If it's not actionable for the next developer, it doesn't belong here
+
+### Technical Reference
+
+**[LVGL9_XML_GUIDE.md](docs/LVGL9_XML_GUIDE.md)** - **COMPLETE LVGL 9 XML REFERENCE**
+- XML syntax, attributes, event system
+- Component creation patterns
+- Troubleshooting (LV_SIZE_CONTENT, event callbacks, etc.)
+- Comprehensive technical documentation
+- **Update this:** When discovering new LVGL 9 XML patterns or bugs
+
+**[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** - **COMMON PATTERNS QUICK LOOKUP**
+- Code snippets for frequent tasks
+- Widget lookup, subject binding, event handlers
+- Material icon conversion workflow
+- **Update this:** When establishing new repeatable patterns
+
+**[COPYRIGHT_HEADERS.md](docs/COPYRIGHT_HEADERS.md)** - **GPL v3 HEADER TEMPLATES**
+- Required copyright headers for new files
+- C/C++ and XML variants
+- **Reference this:** When creating any new source files
 
 ## File Organization
 
@@ -231,20 +256,39 @@ Claude Code provides specialized agents for complex tasks. **Use agents proactiv
 - When uncertain about file locations or need exploratory search
 - **Example:** "Implement temperature sub-screens" (Phase 5.4 - successfully used)
 
-**feature-dev:code-reviewer**
-- Review completed code for bugs, logic errors, security issues
-- Use after significant feature completion
-- Provides confidence-based filtering (only high-priority issues)
+**Explore**
+- Fast codebase exploration (glob/grep/read operations)
+- Quick searches for patterns, keywords, or file structures
+- Specify thoroughness: "quick", "medium", or "very thorough"
+- **Example:** "Find all panel navigation patterns" or "How do panels register themselves?"
 
-**feature-dev:code-explorer**
-- Deep analysis of existing features and patterns
-- Trace execution paths and understand architecture
-- Map dependencies before implementing related features
+**widget-maker**
+- LVGL v9 widget creation using C/C++ and XML layouts
+- Implementing new UI components and panels
+- Working with LVGL 9 XML system patterns
+- **Example:** "Create a new progress bar component" or "Build fan control widget"
 
-**feature-dev:code-architect**
-- Design feature architectures based on existing patterns
-- Get implementation blueprints before coding
-- Identify files to create/modify and component designs
+**ui-reviewer**
+- LVGL v9 XML UI review against requirements
+- Analyzes UI screenshots and identifies issues
+- Provides detailed XML fixes and suggestions
+- **Example:** "Review the motion panel layout against spec"
+
+**general-coding-agent**
+- C++17 development and LVGL UI framework tasks
+- Implementing panels, UI components, or general C++ features
+- Follows GuppyScreen architectural patterns
+- **Example:** "Add error handling to WebSocket connection code"
+
+**refractor**
+- Code refactoring following best practices
+- Restructuring, optimization, improved readability
+- **Example:** "Refactor temperature panel code for better modularity"
+
+**moonraker-api-agent**
+- Klipper/Moonraker WebSocket/API implementation
+- JSON-RPC protocols, real-time state sync
+- **Example:** "Implement printer status WebSocket handler"
 
 ### When NOT to Use Agents
 
@@ -260,11 +304,14 @@ Claude Code provides specialized agents for complex tasks. **Use agents proactiv
 User: "Implement the temperature sub-screens from the spec"
 → Use general-purpose agent with full context and requirements
 
-User: "Review the temperature panel implementation for issues"
-→ Use code-reviewer agent after Phase 5.4 completion
-
 User: "How does the panel navigation system work?"
-→ Use code-explorer agent to trace the pattern
+→ Use Explore agent with "medium" thoroughness
+
+User: "Create a new fan control widget"
+→ Use widget-maker agent with design requirements
+
+User: "Review the motion panel implementation"
+→ Use ui-reviewer agent with screenshot and requirements
 ```
 
 **❌ Bad Use Cases:**
