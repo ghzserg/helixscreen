@@ -451,6 +451,54 @@ For centering children within a parent without flex:
 
 **Alignment options:** `center`, `top_left`, `top_mid`, `top_right`, `bottom_left`, `bottom_mid`, `bottom_right`, `left_mid`, `right_mid`
 
+#### ⚠️ CRITICAL: Flex Layout Can Conflict with `align="center"`
+
+**Problem:** When a parent has `flex_flow` set, it can interfere with child widget's `align="center"`, causing misalignment.
+
+**Symptoms:**
+- Widget with `align="center"` appears off-center (horizontally or vertically)
+- Centering works in one direction but not the other
+- Changing `style_flex_main_place` values doesn't fix the issue
+
+**Root Cause:** Flex layout positioning overrides absolute `align="center"` positioning.
+
+**Solution:** Remove `flex_flow` from parent container when you have a single child that needs true center alignment.
+
+**Example from motion_panel.xml (jog pad centering):**
+
+```xml
+<!-- ❌ DOESN'T WORK - flex conflicts with align="center" -->
+<lv_obj name="left_column" width="65%" height="100%"
+        flex_flow="column" style_flex_main_place="center">
+    <lv_obj name="jog_pad" align="center">
+        <!-- Jog pad appears off-center -->
+    </lv_obj>
+</lv_obj>
+
+<!-- ✅ WORKS - no flex, pure absolute positioning -->
+<lv_obj name="left_column" width="65%" height="100%"
+        style_bg_opa="0" style_pad_all="0">
+    <!-- NO flex_flow attribute -->
+    <lv_obj name="jog_pad" align="center">
+        <!-- Jog pad perfectly centered both H and V -->
+    </lv_obj>
+</lv_obj>
+```
+
+**When to use each approach:**
+
+**Use flex layout** when:
+- Parent has multiple children to arrange
+- You need responsive distribution (`space_between`, `space_evenly`)
+- Children need `flex_grow` behavior
+
+**Use `align="center"` without flex** when:
+- Parent has a single child
+- You need perfect center alignment in both directions
+- Simple absolute positioning is sufficient
+
+**Reference:** See `ui_xml/motion_panel.xml:50-68` for working example.
+
 ### Dividers in Flex Layouts
 
 **Vertical dividers** (in row layouts):
@@ -1244,7 +1292,7 @@ lv_xml_component_register_from_file(".../other.xml");    // Then others
 
 #### Centering not working
 
-**Cause:** Using `flex_align` instead of `style_flex_*` properties.
+**Cause 1:** Using `flex_align` instead of `style_flex_*` properties.
 
 **Fix:**
 ```xml
@@ -1254,6 +1302,23 @@ lv_xml_component_register_from_file(".../other.xml");    // Then others
 <!-- ✓ WORKS -->
 <lv_obj style_flex_main_place="center" style_flex_cross_place="center">
 ```
+
+**Cause 2:** Flex layout conflicts with `align="center"` attribute.
+
+**Fix:** Remove `flex_flow` from parent when centering a single child:
+```xml
+<!-- ✗ DOESN'T WORK - flex overrides align -->
+<lv_obj flex_flow="column" style_flex_main_place="center">
+    <lv_obj align="center"><!-- off-center --></lv_obj>
+</lv_obj>
+
+<!-- ✓ WORKS - no flex, pure absolute positioning -->
+<lv_obj>
+    <lv_obj align="center"><!-- perfectly centered --></lv_obj>
+</lv_obj>
+```
+
+See "Flex Layout Can Conflict with align="center"" section for details.
 
 #### Vertical centering fails
 
