@@ -137,6 +137,7 @@ static CardDimensions calculate_card_dimensions(lv_obj_t* container) {
 
     // Fallback to minimum width if nothing fits perfectly
     dims.num_columns = container_width / (CARD_MIN_WIDTH + CARD_GAP);
+    if (dims.num_columns < 1) dims.num_columns = 1;  // Safety: always at least 1 column
     dims.card_width = CARD_MIN_WIDTH;
 
     LV_LOG_WARN("No optimal card layout found, using fallback: %d columns", dims.num_columns);
@@ -150,6 +151,7 @@ static std::vector<PrintFileData> file_list;
 static PrintSelectViewMode current_view_mode = PrintSelectViewMode::CARD;  // Default view mode
 static PrintSelectSortColumn current_sort_column = PrintSelectSortColumn::FILENAME;
 static PrintSelectSortDirection current_sort_direction = PrintSelectSortDirection::ASCENDING;
+static bool panel_initialized = false;  // Guard flag to prevent resize callback before setup complete
 
 // Widget references
 static lv_obj_t* panel_root_widget = nullptr;
@@ -197,6 +199,9 @@ static void scale_detail_images();
 // Resize handling callback
 // ============================================================================
 static void on_resize() {
+    // CRITICAL: Don't run resize logic until panel is fully initialized (prevents segfault)
+    if (!panel_initialized) return;
+
     LV_LOG_USER("Print select panel handling resize event");
 
     // Only recalculate card view dimensions if currently in card view mode
@@ -299,6 +304,9 @@ void ui_panel_print_select_setup(lv_obj_t* panel_root, lv_obj_t* parent_screen) 
 
     // Register resize callback for responsive card layout
     ui_resize_handler_register(on_resize);
+
+    // Mark panel as fully initialized (enables resize callbacks)
+    panel_initialized = true;
 
     LV_LOG_USER("Print select panel setup complete");
 }
@@ -502,6 +510,9 @@ static void populate_card_view() {
 
     // Clear existing cards
     lv_obj_clean(card_view_container);
+
+    // CRITICAL: Force layout calculation before querying dimensions (prevents segfault on tiny screens)
+    lv_obj_update_layout(card_view_container);
 
     // Calculate optimal card dimensions based on actual container width
     CardDimensions dims = calculate_card_dimensions(card_view_container);

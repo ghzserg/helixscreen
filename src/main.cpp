@@ -141,7 +141,7 @@ static void save_screenshot() {
 // Main application
 int main(int argc, char** argv) {
     // Parse command-line arguments
-    int initial_panel = UI_PANEL_HOME;  // Default to home panel
+    int initial_panel = -1;  // -1 means auto-select based on screen size
     bool show_motion = false;  // Special flag for motion sub-screen
     bool show_nozzle_temp = false;  // Special flag for nozzle temp sub-screen
     bool show_bed_temp = false;  // Special flag for bed temp sub-screen
@@ -315,6 +315,10 @@ int main(int argc, char** argv) {
     // Initialize component systems (BEFORE XML registration)
     ui_component_header_bar_init();
 
+    // WORKAROUND: Add small delay to stabilize SDL/LVGL initialization
+    // Prevents race condition between SDL2 and LVGL 9 XML component registration
+    SDL_Delay(100);
+
     // Register XML components (globals first to make constants available)
     LV_LOG_USER("Registering XML components...");
     lv_xml_component_register_from_file("A:ui_xml/globals.xml");
@@ -380,9 +384,8 @@ int main(int argc, char** argv) {
     ui_panel_controls_set(panels[UI_PANEL_CONTROLS]);
     ui_panel_controls_wire_events(panels[UI_PANEL_CONTROLS]);
 
-    // Setup print select panel (wires up events, creates overlays, populates data)
+    // Setup print select panel (wires up events, creates overlays, NOTE: data populated later)
     ui_panel_print_select_setup(panels[UI_PANEL_PRINT_SELECT], screen);
-    ui_panel_print_select_populate_test_data(panels[UI_PANEL_PRINT_SELECT]);
 
     // Initialize numeric keypad modal component (creates reusable keypad widget)
     ui_keypad_init(screen);
@@ -403,6 +406,11 @@ int main(int argc, char** argv) {
 
     LV_LOG_USER("XML UI created successfully with reactive navigation");
 
+    // Auto-select home panel if not specified
+    if (initial_panel == -1) {
+        initial_panel = UI_PANEL_HOME;
+    }
+
     // Switch to initial panel (if different from default HOME)
     if (initial_panel != UI_PANEL_HOME) {
         ui_nav_set_active((ui_panel_id_t)initial_panel);
@@ -414,6 +422,9 @@ int main(int argc, char** argv) {
         lv_timer_handler();
         SDL_Delay(10);
     }
+
+    // NOW populate print select panel data (after layout is stable)
+    ui_panel_print_select_populate_test_data(panels[UI_PANEL_PRINT_SELECT]);
 
     // Keypad is initialized and ready to be shown when controls panel buttons are clicked
 
