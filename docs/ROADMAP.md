@@ -311,30 +311,41 @@
   - Detail overlay fade-in/fade-out
   - Dialog animations
 
-## 🔌 Phase 8: Backend Integration (FUTURE)
+## 🔌 Phase 8: Backend Integration (IN PROGRESS)
 
-**Priority: Medium** - Connect to Klipper/Moonraker
+**Priority: High** - Connect to Klipper/Moonraker
 
-- [ ] **WebSocket Client for Moonraker**
-  - Connection management
-  - JSON-RPC protocol
-  - Reconnection logic
+- [x] **WebSocket Client for Moonraker** ✅ COMPLETE (2025-10-26)
+  - [x] Connection management (libhv WebSocketClient)
+  - [x] JSON-RPC protocol with auto-incrementing request IDs
+  - [x] Auto-discovery chain (objects.list → server.info → printer.info → subscribe)
+  - [x] Object categorization (heaters, sensors, fans, LEDs)
+  - [x] Persistent notification callbacks
+  - [ ] Reconnection logic (TODO)
 
-- [ ] **Printer State Management**
-  - Poll printer status
-  - Update subjects from printer data
-  - Handle state changes
+- [x] **Configuration System** ✅ COMPLETE (2025-10-26)
+  - [x] Config singleton with JSON storage
+  - [x] Auto-generates helixconfig.json with defaults
+  - [x] Multi-printer structure support
+  - [x] JSON pointer-based get/set API
 
-- [ ] **File Operations**
-  - List print files
-  - Upload files
-  - Delete files
-  - Start prints
+- [~] **Printer State Management** (PARTIAL)
+  - [x] PrinterState reactive subjects created
+  - [x] Notification callback wired to update_from_notification()
+  - [x] Connection state tracking
+  - [ ] Parse and bind all printer objects to subjects
+  - [ ] Handle state changes and errors
 
-- [ ] **Real-time Updates**
-  - Temperature monitoring
-  - Print progress
-  - Status changes
+- [ ] **File Operations** (FUTURE)
+  - [ ] List print files (server.files.list)
+  - [ ] Upload files
+  - [ ] Delete files
+  - [ ] Start prints
+
+- [ ] **Real-time Updates** (FUTURE)
+  - [ ] Temperature monitoring (bind to UI)
+  - [ ] Print progress (bind to UI)
+  - [ ] Status changes (bind to UI)
 
 ## 🎭 Phase 9: Theming & Accessibility (FUTURE)
 
@@ -413,9 +424,19 @@
 
 ## Current Status
 
-**Active Phase:** Phase 4 - Print Select Panel Polish **COMPLETE**
+**Active Phase:** Phase 8 - Backend Integration **IN PROGRESS**
 
-**Recent Work (2025-10-12 Evening):**
+**Recent Work (2025-10-26 Evening):**
+
+**Phase 8 Progress:**
+- ✅ Config system with auto-migration and JSON pointer API
+- ✅ MoonrakerClient auto-discovery (objects.list → server.info → printer.info → subscribe)
+- ✅ Intelligent object categorization (heaters, sensors, fans, LEDs)
+- ✅ WebSocket connection on startup with config values
+- ✅ Notification callbacks wired to PrinterState
+- ⚠️ Discovery parsing needs refinement for "not ready" Klipper state
+
+**Earlier Work (2025-10-12 Evening):**
 
 **Phase 4 Completion:**
 - ✅ Icon-only view toggle button (40×40px, fa-list ↔ fa-th-large)
@@ -443,14 +464,16 @@
 - Default view: Card mode (remembered per session)
 - Default sort: Filename ascending
 
-**Next Phase Options:**
-1. **Phase 5:** Build out remaining panels (Controls, Filament, Settings, Advanced)
-2. **Phase 7:** Moonraker integration (wire Print/Delete buttons to API)
-3. **Phase 8:** Backend integration (file operations, real-time updates)
+**Next Priorities:**
+1. **Phase 8:** Refine discovery error handling, build Settings UI, test with live printer
+2. **Phase 8:** Bind real temperature data to UI (replace mock data)
+3. **Phase 5:** Implement motion controls with gcode_script() integration
+4. **Phase 8:** File operations (server.files.list for print select panel)
 
 **Completed Phases:** 1, 2, 3, 4
+**In Progress:** Phase 5 (Controls Panel), Phase 8 (Backend Integration)
 
-**Phase 4 Completion Date:** 2025-10-12 Evening
+**Phase 8 Started:** 2025-10-26
 
 ---
 
@@ -466,4 +489,4 @@
 
 ---
 
-**Last Updated:** 2025-10-12
+**Last Updated:** 2025-10-26

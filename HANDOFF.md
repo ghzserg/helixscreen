@@ -1,13 +1,53 @@
 # Session Handoff Document
 
 **Last Updated:** 2025-10-26
-**Current Focus:** Moonraker integration foundation complete - ready to implement WebSocket connection logic
+**Current Focus:** Config + Moonraker Auto-Discovery Complete - Ready for Settings UI and Real Printer Testing
 
 ---
 
-## Recent Work (2025-10-26)
+## Recent Work (2025-10-26 Evening)
 
-### Moonraker Integration Foundation ✅ COMPLETE
+### Config System + Moonraker Auto-Discovery + Connection ✅ COMPLETE
+- Created `Config` singleton class with JSON storage and auto-migration
+- Implemented full auto-discovery chain in `MoonrakerClient`
+- Auto-categorizes heaters, sensors, fans, LEDs from `printer.objects.list`
+- Connects to Moonraker on startup with config values
+- Wires notification updates to `PrinterState` reactive subjects
+- Successfully tested connection to `ws://127.0.0.1:7125/websocket`
+
+**Config Features:**
+- JSON pointer-based get/set API (`get<T>(json_ptr)`, `set<T>(json_ptr, value)`)
+- Auto-generates `helixconfig.json` with sensible defaults on first run
+- Multi-printer structure (ready for expansion)
+- Empty sensors/fans arrays (populated by auto-discovery)
+
+**Discovery Features:**
+- Discovery chain: `objects.list` → `server.info` → `printer.info` → `subscribe`
+- Intelligent object categorization via string prefix matching
+- Subscribes to core objects + all discovered components
+- Logs comprehensive printer metadata
+
+**Integration:**
+- Config initialized before LVGL (main.cpp:334-335)
+- MoonrakerClient connects on startup (main.cpp:633-668)
+- Discovery triggered on successful connection
+- Connection state updates UI subject
+
+**Testing:**
+- ✅ Config generation works
+- ✅ WebSocket connection successful
+- ⚠️ Discovery parsing needs refinement for "not ready" state
+
+**Files Created:**
+- `include/config.h`, `src/config.cpp` - Config singleton
+- `helixconfig.json` - Auto-generated runtime config
+
+**Files Modified:**
+- `include/moonraker_client.h` - Added discovery methods and object storage
+- `src/moonraker_client.cpp` - Implemented discovery chain (~173 lines added)
+- `src/main.cpp` - Integrated config and Moonraker connection
+
+### Earlier: Moonraker Integration Foundation ✅ COMPLETE (2025-10-26 Morning)
 - Integrated libhv WebSocket library (static linking via parent repo)
 - Created `MoonrakerClient` wrapper class with JSON-RPC support
 - Created `PrinterState` reactive state manager with LVGL subjects
@@ -28,16 +68,18 @@ Navigation system robust. All panels render correctly across all screen sizes. R
 - ✅ All UI panels functional with mock data
 - ✅ Responsive design (480×320 to 1280×720)
 - ✅ Material Design icons with dynamic recoloring
-- ✅ **MoonrakerClient** - WebSocket client wrapper (libhv)
+- ✅ **Config** - JSON-based configuration with auto-migration
+- ✅ **MoonrakerClient** - WebSocket client with auto-discovery
 - ✅ **PrinterState** - Reactive state manager with subjects
 - ✅ **Cross-platform build** - macOS/Linux-aware Makefile
+- ✅ **Connection on Startup** - Connects and discovers printer automatically
 
 ### Next Steps
-- 🔌 **Implement connection logic in main.cpp** - Create MoonrakerClient, connect to ws://localhost:7125/websocket
-- 🔌 **Subscribe to printer objects** - Use printer.objects.subscribe for temps, motion, print_stats
-- 🔌 **Wire PrinterState updates** - Connect notifications to `update_from_notification()`
+- ⚠️ **Refine discovery response parsing** - Handle Klipper "not ready" state gracefully
+- 🎨 **Build Settings UI panel** - Connection config (host/port), display sleep, log level
+- 🧪 **Test with live "ready" Klipper printer** - Verify discovery and subscription work end-to-end
 - 🔌 **Bind UI to real subjects** - Replace mock data with printer_state subjects in XML
-- 🔌 **Implement control actions** - Wire buttons to gcode_script() calls
+- 🔌 **Implement control actions** - Wire buttons to gcode_script() calls (motion, temps, extrusion)
 
 ---
 

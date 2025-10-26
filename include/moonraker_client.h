@@ -122,6 +122,40 @@ public:
    */
   int gcode_script(const std::string& gcode);
 
+  /**
+   * @brief Perform printer auto-discovery sequence
+   *
+   * Calls printer.objects.list → server.info → printer.info → printer.objects.subscribe
+   * in sequence, parsing discovered objects and populating PrinterState.
+   *
+   * @param on_complete Callback invoked when discovery completes successfully
+   */
+  void discover_printer(std::function<void()> on_complete);
+
+  /**
+   * @brief Parse object list from printer.objects.list response
+   *
+   * Categorizes Klipper objects into typed arrays (extruders, heaters, sensors, fans).
+   *
+   * @param objects JSON array of object names
+   */
+  void parse_objects(const json& objects);
+
+  /**
+   * @brief Get discovered heaters (extruders, beds, generic heaters)
+   */
+  const std::vector<std::string>& get_heaters() const { return heaters_; }
+
+  /**
+   * @brief Get discovered read-only sensors
+   */
+  const std::vector<std::string>& get_sensors() const { return sensors_; }
+
+  /**
+   * @brief Get discovered fans
+   */
+  const std::vector<std::string>& get_fans() const { return fans_; }
+
 private:
   // One-time callbacks keyed by request ID
   std::map<uint32_t, std::function<void(json&)>> callbacks_;
@@ -135,6 +169,12 @@ private:
 
   // Auto-incrementing JSON-RPC request ID
   std::atomic_uint64_t request_id_;
+
+  // Auto-discovered printer objects
+  std::vector<std::string> heaters_;   // Controllable heaters (extruders, bed, etc.)
+  std::vector<std::string> sensors_;   // Read-only temperature sensors
+  std::vector<std::string> fans_;      // All fan types
+  std::vector<std::string> leds_;      // LED outputs
 };
 
 #endif // MOONRAKER_CLIENT_H

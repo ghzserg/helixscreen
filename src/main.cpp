@@ -39,6 +39,7 @@
 #include "ui_icon.h"
 #include "printer_state.h"
 #include "moonraker_client.h"
+#include "config.h"
 #include <SDL.h>
 #include <cstdio>
 #include <cstring>
@@ -328,6 +329,10 @@ int main(int argc, char** argv) {
     printf("Nav Width: %d pixels\n", UI_NAV_WIDTH(SCREEN_WIDTH));
     printf("Initial Panel: %d\n", initial_panel);
     printf("\n");
+
+    // Initialize config system
+    Config* config = Config::get_instance();
+    config->init("helixconfig.json");
 
     // Initialize LVGL (handles SDL internally)
     if (!init_lvgl()) {
@@ -625,9 +630,42 @@ int main(int argc, char** argv) {
         printf("File detail view displayed\n");
     }
 
-    // Set initial connection state (mock mode: disconnected)
-    printer_state.set_connection_state(0, "Disconnected");
-    LV_LOG_USER("Printer state initialized in mock mode");
+    // Initialize Moonraker connection
+    LV_LOG_USER("Initializing Moonraker client...");
+    MoonrakerClient moonraker_client;
+
+    // Build WebSocket URL from config
+    std::string moonraker_url = "ws://" +
+                               config->get<std::string>(config->df() + "moonraker_host") + ":" +
+                               std::to_string(config->get<int>(config->df() + "moonraker_port")) + "/websocket";
+
+    // Register notification callback to update printer state
+    moonraker_client.register_notify_update([](json& notification) {
+        printer_state.update_from_notification(notification);
+    });
+
+    // Connect to Moonraker
+    spdlog::info("Connecting to Moonraker at {}", moonraker_url);
+    int connect_result = moonraker_client.connect(moonraker_url.c_str(),
+        []() {
+            spdlog::info("✓ Connected to Moonraker");
+        },
+        []() {
+            spdlog::warn("✗ Disconnected from Moonraker");
+        }
+    );
+
+    if (connect_result == 0) {
+        // Start auto-discovery
+        moonraker_client.discover_printer([]() {
+            spdlog::info("✓ Printer auto-discovery complete");
+        });
+
+        printer_state.set_connection_state(2, "Connected");
+    } else {
+        spdlog::error("Failed to connect to Moonraker (code {})", connect_result);
+        printer_state.set_connection_state(0, "Disconnected");
+    }
 
     // Auto-screenshot timer (2 seconds after UI creation)
     uint32_t screenshot_time = SDL_GetTicks() + 2000;

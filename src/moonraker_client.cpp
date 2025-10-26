@@ -185,3 +185,177 @@ int MoonrakerClient::gcode_script(const std::string& gcode) {
   json params = {{"script", gcode}};
   return send_jsonrpc("printer.gcode.script", params);
 }
+
+void MoonrakerClient::discover_printer(std::function<void()> on_complete) {
+  spdlog::info("Starting printer auto-discovery");
+
+  // Step 1: Query available printer objects
+  send_jsonrpc("printer.objects.list", {}, [this, on_complete](json& response) {
+    // Validate response
+    if (!response.contains("result") || !response["result"].contains("objects")) {
+      spdlog::error("printer.objects.list failed: invalid response");
+      return;
+    }
+
+    // Parse discovered objects into typed arrays
+    const json& objects = response["result"]["objects"];
+    parse_objects(objects);
+
+    // Step 2: Get server information
+    send_jsonrpc("server.info", {}, [this, on_complete](json& info_response) {
+      if (info_response.contains("result")) {
+        const json& result = info_response["result"];
+        std::string klippy_version = result.value("klippy_version", "unknown");
+        std::string moonraker_version = result.value("moonraker_version", "unknown");
+
+        spdlog::info("Moonraker version: {}", moonraker_version);
+        spdlog::info("Klippy version: {}", klippy_version);
+
+        if (result.contains("components")) {
+          std::vector<std::string> components = result["components"].get<std::vector<std::string>>();
+          spdlog::debug("Server components: {}", json(components).dump());
+        }
+      }
+
+      // Step 3: Get printer information
+      send_jsonrpc("printer.info", {}, [this, on_complete](json& printer_response) {
+        if (printer_response.contains("result")) {
+          const json& result = printer_response["result"];
+          std::string hostname = result.value("hostname", "unknown");
+          std::string software_version = result.value("software_version", "unknown");
+          std::string state_message = result.value("state_message", "");
+
+          spdlog::info("Printer hostname: {}", hostname);
+          spdlog::info("Klipper software version: {}", software_version);
+          if (!state_message.empty()) {
+            spdlog::info("Printer state: {}", state_message);
+          }
+        }
+
+        // Step 4: Subscribe to all discovered objects + core objects
+        json subscription_objects;
+
+        // Core non-optional objects
+        subscription_objects["print_stats"] = nullptr;
+        subscription_objects["virtual_sdcard"] = nullptr;
+        subscription_objects["toolhead"] = nullptr;
+        subscription_objects["gcode_move"] = nullptr;
+        subscription_objects["motion_report"] = nullptr;
+        subscription_objects["system_stats"] = nullptr;
+
+        // All discovered heaters (extruders, beds, generic heaters)
+        for (const auto& heater : heaters_) {
+          subscription_objects[heater] = nullptr;
+        }
+
+        // All discovered sensors
+        for (const auto& sensor : sensors_) {
+          subscription_objects[sensor] = nullptr;
+        }
+
+        // All discovered fans
+        for (const auto& fan : fans_) {
+          subscription_objects[fan] = nullptr;
+        }
+
+        // All discovered LEDs
+        for (const auto& led : leds_) {
+          subscription_objects[led] = nullptr;
+        }
+
+        json subscribe_params = {{"objects", subscription_objects}};
+
+        send_jsonrpc("printer.objects.subscribe", subscribe_params,
+                     [on_complete, subscription_objects](json& sub_response) {
+          if (sub_response.contains("result")) {
+            spdlog::info("Subscription complete: {} objects subscribed",
+                         subscription_objects.size());
+          } else if (sub_response.contains("error")) {
+            spdlog::error("Subscription failed: {}",
+                          sub_response["error"].dump());
+          }
+
+          // Discovery complete
+          on_complete();
+        });
+      });
+    });
+  });
+}
+
+void MoonrakerClient::parse_objects(const json& objects) {
+  heaters_.clear();
+  sensors_.clear();
+  fans_.clear();
+  leds_.clear();
+
+  for (const auto& obj : objects) {
+    std::string name = obj.template get<std::string>();
+
+    // Extruders (controllable heaters)
+    // Match "extruder", "extruder1", etc., but NOT "extruder_stepper"
+    if (name.rfind("extruder", 0) == 0 && name.rfind("extruder_stepper", 0) != 0) {
+      heaters_.push_back(name);
+    }
+    // Heated bed
+    else if (name == "heater_bed") {
+      heaters_.push_back(name);
+    }
+    // Generic heaters (e.g., "heater_generic chamber")
+    else if (name.rfind("heater_generic ", 0) == 0) {
+      heaters_.push_back(name);
+    }
+    // Read-only temperature sensors
+    else if (name.rfind("temperature_sensor ", 0) == 0) {
+      sensors_.push_back(name);
+    }
+    // Temperature-controlled fans (also act as sensors)
+    else if (name.rfind("temperature_fan ", 0) == 0) {
+      sensors_.push_back(name);
+      fans_.push_back(name);  // Also add to fans for control
+    }
+    // Part cooling fan
+    else if (name == "fan") {
+      fans_.push_back(name);
+    }
+    // Heater fans (e.g., "heater_fan hotend_fan")
+    else if (name.rfind("heater_fan ", 0) == 0) {
+      fans_.push_back(name);
+    }
+    // Generic fans
+    else if (name.rfind("fan_generic ", 0) == 0) {
+      fans_.push_back(name);
+    }
+    // Controller fans
+    else if (name.rfind("controller_fan ", 0) == 0) {
+      fans_.push_back(name);
+    }
+    // Output pins (can be used as fans)
+    else if (name.rfind("output_pin ", 0) == 0) {
+      fans_.push_back(name);
+    }
+    // LED outputs
+    else if (name.rfind("led ", 0) == 0 ||
+             name.rfind("neopixel ", 0) == 0 ||
+             name.rfind("dotstar ", 0) == 0) {
+      leds_.push_back(name);
+    }
+  }
+
+  spdlog::info("Discovered: {} heaters, {} sensors, {} fans, {} LEDs",
+               heaters_.size(), sensors_.size(), fans_.size(), leds_.size());
+
+  // Debug output of discovered objects
+  if (!heaters_.empty()) {
+    spdlog::debug("Heaters: {}", json(heaters_).dump());
+  }
+  if (!sensors_.empty()) {
+    spdlog::debug("Sensors: {}", json(sensors_).dump());
+  }
+  if (!fans_.empty()) {
+    spdlog::debug("Fans: {}", json(fans_).dump());
+  }
+  if (!leds_.empty()) {
+    spdlog::debug("LEDs: {}", json(leds_).dump());
+  }
+}
