@@ -158,6 +158,14 @@ if (!ui_nav_go_back()) {
 
 ## Common Gotchas
 
+**⚠️ READ DOCUMENTATION FIRST:** Before implementing features in these areas, **ALWAYS read the relevant documentation** to avoid common pitfalls:
+- **XML syntax/attributes:** Read **docs/LVGL9_XML_GUIDE.md** "Troubleshooting" section (lines 1130-1323) FIRST
+- **Component patterns/registration:** Read **docs/QUICK_REFERENCE.md** "Registration Order" and examples FIRST
+- **Icon workflow:** Read **docs/QUICK_REFERENCE.md** "Icon & Image Assets" section (lines 273-377) FIRST
+- **Architecture patterns:** Reference existing working implementations (motion_panel, nozzle_temp_panel) FIRST
+
+### Quick Gotcha Reference
+
 1. **✅ LVGL 9 XML Flag Attribute Syntax** - NEVER use `flag_` prefix in XML attributes. LVGL 9 XML uses simplified syntax:
    - ❌ Wrong: `flag_hidden="true"`, `flag_clickable="true"`, `flag_scrollable="false"`
    - ✅ Correct: `hidden="true"`, `clickable="true"`, `scrollable="false"`

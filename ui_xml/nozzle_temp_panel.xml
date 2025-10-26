@@ -50,20 +50,14 @@
             scrollable="false" style_border_width="0" style_border_opa="0"
             flex_flow="row" style_flex_main_place="space_between">
 
-      <!-- Left Column (40%): Fire Icon Visualization -->
+      <!-- Left Column (40%): Nozzle Icon Visualization -->
       <lv_obj name="left_column" width="40%" height="100%"
               style_bg_opa="0" style_pad_all="0"
               scrollable="false" style_border_width="0" style_border_opa="0"
               flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center">
 
-        <!-- Fire Icon Container -->
-        <lv_obj name="icon_container" width="280" height="320"
-                style_min_height="200" style_max_height="320"
-                style_bg_color="#card_bg" style_radius="#card_radius_large" style_border_width="0"
-                scrollable="false"
-                flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center">
-          <icon src="mat_heater" variant="accent"/>
-        </lv_obj>
+        <!-- Nozzle Icon - fills container responsively -->
+        <lv_image name="nozzle_icon" src="A:assets/images/large-extruder-icon.svg" width="100%" height="100%"/>
       </lv_obj>
 
       <!-- Right Column (60%): Controls -->

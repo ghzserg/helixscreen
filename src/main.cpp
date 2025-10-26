@@ -19,6 +19,7 @@
  */
 
 #include "lvgl/lvgl.h"
+#include "lvgl/src/libs/svg/lv_svg_decoder.h"
 #include "lvgl/src/others/xml/lv_xml.h"
 #include "ui_nav.h"
 #include "ui_theme.h"
@@ -67,6 +68,10 @@ static bool init_lvgl() {
     }
 
     LV_LOG_USER("LVGL initialized: %dx%d", SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    // Initialize SVG decoder for loading .svg files
+    lv_svg_decoder_init();
+
     return true;
 }
 
@@ -305,6 +310,8 @@ int main(int argc, char** argv) {
                           "A:assets/images/thumbnail-gradient-bg.png");
     lv_xml_register_image(NULL, "A:assets/images/thumbnail-placeholder.png",
                           "A:assets/images/thumbnail-placeholder.png");
+    lv_xml_register_image(NULL, "A:assets/images/large-extruder-icon.svg",
+                          "A:assets/images/large-extruder-icon.svg");
 
     // Register Material Design icons (64x64, scalable)
     material_icons_register();

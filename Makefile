@@ -20,6 +20,10 @@ LVGL_INC := -I$(LVGL_DIR) -I$(LVGL_DIR)/src
 LVGL_SRCS := $(shell find $(LVGL_DIR)/src -name "*.c")
 LVGL_OBJS := $(patsubst $(LVGL_DIR)/%.c,$(OBJ_DIR)/lvgl/%.o,$(LVGL_SRCS))
 
+# ThorVG sources (.cpp files for SVG support)
+THORVG_SRCS := $(shell find $(LVGL_DIR)/src/libs/thorvg -name "*.cpp" 2>/dev/null)
+THORVG_OBJS := $(patsubst $(LVGL_DIR)/%.cpp,$(OBJ_DIR)/lvgl/%.o,$(THORVG_SRCS))
+
 # LVGL Demos (separate target)
 LVGL_DEMO_SRCS := $(shell find $(LVGL_DIR)/demos -name "*.c")
 LVGL_DEMO_OBJS := $(patsubst $(LVGL_DIR)/%.c,$(OBJ_DIR)/lvgl/%.o,$(LVGL_DEMO_SRCS))
@@ -69,7 +73,7 @@ TEST_OBJS := $(patsubst $(TEST_UNIT_DIR)/%.cpp,$(OBJ_DIR)/tests/%.o,$(TEST_SRCS)
 all: $(TARGET)
 
 # Link binary
-$(TARGET): $(APP_OBJS) $(LVGL_OBJS) $(FONT_OBJS) $(MATERIAL_ICON_OBJS)
+$(TARGET): $(APP_OBJS) $(LVGL_OBJS) $(THORVG_OBJS) $(FONT_OBJS) $(MATERIAL_ICON_OBJS)
 	@mkdir -p $(BIN_DIR)
 	@echo "Linking $@..."
 	@$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
@@ -89,6 +93,12 @@ $(OBJ_DIR)/lvgl/%.o: $(LVGL_DIR)/%.c
 	@mkdir -p $(dir $@)
 	@echo "Compiling LVGL: $<..."
 	@$(CC) $(CFLAGS) $(INCLUDES) $(LV_CONF) -c $< -o $@
+
+# Compile LVGL C++ sources (ThorVG)
+$(OBJ_DIR)/lvgl/%.o: $(LVGL_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	@echo "Compiling LVGL C++: $<..."
+	@$(CXX) $(CXXFLAGS) $(INCLUDES) $(LV_CONF) -c $< -o $@
 
 # Compile font sources
 $(OBJ_DIR)/assets/fonts/%.o: assets/fonts/%.c

@@ -1,8 +1,79 @@
 # Project Status - LVGL 9 UI Prototype
 
-**Last Updated:** 2025-10-25 (Navigation History Stack Bug Fix)
+**Last Updated:** 2025-10-25 (SVG Support & Nozzle Temperature Panel Icon)
 
 ## Recent Updates (2025-10-25)
+
+### SVG Support: ThorVG Integration & Nozzle Temperature Icon ✅ COMPLETE
+
+**Objective:** Enable SVG rendering in LVGL 9 and replace nozzle temperature panel heater icon with large extruder SVG icon
+
+**Implementation:**
+
+1. **LVGL 9 Configuration** - Enabled SVG support in `lv_conf.h`:
+   - `LV_USE_FLOAT 1` - Required for matrix operations
+   - `LV_USE_MATRIX 1` - Required for vector graphics
+   - `LV_USE_VECTOR_GRAPHIC 1` - Vector graphics API
+   - `LV_USE_THORVG_INTERNAL 1` - ThorVG rendering engine
+   - `LV_USE_SVG 1` - SVG file decoder (critical - was missing initially)
+
+2. **Build System** - Updated `Makefile` to compile ThorVG C++ sources:
+   - Added `THORVG_SRCS` and `THORVG_OBJS` variables
+   - Created compilation rule for `.cpp` files in `lvgl/src/libs/thorvg/`
+   - Updated link target to include ThorVG objects
+
+3. **SVG Decoder Initialization** - Modified `src/main.cpp`:
+   - Added `#include "lvgl/src/libs/svg/lv_svg_decoder.h"`
+   - Called `lv_svg_decoder_init()` after LVGL initialization
+   - Registered SVG image path for XML system
+
+4. **SVG File Conversion** - Converted `assets/images/large-extruder-icon.svg` to ThorVG-compatible format:
+   - **Problem:** Original SVG used CSS variables (`var(--accent-color)`) and classes (`.accent`, `.body`) which ThorVG doesn't support
+   - **Solution:** Converted all CSS classes to inline `fill="#color"` attributes
+   - Removed `<defs><style>` section entirely
+   - Added comment marking accent color locations for future runtime color changes
+   - Accent color (#4CAF50 green) appears in 4 locations, all marked with `[ACCENT]` comments
+
+5. **UI Integration** - Updated `ui_xml/nozzle_temp_panel.xml`:
+   - Removed card background container
+   - Changed from Material icon to SVG: `<lv_image src="A:assets/images/large-extruder-icon.svg"/>`
+   - Set image to `width="100%" height="100%"` for responsive scaling
+   - Icon now fills 40% left column container dynamically
+
+**ThorVG Limitations Discovered:**
+- No CSS `<style>` tag support
+- No CSS variables (`var(--custom-prop)`)
+- No CSS classes (`.classname`)
+- Only supports inline SVG attributes (`fill="#color"`, `stroke="#color"`)
+
+**Runtime Color Change Strategy:**
+- Accent color (#4CAF50) can be changed at runtime by:
+  1. Search/replace #4CAF50 with desired color in SVG file
+  2. Reload image with `lv_image_set_src()`
+- Alternative: Create color variants (e.g., red for hot, blue for cold) and switch between them
+
+**Files Modified:**
+- `lv_conf.h` (lines 472, 476, 837, 840, 845-849) - SVG/vector graphics configuration
+- `Makefile` (lines 23-25, 76, 97-101) - ThorVG C++ compilation
+- `src/main.cpp` (lines 22, 71-72, 312-313) - SVG decoder init and registration
+- `assets/images/large-extruder-icon.svg` - CSS to inline color conversion
+- `ui_xml/nozzle_temp_panel.xml` (lines 53-61) - Removed card, scaled SVG to fill container
+
+**Testing:**
+- SVG loads successfully (file_size = 1749 bytes)
+- Colors render correctly with inline fill attributes
+- Icon scales responsively within container
+- Screenshot verified: `/tmp/ui-screenshot-ui-screenshot-nozzle-svg-scaled.png`
+
+**Benefits:**
+- Vector graphics remain crisp at any scale
+- Smallest possible binary size (ThorVG is lightweight, designed for embedded)
+- Official LVGL 9 integration (maintained by LVGL team)
+- Foundation for future temperature-based color changes
+
+---
+
+## Earlier Updates (2025-10-25)
 
 ### Navigation History Stack: Overlay Panel Parent Hierarchy Bug ✅ FIXED
 
