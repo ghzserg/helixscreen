@@ -1,8 +1,122 @@
 # Project Status - LVGL 9 UI Prototype
 
-**Last Updated:** 2025-10-26 (Splash Screen Implementation)
+**Last Updated:** 2025-10-26 (Temperature Panel Refactoring)
 
-## Recent Updates (2025-10-26 Evening - Session 8)
+## Recent Updates (2025-10-26 Late Night - Session 9)
+
+### Temperature Panel Consolidation & LVGL 9 API Migration ✅ COMPLETE
+
+**Objective:** Refactor temperature graph to use LVGL 9 public API and consolidate duplicate code between nozzle/bed panels
+
+**Implementation:**
+
+**Commit:** `204cf2f` - refactor(temp): consolidate panels and refactor graph to use LVGL 9 public API
+
+#### 1. LVGL 9 Public API Migration
+
+**File:** `src/ui_temp_graph.cpp`
+
+**Changes:**
+- **Migrated from private to public API:**
+  - Replaced direct `series->y_points[]` access with `lv_chart_set_all_value()` and `lv_chart_set_value_by_id2()`
+  - Replaced private `lv_chart_get_y_max()` with `lv_chart_get_y_max_value()`
+  - Used `lv_chart_get_point_pos_by_id()` for coordinates instead of struct access
+  - Only remaining private API: `LV_CHART_POINT_NONE` check (no public equivalent)
+
+- **Disabled gradient fill (lines 43-134 wrapped in `#if 0`):**
+  - LVGL 9 completely redesigned drawing system
+  - Old event-based approach (`LV_EVENT_DRAW_MAIN`, `LV_EVENT_DRAW_POST`) doesn't work
+  - Documented as TODO requiring LVGL 9 draw task API rewrite
+  - All attempted callbacks (`DRAW_MAIN`, `DRAW_POST`, `DRAW_POST_BEGIN`, `DRAW_TASK_ADDED`) never fired
+
+- **Visual fixes:**
+  - Reduced line thickness: 3px → 2px
+  - Hidden point circles: `lv_obj_set_style_width/height(chart, 0, LV_PART_INDICATOR)`
+  - Result: Clean 2px line without visible point markers
+
+**Impact:** Minimized dependency on LVGL internals, cleaner code, improved maintainability
+
+#### 2. Y-Axis Temperature Labels
+
+**Files:** `ui_xml/nozzle_temp_panel.xml`, `ui_xml/bed_temp_panel.xml`, `src/ui_panel_controls_temp.cpp`
+
+**XML Restructuring:**
+- Changed `graph_container` from single-column to row flexbox (lines 54-73)
+- Added `y_axis_labels` container: 40px width, column flex, space-between alignment
+- Added `chart_area` container: flex_grow="1" for graph
+
+**C++ Implementation:**
+- `create_y_axis_labels()` helper function (lines 196-212)
+- Nozzle: 5 labels from 0-320°C in 80° increments
+- Bed: 5 labels from 0-140°C in 35° increments
+- Font: montserrat_10 (enabled in lv_conf.h line 488)
+- Color: gray (#808080) for subtle appearance
+
+**Result:** Professional temperature scale labels aligned with chart grid
+
+#### 3. Code Consolidation
+
+**File:** `src/ui_panel_controls_temp.cpp` (402 lines changed, ~150 lines net reduction)
+
+**Created heater configuration structs (lines 39-121):**
+```cpp
+typedef struct {
+    heater_type_t type;
+    const char* name;
+    lv_color_t color;
+    float temp_range_max;
+    int y_axis_increment;
+    int default_mock_target;
+    struct { int off, pla, petg, abs; } presets;
+    struct { float min, max; } keypad_range;
+} heater_config_t;
+
+static const heater_config_t NOZZLE_CONFIG = {...};
+static const heater_config_t BED_CONFIG = {...};
+```
+
+**Extracted common helper functions:**
+- `create_y_axis_labels()` - Parameterized Y-axis label creation
+- `create_temp_graph()` - Unified graph setup with config-driven ranges/colors
+- `setup_preset_buttons()` - Generic preset button wiring
+- `preset_button_cb_generic()` - Shared preset button handler
+- `custom_button_cb_generic()` - Shared custom input handler
+- `get_heater_state()` / `set_heater_target()` - Unified state management
+
+**Refactored event handlers:**
+- Nozzle/bed preset button callbacks: 30 lines → 3 lines (wrapper to generic)
+- Nozzle/bed custom button callbacks: 15 lines → 2 lines each
+- Nozzle/bed graph setup: 40 lines → 5 lines each
+
+**Maintained Separation:**
+- Kept separate XML files (required for different subject bindings: `nozzle_temp_display` vs `bed_temp_display`)
+- Kept separate back/confirm button handlers (navigate to different parent panels)
+- All heater-specific parameters centralized in config structs
+
+**Impact:** DRY principles applied, significantly improved maintainability, no functional changes
+
+#### 4. Minor Fixes
+
+**Removed rounded corners from temperature display cards:**
+- Lines 83-90 (nozzle_temp_panel.xml), lines 83-90 (bed_temp_panel.xml)
+- Changed `style_radius="8"` → `"0"` for cleaner modern look
+
+**Enabled montserrat_10 font:**
+- `lv_conf.h` line 488: `#define LV_FONT_MONTSERRAT_10 1`
+- Required clean rebuild for LVGL to include font data
+
+**Mock data improvements:**
+- Default to realistic targets when target=0: nozzle=210°C, bed=60°C
+- Prevents flat line at room temperature in graph
+
+**Testing:**
+- Both panels load correctly with new consolidated code
+- All preset buttons, custom input, navigation working as expected
+- Y-axis labels display properly with montserrat_10 font
+
+---
+
+## Previous Updates (2025-10-26 Evening - Session 8)
 
 ### Splash Screen with Animated Logo ✅ COMPLETE
 
