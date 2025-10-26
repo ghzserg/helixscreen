@@ -215,7 +215,7 @@
 	<color name="jog_selected_distance" value="0xcc3333" />
 	<!-- Softer red for selected distance -->
 
-		<!-- ===================================================================== -->
+			<!-- ===================================================================== -->
 		<!-- FontAwesome icon constants - AUTO-GENERATED - DO NOT EDIT MANUALLY   -->
 		<!-- Run: python3 scripts/generate-icon-consts.py                         -->
 		<!-- ===================================================================== -->
@@ -223,6 +223,7 @@
 		<str name="icon_arrow_down" value="↓"/>  <!-- U+2193 downwards arrow -->
 		<str name="icon_arrow_down_left" value="↙"/>  <!-- U+2199 diagonal down-left -->
 		<str name="icon_arrow_down_right" value="↘"/>  <!-- U+2198 diagonal down-right -->
+		<str name="icon_arrow_down_to_line" value=""/>  <!-- U+F33D arrow-down-to-line (load) -->
 		<str name="icon_arrow_left" value="←"/>  <!-- U+2190 leftwards arrow -->
 		<str name="icon_arrow_right" value="→"/>  <!-- U+2192 rightwards arrow -->
 		<str name="icon_arrow_up" value="↑"/>  <!-- U+2191 upwards arrow -->
@@ -236,6 +237,9 @@
 		<str name="icon_chevron_up" value=""/>  <!-- U+F077 chevron-up -->
 		<str name="icon_clock" value=""/>  <!-- U+F017 clock-o -->
 		<str name="icon_controls" value=""/>  <!-- U+F1DE sliders -->
+		<str name="icon_cube" value=""/>  <!-- U+F1B2 cube (PETG) -->
+		<str name="icon_droplet" value=""/>  <!-- U+F043 droplet (purge) -->
+		<str name="icon_edit" value=""/>  <!-- U+F044 edit (custom) -->
 		<str name="icon_ethernet" value=""/>  <!-- U+F796 ethernet -->
 		<str name="icon_fan" value=""/>  <!-- U+F863 fan -->
 		<str name="icon_filament" value=""/>  <!-- U+F008 film -->
@@ -250,6 +254,7 @@
 		<str name="icon_temperature" value=""/>  <!-- U+F2C7 thermometer-half -->
 		<str name="icon_th_large" value=""/>  <!-- U+F009 th-large -->
 		<str name="icon_trash" value=""/>  <!-- U+F1F8 trash -->
+		<str name="icon_triangle_exclamation" value=""/>  <!-- U+F071 triangle-exclamation (warning) -->
 		<str name="icon_wifi" value=""/>  <!-- U+F1EB wifi -->
 		<str name="icon_wifi_slash" value=""/>  <!-- U+F127 wifi-slash -->
 	<!-- ===================================================================== -->

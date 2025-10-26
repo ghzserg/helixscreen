@@ -1,8 +1,44 @@
 # Project Status - LVGL 9 UI Prototype
 
-**Last Updated:** 2025-10-25 (Temperature Panel Responsive Layout)
+**Last Updated:** 2025-10-25 (Filament Panel Mockup)
 
 ## Recent Updates (2025-10-25)
+
+### Filament Panel Mockup ⚠️ UNTESTED / LIKELY BROKEN
+
+**Created initial filament management panel mockup** - This is a **mockup-level implementation** with mock data only. Layout renders but functionality is untested and likely partially broken.
+
+**Files created:**
+- `ui_xml/filament_panel.xml` - Two-column layout (40% left: spool viz + temps, 58% right: controls)
+- `include/ui_panel_filament.h` - Public API with GPL v3 header
+- `src/ui_panel_filament.cpp` - Subjects, event handlers, mock temperature logic
+- Added 6 FontAwesome icons to `include/ui_fonts.h` and regenerated `ui_xml/globals.xml`
+
+**Features (mockup):**
+- Material presets (PLA 210°C, PETG 240°C, ABS 250°C, Custom via keypad)
+- Action buttons (Load/Unload/Purge) with color coding (green/orange/blue)
+- Temperature status display with reactive bindings
+- Safety warning card (visible when nozzle < 170°C)
+- Uses global constants for all padding/sizing (#padding_card, #gap_normal, etc.)
+
+**Known issues:**
+- No Moonraker integration (all values hardcoded to 25°C)
+- Visual feedback for preset selection may not work correctly
+- Safety warning visibility logic untested
+- Temperature updates not connected to actual data
+- Load/Unload/Purge buttons are stubs
+- No actual filament spool image (using icon placeholder)
+
+**Next steps:**
+- Test actual button interactions and event handlers
+- Integrate with Moonraker temperature data
+- Implement load/unload/purge macros
+- Add real-time temperature monitoring
+- Test safety interlocks
+
+---
+
+## Earlier Updates (2025-10-25)
 
 ### Temperature Panel Responsive Layout ✅ COMPLETE
 

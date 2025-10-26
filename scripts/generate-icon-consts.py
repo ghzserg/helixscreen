@@ -68,6 +68,13 @@ ICONS = {
 
     # Keypad icons
     'icon_backspace': (0xF55A, 'delete-left'),
+
+    # Filament operations icons
+    'icon_arrow_down_to_line': (0xF33D, 'arrow-down-to-line (load)'),
+    'icon_droplet': (0xF043, 'droplet (purge)'),
+    'icon_cube': (0xF1B2, 'cube (PETG)'),
+    'icon_edit': (0xF044, 'edit (custom)'),
+    'icon_triangle_exclamation': (0xF071, 'triangle-exclamation (warning)'),
 }
 
 GLOBALS_FILE = 'ui_xml/globals.xml'

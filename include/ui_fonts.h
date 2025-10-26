@@ -84,3 +84,11 @@ LV_FONT_DECLARE(arrows_32);    // ←↑→↓↖↗↙↘ at 32px
 
 // Keypad icons (available in 32px)
 #define ICON_BACKSPACE         "\xEF\x95\x9A"      // U+F55A delete-left
+
+// Filament operations icons (available in 32px)
+#define ICON_ARROW_DOWN_TO_LINE   "\xEF\x8C\xBD"   // U+F33D arrow-down-to-line (load)
+#define ICON_ARROW_UP_FROM_LINE   "\xEF\x8D\x82"   // U+F342 arrow-up-from-line (unload)
+#define ICON_DROPLET              "\xEF\x81\x83"   // U+F043 droplet (purge)
+#define ICON_CUBE                 "\xEF\x86\xB2"   // U+F1B2 cube (PETG)
+#define ICON_EDIT                 "\xEF\x81\x84"   // U+F044 edit (custom)
+#define ICON_TRIANGLE_EXCLAMATION "\xEF\x81\xB1"   // U+F071 triangle-exclamation (warning)

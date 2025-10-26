@@ -33,6 +33,7 @@
 #include "ui_panel_controls_temp.h"
 #include "ui_panel_controls_extrusion.h"
 #include "ui_panel_print_status.h"
+#include "ui_panel_filament.h"
 #include "ui_component_keypad.h"
 #include "ui_component_header_bar.h"
 #include "ui_icon.h"
@@ -359,6 +360,7 @@ int main(int argc, char** argv) {
     ui_panel_motion_init_subjects();  // Motion sub-screen position display
     ui_panel_controls_temp_init_subjects();  // Temperature sub-screens
     ui_panel_controls_extrusion_init_subjects();  // Extrusion sub-screen
+    ui_panel_filament_init_subjects();  // Filament panel
     ui_panel_print_status_init_subjects();  // Print status screen
 
     // Create entire UI from XML (single component contains everything)
@@ -393,6 +395,9 @@ int main(int argc, char** argv) {
 
     // Setup print select panel (wires up events, creates overlays, NOTE: data populated later)
     ui_panel_print_select_setup(panels[UI_PANEL_PRINT_SELECT], screen);
+
+    // Setup filament panel (wire preset/action button handlers)
+    ui_panel_filament_setup(panels[UI_PANEL_FILAMENT], screen);
 
     // Initialize numeric keypad modal component (creates reusable keypad widget)
     ui_keypad_init(screen);
