@@ -86,22 +86,34 @@
 
 					<!-- WiFi Card -->
 					<lv_obj width="100%"
-					        height="100"
+					        height="110"
 					        style_bg_color="#card_bg"
 					        style_bg_opa="255"
 					        style_border_width="0"
 					        style_radius="12"
 					        style_pad_all="#padding_normal"
+					        style_pad_gap="#gap_small"
 					        flex_flow="column"
 					        style_flex_main_place="start"
 					        style_flex_cross_place="start">
 
-						<lv_label text="WiFi"
-						          style_text_font="montserrat_20"
-						          style_text_color="#text_primary"
-						          style_pad_bottom="#gap_small"/>
+						<!-- Label + Switch horizontal container -->
+						<lv_obj width="100%"
+						        height="40"
+						        style_bg_opa="0"
+						        style_border_width="0"
+						        style_pad_all="0"
+						        style_pad_gap="#gap_normal"
+						        flex_flow="row"
+						        style_flex_main_place="space_between"
+						        style_flex_cross_place="center">
 
-						<ui_switch name="wifi_toggle"/>
+							<lv_label text="WiFi"
+							          style_text_font="montserrat_20"
+							          style_text_color="#text_primary"/>
+
+							<ui_switch name="wifi_toggle"/>
+						</lv_obj>
 
 						<!-- WiFi Status label -->
 						<lv_label name="wifi_status"
@@ -110,7 +122,7 @@
 						          style_text_font="montserrat_14"
 						          style_text_color="#text_secondary"
 						          style_text_align="center"
-						          style_pad_top="#padding_normal"/>
+						          style_pad_top="#gap_small"/>
 					</lv_obj>
 
 					<!-- Ethernet Status Card -->
@@ -149,6 +161,7 @@
 				        style_border_width="0"
 				        style_radius="12"
 				        style_pad_all="#padding_normal"
+				        style_pad_gap="#gap_small"
 				        flex_flow="column"
 				        scrollable="true"
 				        scroll_dir="VER"

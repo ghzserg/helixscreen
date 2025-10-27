@@ -7,24 +7,44 @@
 
 ## 🎯 Active Work & Next Priorities
 
-### Wizard Step 0 (WiFi Setup) - COMPLETE ✅
+### Wizard Step 0 (WiFi Setup) - READY TO COMMIT ✅
 
-**Status:** WiFi setup screen layout fixed and functional
+**Status:** Fully implemented and tested - awaiting commit
 
-**Completed:**
-- ✅ Fixed critical flex layout height requirements (both cards visible)
-- ✅ Created custom `<ui_switch>` widget (wraps lv_switch C API)
-- ✅ Platform abstraction (macOS mock, Linux WiFi/Ethernet detection)
-- ✅ Reactive subjects for WiFi/Ethernet status
-- ✅ Comprehensive documentation of flex layout patterns
+**Major Implementation Complete:**
+- ✅ WiFi Manager platform abstraction (`wifi_manager.h/cpp`, 298 lines)
+  - macOS mock mode with 10 test networks
+  - Linux hardware detection (WiFi via `/sys/class/net/*/wireless`, Ethernet via interface names)
+  - Periodic scanning with 7-second refresh timer
+  - Async connection flow with callbacks
+- ✅ Custom `<ui_switch>` widget (fixed LVGL 9 XML registration)
+- ✅ Network list item component (`network_list_item.xml`)
+- ✅ Two-column flex layout working (WiFi/Ethernet cards 30%, network list 70%)
+- ✅ WiFi toggle event handler with 3-second scan delay
+- ✅ Dynamic network list population from scan results
+- ✅ Network list dimming when WiFi disabled (UI_DISABLED_OPA constant)
+- ✅ Wizard integration as Step 0 with auto-skip logic
+- ✅ CLI support: `--wizard-step wifi`
+
+**Key Technical Decisions:**
+- Reactive data flow: Toggle → 3s delay → scan → populate list (all async)
+- Critical bug fix: `clear_network_list()` iterates backwards when deleting children
+- One-shot timer: `lv_timer_create()` + `lv_timer_set_repeat_count(1)` for delay
+- UI_DISABLED_OPA constant (50%) in both `ui_theme.h` and `globals.xml`
+
+**Remaining WiFi Work:**
+- Password entry modal component (for encrypted networks)
+- Connection flow with success/error feedback
+- Unit tests for wifi_manager
+- Integration tests for wizard WiFi UI
 
 ### Next Priorities
 
-1. Review wizard Step 3 (Printer Identify) - roller widget visibility
-2. Continue wizard screen UI/UX review and fixes
-3. Implement WiFi toggle event handler (currently non-functional)
-4. Hardware detection/mapping screens
-5. Integration tests for wizard flow
+1. **COMMIT WiFi wizard implementation** (all functionality working)
+2. Fix wizard Step 3 (Printer Identify) - roller widget collapsed/not visible
+3. Implement WiFi password modal and connection flow
+4. Hardware detection/mapping screens (Steps 4-7)
+5. Integration tests for complete wizard flow
 
 ---
 
@@ -160,6 +180,24 @@ spdlog::error("Failed: {}", (int)enum_val);     // Cast enums
 ---
 
 ## 🔧 Known Issues & Gotchas
+
+### Wizard Step 3: Printer Type Roller Collapsed 🔴 OPEN
+
+**Problem:** Printer type roller widget appears collapsed - only shows label, not dropdown options
+
+**Symptoms:**
+- Gray box where roller should be
+- Options (Voron, Creality, Prusa, etc.) not visible
+- Cannot select printer type
+
+**Screenshot:** `/tmp/ui-screenshot-wizard-step3-current.png` (2025-10-27)
+
+**Possible causes:**
+1. Height too small for visible rows (currently 160px)
+2. Missing `visible_row_count` attribute
+3. Flex layout calculation issue
+
+**Files:** `ui_xml/wizard_printer_identify.xml`, `src/ui_wizard.cpp`
 
 ### LVGL 9 XML Flag Syntax ✅ FIXED
 

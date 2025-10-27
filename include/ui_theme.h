@@ -64,6 +64,9 @@
 #define UI_PADDING_SMALL       10  // padding_small - compact layouts
 #define UI_PADDING_TINY        6   // padding_tiny - very small screens
 
+// Opacity constants (matching globals.xml values)
+#define UI_DISABLED_OPA        128 // disabled_opa - 50% opacity for disabled/dimmed elements
+
 // Responsive navigation bar sizing (applied in C++ based on screen height)
 // Tiny screens (320px): 42px buttons, 0px padding
 // With space_evenly: 6×42 = 252px buttons, 320 - 252 = 68px for 7 gaps (~9.7px each)

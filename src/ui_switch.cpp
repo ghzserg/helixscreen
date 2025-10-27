@@ -29,18 +29,74 @@
 #include <cstring>
 
 /**
+ * XML create handler for ui_switch
+ * Creates an lv_switch widget when <ui_switch> is encountered in XML
+ */
+static void *ui_switch_xml_create(lv_xml_parser_state_t *state, const char **attrs)
+{
+    LV_UNUSED(attrs);
+
+    void *parent = lv_xml_state_get_parent(state);
+    lv_obj_t *obj = lv_switch_create((lv_obj_t *)parent);
+
+    if (!obj) {
+        spdlog::error("[Switch] Failed to create lv_switch");
+        return NULL;
+    }
+
+    return (void *)obj;
+}
+
+/**
+ * XML apply handler for ui_switch
+ * Applies attributes from XML to the switch widget
+ */
+static void ui_switch_xml_apply(lv_xml_parser_state_t *state, const char **attrs)
+{
+    void *item = lv_xml_state_get_item(state);
+    lv_obj_t *obj = (lv_obj_t *)item;
+
+    if (!obj) {
+        spdlog::error("[Switch] NULL object in xml_apply");
+        return;
+    }
+
+    // First apply standard lv_obj properties (width, height, style_*, etc.)
+    lv_xml_obj_apply(state, attrs);
+
+    // Then process switch-specific properties
+    for (int i = 0; attrs[i]; i += 2) {
+        const char* name = attrs[i];
+        const char* value = attrs[i + 1];
+
+        if (strcmp(name, "checked") == 0) {
+            // Handle checked state
+            if (strcmp(value, "true") == 0 || strcmp(value, "1") == 0) {
+                lv_obj_add_state(obj, LV_STATE_CHECKED);
+            } else {
+                lv_obj_remove_state(obj, LV_STATE_CHECKED);
+            }
+        }
+        else if (strcmp(name, "orientation") == 0) {
+            // Handle orientation
+            if (strcmp(value, "horizontal") == 0) {
+                lv_switch_set_orientation(obj, LV_SWITCH_ORIENTATION_HORIZONTAL);
+            }
+            else if (strcmp(value, "vertical") == 0) {
+                lv_switch_set_orientation(obj, LV_SWITCH_ORIENTATION_VERTICAL);
+            }
+            else if (strcmp(value, "auto") == 0) {
+                lv_switch_set_orientation(obj, LV_SWITCH_ORIENTATION_AUTO);
+            }
+        }
+    }
+}
+
+/**
  * Register the ui_switch widget with LVGL's XML system
- *
- * TODO: XML widget registration temporarily disabled due to LVGL 9 API changes.
- * The following functions need updating to new LVGL 9 XML API:
- * - lv_xml_state_get_parent() -> new API
- * - lv_xml_state_get_item() -> new API
- * - lv_xml_obj_apply() -> new API
- * - lv_xml_widget_register() -> new API
- *
- * For now, switches should be created programmatically using lv_switch_create().
  */
 void ui_switch_register()
 {
-    spdlog::warn("[Switch] XML registration temporarily disabled - use programmatic creation");
+    lv_xml_widget_register("ui_switch", ui_switch_xml_create, ui_switch_xml_apply);
+    spdlog::info("[Switch] Registered ui_switch widget with XML system");
 }

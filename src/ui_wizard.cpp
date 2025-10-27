@@ -20,6 +20,7 @@
 
 #include "ui_wizard.h"
 #include "ui_keyboard.h"
+#include "ui_theme.h"
 #include "wizard_validation.h"
 #include "wifi_manager.h"
 #include "spdlog/spdlog.h"
@@ -78,6 +79,10 @@ static lv_obj_t* fan_select_screen = nullptr;
 static lv_obj_t* led_select_screen = nullptr;
 static lv_obj_t* summary_screen = nullptr;
 
+// WiFi network list
+static lv_obj_t* network_list_container = nullptr;
+static lv_obj_t* wifi_toggle_switch = nullptr;
+static lv_timer_t* wifi_scan_delay_timer = nullptr;
 
 // Printer identification widgets
 static lv_obj_t* printer_name_input = nullptr;
@@ -121,6 +126,11 @@ static void populate_hardware_dropdowns();
 static std::string get_dropdown_options_from_vector(const std::vector<std::string>& items, const std::string& none_option = "");
 static void detect_printer_type();
 static void check_connection_timeout(lv_timer_t* timer);
+static void clear_network_list();
+static void populate_network_list(const std::vector<WiFiNetwork>& networks);
+static void on_wifi_toggle_changed(lv_event_t* e);
+static void wifi_scan_delay_callback(lv_timer_t* timer);
+static void on_network_item_clicked(lv_event_t* e);
 
 void ui_wizard_init_subjects() {
     if (subjects_initialized) {
@@ -265,11 +275,27 @@ void ui_wizard_goto_step(WizardStep step) {
                         lv_subject_copy_string(&ethernet_status, "Not Present");
                     }
 
+                    // Find and store widget references
+                    network_list_container = lv_obj_find_by_name(wifi_setup_screen, "network_list_container");
+                    wifi_toggle_switch = lv_obj_find_by_name(wifi_setup_screen, "wifi_toggle");
+
+                    // Dim network list container initially (WiFi starts disabled)
+                    if (network_list_container) {
+                        lv_obj_add_state(network_list_container, LV_STATE_DISABLED);
+                        lv_obj_set_style_opa(network_list_container, UI_DISABLED_OPA, LV_PART_MAIN);
+                    }
+
+                    // Wire up WiFi toggle event handler
+                    if (wifi_toggle_switch) {
+                        lv_obj_add_event_cb(wifi_toggle_switch, on_wifi_toggle_changed, LV_EVENT_VALUE_CHANGED, nullptr);
+                        spdlog::info("[Wizard] WiFi toggle event handler registered");
+                    } else {
+                        spdlog::error("[Wizard] WiFi toggle switch not found");
+                    }
+
                     // Force layout update AFTER subject bindings are populated
                     lv_obj_update_layout(wifi_setup_screen);
 
-                    // TODO: Wire up WiFi toggle event handler
-                    // TODO: Start WiFi scanning when enabled
                     spdlog::info("[Wizard] WiFi setup screen created");
                 }
             }
@@ -534,6 +560,162 @@ void ui_wizard_complete() {
     // Invoke completion callback
     if (completion_callback) {
         completion_callback();
+    }
+}
+
+// ============================================================================
+// WiFi Network List Management
+// ============================================================================
+
+static void clear_network_list() {
+    if (!network_list_container) return;
+
+    // Remove all child widgets that are network items
+    // Iterate backwards to avoid index issues when deleting
+    int32_t child_count = lv_obj_get_child_count(network_list_container);
+    for (int32_t i = child_count - 1; i >= 0; i--) {
+        lv_obj_t* child = lv_obj_get_child(network_list_container, i);
+        const char* name = (const char*)lv_obj_get_user_data(child);
+        // Remove network items (keep labels/placeholders)
+        if (name && strcmp(name, "network_item") == 0) {
+            lv_obj_delete(child);
+        }
+    }
+
+    spdlog::debug("[WiFi] Network list cleared");
+}
+
+static void populate_network_list(const std::vector<WiFiNetwork>& networks) {
+    spdlog::info("[WiFi] populate_network_list called with {} networks", networks.size());
+
+    if (!network_list_container) {
+        spdlog::warn("[WiFi] Network list container not found");
+        return;
+    }
+
+    spdlog::debug("[WiFi] Clearing network list");
+    // Clear existing network items
+    clear_network_list();
+    spdlog::debug("[WiFi] Network list cleared successfully");
+
+    // Hide placeholder if we have networks
+    lv_obj_t* placeholder = lv_obj_find_by_name(network_list_container, "network_list_placeholder");
+    if (placeholder) {
+        if (networks.empty()) {
+            lv_obj_remove_flag(placeholder, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(placeholder, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    // Create network list items
+    spdlog::debug("[WiFi] Creating {} network list items", networks.size());
+    for (size_t i = 0; i < networks.size(); i++) {
+        const auto& network = networks[i];
+        spdlog::debug("[WiFi] Creating item {} for network: {}", i, network.ssid);
+
+        lv_obj_t* item = (lv_obj_t*)lv_xml_create(network_list_container, "network_list_item", nullptr);
+        if (!item) {
+            spdlog::error("[WiFi] Failed to create network list item for {}", network.ssid);
+            continue;
+        }
+        spdlog::debug("[WiFi] Item created successfully for {}", network.ssid);
+
+        // Mark as network item for cleanup
+        lv_obj_set_user_data(item, (void*)"network_item");
+
+        // Find child widgets
+        lv_obj_t* ssid_label = lv_obj_find_by_name(item, "network_ssid");
+        lv_obj_t* signal_label = lv_obj_find_by_name(item, "network_signal");
+        lv_obj_t* lock_icon = lv_obj_find_by_name(item, "network_lock");
+
+        // Populate data
+        if (ssid_label) {
+            lv_label_set_text(ssid_label, network.ssid.c_str());
+        }
+
+        if (signal_label) {
+            char signal_buf[16];
+            snprintf(signal_buf, sizeof(signal_buf), "%d%%", network.signal_strength);
+            lv_label_set_text(signal_label, signal_buf);
+        }
+
+        // Hide lock icon for open networks
+        if (lock_icon) {
+            if (network.is_secured) {
+                lv_obj_remove_flag(lock_icon, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(lock_icon, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+
+        // Add click handler
+        lv_obj_add_event_cb(item, on_network_item_clicked, LV_EVENT_CLICKED, (void*)network.ssid.c_str());
+    }
+
+    spdlog::info("[WiFi] Populated {} networks in list", networks.size());
+}
+
+static void on_network_item_clicked(lv_event_t* e) {
+    const char* ssid = (const char*)lv_event_get_user_data(e);
+    spdlog::info("[WiFi] Network clicked: {}", ssid ? ssid : "unknown");
+
+    // TODO: Show password modal for encrypted networks
+    // TODO: Implement connection flow
+}
+
+static void wifi_scan_delay_callback(lv_timer_t* timer) {
+    (void)timer;
+
+    // Delete the one-shot timer
+    if (wifi_scan_delay_timer) {
+        lv_timer_delete(wifi_scan_delay_timer);
+        wifi_scan_delay_timer = nullptr;
+    }
+
+    spdlog::info("[WiFi] Starting network scan after delay");
+    WiFiManager::start_scan(populate_network_list);
+}
+
+static void on_wifi_toggle_changed(lv_event_t* e) {
+    lv_obj_t* toggle = (lv_obj_t*)lv_event_get_target(e);
+    bool enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+
+    spdlog::info("[WiFi] Toggle changed: {}", enabled ? "ON" : "OFF");
+
+    if (enabled) {
+        // Enable WiFi and start scanning after 3-second delay
+        WiFiManager::set_enabled(true);
+        lv_subject_copy_string(&wifi_status, "Scanning for networks...");
+
+        // Un-dim network list container
+        if (network_list_container) {
+            lv_obj_remove_state(network_list_container, LV_STATE_DISABLED);
+            lv_obj_set_style_opa(network_list_container, 255, LV_PART_MAIN);
+        }
+
+        // Create 3-second delay timer before starting scan
+        wifi_scan_delay_timer = lv_timer_create(wifi_scan_delay_callback, 3000, nullptr);
+        lv_timer_set_repeat_count(wifi_scan_delay_timer, 1);  // One-shot timer
+    } else {
+        // Disable WiFi and stop scanning
+        WiFiManager::set_enabled(false);
+        WiFiManager::stop_scan();
+
+        // Cancel delay timer if it's running
+        if (wifi_scan_delay_timer) {
+            lv_timer_delete(wifi_scan_delay_timer);
+            wifi_scan_delay_timer = nullptr;
+        }
+
+        // Dim network list container and clear networks
+        if (network_list_container) {
+            lv_obj_add_state(network_list_container, LV_STATE_DISABLED);
+            lv_obj_set_style_opa(network_list_container, UI_DISABLED_OPA, LV_PART_MAIN);
+        }
+
+        clear_network_list();
+        lv_subject_copy_string(&wifi_status, "Enable WiFi to scan for networks");
     }
 }
 

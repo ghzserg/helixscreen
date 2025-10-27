@@ -19,57 +19,64 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             font-size: 13px;
-            line-height: 1.3;
+            line-height: 1.2;
             color: #333;
             background: #f5f5f5;
-            padding: 0.5cm;
+            padding: 0.3cm;
         }
 
         .container {
             background: white;
-            padding: 12px;
+            padding: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         header {
             text-align: center;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
             border-bottom: 2px solid #2196F3;
         }
 
         h1 {
-            font-size: 20px;
+            font-size: 17px;
             color: #2196F3;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .subtitle {
-            font-size: 14px;
+            font-size: 12px;
             color: #666;
+        }
+
+        .page {
+            page-break-after: always;
+        }
+
+        .page:last-child {
+            page-break-after: auto;
         }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(4, auto);
-            grid-auto-flow: column;
-            gap: 10px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 6px;
         }
 
         .section {
             border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 8px;
+            border-radius: 3px;
+            padding: 5px;
             background: #fafafa;
         }
 
         .section h2 {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: bold;
-            margin-bottom: 6px;
-            padding: 4px 6px;
-            border-radius: 3px;
+            margin-bottom: 4px;
+            padding: 3px 5px;
+            border-radius: 2px;
             color: white;
         }
 
@@ -86,25 +93,26 @@
         .border h2 { background: #009688; }
         .effects h2 { background: #673AB7; }
         .grid-layout h2 { background: #8BC34A; }
+        .events h2 { background: #FF5722; }
 
         .attr-group {
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .attr-group h3 {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #444;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 2px;
+            padding-bottom: 1px;
         }
 
         .attr-list {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 2px 8px;
-            font-size: 12px;
+            gap: 1px 5px;
+            font-size: 11px;
         }
 
         .attr {
@@ -115,32 +123,32 @@
 
         .attr code {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 10px;
             color: #c7254e;
             background: #f9f2f4;
-            padding: 1px 3px;
+            padding: 1px 2px;
             border-radius: 2px;
             white-space: nowrap;
         }
 
         .attr .type {
             color: #666;
-            font-size: 11px;
+            font-size: 9px;
         }
 
         .attr .hint {
             color: #888;
-            font-size: 10px;
+            font-size: 9px;
             font-style: italic;
         }
 
         .note {
             background: #fff3cd;
             border: 1px solid #ffc107;
-            border-radius: 3px;
-            padding: 4px 6px;
-            margin-top: 6px;
-            font-size: 12px;
+            border-radius: 2px;
+            padding: 3px 5px;
+            margin-top: 4px;
+            font-size: 10px;
             color: #856404;
         }
 
@@ -149,20 +157,25 @@
         }
 
         .enum-values {
-            font-size: 11px;
+            font-size: 10px;
             color: #666;
             font-style: italic;
-            margin-top: 2px;
-            padding-left: 8px;
+            margin-top: 1px;
+            padding-left: 5px;
         }
 
         footer {
             text-align: center;
-            margin-top: 8px;
-            padding-top: 6px;
+            margin-top: 4px;
+            padding-top: 3px;
             border-top: 1px solid #ddd;
-            font-size: 11px;
+            font-size: 9px;
             color: #999;
+        }
+
+        pre {
+            font-size: 9px;
+            line-height: 1.2;
         }
 
         @media print {
@@ -178,13 +191,15 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>LVGL 9 XML Attributes - Quick Reference</h1>
-            <div class="subtitle">Essential attributes for rapid UI development | LVGL 9.3 | Source: lvgl/src/others/xml/parsers/*.c</div>
-        </header>
+        <!-- ========== PAGE 1 ========== -->
+        <div class="page">
+            <header>
+                <h1>LVGL 9 XML Attributes - Quick Reference (Page 1/2)</h1>
+                <div class="subtitle">Layout Systems & Widgets | LVGL 9.3</div>
+            </header>
 
-        <div class="grid">
-            <!-- ========== GROUP 1: LAYOUT SYSTEMS ========== -->
+            <div class="grid">
+                <!-- ========== ROW 1: LAYOUT SYSTEMS ========== -->
 
             <!-- Layout & Positioning -->
             <div class="section layout">
@@ -219,8 +234,9 @@
                 <div class="attr-group">
                     <h3>Style Properties</h3>
                     <div class="attr-list">
-                        <div class="attr"><code>style_flex_main_place</code> <span class="hint">along flow axis</span></div>
-                        <div class="attr"><code>style_flex_cross_place</code> <span class="hint">perpendicular axis</span></div>
+                        <div class="attr"><code>style_flex_main_place</code> <span class="hint">justify-content</span></div>
+                        <div class="attr"><code>style_flex_cross_place</code> <span class="hint">align-items</span></div>
+                        <div class="attr"><code>style_flex_track_place</code> <span class="hint">align-content (wrap)</span></div>
                     </div>
                     <div class="enum-values">start, center, end, space_between, space_around, space_evenly</div>
                 </div>
@@ -243,6 +259,8 @@
 
             <!-- ========== GROUP 2: WIDGET-SPECIFIC ========== -->
 
+                <!-- ========== ROW 2: BASIC WIDGETS ========== -->
+
             <!-- lv_label -->
             <div class="section widget">
                 <h2>lv_label</h2>
@@ -255,19 +273,22 @@
                 <div class="note">bind_text: "subject_name '%.1f°C'"</div>
             </div>
 
-            <!-- lv_button / lv_checkbox -->
+            <!-- lv_button / lv_checkbox / lv_switch -->
             <div class="section widget">
-                <h2>lv_button / lv_checkbox</h2>
+                <h2>Interactive Widgets</h2>
                 <div class="attr-group">
                     <h3>lv_button</h3>
                     <div class="enum-values">Inherits all lv_obj attributes only</div>
                 </div>
                 <div class="attr-group">
-                    <h3>lv_checkbox</h3>
+                    <h3>lv_checkbox / lv_switch</h3>
                     <div class="attr-list">
-                        <div class="attr"><code>text</code> <span class="type">string</span></div>
+                        <div class="attr"><code>text</code> <span class="type">string</span> <span class="hint">(checkbox only)</span></div>
+                        <div class="attr"><code>checked</code> <span class="type">bool</span></div>
+                        <div class="attr"><code>bind_checked</code> <span class="type">subject</span> <span class="hint">reactive</span></div>
                     </div>
                 </div>
+                <div class="note">Switch is toggle without text label</div>
             </div>
 
             <!-- lv_slider / lv_bar -->
@@ -284,6 +305,8 @@
                 <div class="enum-values">mode: normal, range, symmetrical | orientation: auto, horizontal, vertical</div>
             </div>
 
+                <!-- ========== ROW 3: MORE WIDGETS ========== -->
+
             <!-- lv_image -->
             <div class="section image">
                 <h2>lv_image</h2>
@@ -299,7 +322,75 @@
                 <div class="note"><strong>⚠️ zoom doesn't exist!</strong> Use scale_x/scale_y</div>
             </div>
 
-            <!-- ========== GROUP 3: STYLE PROPERTIES ========== -->
+            <!-- lv_arc / lv_spinner -->
+            <div class="section widget">
+                <h2>lv_arc / lv_spinner</h2>
+                <div class="attr-group">
+                    <h3>lv_arc</h3>
+                    <div class="attr-list">
+                        <div class="attr"><code>value</code> <span class="type">int</span></div>
+                        <div class="attr"><code>range</code> <span class="type">min max</span></div>
+                        <div class="attr"><code>bg_start_angle</code> <span class="hint">0-360</span></div>
+                        <div class="attr"><code>bg_end_angle</code> <span class="hint">0-360</span></div>
+                        <div class="attr"><code>rotation</code> <span class="type">0.1° units</span></div>
+                        <div class="attr"><code>mode</code> <span class="type">enum</span></div>
+                    </div>
+                    <div class="enum-values">mode: normal, reverse, symmetrical</div>
+                </div>
+                <div class="attr-group">
+                    <h3>lv_spinner</h3>
+                    <div class="enum-values">Auto-rotating arc - no additional attributes</div>
+                </div>
+            </div>
+
+            <!-- lv_dropdown / lv_roller -->
+            <div class="section widget">
+                <h2>lv_dropdown / lv_roller</h2>
+                <div class="attr-list">
+                    <div class="attr"><code>options</code> <span class="type">string</span> <span class="hint">"\n" separated</span></div>
+                    <div class="attr"><code>selected</code> <span class="type">int</span> <span class="hint">index (0-based)</span></div>
+                    <div class="attr"><code>visible_row_count</code> <span class="hint">(roller only)</span></div>
+                    <div class="attr"><code>dir</code> <span class="hint">(dropdown only)</span></div>
+                </div>
+                <div class="enum-values">dir: bottom, top, left, right</div>
+                <div class="note">Options: "Option 1\nOption 2\nOption 3"</div>
+            </div>
+
+            <!-- lv_keyboard / lv_textarea -->
+            <div class="section widget">
+                <h2>lv_keyboard / lv_textarea</h2>
+                <div class="attr-group">
+                    <h3>lv_keyboard</h3>
+                    <div class="attr-list">
+                        <div class="attr"><code>mode</code> <span class="type">enum</span></div>
+                        <div class="attr"><code>textarea</code> <span class="hint">target textarea ptr</span></div>
+                    </div>
+                    <div class="enum-values">mode: text_lower, text_upper, special, number</div>
+                </div>
+                <div class="attr-group">
+                    <h3>lv_textarea</h3>
+                    <div class="attr-list">
+                        <div class="attr"><code>text</code> <span class="type">string</span></div>
+                        <div class="attr"><code>placeholder_text</code></div>
+                        <div class="attr"><code>max_length</code> <span class="type">int</span></div>
+                        <div class="attr"><code>one_line</code> <span class="type">bool</span></div>
+                        <div class="attr"><code>password_mode</code> <span class="type">bool</span></div>
+                        <div class="attr"><code>accepted_chars</code> <span class="hint">filter input</span></div>
+                    </div>
+                </div>
+            </div>
+            </div><!-- end grid -->
+        </div><!-- end page 1 -->
+
+        <!-- ========== PAGE 2 ========== -->
+        <div class="page">
+            <header>
+                <h1>LVGL 9 XML Attributes - Quick Reference (Page 2/2)</h1>
+                <div class="subtitle">Styles, Events, & Behavior | LVGL 9.3</div>
+            </header>
+
+            <div class="grid">
+                <!-- ========== ROW 1: STYLE - LAYOUT & COLORS ========== -->
 
             <!-- Style Basics -->
             <div class="section style">
@@ -324,10 +415,12 @@
                     </div>
                 </div>
                 <div class="attr-group">
-                    <h3>Size</h3>
+                    <h3>Size & Constraints</h3>
                     <div class="attr-list">
                         <div class="attr"><code>style_radius</code> <span class="hint">rounded corners</span></div>
                         <div class="attr"><code>style_width/height</code></div>
+                        <div class="attr"><code>style_min_width/height</code> <span class="hint">prevent shrinking</span></div>
+                        <div class="attr"><code>style_max_width/height</code> <span class="hint">limit growth</span></div>
                     </div>
                 </div>
             </div>
@@ -347,6 +440,8 @@
                 </div>
                 <div class="enum-values">grad_dir: none, hor, ver</div>
             </div>
+
+                <!-- ========== ROW 2: STYLE - TEXT & EFFECTS ========== -->
 
             <!-- Text -->
             <div class="section text">
@@ -406,7 +501,7 @@
                 <div class="note"><strong>⚠️ style_image_recolor</strong> not style_img_recolor!</div>
             </div>
 
-            <!-- ========== GROUP 4: STYLE ELEMENTS ========== -->
+                <!-- ========== ROW 3: ADVANCED FEATURES ========== -->
 
             <!-- Style Elements -->
             <div class="section style">
@@ -421,33 +516,82 @@
 &lt;/styles&gt;</pre>
                 </div>
                 <div class="attr-group">
-                    <h3>Application</h3>
+                    <h3>Application with Selectors</h3>
                     <pre style="font-size: 11px; background: #f5f5f5; padding: 4px; border-radius: 2px; margin: 4px 0;">&lt;lv_button&gt;
   &lt;style name="btn"/&gt;
   &lt;style name="btn_pressed"
          selector="pressed"/&gt;
+  &lt;style bg_color="0xff0000"
+         selector="checked"/&gt;
 &lt;/lv_button&gt;</pre>
+                    <div class="enum-values">Selectors: default, pressed, focused, checked, disabled, etc.</div>
                 </div>
-                <div class="note">Use same names as style_* but drop prefix!</div>
+                <div class="note">Drop style_ prefix: "bg_color" not "style_bg_color"</div>
             </div>
 
-            <!-- ========== GROUP 5: BEHAVIORAL / STATE ========== -->
+            <!-- Event Callbacks -->
+            <div class="section events">
+                <h2>Event Callbacks</h2>
+                <div class="attr-group">
+                    <h3>Setup in C++</h3>
+                    <pre style="font-size: 10px; background: #f5f5f5; padding: 4px; border-radius: 2px; margin: 4px 0;">lv_obj_add_event_cb(
+  widget,
+  my_callback,
+  LV_EVENT_CLICKED,
+  user_data);</pre>
+                </div>
+                <div class="attr-group">
+                    <h3>Common Events</h3>
+                    <div class="attr-list">
+                        <div class="attr"><code>LV_EVENT_CLICKED</code></div>
+                        <div class="attr"><code>LV_EVENT_VALUE_CHANGED</code></div>
+                        <div class="attr"><code>LV_EVENT_PRESSED</code></div>
+                        <div class="attr"><code>LV_EVENT_RELEASED</code></div>
+                        <div class="attr"><code>LV_EVENT_READY</code> <span class="hint">keyboard done</span></div>
+                        <div class="attr"><code>LV_EVENT_CANCEL</code> <span class="hint">keyboard cancel</span></div>
+                    </div>
+                </div>
+                <div class="note">⚠️ XML doesn't support inline callbacks - set in C++ after creation</div>
+            </div>
+
+                <!-- ========== ROW 4: BEHAVIORAL & STATE ========== -->
 
             <!-- Flags -->
             <div class="section flags">
                 <h2>Flags (Boolean)</h2>
-                <div class="attr-list">
-                    <div class="attr"><code>hidden</code></div>
-                    <div class="attr"><code>clickable</code></div>
-                    <div class="attr"><code>scrollable</code></div>
-                    <div class="attr"><code>checkable</code></div>
-                    <div class="attr"><code>scroll_elastic</code></div>
-                    <div class="attr"><code>scroll_momentum</code></div>
-                    <div class="attr"><code>scroll_chain</code></div>
-                    <div class="attr"><code>floating</code></div>
-                    <div class="attr"><code>ignore_layout</code></div>
-                    <div class="attr"><code>overflow_visible</code></div>
+                <div class="attr-group">
+                    <h3>Core Flags</h3>
+                    <div class="attr-list">
+                        <div class="attr"><code>hidden</code> <span class="hint">visibility</span></div>
+                        <div class="attr"><code>clickable</code> <span class="hint">interaction</span></div>
+                        <div class="attr"><code>checkable</code></div>
+                        <div class="attr"><code>floating</code> <span class="hint">ignore layout</span></div>
+                        <div class="attr"><code>ignore_layout</code></div>
+                        <div class="attr"><code>overflow_visible</code></div>
+                    </div>
                 </div>
+                <div class="attr-group">
+                    <h3>Scroll Flags</h3>
+                    <div class="attr-list">
+                        <div class="attr"><code>scrollable</code></div>
+                        <div class="attr"><code>scroll_elastic</code> <span class="hint">bounce</span></div>
+                        <div class="attr"><code>scroll_momentum</code></div>
+                        <div class="attr"><code>scroll_chain</code> <span class="hint">to parent</span></div>
+                        <div class="attr"><code>scroll_on_focus</code></div>
+                        <div class="attr"><code>scroll_with_arrow</code></div>
+                        <div class="attr"><code>scroll_one</code> <span class="hint">snap</span></div>
+                    </div>
+                </div>
+                <div class="attr-group">
+                    <h3>Advanced</h3>
+                    <div class="attr-list">
+                        <div class="attr"><code>event_bubble</code></div>
+                        <div class="attr"><code>snappable</code></div>
+                        <div class="attr"><code>click_focusable</code></div>
+                        <div class="attr"><code>flex_in_new_track</code></div>
+                    </div>
+                </div>
+                <div class="note"><strong>⚠️ Never use flag_ prefix!</strong> Just "hidden", not "flag_hidden"</div>
             </div>
 
             <!-- States -->
@@ -456,27 +600,42 @@
                 <div class="attr-group">
                     <h3>State Attributes</h3>
                     <div class="attr-list">
-                        <div class="attr"><code>checked</code> <span class="hint">checkboxes, toggle buttons</span></div>
-                        <div class="attr"><code>focused</code> <span class="hint">keyboard/input focus</span></div>
-                        <div class="attr"><code>disabled</code> <span class="hint">grayed out, non-interactive</span></div>
-                        <div class="attr"><code>pressed</code> <span class="hint">button press state</span></div>
+                        <div class="attr"><code>checked</code> <span class="hint">checkboxes, toggle</span></div>
+                        <div class="attr"><code>focused</code> <span class="hint">input focus</span></div>
+                        <div class="attr"><code>disabled</code> <span class="hint">grayed out</span></div>
+                        <div class="attr"><code>pressed</code> <span class="hint">button press</span></div>
                     </div>
                 </div>
                 <div class="attr-group">
-                    <h3>Data Binding</h3>
+                    <h3>Direct Bindings (attributes)</h3>
                     <div class="attr-list">
-                        <div class="attr"><code>bind_checked</code> <span class="hint">to int subject</span></div>
-                        <div class="attr"><code>bind_flag_if_eq</code> <span class="hint">conditional flag</span></div>
-                        <div class="attr"><code>bind_state_if_eq</code> <span class="hint">conditional state</span></div>
+                        <div class="attr"><code>bind_text</code> <span class="hint">"subject 'format'"</span></div>
+                        <div class="attr"><code>bind_value</code> <span class="hint">"subject"</span></div>
+                        <div class="attr"><code>bind_checked</code> <span class="hint">"subject"</span></div>
                     </div>
-                    <div class="enum-values">Syntax: "subject flag value"</div>
+                </div>
+                <div class="attr-group">
+                    <h3>Conditional Bindings (child elements)</h3>
+                    <div class="enum-values" style="font-size: 11px; margin-bottom: 4px;">⚠️ Use child elements, NOT attributes!</div>
+                    <div class="attr-list">
+                        <div class="attr"><code>bind_flag_if_eq/ne/gt/ge/lt/le</code></div>
+                        <div class="attr"><code>bind_state_if_eq/ne/gt/ge/lt/le</code></div>
+                    </div>
+                    <pre style="font-size: 10px; background: #f5f5f5; padding: 4px; border-radius: 2px; margin: 4px 0;">&lt;lv_obj&gt;
+  &lt;lv_obj-bind_flag_if_eq
+      subject="step"
+      flag="hidden"
+      ref_value="2"/&gt;
+&lt;/lv_obj&gt;</pre>
+                    <div class="enum-values">subject: data source | flag/state: which to set | ref_value: comparison value</div>
                 </div>
             </div>
-        </div>
+            </div><!-- end grid -->
 
-        <footer>
-            LVGL 9.3 | For complete documentation see: LVGL9_XML_ATTRIBUTES_REFERENCE.md and LVGL9_STYLE_ELEMENTS_REFERENCE.md | https://docs.lvgl.io/master/details/xml/
-        </footer>
+            <footer>
+                LVGL 9.3 XML Quick Reference | Updated: 2025-10-27 | Complete docs: LVGL9_XML_GUIDE.md, QUICK_REFERENCE.md | https://docs.lvgl.io/master/details/xml/
+            </footer>
+        </div><!-- end page 2 -->
     </div>
 </body>
 </html>

@@ -1,0 +1,74 @@
+<!--
+  Copyright (C) 2025 356C LLC
+  Author: Preston Brown <pbrown@brown-house.net>
+
+  This file is part of HelixScreen.
+
+  HelixScreen is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  HelixScreen is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<component>
+	<!-- WiFi Network List Item Component -->
+	<!-- Displays: SSID, signal strength, lock icon for encrypted networks -->
+	<view extends="lv_obj"
+	      width="100%"
+	      height="LV_SIZE_CONTENT"
+	      style_min_height="50"
+	      style_bg_color="#card_bg_dark"
+	      style_bg_opa="255"
+	      style_border_width="1"
+	      style_border_color="#text_muted"
+	      style_border_opa="60"
+	      style_radius="8"
+	      style_pad_all="12"
+	      style_pad_gap="#gap_normal"
+	      flex_flow="row"
+	      clickable="true"
+	      style_flex_main_place="space_between"
+	      style_flex_cross_place="center"
+	      name="network_item_root">
+
+		<!-- Left: SSID -->
+		<lv_label name="network_ssid"
+		          text="Network Name"
+		          style_text_font="montserrat_16"
+		          style_text_color="#text_primary"
+		          flex_grow="1"/>
+
+		<!-- Right: Signal + Lock indicator -->
+		<lv_obj width="LV_SIZE_CONTENT"
+		        height="LV_SIZE_CONTENT"
+		        style_bg_opa="0"
+		        style_border_width="0"
+		        style_pad_all="0"
+		        style_pad_gap="#gap_small"
+		        flex_flow="row"
+		        style_flex_main_place="end"
+		        style_flex_cross_place="center">
+
+			<!-- Signal strength -->
+			<lv_label name="network_signal"
+			          text="95%"
+			          style_text_font="montserrat_14"
+			          style_text_color="#text_secondary"/>
+
+			<!-- Lock icon (hidden for open networks) -->
+			<lv_label name="network_lock"
+			          text="🔒"
+			          style_text_font="montserrat_14"
+			          style_text_color="#text_secondary"
+			          hidden="false"/>
+		</lv_obj>
+	</view>
+</component>
