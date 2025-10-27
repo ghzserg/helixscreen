@@ -1,0 +1,494 @@
+{
+  "_comment": "3D Printing Tips Database for GuppyScreen/HelixScreen - Licensed under GPL v3",
+  "version": "1.0.0",
+  "description": "Comprehensive 3D printing tips and tricks for Klipper-based FDM printers with OrcaSlicer",
+  "last_updated": "2025-10-27",
+  "total_tips": 50,
+
+  "categories": {
+    "klipper_features": {
+      "name": "Klipper-Specific Features",
+      "description": "Advanced Klipper firmware capabilities for improved printing",
+      "tips": [
+        {
+          "id": "tip-001",
+          "title": "Run Input Shaping Calibration",
+          "content": "Use Klipper's resonance testing (TEST_RESONANCES) with an accelerometer to eliminate ringing/ghosting at high speeds",
+          "tags": ["calibration", "speed", "quality", "resonance"],
+          "difficulty": "intermediate",
+          "priority": "high",
+          "related_settings": ["[input_shaper]", "TEST_RESONANCES", "[adxl345]"]
+        },
+        {
+          "id": "tip-002",
+          "title": "Enable Pressure Advance",
+          "content": "Calibrate with TUNING_TOWER macro to eliminate bulging corners and gaps on direction changes (typical range: 0.02-0.08 for direct drive, 0.3-0.9 for Bowden)",
+          "tags": ["calibration", "quality", "extrusion"],
+          "difficulty": "intermediate",
+          "priority": "high",
+          "related_settings": ["[extruder]", "pressure_advance", "TUNING_TOWER"]
+        },
+        {
+          "id": "tip-003",
+          "title": "Use Adaptive Bed Meshing",
+          "content": "Enable adaptive_bed_mesh in Klipper to only mesh the print area, saving time on small prints",
+          "tags": ["speed", "optimization", "leveling"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["[bed_mesh]", "adaptive_bed_mesh"]
+        },
+        {
+          "id": "tip-004",
+          "title": "Leverage Firmware Retraction",
+          "content": "Configure [firmware_retraction] in Klipper for consistent results across slicers and easy tuning without re-slicing",
+          "tags": ["configuration", "quality", "extrusion"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["[firmware_retraction]", "SET_RETRACTION"]
+        },
+        {
+          "id": "tip-005",
+          "title": "Enable Square Corner Velocity",
+          "content": "Set square_corner_velocity in [printer] section (5-8mm/s typical) to maintain speed through corners without sacrificing quality",
+          "tags": ["speed", "quality", "motion"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["[printer]", "square_corner_velocity"]
+        },
+        {
+          "id": "tip-006",
+          "title": "Use PRINT_START Macros",
+          "content": "Create comprehensive PRINT_START macros that handle homing, QGL/ABL, heating, purging, and adaptive meshing",
+          "tags": ["automation", "workflow", "macros"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["[gcode_macro PRINT_START]", "[gcode_macro PRINT_END]"]
+        },
+        {
+          "id": "tip-007",
+          "title": "Monitor with Exclude Object",
+          "content": "Enable [exclude_object] in Klipper to cancel individual failed parts in multi-object prints via Mainsail/Fluidd",
+          "tags": ["troubleshooting", "workflow", "recovery"],
+          "difficulty": "beginner",
+          "priority": "low",
+          "related_settings": ["[exclude_object]", "EXCLUDE_OBJECT"]
+        },
+        {
+          "id": "tip-008",
+          "title": "Tune Max Accel Per Feature",
+          "content": "Set different max_accel values for perimeters vs infill in OrcaSlicer to optimize speed/quality balance",
+          "tags": ["speed", "quality", "motion"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["[printer]", "max_accel", "max_accel_to_decel"]
+        },
+        {
+          "id": "tip-009",
+          "title": "Use Velocity Limits",
+          "content": "Set realistic max_velocity and max_accel in Klipper based on input shaping results, not just what your printer can mechanically handle",
+          "tags": ["configuration", "speed", "safety"],
+          "difficulty": "intermediate",
+          "priority": "high",
+          "related_settings": ["[printer]", "max_velocity", "max_accel"]
+        },
+        {
+          "id": "tip-010",
+          "title": "Enable Stepper Timeout",
+          "content": "Configure idle_timeout to disable steppers after prints but keep heaters active for easy part removal",
+          "tags": ["configuration", "workflow", "safety"],
+          "difficulty": "beginner",
+          "priority": "low",
+          "related_settings": ["[idle_timeout]", "timeout"]
+        }
+      ]
+    },
+
+    "orcaslicer_features": {
+      "name": "OrcaSlicer Calibration & Features",
+      "description": "OrcaSlicer-specific tools and settings for optimal slicing",
+      "tips": [
+        {
+          "id": "tip-011",
+          "title": "Run Flow Rate Calibration",
+          "content": "Use OrcaSlicer's built-in flow calibration test (pass 1 & 2) to get perfect extrusion multiplier per filament",
+          "tags": ["calibration", "quality", "extrusion"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["Calibration -> Flow rate", "filament_flow_ratio"]
+        },
+        {
+          "id": "tip-012",
+          "title": "Calibrate Temperature Towers",
+          "content": "Use OrcaSlicer's temperature tower generator to find optimal temps for each filament brand/color",
+          "tags": ["calibration", "quality", "temperature"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["Calibration -> Temperature", "temperature"]
+        },
+        {
+          "id": "tip-013",
+          "title": "Use Filament Profiles",
+          "content": "Create detailed filament profiles with calibrated temps, flow rates, and retraction settings for each spool",
+          "tags": ["workflow", "organization", "quality"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["Filament Settings", "filament_settings_id"]
+        },
+        {
+          "id": "tip-014",
+          "title": "Enable Arachne Perimeter Generator",
+          "content": "Switch to Arachne engine for variable-width perimeters that improve strength and surface quality",
+          "tags": ["quality", "strength", "slicing"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["Print Settings -> Quality -> Precision", "wall_generator"]
+        },
+        {
+          "id": "tip-015",
+          "title": "Use Adaptive Layer Heights",
+          "content": "Enable adaptive layer height with smooth transitions for curved surfaces while keeping flat areas fast",
+          "tags": ["speed", "quality", "optimization"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["Print Settings -> Quality -> Layer height", "adaptive_layer_height"]
+        },
+        {
+          "id": "tip-016",
+          "title": "Leverage Arc Fitting",
+          "content": "Enable 'Arc fitting' to convert small segments into G2/G3 arc commands, reducing file size and improving curved surface quality",
+          "tags": ["quality", "optimization", "gcode"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["Print Settings -> Others -> G-code", "arc_fitting"]
+        },
+        {
+          "id": "tip-017",
+          "title": "Use Auto-Arranged Printing",
+          "content": "For multiple objects, use 'Print by Object' mode (requires sufficient Z-clearance) to prevent total print failure",
+          "tags": ["workflow", "reliability", "multi-object"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["Print Settings -> Others -> Sequential printing"]
+        },
+        {
+          "id": "tip-018",
+          "title": "Enable Ironing",
+          "content": "Use top surface ironing sparingly (only on visible flat tops) for glass-smooth finishes at the cost of time",
+          "tags": ["quality", "surface-finish", "speed"],
+          "difficulty": "beginner",
+          "priority": "low",
+          "related_settings": ["Print Settings -> Quality -> Ironing"]
+        },
+        {
+          "id": "tip-019",
+          "title": "Tune Retraction with Calibration",
+          "content": "Use OrcaSlicer's retraction tower test to dial in perfect retraction distance and speed",
+          "tags": ["calibration", "quality", "extrusion"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["Calibration -> Retraction", "retraction_length", "retract_speed"]
+        },
+        {
+          "id": "tip-020",
+          "title": "Use Seam Position Control",
+          "content": "Set seam to 'rear' or 'hide' mode to minimize visible seam marks on curved prints",
+          "tags": ["quality", "surface-finish", "aesthetics"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["Print Settings -> Quality -> Seam", "seam_position"]
+        }
+      ]
+    },
+
+    "speed_quality": {
+      "name": "Speed vs Quality Optimization",
+      "description": "Techniques to balance printing speed with output quality",
+      "tips": [
+        {
+          "id": "tip-021",
+          "title": "Separate Outer/Inner Perimeter Speeds",
+          "content": "Run outer perimeters 40-60% slower than inner for better surface finish without killing total print time",
+          "tags": ["speed", "quality", "surface-finish"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["outer_wall_speed", "inner_wall_speed"]
+        },
+        {
+          "id": "tip-022",
+          "title": "Use Layer Time Minimums",
+          "content": "Set minimum layer time (10-15s) to prevent insufficient cooling on small layers",
+          "tags": ["cooling", "quality", "small-parts"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["slow_down_layer_time", "fan_min_speed"]
+        },
+        {
+          "id": "tip-023",
+          "title": "Enable Dynamic Acceleration",
+          "content": "Use lower acceleration for outer perimeters (1000-2000mm/s²) and higher for infill (3000-5000mm/s²)",
+          "tags": ["speed", "quality", "motion"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["outer_wall_acceleration", "inner_wall_acceleration", "infill_acceleration"]
+        },
+        {
+          "id": "tip-024",
+          "title": "Optimize Infill Percentage",
+          "content": "Use 10-15% gyroid infill for most functional parts (strong, fast, minimal material)",
+          "tags": ["speed", "strength", "material-usage"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["sparse_infill_density", "sparse_infill_pattern"]
+        },
+        {
+          "id": "tip-025",
+          "title": "Use Draft Shield Sparingly",
+          "content": "Only enable for heat-sensitive materials (ABS/ASA) to prevent warping, not for PLA",
+          "tags": ["temperature", "warping", "material-specific"],
+          "difficulty": "beginner",
+          "priority": "low",
+          "related_settings": ["draft_shield", "chamber_temperature"]
+        },
+        {
+          "id": "tip-026",
+          "title": "Tune Travel Speed High",
+          "content": "Set travel moves to 250-350mm/s (Klipper can handle it) to reduce non-print time",
+          "tags": ["speed", "optimization", "motion"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["travel_speed", "max_travel_detour_distance"]
+        },
+        {
+          "id": "tip-027",
+          "title": "Use Thick Top/Bottom Layers",
+          "content": "4-6 top layers + ironing creates better finish than slow speeds with thin layers",
+          "tags": ["quality", "surface-finish", "optimization"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["top_shell_layers", "bottom_shell_layers"]
+        },
+        {
+          "id": "tip-028",
+          "title": "Enable Support Interface Layers",
+          "content": "Add 2-3 interface layers between supports and part for easier removal and cleaner surfaces",
+          "tags": ["supports", "quality", "post-processing"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["support_interface_top_layers", "support_interface_bottom_layers"]
+        },
+        {
+          "id": "tip-029",
+          "title": "Adjust Line Width for Strength",
+          "content": "Use 120-150% nozzle diameter line width for stronger parts (0.48-0.6mm for 0.4mm nozzle)",
+          "tags": ["strength", "quality", "extrusion"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["line_width", "outer_wall_line_width", "inner_wall_line_width"]
+        },
+        {
+          "id": "tip-030",
+          "title": "Use Sequential Printing for Speed",
+          "content": "Print multiple small objects in sequence (if Z-clearance allows) to reduce travel and oozing",
+          "tags": ["speed", "quality", "multi-object"],
+          "difficulty": "intermediate",
+          "priority": "low",
+          "related_settings": ["complete_individual_objects", "extruder_clearance_radius"]
+        }
+      ]
+    },
+
+    "print_quality": {
+      "name": "Print Quality Improvements",
+      "description": "Tips focused specifically on improving final print quality",
+      "tips": [
+        {
+          "id": "tip-031",
+          "title": "Dry Your Filament",
+          "content": "Even 'new' filament absorbs moisture; dry PLA at 50°C for 4-6 hours, PETG at 65°C for 6-8 hours",
+          "tags": ["filament", "quality", "preparation"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["filament_type", "temperature"]
+        },
+        {
+          "id": "tip-032",
+          "title": "Tune Z-Offset Precisely",
+          "content": "Use Klipper's PROBE_CALIBRATE or paper test; perfect first layer is 80% of print success",
+          "tags": ["calibration", "first-layer", "adhesion"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["[probe]", "z_offset", "PROBE_CALIBRATE"]
+        },
+        {
+          "id": "tip-033",
+          "title": "Use Textured Build Plates",
+          "content": "PEI sheets provide better adhesion and eliminate need for glue/tape for most materials",
+          "tags": ["adhesion", "workflow", "hardware"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["bed_temperature", "build_plate_type"]
+        },
+        {
+          "id": "tip-034",
+          "title": "Clean Build Surface Properly",
+          "content": "Use IPA for PLA/PETG, soap and water for PEI to remove oils and residue",
+          "tags": ["adhesion", "preparation", "maintenance"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["bed_temperature", "first_layer_temperature"]
+        },
+        {
+          "id": "tip-035",
+          "title": "Enable Monotonic Top Fill",
+          "content": "Use monotonic infill pattern for top surfaces to eliminate pillowing and create consistent sheen",
+          "tags": ["quality", "surface-finish", "aesthetics"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["top_surface_pattern", "monotonic_internal_solid_infill"]
+        },
+        {
+          "id": "tip-036",
+          "title": "Reduce Outer Perimeter Count",
+          "content": "2-3 perimeters sufficient for most prints; more adds time without much strength benefit",
+          "tags": ["speed", "optimization", "strength"],
+          "difficulty": "beginner",
+          "priority": "low",
+          "related_settings": ["wall_loops"]
+        },
+        {
+          "id": "tip-037",
+          "title": "Use Fuzzy Skin Wisely",
+          "content": "Apply fuzzy skin texture to hide layer lines on organic/artistic prints",
+          "tags": ["surface-finish", "aesthetics", "specialty"],
+          "difficulty": "beginner",
+          "priority": "low",
+          "related_settings": ["fuzzy_skin", "fuzzy_skin_thickness"]
+        },
+        {
+          "id": "tip-038",
+          "title": "Calibrate Extrusion Multiplier Per Material",
+          "content": "Each filament brand/type needs its own flow calibration (typically 0.92-1.05 range)",
+          "tags": ["calibration", "extrusion", "quality"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["filament_flow_ratio", "extrusion_multiplier"]
+        },
+        {
+          "id": "tip-039",
+          "title": "Enable Detect Thin Walls",
+          "content": "Ensure OrcaSlicer detects and prints thin features that might be skipped",
+          "tags": ["quality", "slicing", "geometry"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["detect_thin_wall"]
+        },
+        {
+          "id": "tip-040",
+          "title": "Use Variable Layer Heights",
+          "content": "Set 0.1mm for detailed areas, 0.3mm for structural areas in same print",
+          "tags": ["speed", "quality", "optimization"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["layer_height", "adaptive_layer_height"]
+        }
+      ]
+    },
+
+    "troubleshooting": {
+      "name": "Troubleshooting",
+      "description": "Common issues and how to diagnose/fix them",
+      "tips": [
+        {
+          "id": "tip-041",
+          "title": "Check Belt Tension",
+          "content": "Properly tensioned belts (110Hz +/- 10Hz with phone app) prevent layer shifting and improve quality",
+          "tags": ["hardware", "maintenance", "quality"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["max_velocity", "max_accel"]
+        },
+        {
+          "id": "tip-042",
+          "title": "Verify E-Steps Calibration",
+          "content": "Calibrate extruder steps/mm by extruding 100mm and measuring actual output",
+          "tags": ["calibration", "extrusion", "hardware"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["[extruder]", "rotation_distance"]
+        },
+        {
+          "id": "tip-043",
+          "title": "Monitor Part Cooling",
+          "content": "Use at least 50% cooling for PLA overhangs, less for PETG/ABS; run cooling fan tests",
+          "tags": ["cooling", "quality", "material-specific"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["fan_max_speed", "fan_min_speed", "overhang_fan_speed"]
+        },
+        {
+          "id": "tip-044",
+          "title": "Check for Partial Clogs",
+          "content": "If under-extruding despite calibration, cold pull with nylon or cleaning filament",
+          "tags": ["maintenance", "extrusion", "troubleshooting"],
+          "difficulty": "intermediate",
+          "priority": "high",
+          "related_settings": ["temperature", "retraction_length"]
+        },
+        {
+          "id": "tip-045",
+          "title": "Verify Frame Rigidity",
+          "content": "Loose frame members cause resonance; check all bolts/extrusions for tightness",
+          "tags": ["hardware", "maintenance", "quality"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["max_accel", "[input_shaper]"]
+        },
+        {
+          "id": "tip-046",
+          "title": "Use Klipper's Graph Tool",
+          "content": "Analyze resonance graphs to identify mechanical issues (loose belts, worn bearings)",
+          "tags": ["calibration", "troubleshooting", "advanced"],
+          "difficulty": "advanced",
+          "priority": "medium",
+          "related_settings": ["TEST_RESONANCES", "[input_shaper]"]
+        },
+        {
+          "id": "tip-047",
+          "title": "Monitor Filament Path",
+          "content": "Ensure smooth filament feeding; add PTFE tubing or guides to prevent binding",
+          "tags": ["hardware", "extrusion", "maintenance"],
+          "difficulty": "beginner",
+          "priority": "medium",
+          "related_settings": ["retraction_length", "retract_speed"]
+        },
+        {
+          "id": "tip-048",
+          "title": "Check Nozzle Wear",
+          "content": "Brass nozzles wear quickly with abrasive filaments; upgrade to hardened steel if needed",
+          "tags": ["hardware", "maintenance", "material-specific"],
+          "difficulty": "beginner",
+          "priority": "low",
+          "related_settings": ["nozzle_diameter", "filament_type"]
+        },
+        {
+          "id": "tip-049",
+          "title": "Verify Thermistor Accuracy",
+          "content": "Compare Klipper-reported temps with infrared thermometer to catch thermistor drift",
+          "tags": ["calibration", "temperature", "safety"],
+          "difficulty": "intermediate",
+          "priority": "medium",
+          "related_settings": ["[extruder]", "sensor_type", "PID_CALIBRATE"]
+        },
+        {
+          "id": "tip-050",
+          "title": "Review G-code with Previewer",
+          "content": "Always preview in OrcaSlicer before printing to catch slicing errors, bad supports, or thin walls",
+          "tags": ["workflow", "quality", "prevention"],
+          "difficulty": "beginner",
+          "priority": "high",
+          "related_settings": ["Preview Tab", "Support visualization"]
+        }
+      ]
+    }
+  }
+}

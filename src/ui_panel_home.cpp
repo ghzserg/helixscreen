@@ -22,6 +22,7 @@
 #include "ui_nav.h"
 #include "ui_theme.h"
 #include "ui_fonts.h"
+#include "tips_manager.h"
 #include <spdlog/spdlog.h>
 #include <cstring>
 #include <cstdlib>
@@ -41,7 +42,7 @@ static lv_subject_t network_label_subject;
 static lv_subject_t network_color_subject;
 static lv_subject_t light_icon_color_subject;
 
-static char status_buffer[128];
+static char status_buffer[512];  // Larger buffer for tips (title + content)
 static char temp_buffer[32];
 static char network_icon_buffer[8];
 static char network_label_buffer[32];
@@ -51,11 +52,19 @@ static bool subjects_initialized = false;
 static bool light_on = false;
 static network_type_t current_network = NETWORK_WIFI;
 
+// Tip of the day rotation
+static lv_timer_t* tip_rotation_timer = nullptr;
+static PrintingTip current_tip;  // Store full tip for dialog display
+static lv_obj_t* tip_detail_dialog = nullptr;  // Modal dialog reference
+
 // Forward declarations
 static void light_toggle_event_cb(lv_event_t* e);
 static void print_card_clicked_cb(lv_event_t* e);
+static void tip_text_clicked_cb(lv_event_t* e);
 static void network_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
 static void light_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
+static void tip_rotation_timer_cb(lv_timer_t* timer);
+static void update_tip_of_day();
 
 void ui_panel_home_init_subjects() {
     if (subjects_initialized) {
@@ -66,7 +75,15 @@ void ui_panel_home_init_subjects() {
     spdlog::debug("Initializing home panel subjects");
 
     // Initialize subjects with default values
-    lv_subject_init_string(&status_subject, status_buffer, NULL, sizeof(status_buffer), "Hasta la vista, misprints!");
+    // Get first tip of the day
+    auto tip = TipsManager::get_instance()->get_random_unique_tip();
+    if (!tip.title.empty()) {
+        current_tip = tip;  // Store full tip for dialog
+        snprintf(status_buffer, sizeof(status_buffer), "%s", tip.title.c_str());
+    } else {
+        snprintf(status_buffer, sizeof(status_buffer), "Welcome to HelixScreen");
+    }
+    lv_subject_init_string(&status_subject, status_buffer, NULL, sizeof(status_buffer), status_buffer);
     lv_subject_init_string(&temp_subject, temp_buffer, NULL, sizeof(temp_buffer), "30 °C");
     lv_subject_init_string(&network_icon_subject, network_icon_buffer, NULL, sizeof(network_icon_buffer), ICON_WIFI);
     lv_subject_init_string(&network_label_subject, network_label_buffer, NULL, sizeof(network_label_buffer), "Wi-Fi");
@@ -84,10 +101,11 @@ void ui_panel_home_init_subjects() {
     // Register event callbacks BEFORE loading XML
     lv_xml_register_event_cb(NULL, "light_toggle_cb", light_toggle_event_cb);
     lv_xml_register_event_cb(NULL, "print_card_clicked_cb", print_card_clicked_cb);
+    lv_xml_register_event_cb(NULL, "tip_text_clicked_cb", tip_text_clicked_cb);
 
     subjects_initialized = true;
     spdlog::debug("Registered subjects: status_text, temp_text, network_icon, network_label, network_color, light_icon_color");
-    spdlog::debug("Registered event callback: light_toggle_cb");
+    spdlog::debug("Registered event callbacks: light_toggle_cb, print_card_clicked_cb, tip_text_clicked_cb");
 }
 
 void ui_panel_home_setup_observers(lv_obj_t* panel) {
@@ -207,6 +225,12 @@ lv_obj_t* ui_panel_home_create(lv_obj_t* parent) {
 
     // Setup observers
     ui_panel_home_setup_observers(home_panel);
+
+    // Start tip rotation timer (60 seconds = 60000ms)
+    if (!tip_rotation_timer) {
+        tip_rotation_timer = lv_timer_create(tip_rotation_timer_cb, 60000, NULL);
+        spdlog::info("[Home] Started tip rotation timer (60s interval)");
+    }
 
     spdlog::debug("XML home_panel created successfully with reactive observers");
     return home_panel;
@@ -332,4 +356,83 @@ static void light_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
     lv_obj_set_style_img_recolor_opa(light_icon_label, 255, LV_PART_MAIN);
 
     spdlog::trace("Light observer updated icon color");
+}
+
+// Helper function to update tip of the day
+static void update_tip_of_day() {
+    auto tip = TipsManager::get_instance()->get_random_unique_tip();
+
+    if (!tip.title.empty()) {
+        // Store full tip for dialog display
+        current_tip = tip;
+
+        // Display only title in status label
+        snprintf(status_buffer, sizeof(status_buffer), "%s", tip.title.c_str());
+        lv_subject_copy_string(&status_subject, status_buffer);
+        spdlog::info("[Home] Updated tip: {}", tip.title);
+    } else {
+        spdlog::warn("[Home] Failed to get tip, keeping current");
+    }
+}
+
+// Timer callback for tip rotation (runs every 60 seconds)
+static void tip_rotation_timer_cb(lv_timer_t* timer) {
+    (void)timer;  // Unused parameter
+    update_tip_of_day();
+}
+
+// Event handler for tip text click - shows modal with full tip
+static void tip_text_clicked_cb(lv_event_t* e) {
+    (void)e;  // Unused parameter
+
+    if (current_tip.title.empty()) {
+        spdlog::warn("[Home] No tip available to display");
+        return;
+    }
+
+    spdlog::info("[Home] Tip text clicked - showing detail dialog");
+
+    // Create dialog with current tip data
+    const char* attrs[] = {
+        "title", current_tip.title.c_str(),
+        "content", current_tip.content.c_str(),
+        NULL
+    };
+
+    lv_obj_t* screen = lv_screen_active();
+    tip_detail_dialog = (lv_obj_t*)lv_xml_create(screen, "tip_detail_dialog", attrs);
+
+    if (!tip_detail_dialog) {
+        spdlog::error("[Home] Failed to create tip detail dialog from XML");
+        return;
+    }
+
+    // Wire up Ok button to close dialog
+    lv_obj_t* btn_ok = lv_obj_find_by_name(tip_detail_dialog, "btn_ok");
+    if (btn_ok) {
+        lv_obj_add_event_cb(btn_ok, [](lv_event_t* e) {
+            (void)e;
+            if (tip_detail_dialog) {
+                lv_obj_delete(tip_detail_dialog);
+                tip_detail_dialog = nullptr;
+                spdlog::debug("[Home] Tip dialog closed via Ok button");
+            }
+        }, LV_EVENT_CLICKED, nullptr);
+    }
+
+    // Backdrop click to close
+    lv_obj_add_event_cb(tip_detail_dialog, [](lv_event_t* e) {
+        lv_obj_t* target = (lv_obj_t*)lv_event_get_target(e);
+        lv_obj_t* current_target = (lv_obj_t*)lv_event_get_current_target(e);
+        // Only handle if clicking the backdrop itself (not a child)
+        if (target == current_target && tip_detail_dialog) {
+            lv_obj_delete(tip_detail_dialog);
+            tip_detail_dialog = nullptr;
+            spdlog::debug("[Home] Tip dialog closed via backdrop click");
+        }
+    }, LV_EVENT_CLICKED, nullptr);
+
+    // Bring to foreground
+    lv_obj_move_foreground(tip_detail_dialog);
+    spdlog::debug("[Home] Tip dialog shown: {}", current_tip.title);
 }

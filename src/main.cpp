@@ -570,72 +570,6 @@ int main(int argc, char** argv) {
     Config* config = Config::get_instance();
     config->init("helixconfig.json");
 
-    // Initialize tips manager
-    TipsManager* tips_mgr = TipsManager::get_instance();
-    if (tips_mgr->init("A:/data/printing_tips.json")) {
-        spdlog::info("=== Tips Manager Test Suite ===");
-        spdlog::info("Version: {}", tips_mgr->get_version());
-        spdlog::info("Total tips: {}", tips_mgr->get_total_tips());
-
-        // Test random tip
-        auto random_tip = tips_mgr->get_random_tip();
-        spdlog::info("\n[Random Tip] {} ({})", random_tip.title, random_tip.id);
-        spdlog::info("  Category: {}, Difficulty: {}, Priority: {}",
-                     random_tip.category, random_tip.difficulty, random_tip.priority);
-        spdlog::info("  {}", random_tip.content);
-
-        // Test category filtering
-        auto klipper_tips = tips_mgr->get_tips_by_category("klipper_features");
-        spdlog::info("\n[Klipper Features] {} tips found", klipper_tips.size());
-        if (!klipper_tips.empty()) {
-            spdlog::info("  Example: {}", klipper_tips[0].title);
-        }
-
-        // Test tag filtering
-        auto calibration_tips = tips_mgr->get_tips_by_tag("calibration");
-        spdlog::info("\n[Calibration Tag] {} tips found", calibration_tips.size());
-
-        // Test difficulty filtering
-        auto beginner_tips = tips_mgr->get_tips_by_difficulty("beginner");
-        spdlog::info("\n[Beginner Difficulty] {} tips found", beginner_tips.size());
-
-        // Test priority filtering
-        auto high_priority = tips_mgr->get_tips_by_priority("high");
-        spdlog::info("\n[High Priority] {} tips found", high_priority.size());
-
-        // Test keyword search
-        auto speed_tips = tips_mgr->search_by_keyword("speed");
-        spdlog::info("\n[Keyword Search: 'speed'] {} tips found", speed_tips.size());
-        if (!speed_tips.empty()) {
-            spdlog::info("  Example: {}", speed_tips[0].title);
-        }
-
-        // Test specific tip lookup
-        auto specific = tips_mgr->get_tip_by_id("tip-001");
-        spdlog::info("\n[Tip by ID: tip-001] {}", specific.title);
-
-        // List all categories
-        auto categories = tips_mgr->get_all_categories();
-        spdlog::info("\n[All Categories] {}", categories.size());
-        for (const auto& cat : categories) {
-            spdlog::info("  - {}", cat);
-        }
-
-        // List all tags
-        auto tags = tips_mgr->get_all_tags();
-        spdlog::info("\n[All Tags] {} unique tags", tags.size());
-        for (size_t i = 0; i < std::min(tags.size(), size_t(10)); i++) {
-            spdlog::info("  - {}", tags[i]);
-        }
-        if (tags.size() > 10) {
-            spdlog::info("  ... and {} more", tags.size() - 10);
-        }
-
-        spdlog::info("\n=== End Tips Manager Test ===\n");
-    } else {
-        spdlog::warn("Tips manager failed to initialize");
-    }
-
     // Set window position environment variables for LVGL SDL driver
     if (display_num >= 0) {
         char display_str[32];
@@ -673,6 +607,14 @@ int main(int argc, char** argv) {
 
     // Initialize app-level resize handler for responsive layouts
     ui_resize_handler_init(screen);
+
+    // Initialize tips manager (uses standard C++ file I/O, not LVGL's "A:" filesystem)
+    TipsManager* tips_mgr = TipsManager::get_instance();
+    if (!tips_mgr->init("data/printing_tips.json")) {
+        spdlog::warn("Tips manager failed to initialize - tips will not be available");
+    } else {
+        spdlog::info("Loaded {} tips (version: {})", tips_mgr->get_total_tips(), tips_mgr->get_version());
+    }
 
     // Register fonts and images for XML (must be done before loading components)
     LV_LOG_USER("Registering fonts and images...");
@@ -722,6 +664,7 @@ int main(int argc, char** argv) {
     lv_xml_component_register_from_file("A:ui_xml/icon.xml");
     lv_xml_component_register_from_file("A:ui_xml/header_bar.xml");
     lv_xml_component_register_from_file("A:ui_xml/confirmation_dialog.xml");
+    lv_xml_component_register_from_file("A:ui_xml/tip_detail_dialog.xml");
     lv_xml_component_register_from_file("A:ui_xml/numeric_keypad_modal.xml");
     lv_xml_component_register_from_file("A:ui_xml/print_file_card.xml");
     lv_xml_component_register_from_file("A:ui_xml/print_file_list_row.xml");
@@ -741,6 +684,7 @@ int main(int argc, char** argv) {
     lv_xml_component_register_from_file("A:ui_xml/step_progress_test.xml");
     lv_xml_component_register_from_file("A:ui_xml/app_layout.xml");
     lv_xml_component_register_from_file("A:ui_xml/wizard_container.xml");
+    lv_xml_component_register_from_file("A:ui_xml/network_list_item.xml");
     lv_xml_component_register_from_file("A:ui_xml/wizard_wifi_setup.xml");
     lv_xml_component_register_from_file("A:ui_xml/wizard_connection.xml");
     lv_xml_component_register_from_file("A:ui_xml/wizard_printer_identify.xml");

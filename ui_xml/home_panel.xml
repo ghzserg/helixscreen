@@ -84,7 +84,10 @@
 						style_text_color="#text_primary"
 						style_text_font="#font_heading"
 						style_text_align="left"
-					/>
+						clickable="true"
+					>
+						<lv_event-call_function trigger="clicked" callback="tip_text_clicked_cb"/>
+					</lv_label>
 				</lv_obj>
 			</lv_obj>
 		</lv_obj>
