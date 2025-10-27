@@ -70,7 +70,7 @@ The patch is automatically applied by the Makefile before building:
 ```makefile
 apply-patches:
 	@if git -C lvgl diff --quiet src/drivers/sdl/lv_sdl_window.c; then \
-		git -C lvgl apply ../../patches/lvgl_sdl_window_position.patch; \
+		git -C lvgl apply ../patches/lvgl_sdl_window_position.patch; \
 	fi
 ```
 

@@ -77,7 +77,7 @@ The build system automatically applies patches to git submodules before compilat
 
 ### How It Works
 
-1. **Patch Storage**: All submodule patches are stored in `../../patches/` (relative to submodule)
+1. **Patch Storage**: All submodule patches are stored in `../patches/` (relative to submodule in `prototype-ui9/lvgl/`)
 2. **Auto-Detection**: Makefile checks if patches are already applied before each build
 3. **Idempotent**: Safe to run multiple times - patches are only applied once
 4. **Transparent**: No manual intervention needed for normal development
@@ -99,7 +99,7 @@ apply-patches:
 	@echo "Checking LVGL patches..."
 	@if git -C $(LVGL_DIR) diff --quiet src/drivers/sdl/lv_sdl_window.c; then \
 		# File is clean, apply patch
-		git -C $(LVGL_DIR) apply ../../patches/lvgl_sdl_window_position.patch
+		git -C $(LVGL_DIR) apply ../patches/lvgl_sdl_window_position.patch
 	else \
 		# File already modified (patch applied)
 		echo "✓ LVGL SDL window position patch already applied"
@@ -119,7 +119,7 @@ To add a new submodule patch:
 2. **Generate patch**:
    ```bash
    cd prototype-ui9/lvgl
-   git diff > ../../patches/my-new-patch.patch
+   git diff > ../patches/my-new-patch.patch
    ```
 3. **Update Makefile** to apply the patch in the `apply-patches` target
 4. **Document** in `patches/README.md`
@@ -332,7 +332,7 @@ make apply-patches
 
 # Force re-apply
 git -C lvgl checkout src/drivers/sdl/lv_sdl_window.c
-git -C lvgl apply ../../patches/lvgl_sdl_window_position.patch
+git -C lvgl apply ../patches/lvgl_sdl_window_position.patch
 ```
 
 ### Build Performance
@@ -403,4 +403,4 @@ Only use `make clean && make` when:
 
 - [README.md](../README.md) - Project overview and quick start
 - [CLAUDE.md](../CLAUDE.md) - Development context and guidelines
-- [patches/README.md](../../patches/README.md) - Patch documentation
+- [patches/README.md](../patches/README.md) - Patch documentation
