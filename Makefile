@@ -18,17 +18,40 @@ else
     ECHO := @true
 endif
 
-# Color output (disable with NO_COLOR=1)
+# Color output - auto-detect terminal capabilities
+# Disable with NO_COLOR=1 or when running in non-terminal environments
 ifndef NO_COLOR
-    BOLD := \033[1m
-    RED := \033[31m
-    GREEN := \033[32m
-    YELLOW := \033[33m
-    BLUE := \033[34m
-    MAGENTA := \033[35m
-    CYAN := \033[36m
-    RESET := \033[0m
+    # Auto-detect if terminal supports colors
+    # Checks: stdout is a tty, TERM is set and not "dumb"
+    TERM_SUPPORTS_COLOR := $(shell \
+        if [ -t 1 ] && [ -n "$$TERM" ] && [ "$$TERM" != "dumb" ]; then \
+            echo 1; \
+        else \
+            echo 0; \
+        fi)
+
+    ifeq ($(TERM_SUPPORTS_COLOR),1)
+        BOLD := \033[1m
+        RED := \033[31m
+        GREEN := \033[32m
+        YELLOW := \033[33m
+        BLUE := \033[34m
+        MAGENTA := \033[35m
+        CYAN := \033[36m
+        RESET := \033[0m
+    else
+        # Terminal doesn't support colors - disable
+        BOLD :=
+        RED :=
+        GREEN :=
+        YELLOW :=
+        BLUE :=
+        MAGENTA :=
+        CYAN :=
+        RESET :=
+    endif
 else
+    # NO_COLOR=1 explicitly set
     BOLD :=
     RED :=
     GREEN :=
@@ -223,7 +246,7 @@ help:
 	@echo "$(CYAN)Build Options:$(RESET)"
 	@echo "  $(YELLOW)V=1$(RESET)              - Verbose mode (show full compiler commands)"
 	@echo "  $(YELLOW)JOBS=N$(RESET)           - Set parallel job count (default: $(NPROC))"
-	@echo "  $(YELLOW)NO_COLOR=1$(RESET)       - Disable colored output"
+	@echo "  $(YELLOW)NO_COLOR=1$(RESET)       - Disable colored output (auto-detected for non-TTY)"
 	@echo ""
 	@echo "$(CYAN)Examples:$(RESET)"
 	@echo "  make -j$(NPROC)          # Parallel build with all cores"
