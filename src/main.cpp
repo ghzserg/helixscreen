@@ -41,6 +41,7 @@
 #include "ui_keyboard.h"
 #include "ui_wizard.h"
 #include "ui_panel_step_test.h"
+#include "ui_panel_test.h"
 #include "ui_icon_loader.h"
 #include "printer_state.h"
 #include "moonraker_client.h"
@@ -685,6 +686,10 @@ int main(int argc, char** argv) {
     // Register XML components (globals first to make constants available)
     LV_LOG_USER("Registering XML components...");
     lv_xml_register_component_from_file("A:ui_xml/globals.xml");
+
+    // Register responsive constants (AFTER globals, BEFORE components that use them)
+    ui_switch_register_responsive_constants();
+
     lv_xml_register_component_from_file("A:ui_xml/icon.xml");
     lv_xml_register_component_from_file("A:ui_xml/header_bar.xml");
     lv_xml_register_component_from_file("A:ui_xml/confirmation_dialog.xml");
@@ -985,6 +990,8 @@ int main(int argc, char** argv) {
         // Create test panel (standalone, not part of app_layout)
         lv_obj_t* test_panel = (lv_obj_t*)lv_xml_create(screen, "test_panel", nullptr);
         if (test_panel) {
+            // Setup panel (populate info labels)
+            ui_panel_test_setup(test_panel);
             // Hide app_layout to show only the test panel
             lv_obj_add_flag(app_layout, LV_OBJ_FLAG_HIDDEN);
 
@@ -1015,10 +1022,9 @@ int main(int argc, char** argv) {
         if (wizard) {
             spdlog::info("Wizard created successfully");
 
-            // Set initial step
+            // Set initial step (screen loader sets appropriate title)
             int initial_step = (wizard_step >= 1) ? wizard_step : 1;
             ui_wizard_navigate_to_step(initial_step);
-            ui_wizard_set_title("Welcome to Setup");
 
             // Move keyboard to top layer so it appears above the full-screen wizard overlay
             lv_obj_t* keyboard = ui_keyboard_get_instance();

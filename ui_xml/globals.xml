@@ -259,7 +259,7 @@
 	<px name="step_spacing" value="16" />
 	<!-- Gap between step items -->
 
-									<!-- ===================================================================== -->
+										<!-- ===================================================================== -->
 		<!-- FontAwesome icon constants - AUTO-GENERATED - DO NOT EDIT MANUALLY   -->
 		<!-- Run: python3 scripts/generate-icon-consts.py                         -->
 		<!-- ===================================================================== -->
@@ -298,6 +298,10 @@
 		<str name="icon_power_off" value=""/>  <!-- U+F011 power-off -->
 		<str name="icon_question_circle" value=""/>  <!-- U+F059 circle-question -->
 		<str name="icon_settings" value=""/>  <!-- U+F013 gear -->
+		<str name="icon_signal_wifi_1" value=""/>  <!-- U+F6AC wifi-1 (0-25% signal) -->
+		<str name="icon_signal_wifi_2" value=""/>  <!-- U+F6AA wifi-2 (26-50% signal) -->
+		<str name="icon_signal_wifi_3" value=""/>  <!-- U+F6AB wifi-3 (51-75% signal) -->
+		<str name="icon_signal_wifi_4" value=""/>  <!-- U+F1EB wifi (76-100% signal) -->
 		<str name="icon_temperature" value=""/>  <!-- U+F2C7 thermometer-half -->
 		<str name="icon_th_large" value=""/>  <!-- U+F009 th-large -->
 		<str name="icon_trash" value=""/>  <!-- U+F1F8 trash -->
