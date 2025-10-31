@@ -22,23 +22,25 @@ endif
 # Disable with NO_COLOR=1 or when running in non-terminal environments
 ifndef NO_COLOR
     # Auto-detect if terminal supports colors
-    # Checks: stdout is a tty, TERM is set and not "dumb"
+    # Check if Make is running interactively (stdin is a TTY) AND stderr is a TTY
+    # This disables colors when output is piped (stdout redirect) or in non-interactive contexts
+    # Note: We can't check stdout directly from $(shell) because it's redirected to capture output
     TERM_SUPPORTS_COLOR := $(shell \
-        if [ -t 1 ] && [ -n "$$TERM" ] && [ "$$TERM" != "dumb" ]; then \
+        if [ -t 0 ] && [ -t 2 ] && [ -n "$$TERM" ] && [ "$$TERM" != "dumb" ]; then \
             echo 1; \
         else \
             echo 0; \
         fi)
 
     ifeq ($(TERM_SUPPORTS_COLOR),1)
-        BOLD := \033[1m
-        RED := \033[31m
-        GREEN := \033[32m
-        YELLOW := \033[33m
-        BLUE := \033[34m
-        MAGENTA := \033[35m
-        CYAN := \033[36m
-        RESET := \033[0m
+        BOLD := $(shell printf '\033[1m')
+        RED := $(shell printf '\033[31m')
+        GREEN := $(shell printf '\033[32m')
+        YELLOW := $(shell printf '\033[33m')
+        BLUE := $(shell printf '\033[34m')
+        MAGENTA := $(shell printf '\033[35m')
+        CYAN := $(shell printf '\033[36m')
+        RESET := $(shell printf '\033[0m')
     else
         # Terminal doesn't support colors - disable
         BOLD :=
@@ -213,48 +215,53 @@ MOCK_OBJS := $(patsubst $(TEST_MOCK_DIR)/%.cpp,$(OBJ_DIR)/tests/mocks/%.o,$(MOCK
 
 .PHONY: all build clean run test test-integration test-cards test-print-select test-size-content demo compile_commands libhv-build apply-patches generate-fonts help check-deps install-deps icon
 
-# Help target
+# Help target - checks stdout dynamically to avoid colors when piped
 help:
-	@echo "$(BOLD)HelixScreen UI Prototype Build System$(RESET)"
-	@echo ""
-	@echo "$(CYAN)Build Targets:$(RESET)"
-	@echo "  $(GREEN)all$(RESET)              - Build the main binary (default)"
-	@echo "  $(GREEN)build$(RESET)            - Clean build with progress (parallel: -j$(NPROC))"
-	@echo "  $(GREEN)clean$(RESET)            - Remove all build artifacts"
-	@echo "  $(GREEN)demo$(RESET)             - Build LVGL demo widgets"
-	@echo ""
-	@echo "$(CYAN)Test Targets:$(RESET)"
-	@echo "  $(GREEN)test$(RESET)             - Run unit tests"
-	@echo "  $(GREEN)test-integration$(RESET) - Run integration tests (with mocks)"
-	@echo "  $(GREEN)test-cards$(RESET)       - Test dynamic card instantiation"
-	@echo "  $(GREEN)test-print-select$(RESET) - Test print select panel"
-	@echo ""
-	@echo "$(CYAN)Run Targets:$(RESET)"
-	@echo "  $(GREEN)run$(RESET)              - Build and run the UI prototype"
-	@echo ""
-	@echo "$(CYAN)Development Targets:$(RESET)"
-	@echo "  $(GREEN)compile_commands$(RESET) - Generate compile_commands.json for IDE/LSP"
-	@echo "  $(GREEN)check-deps$(RESET)       - Verify all dependencies are installed"
-	@echo "  $(GREEN)install-deps$(RESET)     - Auto-install missing dependencies (interactive)"
-	@echo "  $(GREEN)apply-patches$(RESET)    - Apply LVGL patches"
-	@echo "  $(GREEN)generate-fonts$(RESET)   - Regenerate FontAwesome fonts from package.json"
-	@echo "  $(GREEN)icon$(RESET)             - Generate macOS .icns icon from logo"
-	@echo "  $(GREEN)material-icons-list$(RESET) - List all registered Material Design icons"
-	@echo "  $(GREEN)material-icons-convert$(RESET) - Convert SVGs to LVGL C arrays (SVGS=...)"
-	@echo "  $(GREEN)material-icons-add$(RESET) - Download and add Material icons (ICONS=...)"
-	@echo ""
-	@echo "$(CYAN)Build Options:$(RESET)"
-	@echo "  $(YELLOW)V=1$(RESET)              - Verbose mode (show full compiler commands)"
-	@echo "  $(YELLOW)JOBS=N$(RESET)           - Set parallel job count (default: $(NPROC))"
-	@echo "  $(YELLOW)NO_COLOR=1$(RESET)       - Disable colored output (auto-detected for non-TTY)"
-	@echo ""
-	@echo "$(CYAN)Examples:$(RESET)"
-	@echo "  make -j$(NPROC)          # Parallel build with all cores"
-	@echo "  make V=1           # Verbose build"
-	@echo "  make clean all     # Clean rebuild"
-	@echo "  make run           # Build and run"
-	@echo ""
-	@echo "$(CYAN)Platform:$(RESET) $(PLATFORM) ($(NPROC) cores available)"
+	@if [ -t 1 ] && [ -n "$(TERM)" ] && [ "$(TERM)" != "dumb" ]; then \
+		B='$(BOLD)'; R='$(RED)'; G='$(GREEN)'; Y='$(YELLOW)'; BL='$(BLUE)'; M='$(MAGENTA)'; C='$(CYAN)'; X='$(RESET)'; \
+	else \
+		B=''; R=''; G=''; Y=''; BL=''; M=''; C=''; X=''; \
+	fi; \
+	echo "$${B}HelixScreen UI Prototype Build System$${X}"; \
+	echo ""; \
+	echo "$${C}Build Targets:$${X}"; \
+	echo "  $${G}all$${X}              - Build the main binary (default)"; \
+	echo "  $${G}build$${X}            - Clean build with progress (parallel: -j$(NPROC))"; \
+	echo "  $${G}clean$${X}            - Remove all build artifacts"; \
+	echo "  $${G}demo$${X}             - Build LVGL demo widgets"; \
+	echo ""; \
+	echo "$${C}Test Targets:$${X}"; \
+	echo "  $${G}test$${X}             - Run unit tests"; \
+	echo "  $${G}test-integration$${X} - Run integration tests (with mocks)"; \
+	echo "  $${G}test-cards$${X}       - Test dynamic card instantiation"; \
+	echo "  $${G}test-print-select$${X} - Test print select panel"; \
+	echo ""; \
+	echo "$${C}Run Targets:$${X}"; \
+	echo "  $${G}run$${X}              - Build and run the UI prototype"; \
+	echo ""; \
+	echo "$${C}Development Targets:$${X}"; \
+	echo "  $${G}compile_commands$${X} - Generate compile_commands.json for IDE/LSP"; \
+	echo "  $${G}check-deps$${X}       - Verify all dependencies are installed"; \
+	echo "  $${G}install-deps$${X}     - Auto-install missing dependencies (interactive)"; \
+	echo "  $${G}apply-patches$${X}    - Apply LVGL patches"; \
+	echo "  $${G}generate-fonts$${X}   - Regenerate FontAwesome fonts from package.json"; \
+	echo "  $${G}icon$${X}             - Generate macOS .icns icon from logo"; \
+	echo "  $${G}material-icons-list$${X} - List all registered Material Design icons"; \
+	echo "  $${G}material-icons-convert$${X} - Convert SVGs to LVGL C arrays (SVGS=...)"; \
+	echo "  $${G}material-icons-add$${X} - Download and add Material icons (ICONS=...)"; \
+	echo ""; \
+	echo "$${C}Build Options:$${X}"; \
+	echo "  $${Y}V=1$${X}              - Verbose mode (show full compiler commands)"; \
+	echo "  $${Y}JOBS=N$${X}           - Set parallel job count (default: $(NPROC))"; \
+	echo "  $${Y}NO_COLOR=1$${X}       - Disable colored output (auto-detected for non-TTY)"; \
+	echo ""; \
+	echo "$${C}Examples:$${X}"; \
+	echo "  make -j$(NPROC)          # Parallel build with all cores"; \
+	echo "  make V=1           # Verbose build"; \
+	echo "  make clean all     # Clean rebuild"; \
+	echo "  make run           # Build and run"; \
+	echo ""; \
+	echo "$${C}Platform:$${X} $(PLATFORM) ($(NPROC) cores available)"
 
 # Include modular makefiles
 include mk/deps.mk
