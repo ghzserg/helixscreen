@@ -243,13 +243,13 @@
   - Reactive tab switching
   - File list updates per storage source
 
-- [x] **Print Status Panel** - Active print monitoring ✅ COMPLETE (2025-11-02)
+- [~] **Print Status Panel** - Active print monitoring ✅ Logic / ⚠️ UI needs redesign
   - ✅ Progress bar with mock simulation (0-100%)
   - ✅ Print time/remaining time with reactive updates
   - ✅ Bed/nozzle temperatures with reactive updates
   - ✅ Pause/Resume/Cancel/Tune buttons (functional)
   - ✅ Wired to Print button on file detail view
-  - ✅ UI layout fixed - responsive design with theme-aware colors
+  - ⚠️ **UI layout broken** - overlapping elements, poor spacing (Priority 1)
 
 - [ ] **Filament Panel** - Filament management
   - Load/unload controls
