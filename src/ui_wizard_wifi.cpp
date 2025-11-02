@@ -20,6 +20,7 @@
 
 #include "ui_wizard_wifi.h"
 #include "ui_theme.h"
+#include "ui_icon.h"
 #include "wifi_manager.h"
 #include "ethernet_manager.h"
 #include "ui_keyboard.h"
@@ -124,18 +125,49 @@ static void clear_network_list();
 /**
  * @brief Map WiFi signal strength percentage to Material icon name
  * @param signal_strength Signal strength (0-100%)
- * @return Material icon name for appropriate signal tier
+ * @param is_secured Whether the network is secured (shows lock variant)
+ * @return Material icon name for appropriate signal tier (locked or unlocked)
  */
-static const char* get_wifi_signal_icon(int signal_strength) {
+static const char* get_wifi_signal_icon(int signal_strength, bool is_secured) {
     if (signal_strength <= 25) {
-        return "mat_wifi_strength_1";  // Poor (1 bar)
+        return is_secured ? "mat_wifi_strength_1_lock" : "mat_wifi_strength_1";
     } else if (signal_strength <= 50) {
-        return "mat_wifi_strength_2";  // Fair (2 bars)
+        return is_secured ? "mat_wifi_strength_2_lock" : "mat_wifi_strength_2";
     } else if (signal_strength <= 75) {
-        return "mat_wifi_strength_3";  // Good (3 bars)
+        return is_secured ? "mat_wifi_strength_3_lock" : "mat_wifi_strength_3";
     } else {
-        return "mat_wifi_strength_4";  // Excellent (full)
+        return is_secured ? "mat_wifi_strength_4_lock" : "mat_wifi_strength_4";
     }
+}
+
+/**
+ * @brief Apply visual highlight to connected network item
+ * @param item The network item widget to highlight
+ *
+ * Applies card-like background and accent border to indicate active connection
+ */
+static void apply_connected_network_highlight(lv_obj_t* item) {
+    if (!item) return;
+
+    // Left accent border (4px primary color)
+    lv_obj_set_style_border_side(item, LV_BORDER_SIDE_LEFT, LV_PART_MAIN);
+    lv_obj_set_style_border_width(item, 4, LV_PART_MAIN);
+    lv_color_t accent = ui_theme_get_color("primary_color");
+    lv_obj_set_style_border_color(item, accent, LV_PART_MAIN);
+
+    // Slightly lighter background for card-like effect
+    lv_color_t bg = lv_color_hex(0x262626);  // Lighter than card_bg_dark (#131313)
+    lv_obj_set_style_bg_color(item, bg, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(item, LV_OPA_COVER, LV_PART_MAIN);
+
+    // Brighter text for SSID
+    lv_obj_t* ssid_label = lv_obj_find_by_name(item, "ssid_label");
+    if (ssid_label) {
+        lv_color_t bright_text = lv_color_hex(0xE3E3E3);  // Brighter than text_primary
+        lv_obj_set_style_text_color(ssid_label, bright_text, LV_PART_MAIN);
+    }
+
+    spdlog::trace("[WiFi Screen] Applied connected network highlight");
 }
 
 // ============================================================================
@@ -372,6 +404,8 @@ void ui_wizard_wifi_show_password_modal(const char* ssid) {
         lv_textarea_set_text(password_input, "");
         // Register textarea with keyboard for input
         ui_keyboard_register_textarea(password_input);
+        // Focus textarea to trigger keyboard
+        lv_obj_add_state(password_input, LV_STATE_FOCUSED);
     }
 
     // Hide status message
@@ -627,6 +661,15 @@ static void populate_network_list(const std::vector<WiFiNetwork>& networks) {
                   return a.signal_strength > b.signal_strength;
               });
 
+    // Get connected network SSID for highlighting
+    std::string connected_ssid;
+    if (wifi_manager) {
+        connected_ssid = wifi_manager->get_connected_ssid();
+        if (!connected_ssid.empty()) {
+            spdlog::debug("[WiFi Screen] Currently connected to: {}", connected_ssid);
+        }
+    }
+
     // Create network items
     for (const auto& network : sorted_networks) {
         // Create network item from component
@@ -648,7 +691,6 @@ static void populate_network_list(const std::vector<WiFiNetwork>& networks) {
         // Find widgets within the component
         lv_obj_t* ssid_label = lv_obj_find_by_name(item, "ssid_label");
         lv_obj_t* security_label = lv_obj_find_by_name(item, "security_label");
-        lv_obj_t* lock_icon = lv_obj_find_by_name(item, "lock_icon");
         lv_obj_t* signal_icon = lv_obj_find_by_name(item, "signal_icon");
 
         // Bind SSID label to subject
@@ -656,23 +698,29 @@ static void populate_network_list(const std::vector<WiFiNetwork>& networks) {
             lv_label_bind_text(ssid_label, item_data->ssid, nullptr);
         }
 
-        // Set security type text directly (not reactive - rarely changes)
+        // Set security type text: show encryption type for secured networks, empty for open
         if (security_label) {
-            lv_label_set_text(security_label, network.security_type.c_str());
+            if (network.is_secured) {
+                lv_label_set_text(security_label, network.security_type.c_str());
+            } else {
+                lv_label_set_text(security_label, "");  // Empty string for open networks
+            }
         }
 
-        // Bind lock icon visibility to is_secured subject
-        // Hidden when is_secured == 0 (open network)
-        if (lock_icon) {
-            lv_obj_bind_flag_if_eq(lock_icon, item_data->is_secured, LV_OBJ_FLAG_HIDDEN, 0);
-        }
-
-        // Set signal strength icon based on signal quality (not reactive - rarely changes)
+        // Set signal strength icon (includes lock indicator for secured networks)
         if (signal_icon) {
-            const char* icon_name = get_wifi_signal_icon(network.signal_strength);
-            lv_image_set_src(signal_icon, icon_name);
-            spdlog::trace("[WiFi Screen] Set signal icon '{}' for {}% strength",
-                          icon_name, network.signal_strength);
+            const char* icon_name = get_wifi_signal_icon(network.signal_strength, network.is_secured);
+            ui_icon_set_source(signal_icon, icon_name);
+            spdlog::trace("[WiFi Screen] Set signal icon '{}' for {}% strength ({})",
+                          icon_name, network.signal_strength,
+                          network.is_secured ? "secured" : "open");
+        }
+
+        // Highlight connected network with card-like background and accent border
+        bool is_connected = (!connected_ssid.empty() && network.ssid == connected_ssid);
+        if (is_connected) {
+            apply_connected_network_highlight(item);
+            spdlog::debug("[WiFi Screen] Highlighted connected network: {}", network.ssid);
         }
 
         // Store NetworkItemData in user_data for click handler and cleanup

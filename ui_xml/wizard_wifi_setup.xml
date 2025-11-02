@@ -145,6 +145,8 @@
 				         flex_flow="column"
 				         scrollable="true"
 				         scroll_dir="VER"
+				         scroll_elastic="false"
+				         style_clip_corner="true"
 				         style_flex_main_place="start"
 				         style_flex_cross_place="start">
 

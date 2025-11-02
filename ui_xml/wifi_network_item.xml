@@ -26,8 +26,12 @@
 	<view extends="lv_button"
 	      width="100%"
 	      scrollable="false"
-	      style_bg_opa="0"
-	      style_border_width="0"
+	      clickable="true"
+	      style_bg_opa="1"
+	      style_border_width="1"
+	      style_border_side="bottom"
+	      style_border_color="#text_secondary"
+	      style_border_opa="30"
 	      style_shadow_width="0"
 	      style_pad_all="0"
 	      style_pad_gap="#list_item_padding"
@@ -35,39 +39,36 @@
 	      style_flex_main_place="start"
 	      style_flex_cross_place="center">
 
-		<!-- Signal strength icon (left) -->
-		<lv_image name="signal_icon"
-		          src="mat_wifi_strength_4"
-/>
+		<!-- Signal strength icon (left) - colored with primary theme color -->
+		<icon name="signal_icon"
+		      src="mat_wifi_strength_4"
+		      size="sm"
+		      variant="accent"
+		      clickable="false"/>
 
 		<!-- SSID and security type column (center) -->
 		<lv_obj flex_grow="1"
 				height="#list_item_height"
 		        style_bg_opa="0"
-		        style_border_width="1"
 		        style_pad_all="0"
+				radius="0"
+				style_border_width="0"
 		        style_pad_gap="4"
+				scrollable="false"
+				clickable="false"
 		        flex_flow="row"
-		        style_flex_main_place="start"
+		        style_flex_main_place="space_between"
 		        style_flex_cross_place="center">
 
 			<!-- Network SSID -->
-			<lv_label name="ssid_label"
-			          width="100%"
+			<text_body name="ssid_label"
 			          style_text_font="#list_item_font"
-/>
+			          clickable="false"/>
 
-			<!-- Security type -->
+			<!-- Security type (right-justified) -->
 			<lv_label name="security_label"
-			          width="100%"
-			          style_text_font="montserrat_12"
-			          style_text_color="#text_secondary"/>
+			          style_text_color="#text_secondary"
+			          clickable="false"/>
 		</lv_obj>
-
-		<!-- Lock icon (right) - shown for secured networks -->
-		<lv_label name="lock_icon"
-		          text="#icon_lock"
-		          style_text_font="fa_icons_24"
-/>
 	</view>
 </component>
