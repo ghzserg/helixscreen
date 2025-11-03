@@ -591,6 +591,12 @@ static bool init_lvgl() {
         return false;
     }
 
+    // Create keyboard input device (optional - enables physical keyboard input)
+    lv_indev_t* indev_keyboard = lv_sdl_keyboard_create();
+    if (indev_keyboard) {
+        spdlog::info("Physical keyboard input enabled");
+    }
+
     spdlog::info("LVGL initialized: {}x{}", SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Initialize SVG decoder for loading .svg files
