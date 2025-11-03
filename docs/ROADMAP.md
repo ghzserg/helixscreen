@@ -433,13 +433,18 @@
 
 **Priority: High** - Initial setup flow for new installations
 
-**Status: IN PROGRESS** - WiFi screen complete, connection/printer screens next
+**Status: IN PROGRESS** - Hardware selection complete, other steps pending
 
 **Progress:**
 - ✅ Wizard framework (navigation, responsive constants, subjects)
 - ✅ WiFi setup screen (fully working)
-- ⚠️ 7 additional screens created (XML exists, not wired to C++)
-- ⏳ Next: Moonraker connection screen implementation
+- ✅ **Hardware selection screens (steps 4-7)** - ✅ COMPLETE (2025-11-02)
+  - Dynamic dropdown population from MoonrakerClient discovery
+  - Hardware filtering (bed, hotend, fans by type, LEDs)
+  - Fixed critical layout bug (LV_SIZE_CONTENT → flex_grow)
+  - Config template updated with all wizard fields
+- ⚠️ Connection/printer ID/summary screens (XML exists, not fully wired)
+- ⏳ Next: Real printer testing + remaining wizard step implementation
 
 ### User Story
 New users need a guided setup wizard to:
@@ -464,28 +469,27 @@ New users need a guided setup wizard to:
   - [ ] Save connection settings to helixconfig.json
   - [ ] Optional future enhancement: mDNS/Bonjour auto-discovery scan
 
-- [ ] **Hardware Mapping Wizard**
-  - [ ] Auto-detect available components via printer.objects.list
-  - [ ] Multi-screen wizard flow (one category per screen):
-    1. **Heated Bed Selection**
-       - Dropdown: Select heater (heater_bed, heater_generic X)
-       - Dropdown: Select sensor (same as heater, or temperature_sensor X)
-       - Auto-default if only heater_bed exists
-    2. **Hotend Selection**
-       - Dropdown: Select heater (extruder, extruder1, etc.)
-       - Dropdown: Select sensor (same as heater, or temperature_sensor X)
-       - Auto-default if only extruder exists
-    3. **Fan Selection**
-       - Dropdown: Hotend fan (heater_fan X, fan_generic X)
-       - Dropdown: Part cooling fan (default: "fan")
-       - Multi-select: Bed fans (optional, any fan type)
-       - Auto-default part cooling fan to "fan" if exists
-    4. **LED Selection**
-       - Dropdown: Main LED (led X, neopixel X, dotstar X)
-       - Option to skip if no LEDs
-  - [ ] Back/Next navigation buttons on each screen
-  - [ ] Summary screen showing all selections before saving
-  - [ ] Save mappings to config file under printer-specific section
+- [x] **Hardware Mapping Wizard** - ✅ UI COMPLETE (Backend wiring pending)
+  - [x] Auto-detect available components via printer.objects.list
+  - [x] Multi-screen wizard flow (one category per screen):
+    1. ✅ **Heated Bed Selection**
+       - Dropdown: Select heater (filtered by "bed" keyword)
+       - Dropdown: Select sensor (all sensors shown)
+       - Dynamic population from MoonrakerClient
+    2. ✅ **Hotend Selection**
+       - Dropdown: Select heater (filtered by "extruder"/"hotend")
+       - Dropdown: Select sensor (filtered by "extruder"/"hotend")
+       - Dynamic population from MoonrakerClient
+    3. ✅ **Fan Selection**
+       - Dropdown: Hotend fan (filtered: "heater_fan", "hotend_fan")
+       - Dropdown: Part cooling fan (filtered: excludes heater fans)
+       - Dynamic population from MoonrakerClient
+    4. ✅ **LED Selection**
+       - Dropdown: Main LED (all LEDs shown)
+       - "None" option available
+  - [x] Back/Next navigation buttons on each screen (part of wizard framework)
+  - [ ] Summary screen showing all selections before saving (pending)
+  - [x] Save mappings to config file under printer-specific section (event callbacks wired)
 
 - [ ] **Configuration Storage**
   - [ ] Extend helixconfig.json schema with hardware mappings:
@@ -579,9 +583,19 @@ New users need a guided setup wizard to:
 
 ## Current Status
 
-**Active Phase:** Phase 8 - Backend Integration **IN PROGRESS**
+**Active Phase:** Phase 11 - First-Run Wizard **IN PROGRESS** | Phase 8 - Backend Integration **IN PROGRESS**
 
 **Recent Work (2025-11-02):**
+
+**Phase 11 - Wizard Hardware Selection (Steps 4-7) COMPLETE:**
+- ✅ Dynamic dropdown population from MoonrakerClient discovery
+- ✅ Hardware filtering by type (bed by "bed", hotend by "extruder"/"hotend", fans separated, all LEDs)
+- ✅ Fixed critical layout bug: `height="LV_SIZE_CONTENT"` → `flex_grow="1"` (LV_SIZE_CONTENT fails with nested flex children)
+- ✅ Fixed dropdown name mismatches (led_main_dropdown, part_cooling_fan_dropdown)
+- ✅ Added `get_leds()` API to MoonrakerClient
+- ✅ Updated config template with all wizard fields (network, moonraker, printer sections)
+- ✅ Module-scope vectors for event callback index-to-name mapping
+- ✅ Tested with mock backend - all 4 screens rendering correctly
 
 **Phase 8 - Real File Operations Integration COMPLETE:**
 - ✅ Print Select Panel fetches real files from Moonraker (server.files.list)

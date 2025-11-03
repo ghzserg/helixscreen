@@ -1,7 +1,7 @@
 # Session Handoff Document
 
 **Last Updated:** 2025-11-02
-**Current Focus:** Mock backend ready - proceed with Phase 2 (Dynamic Dropdown Population)
+**Current Focus:** Phase 2 complete - wizard hardware selection fully dynamic
 
 ---
 
@@ -12,166 +12,144 @@
 1. **Phase 1: Hardware Discovery Trigger** - ✅ COMPLETE
    - Wizard triggers `discover_printer()` after successful connection
    - Connection stays alive for hardware selection steps 4-7
-   - Hardware counts logged for debugging
 
-2. **Phase 4.1: Mock Backend** - ✅ COMPLETE (Just Finished)
-   - `MoonrakerClientMock` class created with 7 printer profiles
-   - Factory pattern integrated in `initialize_moonraker_client()` (main.cpp:759-766)
-   - Uses `TestConfig.should_mock_moonraker()` to select mock vs real client
-   - Realistic hardware data for testing without printer connection
+2. **Phase 2: Dynamic Dropdown Population** - ✅ COMPLETE (Just Finished)
+   - All 4 wizard hardware screens use dynamic dropdowns from MoonrakerClient
+   - Hardware filtering: bed (by "bed"), hotend (by "extruder"/"hotend"), fans (separated by type), LEDs (all)
+   - Fixed critical layout bug: `height="LV_SIZE_CONTENT"` → `flex_grow="1"` (LV_SIZE_CONTENT fails with nested flex children)
+   - Fixed dropdown name mismatches (led_main_dropdown, part_cooling_fan_dropdown)
+   - Updated config template with all wizard fields
+
+3. **Phase 4.1: Mock Backend** - ✅ COMPLETE
+   - `MoonrakerClientMock` with 7 printer profiles (Voron, K1, FlashForge, etc.)
+   - Factory pattern in main.cpp:759-766
 
 ### What Works Now
 
-- ✅ Moonraker client properly initialized (main.cpp:755)
-- ✅ Wizard can test connections and trigger hardware discovery
-- ✅ Mock backend provides test hardware (Voron 2.4, K1, FlashForge, etc.)
-- ✅ Test mode controlled via `--test` flag + `TestConfig`
+- ✅ Wizard hardware selection (steps 4-7) dynamically populated from discovered hardware
+- ✅ Proper hardware filtering logic for all component types
+- ✅ Mock backend testing (`--test` flag)
+- ✅ Config persistence for wizard selections
 
 ### What Needs Work
 
-- ❌ Wizard steps 4-7 still use hardcoded dropdown values
-- ❌ No printer auto-detection yet
+- ❌ Wizard steps 1-3 and 8 (WiFi, connection, printer ID, summary) need implementation
+- ❌ Real printer testing (only tested with mock backend so far)
+- ❌ Printer auto-detection via mDNS (future enhancement)
 
 ---
 
-## 🚀 NEXT PRIORITY: Phase 2 - Dynamic Dropdown Population
+## 🚀 NEXT PRIORITY: Phase 3 - Real Printer Testing
 
-**Goal:** Replace hardcoded hardware lists with discovered hardware from MoonrakerClient
+**Goal:** Test wizard hardware discovery with live Moonraker connection
 
-### Files to Modify
+**Tasks:**
+1. Test with real printer connection (no `--test` flag)
+2. Verify hardware filtering works correctly with various printer configs
+3. Test edge cases:
+   - No heated bed
+   - Multiple extruders
+   - Custom fan configurations
+   - No LEDs
+4. Fix any issues discovered during real testing
 
-1. **`src/ui_wizard_bed_select.cpp`** (Lines 70-85)
-   - Filter `client->get_heaters()` for bed-related heaters
-   - Filter `client->get_sensors()` for bed/chamber sensors
-   - Build dropdown options string and update dropdowns
+**Testing Command:**
+```bash
+# Real printer (edit helixconfig.json first with printer IP)
+./build/bin/helix-ui-proto --wizard --wizard-step 4
 
-2. **`src/ui_wizard_hotend_select.cpp`** (Lines 70-85)
-   - Filter for extruder heaters ("extruder", "extruder1", etc.)
-   - Filter sensors for hotend/extruder sensors
-   - Populate dropdowns dynamically
-
-3. **`src/ui_wizard_fan_select.cpp`** (Lines 70-85)
-   - Categorize `client->get_fans()` into hotend vs part cooling
-   - Hotend: "heater_fan", "hotend_fan"
-   - Part cooling: "fan", "part_fan"
-
-4. **`src/ui_wizard_led_select.cpp`** (Lines 70-85)
-   - List all LED outputs from discovered hardware
-   - No filtering needed - just populate dropdown
-
-### Implementation Pattern
-
-```cpp
-// In wizard step init function (called after discovery completes)
-void ui_wizard_step_X_setup(lv_obj_t* screen_root) {
-    MoonrakerClient* client = get_moonraker_client();
-    if (!client) return;
-
-    // Get discovered hardware
-    auto items = client->get_heaters(); // or get_sensors(), get_fans(), etc.
-
-    // Filter for relevant items
-    std::vector<std::string> filtered;
-    for (const auto& item : items) {
-        if (item.find("bed") != std::string::npos) {
-            filtered.push_back(item);
-        }
-    }
-
-    // Build options string (LVGL format: newline-separated)
-    std::string options;
-    for (const auto& item : filtered) {
-        if (!options.empty()) options += "\n";
-        options += item;
-    }
-    options += "\nNone"; // Always add "None" option
-
-    // Update dropdown
-    lv_obj_t* dropdown = lv_obj_find_by_name(screen_root, "heater_dropdown");
-    if (dropdown) {
-        lv_dropdown_set_options(dropdown, options.c_str());
-    }
-}
+# Mock testing
+./build/bin/helix-ui-proto --test --wizard --wizard-step 4
 ```
-
-**Testing:** Use `--test` flag to test with mock data before testing with real printer.
 
 ---
 
 ## 📋 Critical Patterns Reference
 
-### Pattern #0: Test Mode Usage
+### Pattern #0: LV_SIZE_CONTENT Bug
 
-```bash
-# Test with mock Moonraker (Voron 2.4 profile)
-./build/bin/helix-ui-proto --test --wizard
+**NEVER use `height="LV_SIZE_CONTENT"` or `height="auto"` with complex nested children in flex layouts.**
 
-# Test with real Moonraker connection
-./build/bin/helix-ui-proto --test --real-moonraker --wizard
+```xml
+<!-- ❌ WRONG - collapses to 0 height -->
+<ui_card height="LV_SIZE_CONTENT" flex_flow="column">
+  <text_heading>...</text_heading>
+  <lv_dropdown>...</lv_dropdown>
+</ui_card>
 
-# Production mode (no mocks)
-./build/bin/helix-ui-proto --wizard
+<!-- ✅ CORRECT - uses flex grow -->
+<ui_card flex_grow="1" flex_flow="column">
+  <text_heading>...</text_heading>
+  <lv_dropdown>...</lv_dropdown>
+</ui_card>
 ```
 
+**Why:** LV_SIZE_CONTENT doesn't work reliably when child elements are themselves flex containers or have complex layouts. Use `flex_grow` or fixed heights instead.
+
+### Pattern #1: Dynamic Dropdown Population
+
 ```cpp
-// Check test mode in code
-if (get_test_config().should_mock_moonraker()) {
-    // Using mock backend
+// Store items in module scope for event callback mapping
+static std::vector<std::string> hardware_items;
+
+// Build dropdown options (LVGL format: newline-separated)
+hardware_items.clear();
+std::string options_str;
+
+for (const auto& item : client->get_heaters()) {
+    if (item.find("bed") != std::string::npos) {
+        hardware_items.push_back(item);
+        if (!options_str.empty()) options_str += "\n";
+        options_str += item;
+    }
+}
+
+// Always add "None" option
+hardware_items.push_back("None");
+if (!options_str.empty()) options_str += "\n";
+options_str += "None";
+
+// Update dropdown
+lv_dropdown_set_options(dropdown, options_str.c_str());
+
+// Event callback uses vector for mapping
+static void on_dropdown_changed(lv_event_t* e) {
+    int index = lv_dropdown_get_selected(dropdown);
+    if (index < hardware_items.size()) {
+        config->set("/printer/component", hardware_items[index]);
+    }
 }
 ```
 
-### Pattern #1: Moonraker Client Access
+### Pattern #2: Moonraker Client Access
 
 ```cpp
 #include "app_globals.h"
+#include "moonraker_client.h"
+
 MoonrakerClient* client = get_moonraker_client();
-MoonrakerAPI* api = get_moonraker_api();
+if (!client) return;  // Graceful degradation
 
-// Get discovered hardware
-auto heaters = client->get_heaters();
-auto sensors = client->get_sensors();
-auto fans = client->get_fans();
-auto leds = client->get_leds();
-```
-
-### Pattern #2: Hardware Discovery
-
-```cpp
-client->discover_printer([]() {
-    spdlog::info("Discovery complete");
-    // Hardware now available via get_heaters(), etc.
-});
-```
-
-### Pattern #3: Thread Safety
-
-Moonraker callbacks run on background thread. Use notification_queue pattern (main.cpp:799-802) for LVGL updates.
-
-### Pattern #4: Dynamic Dropdown Population
-
-```cpp
-std::string options;
-for (const auto& item : items) {
-    if (!options.empty()) options += "\n";
-    options += item;
-}
-lv_dropdown_set_options(dropdown, options.c_str());
+const auto& heaters = client->get_heaters();
+const auto& sensors = client->get_sensors();
+const auto& fans = client->get_fans();
+const auto& leds = client->get_leds();
 ```
 
 ---
 
 ## 🔧 Known Issues
 
-### Hardcoded Hardware Options
-**Status:** Phase 2 will fix this
-**Files:** `ui_wizard_bed_select.cpp`, `ui_wizard_hotend_select.cpp`, `ui_wizard_fan_select.cpp`, `ui_wizard_led_select.cpp`
-**Lines:** ~70-85 in each file
+### LVGL XML String Constants
+**Issue:** Changed all `<str>` tags to `<string>` in globals.xml during debugging
+**Status:** Both work - tag name inside `<consts>` doesn't matter, LVGL processes all tags
+**Location:** ui_xml/globals.xml
 
 ---
 
 ## 📚 Reference Documents
 
-- **Implementation Plan:** `docs/MOONRAKER_HARDWARE_DISCOVERY_PLAN.md` (5 phases detailed)
-- **Testing Guide:** `docs/TESTING_MOONRAKER_API.md` (if exists)
+- **Implementation Plan:** `docs/MOONRAKER_HARDWARE_DISCOVERY_PLAN.md`
+- **API Docs:** `include/moonraker_client.h` (Doxygen documented)
 
-**Next Session:** Implement Phase 2 - start with `ui_wizard_bed_select.cpp`
+**Next Session:** Test with real printer, implement remaining wizard steps
