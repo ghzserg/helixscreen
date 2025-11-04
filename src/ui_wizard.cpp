@@ -305,6 +305,7 @@ static void ui_wizard_load_screen(int step) {
 
     // Cleanup previous screen resources BEFORE clearing widgets
     ui_wizard_wifi_cleanup();
+    ui_wizard_printer_identify_cleanup();
 
     // Clear existing content
     lv_obj_clean(content);

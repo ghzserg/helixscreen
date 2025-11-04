@@ -23,14 +23,20 @@
 #include "ui_keyboard.h"
 #include "app_globals.h"
 #include "config.h"
+#include "printer_types.h"
 #include "lvgl/lvgl.h"
 #include <spdlog/spdlog.h>
 #include <string>
 #include <cstring>
+#include <algorithm>
+#include <cctype>
 
 // ============================================================================
 // Static Data & Subjects
 // ============================================================================
+
+// Extern declaration for global connection_test_passed subject (defined in ui_wizard.cpp)
+extern lv_subject_t connection_test_passed;
 
 // Subject declarations (module scope)
 static lv_subject_t printer_name;
@@ -47,48 +53,51 @@ static lv_obj_t* printer_identify_screen_root = nullptr;
 // Validation state
 static bool printer_identify_validated = false;
 
-// Printer types (matches roller options in XML)
-static const char* printer_types =
-    "Anycubic i3 Mega\n"
-    "Anycubic Kobra\n"
-    "Anycubic Vyper\n"
-    "Bambu Lab X1\n"
-    "Bambu Lab P1P\n"
-    "Creality CR-10\n"
-    "Creality Ender 3\n"
-    "Creality Ender 5\n"
-    "Creality K1\n"
-    "FlashForge Creator Pro\n"
-    "FlashForge Dreamer\n"
-    "LulzBot TAZ\n"
-    "LulzBot Mini\n"
-    "MakerBot Replicator\n"
-    "Prusa i3 MK3\n"
-    "Prusa i3 MK4\n"
-    "Prusa Mini\n"
-    "Prusa XL\n"
-    "Qidi Tech X-Max\n"
-    "Qidi Tech X-Plus\n"
-    "Raise3D Pro2\n"
-    "Raise3D E2\n"
-    "Sovol SV01\n"
-    "Sovol SV06\n"
-    "Ultimaker 2+\n"
-    "Ultimaker 3\n"
-    "Ultimaker S3\n"
-    "Voron 0.1\n"
-    "Voron 2.4\n"
-    "Voron Trident\n"
-    "Voron Switchwire\n"
-    "Custom/Other\n"
-    "Unknown";
-
 // ============================================================================
 // Forward Declarations
 // ============================================================================
 
 static void on_printer_name_changed(lv_event_t* e);
 static void on_printer_type_changed(lv_event_t* e);
+
+// ============================================================================
+// Auto-Detection Infrastructure (Placeholder for Phase 3)
+// ============================================================================
+
+/**
+ * @brief Printer auto-detection hint (confidence + reasoning)
+ *
+ * Future integration point for printer auto-detection heuristics.
+ * Phase 3 will query MoonrakerClient for discovered hardware and
+ * use pattern matching to suggest printer type.
+ */
+struct PrinterDetectionHint {
+    int type_index;      // Index into PrinterTypes::PRINTER_TYPES_ROLLER
+    int confidence;      // 0-100 (≥70 = auto-select, <70 = suggest)
+    std::string reason;  // Human-readable detection reasoning
+};
+
+/**
+ * @brief Detect printer type from hardware discovery data (placeholder)
+ *
+ * TODO: Phase 3 - Integrate with MoonrakerClient to analyze:
+ * - printer.info hostname (e.g., "voron", "k1", "prusa")
+ * - Object signatures (quad_gantry_level, z_tilt, multi-MCU)
+ * - Build volume from configfile.settings
+ * - Kinematics type (CoreXY, Cartesian, Delta)
+ * - MCU board patterns
+ *
+ * @return Detection hint with confidence and reasoning
+ */
+static PrinterDetectionHint detect_printer_type() {
+    // Placeholder: Always return "Unknown" with 0 confidence
+    // Phase 3: Replace with real heuristic analysis
+    return {
+        PrinterTypes::DEFAULT_PRINTER_TYPE_INDEX,
+        0,
+        "Auto-detection not yet implemented"
+    };
+}
 
 // ============================================================================
 // Subject Initialization
@@ -100,11 +109,11 @@ void ui_wizard_printer_identify_init_subjects() {
     // Load existing values from config if available
     Config* config = Config::get_instance();
     std::string default_name = "";
-    int default_type = 32; // Default to "Unknown"
+    int default_type = PrinterTypes::DEFAULT_PRINTER_TYPE_INDEX;
 
     try {
         default_name = config->get<std::string>("/printer/name", "");
-        default_type = config->get<int>("/printer/type_index", 32);
+        default_type = config->get<int>("/printer/type_index", PrinterTypes::DEFAULT_PRINTER_TYPE_INDEX);
         spdlog::debug("[Wizard Printer] Loaded from config: name='{}', type_index={}",
                       default_name, default_type);
     } catch (const std::exception& e) {
@@ -120,8 +129,18 @@ void ui_wizard_printer_identify_init_subjects() {
 
     lv_subject_init_int(&printer_type_selected, default_type);
 
+    // Run auto-detection (placeholder for Phase 3)
+    PrinterDetectionHint hint = detect_printer_type();
+    if (hint.confidence > 0) {
+        spdlog::info("[Wizard Printer] Auto-detection: {} (confidence: {}%)", hint.reason, hint.confidence);
+    } else {
+        spdlog::debug("[Wizard Printer] Auto-detection: {}", hint.reason);
+    }
+
+    // Initialize status message
     lv_subject_init_string(&printer_detection_status, printer_detection_status_buffer, nullptr,
                           sizeof(printer_detection_status_buffer),
+                          hint.confidence >= 70 ? hint.reason.c_str() :
                           "Enter printer details or wait for auto-detection");
 
     // Register globally for XML binding
@@ -129,10 +148,15 @@ void ui_wizard_printer_identify_init_subjects() {
     lv_xml_register_subject(nullptr, "printer_type_selected", &printer_type_selected);
     lv_xml_register_subject(nullptr, "printer_detection_status", &printer_detection_status);
 
-    // Reset validation state
-    printer_identify_validated = false;
+    // Initialize validation state and connection_test_passed based on loaded name
+    printer_identify_validated = (default_name.length() > 0);
 
-    spdlog::info("[Wizard Printer] Subjects initialized");
+    // Control Next button reactively: enable if name exists, disable if empty
+    int button_state = printer_identify_validated ? 1 : 0;
+    lv_subject_set_int(&connection_test_passed, button_state);
+
+    spdlog::info("[Wizard Printer] Subjects initialized (validation: {}, button_state: {})",
+                 printer_identify_validated ? "valid" : "invalid", button_state);
 }
 
 // ============================================================================
@@ -140,35 +164,56 @@ void ui_wizard_printer_identify_init_subjects() {
 // ============================================================================
 
 /**
- * @brief Handle printer name textarea changes
+ * @brief Handle printer name textarea changes with enhanced validation
+ *
+ * Validates input, trims whitespace, updates reactive button control.
  */
 static void on_printer_name_changed(lv_event_t* e) {
     lv_obj_t* ta = (lv_obj_t*)lv_event_get_target(e);
     const char* text = lv_textarea_get_text(ta);
 
-    spdlog::debug("[Wizard Printer] Name changed: '{}'", text);
+    // Trim leading/trailing whitespace for validation
+    std::string trimmed(text);
+    trimmed.erase(0, trimmed.find_first_not_of(" \t\n\r\f\v"));
+    trimmed.erase(trimmed.find_last_not_of(" \t\n\r\f\v") + 1);
 
-    // Update subject
+    // Log if trimming made a difference
+    if (trimmed != text) {
+        spdlog::debug("[Wizard Printer] Name changed (trimmed): '{}' -> '{}'", text, trimmed);
+    } else {
+        spdlog::debug("[Wizard Printer] Name changed: '{}'", text);
+    }
+
+    // Update subject with raw text (let user keep their spaces if they want)
     lv_subject_copy_string(&printer_name, text);
 
-    // Check validation
-    printer_identify_validated = (strlen(text) > 0);
+    // Validate trimmed length and check max size
+    const size_t max_length = sizeof(printer_name_buffer) - 1;  // 127
+    bool length_valid = (trimmed.length() > 0 && trimmed.length() <= max_length);
 
-    // Update status
+    // Update validation state
+    printer_identify_validated = length_valid;
+
+    // Update connection_test_passed reactively (controls Next button)
+    lv_subject_set_int(&connection_test_passed, printer_identify_validated ? 1 : 0);
+
+    // Update status message
     if (printer_identify_validated) {
         lv_subject_copy_string(&printer_detection_status, "✓ Printer name entered");
+    } else if (trimmed.length() > max_length) {
+        lv_subject_copy_string(&printer_detection_status, "⚠ Name too long (max 127 characters)");
     } else {
         lv_subject_copy_string(&printer_detection_status,
                               "Enter printer details or wait for auto-detection");
     }
 
-    // Save to config
+    // Save to config if valid
     if (printer_identify_validated) {
         Config* config = Config::get_instance();
         try {
-            config->set("/printer/name", std::string(text));
+            config->set("/printer/name", trimmed);  // Save trimmed version
             config->save();
-            spdlog::debug("[Wizard Printer] Saved printer name to config");
+            spdlog::info("[Wizard Printer] Saved printer name to config: '{}'", trimmed);
         } catch (const std::exception& e) {
             spdlog::error("[Wizard Printer] Failed to save config: {}", e.what());
         }
@@ -241,7 +286,7 @@ lv_obj_t* ui_wizard_printer_identify_create(lv_obj_t* parent) {
     // Find and set up the roller with printer types
     lv_obj_t* roller = lv_obj_find_by_name(printer_identify_screen_root, "printer_type_roller");
     if (roller) {
-        lv_roller_set_options(roller, printer_types, LV_ROLLER_MODE_NORMAL);
+        lv_roller_set_options(roller, PrinterTypes::PRINTER_TYPES_ROLLER, LV_ROLLER_MODE_NORMAL);
 
         // Set to the saved selection
         int selected = lv_subject_get_int(&printer_type_selected);
@@ -249,7 +294,7 @@ lv_obj_t* ui_wizard_printer_identify_create(lv_obj_t* parent) {
 
         // Attach change handler
         lv_obj_add_event_cb(roller, on_printer_type_changed, LV_EVENT_VALUE_CHANGED, nullptr);
-        spdlog::debug("[Wizard Printer] Roller configured with {} options", 33);
+        spdlog::debug("[Wizard Printer] Roller configured with {} options", PrinterTypes::PRINTER_TYPE_COUNT);
     } else {
         spdlog::warn("[Wizard Printer] Roller not found in XML");
     }
@@ -278,6 +323,9 @@ void ui_wizard_printer_identify_cleanup() {
 
     // Reset UI references
     printer_identify_screen_root = nullptr;
+
+    // Reset connection_test_passed to enabled (1) for other wizard steps
+    lv_subject_set_int(&connection_test_passed, 1);
 
     spdlog::info("[Wizard Printer] Cleanup complete");
 }
