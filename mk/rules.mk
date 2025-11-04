@@ -132,10 +132,10 @@ build:
 	echo "$(GREEN)$(BOLD)✓ Build completed in $${DURATION}s$(RESET)"
 
 # Demo widgets target
-demo: $(LVGL_OBJS) $(LVGL_DEMO_OBJS)
+demo: $(LVGL_OBJS) $(THORVG_OBJS) $(LVGL_DEMO_OBJS)
 	$(ECHO) "$(MAGENTA)[LD]$(RESET) lvgl-demo"
-	$(Q)$(CXX) -o $(BIN_DIR)/lvgl-demo demo-widgets.cpp $(LVGL_OBJS) $(LVGL_DEMO_OBJS) \
-	  $(LVGL_INC) $(SDL2_CFLAGS) $(CXXFLAGS) $(SDL2_LIBS)
+	$(Q)$(CXX) -o $(BIN_DIR)/lvgl-demo $(SRC_DIR)/lvgl-demo/main.cpp $(LVGL_OBJS) $(THORVG_OBJS) $(LVGL_DEMO_OBJS) \
+	  $(INCLUDES) $(CXXFLAGS) $(SDL2_LIBS)
 	$(ECHO) "$(GREEN)✓ Demo ready:$(RESET) ./build/bin/lvgl-demo"
 	$(ECHO) ""
 	$(ECHO) "$(CYAN)Run with:$(RESET) $(YELLOW)./build/bin/lvgl-demo$(RESET)"
