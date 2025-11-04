@@ -109,14 +109,35 @@ void ui_keyboard_register_textarea(lv_obj_t* textarea)
 
     spdlog::debug("[Keyboard] Registering textarea: {}", (void*)textarea);
 
-    // Add event handler to catch focus/defocus events
-    lv_obj_add_event_cb(textarea, textarea_focus_event_cb, LV_EVENT_ALL, NULL);
+    // Add event handler to catch focus/defocus events (not ALL events to avoid cleanup issues)
+    lv_obj_add_event_cb(textarea, textarea_focus_event_cb, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(textarea, textarea_focus_event_cb, LV_EVENT_DEFOCUSED, NULL);
+
+    // Add textarea to default input group for physical keyboard input
+    lv_group_t* default_group = lv_group_get_default();
+    if (default_group) {
+        lv_group_add_obj(default_group, textarea);
+        spdlog::debug("[Keyboard] Added textarea to input group for physical keyboard");
+    }
 }
 
 void ui_keyboard_show(lv_obj_t* textarea)
 {
     if (g_keyboard == NULL) {
         spdlog::error("[Keyboard] Not initialized - call ui_keyboard_init() first");
+        return;
+    }
+
+    // Safety: if keyboard's parent is NULL, we're in cleanup - bail out
+    if (lv_obj_get_parent(g_keyboard) == NULL) {
+        spdlog::debug("[Keyboard] Skipping show - keyboard is being cleaned up");
+        return;
+    }
+
+    // Safety: check if screen is valid before layout operations
+    lv_obj_t* screen = lv_screen_active();
+    if (screen == NULL || lv_obj_get_parent(screen) == NULL) {
+        spdlog::debug("[Keyboard] Skipping show - screen is being cleaned up");
         return;
     }
 
@@ -129,7 +150,7 @@ void ui_keyboard_show(lv_obj_t* textarea)
     lv_obj_remove_flag(g_keyboard, LV_OBJ_FLAG_HIDDEN);
 
     // Force layout update to get accurate positions
-    lv_obj_update_layout(lv_screen_active());
+    lv_obj_update_layout(screen);
 
     if (!textarea) {
         return;
@@ -188,6 +209,19 @@ void ui_keyboard_hide()
         return;
     }
 
+    // Safety: if keyboard's parent is NULL, we're in cleanup - bail out
+    if (lv_obj_get_parent(g_keyboard) == NULL) {
+        spdlog::debug("[Keyboard] Skipping hide - keyboard is being cleaned up");
+        return;
+    }
+
+    // Safety: check if screen is valid before layout operations
+    lv_obj_t* screen = lv_screen_active();
+    if (screen == NULL || lv_obj_get_parent(screen) == NULL) {
+        spdlog::debug("[Keyboard] Skipping hide - screen is being cleaned up");
+        return;
+    }
+
     spdlog::debug("[Keyboard] Hiding keyboard");
 
     // Clear keyboard assignment
@@ -197,7 +231,6 @@ void ui_keyboard_hide()
     lv_obj_add_flag(g_keyboard, LV_OBJ_FLAG_HIDDEN);
 
     // Move all screen children (except keyboard) back to y=0 with animation
-    lv_obj_t* screen = lv_screen_active();
     uint32_t child_count = lv_obj_get_child_count(screen);
 
     spdlog::debug("[Keyboard] Restoring screen children to y=0");

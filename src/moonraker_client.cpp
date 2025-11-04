@@ -96,26 +96,41 @@ int MoonrakerClient::connect(const char* url,
     if (j.contains("id")) {
       uint32_t id = j["id"].get<uint32_t>();
 
-      std::lock_guard<std::mutex> lock(requests_mutex_);
-      auto it = pending_requests_.find(id);
-      if (it != pending_requests_.end()) {
-        PendingRequest& request = it->second;
+      // Copy callbacks out before invoking to avoid deadlock
+      std::function<void(json&)> success_cb;
+      std::function<void(const MoonrakerError&)> error_cb;
+      std::string method_name;
+      bool has_error = false;
+      MoonrakerError error;
 
-        // Check for JSON-RPC error
-        if (j.contains("error")) {
-          MoonrakerError error = MoonrakerError::from_json_rpc(j["error"], request.method);
-          spdlog::error("Request {} failed: {}", request.method, error.message);
+      {
+        std::lock_guard<std::mutex> lock(requests_mutex_);
+        auto it = pending_requests_.find(id);
+        if (it != pending_requests_.end()) {
+          PendingRequest& request = it->second;
+          method_name = request.method;
 
-          // Invoke error callback if set
-          if (request.error_callback) {
-            request.error_callback(error);
+          // Check for JSON-RPC error
+          if (j.contains("error")) {
+            has_error = true;
+            error = MoonrakerError::from_json_rpc(j["error"], request.method);
+            error_cb = request.error_callback;
+          } else {
+            success_cb = request.success_callback;
           }
-        } else {
-          // Success - invoke success callback
-          request.success_callback(j);
-        }
 
-        pending_requests_.erase(it);  // Remove after execution
+          pending_requests_.erase(it);  // Remove before invoking callbacks
+        }
+      }  // Lock released here
+
+      // Invoke callbacks outside the lock to avoid deadlock
+      if (has_error) {
+        spdlog::error("Request {} failed: {}", method_name, error.message);
+        if (error_cb) {
+          error_cb(error);
+        }
+      } else if (success_cb) {
+        success_cb(j);
       }
     }
 

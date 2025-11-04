@@ -595,6 +595,12 @@ static bool init_lvgl() {
     lv_indev_t* indev_keyboard = lv_sdl_keyboard_create();
     if (indev_keyboard) {
         spdlog::info("Physical keyboard input enabled");
+
+        // Create input group for keyboard navigation and text input
+        lv_group_t* input_group = lv_group_create();
+        lv_group_set_default(input_group);
+        lv_indev_set_group(indev_keyboard, input_group);
+        spdlog::debug("Created default input group for keyboard");
     }
 
     spdlog::info("LVGL initialized: {}x{}", SCREEN_WIDTH, SCREEN_HEIGHT);
