@@ -1,0 +1,67 @@
+# <type>(<scope>): <subject>
+#
+# Type: feat, fix, docs, style, refactor, test, chore, perf
+# Scope: ui, wizard, backend, build, theme, docs, wifi, moonraker
+#
+# Subject: Imperative mood, lowercase, no period (50 chars max)
+# Example: "add printer identification screen"
+#
+# ────────────────────────────────────────────────────────────────
+#
+# Body: Explain WHAT and WHY (not HOW). Wrap at 72 characters.
+# - Use bullet points for multiple changes
+# - Reference issues/tickets: Refs #123
+# - Explain motivation and context
+#
+# ────────────────────────────────────────────────────────────────
+#
+# Footer: Breaking changes, issue references
+# BREAKING CHANGE: (if applicable, explain what breaks)
+# Closes #123
+# Refs #456
+#
+# ────────────────────────────────────────────────────────────────
+#
+# Examples:
+#
+# feat(wizard): add printer identification screen
+#
+# Implements step 3 of the wizard flow allowing users to name their
+# printer. Uses text input with validation for non-empty names.
+#
+# Refs #234
+#
+# ────────────────────────
+#
+# fix(wifi): resolve thread blocking UI updates
+#
+# Changed connect_thread_.join() to detach() to prevent blocking the
+# LVGL main thread during WiFi connection attempts. This was causing
+# button state updates to be delayed by 2-3 seconds.
+#
+# Button states now update immediately on click as expected.
+#
+# Refs #156
+#
+# ────────────────────────
+#
+# docs(architecture): compress CLAUDE.md using table format
+#
+# Reduced from 809 to 211 lines (74% reduction) by:
+# - Converting Critical Rules to table (100→5 lines)
+# - Converting Critical Patterns to table (160→12 lines)
+# - Condensing Architecture section with link to ARCHITECTURE.md
+# - Adding lazy-load instructions for large docs
+#
+# Estimated token savings: ~4,100 tokens per session startup
+#
+# ────────────────────────────────────────────────────────────────
+#
+# Commit Template Usage:
+# 1. Enable: git config commit.template .gitmessage
+# 2. Commit: git commit (editor opens with this template)
+# 3. Fill in <type>, <scope>, <subject>, and body
+# 4. Delete comments (lines starting with #)
+# 5. Save and close editor
+#
+# Reference: CONTRIBUTING.md "Git Commit Standards"

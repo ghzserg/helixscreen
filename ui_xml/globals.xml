@@ -18,6 +18,21 @@
   along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
 -->
 <!-- Global dimensions and constants (colors/fonts handled by LVGL theme) -->
+
+<!--
+  ⚠️ CRITICAL: Do NOT add <subjects> declarations to this file!
+
+  Subjects MUST be initialized in C++ BEFORE XML is created. If subjects are
+  declared here, they will be registered with empty/default values.
+
+  Correct initialization order:
+    1. lv_xml_register_component_from_file("globals.xml")
+    2. ui_nav_init() / ui_panel_*_init_subjects()  ← Initialize subjects in C++
+    3. lv_xml_create(screen, "app_layout", NULL)   ← NOW create XML
+
+  See: ARCHITECTURE.md "Subject Initialization Order"
+       CLAUDE.md "Critical Patterns #1"
+-->
 <component>
 <consts>
 	<!-- UI dimensions -->

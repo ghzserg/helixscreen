@@ -3,6 +3,20 @@
 #
 # HelixScreen UI Prototype - Main Makefile
 # LVGL 9 + SDL2 simulator with modular build system
+#
+# ⚠️ CRITICAL: Always use 'make' or 'make -j' - NEVER invoke gcc/g++ directly!
+# The build system handles:
+#   - Dependency management (libhv, lvgl, SDL2)
+#   - Platform detection (macOS vs Linux)
+#   - Parallel builds (-j auto-detects cores)
+#   - Patch application for multi-display support
+#
+# Common commands:
+#   make -j       # Parallel incremental build (daily development)
+#   make build    # Clean build from scratch
+#   make help     # Show all available targets
+#
+# See: DEVELOPMENT.md for complete build instructions
 
 # Use bash for all shell commands (needed for [[ ]] and read -n)
 SHELL := /bin/bash

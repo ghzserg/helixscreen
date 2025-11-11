@@ -1,0 +1,48 @@
+# .claudeignore - Exclude files from Claude Code context
+# This significantly reduces token usage by excluding noise
+
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+
+# Dependencies (node_modules contains 1,442+ lines of READMEs)
+node_modules/
+libhv/docs/
+
+# Historical/archived documentation
+docs/archive/
+docs/*_TEST_PLAN.md
+docs/WIFI_WPA_SUPPLICANT_MIGRATION.md
+
+# Large reference docs (loaded on-demand via lazy-load strategy)
+docs/MOONRAKER_SECURITY_REVIEW.md
+docs/LVGL9_XML_ATTRIBUTES_REFERENCE.md
+docs/LVGL9_STYLE_ELEMENTS_REFERENCE.md
+
+# IDE and temporary files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+
+# Screenshots (generated artifacts)
+*.bmp
+*.png
+screenshots/
+
+# Compiled Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Submodule documentation (libhv, lvgl)
+lvgl/docs/
+lvgl/examples/

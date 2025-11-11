@@ -686,7 +686,12 @@
     /*0: Light mode; 1: Dark mode*/
     #define LV_THEME_DEFAULT_DARK 0
 
-    /*1: Enable grow on press*/
+    /*1: Enable grow on press
+     * ⚠️ CRITICAL: Disabled to prevent button radius morphing artifact.
+     * When enabled, buttons grow 3px on press which visually distorts the 8px border radius.
+     * See: HANDOFF.md Pattern #7
+     * Do NOT re-enable without testing all button styles in both themes.
+     */
     #define LV_THEME_DEFAULT_GROW 0
 
     /*Default transition time in [ms]*/
