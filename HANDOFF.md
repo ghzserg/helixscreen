@@ -1,139 +1,176 @@
 # Session Handoff Document
 
 **Last Updated:** 2025-11-13
-**Current Focus:** Bed Mesh Phases 1-3 complete, ready for Phase 4 (Moonraker Integration)
+**Current Focus:** Bed Mesh Visualization - Core rendering works, UI features missing
 
 ---
 
 ## ✅ CURRENT STATE
 
-### Recently Completed
+### Just Completed (This Session)
+
+**Bed Mesh Widget Refactoring & Bounds Fix:**
+- ✅ Refactored bed_mesh into proper LVGL widget (ui_bed_mesh.h/cpp)
+- ✅ Widget encapsulates: buffer allocation, renderer lifecycle, rotation state
+- ✅ Added reactive XML bindings for mesh info labels (dimensions, Z range)
+- ✅ Fixed critical bounds checking bug (coordinates out of range errors)
+- ✅ Triangle fill functions now clip properly: 0 <= x < 600, 0 <= y < 400
+- ✅ Added layout update call (lv_obj_update_layout) before rendering
+- ✅ Panel loads successfully, gradient mesh renders correctly
+- ✅ Moonraker integration complete (get_active_bed_mesh, reactive subjects)
+
+**Commits:**
+- `d3a5f82` - refactor(bed_mesh): encapsulate rendering logic in custom widget
+- `2ecbd0a` - fix(bed_mesh): add comprehensive bounds checking to triangle renderer
+
+### Recently Completed (Previous Session)
 
 1. **Bed Mesh Phase 1: Settings Panel Infrastructure** - ✅ COMPLETE
-   - Created settings_panel.xml with 6-card launcher grid (Network, Display, Bed Mesh, Z-Offset, Printer Info, About)
-   - Implemented ui_panel_settings.h/cpp with card click handlers
-   - Fixed main.cpp to support `-p settings` command-line flag activation
-   - Added ui_nav_set_active() call for initial panel navigation
-   - Only "Bed Mesh" card is active (clickable), others are "Coming soon" placeholders
+   - Created settings_panel.xml with 6-card launcher grid
+   - Only "Bed Mesh" card is active, opens visualization panel
 
 2. **Bed Mesh Phase 2: Core 3D Rendering Engine** - ✅ COMPLETE
-   - Comprehensive analysis of GuppyScreen bed mesh renderer (2,250 lines) documented in docs/GUPPYSCREEN_BEDMESH_ANALYSIS.md
-   - Created bed_mesh_renderer.h/cpp (768 lines) - C API with C++ implementation
-   - Perspective projection with Euler angle rotation (X-axis tilt, Z-axis spin)
-   - Scanline triangle rasterization (solid + gradient modes)
-   - Painter's algorithm depth sorting (descending order by average quad depth)
-   - Heat-map color mapping (purple→blue→cyan→yellow→red, 0.8 compression factor)
-   - Fixed LVGL 9.4 API compatibility (lv_canvas_set_px only, no lv_canvas_draw_rect)
-   - 2.6MB compiled object file, zero warnings
+   - Comprehensive bed_mesh_renderer.h/cpp (768 lines, C API)
+   - Perspective projection, triangle rasterization, depth sorting
+   - Heat-map color mapping (purple→blue→cyan→yellow→red)
+   - Analysis documented in docs/GUPPYSCREEN_BEDMESH_ANALYSIS.md
 
-3. **Bed Mesh Phase 3: Visualization UI** - ✅ COMPLETE
-   - Created bed_mesh_panel.xml - full-screen overlay with canvas (600×400 RGB888)
-   - Interactive rotation sliders (X: -85° to -10° tilt, Z: 0° to 360° spin)
-   - Header bar with back button, title, mesh info label
-   - Implemented ui_panel_bed_mesh.h/cpp (364 lines)
-   - Canvas buffer: 720KB static allocation
-   - Event handlers for sliders update labels + trigger redraw
-   - Test mesh data: 10×10 dome shape (0.0-0.5mm Z range)
-   - Back button wired to ui_nav_go_back()
-   - Resource cleanup on panel deletion
-   - Settings → Bed Mesh card opens visualization panel
-   - Real-time canvas updates on rotation changes
+3. **Bed Mesh Phase 3: Basic Visualization** - ✅ COMPLETE
+   - bed_mesh_panel.xml created (overlay panel structure)
+   - Canvas (600×400 RGB888) renders gradient mesh correctly
+   - Test mesh: 7×7 dome shape (mock backend)
+   - Back button works, resource cleanup on panel deletion
 
-### Completed Earlier
-
-4. **WiFi Password Modal** - ✅ COMPLETE
-   - Modal appears and functions correctly
-   - Connect button disables immediately on click (50% opacity)
-   - Fixed button radius morphing on press (disabled LV_THEME_DEFAULT_GROW in lv_conf.h)
-   - Connected network highlighted with primary color border + distinct background
-   - Status text reads from XML constants ("WiFi Enabled", "Connecting to...", etc.)
-   - Password validation working (empty password → error, wrong password → AUTH_FAILED)
-   - Fixed critical blocking bug in wifi_backend_mock.cpp (thread.join() → thread.detach())
-
-2. **Global Disabled State Styling** - ✅ COMPLETE
-   - All widgets automatically dim to 50% opacity when disabled
-   - Implemented in theme system (helix_theme.c)
-   - No per-widget styling needed - applies to buttons, inputs, all interactive elements
-
-3. **Custom HelixScreen Theme** - ✅ COMPLETE
-   - Implemented custom LVGL wrapper theme (helix_theme.c) that extends default theme
-   - Input widgets (textarea, dropdown, roller, spinbox) get computed background colors automatically
-   - Dark mode: input backgrounds 22-27 RGB units lighter than cards (#35363A vs #1F1F1F)
-   - Light mode: input backgrounds 22-27 RGB units darker than cards (#DADCDE vs #F0F3F9)
-   - Removed 273 lines of fragile LVGL private API patching from ui_theme.cpp
-   - Uses LVGL's public theme API, much more maintainable across LVGL versions
-
-4. **Phase 1: Hardware Discovery Trigger** - ✅ COMPLETE
-   - Wizard triggers `discover_printer()` after successful connection
-   - Connection stays alive for hardware selection steps 4-7
-
-5. **Wizard Implementation** - ✅ COMPLETE
-   - All 8 wizard steps implemented (WiFi, Connection, Printer ID, Hardware Selection x4, Summary)
-   - Dynamic dropdown population from MoonrakerClient hardware discovery
-   - Hardware filtering: bed (by "bed"), hotend (by "extruder"/"hotend"), fans (separated by type), LEDs (all)
-   - Reactive Next button control via connection_test_passed subject
-   - Virtual keyboard integration with auto-show on textarea focus
-   - Config persistence for all wizard fields
-   - Theme color system: added `error_color` to globals.xml
-   - Fixed double-free segfault in bed select screen cleanup
-   - MoonrakerClientMock with 7 printer profiles for testing
+4. **Bed Mesh Phase 4: Moonraker Integration** - ✅ COMPLETE
+   - Added BedMeshProfile struct to moonraker_client.h
+   - Implemented parse_bed_mesh() for WebSocket updates
+   - Added reactive subjects: bed_mesh_dimensions, bed_mesh_z_range
+   - Mock backend generates 7×7 synthetic dome mesh
+   - Real-time updates via notify_status_update callback
 
 ### What Works Now
 
-- ✅ Complete wizard flow (WiFi → Connection → Printer ID → Hardware Selection → Summary)
-- ✅ Virtual keyboard with screen slide animation and auto-show on focus
-- ✅ Mock backend testing (`--test` flag)
-- ✅ Config persistence for all wizard fields
-- ✅ Theme system with semantic color constants (error_color, primary_color, etc.)
-- ✅ Settings panel with 6-card launcher grid
-- ✅ Bed mesh 3D visualization with interactive rotation controls
-- ✅ Test mesh rendering (10×10 dome shape with heat-map colors)
+- ✅ Settings panel → Bed Mesh card → Visualization panel
+- ✅ Gradient mesh rendering (heat-map colors)
+- ✅ Moonraker integration (fetches real bed mesh data)
+- ✅ Reactive subjects update mesh info
+- ✅ Widget encapsulation (proper lifecycle management)
+- ✅ Bounds checking (no coordinate errors)
 
-### What Needs Work - Phase 4: Moonraker Integration
+### 🚨 What's MISSING (Critical UI Features)
 
-- ❌ Fetch actual bed mesh data from Moonraker API
-- ❌ Display mesh data from printer state (bed_mesh object)
-- ❌ Handle multiple mesh profiles (default, adaptive, calibration)
-- ❌ Support mesh profile switching in UI
-- ❌ Real-time mesh updates when printer performs BED_MESH_CALIBRATE
-- ❌ Display mesh metadata (min/max Z, probe count, mesh variance)
+**Only the gradient mesh is visible. Everything else is missing:**
+
+❌ **Grid Lines** - Not implemented
+   - Reference grid over mesh surface (XY plane)
+   - Should show mesh cell boundaries
+
+❌ **Axis Labels** - Not implemented
+   - X/Y/Z axis indicators
+   - Dimension labels (bed size, probe spacing)
+
+❌ **Info Labels** - Partially implemented
+   - XML has `mesh_dimensions_label` and `mesh_z_range_label` with reactive bindings
+   - **NEED TO VERIFY:** Are they actually visible? Correct positioning?
+   - May need styling, positioning, or visibility fixes
+
+❌ **Rotation Sliders** - Partially implemented
+   - XML has `rotation_x_slider` and `rotation_z_slider`
+   - XML has `rotation_x_label` and `rotation_y_label`
+   - Wired to C++ callbacks (rotation_x_slider_cb, rotation_z_slider_cb)
+   - **NEED TO VERIFY:** Are they visible and functional?
+   - May need default values, styling, or layout fixes
+
+❌ **Mesh Profile Selector** - Not implemented
+   - Dropdown to switch between mesh profiles (default, adaptive, etc.)
+   - Should show available profiles from Moonraker
+
+❌ **Mesh Statistics** - Not implemented
+   - Min/Max Z values (implemented in backend, not displayed)
+   - Mesh variance/deviation
+   - Probe count/density
 
 ---
 
 ## 🚀 NEXT PRIORITIES
 
-### 1. Phase 4: Moonraker Bed Mesh Integration
-**Goal:** Replace test mesh data with real bed mesh from Moonraker API
+### 1. **Complete Bed Mesh UI Features** (HIGH PRIORITY)
+
+**Goal:** Match feature parity with GuppyScreen bed mesh visualization
 
 **Tasks:**
-1. **Moonraker API Integration**
-   - Add bed mesh subscription to MoonrakerClient
-   - Implement `get_bed_mesh()` API to fetch mesh data
-   - Parse mesh structure: `probed_matrix`, `mesh_min`, `mesh_max`, `profiles`
 
-2. **Reactive Data Flow**
-   - Create bed mesh subjects for reactive updates
-   - Wire subjects to mesh data changes from printer
-   - Handle mesh profile changes (default, adaptive, etc.)
+1. **Verify & Fix Existing UI Elements**
+   - [ ] Check if rotation sliders are visible and functional
+   - [ ] Check if info labels (dimensions, Z range) are visible
+   - [ ] Fix positioning/styling if elements are off-screen or hidden
+   - [ ] Test rotation slider interaction (does mesh rotate?)
 
-3. **UI Updates**
-   - Add profile selector dropdown to bed_mesh_panel.xml
-   - Display mesh metadata (min/max Z, probe count, variance)
-   - Show "No mesh data" placeholder when mesh not available
-   - Update mesh info label with real dimensions and range
+2. **Implement Grid Lines** (in renderer)
+   - [ ] Add grid rendering to bed_mesh_renderer.cpp
+   - [ ] Draw XY plane grid at Z=0 or mesh_min_z
+   - [ ] Grid spacing based on mesh dimensions
+   - [ ] Grid lines in contrasting color (white/light gray)
 
-4. **Testing**
-   - Test with real printer running BED_MESH_CALIBRATE
-   - Verify mesh updates in real-time during calibration
-   - Test profile switching
-   - Test mock backend with synthetic mesh data
+3. **Implement Axis Labels** (in renderer or XML)
+   - [ ] Add X/Y/Z axis indicators
+   - [ ] Label bed dimensions (min/max X, min/max Y)
+   - [ ] Show probe spacing if available
 
-**Reference:** See docs/GUPPYSCREEN_BEDMESH_ANALYSIS.md for Moonraker API patterns
+4. **Add Mesh Profile Selector** (XML + C++)
+   - [ ] Add dropdown to bed_mesh_panel.xml
+   - [ ] Populate from client->get_bed_mesh_profiles()
+   - [ ] Wire onChange to load selected profile
+   - [ ] Show active profile name
 
-### 2. Keyboard Panel Integration (Nice-to-Have)
-- Complete keyboard panel implementation started in recent commits
-- Add keyboard panel to main navigation
-- Test iOS-style keyboard with long-press alternatives
+5. **Add Mesh Statistics Display** (XML + reactive bindings)
+   - [ ] Min/Max Z (already computed, need display)
+   - [ ] Mesh variance/deviation
+   - [ ] Probe count (already available)
+   - [ ] Use reactive subjects for auto-update
+
+**Reference Implementation:**
+- GuppyScreen: `panels/bed_mesh_panel.py` (grid, axes, labels)
+- Existing: `bed_mesh_renderer.cpp` (add grid rendering here)
+- Existing: `bed_mesh_panel.xml` (add missing UI elements here)
+
+### 2. **Grid Rendering Implementation Details**
+
+**Where:** Add to `bed_mesh_renderer.cpp` after mesh rendering
+
+**Approach:**
+```cpp
+// After rendering quads, draw grid lines
+if (show_grid) {
+    draw_grid_lines(canvas, mesh, canvas_width, canvas_height, view_state);
+}
+```
+
+**Grid should:**
+- Draw at Z=0 plane or slightly below mesh
+- Use mesh cell boundaries (rows-1 × cols-1 cells)
+- Project to screen space using same projection as mesh
+- Draw with lv_canvas_draw_line() or pixel-by-pixel
+
+### 3. **UI Elements to Add in XML**
+
+**bed_mesh_panel.xml needs:**
+```xml
+<!-- Mesh profile selector (if multiple profiles available) -->
+<lv_dropdown name="mesh_profile_selector" bind_text="bed_mesh_profile_name"/>
+
+<!-- Mesh statistics card -->
+<lv_obj> <!-- stats container -->
+  <lv_label bind_text="bed_mesh_min_z"/>
+  <lv_label bind_text="bed_mesh_max_z"/>
+  <lv_label bind_text="bed_mesh_variance"/>
+</lv_obj>
+```
+
+**C++ subjects to add:**
+- `bed_mesh_min_z` (already computed, need subject)
+- `bed_mesh_max_z` (already computed, need subject)
+- `bed_mesh_variance`
 
 ---
 
@@ -157,151 +194,115 @@
 </ui_card>
 ```
 
-**Why:** LV_SIZE_CONTENT doesn't work reliably when child elements are themselves flex containers or have complex layouts. Use `flex_grow` or fixed heights instead.
+### Pattern #1: Bed Mesh Widget API
 
-### Pattern #1: Thread Management - NEVER Block UI Thread
-
-**CRITICAL:** NEVER use blocking operations like `thread.join()` in code paths triggered by UI events.
+**Custom LVGL widget for bed mesh canvas:**
 
 ```cpp
-// ❌ WRONG - Blocks LVGL main thread for 2-3 seconds
-if (connect_thread_.joinable()) {
-    connect_thread_.join();  // UI FREEZES HERE
-}
+#include "ui_bed_mesh.h"
 
-// ✅ CORRECT - Non-blocking cleanup
-connect_active_ = false;  // Signal thread to exit
-if (connect_thread_.joinable()) {
-    connect_thread_.detach();  // Let thread finish on its own
-}
+// Set mesh data (triggers automatic redraw)
+std::vector<const float*> row_pointers;
+// ... populate row_pointers ...
+ui_bed_mesh_set_data(canvas, row_pointers.data(), rows, cols);
+
+// Update rotation (triggers automatic redraw)
+ui_bed_mesh_set_rotation(canvas, tilt_angle, spin_angle);
+
+// Force redraw
+ui_bed_mesh_redraw(canvas);
 ```
 
-**Why:** Blocking the LVGL main thread prevents all UI updates (including immediate visual feedback like button states). Use detach() or async patterns instead.
+**Widget automatically manages:**
+- Canvas buffer allocation (600×400 RGB888 = 720KB)
+- Renderer lifecycle (create on init, destroy on delete)
+- Layout updates (calls lv_obj_update_layout before render)
+- Bounds checking (clips all coordinates to canvas)
 
-**Symptoms of blocking:**
-- UI changes delayed by seconds
-- Direct style manipulation (`lv_obj_set_style_*`) also delayed
-- Button states don't update until blocking call completes
-
-### Pattern #2: Global Disabled State Styling
-
-All widgets automatically get 50% opacity when disabled via theme system. No per-widget styling needed.
+### Pattern #2: Reactive Subjects for Mesh Data
 
 ```cpp
-// Enable/disable any widget
-lv_obj_add_state(widget, LV_STATE_DISABLED);    // Dims to 50% automatically
-lv_obj_remove_state(widget, LV_STATE_DISABLED); // Restores full opacity
+// Initialize subjects
+static lv_subject_t bed_mesh_dimensions;
+static char dimensions_buf[64] = "No mesh data";
+lv_subject_init_string(&bed_mesh_dimensions, dimensions_buf,
+                       prev_buf, sizeof(dimensions_buf), "No mesh data");
+
+// Update when mesh changes
+snprintf(dimensions_buf, sizeof(dimensions_buf), "%dx%d points", rows, cols);
+lv_subject_copy_string(&bed_mesh_dimensions, dimensions_buf);
 ```
-
-**Implementation:** helix_theme.c applies disabled_style globally to all objects for LV_STATE_DISABLED.
-
-### Pattern #3: LVGL XML String Constants
-
-Use `<str>` tags for C++-accessible string constants, NOT `<enumdef>`.
 
 ```xml
-<!-- ✅ CORRECT - String constants -->
-<consts>
-  <str name="wifi_status.disabled" value="WiFi Disabled"/>
-  <str name="wifi_status.enabled" value="WiFi Enabled"/>
-  <str name="wifi_status.connecting" value="Connecting to "/>
-</consts>
+<!-- Bind label to subject -->
+<lv_label name="mesh_dimensions_label" bind_text="bed_mesh_dimensions"/>
 ```
 
-```cpp
-// Access via component scope
-lv_xml_component_scope_t* scope = lv_xml_component_get_scope("wizard_wifi_setup");
-const char* text = lv_xml_get_const(scope, "wifi_status.enabled");
-// Returns: "WiFi Enabled"
-```
-
-**Why:** `<enumdef>` is ONLY for widget property types in `<api>` sections, not for string lookups.
-
-### Pattern #4: Dynamic Dropdown Population
-
-```cpp
-// Store items for event callback mapping
-static std::vector<std::string> hardware_items;
-
-// Build options (newline-separated), filter hardware, add "None"
-hardware_items.clear();
-std::string options_str;
-for (const auto& item : client->get_heaters()) {
-    if (item.find("bed") != std::string::npos) {
-        hardware_items.push_back(item);
-        if (!options_str.empty()) options_str += "\n";
-        options_str += item;
-    }
-}
-hardware_items.push_back("None");
-if (!options_str.empty()) options_str += "\n";
-options_str += "None";
-
-lv_dropdown_set_options(dropdown, options_str.c_str());
-
-// Event callback
-static void on_changed(lv_event_t* e) {
-    int idx = lv_dropdown_get_selected(dropdown);
-    if (idx < hardware_items.size()) config->set("/printer/component", hardware_items[idx]);
-}
-```
-
-### Pattern #5: Moonraker Client Access
+### Pattern #3: Moonraker Bed Mesh Access
 
 ```cpp
 #include "app_globals.h"
 #include "moonraker_client.h"
 
 MoonrakerClient* client = get_moonraker_client();
-if (!client) return;  // Graceful degradation
+if (!client || !client->has_bed_mesh()) {
+    // Fall back to test mesh
+    return;
+}
 
-const auto& heaters = client->get_heaters();
-const auto& sensors = client->get_sensors();
-const auto& fans = client->get_fans();
-const auto& leds = client->get_leds();
+const auto& mesh = client->get_active_bed_mesh();
+// mesh.probed_matrix - 2D vector<vector<float>>
+// mesh.x_count, mesh.y_count - dimensions
+// mesh.mesh_min[2], mesh.mesh_max[2] - bounds
+// mesh.name - profile name
+
+const auto& profiles = client->get_bed_mesh_profiles();
+// vector<string> of available profile names
 ```
 
-### Pattern #6: Reactive Button Control via Subjects
+### Pattern #4: Thread Management - NEVER Block UI Thread
 
-Control button state (enabled/disabled, styled) reactively using subjects and bind_flag_if_eq.
+**CRITICAL:** NEVER use blocking operations like `thread.join()` in code paths triggered by UI events.
 
 ```cpp
-// C++ - Initialize subject to control button state
-lv_subject_t connection_test_passed;
-lv_subject_init_int(&connection_test_passed, 0);  // 0 = disabled
+// ❌ WRONG - Blocks LVGL main thread
+if (connect_thread_.joinable()) {
+    connect_thread_.join();  // UI FREEZES HERE
+}
+
+// ✅ CORRECT - Non-blocking cleanup
+connect_active_ = false;
+if (connect_thread_.joinable()) {
+    connect_thread_.detach();
+}
 ```
-
-```xml
-<!-- XML - Bind button clickable flag and style to subject -->
-<lv_button name="wizard_next_button">
-  <!-- Disable clickable when connection_test_passed == 0 -->
-  <lv_obj-bind_flag_if_eq subject="connection_test_passed" flag="clickable" ref_value="0" negate="true"/>
-  <!-- Apply disabled style when connection_test_passed == 0 -->
-  <lv_obj-bind_flag_if_eq subject="connection_test_passed" flag="user_1" ref_value="0"/>
-</lv_button>
-
-<!-- Define disabled style -->
-<lv_style selector="LV_STATE_USER_1" style_opa="128"/>  <!-- 50% opacity -->
-```
-
-```cpp
-// C++ - Update subject to enable button
-lv_subject_set_int(&connection_test_passed, 1);  // Button becomes enabled
-```
-
-**Why:** Fully reactive UI - no manual button state management. Button automatically updates when subject changes.
-
-### Pattern #7: Button Radius Morphing Fix
-
-Fixed 8px radius on buttons appears to morph when `LV_THEME_DEFAULT_GROW=1` causes 3px width/height transform on press. Disable in lv_conf.h:690 to prevent visual artifact while preserving other animations.
 
 ---
 
 ## 📚 Key Documentation
 
-- **Bed Mesh Analysis:** `docs/GUPPYSCREEN_BEDMESH_ANALYSIS.md` - Complete GuppyScreen renderer analysis (829 lines)
-- **Implementation Patterns:** `docs/BEDMESH_IMPLEMENTATION_PATTERNS.md` - Copy-paste code templates (515 lines)
-- **Renderer Index:** `docs/BEDMESH_RENDERER_INDEX.md` - API reference for bed_mesh_renderer.h/cpp
-- **Moonraker Integration:** Use `moonraker` skill for WebSocket/API work
+- **Bed Mesh Analysis:** `docs/GUPPYSCREEN_BEDMESH_ANALYSIS.md` - GuppyScreen renderer analysis
+- **Implementation Patterns:** `docs/BEDMESH_IMPLEMENTATION_PATTERNS.md` - Code templates
+- **Renderer API:** `docs/BEDMESH_RENDERER_INDEX.md` - bed_mesh_renderer.h reference
+- **Widget API:** `include/ui_bed_mesh.h` - Custom widget public API
 
-**Next Session:** Implement Phase 4 (Moonraker Integration) - fetch real bed mesh data from printer
+---
+
+## 🐛 Known Issues
+
+1. **Missing UI Features** (see "What's MISSING" section above)
+   - Grid lines not implemented
+   - Axis labels not implemented
+   - Info labels may not be visible
+   - Rotation sliders may not be working
+   - Only gradient mesh currently visible
+
+2. **No Profile Switching**
+   - Can fetch multiple profiles from Moonraker
+   - No UI to switch between profiles
+
+3. **Limited Metadata Display**
+   - Min/Max Z computed but not shown prominently
+   - No variance/deviation statistics
+
+**Next Session:** Focus on completing missing UI features, starting with verifying/fixing rotation sliders and info labels, then implementing grid lines.
