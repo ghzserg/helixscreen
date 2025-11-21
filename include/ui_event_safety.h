@@ -102,4 +102,37 @@ inline void ui_event_safe_call(const char* callback_name, std::function<void()> 
         ui_event_safe_call(#callback_name, [&]() body); \
     }
 
+/**
+ * @brief Begin exception-safe event callback block
+ *
+ * Use this at the start of an event callback function to wrap the entire
+ * function body in exception handling. Must be paired with LVGL_SAFE_EVENT_CB_END().
+ *
+ * Usage:
+ * @code
+ * static void my_callback(lv_event_t* e) {
+ *     LVGL_SAFE_EVENT_CB_BEGIN("my_callback");
+ *     // ... callback code ...
+ *     LVGL_SAFE_EVENT_CB_END();
+ * }
+ * @endcode
+ *
+ * @param callback_name String name of the callback (for logging)
+ */
+#define LVGL_SAFE_EVENT_CB_BEGIN(callback_name) \
+    try {
+
+/**
+ * @brief End exception-safe event callback block
+ *
+ * Use this at the end of an event callback function to close the exception
+ * handling block started with LVGL_SAFE_EVENT_CB_BEGIN().
+ */
+#define LVGL_SAFE_EVENT_CB_END() \
+    } catch (const std::exception& ex) { \
+        spdlog::error("Exception in LVGL callback: {}", ex.what()); \
+    } catch (...) { \
+        spdlog::error("Unknown exception in LVGL callback"); \
+    }
+
 #endif // UI_EVENT_SAFETY_H

@@ -23,6 +23,7 @@
 
 #include "ui_wizard_connection.h"
 
+#include "ui_event_safety.h"
 #include "ui_keyboard.h" // For keyboard support
 #include "ui_wizard.h"   // For ui_wizard_set_next_button_enabled()
 
@@ -153,6 +154,7 @@ void ui_wizard_connection_init_subjects() {
  * and updates status based on result.
  */
 static void on_test_connection_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[Wizard Connection] on_test_connection_clicked");
     (void)e; // Unused parameter
 
     // Get values from subjects
@@ -330,6 +332,7 @@ static void on_test_connection_clicked(lv_event_t* e) {
         lv_subject_copy_string(&connection_status_text, "Error starting connection test");
         lv_subject_set_int(&connection_testing, 0);
     }
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
@@ -338,6 +341,7 @@ static void on_test_connection_clicked(lv_event_t* e) {
  * Clear status message when user starts typing
  */
 static void on_ip_input_changed(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[Wizard Connection] on_ip_input_changed");
     (void)e;
 
     // Clear any previous status message when user modifies input
@@ -350,6 +354,7 @@ static void on_ip_input_changed(lv_event_t* e) {
     // Clear validation state when input changes
     connection_validated = false;
     lv_subject_set_int(&connection_test_passed, 0); // Disable Next button via reactive binding
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
@@ -358,6 +363,7 @@ static void on_ip_input_changed(lv_event_t* e) {
  * Clear status message when user starts typing
  */
 static void on_port_input_changed(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[Wizard Connection] on_port_input_changed");
     (void)e;
 
     // Clear any previous status message when user modifies input
@@ -370,6 +376,7 @@ static void on_port_input_changed(lv_event_t* e) {
     // Clear validation state when input changes
     connection_validated = false;
     lv_subject_set_int(&connection_test_passed, 0); // Disable Next button via reactive binding
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 // ============================================================================

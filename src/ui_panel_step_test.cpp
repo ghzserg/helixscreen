@@ -23,6 +23,7 @@
 
 #include "ui_panel_step_test.h"
 
+#include "ui_event_safety.h"
 #include "ui_step_progress.h"
 
 #include <spdlog/spdlog.h>
@@ -49,6 +50,7 @@ static const int horizontal_step_count = sizeof(horizontal_steps) / sizeof(horiz
 
 // Event handlers
 static void on_prev_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[StepTest] on_prev_clicked");
     (void)e;
 
     // Move both wizards back one step
@@ -63,9 +65,11 @@ static void on_prev_clicked(lv_event_t* e) {
     }
 
     spdlog::debug("Previous step: vertical={}, horizontal={}", vertical_step, horizontal_step);
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 static void on_next_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[StepTest] on_next_clicked");
     (void)e;
 
     // Move both wizards forward one step
@@ -80,9 +84,11 @@ static void on_next_clicked(lv_event_t* e) {
     }
 
     spdlog::debug("Next step: vertical={}, horizontal={}", vertical_step, horizontal_step);
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 static void on_complete_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[StepTest] on_complete_clicked");
     (void)e;
 
     // Complete all steps for both wizards
@@ -93,6 +99,7 @@ static void on_complete_clicked(lv_event_t* e) {
     ui_step_progress_set_current(horizontal_widget, horizontal_step);
 
     spdlog::debug("All steps completed");
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 void ui_panel_step_test_setup(lv_obj_t* panel_root) {

@@ -12,6 +12,7 @@
 
 #include "ui_panel_gcode_test.h"
 
+#include "ui_event_safety.h"
 #include "ui_gcode_viewer.h"
 #include "ui_theme.h"
 
@@ -74,6 +75,7 @@ static void scan_gcode_files() {
  * @brief File list item click handler
  */
 static void on_file_selected(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[GCodeTest] on_file_selected");
     uint32_t index = (uint32_t)(uintptr_t)lv_event_get_user_data(e);
 
     if (index >= gcode_files.size()) {
@@ -113,16 +115,19 @@ static void on_file_selected(lv_event_t* e) {
         lv_obj_del(file_picker_overlay);
         file_picker_overlay = nullptr;
     }
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
  * @brief Close button handler for file picker
  */
 static void on_file_picker_close(lv_event_t*) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[GCodeTest] on_file_picker_close");
     if (file_picker_overlay) {
         lv_obj_del(file_picker_overlay);
         file_picker_overlay = nullptr;
     }
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
@@ -207,11 +212,14 @@ static void show_file_picker() {
  * @brief View preset button click handler
  */
 static void on_view_preset_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[GCodeTest] on_view_preset_clicked");
     lv_obj_t* btn = lv_event_get_target_obj(e);
     const char* name = lv_obj_get_name(btn);
 
-    if (!gcode_viewer || !name)
+    if (!gcode_viewer || !name) {
+        LVGL_SAFE_EVENT_CB_END();
         return;
+    }
 
     spdlog::info("[GCodeTest] View preset clicked: {}", name);
 
@@ -229,17 +237,21 @@ static void on_view_preset_clicked(lv_event_t* e) {
     } else if (strcmp(name, "btn_reset") == 0) {
         ui_gcode_viewer_reset_camera(gcode_viewer);
     }
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
  * @brief Zoom button click handler
  */
 static void on_zoom_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[GCodeTest] on_zoom_clicked");
     lv_obj_t* btn = lv_event_get_target_obj(e);
     const char* name = lv_obj_get_name(btn);
 
-    if (!gcode_viewer || !name)
+    if (!gcode_viewer || !name) {
+        LVGL_SAFE_EVENT_CB_END();
         return;
+    }
 
     float zoom_step = 1.2f; // 20% zoom per click
 
@@ -250,21 +262,27 @@ static void on_zoom_clicked(lv_event_t* e) {
         ui_gcode_viewer_zoom(gcode_viewer, 1.0f / zoom_step);
         spdlog::debug("[GCodeTest] Zoom out clicked");
     }
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
  * @brief Load file button click handler - shows file picker
  */
 static void on_load_test_file(lv_event_t*) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[GCodeTest] on_load_test_file");
     show_file_picker();
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
  * @brief Clear button click handler
  */
 static void on_clear(lv_event_t*) {
-    if (!gcode_viewer)
+    LVGL_SAFE_EVENT_CB_BEGIN("[GCodeTest] on_clear");
+    if (!gcode_viewer) {
+        LVGL_SAFE_EVENT_CB_END();
         return;
+    }
 
     spdlog::info("[GCodeTest] Clearing viewer");
     ui_gcode_viewer_clear(gcode_viewer);
@@ -272,14 +290,18 @@ static void on_clear(lv_event_t*) {
     if (stats_label) {
         lv_label_set_text(stats_label, "No file loaded");
     }
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
  * @brief Specular intensity slider callback
  */
 static void on_specular_intensity_changed(lv_event_t* e) {
-    if (!gcode_viewer)
+    LVGL_SAFE_EVENT_CB_BEGIN("[GCodeTest] on_specular_intensity_changed");
+    if (!gcode_viewer) {
+        LVGL_SAFE_EVENT_CB_END();
         return;
+    }
 
     lv_obj_t* slider = lv_event_get_target_obj(e);
     int32_t value = lv_slider_get_value(slider);
@@ -301,14 +323,18 @@ static void on_specular_intensity_changed(lv_event_t* e) {
 
     // Update TinyGL material
     ui_gcode_viewer_set_specular(gcode_viewer, intensity, shininess);
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 /**
  * @brief Shininess slider callback
  */
 static void on_shininess_changed(lv_event_t* e) {
-    if (!gcode_viewer)
+    LVGL_SAFE_EVENT_CB_BEGIN("[GCodeTest] on_shininess_changed");
+    if (!gcode_viewer) {
+        LVGL_SAFE_EVENT_CB_END();
         return;
+    }
 
     lv_obj_t* slider = lv_event_get_target_obj(e);
     int32_t value = lv_slider_get_value(slider);
@@ -329,6 +355,7 @@ static void on_shininess_changed(lv_event_t* e) {
 
     // Update TinyGL material
     ui_gcode_viewer_set_specular(gcode_viewer, intensity, (float)value);
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 // ==============================================
