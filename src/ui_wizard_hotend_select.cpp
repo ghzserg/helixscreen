@@ -24,6 +24,7 @@
 #include "ui_wizard_hotend_select.h"
 
 #include "ui_wizard.h"
+#include "ui_wizard_hardware_selector.h"
 #include "ui_wizard_helpers.h"
 
 #include "app_globals.h"
@@ -54,13 +55,6 @@ static std::vector<std::string> hotend_heater_items;
 static std::vector<std::string> hotend_sensor_items;
 
 // ============================================================================
-// Forward Declarations
-// ============================================================================
-
-static void on_hotend_heater_changed(lv_event_t* e);
-static void on_hotend_sensor_changed(lv_event_t* e);
-
-// ============================================================================
 // Subject Initialization
 // ============================================================================
 
@@ -76,38 +70,12 @@ void ui_wizard_hotend_select_init_subjects() {
 }
 
 // ============================================================================
-// Event Callbacks
-// ============================================================================
-
-static void on_hotend_heater_changed(lv_event_t* e) {
-    lv_obj_t* dropdown = (lv_obj_t*)lv_event_get_target(e);
-    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
-
-    spdlog::debug("[Wizard Hotend] Heater selection changed to index: {}", selected_index);
-
-    // Update subject (config will be saved in cleanup when leaving screen)
-    lv_subject_set_int(&hotend_heater_selected, selected_index);
-}
-
-static void on_hotend_sensor_changed(lv_event_t* e) {
-    lv_obj_t* dropdown = (lv_obj_t*)lv_event_get_target(e);
-    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
-
-    spdlog::debug("[Wizard Hotend] Sensor selection changed to index: {}", selected_index);
-
-    // Update subject (config will be saved in cleanup when leaving screen)
-    lv_subject_set_int(&hotend_sensor_selected, selected_index);
-}
-
-// ============================================================================
 // Callback Registration
 // ============================================================================
 
 void ui_wizard_hotend_select_register_callbacks() {
-    spdlog::debug("[Wizard Hotend] Registering callbacks");
-
-    lv_xml_register_event_cb(nullptr, "on_hotend_heater_changed", on_hotend_heater_changed);
-    lv_xml_register_event_cb(nullptr, "on_hotend_sensor_changed", on_hotend_sensor_changed);
+    // No XML callbacks needed - dropdowns attached programmatically in create()
+    spdlog::debug("[Wizard Hotend] Callback registration (none needed for hardware selectors)");
 }
 
 // ============================================================================
@@ -131,78 +99,44 @@ lv_obj_t* ui_wizard_hotend_select_create(lv_obj_t* parent) {
         return nullptr;
     }
 
-    // Get Moonraker client for hardware discovery
-    MoonrakerClient* client = get_moonraker_client();
-
-    // Build hotend heater options from discovered hardware
-    hotend_heater_items.clear();
-    if (client) {
-        const auto& heaters = client->get_heaters();
-        for (const auto& heater : heaters) {
-            // Filter for extruder-related heaters
-            if (heater.find("extruder") != std::string::npos) {
-                hotend_heater_items.push_back(heater);
-            }
-        }
-    }
-
-    // Build dropdown options string with "None" option
-    std::string heater_options_str = WizardHelpers::build_dropdown_options(
-        hotend_heater_items,
-        nullptr, // No additional filter needed (already filtered above)
-        true     // Include "None" option
+    // Populate heater dropdown (discover + filter + populate + restore)
+    wizard_populate_hardware_dropdown(
+        hotend_select_screen_root, "hotend_heater_dropdown",
+        &hotend_heater_selected, hotend_heater_items,
+        [](MoonrakerClient* c) -> const auto& { return c->get_heaters(); },
+        "extruder", // Filter for extruder-related heaters
+        true,       // Allow "None" option
+        WizardConfigPaths::HOTEND_HEATER,
+        [](MoonrakerClient* c) { return c->guess_hotend_heater(); },
+        "[Wizard Hotend]"
     );
 
-    // Add "None" to items vector to match dropdown
-    hotend_heater_items.push_back("None");
-
-    // Build hotend sensor options from discovered hardware
-    hotend_sensor_items.clear();
-    if (client) {
-        const auto& sensors = client->get_sensors();
-        // For hotend sensors, filter for extruder/hotend-related sensors
-        for (const auto& sensor : sensors) {
-            if (sensor.find("extruder") != std::string::npos ||
-                sensor.find("hotend") != std::string::npos) {
-                hotend_sensor_items.push_back(sensor);
-            }
-        }
-    }
-
-    // Build dropdown options string with "None" option
-    std::string sensor_options_str = WizardHelpers::build_dropdown_options(
-        hotend_sensor_items,
-        nullptr, // No additional filter needed (already filtered above)
-        true     // Include "None" option
-    );
-
-    // Add "None" to items vector to match dropdown
-    hotend_sensor_items.push_back("None");
-
-    // Find and configure heater dropdown
-    lv_obj_t* heater_dropdown =
-        lv_obj_find_by_name(hotend_select_screen_root, "hotend_heater_dropdown");
+    // Attach heater dropdown callback programmatically
+    lv_obj_t* heater_dropdown = lv_obj_find_by_name(hotend_select_screen_root,
+                                                      "hotend_heater_dropdown");
     if (heater_dropdown) {
-        lv_dropdown_set_options(heater_dropdown, heater_options_str.c_str());
-
-        // Restore saved selection with guessing fallback
-        WizardHelpers::restore_dropdown_selection(
-            heater_dropdown, &hotend_heater_selected, hotend_heater_items,
-            WizardConfigPaths::HOTEND_HEATER, client,
-            [](MoonrakerClient* c) { return c->guess_hotend_heater(); }, "[Wizard Hotend]");
+        lv_obj_add_event_cb(heater_dropdown, wizard_hardware_dropdown_changed_cb,
+                           LV_EVENT_VALUE_CHANGED, &hotend_heater_selected);
     }
 
-    // Find and configure sensor dropdown
-    lv_obj_t* sensor_dropdown =
-        lv_obj_find_by_name(hotend_select_screen_root, "hotend_sensor_dropdown");
-    if (sensor_dropdown) {
-        lv_dropdown_set_options(sensor_dropdown, sensor_options_str.c_str());
+    // Populate sensor dropdown (discover + filter + populate + restore)
+    wizard_populate_hardware_dropdown(
+        hotend_select_screen_root, "hotend_sensor_dropdown",
+        &hotend_sensor_selected, hotend_sensor_items,
+        [](MoonrakerClient* c) -> const auto& { return c->get_sensors(); },
+        "extruder", // Filter for extruder/hotend-related sensors
+        true,       // Allow "None" option
+        WizardConfigPaths::HOTEND_SENSOR,
+        [](MoonrakerClient* c) { return c->guess_hotend_sensor(); },
+        "[Wizard Hotend]"
+    );
 
-        // Restore saved selection with guessing fallback
-        WizardHelpers::restore_dropdown_selection(
-            sensor_dropdown, &hotend_sensor_selected, hotend_sensor_items,
-            WizardConfigPaths::HOTEND_SENSOR, client,
-            [](MoonrakerClient* c) { return c->guess_hotend_sensor(); }, "[Wizard Hotend]");
+    // Attach sensor dropdown callback programmatically
+    lv_obj_t* sensor_dropdown = lv_obj_find_by_name(hotend_select_screen_root,
+                                                      "hotend_sensor_dropdown");
+    if (sensor_dropdown) {
+        lv_obj_add_event_cb(sensor_dropdown, wizard_hardware_dropdown_changed_cb,
+                           LV_EVENT_VALUE_CHANGED, &hotend_sensor_selected);
     }
 
     spdlog::info("[Wizard Hotend] Screen created successfully");

@@ -24,6 +24,7 @@
 #include "ui_wizard_fan_select.h"
 
 #include "ui_wizard.h"
+#include "ui_wizard_hardware_selector.h"
 #include "ui_wizard_helpers.h"
 
 #include "app_globals.h"
@@ -54,13 +55,6 @@ static std::vector<std::string> hotend_fan_items;
 static std::vector<std::string> part_fan_items;
 
 // ============================================================================
-// Forward Declarations
-// ============================================================================
-
-static void on_hotend_fan_changed(lv_event_t* e);
-static void on_part_fan_changed(lv_event_t* e);
-
-// ============================================================================
 // Subject Initialization
 // ============================================================================
 
@@ -76,38 +70,12 @@ void ui_wizard_fan_select_init_subjects() {
 }
 
 // ============================================================================
-// Event Callbacks
-// ============================================================================
-
-static void on_hotend_fan_changed(lv_event_t* e) {
-    lv_obj_t* dropdown = (lv_obj_t*)lv_event_get_target(e);
-    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
-
-    spdlog::debug("[Wizard Fan] Hotend fan selection changed to index: {}", selected_index);
-
-    // Update subject (config will be saved in cleanup when leaving screen)
-    lv_subject_set_int(&hotend_fan_selected, selected_index);
-}
-
-static void on_part_fan_changed(lv_event_t* e) {
-    lv_obj_t* dropdown = (lv_obj_t*)lv_event_get_target(e);
-    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
-
-    spdlog::debug("[Wizard Fan] Part fan selection changed to index: {}", selected_index);
-
-    // Update subject (config will be saved in cleanup when leaving screen)
-    lv_subject_set_int(&part_fan_selected, selected_index);
-}
-
-// ============================================================================
 // Callback Registration
 // ============================================================================
 
 void ui_wizard_fan_select_register_callbacks() {
-    spdlog::debug("[Wizard Fan] Registering callbacks");
-
-    lv_xml_register_event_cb(nullptr, "on_hotend_fan_changed", on_hotend_fan_changed);
-    lv_xml_register_event_cb(nullptr, "on_part_fan_changed", on_part_fan_changed);
+    // No XML callbacks needed - dropdowns attached programmatically in create()
+    spdlog::debug("[Wizard Fan] Callback registration (none needed for hardware selectors)");
 }
 
 // ============================================================================
@@ -134,12 +102,11 @@ lv_obj_t* ui_wizard_fan_select_create(lv_obj_t* parent) {
     // Get Moonraker client for hardware discovery
     MoonrakerClient* client = get_moonraker_client();
 
-    // Build hotend fan options from discovered hardware
+    // Build hotend fan options with custom filter (heater_fan OR hotend_fan)
     hotend_fan_items.clear();
     if (client) {
         const auto& fans = client->get_fans();
         for (const auto& fan : fans) {
-            // Filter for hotend/heater fans
             if (fan.find("heater_fan") != std::string::npos ||
                 fan.find("hotend_fan") != std::string::npos) {
                 hotend_fan_items.push_back(fan);
@@ -149,20 +116,16 @@ lv_obj_t* ui_wizard_fan_select_create(lv_obj_t* parent) {
 
     // Build dropdown options string with "None" option
     std::string hotend_options_str = WizardHelpers::build_dropdown_options(
-        hotend_fan_items,
-        nullptr, // No additional filter needed (already filtered above)
-        true     // Include "None" option
-    );
+        hotend_fan_items, nullptr, true);
 
     // Add "None" to items vector to match dropdown
     hotend_fan_items.push_back("None");
 
-    // Build part cooling fan options from discovered hardware
+    // Build part cooling fan options with custom filter (has "fan" but NOT heater/hotend)
     part_fan_items.clear();
     if (client) {
         const auto& fans = client->get_fans();
         for (const auto& fan : fans) {
-            // Filter for part cooling fans (has "fan" but NOT "heater_fan")
             if (fan.find("fan") != std::string::npos &&
                 fan.find("heater_fan") == std::string::npos &&
                 fan.find("hotend_fan") == std::string::npos) {
@@ -173,10 +136,7 @@ lv_obj_t* ui_wizard_fan_select_create(lv_obj_t* parent) {
 
     // Build dropdown options string with "None" option
     std::string part_options_str = WizardHelpers::build_dropdown_options(
-        part_fan_items,
-        nullptr, // No additional filter needed (already filtered above)
-        true     // Include "None" option
-    );
+        part_fan_items, nullptr, true);
 
     // Add "None" to items vector to match dropdown
     part_fan_items.push_back("None");
@@ -186,12 +146,18 @@ lv_obj_t* ui_wizard_fan_select_create(lv_obj_t* parent) {
     if (hotend_dropdown) {
         lv_dropdown_set_options(hotend_dropdown, hotend_options_str.c_str());
 
-        // Restore saved selection (fan screen has no guessing methods)
-        WizardHelpers::restore_dropdown_selection(hotend_dropdown, &hotend_fan_selected,
-                                                  hotend_fan_items, WizardConfigPaths::HOTEND_FAN,
-                                                  client,
-                                                  nullptr, // No guessing method for hotend fans
-                                                  "[Wizard Fan]");
+        // Restore saved selection (no guessing method for fans)
+        WizardHelpers::restore_dropdown_selection(
+            hotend_dropdown, &hotend_fan_selected, hotend_fan_items,
+            WizardConfigPaths::HOTEND_FAN, client,
+            nullptr, // No guessing method for hotend fans
+            "[Wizard Fan]");
+    }
+
+    // Attach hotend fan dropdown callback programmatically
+    if (hotend_dropdown) {
+        lv_obj_add_event_cb(hotend_dropdown, wizard_hardware_dropdown_changed_cb,
+                           LV_EVENT_VALUE_CHANGED, &hotend_fan_selected);
     }
 
     // Find and configure part fan dropdown
@@ -200,11 +166,18 @@ lv_obj_t* ui_wizard_fan_select_create(lv_obj_t* parent) {
     if (part_dropdown) {
         lv_dropdown_set_options(part_dropdown, part_options_str.c_str());
 
-        // Restore saved selection (fan screen has no guessing methods)
-        WizardHelpers::restore_dropdown_selection(part_dropdown, &part_fan_selected, part_fan_items,
-                                                  WizardConfigPaths::PART_FAN, client,
-                                                  nullptr, // No guessing method for part fans
-                                                  "[Wizard Fan]");
+        // Restore saved selection (no guessing method for fans)
+        WizardHelpers::restore_dropdown_selection(
+            part_dropdown, &part_fan_selected, part_fan_items,
+            WizardConfigPaths::PART_FAN, client,
+            nullptr, // No guessing method for part fans
+            "[Wizard Fan]");
+    }
+
+    // Attach part fan dropdown callback programmatically
+    if (part_dropdown) {
+        lv_obj_add_event_cb(part_dropdown, wizard_hardware_dropdown_changed_cb,
+                           LV_EVENT_VALUE_CHANGED, &part_fan_selected);
     }
 
     spdlog::info("[Wizard Fan] Screen created successfully");

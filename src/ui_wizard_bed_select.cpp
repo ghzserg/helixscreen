@@ -24,6 +24,7 @@
 #include "ui_wizard_bed_select.h"
 
 #include "ui_wizard.h"
+#include "ui_wizard_hardware_selector.h"
 #include "ui_wizard_helpers.h"
 
 #include "app_globals.h"
@@ -54,13 +55,6 @@ static std::vector<std::string> bed_heater_items;
 static std::vector<std::string> bed_sensor_items;
 
 // ============================================================================
-// Forward Declarations
-// ============================================================================
-
-static void on_bed_heater_changed(lv_event_t* e);
-static void on_bed_sensor_changed(lv_event_t* e);
-
-// ============================================================================
 // Subject Initialization
 // ============================================================================
 
@@ -76,38 +70,12 @@ void ui_wizard_bed_select_init_subjects() {
 }
 
 // ============================================================================
-// Event Callbacks
-// ============================================================================
-
-static void on_bed_heater_changed(lv_event_t* e) {
-    lv_obj_t* dropdown = (lv_obj_t*)lv_event_get_target(e);
-    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
-
-    spdlog::debug("[Wizard Bed] Heater selection changed to index: {}", selected_index);
-
-    // Update subject (config will be saved in cleanup when leaving screen)
-    lv_subject_set_int(&bed_heater_selected, selected_index);
-}
-
-static void on_bed_sensor_changed(lv_event_t* e) {
-    lv_obj_t* dropdown = (lv_obj_t*)lv_event_get_target(e);
-    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
-
-    spdlog::debug("[Wizard Bed] Sensor selection changed to index: {}", selected_index);
-
-    // Update subject (config will be saved in cleanup when leaving screen)
-    lv_subject_set_int(&bed_sensor_selected, selected_index);
-}
-
-// ============================================================================
 // Callback Registration
 // ============================================================================
 
 void ui_wizard_bed_select_register_callbacks() {
-    spdlog::debug("[Wizard Bed] Registering callbacks");
-
-    lv_xml_register_event_cb(nullptr, "on_bed_heater_changed", on_bed_heater_changed);
-    lv_xml_register_event_cb(nullptr, "on_bed_sensor_changed", on_bed_sensor_changed);
+    // No XML callbacks needed - dropdowns attached programmatically in create()
+    spdlog::debug("[Wizard Bed] Callback registration (none needed for hardware selectors)");
 }
 
 // ============================================================================
@@ -115,13 +83,13 @@ void ui_wizard_bed_select_register_callbacks() {
 // ============================================================================
 
 lv_obj_t* ui_wizard_bed_select_create(lv_obj_t* parent) {
-    spdlog::debug("[Wizard Bed] Creating bed select screen");
+    spdlog::info("[Wizard Bed] Creating bed select screen");
 
-    // Safety check: screen pointer should be nullptr (cleanup should have been called)
+    // Safety check: cleanup should have been called by wizard navigation
     if (bed_select_screen_root) {
         spdlog::warn(
             "[Wizard Bed] Screen pointer not null - cleanup may not have been called properly");
-        bed_select_screen_root = nullptr; // Reset pointer, wizard framework handles actual deletion
+        bed_select_screen_root = nullptr; // Reset pointer, wizard framework handles deletion
     }
 
     // Create screen from XML
@@ -131,68 +99,44 @@ lv_obj_t* ui_wizard_bed_select_create(lv_obj_t* parent) {
         return nullptr;
     }
 
-    // Get Moonraker client for hardware discovery
-    MoonrakerClient* client = get_moonraker_client();
-
-    // Build bed heater options from discovered hardware
-    bed_heater_items.clear();
-    if (client) {
-        const auto& heaters = client->get_heaters();
-        for (const auto& heater : heaters) {
-            // Filter for bed-related heaters
-            if (heater.find("bed") != std::string::npos) {
-                bed_heater_items.push_back(heater);
-            }
-        }
-    }
-
-    // Build dropdown options string with "None" option
-    std::string heater_options_str = WizardHelpers::build_dropdown_options(
-        bed_heater_items,
-        nullptr, // No additional filter needed (already filtered above)
-        true     // Include "None" option
+    // Populate heater dropdown (discover + filter + populate + restore)
+    wizard_populate_hardware_dropdown(
+        bed_select_screen_root, "bed_heater_dropdown",
+        &bed_heater_selected, bed_heater_items,
+        [](MoonrakerClient* c) -> const auto& { return c->get_heaters(); },
+        "bed",  // Filter for bed-related heaters
+        true,   // Allow "None" option
+        WizardConfigPaths::BED_HEATER,
+        [](MoonrakerClient* c) { return c->guess_bed_heater(); },
+        "[Wizard Bed]"
     );
 
-    // Add "None" to items vector to match dropdown
-    bed_heater_items.push_back("None");
-
-    // Build bed sensor options from discovered hardware
-    bed_sensor_items.clear();
-    if (client) {
-        // For bed sensors, include all sensors (user can choose chamber, bed, etc.)
-        bed_sensor_items = client->get_sensors();
-    }
-
-    // Build dropdown options string with "None" option
-    std::string sensor_options_str =
-        WizardHelpers::build_dropdown_options(bed_sensor_items,
-                                              nullptr, // No filter - include all sensors
-                                              true     // Include "None" option
-        );
-
-    // Add "None" to items vector to match dropdown
-    bed_sensor_items.push_back("None");
-
-    // Find and configure heater dropdown
-    lv_obj_t* heater_dropdown = lv_obj_find_by_name(bed_select_screen_root, "bed_heater_dropdown");
+    // Attach heater dropdown callback programmatically
+    lv_obj_t* heater_dropdown = lv_obj_find_by_name(bed_select_screen_root,
+                                                      "bed_heater_dropdown");
     if (heater_dropdown) {
-        lv_dropdown_set_options(heater_dropdown, heater_options_str.c_str());
-
-        // Restore saved selection with guessing fallback
-        WizardHelpers::restore_dropdown_selection(
-            heater_dropdown, &bed_heater_selected, bed_heater_items, WizardConfigPaths::BED_HEATER,
-            client, [](MoonrakerClient* c) { return c->guess_bed_heater(); }, "[Wizard Bed]");
+        lv_obj_add_event_cb(heater_dropdown, wizard_hardware_dropdown_changed_cb,
+                           LV_EVENT_VALUE_CHANGED, &bed_heater_selected);
     }
 
-    // Find and configure sensor dropdown
-    lv_obj_t* sensor_dropdown = lv_obj_find_by_name(bed_select_screen_root, "bed_sensor_dropdown");
-    if (sensor_dropdown) {
-        lv_dropdown_set_options(sensor_dropdown, sensor_options_str.c_str());
+    // Populate sensor dropdown (discover + filter + populate + restore)
+    wizard_populate_hardware_dropdown(
+        bed_select_screen_root, "bed_sensor_dropdown",
+        &bed_sensor_selected, bed_sensor_items,
+        [](MoonrakerClient* c) -> const auto& { return c->get_sensors(); },
+        nullptr, // No filter - include all sensors for bed
+        true,    // Allow "None" option
+        WizardConfigPaths::BED_SENSOR,
+        [](MoonrakerClient* c) { return c->guess_bed_sensor(); },
+        "[Wizard Bed]"
+    );
 
-        // Restore saved selection with guessing fallback
-        WizardHelpers::restore_dropdown_selection(
-            sensor_dropdown, &bed_sensor_selected, bed_sensor_items, WizardConfigPaths::BED_SENSOR,
-            client, [](MoonrakerClient* c) { return c->guess_bed_sensor(); }, "[Wizard Bed]");
+    // Attach sensor dropdown callback programmatically
+    lv_obj_t* sensor_dropdown = lv_obj_find_by_name(bed_select_screen_root,
+                                                      "bed_sensor_dropdown");
+    if (sensor_dropdown) {
+        lv_obj_add_event_cb(sensor_dropdown, wizard_hardware_dropdown_changed_cb,
+                           LV_EVENT_VALUE_CHANGED, &bed_sensor_selected);
     }
 
     spdlog::info("[Wizard Bed] Screen created successfully");

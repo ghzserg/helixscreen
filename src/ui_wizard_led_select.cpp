@@ -24,6 +24,7 @@
 #include "ui_wizard_led_select.h"
 
 #include "ui_wizard.h"
+#include "ui_wizard_hardware_selector.h"
 #include "ui_wizard_helpers.h"
 
 #include "app_globals.h"
@@ -52,12 +53,6 @@ static lv_obj_t* led_select_screen_root = nullptr;
 static std::vector<std::string> led_strip_items;
 
 // ============================================================================
-// Forward Declarations
-// ============================================================================
-
-static void on_led_strip_changed(lv_event_t* e);
-
-// ============================================================================
 // Subject Initialization
 // ============================================================================
 
@@ -72,27 +67,12 @@ void ui_wizard_led_select_init_subjects() {
 }
 
 // ============================================================================
-// Event Callbacks
-// ============================================================================
-
-static void on_led_strip_changed(lv_event_t* e) {
-    lv_obj_t* dropdown = (lv_obj_t*)lv_event_get_target(e);
-    uint16_t selected_index = lv_dropdown_get_selected(dropdown);
-
-    spdlog::debug("[Wizard LED] LED strip selection changed to index: {}", selected_index);
-
-    // Update subject (config will be saved in cleanup when leaving screen)
-    lv_subject_set_int(&led_strip_selected, selected_index);
-}
-
-// ============================================================================
 // Callback Registration
 // ============================================================================
 
 void ui_wizard_led_select_register_callbacks() {
-    spdlog::debug("[Wizard LED] Registering callbacks");
-
-    lv_xml_register_event_cb(nullptr, "on_led_strip_changed", on_led_strip_changed);
+    // No XML callbacks needed - dropdowns attached programmatically in create()
+    spdlog::debug("[Wizard LED] Callback registration (none needed for hardware selectors)");
 }
 
 // ============================================================================
@@ -116,36 +96,23 @@ lv_obj_t* ui_wizard_led_select_create(lv_obj_t* parent) {
         return nullptr;
     }
 
-    // Get Moonraker client for hardware discovery
-    MoonrakerClient* client = get_moonraker_client();
+    // Populate LED dropdown (discover + filter + populate + restore)
+    wizard_populate_hardware_dropdown(
+        led_select_screen_root, "led_main_dropdown",
+        &led_strip_selected, led_strip_items,
+        [](MoonrakerClient* c) -> const auto& { return c->get_leds(); },
+        nullptr, // No filter - include all LEDs
+        true,    // Allow "None" option
+        WizardConfigPaths::LED_STRIP,
+        nullptr, // No guessing method for LED strips
+        "[Wizard LED]"
+    );
 
-    // Build LED strip options from discovered hardware
-    led_strip_items.clear();
-    if (client) {
-        led_strip_items = client->get_leds();
-    }
-
-    // Build dropdown options string with "None" option
-    std::string led_options_str =
-        WizardHelpers::build_dropdown_options(led_strip_items,
-                                              nullptr, // No filter - include all LEDs
-                                              true     // Include "None" option
-        );
-
-    // Add "None" to items vector to match dropdown
-    led_strip_items.push_back("None");
-
-    // Find and configure LED strip dropdown
+    // Attach LED dropdown callback programmatically
     lv_obj_t* led_dropdown = lv_obj_find_by_name(led_select_screen_root, "led_main_dropdown");
     if (led_dropdown) {
-        lv_dropdown_set_options(led_dropdown, led_options_str.c_str());
-
-        // Restore saved selection (LED screen has no guessing method)
-        WizardHelpers::restore_dropdown_selection(led_dropdown, &led_strip_selected,
-                                                  led_strip_items, WizardConfigPaths::LED_STRIP,
-                                                  client,
-                                                  nullptr, // No guessing method for LED strips
-                                                  "[Wizard LED]");
+        lv_obj_add_event_cb(led_dropdown, wizard_hardware_dropdown_changed_cb,
+                           LV_EVENT_VALUE_CHANGED, &led_strip_selected);
     }
 
     spdlog::info("[Wizard LED] Screen created successfully");
