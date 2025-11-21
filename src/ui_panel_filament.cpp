@@ -25,6 +25,7 @@
 
 #include "app_constants.h"
 #include "ui_component_keypad.h"
+#include "ui_event_safety.h"
 #include "ui_nav.h"
 #include "ui_temperature_utils.h"
 #include "ui_theme.h"
@@ -229,9 +230,9 @@ static void update_preset_buttons_visual() {
 // ============================================================================
 
 // Event handler: Material preset buttons
-static void preset_button_cb(lv_event_t* e) {
-    (void)lv_event_get_target(e); // Unused - we only need user_data
-    int material_id = (int)(uintptr_t)lv_event_get_user_data(e);
+LVGL_SAFE_EVENT_CB_WITH_EVENT(preset_button_cb, event, {
+    (void)lv_event_get_target(event); // Unused - we only need user_data
+    int material_id = (int)(uintptr_t)lv_event_get_user_data(event);
 
     selected_material = material_id;
     nozzle_target = MATERIAL_TEMPS[material_id];
@@ -244,7 +245,7 @@ static void preset_button_cb(lv_event_t* e) {
     spdlog::info("[Filament] Material selected: {} (target={}°C)", material_id, nozzle_target);
 
     // TODO: Send command to printer to set temperature
-}
+})
 
 // Custom temperature keypad callback
 static void custom_temp_confirmed_cb(float value, void* user_data) {
@@ -265,27 +266,27 @@ static void custom_temp_confirmed_cb(float value, void* user_data) {
 
 // Event handler: Custom preset button (opens keypad)
 static void preset_custom_button_cb(lv_event_t* e) {
-    (void)e;
+    ui_event_safe_call("preset_custom_button_cb", [&]() {
+        (void)e;
 
-    spdlog::debug("[Filament] Opening custom temperature keypad");
+        spdlog::debug("[Filament] Opening custom temperature keypad");
 
-    ui_keypad_config_t config = {.initial_value = (float)(nozzle_target > 0 ? nozzle_target : 200),
-                                 .min_value = 0.0f,
-                                 .max_value = (float)nozzle_max_temp,
-                                 .title_label = "Custom Temperature",
-                                 .unit_label = "°C",
-                                 .allow_decimal = false,
-                                 .allow_negative = false,
-                                 .callback = custom_temp_confirmed_cb,
-                                 .user_data = nullptr};
+        ui_keypad_config_t config = {.initial_value = (float)(nozzle_target > 0 ? nozzle_target : 200),
+                                     .min_value = 0.0f,
+                                     .max_value = (float)nozzle_max_temp,
+                                     .title_label = "Custom Temperature",
+                                     .unit_label = "°C",
+                                     .allow_decimal = false,
+                                     .allow_negative = false,
+                                     .callback = custom_temp_confirmed_cb,
+                                     .user_data = nullptr};
 
-    ui_keypad_show(&config);
+        ui_keypad_show(&config);
+    });
 }
 
 // Event handler: Load filament button
-static void load_button_cb(lv_event_t* e) {
-    (void)e;
-
+LVGL_SAFE_EVENT_CB(load_button_cb, {
     if (!UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP)) {
         spdlog::warn("[Filament] Load blocked: nozzle too cold ({}°C < {}°C)",
                      nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
@@ -294,12 +295,10 @@ static void load_button_cb(lv_event_t* e) {
 
     spdlog::info("[Filament] Loading filament");
     // TODO: Send LOAD_FILAMENT macro to printer
-}
+})
 
 // Event handler: Unload filament button
-static void unload_button_cb(lv_event_t* e) {
-    (void)e;
-
+LVGL_SAFE_EVENT_CB(unload_button_cb, {
     if (!UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP)) {
         spdlog::warn("[Filament] Unload blocked: nozzle too cold ({}°C < {}°C)",
                      nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
@@ -308,12 +307,10 @@ static void unload_button_cb(lv_event_t* e) {
 
     spdlog::info("[Filament] Unloading filament");
     // TODO: Send UNLOAD_FILAMENT macro to printer
-}
+})
 
 // Event handler: Purge button
-static void purge_button_cb(lv_event_t* e) {
-    (void)e;
-
+LVGL_SAFE_EVENT_CB(purge_button_cb, {
     if (!UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP)) {
         spdlog::warn("[Filament] Purge blocked: nozzle too cold ({}°C < {}°C)",
                      nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
@@ -322,7 +319,7 @@ static void purge_button_cb(lv_event_t* e) {
 
     spdlog::info("[Filament] Purging 10mm");
     // TODO: Send extrude command to printer (M83 \n G1 E10 F300)
-}
+})
 
 // ============================================================================
 // PUBLIC API

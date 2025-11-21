@@ -25,6 +25,7 @@
 
 #include "app_constants.h"
 #include "ui_component_header_bar.h"
+#include "ui_event_safety.h"
 #include "ui_nav.h"
 #include "ui_temperature_utils.h"
 #include "ui_theme.h"
@@ -171,9 +172,7 @@ static void update_amount_buttons_visual() {
 // ============================================================================
 
 // Event handler: Back button
-static void back_button_cb(lv_event_t* e) {
-    (void)e;
-
+LVGL_SAFE_EVENT_CB(back_button_cb, {
     // Use navigation history to go back to previous panel
     if (!ui_nav_go_back()) {
         // Fallback: If navigation history is empty, manually hide and show controls launcher
@@ -188,11 +187,11 @@ static void back_button_cb(lv_event_t* e) {
             }
         }
     }
-}
+})
 
 // Event handler: Amount selector buttons
-static void amount_button_cb(lv_event_t* e) {
-    lv_obj_t* btn = (lv_obj_t*)lv_event_get_target(e);
+LVGL_SAFE_EVENT_CB_WITH_EVENT(amount_button_cb, event, {
+    lv_obj_t* btn = (lv_obj_t*)lv_event_get_target(event);
     const char* name = lv_obj_get_name(btn);
 
     if (!name)
@@ -210,12 +209,10 @@ static void amount_button_cb(lv_event_t* e) {
 
     update_amount_buttons_visual();
     spdlog::debug("[Extrusion] Amount selected: {}mm", selected_amount);
-}
+})
 
 // Event handler: Extrude button
-static void extrude_button_cb(lv_event_t* e) {
-    (void)e;
-
+LVGL_SAFE_EVENT_CB(extrude_button_cb, {
     if (!UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP)) {
         spdlog::warn("[Extrusion] Extrude blocked: nozzle too cold ({}°C < {}°C)",
                      nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
@@ -224,12 +221,10 @@ static void extrude_button_cb(lv_event_t* e) {
 
     spdlog::info("[Extrusion] Extruding {}mm of filament", selected_amount);
     // TODO: Send command to printer (moonraker_extrude(selected_amount))
-}
+})
 
 // Event handler: Retract button
-static void retract_button_cb(lv_event_t* e) {
-    (void)e;
-
+LVGL_SAFE_EVENT_CB(retract_button_cb, {
     if (!UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP)) {
         spdlog::warn("[Extrusion] Retract blocked: nozzle too cold ({}°C < {}°C)",
                      nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
@@ -238,7 +233,7 @@ static void retract_button_cb(lv_event_t* e) {
 
     spdlog::info("[Extrusion] Retracting {}mm of filament", selected_amount);
     // TODO: Send command to printer (moonraker_retract(selected_amount))
-}
+})
 
 // ============================================================================
 // PUBLIC API

@@ -74,6 +74,7 @@ inline void ui_event_safe_call(const char* callback_name, std::function<void()> 
  */
 #define LVGL_SAFE_EVENT_CB(callback_name, body) \
     static void callback_name(lv_event_t* e) { \
+        (void)e; \
         ui_event_safe_call(#callback_name, [&]() body); \
     }
 
