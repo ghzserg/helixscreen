@@ -23,10 +23,14 @@
 
 #include "ui_panel_controls_extrusion.h"
 
+#include "app_constants.h"
 #include "ui_component_header_bar.h"
 #include "ui_nav.h"
+#include "ui_temperature_utils.h"
 #include "ui_theme.h"
 #include "ui_utils.h"
+
+#include <spdlog/spdlog.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -43,11 +47,10 @@ static char warning_temps_buf[64];
 static int nozzle_current = 25;
 static int nozzle_target = 0;
 static int selected_amount = 10; // Default: 10mm
-static const int MIN_EXTRUSION_TEMP = 170;
 
 // Temperature limits (can be updated from Moonraker heater config)
-static int nozzle_min_temp = 0;
-static int nozzle_max_temp = 500; // Safe default for most hotends
+static int nozzle_min_temp = AppConstants::Temperature::DEFAULT_MIN_TEMP;
+static int nozzle_max_temp = AppConstants::Temperature::DEFAULT_NOZZLE_MAX;
 
 // Panel widgets
 static lv_obj_t* extrusion_panel = nullptr;
@@ -89,7 +92,7 @@ void ui_panel_controls_extrusion_init_subjects() {
 static void update_temp_status() {
     // Status indicator: ✓ (ready), ⚠ (heating), ✗ (too cold)
     const char* status_icon;
-    if (nozzle_current >= MIN_EXTRUSION_TEMP) {
+    if (UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP)) {
         // Within 5°C of target and hot enough (safe range check without overflow)
         if (nozzle_target > 0 && nozzle_current >= nozzle_target - 5 &&
             nozzle_current <= nozzle_target + 5) {
@@ -97,7 +100,7 @@ static void update_temp_status() {
         } else {
             status_icon = "✓"; // Hot enough
         }
-    } else if (nozzle_target >= MIN_EXTRUSION_TEMP) {
+    } else if (nozzle_target >= AppConstants::Temperature::MIN_EXTRUSION_TEMP) {
         status_icon = "⚠"; // Heating
     } else {
         status_icon = "✗"; // Too cold
@@ -117,7 +120,7 @@ static void update_warning_text() {
 
 // Update safety state (button enable/disable, warning visibility)
 static void update_safety_state() {
-    bool allowed = (nozzle_current >= MIN_EXTRUSION_TEMP);
+    bool allowed = UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
 
     // Enable/disable extrude and retract buttons
     if (btn_extrude) {
@@ -213,13 +216,13 @@ static void amount_button_cb(lv_event_t* e) {
 static void extrude_button_cb(lv_event_t* e) {
     (void)e;
 
-    if (nozzle_current < MIN_EXTRUSION_TEMP) {
-        printf("[Extrusion] ✗ Extrude blocked: nozzle too cold (%d°C < %d°C)\n", nozzle_current,
-               MIN_EXTRUSION_TEMP);
+    if (!UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP)) {
+        spdlog::warn("[Extrusion] Extrude blocked: nozzle too cold ({}°C < {}°C)",
+                     nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
         return;
     }
 
-    printf("[Extrusion] ✓ Extruding %dmm of filament...\n", selected_amount);
+    spdlog::info("[Extrusion] Extruding {}mm of filament", selected_amount);
     // TODO: Send command to printer (moonraker_extrude(selected_amount))
 }
 
@@ -227,13 +230,13 @@ static void extrude_button_cb(lv_event_t* e) {
 static void retract_button_cb(lv_event_t* e) {
     (void)e;
 
-    if (nozzle_current < MIN_EXTRUSION_TEMP) {
-        printf("[Extrusion] ✗ Retract blocked: nozzle too cold (%d°C < %d°C)\n", nozzle_current,
-               MIN_EXTRUSION_TEMP);
+    if (!UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP)) {
+        spdlog::warn("[Extrusion] Retract blocked: nozzle too cold ({}°C < {}°C)",
+                     nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
         return;
     }
 
-    printf("[Extrusion] ✓ Retracting %dmm of filament...\n", selected_amount);
+    spdlog::info("[Extrusion] Retracting {}mm of filament", selected_amount);
     // TODO: Send command to printer (moonraker_retract(selected_amount))
 }
 
@@ -357,7 +360,7 @@ int ui_panel_controls_extrusion_get_amount() {
 }
 
 bool ui_panel_controls_extrusion_is_allowed() {
-    return (nozzle_current >= MIN_EXTRUSION_TEMP);
+    return UITemperatureUtils::is_extrusion_safe(nozzle_current, AppConstants::Temperature::MIN_EXTRUSION_TEMP);
 }
 
 void ui_panel_controls_extrusion_set_limits(int min_temp, int max_temp) {
