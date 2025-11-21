@@ -704,35 +704,12 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
         face_normals[i] = glm::normalize(face_center_offset);
     }
 
-    // Phase 2: Compatibility aliases for N=4 (old variable names)
-    // These will be removed in Phase 3 when vertex generation is refactored
-    // For N=4: vertex_offsets = [RIGHT(0°), UP(90°), LEFT(180°), DOWN(270°)]
-    const glm::vec3& d_right = vertex_offsets[0];  // 0° = RIGHT
-    const glm::vec3& d_up = vertex_offsets[1];     // 90° = UP
-    const glm::vec3& d_left = vertex_offsets[2];   // 180° = LEFT
-    const glm::vec3& d_down = vertex_offsets[3];   // 270° = DOWN
-
-    const uint8_t color_idx_up = face_colors[1];     // UP face
-    const uint8_t face_color_top_right = face_colors[1];     // Between UP and RIGHT
-    const uint8_t face_color_right_bottom = face_colors[0];  // Between RIGHT and DOWN
-    const uint8_t face_color_bottom_left = face_colors[3];   // Between DOWN and LEFT
-    const uint8_t face_color_left_top = face_colors[2];      // Between LEFT and UP
-
-    const glm::vec3& face_normal_top = face_normals[1];
-    const glm::vec3& face_normal_right = face_normals[0];
-    const glm::vec3& face_normal_bottom = face_normals[3];
-    const glm::vec3& face_normal_left = face_normals[2];
-
+    // Phase 3: N-based vertex generation (replaces hardcoded N=4 logic)
     uint32_t idx_start = geometry.vertices.size();
-
-    // OrcaSlicer approach:
-    // First segment: 4 prev vertices (up/right/down/left) + 4 curr vertices
-    // Subsequent: 2 prev vertices (right/left only) + 4 curr vertices
-
     bool is_first_segment = !prev_start_cap.has_value();
 
+    // ========== START CAP VERTICES (first segment only) ==========
     if (is_first_segment) {
-        // First segment: generate all 4 prev vertices
         // START CAP: All normals point BACKWARD along segment (-dir)
         glm::vec3 cap_normal_start = -dir;
         uint16_t cap_normal_idx = add_to_normal_palette(geometry, cap_normal_start);
@@ -740,115 +717,75 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
         // Use unique START_CAP color for debug visualization
         uint8_t start_cap_color_idx = debug_face_colors_
             ? add_to_color_palette(geometry, DebugColors::START_CAP)
-            : color_idx_up;  // Use normal color if not debugging
+            : face_colors[0];  // Use first face color if not debugging
 
-        glm::vec3 pos_prev_up = prev_pos + d_up;
-        glm::vec3 pos_prev_right = prev_pos + d_right;
-        glm::vec3 pos_prev_down = prev_pos + d_down;
-        glm::vec3 pos_prev_left = prev_pos + d_left;
-
-        geometry.vertices.push_back({
-            quant.quantize_vec3(pos_prev_up),
-            cap_normal_idx,  // Axial normal, not radial
-            start_cap_color_idx  // MAGENTA for start cap in debug mode
-        });
-        geometry.vertices.push_back({
-            quant.quantize_vec3(pos_prev_right),
-            cap_normal_idx,  // Axial normal, not radial
-            start_cap_color_idx  // MAGENTA for start cap in debug mode
-        });
-        geometry.vertices.push_back({
-            quant.quantize_vec3(pos_prev_down),
-            cap_normal_idx,  // Axial normal, not radial
-            start_cap_color_idx  // MAGENTA for start cap in debug mode
-        });
-        geometry.vertices.push_back({
-            quant.quantize_vec3(pos_prev_left),
-            cap_normal_idx,  // Axial normal, not radial
-            start_cap_color_idx  // MAGENTA for start cap in debug mode
-        });
-        idx_start += 4;
-
-        // NOW create side tube "prev" vertices - one set per FACE (not per edge!)
-        // Face 1 (TOP-RIGHT): uses UP and RIGHT edge positions
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_up), add_to_normal_palette(geometry, face_normal_top), face_color_top_right});
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_right), add_to_normal_palette(geometry, face_normal_top), face_color_top_right});
-        // Face 2 (RIGHT-BOTTOM): uses RIGHT and DOWN edge positions
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_right), add_to_normal_palette(geometry, face_normal_right), face_color_right_bottom});
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_down), add_to_normal_palette(geometry, face_normal_right), face_color_right_bottom});
-        // Face 3 (BOTTOM-LEFT): uses DOWN and LEFT edge positions
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_down), add_to_normal_palette(geometry, face_normal_bottom), face_color_bottom_left});
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_left), add_to_normal_palette(geometry, face_normal_bottom), face_color_bottom_left});
-        // Face 4 (LEFT-TOP): uses LEFT and UP edge positions
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_left), add_to_normal_palette(geometry, face_normal_left), face_color_left_top});
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_up), add_to_normal_palette(geometry, face_normal_left), face_color_left_top});
-        idx_start += 8;
-
-        if (debug_face_colors_) {
-            spdlog::info("  Orientation vectors:");
-            spdlog::info("    dir=({:.3f},{:.3f},{:.3f})", dir.x, dir.y, dir.z);
-            spdlog::info("    right=({:.3f},{:.3f},{:.3f})", right.x, right.y, right.z);
-            spdlog::info("    perp_up=({:.3f},{:.3f},{:.3f})", perp_up.x, perp_up.y, perp_up.z);
-            spdlog::info("  Start cap vertices [0-3]: MAGENTA, axial normals");
-            spdlog::info("  Side tube prev vertices [4-7]: face colors, radial normals");
-            spdlog::info("    PREV_UP[{}]:    ({:.3f},{:.3f},{:.3f})", idx_start-4, pos_prev_up.x, pos_prev_up.y, pos_prev_up.z);
-            spdlog::info("    PREV_RIGHT[{}]: ({:.3f},{:.3f},{:.3f})", idx_start-3, pos_prev_right.x, pos_prev_right.y, pos_prev_right.z);
-            spdlog::info("    PREV_DOWN[{}]:  ({:.3f},{:.3f},{:.3f})", idx_start-2, pos_prev_down.x, pos_prev_down.y, pos_prev_down.z);
-            spdlog::info("    PREV_LEFT[{}]:  ({:.3f},{:.3f},{:.3f})", idx_start-1, pos_prev_left.x, pos_prev_left.y, pos_prev_left.z);
+        // Generate N start cap vertices
+        for (int i = 0; i < N; i++) {
+            glm::vec3 pos = prev_pos + vertex_offsets[i];
+            geometry.vertices.push_back({
+                quant.quantize_vec3(pos),
+                cap_normal_idx,          // Axial normal pointing backward
+                start_cap_color_idx      // MAGENTA for start cap in debug mode
+            });
         }
-    } else {
-        // Subsequent segments: Generate all 8 prev vertices (matching first segment structure)
-        // TODO: Optimize with vertex sharing once tracking mechanism is in place
-        glm::vec3 pos_prev_up = prev_pos + d_up;
-        glm::vec3 pos_prev_right = prev_pos + d_right;
-        glm::vec3 pos_prev_down = prev_pos + d_down;
-        glm::vec3 pos_prev_left = prev_pos + d_left;
-
-        // Face 1 (TOP-RIGHT): uses UP and RIGHT edge positions
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_up), add_to_normal_palette(geometry, face_normal_top), face_color_top_right});
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_right), add_to_normal_palette(geometry, face_normal_top), face_color_top_right});
-        // Face 2 (RIGHT-BOTTOM): uses RIGHT and DOWN edge positions
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_right), add_to_normal_palette(geometry, face_normal_right), face_color_right_bottom});
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_down), add_to_normal_palette(geometry, face_normal_right), face_color_right_bottom});
-        // Face 3 (BOTTOM-LEFT): uses DOWN and LEFT edge positions
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_down), add_to_normal_palette(geometry, face_normal_bottom), face_color_bottom_left});
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_left), add_to_normal_palette(geometry, face_normal_bottom), face_color_bottom_left});
-        // Face 4 (LEFT-TOP): uses LEFT and UP edges
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_left), add_to_normal_palette(geometry, face_normal_left), face_color_left_top});
-        geometry.vertices.push_back({quant.quantize_vec3(pos_prev_up), add_to_normal_palette(geometry, face_normal_left), face_color_left_top});
-        idx_start += 8;
+        idx_start += N;
     }
 
-    // Generate curr vertices - one set per FACE (matching prev structure)
-    glm::vec3 pos_up = curr_pos + d_up;
-    glm::vec3 pos_right = curr_pos + d_right;
-    glm::vec3 pos_down = curr_pos + d_down;
-    glm::vec3 pos_left = curr_pos + d_left;
+    // ========== PREV SIDE FACE VERTICES ==========
+    // Generate 2N prev vertices (2 vertices per face, N faces)
+    // Each face connects vertex i to vertex (i+1)%N
+    for (int i = 0; i < N; i++) {
+        int next_i = (i + 1) % N;
+        glm::vec3 pos_v1 = prev_pos + vertex_offsets[i];
+        glm::vec3 pos_v2 = prev_pos + vertex_offsets[next_i];
+        uint16_t normal_idx = add_to_normal_palette(geometry, face_normals[i]);
 
-    // Face 1 (TOP-RIGHT): uses UP and RIGHT edge positions
-    geometry.vertices.push_back({quant.quantize_vec3(pos_up), add_to_normal_palette(geometry, face_normal_top), face_color_top_right});
-    geometry.vertices.push_back({quant.quantize_vec3(pos_right), add_to_normal_palette(geometry, face_normal_top), face_color_top_right});
-    // Face 2 (RIGHT-BOTTOM): uses RIGHT and DOWN edge positions
-    geometry.vertices.push_back({quant.quantize_vec3(pos_right), add_to_normal_palette(geometry, face_normal_right), face_color_right_bottom});
-    geometry.vertices.push_back({quant.quantize_vec3(pos_down), add_to_normal_palette(geometry, face_normal_right), face_color_right_bottom});
-    // Face 3 (BOTTOM-LEFT): uses DOWN and LEFT edge positions
-    geometry.vertices.push_back({quant.quantize_vec3(pos_down), add_to_normal_palette(geometry, face_normal_bottom), face_color_bottom_left});
-    geometry.vertices.push_back({quant.quantize_vec3(pos_left), add_to_normal_palette(geometry, face_normal_bottom), face_color_bottom_left});
-    // Face 4 (LEFT-TOP): uses LEFT and UP edge positions
-    geometry.vertices.push_back({quant.quantize_vec3(pos_left), add_to_normal_palette(geometry, face_normal_left), face_color_left_top});
-    geometry.vertices.push_back({quant.quantize_vec3(pos_up), add_to_normal_palette(geometry, face_normal_left), face_color_left_top});
-    idx_start += 8;
+        geometry.vertices.push_back({
+            quant.quantize_vec3(pos_v1),
+            normal_idx,
+            face_colors[i]
+        });
+        geometry.vertices.push_back({
+            quant.quantize_vec3(pos_v2),
+            normal_idx,
+            face_colors[i]
+        });
+    }
+    idx_start += 2*N;
 
-    // Track end cap edge positions for end cap generation (use first occurrence of each edge)
-    TubeCap end_cap(N);  // Resize to N vertices
-    end_cap[0] = idx_start - 8 + 0;  // Face1's UP vertex
-    end_cap[1] = idx_start - 8 + 1;  // Face1's RIGHT vertex
-    end_cap[2] = idx_start - 8 + 3;  // Face2's DOWN vertex
-    end_cap[3] = idx_start - 8 + 5;  // Face3's LEFT vertex
+    // ========== CURR SIDE FACE VERTICES ==========
+    // Generate 2N curr vertices (2 vertices per face, N faces)
+    for (int i = 0; i < N; i++) {
+        int next_i = (i + 1) % N;
+        glm::vec3 pos_v1 = curr_pos + vertex_offsets[i];
+        glm::vec3 pos_v2 = curr_pos + vertex_offsets[next_i];
+        uint16_t normal_idx = add_to_normal_palette(geometry, face_normals[i]);
+
+        geometry.vertices.push_back({
+            quant.quantize_vec3(pos_v1),
+            normal_idx,
+            face_colors[i]
+        });
+        geometry.vertices.push_back({
+            quant.quantize_vec3(pos_v2),
+            normal_idx,
+            face_colors[i]
+        });
+    }
+    idx_start += 2*N;
+
+    // ========== END CAP TRACKING ==========
+    // Track end cap edge positions (first vertex of each face in curr ring)
+    TubeCap end_cap(N);
+    uint32_t curr_faces_base = idx_start - 2*N;
+    for (int i = 0; i < N; i++) {
+        // Track first vertex of each face (vertex i)
+        end_cap[i] = curr_faces_base + 2*i;
+    }
 
     static int debug_count = 0;
     if (debug_count < 2 && debug_face_colors_) {
-        spdlog::info("=== Segment {} | is_first={} ===", debug_count, is_first_segment);
+        spdlog::info("=== Segment {} | N={} | is_first={} ===", debug_count, N, is_first_segment);
         spdlog::info("  Segment: start=({:.3f},{:.3f},{:.3f}) end=({:.3f},{:.3f},{:.3f})",
                      segment.start.x, segment.start.y, segment.start.z,
                      segment.end.x, segment.end.y, segment.end.z);
@@ -856,11 +793,11 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
                      dir.x, dir.y, dir.z, right.x, right.y, right.z, perp_up.x, perp_up.y, perp_up.z);
         spdlog::info("  Cross-section center: prev_pos=({:.3f},{:.3f},{:.3f}) curr_pos=({:.3f},{:.3f},{:.3f})",
                      prev_pos.x, prev_pos.y, prev_pos.z, curr_pos.x, curr_pos.y, curr_pos.z);
-        spdlog::info("  Curr vertices:");
-        spdlog::info("    UP[{}]:    ({:.3f},{:.3f},{:.3f})", end_cap[0], pos_up.x, pos_up.y, pos_up.z);
-        spdlog::info("    RIGHT[{}]: ({:.3f},{:.3f},{:.3f})", end_cap[1], pos_right.x, pos_right.y, pos_right.z);
-        spdlog::info("    DOWN[{}]:  ({:.3f},{:.3f},{:.3f})", end_cap[2], pos_down.x, pos_down.y, pos_down.z);
-        spdlog::info("    LEFT[{}]:  ({:.3f},{:.3f},{:.3f})", end_cap[3], pos_left.x, pos_left.y, pos_left.z);
+        spdlog::info("  Curr vertices ({} total):", N);
+        for (int i = 0; i < N; i++) {
+            glm::vec3 pos = curr_pos + vertex_offsets[i];
+            spdlog::info("    v{}[{}]: ({:.3f},{:.3f},{:.3f})", i, end_cap[i], pos.x, pos.y, pos.z);
+        }
         debug_count++;
     }
 
@@ -938,7 +875,7 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
     // End cap - Use the SAME positions as end_cap array but with axial normals
     uint8_t end_cap_color_idx = debug_face_colors_
         ? add_to_color_palette(geometry, DebugColors::END_CAP)
-        : color_idx_up;
+        : face_colors[0];
 
     glm::vec3 cap_normal_end = -dir;  // Same as start cap
     uint16_t end_cap_normal_idx = add_to_normal_palette(geometry, cap_normal_end);
