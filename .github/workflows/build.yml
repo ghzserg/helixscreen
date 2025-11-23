@@ -49,12 +49,12 @@ jobs:
     - name: Configure wpa_supplicant build
       run: |
         # Verify wpa_supplicant submodule exists before configuring
-        if [ ! -d "wpa_supplicant/wpa_supplicant" ]; then
+        if [ ! -d "lib/wpa_supplicant/wpa_supplicant" ]; then
           echo "❌ wpa_supplicant submodule not initialized"
           exit 1
         fi
         # Create minimal .config for wpa_supplicant client library build
-        cat > wpa_supplicant/wpa_supplicant/.config << 'EOF'
+        cat > lib/wpa_supplicant/wpa_supplicant/.config << 'EOF'
         CONFIG_CTRL_IFACE=y
         CONFIG_CTRL_IFACE_UNIX=y
         CONFIG_BACKEND=file
@@ -63,7 +63,7 @@ jobs:
 
     - name: Build libhv
       run: |
-        cd libhv
+        cd lib/libhv
         ./configure --with-http-client
         make -j$(nproc) libhv
         echo "✓ libhv built successfully"
@@ -71,16 +71,16 @@ jobs:
     - name: Build wpa_supplicant client library
       run: |
         # Build libwpa_client.a for WiFi control on Linux
-        make -C wpa_supplicant/wpa_supplicant -j$(nproc) libwpa_client.a
+        make -C lib/wpa_supplicant/wpa_supplicant -j$(nproc) libwpa_client.a
         echo "✓ wpa_supplicant client library built successfully"
 
     - name: Build TinyGL
       run: |
         # Build TinyGL software 3D rasterizer for G-code visualization
-        cd tinygl
+        cd lib/tinygl
         make -j$(nproc)
         echo "✓ TinyGL built successfully"
-        cd ..
+        cd ../..
 
     - name: Build HelixScreen
       run: |
@@ -129,7 +129,7 @@ jobs:
 
     - name: Build libhv
       run: |
-        cd libhv
+        cd lib/libhv
         ./configure --with-http-client
         make -j$(sysctl -n hw.ncpu) libhv
         echo "✓ libhv built successfully"
@@ -137,10 +137,10 @@ jobs:
     - name: Build TinyGL
       run: |
         # Build TinyGL software 3D rasterizer for G-code visualization
-        cd tinygl
+        cd lib/tinygl
         make -j$(sysctl -n hw.ncpu)
         echo "✓ TinyGL built successfully"
-        cd ..
+        cd ../..
 
     - name: Build HelixScreen
       run: |
