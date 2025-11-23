@@ -26,6 +26,7 @@
 #include "ui_component_header_bar.h"
 #include "ui_event_safety.h"
 #include "ui_nav.h"
+#include "ui_subject_registry.h"
 #include "ui_temperature_utils.h"
 #include "ui_theme.h"
 #include "ui_utils.h"
@@ -73,18 +74,13 @@ static void update_amount_buttons_visual();
 
 void ui_panel_controls_extrusion_init_subjects() {
     // Initialize subjects with default values
-    snprintf(temp_status_buf, sizeof(temp_status_buf), "%d / %d°C", nozzle_current, nozzle_target);
-    snprintf(warning_temps_buf, sizeof(warning_temps_buf), "Current: %d°C\nTarget: %d°C",
+    char temp_status_val[64], warning_temps_val[64];
+    snprintf(temp_status_val, sizeof(temp_status_val), "%d / %d°C", nozzle_current, nozzle_target);
+    snprintf(warning_temps_val, sizeof(warning_temps_val), "Current: %d°C\nTarget: %d°C",
              nozzle_current, nozzle_target);
 
-    lv_subject_init_string(&temp_status_subject, temp_status_buf, nullptr, sizeof(temp_status_buf),
-                           temp_status_buf);
-    lv_subject_init_string(&warning_temps_subject, warning_temps_buf, nullptr,
-                           sizeof(warning_temps_buf), warning_temps_buf);
-
-    // Register subjects with XML system (global scope)
-    lv_xml_register_subject(NULL, "extrusion_temp_status", &temp_status_subject);
-    lv_xml_register_subject(NULL, "extrusion_warning_temps", &warning_temps_subject);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(temp_status_subject, temp_status_buf, temp_status_val, "extrusion_temp_status");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(warning_temps_subject, warning_temps_buf, warning_temps_val, "extrusion_warning_temps");
 
     spdlog::info("[Extrusion] Subjects initialized: temp={}/{}°C, amount={}mm", nozzle_current,
                  nozzle_target, selected_amount);

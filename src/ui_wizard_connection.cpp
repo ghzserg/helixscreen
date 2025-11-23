@@ -25,6 +25,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_keyboard.h" // For keyboard support
+#include "ui_subject_registry.h"
 #include "ui_wizard.h"   // For ui_wizard_set_next_button_enabled()
 
 #include "app_globals.h"
@@ -105,30 +106,15 @@ void ui_wizard_connection_init_subjects() {
     strncpy(connection_port_buffer, default_port.c_str(), sizeof(connection_port_buffer) - 1);
     connection_port_buffer[sizeof(connection_port_buffer) - 1] = '\0';
 
-    lv_subject_init_string(&connection_ip, connection_ip_buffer, nullptr,
-                           sizeof(connection_ip_buffer), connection_ip_buffer);
-
-    lv_subject_init_string(&connection_port, connection_port_buffer, nullptr,
-                           sizeof(connection_port_buffer), connection_port_buffer);
-
-    lv_subject_init_string(&connection_status_icon, connection_status_icon_buffer, nullptr,
-                           sizeof(connection_status_icon_buffer), ""); // Empty initially
-
-    lv_subject_init_string(&connection_status_text, connection_status_text_buffer, nullptr,
-                           sizeof(connection_status_text_buffer), ""); // Empty initially
-
-    lv_subject_init_int(&connection_testing, 0); // Not testing initially
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(connection_ip, connection_ip_buffer, connection_ip_buffer, "connection_ip");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(connection_port, connection_port_buffer, connection_port_buffer, "connection_port");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(connection_status_icon, connection_status_icon_buffer, "", "connection_status_icon"); // Empty initially
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(connection_status_text, connection_status_text_buffer, "", "connection_status_text"); // Empty initially
+    UI_SUBJECT_INIT_AND_REGISTER_INT(connection_testing, 0, "connection_testing"); // Not testing initially
 
     // Set connection_test_passed to 0 (disabled) for this step
     // (It's defined globally in ui_wizard.cpp and defaults to 1 for other steps)
     lv_subject_set_int(&connection_test_passed, 0);
-
-    // Register locally for XML binding
-    lv_xml_register_subject(nullptr, "connection_ip", &connection_ip);
-    lv_xml_register_subject(nullptr, "connection_port", &connection_port);
-    lv_xml_register_subject(nullptr, "connection_status_icon", &connection_status_icon);
-    lv_xml_register_subject(nullptr, "connection_status_text", &connection_status_text);
-    lv_xml_register_subject(nullptr, "connection_testing", &connection_testing);
 
     // Reset validation state
     connection_validated = false;

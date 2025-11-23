@@ -25,6 +25,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_keyboard.h"
+#include "ui_subject_registry.h"
 #include "ui_theme.h"
 #include "ui_wizard.h"
 
@@ -187,8 +188,7 @@ void ui_wizard_printer_identify_init_subjects() {
     strncpy(printer_name_buffer, default_name.c_str(), sizeof(printer_name_buffer) - 1);
     printer_name_buffer[sizeof(printer_name_buffer) - 1] = '\0';
 
-    lv_subject_init_string(&printer_name, printer_name_buffer, nullptr, sizeof(printer_name_buffer),
-                           printer_name_buffer);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(printer_name, printer_name_buffer, printer_name_buffer, "printer_name");
 
     // Run auto-detection if no saved type
     PrinterDetectionHint hint{PrinterTypes::DEFAULT_PRINTER_TYPE_INDEX, 0, ""};
@@ -207,7 +207,7 @@ void ui_wizard_printer_identify_init_subjects() {
         }
     }
 
-    lv_subject_init_int(&printer_type_selected, default_type);
+    UI_SUBJECT_INIT_AND_REGISTER_INT(printer_type_selected, default_type, "printer_type_selected");
 
     // Initialize detection status message (auto-detection results only, not validation)
     const char* status_msg;
@@ -228,13 +228,7 @@ void ui_wizard_printer_identify_init_subjects() {
         status_msg = "No printer detected - please confirm type";
     }
 
-    lv_subject_init_string(&printer_detection_status, printer_detection_status_buffer, nullptr,
-                           sizeof(printer_detection_status_buffer), status_msg);
-
-    // Register globally for XML binding
-    lv_xml_register_subject(nullptr, "printer_name", &printer_name);
-    lv_xml_register_subject(nullptr, "printer_type_selected", &printer_type_selected);
-    lv_xml_register_subject(nullptr, "printer_detection_status", &printer_detection_status);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(printer_detection_status, printer_detection_status_buffer, status_msg, "printer_detection_status");
 
     // Initialize validation state and connection_test_passed based on loaded name
     printer_identify_validated = (default_name.length() > 0);

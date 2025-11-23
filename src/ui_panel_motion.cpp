@@ -27,6 +27,7 @@
 #include "ui_event_safety.h"
 #include "ui_jog_pad.h"
 #include "ui_nav.h"
+#include "ui_subject_registry.h"
 #include "ui_theme.h"
 #include "ui_utils.h"
 
@@ -67,18 +68,9 @@ static const float distance_values[] = {0.1f, 1.0f, 10.0f, 100.0f};
 
 void ui_panel_motion_init_subjects() {
     // Initialize position subjects with default placeholder values
-    snprintf(pos_x_buf, sizeof(pos_x_buf), "X:    --  mm");
-    snprintf(pos_y_buf, sizeof(pos_y_buf), "Y:    --  mm");
-    snprintf(pos_z_buf, sizeof(pos_z_buf), "Z:    --  mm");
-
-    lv_subject_init_string(&pos_x_subject, pos_x_buf, nullptr, sizeof(pos_x_buf), pos_x_buf);
-    lv_subject_init_string(&pos_y_subject, pos_y_buf, nullptr, sizeof(pos_y_buf), pos_y_buf);
-    lv_subject_init_string(&pos_z_subject, pos_z_buf, nullptr, sizeof(pos_z_buf), pos_z_buf);
-
-    // Register subjects with XML system (using NULL parent = global scope)
-    lv_xml_register_subject(NULL, "motion_pos_x", &pos_x_subject);
-    lv_xml_register_subject(NULL, "motion_pos_y", &pos_y_subject);
-    lv_xml_register_subject(NULL, "motion_pos_z", &pos_z_subject);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(pos_x_subject, pos_x_buf, "X:    --  mm", "motion_pos_x");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(pos_y_subject, pos_y_buf, "Y:    --  mm", "motion_pos_y");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(pos_z_subject, pos_z_buf, "Z:    --  mm", "motion_pos_z");
 
     spdlog::info("[Motion] Subjects initialized: X/Y/Z position displays");
 }

@@ -27,6 +27,7 @@
 #include "ui_component_keypad.h"
 #include "ui_heater_config.h"
 #include "ui_nav.h"
+#include "ui_subject_registry.h"
 #include "ui_temp_graph.h"
 #include "ui_temperature_utils.h"
 #include "ui_theme.h"
@@ -133,34 +134,29 @@ static void generate_mock_temp_data(float* temps, int count, float start_temp, f
 
 void ui_panel_controls_temp_init_subjects() {
     // Initialize temperature subjects with default values
-    snprintf(nozzle_current_buf, sizeof(nozzle_current_buf), "%d°C", nozzle_current);
-    snprintf(nozzle_target_buf, sizeof(nozzle_target_buf), "%d°C", nozzle_target);
-    snprintf(bed_current_buf, sizeof(bed_current_buf), "%d°C", bed_current);
-    snprintf(bed_target_buf, sizeof(bed_target_buf), "%d°C", bed_target);
-    snprintf(nozzle_display_buf, sizeof(nozzle_display_buf), "%d / %d°C", nozzle_current,
+    char nozzle_current_str[16], nozzle_target_str[16], bed_current_str[16], bed_target_str[16];
+    char nozzle_display_str[32], bed_display_str[32];
+
+    snprintf(nozzle_current_str, sizeof(nozzle_current_str), "%d°C", nozzle_current);
+    snprintf(nozzle_target_str, sizeof(nozzle_target_str), "%d°C", nozzle_target);
+    snprintf(bed_current_str, sizeof(bed_current_str), "%d°C", bed_current);
+    snprintf(bed_target_str, sizeof(bed_target_str), "%d°C", bed_target);
+    snprintf(nozzle_display_str, sizeof(nozzle_display_str), "%d / %d°C", nozzle_current,
              nozzle_target);
-    snprintf(bed_display_buf, sizeof(bed_display_buf), "%d / %d°C", bed_current, bed_target);
+    snprintf(bed_display_str, sizeof(bed_display_str), "%d / %d°C", bed_current, bed_target);
 
-    lv_subject_init_string(&nozzle_current_subject, nozzle_current_buf, nullptr,
-                           sizeof(nozzle_current_buf), nozzle_current_buf);
-    lv_subject_init_string(&nozzle_target_subject, nozzle_target_buf, nullptr,
-                           sizeof(nozzle_target_buf), nozzle_target_buf);
-    lv_subject_init_string(&bed_current_subject, bed_current_buf, nullptr, sizeof(bed_current_buf),
-                           bed_current_buf);
-    lv_subject_init_string(&bed_target_subject, bed_target_buf, nullptr, sizeof(bed_target_buf),
-                           bed_target_buf);
-    lv_subject_init_string(&nozzle_display_subject, nozzle_display_buf, nullptr,
-                           sizeof(nozzle_display_buf), nozzle_display_buf);
-    lv_subject_init_string(&bed_display_subject, bed_display_buf, nullptr, sizeof(bed_display_buf),
-                           bed_display_buf);
-
-    // Register subjects with XML system (global scope)
-    lv_xml_register_subject(NULL, "nozzle_current_temp", &nozzle_current_subject);
-    lv_xml_register_subject(NULL, "nozzle_target_temp", &nozzle_target_subject);
-    lv_xml_register_subject(NULL, "bed_current_temp", &bed_current_subject);
-    lv_xml_register_subject(NULL, "bed_target_temp", &bed_target_subject);
-    lv_xml_register_subject(NULL, "nozzle_temp_display", &nozzle_display_subject);
-    lv_xml_register_subject(NULL, "bed_temp_display", &bed_display_subject);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(nozzle_current_subject, nozzle_current_buf,
+                                        nozzle_current_str, "nozzle_current_temp");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(nozzle_target_subject, nozzle_target_buf, nozzle_target_str,
+                                        "nozzle_target_temp");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(bed_current_subject, bed_current_buf, bed_current_str,
+                                        "bed_current_temp");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(bed_target_subject, bed_target_buf, bed_target_str,
+                                        "bed_target_temp");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(nozzle_display_subject, nozzle_display_buf,
+                                        nozzle_display_str, "nozzle_temp_display");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(bed_display_subject, bed_display_buf, bed_display_str,
+                                        "bed_temp_display");
 
     spdlog::info("[Temp] Subjects initialized: nozzle={}/{}°C, bed={}/{}°C", nozzle_current,
                  nozzle_target, bed_current, bed_target);

@@ -25,6 +25,7 @@
 
 #include "ui_component_header_bar.h"
 #include "ui_nav.h"
+#include "ui_subject_registry.h"
 #include "ui_utils.h"
 
 #include <spdlog/spdlog.h>
@@ -87,47 +88,16 @@ static void format_time(int seconds, char* buf, size_t buf_size);
 
 void ui_panel_print_status_init_subjects() {
     // Initialize subjects with default values
-    snprintf(filename_buf, sizeof(filename_buf), "No print active");
-    snprintf(progress_text_buf, sizeof(progress_text_buf), "0%%");
-    snprintf(layer_text_buf, sizeof(layer_text_buf), "Layer 0 / 0");
-    snprintf(elapsed_buf, sizeof(elapsed_buf), "0h 00m");
-    snprintf(remaining_buf, sizeof(remaining_buf), "0h 00m");
-    snprintf(nozzle_temp_buf, sizeof(nozzle_temp_buf), "0 / 0°C");
-    snprintf(bed_temp_buf, sizeof(bed_temp_buf), "0 / 0°C");
-    snprintf(speed_buf, sizeof(speed_buf), "100%%");
-    snprintf(flow_buf, sizeof(flow_buf), "100%%");
-    snprintf(pause_button_buf, sizeof(pause_button_buf), "Pause");
-
-    lv_subject_init_string(&filename_subject, filename_buf, nullptr, sizeof(filename_buf),
-                           filename_buf);
-    lv_subject_init_string(&progress_text_subject, progress_text_buf, nullptr,
-                           sizeof(progress_text_buf), progress_text_buf);
-    lv_subject_init_string(&layer_text_subject, layer_text_buf, nullptr, sizeof(layer_text_buf),
-                           layer_text_buf);
-    lv_subject_init_string(&elapsed_subject, elapsed_buf, nullptr, sizeof(elapsed_buf),
-                           elapsed_buf);
-    lv_subject_init_string(&remaining_subject, remaining_buf, nullptr, sizeof(remaining_buf),
-                           remaining_buf);
-    lv_subject_init_string(&nozzle_temp_subject, nozzle_temp_buf, nullptr, sizeof(nozzle_temp_buf),
-                           nozzle_temp_buf);
-    lv_subject_init_string(&bed_temp_subject, bed_temp_buf, nullptr, sizeof(bed_temp_buf),
-                           bed_temp_buf);
-    lv_subject_init_string(&speed_subject, speed_buf, nullptr, sizeof(speed_buf), speed_buf);
-    lv_subject_init_string(&flow_subject, flow_buf, nullptr, sizeof(flow_buf), flow_buf);
-    lv_subject_init_string(&pause_button_subject, pause_button_buf, nullptr,
-                           sizeof(pause_button_buf), pause_button_buf);
-
-    // Register subjects with XML system (global scope)
-    lv_xml_register_subject(NULL, "print_filename", &filename_subject);
-    lv_xml_register_subject(NULL, "print_progress_text", &progress_text_subject);
-    lv_xml_register_subject(NULL, "print_layer_text", &layer_text_subject);
-    lv_xml_register_subject(NULL, "print_elapsed", &elapsed_subject);
-    lv_xml_register_subject(NULL, "print_remaining", &remaining_subject);
-    lv_xml_register_subject(NULL, "nozzle_temp_text", &nozzle_temp_subject);
-    lv_xml_register_subject(NULL, "bed_temp_text", &bed_temp_subject);
-    lv_xml_register_subject(NULL, "print_speed_text", &speed_subject);
-    lv_xml_register_subject(NULL, "print_flow_text", &flow_subject);
-    lv_xml_register_subject(NULL, "pause_button_text", &pause_button_subject);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(filename_subject, filename_buf, "No print active", "print_filename");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(progress_text_subject, progress_text_buf, "0%", "print_progress_text");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(layer_text_subject, layer_text_buf, "Layer 0 / 0", "print_layer_text");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(elapsed_subject, elapsed_buf, "0h 00m", "print_elapsed");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(remaining_subject, remaining_buf, "0h 00m", "print_remaining");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(nozzle_temp_subject, nozzle_temp_buf, "0 / 0°C", "nozzle_temp_text");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(bed_temp_subject, bed_temp_buf, "0 / 0°C", "bed_temp_text");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(speed_subject, speed_buf, "100%", "print_speed_text");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(flow_subject, flow_buf, "100%", "print_flow_text");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(pause_button_subject, pause_button_buf, "Pause", "pause_button_text");
 
     spdlog::debug("[PrintStatus] Subjects initialized");
 }

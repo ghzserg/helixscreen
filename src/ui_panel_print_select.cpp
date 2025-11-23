@@ -27,6 +27,7 @@
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_panel_print_status.h"
+#include "ui_subject_registry.h"
 #include "ui_theme.h"
 #include "ui_utils.h"
 
@@ -274,25 +275,13 @@ static void on_resize() {
 // ============================================================================
 void ui_panel_print_select_init_subjects() {
     // Initialize selected file subjects
-    lv_subject_init_string(&selected_filename_subject, selected_filename_buffer, nullptr,
-                           sizeof(selected_filename_buffer), "");
-    lv_xml_register_subject(nullptr, "selected_filename", &selected_filename_subject);
-
-    lv_subject_init_string(&selected_thumbnail_subject, selected_thumbnail_buffer, nullptr,
-                           sizeof(selected_thumbnail_buffer), DEFAULT_PLACEHOLDER_THUMB);
-    lv_xml_register_subject(nullptr, "selected_thumbnail", &selected_thumbnail_subject);
-
-    lv_subject_init_string(&selected_print_time_subject, selected_print_time_buffer, nullptr,
-                           sizeof(selected_print_time_subject), "");
-    lv_xml_register_subject(nullptr, "selected_print_time", &selected_print_time_subject);
-
-    lv_subject_init_string(&selected_filament_weight_subject, selected_filament_weight_buffer,
-                           nullptr, sizeof(selected_filament_weight_buffer), "");
-    lv_xml_register_subject(nullptr, "selected_filament_weight", &selected_filament_weight_subject);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_filename_subject, selected_filename_buffer, "", "selected_filename");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_thumbnail_subject, selected_thumbnail_buffer, DEFAULT_PLACEHOLDER_THUMB, "selected_thumbnail");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_print_time_subject, selected_print_time_buffer, "", "selected_print_time");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_filament_weight_subject, selected_filament_weight_buffer, "", "selected_filament_weight");
 
     // Initialize detail view visibility subject (0 = hidden, 1 = visible)
-    lv_subject_init_int(&detail_view_visible_subject, 0);
-    lv_xml_register_subject(nullptr, "detail_view_visible", &detail_view_visible_subject);
+    UI_SUBJECT_INIT_AND_REGISTER_INT(detail_view_visible_subject, 0, "detail_view_visible");
 
     spdlog::info("Print select panel subjects initialized");
 }

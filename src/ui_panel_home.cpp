@@ -25,6 +25,7 @@
 
 #include "ui_fonts.h"
 #include "ui_nav.h"
+#include "ui_subject_registry.h"
 #include "ui_theme.h"
 
 #include "tips_manager.h"
@@ -121,25 +122,12 @@ void ui_panel_home_init_subjects() {
     init_home_panel_colors();
 
     // Initialize subjects with default values
-    lv_subject_init_string(&status_subject, status_buffer, NULL, sizeof(status_buffer),
-                           "Welcome to HelixScreen");
-    lv_subject_init_string(&temp_subject, temp_buffer, NULL, sizeof(temp_buffer), "30 °C");
-    lv_subject_init_string(&network_icon_subject, network_icon_buffer, NULL,
-                           sizeof(network_icon_buffer), ICON_WIFI);
-    lv_subject_init_string(&network_label_subject, network_label_buffer, NULL,
-                           sizeof(network_label_buffer), "Wi-Fi");
-    lv_subject_init_string(&network_color_subject, network_color_buffer, NULL,
-                           sizeof(network_color_buffer), "0xff4444");
-    lv_subject_init_color(&light_icon_color_subject,
-                          light_icon_off_color); // Theme-aware "off" state color
-
-    // Register subjects globally so XML can bind to them
-    lv_xml_register_subject(NULL, "status_text", &status_subject);
-    lv_xml_register_subject(NULL, "temp_text", &temp_subject);
-    lv_xml_register_subject(NULL, "network_icon", &network_icon_subject);
-    lv_xml_register_subject(NULL, "network_label", &network_label_subject);
-    lv_xml_register_subject(NULL, "network_color", &network_color_subject);
-    lv_xml_register_subject(NULL, "light_icon_color", &light_icon_color_subject);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(status_subject, status_buffer, "Welcome to HelixScreen", "status_text");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(temp_subject, temp_buffer, "30 °C", "temp_text");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(network_icon_subject, network_icon_buffer, ICON_WIFI, "network_icon");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(network_label_subject, network_label_buffer, "Wi-Fi", "network_label");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(network_color_subject, network_color_buffer, "0xff4444", "network_color");
+    UI_SUBJECT_INIT_AND_REGISTER_COLOR(light_icon_color_subject, light_icon_off_color, "light_icon_color"); // Theme-aware "off" state color
 
     // Register event callbacks BEFORE loading XML
     lv_xml_register_event_cb(NULL, "light_toggle_cb", light_toggle_event_cb);

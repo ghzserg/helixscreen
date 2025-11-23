@@ -23,6 +23,7 @@
 
 #include "ui_wizard.h"
 
+#include "ui_subject_registry.h"
 #include "ui_theme.h"
 #include "ui_wizard_bed_select.h"
 #include "ui_wizard_connection.h"
@@ -75,30 +76,16 @@ void ui_wizard_init_subjects() {
     spdlog::debug("[Wizard] Initializing subjects");
 
     // Initialize subjects with defaults
-    lv_subject_init_int(&current_step, 1);
-    lv_subject_init_int(&total_steps,
-                        8); // 8 steps: WiFi, Connection, Printer, Bed, Hotend, Fan, LED, Summary
+    UI_SUBJECT_INIT_AND_REGISTER_INT(current_step, 1, "current_step");
+    UI_SUBJECT_INIT_AND_REGISTER_INT(total_steps, 8, "total_steps"); // 8 steps: WiFi, Connection, Printer, Bed, Hotend, Fan, LED, Summary
 
-    lv_subject_init_string(&wizard_title, wizard_title_buffer, nullptr, sizeof(wizard_title_buffer),
-                           "Welcome");
-
-    lv_subject_init_string(&wizard_progress, wizard_progress_buffer, nullptr,
-                           sizeof(wizard_progress_buffer), "Step 1 of 8");
-
-    lv_subject_init_string(&wizard_next_button_text, wizard_next_button_text_buffer, nullptr,
-                           sizeof(wizard_next_button_text_buffer), "Next");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(wizard_title, wizard_title_buffer, "Welcome", "wizard_title");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(wizard_progress, wizard_progress_buffer, "Step 1 of 8", "wizard_progress");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(wizard_next_button_text, wizard_next_button_text_buffer, "Next", "wizard_next_button_text");
 
     // Initialize connection_test_passed to 1 (enabled by default for all steps)
     // Step 2 (connection) will set it to 0 until test passes
-    lv_subject_init_int(&connection_test_passed, 1);
-
-    // Register subjects globally
-    lv_xml_register_subject(nullptr, "current_step", &current_step);
-    lv_xml_register_subject(nullptr, "total_steps", &total_steps);
-    lv_xml_register_subject(nullptr, "wizard_title", &wizard_title);
-    lv_xml_register_subject(nullptr, "wizard_progress", &wizard_progress);
-    lv_xml_register_subject(nullptr, "wizard_next_button_text", &wizard_next_button_text);
-    lv_xml_register_subject(nullptr, "connection_test_passed", &connection_test_passed);
+    UI_SUBJECT_INIT_AND_REGISTER_INT(connection_test_passed, 1, "connection_test_passed");
 
     spdlog::info("[Wizard] Subjects initialized");
 }

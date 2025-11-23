@@ -25,6 +25,7 @@
 
 #include "ui_bed_mesh.h"
 #include "ui_nav.h"
+#include "ui_subject_registry.h"
 
 #include "app_globals.h"
 #include "moonraker_client.h"
@@ -195,20 +196,11 @@ static void on_bed_mesh_update(const MoonrakerClient::BedMeshProfile& mesh) {
 }
 
 void ui_panel_bed_mesh_init_subjects() {
-    lv_subject_init_int(&bed_mesh_available, 0);
-    lv_subject_init_string(&bed_mesh_profile_name, profile_name_buf, nullptr,
-                           sizeof(profile_name_buf), "");
-    lv_subject_init_string(&bed_mesh_dimensions, dimensions_buf, nullptr, sizeof(dimensions_buf),
-                           "No mesh data");
-    lv_subject_init_string(&bed_mesh_z_range, z_range_buf, nullptr, sizeof(z_range_buf), "");
-    lv_subject_init_string(&bed_mesh_variance, variance_buf, nullptr, sizeof(variance_buf), "");
-
-    // Register subjects for XML bindings
-    lv_xml_register_subject(NULL, "bed_mesh_available", &bed_mesh_available);
-    lv_xml_register_subject(NULL, "bed_mesh_profile_name", &bed_mesh_profile_name);
-    lv_xml_register_subject(NULL, "bed_mesh_dimensions", &bed_mesh_dimensions);
-    lv_xml_register_subject(NULL, "bed_mesh_z_range", &bed_mesh_z_range);
-    lv_xml_register_subject(NULL, "bed_mesh_variance", &bed_mesh_variance);
+    UI_SUBJECT_INIT_AND_REGISTER_INT(bed_mesh_available, 0, "bed_mesh_available");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(bed_mesh_profile_name, profile_name_buf, "", "bed_mesh_profile_name");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(bed_mesh_dimensions, dimensions_buf, "No mesh data", "bed_mesh_dimensions");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(bed_mesh_z_range, z_range_buf, "", "bed_mesh_z_range");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(bed_mesh_variance, variance_buf, "", "bed_mesh_variance");
 
     spdlog::debug("[BedMesh] Subjects initialized and registered");
 }

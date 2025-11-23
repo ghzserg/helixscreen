@@ -26,6 +26,7 @@
 #include "ui_component_keypad.h"
 #include "ui_event_safety.h"
 #include "ui_nav.h"
+#include "ui_subject_registry.h"
 #include "ui_temperature_utils.h"
 #include "ui_theme.h"
 #include "ui_utils.h"
@@ -91,32 +92,26 @@ void ui_panel_filament_init_subjects() {
     }
 
     // Initialize subjects with default values
-    snprintf(temp_display_buf, sizeof(temp_display_buf), "%d / %d°C", nozzle_current,
+    char temp_display_str[32], status_str[64], warning_temps_str[64];
+
+    snprintf(temp_display_str, sizeof(temp_display_str), "%d / %d°C", nozzle_current,
              nozzle_target);
-    snprintf(status_buf, sizeof(status_buf), "Select material to begin");
-    snprintf(warning_temps_buf, sizeof(warning_temps_buf), "Current: %d°C | Target: %d°C",
+    snprintf(status_str, sizeof(status_str), "Select material to begin");
+    snprintf(warning_temps_str, sizeof(warning_temps_str), "Current: %d°C | Target: %d°C",
              nozzle_current, nozzle_target);
 
-    lv_subject_init_string(&filament_temp_display_subject, temp_display_buf, nullptr,
-                           sizeof(temp_display_buf), temp_display_buf);
-    lv_subject_init_string(&filament_status_subject, status_buf, nullptr, sizeof(status_buf),
-                           status_buf);
-    lv_subject_init_int(&filament_material_selected_subject, -1);
-    lv_subject_init_int(&filament_extrusion_allowed_subject, 0);      // false (cold at start)
-    lv_subject_init_int(&filament_safety_warning_visible_subject, 1); // true (cold at start)
-    lv_subject_init_string(&filament_warning_temps_subject, warning_temps_buf, nullptr,
-                           sizeof(warning_temps_buf), warning_temps_buf);
-
-    // Register subjects with XML system (global scope)
-    lv_xml_register_subject(NULL, "filament_temp_display", &filament_temp_display_subject);
-    lv_xml_register_subject(NULL, "filament_status", &filament_status_subject);
-    lv_xml_register_subject(NULL, "filament_material_selected",
-                            &filament_material_selected_subject);
-    lv_xml_register_subject(NULL, "filament_extrusion_allowed",
-                            &filament_extrusion_allowed_subject);
-    lv_xml_register_subject(NULL, "filament_safety_warning_visible",
-                            &filament_safety_warning_visible_subject);
-    lv_xml_register_subject(NULL, "filament_warning_temps", &filament_warning_temps_subject);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(filament_temp_display_subject, temp_display_buf,
+                                        temp_display_str, "filament_temp_display");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(filament_status_subject, status_buf, status_str,
+                                        "filament_status");
+    UI_SUBJECT_INIT_AND_REGISTER_INT(filament_material_selected_subject, -1,
+                                     "filament_material_selected");
+    UI_SUBJECT_INIT_AND_REGISTER_INT(filament_extrusion_allowed_subject, 0,
+                                     "filament_extrusion_allowed"); // false (cold at start)
+    UI_SUBJECT_INIT_AND_REGISTER_INT(filament_safety_warning_visible_subject, 1,
+                                     "filament_safety_warning_visible"); // true (cold at start)
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(filament_warning_temps_subject, warning_temps_buf,
+                                        warning_temps_str, "filament_warning_temps");
 
     subjects_initialized = true;
 

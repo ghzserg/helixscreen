@@ -26,6 +26,7 @@
 #include "ui_icon.h"
 #include "ui_keyboard.h"
 #include "ui_modal.h"
+#include "ui_subject_registry.h"
 #include "ui_theme.h"
 
 #include "ethernet_manager.h"
@@ -249,27 +250,14 @@ void ui_wizard_wifi_init_subjects() {
     spdlog::debug("[WiFi Screen] Initializing subjects");
 
     // Initialize subjects with defaults
-    lv_subject_init_int(&wifi_enabled, 0);                // WiFi off by default
-    lv_subject_init_int(&wifi_scanning, 0);               // Not scanning by default
-    lv_subject_init_int(&wifi_password_modal_visible, 0); // Modal hidden by default
-    lv_subject_init_int(&wifi_connecting, 0);             // Not connecting by default
+    UI_SUBJECT_INIT_AND_REGISTER_INT(wifi_enabled, 0, "wifi_enabled"); // WiFi off by default
+    UI_SUBJECT_INIT_AND_REGISTER_INT(wifi_scanning, 0, "wifi_scanning"); // Not scanning by default
+    UI_SUBJECT_INIT_AND_REGISTER_INT(wifi_password_modal_visible, 0, "wifi_password_modal_visible"); // Modal hidden by default
+    UI_SUBJECT_INIT_AND_REGISTER_INT(wifi_connecting, 0, "wifi_connecting"); // Not connecting by default
 
-    lv_subject_init_string(&wifi_password_modal_ssid, wifi_password_modal_ssid_buffer, nullptr,
-                           sizeof(wifi_password_modal_ssid_buffer), ""); // SSID for password modal
-    lv_subject_init_string(&wifi_status, wifi_status_buffer, nullptr, sizeof(wifi_status_buffer),
-                           get_status_text("disabled"));
-
-    lv_subject_init_string(&ethernet_status, ethernet_status_buffer, nullptr,
-                           sizeof(ethernet_status_buffer), "Checking...");
-
-    // Register subjects globally
-    lv_xml_register_subject(nullptr, "wifi_enabled", &wifi_enabled);
-    lv_xml_register_subject(nullptr, "wifi_status", &wifi_status);
-    lv_xml_register_subject(nullptr, "ethernet_status", &ethernet_status);
-    lv_xml_register_subject(nullptr, "wifi_scanning", &wifi_scanning);
-    lv_xml_register_subject(nullptr, "wifi_password_modal_visible", &wifi_password_modal_visible);
-    lv_xml_register_subject(nullptr, "wifi_password_modal_ssid", &wifi_password_modal_ssid);
-    lv_xml_register_subject(nullptr, "wifi_connecting", &wifi_connecting);
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(wifi_password_modal_ssid, wifi_password_modal_ssid_buffer, "", "wifi_password_modal_ssid"); // SSID for password modal
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(wifi_status, wifi_status_buffer, get_status_text("disabled"), "wifi_status");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(ethernet_status, ethernet_status_buffer, "Checking...", "ethernet_status");
 
     spdlog::info("[WiFi Screen] Subjects initialized");
 }
