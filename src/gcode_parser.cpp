@@ -36,11 +36,15 @@ int ParsedGCodeFile::find_layer_at_z(float z) const {
     int closest = 0;
     float min_diff = std::abs(layers[0].z_height - z);
 
+    constexpr float epsilon = 0.0001f; // Tolerance for floating point comparison
+
     while (left <= right) {
         int mid = left + (right - left) / 2;
         float diff = std::abs(layers[mid].z_height - z);
 
-        if (diff < min_diff) {
+        // Update closest if this is better, or if equal distance but prefer lower Z height
+        if (diff < min_diff || (std::abs(diff - min_diff) < epsilon &&
+                                layers[mid].z_height < layers[closest].z_height)) {
             min_diff = diff;
             closest = mid;
         }
@@ -76,8 +80,8 @@ void GCodeParser::reset() {
     global_bounds_ = AABB();
     lines_parsed_ = 0;
 
-    // Start with first layer at Z=0
-    start_new_layer(0.0f);
+    // Layers will be created on-demand when segments are added
+    // (see add_segment() which creates a layer if layers_ is empty)
 }
 
 void GCodeParser::parse_line(const std::string& line) {
@@ -215,14 +219,45 @@ bool GCodeParser::parse_exclude_object_command(const std::string& line) {
         std::string polygon_str;
         if (extract_string_param(line, "POLYGON", polygon_str)) {
             // Simple extraction of number pairs
-            std::istringstream iss(polygon_str);
-            char ch;
-            float x, y;
-            while (iss >> ch) {
-                if (ch == '[') {
-                    if (iss >> x >> ch && ch == ',' && iss >> y >> ch && ch == ']') {
-                        obj.polygon.push_back(glm::vec2(x, y));
+            // Remove all whitespace first for easier parsing
+            polygon_str.erase(std::remove_if(polygon_str.begin(), polygon_str.end(), ::isspace),
+                              polygon_str.end());
+
+            // Skip outer opening bracket if present
+            size_t pos = 0;
+            if (!polygon_str.empty() && polygon_str[0] == '[') {
+                pos = 1;
+            }
+
+            while (pos < polygon_str.length()) {
+                // Find opening bracket for this point
+                if (polygon_str[pos] == '[') {
+                    pos++;
+                    // Extract x coordinate (everything until comma)
+                    size_t comma = polygon_str.find(',', pos);
+                    if (comma != std::string::npos) {
+                        try {
+                            float x = std::stof(polygon_str.substr(pos, comma - pos));
+                            pos = comma + 1;
+
+                            // Extract y coordinate (everything until closing bracket)
+                            size_t close = polygon_str.find(']', pos);
+                            if (close != std::string::npos) {
+                                float y = std::stof(polygon_str.substr(pos, close - pos));
+                                obj.polygon.push_back(glm::vec2(x, y));
+                                pos = close + 1;
+                                spdlog::trace("Parsed polygon point: ({}, {})", x, y);
+                            } else {
+                                break;
+                            }
+                        } catch (...) {
+                            break;
+                        }
+                    } else {
+                        break;
                     }
+                } else {
+                    pos++;
                 }
             }
         }
@@ -468,13 +503,21 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
 void GCodeParser::parse_extruder_color_metadata(const std::string& line) {
     // Format: "; extruder_colour = #ED1C24;#00C1AE;#F4E2C1;#000000"
     //     OR: "; filament_colour = ..." (fallback)
+    //     OR: ";extruder_colour=#AA0000 ; #00BB00 ;#0000CC" (with variations)
 
-    size_t pos = line.find(" = ");
-    if (pos == std::string::npos) {
+    // Find '=' character (with or without spaces)
+    size_t eq_pos = line.find('=');
+    if (eq_pos == std::string::npos) {
         return;
     }
 
-    std::string colors_str = line.substr(pos + 3);
+    std::string colors_str = line.substr(eq_pos + 1);
+
+    // Trim leading whitespace from colors_str
+    size_t start = colors_str.find_first_not_of(" \t\r\n");
+    if (start != std::string::npos) {
+        colors_str = colors_str.substr(start);
+    }
 
     // Split by semicolons
     std::stringstream ss(colors_str);
@@ -676,18 +719,23 @@ void GCodeParser::add_segment(const glm::vec3& start, const glm::vec3& end, bool
     // Update layer data
     Layer& current_layer = layers_.back();
     current_layer.segments.push_back(segment);
-    current_layer.bounding_box.expand(start);
+
+    // For bounding box: skip start position if this is the first segment ever
+    // (avoids including implicit (0,0,0) starting position in print bounds)
+    bool is_first_segment = (layers_.size() == 1 && current_layer.segments.size() == 1);
+
+    if (!is_first_segment) {
+        current_layer.bounding_box.expand(start);
+        global_bounds_.expand(start);
+    }
     current_layer.bounding_box.expand(end);
+    global_bounds_.expand(end);
 
     if (is_extrusion) {
         current_layer.segment_count_extrusion++;
     } else {
         current_layer.segment_count_travel++;
     }
-
-    // Update global bounds
-    global_bounds_.expand(start);
-    global_bounds_.expand(end);
 
     // Update object bounding box (only for extrusion moves, not travels)
     if (!current_object_.empty() && objects_.count(current_object_) > 0 && is_extrusion) {
