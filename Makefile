@@ -114,7 +114,7 @@ BIN_DIR := $(BUILD_DIR)/bin
 OBJ_DIR := $(BUILD_DIR)/obj
 
 # LVGL
-LVGL_DIR := lvgl
+LVGL_DIR := lib/lvgl
 LVGL_INC := -I$(LVGL_DIR) -I$(LVGL_DIR)/src
 LVGL_SRCS := $(shell find $(LVGL_DIR)/src -name "*.c" 2>/dev/null)
 LVGL_OBJS := $(patsubst $(LVGL_DIR)/%.c,$(OBJ_DIR)/lvgl/%.o,$(LVGL_SRCS))
@@ -162,7 +162,7 @@ ifneq ($(SDL2_SYSTEM_AVAILABLE),)
     SDL2_LIB :=
 else
     # No system SDL2 - build from submodule
-    SDL2_DIR := sdl2
+    SDL2_DIR := lib/sdl2
     SDL2_BUILD_DIR := $(SDL2_DIR)/build
     SDL2_LIB := $(SDL2_BUILD_DIR)/libSDL2.a
     SDL2_INC := -I$(SDL2_DIR)/include -I$(SDL2_BUILD_DIR)/include -I$(SDL2_BUILD_DIR)/include-config-release
@@ -178,7 +178,7 @@ ifeq ($(LIBHV_PKG_CONFIG),yes)
     LIBHV_LIB :=
 else
     # No system libhv - build from submodule
-    LIBHV_DIR := libhv
+    LIBHV_DIR := lib/libhv
     LIBHV_INC := -I$(LIBHV_DIR)/include -I$(LIBHV_DIR)/cpputil -I$(LIBHV_DIR)
     # Check both possible locations for libhv.a (lib/ and root build directory)
     LIBHV_LIB_PATHS := $(LIBHV_DIR)/lib/libhv.a $(LIBHV_DIR)/libhv.a
@@ -198,7 +198,7 @@ ifneq ($(SPDLOG_SYSTEM_AVAILABLE),)
     SPDLOG_INC := -I$(dir $(SPDLOG_SYSTEM_AVAILABLE))
 else
     # No system spdlog - use submodule
-    SPDLOG_DIR := spdlog
+    SPDLOG_DIR := lib/spdlog
     SPDLOG_INC := -I$(SPDLOG_DIR)/include
 endif
 
@@ -217,7 +217,7 @@ endif
 ENABLE_TINYGL_3D ?= yes
 
 ifeq ($(ENABLE_TINYGL_3D),yes)
-    TINYGL_DIR := tinygl
+    TINYGL_DIR := lib/tinygl
     TINYGL_LIB := $(TINYGL_DIR)/lib/libTinyGL.a
     TINYGL_INC := -I$(TINYGL_DIR)/include
     TINYGL_DEFINES := -DENABLE_TINYGL_3D
@@ -229,12 +229,12 @@ else
 endif
 
 # wpa_supplicant (WiFi control via wpa_ctrl interface)
-WPA_DIR := wpa_supplicant
+WPA_DIR := lib/wpa_supplicant
 WPA_CLIENT_LIB := $(WPA_DIR)/wpa_supplicant/libwpa_client.a
 WPA_INC := -I$(WPA_DIR)/src/common -I$(WPA_DIR)/src/utils
 
 # Include paths
-INCLUDES := -I. -I$(INC_DIR) $(LVGL_INC) $(LIBHV_INC) $(SPDLOG_INC) $(TINYGL_INC) $(WPA_INC) $(SDL2_INC) -Iglm -Iopenvdb/nanovdb
+INCLUDES := -I. -I$(INC_DIR) -Ilib -Ilib/glm $(LVGL_INC) $(LIBHV_INC) $(SPDLOG_INC) $(TINYGL_INC) $(WPA_INC) $(SDL2_INC)
 
 # Common linker flags (used by both macOS and Linux)
 LDFLAGS_COMMON := $(SDL2_LIBS) $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) -lm -lpthread

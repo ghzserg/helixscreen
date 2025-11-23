@@ -1,22 +1,22 @@
 [submodule "lvgl"]
-	path = lvgl
+	path = lib/lvgl
 	url = https://github.com/lvgl/lvgl.git
 [submodule "libhv"]
-	path = libhv
+	path = lib/libhv
 	url = https://github.com/ithewei/libhv.git
 [submodule "wpa_supplicant"]
-	path = wpa_supplicant
+	path = lib/wpa_supplicant
 	url = https://github.com/fluispotter/hostap.git
 [submodule "spdlog"]
-	path = spdlog
+	path = lib/spdlog
 	url = https://github.com/gabime/spdlog.git
 	branch = fmt-11.2.0
 [submodule "sdl2"]
-	path = sdl2
+	path = lib/sdl2
 	url = https://github.com/libsdl-org/SDL.git
 [submodule "glm"]
-	path = glm
+	path = lib/glm
 	url = https://github.com/g-truc/glm.git
 [submodule "openvdb"]
-	path = openvdb
+	path = lib/openvdb
 	url = https://github.com/AcademySoftwareFoundation/openvdb.git

@@ -51,7 +51,7 @@ check-deps:
 	if command -v sdl2-config >/dev/null 2>&1; then \
 		echo "$(GREEN)✓ SDL2:$(RESET) Using system version $$(sdl2-config --version)"; \
 	else \
-		echo "$(GREEN)✓ SDL2:$(RESET) Will build from submodule (sdl2/)"; \
+		echo "$(GREEN)✓ SDL2:$(RESET) Will build from submodule (lib/sdl2/)"; \
 		if ! command -v cmake >/dev/null 2>&1; then \
 			echo "$(RED)✗ cmake not found (required for SDL2 build)$(RESET)"; ERROR=1; \
 			MISSING_DEPS="$$MISSING_DEPS cmake"; \

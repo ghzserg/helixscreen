@@ -68,7 +68,7 @@ format-staged:
 		echo "$(RED)✗ xmllint not found$(RESET)"; \
 		exit 1; \
 	fi; \
-	STAGED_C_FILES=$$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|cpp|h|mm)$$' | grep -v '^libhv/' | grep -v '^lvgl/' | grep -v '^spdlog/' | grep -v '^wpa_supplicant/' || true); \
+	STAGED_C_FILES=$$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|cpp|h|mm)$$' | grep -v '^lib/' || true); \
 	if [ -n "$$STAGED_C_FILES" ]; then \
 		echo "$(CYAN)Formatting staged C/C++ files...$(RESET)"; \
 		for file in $$STAGED_C_FILES; do \
