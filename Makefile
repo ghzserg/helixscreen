@@ -308,7 +308,7 @@ MOCK_OBJS := $(patsubst $(TEST_MOCK_DIR)/%.cpp,$(OBJ_DIR)/tests/mocks/%.o,$(MOCK
 # Default target
 .DEFAULT_GOAL := all
 
-.PHONY: all build clean run test test-integration test-cards test-print-select test-size-content demo compile_commands libhv-build apply-patches generate-fonts help check-deps install-deps venv-setup icon format format-staged
+.PHONY: all build clean run test test-integration test-cards test-print-select test-size-content demo compile_commands libhv-build apply-patches generate-fonts help check-deps install-deps venv-setup icon format format-staged screenshots
 
 # Help target - checks stdout dynamically to avoid colors when piped
 help:
@@ -347,6 +347,9 @@ help:
 	echo "  $${G}material-icons-convert$${X} - Convert SVGs to LVGL C arrays (SVGS=...)"; \
 	echo "  $${G}material-icons-add$${X} - Download and add Material icons (ICONS=...)"; \
 	echo ""; \
+	echo "$${C}Documentation Targets:$${X}"; \
+	echo "  $${G}screenshots$${X}      - Generate all documentation screenshots (docs/images/)"; \
+	echo ""; \
 	echo "$${C}Build Options:$${X}"; \
 	echo "  $${Y}V=1$${X}              - Verbose mode (show full compiler commands)"; \
 	echo "  $${Y}JOBS=N$${X}           - Set parallel job count (default: $(NPROC))"; \
@@ -359,6 +362,12 @@ help:
 	echo "  make run           # Build and run"; \
 	echo ""; \
 	echo "$${C}Platform:$${X} $(PLATFORM) ($(NPROC) cores available)"
+
+# Documentation screenshot generation
+screenshots: $(BIN)
+	$(Q)$(ECHO) "$(CYAN)Generating documentation screenshots...$(RESET)"
+	$(Q)./scripts/generate-screenshots.sh
+	$(Q)$(ECHO) "$(GREEN)✓ Documentation screenshots generated in docs/images/$(RESET)"
 
 # Include modular makefiles
 include mk/deps.mk
