@@ -1,12 +1,7 @@
 #!/bin/bash
-# HelixScreen Documentation Screenshot Generator
-#
-# This script automates the generation of all documentation screenshots.
-# Run this after making UI changes to update documentation images.
-#
-# Usage: ./scripts/generate-screenshots.sh
-#
-# Output: docs/images/screenshot-*.png
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 set -e
 

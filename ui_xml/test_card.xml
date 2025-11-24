@@ -1,4 +1,7 @@
 <?xml version="1.0"?>
+<!-- Copyright 2025 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+
 <component>
   <!-- Test Card Component for Dynamic Instantiation -->
   <view extends="lv_obj" width="200" style_radius="8" style_pad_all="#file_card_padding" flex_flow="column">

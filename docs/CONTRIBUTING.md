@@ -67,12 +67,19 @@ See **[CLAUDE.md](CLAUDE.md)** Critical Rule #4 for the complete production safe
 
 ### Copyright Headers
 
-**All new source files MUST include GPL v3 copyright header.**
+**All new source files MUST include SPDX license identifier.**
 
-See **[docs/COPYRIGHT_HEADERS.md](docs/COPYRIGHT_HEADERS.md)** for required templates:
-- C/C++ source files
-- XML component files
-- Shell scripts
+All source files require a 2-line SPDX header:
+```cpp
+// Copyright 2025 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+```
+
+See **[docs/COPYRIGHT_HEADERS.md](docs/COPYRIGHT_HEADERS.md)** for complete details and examples for:
+- C/C++ source files (.c, .cpp, .h, .hpp)
+- Python files (.py)
+- Bash scripts (.sh)
+- XML component files (.xml)
 
 ### Logging Standards
 

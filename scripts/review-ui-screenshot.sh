@@ -1,12 +1,7 @@
 #!/bin/bash
-# review-ui-screenshot.sh - UI Screenshot Reviewer using Claude Code Agent
-#
-# Usage:
-#   ./scripts/review-ui-screenshot.sh \
-#     --screenshot <path> \
-#     --requirements <path> \
-#     --xml-source <path> \
-#     --changelog <path>
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
 

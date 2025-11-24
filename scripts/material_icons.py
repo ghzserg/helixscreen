@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 Material Design Icon Manager for HelixScreen
 Downloads, converts, and registers Material Design icons for LVGL 9.

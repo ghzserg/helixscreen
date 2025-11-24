@@ -1,26 +1,7 @@
 #!/bin/bash
-# HelixScreen UI Screenshot Utility
-#
-# Runs binary with auto-screenshot and auto-quit, then converts to PNG
-#
-# Usage: ./screenshot.sh [binary_name] [output_name] [panel_name_or_flags...] [additional args...]
-#   binary_name: Name of binary to run (default: helix-ui-proto)
-#   output_name: Name for output file (default: timestamp)
-#   panel_name:  Panel to display (optional - if omitted or starts with -, treated as flag)
-#   Additional args: Forwarded to binary (e.g., -s small, --wizard)
-#
-# Available Panels:
-#   See binary help: ./build/bin/helix-ui-proto --help
-#
-# Display Selection:
-#   - Automatically opens UI on display 1 (keeps terminal visible on display 0)
-#   - Override with: HELIX_SCREENSHOT_DISPLAY=0 ./screenshot.sh ...
-#
-# Examples:
-#   ./screenshot.sh helix-ui-proto home home              # Panel name as 3rd arg
-#   ./screenshot.sh helix-ui-proto motion motion -s small # Panel + size flag
-#   ./screenshot.sh helix-ui-proto wizard --wizard -s tiny # Flags only (no panel)
-#   HELIX_SCREENSHOT_DISPLAY=0 ./screenshot.sh helix-ui-proto controls controls
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 set -e
 

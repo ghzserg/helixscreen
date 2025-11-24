@@ -1,5 +1,7 @@
 #!/bin/bash
-# Batch convert Material Design SVGs to LVGL 9 C arrays
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 SVG_SOURCE="/Users/pbrown/Code/Printing/helixscreen/assets/material_svg"
 OUTPUT_DIR="assets/images/material"

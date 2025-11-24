@@ -1,6 +1,7 @@
 #!/bin/bash
-# Test navigation flows for HelixScreen prototype UI
-# Verifies panel stack behavior and multi-level navigation
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 set -e
 

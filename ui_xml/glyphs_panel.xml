@@ -1,18 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
- * HelixScreen - LVGL 9 UI Prototype
- * Copyright (C) 2025 Preston Brown
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
--->
+<!-- Copyright 2025 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+
 <component>
   <view name="glyphs_panel" extends="lv_obj" width="100%" height="100%">
     <!-- Container with vertical flex layout -->

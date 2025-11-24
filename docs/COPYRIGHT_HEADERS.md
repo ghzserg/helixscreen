@@ -1,129 +1,124 @@
 # Copyright Headers for HelixScreen
 
-All source files in the HelixScreen project must include the appropriate GPL v3 copyright header.
+All source files in the HelixScreen project must include an SPDX license identifier.
 
-## Company Information
-- **Company:** 356C LLC
-- **Author:** Preston Brown
-- **Email:** pbrown@brown-house.net
-- **License:** GNU General Public License v3.0 or later
+## SPDX License Identifier (Required)
 
-## SPDX License Identifier
+All source files must include this header at the top of the file:
 
-All C/C++ source and header files must include an SPDX license identifier comment at the very top of the file (before the full GPL header). This is required by the quality checks script.
+### C/C++ Files (.c, .cpp, .h, .hpp)
 
 ```cpp
-// Copyright 2025 HelixScreen
+// Copyright 2025 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 ```
 
-## For C++ Source Files (.cpp)
+### Python Files (.py)
 
-```cpp
-// Copyright 2025 HelixScreen
-// SPDX-License-Identifier: GPL-3.0-or-later
-
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
+```python
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 ```
 
-## For Header Files (.h)
-
-```cpp
-// Copyright 2025 HelixScreen
-// SPDX-License-Identifier: GPL-3.0-or-later
-
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
-```
-
-## For XML Files (.xml)
-
-```xml
-<!--
-  Copyright (C) 2025 356C LLC
-  Author: Preston Brown <pbrown@brown-house.net>
-
-  This file is part of HelixScreen.
-
-  HelixScreen is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  HelixScreen is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
--->
-```
-
-## Notes
-
-- **XML files with declarations:** For XML files that start with `<?xml version="1.0"?>`, place the copyright header **after** the XML declaration.
-- **Copyright year:** Update the year in new files as appropriate (e.g., 2026, 2027, etc.).
-- **Multiple contributors:** If multiple authors contribute to a file, add additional `Author:` lines.
-
-## Applying Headers to Multiple Files
-
-A Python script is available to batch-apply headers:
+### Bash Scripts (.sh)
 
 ```bash
-# Create a temporary script (see /tmp/add_headers.py for reference)
-python3 scripts/add_copyright_headers.py .
+#!/usr/bin/env bash
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 ```
+
+### XML Files (.xml)
+
+```xml
+<?xml version="1.0"?>
+<!-- Copyright 2025 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+```
+
+## Why SPDX?
+
+SPDX (Software Package Data Exchange) identifiers are:
+- **Machine-readable**: Automated tools can instantly detect licenses
+- **Industry standard**: Used by Linux kernel, LLVM, and major open source projects
+- **Legally equivalent**: SPDX + LICENSE file = complete legal notice
+- **Concise**: 2 lines instead of 20+ lines of boilerplate per file
+
+The full copyright notice and GPL license text are in the `COPYRIGHT` and `LICENSE` files at the repository root.
+
+## Adding Headers to New Files
+
+When creating new source files:
+
+1. Add the appropriate SPDX header at the top (see examples above)
+2. Preserve special first lines (shebang `#!/usr/bin/env`, XML declaration `<?xml`)
+3. Leave a blank line after the header before code begins
+
+## Batch Application
+
+To add SPDX headers to multiple files:
+
+```bash
+# Dry-run (shows what would be changed)
+./scripts/add-spdx-headers.sh
+
+# Apply to all source files
+./scripts/add-spdx-headers.sh --apply
+
+# Apply to specific files
+./scripts/add-spdx-headers.sh --apply src/myfile.cpp include/myheader.h
+
+# Verbose output with diffs
+./scripts/add-spdx-headers.sh --verbose
+```
+
+The script automatically:
+- Detects file type (C/C++, Python, Bash, XML)
+- Preserves shebangs and XML declarations
+- Removes old verbose copyright boilerplate
+- Adds clean SPDX headers
+- Skips files that already have SPDX identifiers
 
 ## Verification
 
-To check that all project files have copyright headers:
+To check that all files have SPDX identifiers:
 
 ```bash
-# Run the quality checks script (checks SPDX identifiers and more)
-./scripts/quality-checks.sh --staged-only  # For pre-commit
-./scripts/quality-checks.sh                # For all files
+# Run quality checks (includes SPDX verification)
+./scripts/quality-checks.sh
 
-# Manual check for missing SPDX identifiers in C++ files
+# Manual check for missing SPDX in C/C++ files
 grep -L "SPDX-License-Identifier: GPL-3.0-or-later" src/*.cpp include/*.h
 
-# Manual check for missing headers in XML files
-grep -L "Copyright (C)" ui_xml/*.xml
+# Check specific file
+head -5 src/main.cpp | grep SPDX
 ```
 
-All project source files should include the appropriate header. Third-party libraries (e.g., LVGL, submodules) retain their original licenses.
+## Pre-commit Hook
+
+The quality checks script runs automatically via pre-commit hook if configured:
+
+```bash
+# Install pre-commit hook
+cp scripts/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+This ensures all committed files have proper SPDX headers.
+
+## Full Copyright Notice
+
+For the complete copyright and license information, see:
+- `COPYRIGHT` - Comprehensive copyright notice
+- `LICENSE` - Full GPL-3.0-or-later license text
+
+## Third-Party Code
+
+Third-party libraries in `lib/` retain their original licenses and copyright notices. See individual library directories for their license information.
+
+## Notes
+
+- **Year**: Update to current year for new files (e.g., 2026, 2027)
+- **No verbose headers**: SPDX identifiers replace verbose GPL boilerplate
+- **Machine-readable**: Tools like `reuse` can verify SPDX compliance
+- **Standards compliant**: Follows REUSE 3.0 best practices

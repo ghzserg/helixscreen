@@ -1,5 +1,7 @@
 #!/bin/bash
-# Test script to verify print select view toggle works correctly
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 set -e
 

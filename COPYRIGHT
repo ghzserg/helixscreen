@@ -1,0 +1,45 @@
+HelixScreen - 3D Printer Touch Interface
+Copyright (C) 2025 356C LLC
+Author: Preston Brown <pbrown@brown-house.net>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+================================================================================
+
+For the complete license text, see the LICENSE file in the repository root.
+
+All source files in this project use SPDX license identifiers for
+machine-readable license information:
+
+    // SPDX-License-Identifier: GPL-3.0-or-later
+
+This identifier is legally equivalent to the full GPL notice and is the
+modern industry-standard method for declaring software licenses.
+
+================================================================================
+
+THIRD-PARTY COMPONENTS
+
+This project includes third-party components with their own licenses:
+
+- LVGL (lib/lvgl) - MIT License
+- libhv (lib/libhv) - BSD License
+- spdlog (lib/spdlog) - MIT License
+- SDL2 (lib/sdl2) - Zlib License
+- GLM (lib/glm) - MIT License
+- OpenVDB (lib/openvdb) - Mozilla Public License 2.0
+- wpa_supplicant (lib/wpa_supplicant) - BSD License
+- TinyGL (lib/tinygl) - MIT License
+
+See individual library directories for their respective license texts.

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 Generate C header file with embedded icon data from PNG.
 Usage: python3 generate_icon_header.py <input.png> <output.h>

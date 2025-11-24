@@ -1,5 +1,7 @@
 #!/bin/bash
-# Convert LVGL 8 Material icons to LVGL 9 format
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 ICON_DIR="assets/images/material"
 

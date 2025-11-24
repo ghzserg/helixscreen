@@ -51,6 +51,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 5 | **Read docs BEFORE coding** | Start coding immediately | Read LVGL9_XML_GUIDE.md, BUILD_SYSTEM.md for area | Avoid known gotchas | docs/ |
 | 6 | **Use `make -j` (auto-detect)** | `make -j4`, `make -j8` | `make -j` (no number) | Auto-detects cores via NPROC, works on any system | Makefile:202,215 |
 | 7 | **MANDATORY RAII for widgets** | `lv_malloc()` / `lv_free()` | `lvgl_make_unique<T>()` + `release()` | Exception safety, prevent memory leaks | ARCHITECTURE.md, `ui_widget_memory.h` |
+| 8 | **SPDX headers required** | Verbose GPL boilerplate (20 lines) | `// Copyright 2025 356C LLC`<br/>`// SPDX-License-Identifier: GPL-3.0-or-later` | Machine-readable, industry standard (2 lines vs 20) | COPYRIGHT_HEADERS.md |
 
 ---
 

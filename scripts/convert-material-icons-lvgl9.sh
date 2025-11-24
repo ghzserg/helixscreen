@@ -1,6 +1,7 @@
 #!/bin/bash
-# Convert Material Design SVG icons to LVGL 9 C arrays
-# Uses ImageMagick (SVG→PNG) + LVGLImage.py (PNG→C)
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 set -e
 

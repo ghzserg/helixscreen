@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 Download printer images using headless browser
 This bypasses anti-hotlinking by actually rendering the page

@@ -1,5 +1,7 @@
 #!/bin/bash
-# Test keypad at all screen sizes
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 echo "Testing keypad responsiveness at all screen sizes..."
 echo

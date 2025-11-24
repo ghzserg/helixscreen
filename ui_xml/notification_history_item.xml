@@ -1,46 +1,4 @@
 <?xml version="1.0"?>
-<!-- Notification History Item Component -->
-<component>
-  <api>
-    <prop type="string" name="severity"/>      <!-- "error", "warning", "info", "success" -->
-    <prop type="string" name="title"/>
-    <prop type="string" name="message"/>
-    <prop type="string" name="timestamp"/>
-    <prop type="string" name="border_color"/>
-  </api>
+<!-- Copyright 2025 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-  <view extends="lv_obj" name="notification_item"
-        width="100%" style_min_height="80"
-        style_pad_all="#padding_normal"
-        style_pad_gap="#gap_small"
-        style_bg_color="#card_bg"
-        style_bg_opa="255"
-        style_border_color="$border_color"
-        style_border_side="left"
-        style_border_width="4"
-        style_radius="#border_radius"
-        style_margin_bottom="#gap_small"
-        clickable="true"
-        flex_flow="column">
-
-    <!-- Header: severity icon + timestamp -->
-    <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-            flex_flow="row" style_flex_main_place="space_between">
-
-      <!-- Severity icon + title -->
-      <lv_obj style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="#gap_small"
-              flex_flow="row" style_flex_cross_place="center" flex_grow="1">
-        <lv_label name="severity_icon" text="&#xF071;"
-                  style_text_font="#font_heading" style_text_color="$border_color"/>
-        <text_body name="item_title" text="$title" style_text_font="#font_body"/>
-      </lv_obj>
-
-      <!-- Timestamp -->
-      <text_small name="item_timestamp" text="$timestamp" style_text_color="#text_secondary"/>
-    </lv_obj>
-
-    <!-- Message -->
-    <text_body name="item_message" text="$message" width="100%"
-               style_text_color="#text_secondary" long_mode="wrap"/>
-  </view>
-</component>

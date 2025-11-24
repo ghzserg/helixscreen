@@ -1,14 +1,7 @@
 #!/bin/bash
 
-# WiFi Real Hardware Testing Script
-# Copyright (C) 2025 356C LLC
-#
-# This file is part of HelixScreen.
-#
-# HelixScreen is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 set -e
 

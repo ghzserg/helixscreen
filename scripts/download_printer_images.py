@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# Copyright 2025 356C LLC
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 Download and process printer images for wizard
 Resizes all images to consistent dimensions for UI display
