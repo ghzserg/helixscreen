@@ -33,9 +33,11 @@ For the developer implementing this system, here's a sequential task list:
 - [x] Optimize status bar for tiny screens (padding_tiny, gap_small)
 - [x] Remove test notifications from main.cpp (commented out for future testing)
 
-### Phase 2: Error Reporting Migration (READY TO START)
+### Phase 2: Error Reporting Migration (IN PROGRESS)
 - [x] Test notification system triggers (4 test messages working)
-- [ ] Verify UI appearance (toasts, status bar, history panel)
+- [x] Fix status bar initialization (network icon widget lookup fixed - 2025-11-23)
+- [x] Implement reactive network status icon (observer pattern, Font Awesome sitemap - 2025-11-23)
+- [ ] Verify UI appearance (toasts, history panel)
 - [ ] Audit Moonraker error sites (~20 calls)
 - [ ] Convert Moonraker errors to use `NOTIFY_ERROR()` / `NOTIFY_WARNING()`
 - [ ] Audit WiFi error sites (~15 calls)
