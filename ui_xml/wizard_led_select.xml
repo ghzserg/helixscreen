@@ -9,7 +9,7 @@
     <!-- Help text -->
     <text_body text="Choose your main LED strip (skip if you don't have LEDs)" width="100%" style_pad_bottom="#gap_small"/>
     <!-- Selection container -->
-    <ui_card width="100%" flex_grow="1" style_bg_opa="255" style_radius="12" style_pad_all="#padding_normal" style_pad_gap="#gap_normal" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
+    <ui_card width="100%" flex_grow="1" style_radius="#border_radius_large" style_pad_all="#padding_normal" style_pad_gap="#gap_normal" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
       <!-- LED selection -->
       <text_body text="Main LED Strip" style_pad_bottom="#gap_small"/>
       <lv_dropdown name="led_main_dropdown" options="(None)" width="100%" height="#header_height" style_border_width="#input_border_width" style_border_opa="100%" style_radius="#border_radius" style_pad_all="#padding_card"/>

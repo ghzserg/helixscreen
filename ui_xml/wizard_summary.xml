@@ -9,48 +9,48 @@
     <!-- Help text -->
     <text_heading text="Review your configuration and click Finish to save" width="100%" style_pad_bottom="#gap_small"/>
     <!-- Summary container -->
-    <ui_card width="100%" flex_grow="1" style_bg_opa="255" style_radius="12" style_pad_all="#padding_normal" style_pad_gap="#gap_small" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
+    <ui_card width="100%" flex_grow="1" style_radius="#border_radius_large" style_pad_all="#padding_normal" style_pad_gap="#gap_small" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
       <!-- Connection settings -->
       <text_heading text="Printer Connection" style_pad_bottom="8"/>
-      <lv_obj width="100%" height="LV_SIZE_CONTENT" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="Printer Name:"/>
         <lv_label name="summary_printer_name_label" bind_text="summary_printer_name" style_text_font="#font_body" style_text_color="#text_primary"/>
       </lv_obj>
-      <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="Printer Type:"/>
         <lv_label name="summary_printer_type_label" bind_text="summary_printer_type" style_text_font="#font_body" style_text_color="#text_primary"/>
       </lv_obj>
-      <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="WiFi Network:"/>
         <lv_label name="summary_wifi_ssid_label" bind_text="summary_wifi_ssid" style_text_font="#font_body" style_text_color="#text_primary"/>
       </lv_obj>
-      <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="Moonraker:"/>
         <lv_label name="summary_moonraker_label" bind_text="summary_moonraker_connection" style_text_font="#font_body" style_text_color="#text_primary"/>
       </lv_obj>
       <!-- Hardware mapping -->
       <text_heading text="Hardware Mapping" style_pad_top="#gap_normal" style_pad_bottom="8"/>
-      <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="Heated Bed:"/>
         <lv_label name="summary_bed_label" bind_text="summary_bed" style_text_font="#font_body" style_text_color="#text_primary"/>
       </lv_obj>
-      <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="Hotend:"/>
         <lv_label name="summary_hotend_label" bind_text="summary_hotend" style_text_font="#font_body" style_text_color="#text_primary"/>
       </lv_obj>
-      <lv_obj name="part_fan_row" width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj name="part_fan_row" width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="Part Cooling Fan:"/>
         <lv_label name="summary_part_fan_label" bind_text="summary_part_fan" style_text_font="#font_body" style_text_color="#text_primary"/>
         <!-- Hide row when part fan is not configured -->
         <lv_obj-bind_flag_if_eq subject="summary_part_fan_visible" flag="hidden" ref_value="0"/>
       </lv_obj>
-      <lv_obj name="hotend_fan_row" width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj name="hotend_fan_row" width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="Hotend Cooling Fan:"/>
         <lv_label name="summary_hotend_fan_label" bind_text="summary_hotend_fan" style_text_font="#font_body" style_text_color="#text_primary"/>
         <!-- Hide row when hotend fan is not configured -->
         <lv_obj-bind_flag_if_eq subject="summary_hotend_fan_visible" flag="hidden" ref_value="0"/>
       </lv_obj>
-      <lv_obj name="led_strip_row" width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
+      <lv_obj name="led_strip_row" width="100%" height="60" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="8" flex_flow="row">
         <text_body text="LED Strip:"/>
         <lv_label name="summary_led_strip_label" bind_text="summary_led_strip" style_text_font="#font_body" style_text_color="#text_primary"/>
         <!-- Hide row when LED strip is not configured -->

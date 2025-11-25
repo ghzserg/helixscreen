@@ -10,7 +10,7 @@
     <text_body text="Give your printer a name and confirm its type" width="100%"/>
     <text_small text="We'll try to detect your printer automatically" width="100%"/>
     <!-- Main card container -->
-    <ui_card width="100%" flex_grow="1" scrollable="false" style_pad_gap="#gap_normal" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
+    <ui_card width="100%" flex_grow="1" style_pad_gap="#gap_normal" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
       <!-- Horizontal row: Printer Name (left) and Printer Type (right) -->
       <lv_obj width="100%" flex_grow="1" scrollable="false" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="#gap_small" flex_flow="row">
         <!-- Left column: Printer name input and status -->

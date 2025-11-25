@@ -26,7 +26,7 @@
         <!-- LEFT COLUMN: WiFi and Ethernet Cards (40%) -->
         <lv_obj flex_grow="4" height="100%" scrollable="true" scroll_dir="VER" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="#gap_normal" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
           <!-- WiFi Card -->
-          <ui_card width="100%" flex_grow="6" scrollable="false" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center">
+          <ui_card width="100%" flex_grow="6" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center">
             <!-- Label + Switch horizontal container -->
             <lv_obj width="100%" height="#wifi_toggle_height" scrollable="false" style_bg_opa="0" style_pad_all="0" style_pad_top="6" style_border_width="0" style_pad_right="#padding_tiny" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
               <lv_label text="WiFi"/>

@@ -9,7 +9,7 @@
     <!-- Help text -->
     <text_body text="Choose your bed and hotend heaters" width="100%" style_pad_bottom="#gap_small"/>
     <!-- Selection container -->
-    <ui_card width="100%" flex_grow="1" style_bg_opa="255" style_radius="#border_radius" style_pad_all="#padding_normal" style_pad_gap="#gap_normal" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
+    <ui_card width="100%" flex_grow="1" style_radius="#border_radius" style_pad_all="#padding_normal" style_pad_gap="#gap_normal" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
       <!-- Bed heater selection -->
       <text_body text="Bed Heater" style_pad_bottom="#gap_small"/>
       <lv_dropdown name="bed_heater_dropdown" options="heater_bed" width="100%" height="#header_height" style_border_width="#input_border_width" style_border_opa="100%" style_radius="#border_radius" style_pad_all="#padding_card"/>

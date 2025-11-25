@@ -144,6 +144,8 @@
     <!-- Compact gap for tight layouts -->
     <px name="gap_tiny" value="6"/>
     <!-- Very tight gap for dense info -->
+    <px name="gap_card" value="4"/>
+    <!-- Compact gap for card content (label + value pairs) -->
     <!-- Typography - 3 semantic font sizes for design system consistency -->
     <string name="font_heading" value="montserrat_24"/>
     <string name="font_body" value="montserrat_16"/>

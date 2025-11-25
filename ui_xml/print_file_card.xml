@@ -31,7 +31,7 @@
     <!-- Metadata label minimum width to prevent crushing -->
     <px name="metadata_label_min_width" value="35"/>
   </consts>
-  <view extends="ui_card" style_flex_basis="#card_base_width" flex_grow="1" style_min_width="#card_min_width" style_max_width="#card_max_width" height="#card_height" style_radius="#border_radius" style_pad_all="0" style_clip_corner="true" clickable="true" scrollable="false" name="card_root">
+  <view extends="ui_card" style_flex_basis="#card_base_width" flex_grow="1" style_min_width="#card_min_width" style_max_width="#card_max_width" height="#card_height" style_radius="#border_radius" style_pad_all="0" style_clip_corner="true" clickable="true" name="card_root">
     <!-- Gradient background (scaled to fill card) -->
     <lv_image src="A:assets/images/thumbnail-gradient-bg.png" width="100%" height="100%" style_bg_opa="0" align="center" name="gradient_background"/>
     <!-- Thumbnail image (scaled in C++ with object-fit:cover to fill card) -->

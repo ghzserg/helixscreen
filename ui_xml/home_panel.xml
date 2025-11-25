@@ -19,7 +19,7 @@
   <!-- Now references global constants from globals.xml -->
   <view extends="lv_obj" width="100%" height="100%" style_pad_all="0" style_border_width="0" flex_flow="column">
     <!-- Top section: Printer visualization -->
-    <lv_obj width="100%" flex_grow="17" style_bg_opa="0%" style_border_width="0" style_pad_all="#padding_normal" flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center">
+    <lv_obj width="100%" flex_grow="17" style_bg_opa="0%" style_border_width="0" style_pad_all="#padding_normal" flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center" scrollable="false">
       <!-- Printer Image (size and scaling set dynamically in C++ based on screen size) -->
       <lv_image name="printer_image" src="A:assets/images/printer_400.png" width="#printer_img_size" height="#printer_img_size" align="center"/>
       <!-- Status Message with accent bar (flex-grows to fill available space) -->

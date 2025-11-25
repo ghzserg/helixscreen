@@ -82,18 +82,21 @@ static void ui_card_xml_apply(lv_xml_parser_state_t* state, const char** attrs) 
     // 2. Border: 0 (no border by default)
     lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN);
 
-    // 3. Shadow: 0 (no shadow)
+    // 3. Disable scrolling (cards are fixed containers, not scroll areas)
+    lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+
+    // 4. Shadow: 0 (no shadow)
     lv_obj_set_style_shadow_width(obj, 0, LV_PART_MAIN);
 
-    // 4. Border radius: Let LVGL theme provide responsive default (8px/12px)
-    //    User can override in globals.xml with card_radius constant
-    //    or per-instance with style_radius attribute
-
-    // 5. Padding: Let LVGL theme provide responsive default (16/20/24px)
+    // 5. Padding: 16px (matches #padding_card in globals.xml)
     //    User can override per-instance with style_pad_all attribute
+    lv_obj_set_style_pad_all(obj, 16, LV_PART_MAIN);
+
+    // 6. Border radius: Let LVGL theme provide responsive default
+    //    User can override with style_radius attribute
 
     spdlog::trace(
-        "[Card] Applied theme defaults: bg=card_bg, border=0, shadow=0, disabled_opa=50%");
+        "[Card] Applied theme defaults: bg=card_bg, border=0, shadow=0, pad=16, disabled_opa=50%");
 
     // Now apply standard lv_obj properties from XML (highest priority)
     // This allows XML attributes to override our defaults

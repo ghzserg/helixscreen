@@ -10,7 +10,7 @@
     <text_body text="Enter your printer's network address" width="100%"/>
     <text_small text="Usually looks like 127.0.0.1 or printer.local" width="100%"/>
     <!-- Card container for inputs and button -->
-    <ui_card width="100%" flex_grow="1" style_pad_gap="#gap_normal" scrollable="false" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center">
+    <ui_card width="100%" flex_grow="1" style_pad_gap="#gap_normal" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center">
       <!-- Horizontal input row: Network Address (left) and Port (right) -->
       <lv_obj width="100%" flex_grow="6" scrollable="false" style_border_width="0" style_pad_all="0" style_pad_gap="#gap_small" flex_flow="row">
         <!-- Left -->
