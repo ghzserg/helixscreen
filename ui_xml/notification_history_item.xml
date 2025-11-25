@@ -1,47 +1,48 @@
 <?xml version="1.0"?>
 <!-- Copyright 2025 356C LLC -->
-<!-- SPDX-License-Identifier: GPL-3.0-or-later --><!-- Notification History Item Component -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Notification History Item Component
+     Uses severity_card widget for automatic color styling.
+     Pass severity="error|warning|success|info" and it handles colors.
+     Call ui_severity_card_finalize() after creation to style children. -->
 <component>
   <api>
     <prop type="string" name="severity"/>      <!-- "error", "warning", "info", "success" -->
     <prop type="string" name="title"/>
     <prop type="string" name="message"/>
     <prop type="string" name="timestamp"/>
-    <prop type="string" name="border_color"/>
   </api>
 
-  <view extends="lv_obj" name="notification_item"
-        width="100%" style_min_height="80"
-        style_pad_all="#padding_normal"
-        style_pad_gap="#gap_small"
+  <!-- Compact notification card with left color border (severity_card handles colors) -->
+  <view extends="severity_card" name="notification_item"
+        severity="$severity"
+        width="100%" height="64"
+        style_pad_left="#padding_small" style_pad_right="#padding_small"
+        style_pad_top="#padding_tiny" style_pad_bottom="#padding_small"
         style_bg_color="#card_bg"
         style_bg_opa="255"
         style_border_width="4"
-        style_border_color="$border_color"
         style_border_side="left"
         style_radius="#border_radius"
-        style_margin_bottom="#gap_small"
-        clickable="true"
-        flex_flow="column">
+        scrollable="false">
 
-    <!-- Header: severity icon + timestamp -->
-    <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-            flex_flow="row" style_flex_main_place="space_between">
+    <!-- Severity icon (top-left) - styled by ui_severity_card_finalize() -->
+    <lv_label name="severity_icon" text="&#xF071;"
+              align="top_left"
+              style_text_font="fa_icons_24"/>
 
-      <!-- Severity icon + title -->
-      <lv_obj style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="#gap_small"
-              flex_flow="row" style_flex_cross_place="center" flex_grow="1">
-        <lv_label name="severity_icon" text="&#xF071;"
-                  style_text_font="#font_heading" style_text_color="$border_color"/>
-        <text_body name="item_title" text="$title" style_text_font="#font_body"/>
-      </lv_obj>
+    <!-- Title (top-left, offset right of icon, vertically centered with 24px icon) -->
+    <text_body name="item_title" text="$title"
+               align="top_left" x="30" y="4"/>
 
-      <!-- Timestamp -->
-      <text_small name="item_timestamp" text="$timestamp" style_text_color="#text_secondary"/>
-    </lv_obj>
+    <!-- Timestamp (top-right) -->
+    <text_small name="item_timestamp" text="$timestamp"
+                align="top_right"
+                style_text_color="#text_secondary"/>
 
-    <!-- Message -->
-    <text_body name="item_message" text="$message" width="100%"
-               style_text_color="#text_secondary" long_mode="wrap"/>
+    <!-- Message (bottom-left, full width) -->
+    <text_small name="item_message" text="$message"
+                align="bottom_left" width="95%"
+                style_text_color="#text_secondary" long_mode="wrap"/>
   </view>
 </component>

@@ -49,6 +49,7 @@
 #include "ui_panel_settings.h"
 #include "ui_panel_step_test.h"
 #include "ui_panel_test.h"
+#include "ui_severity_card.h"
 #include "ui_status_bar.h"
 #include "ui_switch.h"
 #include "ui_text.h"
@@ -1197,6 +1198,7 @@ int main(int argc, char** argv) {
     ui_icon_register_widget();
     ui_switch_register();
     ui_card_register();
+    ui_severity_card_register();
     ui_dialog_register();
     ui_bed_mesh_register();
     ui_gcode_viewer_register();

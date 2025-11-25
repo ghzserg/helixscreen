@@ -2,16 +2,19 @@
 <!-- Copyright 2025 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-<!-- Toast Notification Component - Temporary non-blocking messages -->
+<!-- Toast Notification Component - Temporary non-blocking messages
+     Uses severity_card widget for automatic color styling.
+     Pass severity="error|warning|success|info" and it handles colors.
+     Call ui_severity_card_finalize() after creation to style icon. -->
 <component>
   <api>
     <prop type="string" name="severity"/>
     <prop type="string" name="message"/>
-    <prop type="string" name="border_color"/>
   </api>
 
-  <!-- Toast container - flex row layout -->
-  <view extends="lv_obj" name="toast_root"
+  <!-- Toast container - flex row layout (severity_card handles colors) -->
+  <view extends="severity_card" name="toast_root"
+        severity="$severity"
         width="70%"
         style_min_height="#header_height"
         style_max_height="100"
@@ -19,7 +22,6 @@
         style_pad_all="#padding_normal"
         style_pad_gap="#gap_small"
         style_border_width="2"
-        style_border_color="$border_color"
         style_shadow_width="12"
         style_shadow_spread="2"
         style_shadow_opa="80"
@@ -27,10 +29,9 @@
         style_flex_main_place="space_between"
         style_flex_cross_place="center">
 
-    <!-- Severity icon (left) - LV_SYMBOL_WARNING -->
-    <lv_label name="toast_icon" text="&#xF071;"
-              style_text_font="#font_heading"
-              style_text_color="$border_color"/>
+    <!-- Severity icon (left) - styled by ui_severity_card_finalize() -->
+    <lv_label name="severity_icon" text="&#xF071;"
+              style_text_font="fa_icons_24"/>
 
     <!-- Message text (center, grows to fill space) -->
     <lv_label name="toast_message" text="$message"

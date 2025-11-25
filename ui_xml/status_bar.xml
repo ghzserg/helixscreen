@@ -10,7 +10,7 @@
         style_pad_top="#padding_tiny" style_pad_bottom="#padding_tiny"
         style_pad_gap="#gap_normal"
         flex_flow="row" style_flex_main_place="end" style_flex_cross_place="center"
-        scrollbar_mode="off">
+        scrollable="false">
 
     <!-- Network status icon (FA sitemap - network diagram) -->
     <lv_label name="status_network_icon" text="&#xF0E8;"
@@ -28,15 +28,6 @@
       <event_cb trigger="clicked" callback="status_printer_icon_clicked"/>
     </lv_label>
 
-    <!-- Notification alert icon (LV_SYMBOL_BELL, hidden by default) -->
-    <lv_label name="status_notification_icon" text="&#xF0F3;"
-              style_text_font="#font_heading"
-              style_text_color="#text_secondary"
-              clickable="true"
-              hidden="true">
-      <event_cb trigger="clicked" callback="status_notification_icon_clicked"/>
-    </lv_label>
-
     <!-- Notification history button with unread badge -->
     <lv_obj name="status_notification_history_container"
             style_bg_opa="0" style_border_width="0"
@@ -45,8 +36,8 @@
             clickable="true">
       <event_cb trigger="clicked" callback="status_notification_history_clicked"/>
 
-      <!-- Bell icon (LV_SYMBOL_BELL) -->
-      <lv_label name="status_notification_history_icon" text="&#xF0F3;"
+      <!-- Bell icon - color changes by severity (red=error, yellow=warning, gray=info/none) -->
+      <lv_label name="status_notification_icon" text="&#xF0F3;"
                 align="center"
                 style_text_font="#font_heading"
                 style_text_color="#text_secondary"/>

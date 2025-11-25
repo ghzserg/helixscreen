@@ -94,6 +94,26 @@ size_t NotificationHistory::get_unread_count() const {
                         });
 }
 
+ToastSeverity NotificationHistory::get_highest_unread_severity() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // Severity priority: ERROR > WARNING > SUCCESS > INFO
+    ToastSeverity highest = ToastSeverity::INFO;
+
+    for (const auto& entry : entries_) {
+        if (!entry.was_read) {
+            if (entry.severity == ToastSeverity::ERROR) {
+                return ToastSeverity::ERROR;  // Can't get higher than this
+            }
+            if (entry.severity == ToastSeverity::WARNING && highest != ToastSeverity::ERROR) {
+                highest = ToastSeverity::WARNING;
+            }
+        }
+    }
+
+    return highest;
+}
+
 void NotificationHistory::mark_all_read() {
     std::lock_guard<std::mutex> lock(mutex_);
 

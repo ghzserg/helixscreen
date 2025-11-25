@@ -1,29 +1,10 @@
-// Copyright 2025 HelixScreen
+// Copyright 2025 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
-
 #include "ui_toast.h"
-#include "ui_theme.h"
+#include "ui_severity_card.h"
 #include "ui_status_bar.h"
+#include "ui_notification_history.h"
 #include <spdlog/spdlog.h>
 
 // Active toast state
@@ -38,33 +19,14 @@ void ui_toast_init() {
     spdlog::debug("Toast notification system initialized");
 }
 
-static const char* severity_to_color_const(ToastSeverity severity) {
+// Convert ToastSeverity enum to string for XML
+static const char* severity_to_string(ToastSeverity severity) {
     switch (severity) {
+        case ToastSeverity::ERROR:   return "error";
+        case ToastSeverity::WARNING: return "warning";
+        case ToastSeverity::SUCCESS: return "success";
         case ToastSeverity::INFO:
-            return "info_color";
-        case ToastSeverity::SUCCESS:
-            return "success_color";
-        case ToastSeverity::WARNING:
-            return "warning_color";
-        case ToastSeverity::ERROR:
-            return "error_color";
-        default:
-            return "text_secondary";
-    }
-}
-
-static const char* severity_to_icon(ToastSeverity severity) {
-    switch (severity) {
-        case ToastSeverity::INFO:
-            return LV_SYMBOL_WARNING;  // Could use INFO icon if available
-        case ToastSeverity::SUCCESS:
-            return LV_SYMBOL_OK;
-        case ToastSeverity::WARNING:
-            return LV_SYMBOL_WARNING;
-        case ToastSeverity::ERROR:
-            return LV_SYMBOL_CLOSE;
-        default:
-            return LV_SYMBOL_WARNING;
+        default:                      return "info";
     }
 }
 
@@ -94,18 +56,10 @@ void ui_toast_show(ToastSeverity severity, const char* message, uint32_t duratio
         ui_toast_hide();
     }
 
-    // Get color constant for this severity
-    const char* color_const = severity_to_color_const(severity);
-    lv_color_t border_color = ui_theme_parse_color(lv_xml_get_const(NULL, color_const));
-
-    // Convert color to string for XML attribute
-    char color_str[16];
-    snprintf(color_str, sizeof(color_str), "#%06X", lv_color_to_u32(border_color) & 0xFFFFFF);
-
-    // Create toast via XML component
+    // Create toast via XML component - just pass semantic severity
     const char* attrs[] = {
+        "severity", severity_to_string(severity),
         "message", message,
-        "border_color", color_str,
         nullptr
     };
 
@@ -121,15 +75,12 @@ void ui_toast_show(ToastSeverity severity, const char* message, uint32_t duratio
         return;
     }
 
+    // Finalize severity styling for children (icon text and color)
+    ui_severity_card_finalize(active_toast);
+
     // Position at top-center below navigation
     const int32_t top_margin = 80;  // Below nav/header area
     lv_obj_align(active_toast, LV_ALIGN_TOP_MID, 0, top_margin);
-
-    // Update icon
-    lv_obj_t* icon = lv_obj_find_by_name(active_toast, "toast_icon");
-    if (icon) {
-        lv_label_set_text(icon, severity_to_icon(severity));
-    }
 
     // Wire up close button callback
     lv_obj_t* close_btn = lv_obj_find_by_name(active_toast, "toast_close_btn");
@@ -162,8 +113,15 @@ void ui_toast_hide() {
     lv_obj_delete(active_toast);
     active_toast = nullptr;
 
-    // Clear status bar notification icon
-    ui_status_bar_update_notification(NotificationStatus::NONE);
+    // Update bell color based on highest unread severity in history
+    ToastSeverity highest = NotificationHistory::instance().get_highest_unread_severity();
+    size_t unread = NotificationHistory::instance().get_unread_count();
+
+    if (unread == 0) {
+        ui_status_bar_update_notification(NotificationStatus::NONE);
+    } else {
+        ui_status_bar_update_notification(severity_to_notification_status(highest));
+    }
 
     spdlog::debug("Toast hidden");
 }

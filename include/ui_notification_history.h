@@ -68,6 +68,13 @@ public:
     size_t get_unread_count() const;
 
     /**
+     * @brief Get highest severity among unread notifications
+     *
+     * @return Highest unread severity, or INFO if no unread notifications
+     */
+    ToastSeverity get_highest_unread_severity() const;
+
+    /**
      * @brief Mark all notifications as read
      */
     void mark_all_read();

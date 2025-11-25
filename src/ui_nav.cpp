@@ -241,9 +241,9 @@ void ui_nav_init_overlay_backdrop(lv_obj_t* screen) {
 
     // Style: semi-transparent black background
     // Note: LVGL software renderer doesn't support backdrop blur
-    // Using higher opacity (80%) to create "defocus" effect
+    // Using 60% opacity to dim content behind overlay panels
     lv_obj_set_style_bg_color(overlay_backdrop, lv_color_black(), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(overlay_backdrop, 204, LV_PART_MAIN); // 80% opacity (204/255)
+    lv_obj_set_style_bg_opa(overlay_backdrop, 153, LV_PART_MAIN); // 60% opacity (153/255)
     lv_obj_set_style_border_width(overlay_backdrop, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(overlay_backdrop, 0, LV_PART_MAIN);
     lv_obj_set_style_radius(overlay_backdrop, 0, LV_PART_MAIN);

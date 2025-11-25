@@ -105,9 +105,16 @@ void ui_status_bar_init() {
     // Find status bar icons by name (search within status_bar container)
     network_icon = lv_obj_find_by_name(status_bar, "status_network_icon");
     printer_icon = lv_obj_find_by_name(status_bar, "status_printer_icon");
-    notification_icon = lv_obj_find_by_name(status_bar, "status_notification_icon");
-    notification_badge = lv_obj_find_by_name(status_bar, "notification_badge");
-    notification_badge_count = lv_obj_find_by_name(status_bar, "notification_badge_count");
+
+    // Bell icon and badge are nested in status_notification_history_container
+    lv_obj_t* notif_container = lv_obj_find_by_name(status_bar, "status_notification_history_container");
+    if (notif_container) {
+        notification_icon = lv_obj_find_by_name(notif_container, "status_notification_icon");
+        notification_badge = lv_obj_find_by_name(notif_container, "notification_badge");
+        if (notification_badge) {
+            notification_badge_count = lv_obj_find_by_name(notification_badge, "notification_badge_count");
+        }
+    }
 
     spdlog::debug("[StatusBar] Widget lookup: network_icon={}, printer_icon={}, notification_icon={}",
                   (void*)network_icon, (void*)printer_icon, (void*)notification_icon);
@@ -221,36 +228,24 @@ void ui_status_bar_update_notification(NotificationStatus status) {
         return;
     }
 
-    if (status == NotificationStatus::NONE) {
-        // Hide notification icon when no active notifications
-        lv_obj_add_flag(notification_icon, LV_OBJ_FLAG_HIDDEN);
-        return;
-    }
-
-    // Show and update notification icon
-    lv_obj_remove_flag(notification_icon, LV_OBJ_FLAG_HIDDEN);
-
-    const char* icon = LV_SYMBOL_WARNING;
+    // Bell is always visible - just change color based on highest severity
+    // Red = error, Yellow = warning, Gray = info/none
     lv_color_t color;
 
     switch (status) {
-        case NotificationStatus::INFO:
-            icon = LV_SYMBOL_WARNING;  // Could use different icon for info
-            color = ui_theme_parse_color(lv_xml_get_const(NULL, "info_color"));
-            break;
-        case NotificationStatus::WARNING:
-            icon = LV_SYMBOL_WARNING;
-            color = ui_theme_parse_color(lv_xml_get_const(NULL, "warning_color"));
-            break;
         case NotificationStatus::ERROR:
-            icon = LV_SYMBOL_WARNING;
             color = ui_theme_parse_color(lv_xml_get_const(NULL, "error_color"));
             break;
+        case NotificationStatus::WARNING:
+            color = ui_theme_parse_color(lv_xml_get_const(NULL, "warning_color"));
+            break;
+        case NotificationStatus::INFO:
+        case NotificationStatus::NONE:
         default:
+            color = ui_theme_parse_color(lv_xml_get_const(NULL, "text_secondary"));
             break;
     }
 
-    lv_label_set_text(notification_icon, icon);
     lv_obj_set_style_text_color(notification_icon, color, 0);
 }
 
