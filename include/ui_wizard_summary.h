@@ -139,7 +139,7 @@ class WizardSummaryStep {
 };
 
 // ============================================================================
-// Global Instance Access (for backwards compatibility)
+// Global Instance Access
 // ============================================================================
 
 /**
@@ -157,37 +157,3 @@ WizardSummaryStep* get_wizard_summary_step();
  * Call during application shutdown to ensure proper cleanup.
  */
 void destroy_wizard_summary_step();
-
-// ============================================================================
-// Deprecated Legacy API (for backwards compatibility)
-// ============================================================================
-
-/**
- * @deprecated Use get_wizard_summary_step()->init_subjects() instead
- */
-[[deprecated("Use get_wizard_summary_step()->init_subjects()")]]
-void ui_wizard_summary_init_subjects();
-
-/**
- * @deprecated Use get_wizard_summary_step()->register_callbacks() instead
- */
-[[deprecated("Use get_wizard_summary_step()->register_callbacks()")]]
-void ui_wizard_summary_register_callbacks();
-
-/**
- * @deprecated Use get_wizard_summary_step()->create() instead
- */
-[[deprecated("Use get_wizard_summary_step()->create()")]]
-lv_obj_t* ui_wizard_summary_create(lv_obj_t* parent);
-
-/**
- * @deprecated Use get_wizard_summary_step()->cleanup() instead
- */
-[[deprecated("Use get_wizard_summary_step()->cleanup()")]]
-void ui_wizard_summary_cleanup();
-
-/**
- * @deprecated Use get_wizard_summary_step()->is_validated() instead
- */
-[[deprecated("Use get_wizard_summary_step()->is_validated()")]]
-bool ui_wizard_summary_is_validated();

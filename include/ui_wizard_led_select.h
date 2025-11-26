@@ -104,22 +104,3 @@ class WizardLedSelectStep {
 
 WizardLedSelectStep* get_wizard_led_select_step();
 void destroy_wizard_led_select_step();
-
-// ============================================================================
-// Deprecated Legacy API
-// ============================================================================
-
-[[deprecated("Use get_wizard_led_select_step()->init_subjects()")]]
-void ui_wizard_led_select_init_subjects();
-
-[[deprecated("Use get_wizard_led_select_step()->register_callbacks()")]]
-void ui_wizard_led_select_register_callbacks();
-
-[[deprecated("Use get_wizard_led_select_step()->create()")]]
-lv_obj_t* ui_wizard_led_select_create(lv_obj_t* parent);
-
-[[deprecated("Use get_wizard_led_select_step()->cleanup()")]]
-void ui_wizard_led_select_cleanup();
-
-[[deprecated("Use get_wizard_led_select_step()->is_validated()")]]
-bool ui_wizard_led_select_is_validated();

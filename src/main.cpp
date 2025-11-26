@@ -87,6 +87,35 @@
 #include <mach-o/dyld.h>
 #endif
 
+// Forward declarations for panel global accessor functions
+class HomePanel;
+class ControlsPanel;
+class MotionPanel;
+class SettingsPanel;
+class FilamentPanel;
+class PrintSelectPanel;
+class PrintStatusPanel;
+class ExtrusionPanel;
+class BedMeshPanel;
+class StepTestPanel;
+class TestPanel;
+class GlyphsPanel;
+class GcodeTestPanel;
+
+HomePanel& get_global_home_panel();
+ControlsPanel& get_global_controls_panel();
+MotionPanel& get_global_motion_panel();
+SettingsPanel& get_global_settings_panel();
+FilamentPanel& get_global_filament_panel();
+PrintSelectPanel* get_print_select_panel(PrinterState& printer_state, MoonrakerAPI* api);
+PrintStatusPanel& get_global_print_status_panel();
+ExtrusionPanel& get_global_extrusion_panel();
+BedMeshPanel& get_global_bed_mesh_panel();
+StepTestPanel& get_global_step_test_panel();
+TestPanel& get_global_test_panel();
+GlyphsPanel& get_global_glyphs_panel();
+GcodeTestPanel* get_gcode_test_panel(PrinterState& printer_state, MoonrakerAPI* api);
+
 // Ensure we're running from the project root directory.
 // If the executable is in build/bin/, change to the project root so relative paths work.
 static void ensure_project_root_cwd() {
@@ -755,19 +784,19 @@ static void register_xml_components() {
 // Initialize all reactive subjects for data binding
 static void initialize_subjects() {
     spdlog::debug("Initializing reactive subjects...");
-    app_globals_init_subjects();                 // Global subjects (notification subject, etc.)
-    ui_nav_init();                               // Navigation system (icon colors, active panel)
-    ui_panel_home_init_subjects();               // Home panel data bindings
-    ui_panel_print_select_init_subjects();       // Print select panel (none yet)
-    ui_panel_controls_init_subjects();           // Controls panel launcher
-    ui_panel_motion_init_subjects();             // Motion sub-screen position display
-    ui_panel_controls_temp_init_subjects();      // Temperature sub-screens
-    ui_panel_controls_extrusion_init_subjects(); // Extrusion sub-screen
-    ui_panel_filament_init_subjects();           // Filament panel
-    ui_panel_settings_init_subjects();           // Settings panel launcher
-    ui_panel_print_status_init_subjects();       // Print status screen
-    ui_wizard_init_subjects();                   // Wizard subjects (for first-run config)
-    get_printer_state().init_subjects(); // Printer state subjects (CRITICAL: must be before XML creation)
+    app_globals_init_subjects();                              // Global subjects (notification subject, etc.)
+    ui_nav_init();                                            // Navigation system (icon colors, active panel)
+    get_global_home_panel().init_subjects();                  // Home panel data bindings
+    get_print_select_panel(get_printer_state(), nullptr)->init_subjects(); // Print select panel
+    get_global_controls_panel().init_subjects();              // Controls panel launcher
+    get_global_motion_panel().init_subjects();                // Motion sub-screen position display
+    ui_panel_controls_temp_init_subjects();                   // Temperature sub-screens (not migrated yet)
+    get_global_extrusion_panel().init_subjects();             // Extrusion sub-screen
+    get_global_filament_panel().init_subjects();              // Filament panel
+    get_global_settings_panel().init_subjects();              // Settings panel launcher
+    get_global_print_status_panel().init_subjects();          // Print status screen
+    ui_wizard_init_subjects();                                // Wizard subjects (for first-run config)
+    get_printer_state().init_subjects();                      // Printer state subjects (CRITICAL: must be before XML creation)
 
     // Initialize notification system (after subjects are ready)
     ui_notification_init();
@@ -1332,21 +1361,19 @@ int main(int argc, char** argv) {
     ui_nav_set_panels(panels);
 
     // Setup home panel observers (panels[0] is home panel)
-    ui_panel_home_setup_observers(panels[0]);
+    get_global_home_panel().setup(panels[0], screen);
 
     // Setup controls panel (wire launcher card click handlers)
-    ui_panel_controls_set(panels[UI_PANEL_CONTROLS]);
-    ui_panel_controls_wire_events(panels[UI_PANEL_CONTROLS], screen);
+    get_global_controls_panel().setup(panels[UI_PANEL_CONTROLS], screen);
 
     // Setup print select panel (wires up events, creates overlays, NOTE: data populated later)
-    ui_panel_print_select_setup(panels[UI_PANEL_PRINT_SELECT], screen);
+    get_print_select_panel(get_printer_state(), nullptr)->setup(panels[UI_PANEL_PRINT_SELECT], screen);
 
     // Setup filament panel (wire preset/action button handlers)
-    ui_panel_filament_setup(panels[UI_PANEL_FILAMENT], screen);
+    get_global_filament_panel().setup(panels[UI_PANEL_FILAMENT], screen);
 
     // Setup settings panel (wire launcher card click handlers)
-    ui_panel_settings_set(panels[UI_PANEL_SETTINGS]);
-    ui_panel_settings_wire_events(panels[UI_PANEL_SETTINGS], screen);
+    get_global_settings_panel().setup(panels[UI_PANEL_SETTINGS], screen);
 
     // Initialize numeric keypad modal component (creates reusable keypad widget)
     ui_keypad_init(screen);
@@ -1354,11 +1381,11 @@ int main(int argc, char** argv) {
     // Create print status panel (overlay for active prints)
     overlay_panels.print_status = (lv_obj_t*)lv_xml_create(screen, "print_status_panel", nullptr);
     if (overlay_panels.print_status) {
-        ui_panel_print_status_setup(overlay_panels.print_status, screen);
+        get_global_print_status_panel().setup(overlay_panels.print_status, screen);
         lv_obj_add_flag(overlay_panels.print_status, LV_OBJ_FLAG_HIDDEN); // Hidden by default
 
         // Wire print status panel to print select (for launching prints)
-        ui_panel_print_select_set_print_status_panel(overlay_panels.print_status);
+        get_print_select_panel(get_printer_state(), nullptr)->set_print_status_panel(overlay_panels.print_status);
 
         spdlog::debug("Print status panel created and wired to print select");
     } else {
@@ -1425,7 +1452,7 @@ int main(int argc, char** argv) {
             spdlog::debug("Opening motion overlay as requested by command-line flag");
             overlay_panels.motion = (lv_obj_t*)lv_xml_create(screen, "motion_panel", nullptr);
             if (overlay_panels.motion) {
-                ui_panel_motion_setup(overlay_panels.motion, screen);
+                get_global_motion_panel().setup(overlay_panels.motion, screen);
                 ui_nav_push_overlay(overlay_panels.motion);
             }
         }
@@ -1434,7 +1461,7 @@ int main(int argc, char** argv) {
             overlay_panels.nozzle_temp =
                 (lv_obj_t*)lv_xml_create(screen, "nozzle_temp_panel", nullptr);
             if (overlay_panels.nozzle_temp) {
-                ui_panel_controls_temp_nozzle_setup(overlay_panels.nozzle_temp, screen);
+                ui_panel_controls_temp_nozzle_setup(overlay_panels.nozzle_temp, screen); // Not migrated yet
                 ui_nav_push_overlay(overlay_panels.nozzle_temp);
             }
         }
@@ -1442,7 +1469,7 @@ int main(int argc, char** argv) {
             spdlog::debug("Opening bed temp overlay as requested by command-line flag");
             overlay_panels.bed_temp = (lv_obj_t*)lv_xml_create(screen, "bed_temp_panel", nullptr);
             if (overlay_panels.bed_temp) {
-                ui_panel_controls_temp_bed_setup(overlay_panels.bed_temp, screen);
+                ui_panel_controls_temp_bed_setup(overlay_panels.bed_temp, screen); // Not migrated yet
                 ui_nav_push_overlay(overlay_panels.bed_temp);
             }
         }
@@ -1450,7 +1477,7 @@ int main(int argc, char** argv) {
             spdlog::debug("Opening extrusion overlay as requested by command-line flag");
             overlay_panels.extrusion = (lv_obj_t*)lv_xml_create(screen, "extrusion_panel", nullptr);
             if (overlay_panels.extrusion) {
-                ui_panel_controls_extrusion_setup(overlay_panels.extrusion, screen);
+                get_global_extrusion_panel().setup(overlay_panels.extrusion, screen);
                 ui_nav_push_overlay(overlay_panels.extrusion);
             }
         }
@@ -1463,7 +1490,7 @@ int main(int argc, char** argv) {
             lv_obj_t* bed_mesh = (lv_obj_t*)lv_xml_create(screen, "bed_mesh_panel", nullptr);
             if (bed_mesh) {
                 spdlog::debug("Bed mesh overlay created successfully, calling setup");
-                ui_panel_bed_mesh_setup(bed_mesh, screen);
+                get_global_bed_mesh_panel().setup(bed_mesh, screen);
                 ui_nav_push_overlay(bed_mesh);
                 spdlog::debug("Bed mesh overlay pushed to nav stack");
             } else {
@@ -1492,14 +1519,14 @@ int main(int argc, char** argv) {
             spdlog::debug("Creating step progress test widget as requested by command-line flag");
             lv_obj_t* step_test = (lv_obj_t*)lv_xml_create(screen, "step_progress_test", nullptr);
             if (step_test) {
-                ui_panel_step_test_setup(step_test);
+                get_global_step_test_panel().setup(step_test, screen);
             }
         }
         if (show_test_panel) {
             spdlog::debug("Opening test panel as requested by command-line flag");
             lv_obj_t* test_panel_obj = (lv_obj_t*)lv_xml_create(screen, "test_panel", nullptr);
             if (test_panel_obj) {
-                ui_panel_test_setup(test_panel_obj);
+                get_global_test_panel().setup(test_panel_obj, screen);
             }
         }
         if (show_file_detail) {
@@ -1513,7 +1540,7 @@ int main(int argc, char** argv) {
     // Create G-code test panel if requested (independent of wizard state)
     if (show_gcode_test) {
         spdlog::debug("Creating G-code test panel");
-        lv_obj_t* gcode_test = ui_panel_gcode_test_create(screen);
+        lv_obj_t* gcode_test = ui_panel_gcode_test_create(screen); // Uses deprecated wrapper (creates + setups)
         if (gcode_test) {
             spdlog::debug("G-code test panel created successfully");
         } else {

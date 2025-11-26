@@ -74,26 +74,9 @@ class GlyphsPanel : public PanelBase {
     void populate_glyphs();
 };
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the GlyphsPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
 
-/**
- * @deprecated Use GlyphsPanel class directly
- * @brief Legacy wrapper - create and setup glyphs panel
- *
- * Creates a global GlyphsPanel instance if needed and returns the
- * created panel object.
- *
- * @param parent Parent object to attach panel to
- * @return lv_obj_t* The created panel object
- */
-[[deprecated("Use GlyphsPanel class directly - see docs/PANEL_MIGRATION.md")]]
+// Global instance accessor (needed by main.cpp)
+GlyphsPanel& get_global_glyphs_panel();
+
+// Legacy create wrapper (test panel - still used by main.cpp)
 lv_obj_t* ui_panel_glyphs_create(lv_obj_t* parent);

@@ -474,27 +474,3 @@ void WizardPrinterIdentifyStep::cleanup() {
 bool WizardPrinterIdentifyStep::is_validated() const {
     return printer_identify_validated_;
 }
-
-// ============================================================================
-// Deprecated Legacy API Wrappers
-// ============================================================================
-
-void ui_wizard_printer_identify_init_subjects() {
-    get_wizard_printer_identify_step()->init_subjects();
-}
-
-void ui_wizard_printer_identify_register_callbacks() {
-    get_wizard_printer_identify_step()->register_callbacks();
-}
-
-lv_obj_t* ui_wizard_printer_identify_create(lv_obj_t* parent) {
-    return get_wizard_printer_identify_step()->create(parent);
-}
-
-void ui_wizard_printer_identify_cleanup() {
-    get_wizard_printer_identify_step()->cleanup();
-}
-
-bool ui_wizard_printer_identify_is_validated() {
-    return get_wizard_printer_identify_step()->is_validated();
-}

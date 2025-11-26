@@ -231,38 +231,9 @@ class GcodeTestPanel : public PanelBase {
  */
 GcodeTestPanel* get_gcode_test_panel(PrinterState& printer_state, MoonrakerAPI* api);
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the GcodeTestPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// Global instance accessor (needed by main.cpp)
+GcodeTestPanel& get_global_gcode_test_panel();
 
-/**
- * @deprecated Use GcodeTestPanel class directly
- * @brief Legacy wrapper - create G-code test panel
- *
- * @param parent Parent LVGL object
- * @return Panel object or NULL on failure
- */
-[[deprecated("Use GcodeTestPanel class directly - see docs/PANEL_MIGRATION.md")]]
+// Legacy create wrapper (test panel - still used by main.cpp)
 lv_obj_t* ui_panel_gcode_test_create(lv_obj_t* parent);
-
-/**
- * @deprecated Use GcodeTestPanel class directly
- * @brief Legacy wrapper - cleanup G-code test panel resources
- */
-[[deprecated("Use GcodeTestPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_gcode_test_cleanup(void);
-
-#ifdef __cplusplus
-}
-#endif

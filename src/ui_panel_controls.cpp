@@ -16,6 +16,12 @@
 
 #include <memory>
 
+// Forward declarations for class-based API
+class MotionPanel;
+MotionPanel& get_global_motion_panel();
+class ExtrusionPanel;
+ExtrusionPanel& get_global_extrusion_panel();
+
 // ============================================================================
 // CONSTRUCTOR
 // ============================================================================
@@ -111,8 +117,8 @@ void ControlsPanel::handle_motion_clicked() {
         // Create from XML
         motion_panel_ = static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "motion_panel", nullptr));
         if (motion_panel_) {
-            // Setup event handlers for motion panel
-            ui_panel_motion_setup(motion_panel_, parent_screen_);
+            // Setup event handlers for motion panel (class-based API)
+            get_global_motion_panel().setup(motion_panel_, parent_screen_);
 
             // Initially hidden
             lv_obj_add_flag(motion_panel_, LV_OBJ_FLAG_HIDDEN);
@@ -195,11 +201,17 @@ void ControlsPanel::handle_extrusion_clicked() {
     if (!extrusion_panel_ && parent_screen_) {
         spdlog::debug("[{}] Creating extrusion panel...", get_name());
 
+        // Initialize extrusion panel subjects
+        auto& extrusion_panel_instance = get_global_controls_extrusion_panel();
+        if (!extrusion_panel_instance.are_subjects_initialized()) {
+            extrusion_panel_instance.init_subjects();
+        }
+
         // Create from XML
         extrusion_panel_ = static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "extrusion_panel", nullptr));
         if (extrusion_panel_) {
             // Setup event handlers for extrusion panel
-            ui_panel_controls_extrusion_setup(extrusion_panel_, parent_screen_);
+            extrusion_panel_instance.setup(extrusion_panel_, parent_screen_);
 
             // Initially hidden
             lv_obj_add_flag(extrusion_panel_, LV_OBJ_FLAG_HIDDEN);
@@ -286,51 +298,14 @@ void ControlsPanel::on_motors_clicked(lv_event_t* e) {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global ControlsPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use ControlsPanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<ControlsPanel> g_controls_panel;
 
-// Helper to get or create the global instance
-static ControlsPanel& get_global_controls_panel() {
+ControlsPanel& get_global_controls_panel() {
     if (!g_controls_panel) {
         g_controls_panel = std::make_unique<ControlsPanel>(get_printer_state(), nullptr);
     }
     return *g_controls_panel;
-}
-
-void ui_panel_controls_init_subjects() {
-    auto& panel = get_global_controls_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-}
-
-void ui_panel_controls_wire_events(lv_obj_t* panel_obj, lv_obj_t* screen) {
-    auto& panel = get_global_controls_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    panel.setup(panel_obj, screen);
-}
-
-lv_obj_t* ui_panel_controls_get() {
-    if (g_controls_panel) {
-        return g_controls_panel->get_panel();
-    }
-    return nullptr;
-}
-
-void ui_panel_controls_set(lv_obj_t* panel_obj) {
-    // This is now a no-op - panel is stored in class instance
-    // Kept for API compatibility but logs a warning
-    spdlog::warn("ui_panel_controls_set() is deprecated - panel stored in ControlsPanel class");
-    (void)panel_obj;
 }

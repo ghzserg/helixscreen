@@ -289,46 +289,15 @@ void NotificationHistoryPanel::on_filter_info_clicked(lv_event_t* e) {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global NotificationHistoryPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use NotificationHistoryPanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<NotificationHistoryPanel> g_notification_history_panel;
 
-lv_obj_t* ui_panel_notification_history_create(lv_obj_t* parent) {
-    // Create panel from XML first
-    lv_obj_t* panel_obj = static_cast<lv_obj_t*>(lv_xml_create(parent, "notification_history_panel", nullptr));
-    if (!panel_obj) {
-        spdlog::error("Failed to create notification_history_panel from XML");
-        return nullptr;
-    }
-
-    // Create or reuse global instance
+NotificationHistoryPanel& get_global_notification_history_panel() {
     if (!g_notification_history_panel) {
         g_notification_history_panel = std::make_unique<NotificationHistoryPanel>(
             get_printer_state(), nullptr);
     }
-
-    // Initialize and setup
-    if (!g_notification_history_panel->are_subjects_initialized()) {
-        g_notification_history_panel->init_subjects();
-    }
-    g_notification_history_panel->setup(panel_obj, parent);
-
-    spdlog::debug("Notification history panel created (via deprecated wrapper)");
-    return panel_obj;
-}
-
-void ui_panel_notification_history_refresh() {
-    if (g_notification_history_panel) {
-        g_notification_history_panel->refresh();
-    } else {
-        spdlog::warn("Cannot refresh notification history - panel not created");
-    }
+    return *g_notification_history_panel;
 }

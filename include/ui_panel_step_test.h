@@ -109,24 +109,6 @@ class StepTestPanel : public PanelBase {
     static void on_complete_clicked(lv_event_t* e);
 };
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the StepTestPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
 
-/**
- * @deprecated Use StepTestPanel class directly
- * @brief Legacy wrapper - setup step test panel
- *
- * Creates a global StepTestPanel instance if needed and delegates to setup().
- *
- * @param panel_root Root panel object from lv_xml_create()
- */
-[[deprecated("Use StepTestPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_step_test_setup(lv_obj_t* panel_root);
+// Global instance accessor (needed by main.cpp)
+StepTestPanel& get_global_step_test_panel();

@@ -26,6 +26,9 @@
 #include <string>
 #include <vector>
 
+// Forward declaration for class-based API
+PrintStatusPanel& get_global_print_status_panel();
+
 // ============================================================================
 // Global Instance
 // ============================================================================
@@ -902,7 +905,7 @@ void PrintSelectPanel::start_print() {
             lv_obj_remove_flag(print_status_panel_widget_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_move_foreground(print_status_panel_widget_);
 
-            ui_panel_print_status_start_mock_print(selected_filename_buffer_, 250, 10800);
+            get_global_print_status_panel().start_mock_print(selected_filename_buffer_, 250, 10800);
 
             spdlog::info("[{}] Started mock print for: {}", get_name(), selected_filename_buffer_);
         }
@@ -1012,75 +1015,4 @@ void PrintSelectPanel::on_cancel_delete_static(lv_event_t* e) {
     if (self) {
         self->hide_delete_confirmation();
     }
-}
-
-// ============================================================================
-// Deprecated Legacy API Wrappers
-// ============================================================================
-
-void ui_panel_print_select_init_subjects() {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->init_subjects();
-}
-
-void ui_panel_print_select_setup(lv_obj_t* panel_root, lv_obj_t* parent_screen) {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->setup(panel_root, parent_screen);
-}
-
-void ui_panel_print_select_populate_test_data(lv_obj_t* /*panel_root*/) {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->populate_test_data();
-}
-
-void ui_panel_print_select_refresh_files() {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->refresh_files();
-}
-
-void ui_panel_print_select_toggle_view() {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->toggle_view();
-}
-
-void ui_panel_print_select_sort_by(PrintSelectSortColumn column) {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->sort_by(column);
-}
-
-void ui_panel_print_select_show_delete_confirmation() {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->show_delete_confirmation();
-}
-
-void ui_panel_print_select_set_file(const char* filename, const char* thumbnail_src,
-                                    const char* print_time, const char* filament_weight) {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->set_selected_file(filename, thumbnail_src, print_time, filament_weight);
-}
-
-void ui_panel_print_select_show_detail_view() {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->show_detail_view();
-}
-
-void ui_panel_print_select_hide_detail_view() {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* panel = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    panel->hide_detail_view();
-}
-
-void ui_panel_print_select_set_print_status_panel(lv_obj_t* panel) {
-    extern PrinterState& get_printer_state();
-    PrintSelectPanel* p = get_print_select_panel(get_printer_state(), get_moonraker_api());
-    p->set_print_status_panel(panel);
 }

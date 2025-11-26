@@ -170,37 +170,3 @@ WizardPrinterIdentifyStep* get_wizard_printer_identify_step();
  * Call during application shutdown.
  */
 void destroy_wizard_printer_identify_step();
-
-// ============================================================================
-// Deprecated Legacy API
-// ============================================================================
-
-/**
- * @deprecated Use get_wizard_printer_identify_step()->init_subjects()
- */
-[[deprecated("Use get_wizard_printer_identify_step()->init_subjects()")]]
-void ui_wizard_printer_identify_init_subjects();
-
-/**
- * @deprecated Use get_wizard_printer_identify_step()->register_callbacks()
- */
-[[deprecated("Use get_wizard_printer_identify_step()->register_callbacks()")]]
-void ui_wizard_printer_identify_register_callbacks();
-
-/**
- * @deprecated Use get_wizard_printer_identify_step()->create()
- */
-[[deprecated("Use get_wizard_printer_identify_step()->create()")]]
-lv_obj_t* ui_wizard_printer_identify_create(lv_obj_t* parent);
-
-/**
- * @deprecated Use get_wizard_printer_identify_step()->cleanup()
- */
-[[deprecated("Use get_wizard_printer_identify_step()->cleanup()")]]
-void ui_wizard_printer_identify_cleanup();
-
-/**
- * @deprecated Use get_wizard_printer_identify_step()->is_validated()
- */
-[[deprecated("Use get_wizard_printer_identify_step()->is_validated()")]]
-bool ui_wizard_printer_identify_is_validated();

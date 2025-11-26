@@ -528,31 +528,3 @@ bool WizardConnectionStep::get_url(char* buffer, size_t size) const {
 bool WizardConnectionStep::is_validated() const {
     return connection_validated_;
 }
-
-// ============================================================================
-// Deprecated Legacy API Wrappers
-// ============================================================================
-
-void ui_wizard_connection_init_subjects() {
-    get_wizard_connection_step()->init_subjects();
-}
-
-void ui_wizard_connection_register_callbacks() {
-    get_wizard_connection_step()->register_callbacks();
-}
-
-lv_obj_t* ui_wizard_connection_create(lv_obj_t* parent) {
-    return get_wizard_connection_step()->create(parent);
-}
-
-void ui_wizard_connection_cleanup() {
-    get_wizard_connection_step()->cleanup();
-}
-
-bool ui_wizard_connection_get_url(char* buffer, size_t size) {
-    return get_wizard_connection_step()->get_url(buffer, size);
-}
-
-bool ui_wizard_connection_is_validated() {
-    return get_wizard_connection_step()->is_validated();
-}

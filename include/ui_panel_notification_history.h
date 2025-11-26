@@ -145,32 +145,6 @@ class NotificationHistoryPanel : public PanelBase {
     static void on_filter_info_clicked(lv_event_t* e);
 };
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the NotificationHistoryPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
 
-/**
- * @deprecated Use NotificationHistoryPanel class directly
- * @brief Legacy wrapper - create notification history panel
- *
- * Creates a global NotificationHistoryPanel instance if needed.
- *
- * @param parent Parent object for the panel
- * @return Created panel object
- */
-[[deprecated("Use NotificationHistoryPanel class directly - see docs/PANEL_MIGRATION.md")]]
-lv_obj_t* ui_panel_notification_history_create(lv_obj_t* parent);
-
-/**
- * @deprecated Use NotificationHistoryPanel::refresh() instead
- * @brief Legacy wrapper - refresh notification list
- */
-[[deprecated("Use NotificationHistoryPanel::refresh() instead")]]
-void ui_panel_notification_history_refresh();
+// Global instance accessor (needed by main.cpp)
+NotificationHistoryPanel& get_global_notification_history_panel();

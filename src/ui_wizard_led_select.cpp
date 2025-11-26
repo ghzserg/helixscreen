@@ -179,27 +179,3 @@ bool WizardLedSelectStep::is_validated() const {
     // Always return true for baseline implementation
     return true;
 }
-
-// ============================================================================
-// Deprecated Legacy API Wrappers
-// ============================================================================
-
-void ui_wizard_led_select_init_subjects() {
-    get_wizard_led_select_step()->init_subjects();
-}
-
-void ui_wizard_led_select_register_callbacks() {
-    get_wizard_led_select_step()->register_callbacks();
-}
-
-lv_obj_t* ui_wizard_led_select_create(lv_obj_t* parent) {
-    return get_wizard_led_select_step()->create(parent);
-}
-
-void ui_wizard_led_select_cleanup() {
-    get_wizard_led_select_step()->cleanup();
-}
-
-bool ui_wizard_led_select_is_validated() {
-    return get_wizard_led_select_step()->is_validated();
-}

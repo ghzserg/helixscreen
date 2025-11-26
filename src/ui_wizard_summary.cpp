@@ -318,27 +318,3 @@ bool WizardSummaryStep::is_validated() const {
     // Summary screen is always validated (no user input required)
     return true;
 }
-
-// ============================================================================
-// Deprecated Legacy API Wrappers
-// ============================================================================
-
-void ui_wizard_summary_init_subjects() {
-    get_wizard_summary_step()->init_subjects();
-}
-
-void ui_wizard_summary_register_callbacks() {
-    get_wizard_summary_step()->register_callbacks();
-}
-
-lv_obj_t* ui_wizard_summary_create(lv_obj_t* parent) {
-    return get_wizard_summary_step()->create(parent);
-}
-
-void ui_wizard_summary_cleanup() {
-    get_wizard_summary_step()->cleanup();
-}
-
-bool ui_wizard_summary_is_validated() {
-    return get_wizard_summary_step()->is_validated();
-}

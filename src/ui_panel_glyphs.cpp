@@ -208,42 +208,29 @@ void GlyphsPanel::populate_glyphs() {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global GlyphsPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use GlyphsPanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<GlyphsPanel> g_glyphs_panel;
 
-// Helper to get or create the global instance
-static GlyphsPanel& get_global_glyphs_panel() {
+GlyphsPanel& get_global_glyphs_panel() {
     if (!g_glyphs_panel) {
         g_glyphs_panel = std::make_unique<GlyphsPanel>(get_printer_state(), nullptr);
     }
     return *g_glyphs_panel;
 }
 
+// Legacy create wrapper (test panel - still used by main.cpp)
 lv_obj_t* ui_panel_glyphs_create(lv_obj_t* parent) {
-    spdlog::info("Creating glyphs panel (via deprecated wrapper)");
-
-    // Create panel from XML
-    lv_obj_t* panel = (lv_obj_t*)lv_xml_create(parent, "glyphs_panel", NULL);
-    if (!panel) {
-        spdlog::error("Failed to create glyphs panel from XML");
-        return nullptr;
+    auto& panel = get_global_glyphs_panel();
+    if (!panel.are_subjects_initialized()) {
+        panel.init_subjects();
     }
-
-    // Initialize and setup via class
-    auto& glyphs_panel = get_global_glyphs_panel();
-    if (!glyphs_panel.are_subjects_initialized()) {
-        glyphs_panel.init_subjects();
+    
+    lv_obj_t* glyphs_panel = static_cast<lv_obj_t*>(
+        lv_xml_create(parent, panel.get_xml_component_name(), nullptr));
+    if (glyphs_panel) {
+        panel.setup(glyphs_panel, nullptr);
     }
-    glyphs_panel.setup(panel, nullptr);
-
-    return panel;
+    return glyphs_panel;
 }

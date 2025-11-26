@@ -21,7 +21,7 @@
 static std::unique_ptr<PrintStatusPanel> g_print_status_panel;
 
 // Helper to get or create the global instance
-static PrintStatusPanel& get_global_print_status_panel() {
+PrintStatusPanel& get_global_print_status_panel() {
     if (!g_print_status_panel) {
         g_print_status_panel = std::make_unique<PrintStatusPanel>(get_printer_state(), nullptr);
     }
@@ -483,72 +483,8 @@ void PrintStatusPanel::tick_mock_print() {
     set_temperatures(215 + nozzle_var, 215, 60 + bed_var, 60);
 }
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-
-void ui_panel_print_status_init_subjects() {
-    auto& panel = get_global_print_status_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-}
-
-void ui_panel_print_status_setup(lv_obj_t* panel_obj, lv_obj_t* screen) {
-    auto& panel = get_global_print_status_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    panel.setup(panel_obj, screen);
-}
-
-void ui_panel_print_status_set_filename(const char* filename) {
-    get_global_print_status_panel().set_filename(filename);
-}
-
-void ui_panel_print_status_set_progress(int percent) {
-    get_global_print_status_panel().set_progress(percent);
-}
-
-void ui_panel_print_status_set_layer(int current, int total) {
-    get_global_print_status_panel().set_layer(current, total);
-}
-
-void ui_panel_print_status_set_times(int elapsed_seconds, int remaining_seconds) {
-    get_global_print_status_panel().set_times(elapsed_seconds, remaining_seconds);
-}
-
-void ui_panel_print_status_set_temperatures(int nozzle_current, int nozzle_target, int bed_current,
-                                            int bed_target) {
-    get_global_print_status_panel().set_temperatures(nozzle_current, nozzle_target, bed_current,
-                                                     bed_target);
-}
-
-void ui_panel_print_status_set_speeds(int speed_percent, int flow_percent) {
-    get_global_print_status_panel().set_speeds(speed_percent, flow_percent);
-}
-
-void ui_panel_print_status_set_state(print_state_t state) {
-    get_global_print_status_panel().set_state(static_cast<PrintState>(state));
-}
-
-void ui_panel_print_status_start_mock_print(const char* filename, int total_layers,
-                                            int duration_seconds) {
-    get_global_print_status_panel().start_mock_print(filename, total_layers, duration_seconds);
-}
-
-void ui_panel_print_status_stop_mock_print() {
-    get_global_print_status_panel().stop_mock_print();
-}
-
+// Temporary wrapper for tick function (still called by main.cpp)
 void ui_panel_print_status_tick_mock_print() {
-    get_global_print_status_panel().tick_mock_print();
-}
-
-print_state_t ui_panel_print_status_get_state() {
-    return static_cast<print_state_t>(get_global_print_status_panel().get_state());
-}
-
-int ui_panel_print_status_get_progress() {
-    return get_global_print_status_panel().get_progress();
+    auto& panel = get_global_print_status_panel();
+    panel.tick_mock_print();
 }

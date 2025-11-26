@@ -13,6 +13,10 @@
 
 #include <memory>
 
+// Forward declarations for class-based API
+class BedMeshPanel;
+BedMeshPanel& get_global_bed_mesh_panel();
+
 // ============================================================================
 // CONSTRUCTOR
 // ============================================================================
@@ -34,7 +38,7 @@ void SettingsPanel::init_subjects() {
     }
 
     // Initialize bed mesh panel subjects (may be lazily created later)
-    ui_panel_bed_mesh_init_subjects();
+    get_global_bed_mesh_panel().init_subjects();
 
     subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized", get_name());
@@ -114,8 +118,8 @@ void SettingsPanel::handle_bed_mesh_clicked() {
         // Create from XML
         bed_mesh_panel_ = static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "bed_mesh_panel", nullptr));
         if (bed_mesh_panel_) {
-            // Setup event handlers and renderer
-            ui_panel_bed_mesh_setup(bed_mesh_panel_, parent_screen_);
+            // Setup event handlers and renderer (class-based API)
+            get_global_bed_mesh_panel().setup(bed_mesh_panel_, parent_screen_);
 
             // Initially hidden
             lv_obj_add_flag(bed_mesh_panel_, LV_OBJ_FLAG_HIDDEN);
@@ -206,51 +210,14 @@ void SettingsPanel::on_about_clicked(lv_event_t* e) {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global SettingsPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use SettingsPanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<SettingsPanel> g_settings_panel;
 
-// Helper to get or create the global instance
-static SettingsPanel& get_global_settings_panel() {
+SettingsPanel& get_global_settings_panel() {
     if (!g_settings_panel) {
         g_settings_panel = std::make_unique<SettingsPanel>(get_printer_state(), nullptr);
     }
     return *g_settings_panel;
-}
-
-void ui_panel_settings_init_subjects() {
-    auto& panel = get_global_settings_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-}
-
-void ui_panel_settings_wire_events(lv_obj_t* panel_obj, lv_obj_t* screen) {
-    auto& panel = get_global_settings_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    panel.setup(panel_obj, screen);
-}
-
-lv_obj_t* ui_panel_settings_get() {
-    if (g_settings_panel) {
-        return g_settings_panel->get_panel();
-    }
-    return nullptr;
-}
-
-void ui_panel_settings_set(lv_obj_t* panel_obj) {
-    // This is now a no-op - panel is stored in class instance
-    // Kept for API compatibility but logs a warning
-    spdlog::warn("ui_panel_settings_set() is deprecated - panel stored in SettingsPanel class");
-    (void)panel_obj;
 }

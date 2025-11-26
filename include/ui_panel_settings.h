@@ -114,52 +114,5 @@ class SettingsPanel : public PanelBase {
     static void on_about_clicked(lv_event_t* e);
 };
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the SettingsPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
-
-/**
- * @deprecated Use SettingsPanel class directly
- * @brief Legacy wrapper - initialize settings panel subjects
- *
- * Creates a global SettingsPanel instance if needed and delegates to init_subjects().
- */
-[[deprecated("Use SettingsPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_settings_init_subjects();
-
-/**
- * @deprecated Use SettingsPanel class directly
- * @brief Legacy wrapper - setup event handlers for settings panel
- *
- * Creates a global SettingsPanel instance if needed and delegates to setup().
- *
- * @param panel_obj The settings panel object returned from lv_xml_create()
- * @param screen The screen object (parent for overlay panels)
- */
-[[deprecated("Use SettingsPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_settings_wire_events(lv_obj_t* panel_obj, lv_obj_t* screen);
-
-/**
- * @deprecated Use SettingsPanel::get_panel() instead
- * @brief Legacy wrapper - get the settings panel object
- *
- * @return The settings panel object, or NULL if not created yet
- */
-[[deprecated("Use SettingsPanel::get_panel() instead")]]
-lv_obj_t* ui_panel_settings_get();
-
-/**
- * @deprecated No longer needed - panel stored in class instance
- * @brief Legacy wrapper - set the settings panel object
- *
- * @param panel_obj The settings panel object
- */
-[[deprecated("No longer needed - panel stored in class instance")]]
-void ui_panel_settings_set(lv_obj_t* panel_obj);
+// Global instance accessor (needed by main.cpp)
+SettingsPanel& get_global_settings_panel();

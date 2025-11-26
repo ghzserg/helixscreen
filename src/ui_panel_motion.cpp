@@ -412,62 +412,14 @@ void MotionPanel::home(char axis) {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global MotionPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use MotionPanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<MotionPanel> g_motion_panel;
 
-// Helper to get or create the global instance
-static MotionPanel& get_global_motion_panel() {
+MotionPanel& get_global_motion_panel() {
     if (!g_motion_panel) {
         g_motion_panel = std::make_unique<MotionPanel>(get_printer_state(), nullptr);
     }
     return *g_motion_panel;
-}
-
-void ui_panel_motion_init_subjects() {
-    auto& panel = get_global_motion_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-}
-
-void ui_panel_motion_setup(lv_obj_t* panel_obj, lv_obj_t* screen) {
-    auto& panel = get_global_motion_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    panel.setup(panel_obj, screen);
-}
-
-void ui_panel_motion_set_position(float x, float y, float z) {
-    auto& panel = get_global_motion_panel();
-    panel.set_position(x, y, z);
-}
-
-jog_distance_t ui_panel_motion_get_distance() {
-    auto& panel = get_global_motion_panel();
-    return panel.get_distance();
-}
-
-void ui_panel_motion_set_distance(jog_distance_t dist) {
-    auto& panel = get_global_motion_panel();
-    panel.set_distance(dist);
-}
-
-void ui_panel_motion_jog(jog_direction_t direction, float distance_mm) {
-    auto& panel = get_global_motion_panel();
-    panel.jog(direction, distance_mm);
-}
-
-void ui_panel_motion_home(char axis) {
-    auto& panel = get_global_motion_panel();
-    panel.home(axis);
 }

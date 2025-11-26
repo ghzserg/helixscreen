@@ -179,55 +179,6 @@ class ExtrusionPanel : public PanelBase {
     static void on_nozzle_temp_changed(lv_observer_t* observer, lv_subject_t* subject);
 };
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the ExtrusionPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
 
-/**
- * @deprecated Use ExtrusionPanel class directly
- * @brief Legacy wrapper - initialize extrusion panel subjects
- */
-[[deprecated("Use ExtrusionPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_controls_extrusion_init_subjects();
-
-/**
- * @deprecated Use ExtrusionPanel class directly
- * @brief Legacy wrapper - setup event handlers for extrusion panel
- */
-[[deprecated("Use ExtrusionPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_controls_extrusion_setup(lv_obj_t* panel, lv_obj_t* parent_screen);
-
-/**
- * @deprecated Use ExtrusionPanel::set_temp() instead
- * @brief Legacy wrapper - update temperature display and safety state
- */
-[[deprecated("Use ExtrusionPanel::set_temp() instead")]]
-void ui_panel_controls_extrusion_set_temp(int current, int target);
-
-/**
- * @deprecated Use ExtrusionPanel::get_amount() instead
- * @brief Legacy wrapper - get selected extrusion amount
- */
-[[deprecated("Use ExtrusionPanel::get_amount() instead")]]
-int ui_panel_controls_extrusion_get_amount();
-
-/**
- * @deprecated Use ExtrusionPanel::is_extrusion_allowed() instead
- * @brief Legacy wrapper - check if extrusion is allowed
- */
-[[deprecated("Use ExtrusionPanel::is_extrusion_allowed() instead")]]
-bool ui_panel_controls_extrusion_is_allowed();
-
-/**
- * @deprecated Use ExtrusionPanel::set_limits() instead
- * @brief Legacy wrapper - set temperature validation limits
- */
-[[deprecated("Use ExtrusionPanel::set_limits() instead")]]
-void ui_panel_controls_extrusion_set_limits(int min_temp, int max_temp);
+// Global instance accessor (needed by main.cpp)
+ExtrusionPanel& get_global_controls_extrusion_panel();

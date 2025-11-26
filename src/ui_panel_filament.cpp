@@ -440,86 +440,14 @@ void FilamentPanel::set_limits(int min_temp, int max_temp) {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global FilamentPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use FilamentPanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<FilamentPanel> g_filament_panel;
 
-// Helper to get or create the global instance
-static FilamentPanel& get_global_filament_panel() {
+FilamentPanel& get_global_filament_panel() {
     if (!g_filament_panel) {
         g_filament_panel = std::make_unique<FilamentPanel>(get_printer_state(), nullptr);
     }
     return *g_filament_panel;
-}
-
-void ui_panel_filament_init_subjects() {
-    auto& panel = get_global_filament_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-}
-
-lv_obj_t* ui_panel_filament_create(lv_obj_t* parent) {
-    auto& panel = get_global_filament_panel();
-    if (!panel.are_subjects_initialized()) {
-        spdlog::error("[Filament] Call ui_panel_filament_init_subjects() first!");
-        return nullptr;
-    }
-
-    lv_obj_t* filament_panel = static_cast<lv_obj_t*>(
-        lv_xml_create(parent, panel.get_xml_component_name(), nullptr));
-    if (!filament_panel) {
-        LOG_ERROR_INTERNAL("[Filament] Failed to create filament_panel from XML");
-        NOTIFY_ERROR("Failed to load filament panel");
-        return nullptr;
-    }
-
-    spdlog::debug("[Filament] Panel created from XML");
-    return filament_panel;
-}
-
-void ui_panel_filament_setup(lv_obj_t* panel_obj, lv_obj_t* screen) {
-    auto& panel = get_global_filament_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    panel.setup(panel_obj, screen);
-}
-
-void ui_panel_filament_set_temp(int current, int target) {
-    auto& panel = get_global_filament_panel();
-    panel.set_temp(current, target);
-}
-
-void ui_panel_filament_get_temp(int* current, int* target) {
-    auto& panel = get_global_filament_panel();
-    panel.get_temp(current, target);
-}
-
-void ui_panel_filament_set_material(int material_id) {
-    auto& panel = get_global_filament_panel();
-    panel.set_material(material_id);
-}
-
-int ui_panel_filament_get_material() {
-    auto& panel = get_global_filament_panel();
-    return panel.get_material();
-}
-
-bool ui_panel_filament_is_extrusion_allowed() {
-    auto& panel = get_global_filament_panel();
-    return panel.is_extrusion_allowed();
-}
-
-void ui_panel_filament_set_limits(int min_temp, int max_temp) {
-    auto& panel = get_global_filament_panel();
-    panel.set_limits(min_temp, max_temp);
 }

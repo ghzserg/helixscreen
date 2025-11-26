@@ -153,41 +153,6 @@ class BedMeshPanel : public PanelBase {
     static void on_profile_dropdown_changed(lv_event_t* e);
 };
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the BedMeshPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
 
-/**
- * @deprecated Use BedMeshPanel class directly
- * @brief Legacy wrapper - initialize bed mesh panel subjects
- */
-[[deprecated("Use BedMeshPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_bed_mesh_init_subjects();
-
-/**
- * @deprecated Use BedMeshPanel class directly
- * @brief Legacy wrapper - setup event handlers for bed mesh panel
- */
-[[deprecated("Use BedMeshPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_bed_mesh_setup(lv_obj_t* panel_obj, lv_obj_t* parent_screen);
-
-/**
- * @deprecated Use BedMeshPanel::set_mesh_data() instead
- * @brief Legacy wrapper - load mesh data and render
- */
-[[deprecated("Use BedMeshPanel::set_mesh_data() instead")]]
-void ui_panel_bed_mesh_set_data(const std::vector<std::vector<float>>& mesh_data);
-
-/**
- * @deprecated Use BedMeshPanel::redraw() instead
- * @brief Legacy wrapper - force redraw of bed mesh visualization
- */
-[[deprecated("Use BedMeshPanel::redraw() instead")]]
-void ui_panel_bed_mesh_redraw();
+// Global instance accessor (needed by main.cpp)
+BedMeshPanel& get_global_bed_mesh_panel();

@@ -204,30 +204,14 @@ void StepTestPanel::on_complete_clicked(lv_event_t* e) {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global StepTestPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use StepTestPanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<StepTestPanel> g_step_test_panel;
 
-// Helper to get or create the global instance
-static StepTestPanel& get_global_step_test_panel() {
+StepTestPanel& get_global_step_test_panel() {
     if (!g_step_test_panel) {
         g_step_test_panel = std::make_unique<StepTestPanel>(get_printer_state(), nullptr);
     }
     return *g_step_test_panel;
-}
-
-void ui_panel_step_test_setup(lv_obj_t* panel_root) {
-    auto& panel = get_global_step_test_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    panel.setup(panel_root, nullptr);
 }

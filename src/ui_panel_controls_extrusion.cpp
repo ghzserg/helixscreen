@@ -379,44 +379,23 @@ void ExtrusionPanel::set_limits(int min_temp, int max_temp) {
 static std::unique_ptr<ExtrusionPanel> g_extrusion_panel;
 
 // Helper to get or create the global instance
-static ExtrusionPanel& get_global_extrusion_panel() {
+ExtrusionPanel& get_global_extrusion_panel() {
     if (!g_extrusion_panel) {
         g_extrusion_panel = std::make_unique<ExtrusionPanel>(get_printer_state(), nullptr);
     }
     return *g_extrusion_panel;
 }
 
-void ui_panel_controls_extrusion_init_subjects() {
-    auto& panel = get_global_extrusion_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
+
+// ============================================================================
+// GLOBAL INSTANCE (needed by main.cpp)
+// ============================================================================
+
+static std::unique_ptr<ExtrusionPanel> g_controls_extrusion_panel;
+
+ExtrusionPanel& get_global_controls_extrusion_panel() {
+    if (!g_controls_extrusion_panel) {
+        g_controls_extrusion_panel = std::make_unique<ExtrusionPanel>(get_printer_state(), nullptr);
     }
-}
-
-void ui_panel_controls_extrusion_setup(lv_obj_t* panel_obj, lv_obj_t* screen) {
-    auto& panel = get_global_extrusion_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    panel.setup(panel_obj, screen);
-}
-
-void ui_panel_controls_extrusion_set_temp(int current, int target) {
-    auto& panel = get_global_extrusion_panel();
-    panel.set_temp(current, target);
-}
-
-int ui_panel_controls_extrusion_get_amount() {
-    auto& panel = get_global_extrusion_panel();
-    return panel.get_amount();
-}
-
-bool ui_panel_controls_extrusion_is_allowed() {
-    auto& panel = get_global_extrusion_panel();
-    return panel.is_extrusion_allowed();
-}
-
-void ui_panel_controls_extrusion_set_limits(int min_temp, int max_temp) {
-    auto& panel = get_global_extrusion_panel();
-    panel.set_limits(min_temp, max_temp);
+    return *g_controls_extrusion_panel;
 }

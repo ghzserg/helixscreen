@@ -389,7 +389,7 @@ void BedMeshPanel::on_profile_dropdown_changed(lv_event_t* e) {
 // ============================================================================
 
 // Helper to get or create global instance
-static BedMeshPanel& get_global_instance() {
+BedMeshPanel& get_global_bed_mesh_panel() {
     if (!g_bed_mesh_panel) {
         // Create with dummy PrinterState - legacy API doesn't have proper DI
         extern PrinterState& get_printer_state();
@@ -401,20 +401,4 @@ static BedMeshPanel& get_global_instance() {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-void ui_panel_bed_mesh_init_subjects() {
-    get_global_instance().init_subjects();
-}
 
-void ui_panel_bed_mesh_setup(lv_obj_t* panel_obj, lv_obj_t* parent_screen) {
-    get_global_instance().setup(panel_obj, parent_screen);
-}
-
-void ui_panel_bed_mesh_set_data(const std::vector<std::vector<float>>& mesh_data) {
-    get_global_instance().set_mesh_data(mesh_data);
-}
-
-void ui_panel_bed_mesh_redraw() {
-    get_global_instance().redraw();
-}
-
-#pragma GCC diagnostic pop

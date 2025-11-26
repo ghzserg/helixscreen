@@ -506,82 +506,14 @@ void HomePanel::set_light(bool is_on) {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global HomePanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use HomePanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<HomePanel> g_home_panel;
 
-// Helper to get or create the global instance
 HomePanel& get_global_home_panel() {
     if (!g_home_panel) {
         g_home_panel = std::make_unique<HomePanel>(get_printer_state(), nullptr);
     }
     return *g_home_panel;
-}
-
-void ui_panel_home_init_subjects() {
-    auto& panel = get_global_home_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-}
-
-void ui_panel_home_setup_observers(lv_obj_t* panel_obj) {
-    auto& panel = get_global_home_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    // Note: setup() expects parent_screen, but legacy API doesn't provide it
-    // Pass nullptr - home panel doesn't use parent_screen for overlays
-    panel.setup(panel_obj, nullptr);
-}
-
-lv_obj_t* ui_panel_home_create(lv_obj_t* parent) {
-    auto& panel = get_global_home_panel();
-    if (!panel.are_subjects_initialized()) {
-        spdlog::error("[Home] Subjects not initialized! Call ui_panel_home_init_subjects() first!");
-        return nullptr;
-    }
-
-    // Create the XML component (will bind to subjects automatically)
-    lv_obj_t* home_panel = static_cast<lv_obj_t*>(
-        lv_xml_create(parent, panel.get_xml_component_name(), nullptr));
-    if (!home_panel) {
-        LOG_ERROR_INTERNAL("[Home] Failed to create home_panel from XML");
-        NOTIFY_ERROR("Failed to load home panel");
-        return nullptr;
-    }
-
-    // Setup observers
-    panel.setup(home_panel, nullptr);
-
-    spdlog::debug("[Home] XML home_panel created successfully with reactive observers");
-    return home_panel;
-}
-
-void ui_panel_home_update(const char* status_text, int temp) {
-    auto& panel = get_global_home_panel();
-    panel.update(status_text, temp);
-}
-
-void ui_panel_home_set_network(network_type_t type) {
-    auto& panel = get_global_home_panel();
-    panel.set_network(type);
-}
-
-void ui_panel_home_set_light(bool is_on) {
-    auto& panel = get_global_home_panel();
-    panel.set_light(is_on);
-}
-
-bool ui_panel_home_get_light_state() {
-    auto& panel = get_global_home_panel();
-    return panel.get_light_state();
 }

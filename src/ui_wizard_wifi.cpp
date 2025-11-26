@@ -873,39 +873,3 @@ void WizardWifiStep::cleanup() {
 
     spdlog::debug("[{}] Cleanup complete", get_name());
 }
-
-// ============================================================================
-// Deprecated Legacy API Wrappers
-// ============================================================================
-
-void ui_wizard_wifi_init_subjects() {
-    get_wizard_wifi_step()->init_subjects();
-}
-
-void ui_wizard_wifi_register_callbacks() {
-    get_wizard_wifi_step()->register_callbacks();
-}
-
-void ui_wizard_wifi_register_responsive_constants() {
-    get_wizard_wifi_step()->register_responsive_constants();
-}
-
-lv_obj_t* ui_wizard_wifi_create(lv_obj_t* parent) {
-    return get_wizard_wifi_step()->create(parent);
-}
-
-void ui_wizard_wifi_init_wifi_manager() {
-    get_wizard_wifi_step()->init_wifi_manager();
-}
-
-void ui_wizard_wifi_cleanup() {
-    get_wizard_wifi_step()->cleanup();
-}
-
-void ui_wizard_wifi_show_password_modal(const char* ssid) {
-    get_wizard_wifi_step()->show_password_modal(ssid);
-}
-
-void ui_wizard_wifi_hide_password_modal() {
-    get_wizard_wifi_step()->hide_password_modal();
-}

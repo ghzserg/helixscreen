@@ -123,30 +123,14 @@ void TestPanel::populate_labels() {
 }
 
 // ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global TestPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use TestPanel class
+// GLOBAL INSTANCE (needed by main.cpp)
 // ============================================================================
 
-// Global instance for legacy API - created on first use
 static std::unique_ptr<TestPanel> g_test_panel;
 
-// Helper to get or create the global instance
-static TestPanel& get_global_test_panel() {
+TestPanel& get_global_test_panel() {
     if (!g_test_panel) {
         g_test_panel = std::make_unique<TestPanel>(get_printer_state(), nullptr);
     }
     return *g_test_panel;
-}
-
-void ui_panel_test_setup(lv_obj_t* test_panel) {
-    auto& panel = get_global_test_panel();
-    if (!panel.are_subjects_initialized()) {
-        panel.init_subjects();
-    }
-    panel.setup(test_panel, nullptr);
 }

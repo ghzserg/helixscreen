@@ -653,14 +653,4 @@ lv_obj_t* ui_panel_gcode_test_create(lv_obj_t* parent) {
     return panel_root;
 }
 
-void ui_panel_gcode_test_cleanup(void) {
-    // The global instance destructor handles cleanup
-    // Just reset the unique_ptr to trigger destruction
-    if (g_gcode_test_panel) {
-        // Note: We can't call close_file_picker() here because LVGL might
-        // already be shutting down. The destructor handles this safely.
-        g_gcode_test_panel.reset();
-    }
-}
 
-#pragma GCC diagnostic pop

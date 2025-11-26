@@ -70,24 +70,6 @@ class TestPanel : public PanelBase {
     void populate_labels();
 };
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the TestPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
 
-/**
- * @deprecated Use TestPanel class directly
- * @brief Legacy wrapper - setup test panel
- *
- * Creates a global TestPanel instance if needed and delegates to setup().
- *
- * @param test_panel Root panel object from lv_xml_create()
- */
-[[deprecated("Use TestPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_test_setup(lv_obj_t* test_panel);
+// Global instance accessor (needed by main.cpp)
+TestPanel& get_global_test_panel();

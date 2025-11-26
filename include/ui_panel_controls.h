@@ -125,52 +125,5 @@ class ControlsPanel : public PanelBase {
     static void on_motors_clicked(lv_event_t* e);
 };
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These functions provide backwards compatibility during the transition.
-// New code should use the ControlsPanel class directly.
-//
-// Clean break: After all callers are updated, remove these wrappers and
-// the global instance. See docs/PANEL_MIGRATION.md for procedure.
-// ============================================================================
-
-/**
- * @deprecated Use ControlsPanel class directly
- * @brief Legacy wrapper - initialize controls panel subjects
- *
- * Creates a global ControlsPanel instance if needed and delegates to init_subjects().
- */
-[[deprecated("Use ControlsPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_controls_init_subjects();
-
-/**
- * @deprecated Use ControlsPanel class directly
- * @brief Legacy wrapper - setup event handlers for controls panel
- *
- * Creates a global ControlsPanel instance if needed and delegates to setup().
- *
- * @param panel_obj The controls panel object returned from lv_xml_create()
- * @param screen The screen object (parent for overlay panels)
- */
-[[deprecated("Use ControlsPanel class directly - see docs/PANEL_MIGRATION.md")]]
-void ui_panel_controls_wire_events(lv_obj_t* panel_obj, lv_obj_t* screen);
-
-/**
- * @deprecated Use ControlsPanel::get_panel() instead
- * @brief Legacy wrapper - get the controls panel object
- *
- * @return The controls panel object, or NULL if not created yet
- */
-[[deprecated("Use ControlsPanel::get_panel() instead")]]
-lv_obj_t* ui_panel_controls_get();
-
-/**
- * @deprecated No longer needed - panel stored in class instance
- * @brief Legacy wrapper - set the controls panel object
- *
- * @param panel_obj The controls panel object
- */
-[[deprecated("No longer needed - panel stored in class instance")]]
-void ui_panel_controls_set(lv_obj_t* panel_obj);
+// Global instance accessor (needed by main.cpp)
+ControlsPanel& get_global_controls_panel();
