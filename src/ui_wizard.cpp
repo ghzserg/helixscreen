@@ -315,25 +315,25 @@ static void ui_wizard_cleanup_current_screen() {
 
     switch (current_screen_step) {
     case 1: // WiFi Setup
-        ui_wizard_wifi_cleanup();
+        get_wizard_wifi_step()->cleanup();
         break;
     case 2: // Moonraker Connection
-        ui_wizard_connection_cleanup();
+        get_wizard_connection_step()->cleanup();
         break;
     case 3: // Printer Identification
-        ui_wizard_printer_identify_cleanup();
+        get_wizard_printer_identify_step()->cleanup();
         break;
     case 4: // Heater Select (combined bed + hotend)
-        ui_wizard_heater_select_cleanup();
+        get_wizard_heater_select_step()->cleanup();
         break;
     case 5: // Fan Select
-        ui_wizard_fan_select_cleanup();
+        get_wizard_fan_select_step()->cleanup();
         break;
     case 6: // LED Select
-        ui_wizard_led_select_cleanup();
+        get_wizard_led_select_step()->cleanup();
         break;
     case 7: // Summary
-        ui_wizard_summary_cleanup();
+        get_wizard_summary_step()->cleanup();
         break;
     default:
         spdlog::warn("[Wizard] Unknown screen step {} during cleanup", current_screen_step);
@@ -366,66 +366,66 @@ static void ui_wizard_load_screen(int step) {
     switch (step) {
     case 1: // WiFi Setup
         spdlog::debug("[Wizard] Creating WiFi setup screen");
-        ui_wizard_wifi_init_subjects();
-        ui_wizard_wifi_register_callbacks();
+        get_wizard_wifi_step()->init_subjects();
+        get_wizard_wifi_step()->register_callbacks();
         // Note: WiFi constants now registered by
         // ui_wizard_container_register_responsive_constants()
-        ui_wizard_wifi_create(content);
+        get_wizard_wifi_step()->create(content);
         lv_obj_update_layout(content);
-        ui_wizard_wifi_init_wifi_manager();
+        get_wizard_wifi_step()->init_wifi_manager();
         ui_wizard_set_title("WiFi Setup");
         break;
 
     case 2: // Moonraker Connection
         spdlog::debug("[Wizard] Creating Moonraker connection screen");
-        ui_wizard_connection_init_subjects();
-        ui_wizard_connection_register_callbacks();
-        ui_wizard_connection_create(content);
+        get_wizard_connection_step()->init_subjects();
+        get_wizard_connection_step()->register_callbacks();
+        get_wizard_connection_step()->create(content);
         lv_obj_update_layout(content);
         ui_wizard_set_title("Moonraker Connection");
         break;
 
     case 3: // Printer Identification
         spdlog::debug("[Wizard] Creating printer identification screen");
-        ui_wizard_printer_identify_init_subjects();
-        ui_wizard_printer_identify_register_callbacks();
-        ui_wizard_printer_identify_create(content);
+        get_wizard_printer_identify_step()->init_subjects();
+        get_wizard_printer_identify_step()->register_callbacks();
+        get_wizard_printer_identify_step()->create(content);
         lv_obj_update_layout(content);
         ui_wizard_set_title("Printer Identification");
         break;
 
     case 4: // Heater Select (combined bed + hotend)
         spdlog::debug("[Wizard] Creating heater select screen");
-        ui_wizard_heater_select_init_subjects();
-        ui_wizard_heater_select_register_callbacks();
-        ui_wizard_heater_select_create(content);
+        get_wizard_heater_select_step()->init_subjects();
+        get_wizard_heater_select_step()->register_callbacks();
+        get_wizard_heater_select_step()->create(content);
         lv_obj_update_layout(content);
         ui_wizard_set_title("Heater Configuration");
         break;
 
     case 5: // Fan Select
         spdlog::debug("[Wizard] Creating fan select screen");
-        ui_wizard_fan_select_init_subjects();
-        ui_wizard_fan_select_register_callbacks();
-        ui_wizard_fan_select_create(content);
+        get_wizard_fan_select_step()->init_subjects();
+        get_wizard_fan_select_step()->register_callbacks();
+        get_wizard_fan_select_step()->create(content);
         lv_obj_update_layout(content);
         ui_wizard_set_title("Fan Configuration");
         break;
 
     case 6: // LED Select
         spdlog::debug("[Wizard] Creating LED select screen");
-        ui_wizard_led_select_init_subjects();
-        ui_wizard_led_select_register_callbacks();
-        ui_wizard_led_select_create(content);
+        get_wizard_led_select_step()->init_subjects();
+        get_wizard_led_select_step()->register_callbacks();
+        get_wizard_led_select_step()->create(content);
         lv_obj_update_layout(content);
         ui_wizard_set_title("LED Configuration");
         break;
 
     case 7: // Summary
         spdlog::debug("[Wizard] Creating summary screen");
-        ui_wizard_summary_init_subjects();
-        ui_wizard_summary_register_callbacks();
-        ui_wizard_summary_create(content);
+        get_wizard_summary_step()->init_subjects();
+        get_wizard_summary_step()->register_callbacks();
+        get_wizard_summary_step()->create(content);
         lv_obj_update_layout(content);
         ui_wizard_set_title("Configuration Summary");
         break;

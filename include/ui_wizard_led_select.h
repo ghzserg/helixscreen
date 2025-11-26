@@ -1,66 +1,106 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
-
 #pragma once
 
 #include "lvgl/lvgl.h"
 
-/**
- * @brief Initialize subjects for LED select screen
- *
- * Creates and registers reactive subjects:
- * - led_strip_selected (int) - Selected LED strip index in dropdown
- */
-void ui_wizard_led_select_init_subjects();
+#include <memory>
+#include <string>
+#include <vector>
 
 /**
- * @brief Register event callbacks for LED select screen
+ * @file ui_wizard_led_select.h
+ * @brief Wizard LED selection step - configures LED strips
  *
- * Registers callbacks:
- * - on_led_strip_changed - When LED strip dropdown selection changes
+ * Uses hardware discovery from MoonrakerClient to populate dropdowns.
+ *
+ * ## Class-Based Architecture (Phase 6)
+ *
+ * Migrated from function-based to class-based design with:
+ * - Instance members instead of static globals
+ * - Static trampolines for LVGL callbacks
+ * - Global singleton getter for backwards compatibility
+ *
+ * ## Subject Bindings (1 total):
+ *
+ * - led_strip_selected (int) - Selected LED strip index
  */
-void ui_wizard_led_select_register_callbacks();
 
 /**
- * @brief Create LED select screen UI
- *
- * Creates the LED selection form from wizard_led_select.xml
- *
- * @param parent Parent container (wizard_content)
- * @return Root object of the screen, or nullptr on failure
+ * @class WizardLedSelectStep
+ * @brief LED configuration step for the first-run wizard
  */
-lv_obj_t* ui_wizard_led_select_create(lv_obj_t* parent);
+class WizardLedSelectStep {
+  public:
+    WizardLedSelectStep();
+    ~WizardLedSelectStep();
 
-/**
- * @brief Cleanup LED select screen resources
- *
- * Clears any temporary state and releases resources
- */
-void ui_wizard_led_select_cleanup();
+    // Non-copyable
+    WizardLedSelectStep(const WizardLedSelectStep&) = delete;
+    WizardLedSelectStep& operator=(const WizardLedSelectStep&) = delete;
 
-/**
- * @brief Check if LED selection is complete
- *
- * @return true (always validated for baseline implementation)
- */
-bool ui_wizard_led_select_is_validated();
+    // Movable
+    WizardLedSelectStep(WizardLedSelectStep&& other) noexcept;
+    WizardLedSelectStep& operator=(WizardLedSelectStep&& other) noexcept;
+
+    /**
+     * @brief Initialize reactive subjects
+     */
+    void init_subjects();
+
+    /**
+     * @brief Register event callbacks
+     */
+    void register_callbacks();
+
+    /**
+     * @brief Create the LED selection UI from XML
+     *
+     * @param parent Parent container (wizard_content)
+     * @return Root object of the step, or nullptr on failure
+     */
+    lv_obj_t* create(lv_obj_t* parent);
+
+    /**
+     * @brief Cleanup resources and save selections to config
+     */
+    void cleanup();
+
+    /**
+     * @brief Check if step is validated
+     *
+     * @return true (always validated for baseline)
+     */
+    bool is_validated() const;
+
+    /**
+     * @brief Get step name for logging
+     */
+    const char* get_name() const { return "Wizard LED"; }
+
+    // Public access to subjects for helper functions
+    lv_subject_t* get_led_strip_subject() { return &led_strip_selected_; }
+
+    std::vector<std::string>& get_led_strip_items() { return led_strip_items_; }
+
+  private:
+    // Screen instance
+    lv_obj_t* screen_root_ = nullptr;
+
+    // Subjects
+    lv_subject_t led_strip_selected_;
+
+    // Dynamic options storage
+    std::vector<std::string> led_strip_items_;
+
+    // Track initialization
+    bool subjects_initialized_ = false;
+};
+
+// ============================================================================
+// Global Instance Access
+// ============================================================================
+
+WizardLedSelectStep* get_wizard_led_select_step();
+void destroy_wizard_led_select_step();

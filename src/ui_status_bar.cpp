@@ -26,7 +26,11 @@
 #include "ui_nav.h"
 #include "ui_panel_notification_history.h"
 #include "app_globals.h"
+#include "printer_state.h"
 #include <spdlog/spdlog.h>
+
+// Forward declaration for class-based API
+NotificationHistoryPanel& get_global_notification_history_panel();
 
 // Cached widget references
 static lv_obj_t* network_icon = nullptr;
@@ -79,10 +83,23 @@ static void printer_connection_observer(lv_observer_t* observer, lv_subject_t* s
 // Event callback for notification history button
 static void status_notification_history_clicked(lv_event_t* e) {
     lv_obj_t* parent = lv_screen_active();
-    lv_obj_t* panel = ui_panel_notification_history_create(parent);
-    if (panel) {
-        ui_nav_push_overlay(panel);
+
+    // Use class-based API - create XML component and setup via panel instance
+    lv_obj_t* panel_obj = static_cast<lv_obj_t*>(
+        lv_xml_create(parent, "notification_history_panel", nullptr));
+    if (!panel_obj) {
+        spdlog::error("[StatusBar] Failed to create notification_history_panel from XML");
+        return;
     }
+
+    // Get panel instance and setup
+    auto& panel = get_global_notification_history_panel();
+    if (!panel.are_subjects_initialized()) {
+        panel.init_subjects();
+    }
+    panel.setup(panel_obj, parent);
+
+    ui_nav_push_overlay(panel_obj);
 }
 
 void ui_status_bar_register_callbacks() {

@@ -1,34 +1,16 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
-
 #include "ui_panel_glyphs.h"
 
+#include "app_globals.h"
+#include "printer_state.h"
 #include "ui_theme.h"
 
 #include <lvgl/lvgl.h>
 #include <spdlog/spdlog.h>
 
-#include <utility>
+#include <memory>
 #include <vector>
 
 /**
@@ -148,18 +130,51 @@ static lv_obj_t* create_glyph_item(lv_obj_t* parent, const GlyphInfo& glyph) {
     return item;
 }
 
-lv_obj_t* ui_panel_glyphs_create(lv_obj_t* parent) {
-    spdlog::info("Creating glyphs panel");
+// ============================================================================
+// CONSTRUCTOR
+// ============================================================================
 
-    // Create panel from XML
-    lv_obj_t* panel = (lv_obj_t*)lv_xml_create(parent, "glyphs_panel", NULL);
-    if (!panel) {
-        spdlog::error("Failed to create glyphs panel from XML");
-        return nullptr;
+GlyphsPanel::GlyphsPanel(PrinterState& printer_state, MoonrakerAPI* api)
+    : PanelBase(printer_state, api) {
+    // GlyphsPanel doesn't use PrinterState or MoonrakerAPI, but we accept
+    // them for interface consistency with other panels
+}
+
+// ============================================================================
+// PANELBASE IMPLEMENTATION
+// ============================================================================
+
+void GlyphsPanel::init_subjects() {
+    if (subjects_initialized_) {
+        spdlog::warn("[{}] init_subjects() called twice - ignoring", get_name());
+        return;
     }
 
+    // GlyphsPanel has no subjects to initialize
+    subjects_initialized_ = true;
+    spdlog::debug("[{}] Subjects initialized (none required)", get_name());
+}
+
+void GlyphsPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
+    // Call base class to store panel_ and parent_screen_
+    PanelBase::setup(panel, parent_screen);
+
+    if (!panel_) {
+        spdlog::error("[{}] NULL panel", get_name());
+        return;
+    }
+
+    // Populate the glyphs content
+    populate_glyphs();
+}
+
+// ============================================================================
+// PRIVATE HELPERS
+// ============================================================================
+
+void GlyphsPanel::populate_glyphs() {
     // Update glyph count in header
-    lv_obj_t* count_label = lv_obj_find_by_name(panel, "glyph_count_label");
+    lv_obj_t* count_label = lv_obj_find_by_name(panel_, "glyph_count_label");
     if (count_label) {
         char count_text[32];
         snprintf(count_text, sizeof(count_text), "%zu symbols", LVGL_SYMBOLS.size());
@@ -168,27 +183,54 @@ lv_obj_t* ui_panel_glyphs_create(lv_obj_t* parent) {
 
     // Find the scrollable content container
     // It's the second child of the main container (after header)
-    lv_obj_t* main_container = lv_obj_get_child(panel, 0);
+    lv_obj_t* main_container = lv_obj_get_child(panel_, 0);
     if (!main_container) {
-        spdlog::error("Failed to find main container in glyphs panel");
-        return panel;
+        spdlog::error("[{}] Failed to find main container", get_name());
+        return;
     }
 
     lv_obj_t* content_area = lv_obj_get_child(main_container, 1); // Second child (index 1)
     if (!content_area) {
-        spdlog::error("Failed to find content area in glyphs panel");
-        return panel;
+        spdlog::error("[{}] Failed to find content area", get_name());
+        return;
     }
 
     // Add all glyph items to the content area
-    spdlog::debug("Adding {} glyph items to content area", LVGL_SYMBOLS.size());
+    spdlog::debug("[{}] Adding {} glyph items to content area", get_name(), LVGL_SYMBOLS.size());
     for (const auto& glyph : LVGL_SYMBOLS) {
         create_glyph_item(content_area, glyph);
     }
 
     // Force layout update to ensure scrolling works correctly
-    lv_obj_update_layout(panel);
+    lv_obj_update_layout(panel_);
 
-    spdlog::info("Glyphs panel created successfully with {} symbols", LVGL_SYMBOLS.size());
-    return panel;
+    spdlog::info("[{}] Setup complete with {} symbols", get_name(), LVGL_SYMBOLS.size());
+}
+
+// ============================================================================
+// GLOBAL INSTANCE (needed by main.cpp)
+// ============================================================================
+
+static std::unique_ptr<GlyphsPanel> g_glyphs_panel;
+
+GlyphsPanel& get_global_glyphs_panel() {
+    if (!g_glyphs_panel) {
+        g_glyphs_panel = std::make_unique<GlyphsPanel>(get_printer_state(), nullptr);
+    }
+    return *g_glyphs_panel;
+}
+
+// Legacy create wrapper (test panel - still used by main.cpp)
+lv_obj_t* ui_panel_glyphs_create(lv_obj_t* parent) {
+    auto& panel = get_global_glyphs_panel();
+    if (!panel.are_subjects_initialized()) {
+        panel.init_subjects();
+    }
+    
+    lv_obj_t* glyphs_panel = static_cast<lv_obj_t*>(
+        lv_xml_create(parent, panel.get_xml_component_name(), nullptr));
+    if (glyphs_panel) {
+        panel.setup(glyphs_panel, nullptr);
+    }
+    return glyphs_panel;
 }

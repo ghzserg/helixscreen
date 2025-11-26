@@ -1,26 +1,6 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
-
 #include "ui_panel_print_select.h"
 
 #include "ui_fonts.h"
@@ -35,489 +15,244 @@
 #include "config.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "moonraker_api.h"
+#include "printer_state.h"
 #include "ui_error_reporting.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <ctime>
+#include <memory>
 #include <string>
 #include <vector>
 
-// Default placeholder thumbnail for print files
-static const char* DEFAULT_PLACEHOLDER_THUMB = "A:assets/images/thumbnail-placeholder.png";
+// Forward declaration for class-based API
+PrintStatusPanel& get_global_print_status_panel();
 
 // ============================================================================
-// Thumbnail helper functions
+// Global Instance
 // ============================================================================
 
-/**
- * @brief Construct Moonraker HTTP URL for thumbnail
- *
- * @param relative_path Relative path from metadata (e.g., ".thumbs/...")
- * @return Full HTTP URL or empty string on error
- */
-static std::string construct_thumbnail_url(const std::string& relative_path) {
-    Config* config = Config::get_instance();
-    if (!config) {
-        spdlog::error("Cannot construct thumbnail URL: Config not available");
-        return "";
+static std::unique_ptr<PrintSelectPanel> g_print_select_panel;
+
+PrintSelectPanel* get_print_select_panel(PrinterState& printer_state, MoonrakerAPI* api) {
+    if (!g_print_select_panel) {
+        g_print_select_panel = std::make_unique<PrintSelectPanel>(printer_state, api);
     }
-
-    try {
-        std::string host = config->get<std::string>(config->df() + "moonraker_host");
-        int port = config->get<int>(config->df() + "moonraker_port");
-
-        // Build URL: http://host:port/server/files/gcodes/{relative_path}
-        std::string url =
-            "http://" + host + ":" + std::to_string(port) + "/server/files/gcodes/" + relative_path;
-
-        return url;
-    } catch (const std::exception& e) {
-        spdlog::error("Failed to construct thumbnail URL: {}", e.what());
-        return "";
-    }
+    return g_print_select_panel.get();
 }
 
 // ============================================================================
-// File data structure
+// Constructor / Destructor
 // ============================================================================
-struct PrintFileData {
-    std::string filename;
-    std::string thumbnail_path;
-    size_t file_size_bytes;    // File size in bytes
-    time_t modified_timestamp; // Last modified timestamp
-    int print_time_minutes;    // Print time in minutes
-    float filament_grams;      // Filament weight in grams
 
-    // Formatted strings (cached for performance)
-    std::string size_str;
-    std::string modified_str;
-    std::string print_time_str;
-    std::string filament_str;
-};
+PrintSelectPanel::PrintSelectPanel(PrinterState& printer_state, MoonrakerAPI* api)
+    : PanelBase(printer_state, api) {
+    spdlog::debug("[{}] Constructed", get_name());
+}
 
-// ============================================================================
-// Card layout calculation
-// ============================================================================
-static const char* CARD_COMPONENT_NAME = "print_file_card";
-static const int CARD_GAP = 20;
-static const int CARD_MIN_WIDTH = 165; // Increased to prevent metadata wrapping
-static const int CARD_MAX_WIDTH = 230;
-static const int CARD_DEFAULT_HEIGHT = 245; // Default height (overridden by dynamic calculation)
+PrintSelectPanel::~PrintSelectPanel() {
+    // CRITICAL: Do NOT call LVGL functions here - static destruction order!
+    // LVGL may already be destroyed when exit() is called.
+    // Just reset our pointers - the LVGL widget tree handles cleanup.
+    card_view_container_ = nullptr;
+    list_view_container_ = nullptr;
+    list_rows_container_ = nullptr;
+    empty_state_container_ = nullptr;
+    view_toggle_btn_ = nullptr;
+    view_toggle_icon_ = nullptr;
+    detail_view_widget_ = nullptr;
+    confirmation_dialog_widget_ = nullptr;
+    print_status_panel_widget_ = nullptr;
 
-// Row count breakpoint: minimum container height for 3 rows vs 2 rows
-static const int ROW_COUNT_3_MIN_HEIGHT = 520;
-
-struct CardDimensions {
-    int num_columns;
-    int num_rows;
-    int card_width;
-    int card_height;
-};
-
-static CardDimensions calculate_card_dimensions(lv_obj_t* container) {
-    if (!container) {
-        spdlog::error("Cannot calculate dimensions: container is null");
-        CardDimensions dims = {4, 2, CARD_MIN_WIDTH, CARD_DEFAULT_HEIGHT};
-        return dims;
-    }
-
-    // Get container width
-    lv_coord_t container_width = lv_obj_get_content_width(container);
-
-    // Calculate available height from parent panel dimensions
-    lv_obj_t* panel_root = lv_obj_get_parent(container);
-    if (!panel_root) {
-        spdlog::error("Cannot find panel root");
-        CardDimensions dims = {4, 2, CARD_MIN_WIDTH, CARD_DEFAULT_HEIGHT};
-        return dims;
-    }
-
-    // Get actual panel height
-    lv_coord_t panel_height = lv_obj_get_height(panel_root);
-
-    // Find the top bar to subtract its height
-    lv_obj_t* top_bar = lv_obj_get_child(panel_root, 0); // First child is top bar
-    lv_coord_t top_bar_height = top_bar ? lv_obj_get_height(top_bar) : 60;
-
-    // Check for gap between panel children in flex layout
-    lv_coord_t panel_gap = lv_obj_get_style_pad_row(panel_root, LV_PART_MAIN);
-
-    // Calculate available height for cards (panel minus top bar minus container padding minus any
-    // gaps)
-    lv_coord_t container_padding = lv_obj_get_style_pad_top(container, LV_PART_MAIN) +
-                                   lv_obj_get_style_pad_bottom(container, LV_PART_MAIN);
-    lv_coord_t container_actual_height = lv_obj_get_height(container);
-    lv_coord_t available_height = panel_height - top_bar_height - container_padding - panel_gap;
-
-    spdlog::debug("Heights: panel={}, top_bar={}, container_actual={}, container_padding={}, "
-                 "panel_gap={}, available={}",
-                 panel_height, top_bar_height, container_actual_height, container_padding,
-                 panel_gap, available_height);
-
-    CardDimensions dims;
-
-    // Determine optimal number of rows based on available height
-    if (available_height >= ROW_COUNT_3_MIN_HEIGHT) {
-        dims.num_rows = 3;
-    } else {
-        dims.num_rows = 2;
-    }
-
-    // Calculate card height based on rows
-    int total_row_gaps = (dims.num_rows - 1) * CARD_GAP;
-    dims.card_height = (available_height - total_row_gaps) / dims.num_rows;
-
-    // Try different column counts, starting from maximum
-    for (int cols = 10; cols >= 1; cols--) {
-        int total_gaps = (cols - 1) * CARD_GAP;
-        int card_width = (container_width - total_gaps) / cols;
-
-        if (card_width >= CARD_MIN_WIDTH && card_width <= CARD_MAX_WIDTH) {
-            dims.num_columns = cols;
-            dims.card_width = card_width;
-
-            spdlog::debug("Calculated card layout: {} rows × {} columns, card={}x{}", dims.num_rows,
-                         dims.num_columns, dims.card_width, dims.card_height);
-            return dims;
-        }
-    }
-
-    // Fallback to minimum width if nothing fits perfectly
-    dims.num_columns = container_width / (CARD_MIN_WIDTH + CARD_GAP);
-    if (dims.num_columns < 1)
-        dims.num_columns = 1; // Safety: always at least 1 column
-    dims.card_width = CARD_MIN_WIDTH;
-
-    spdlog::warn("No optimal card layout found, using fallback: {} columns", dims.num_columns);
-    return dims;
+    // NOTE: Do NOT log here - spdlog may be destroyed first
 }
 
 // ============================================================================
-// Static state
+// PanelBase Implementation
 // ============================================================================
-static std::vector<PrintFileData> file_list;
-static PrintSelectViewMode current_view_mode = PrintSelectViewMode::CARD; // Default view mode
-static PrintSelectSortColumn current_sort_column = PrintSelectSortColumn::FILENAME;
-static PrintSelectSortDirection current_sort_direction = PrintSelectSortDirection::ASCENDING;
-static bool panel_initialized =
-    false; // Guard flag to prevent resize callback before setup complete
 
-// Widget references
-static lv_obj_t* panel_root_widget = nullptr;
-static lv_obj_t* parent_screen_widget = nullptr;
-static lv_obj_t* card_view_container = nullptr;
-static lv_obj_t* list_view_container = nullptr;
-static lv_obj_t* list_rows_container = nullptr;
-static lv_obj_t* empty_state_container = nullptr;
-static lv_obj_t* view_toggle_btn = nullptr;
-static lv_obj_t* view_toggle_icon = nullptr;
-static lv_obj_t* detail_view_widget = nullptr;
-static lv_obj_t* confirmation_dialog_widget = nullptr;
-static lv_obj_t* print_status_panel_widget = nullptr;
-
-// ============================================================================
-// Reactive subjects for selected file state
-// ============================================================================
-static lv_subject_t selected_filename_subject;
-static char selected_filename_buffer[128];
-
-static lv_subject_t selected_thumbnail_subject;
-static char selected_thumbnail_buffer[256];
-
-static lv_subject_t selected_print_time_subject;
-static char selected_print_time_buffer[32];
-
-static lv_subject_t selected_filament_weight_subject;
-static char selected_filament_weight_buffer[32];
-
-static lv_subject_t detail_view_visible_subject;
-
-// Forward declarations
-static void populate_card_view();
-static void populate_list_view();
-static void apply_sort();
-static void update_empty_state();
-static void update_sort_indicators();
-static void attach_card_click_handler(lv_obj_t* card, const PrintFileData& file_data);
-static void attach_row_click_handler(lv_obj_t* row, const PrintFileData& file_data);
-static void create_detail_view();
-static void scale_detail_images();
-
-// ============================================================================
-// Resize handling callback
-// ============================================================================
-static void on_resize() {
-    // CRITICAL: Don't run resize logic until panel is fully initialized (prevents segfault)
-    if (!panel_initialized)
+void PrintSelectPanel::init_subjects() {
+    if (subjects_initialized_) {
         return;
-
-    spdlog::info("Print select panel handling resize event");
-
-    // Only recalculate card view dimensions if currently in card view mode
-    if (current_view_mode == PrintSelectViewMode::CARD && card_view_container) {
-        populate_card_view();
     }
 
-    // Update detail view content padding if detail view exists
-    if (detail_view_widget && parent_screen_widget) {
-        lv_obj_t* content_container = lv_obj_find_by_name(detail_view_widget, "content_container");
-        if (content_container) {
-            lv_coord_t padding =
-                ui_get_header_content_padding(lv_obj_get_height(parent_screen_widget));
-            lv_obj_set_style_pad_all(content_container, padding, 0);
-        }
-    }
-}
-
-// ============================================================================
-// Subject initialization
-// ============================================================================
-void ui_panel_print_select_init_subjects() {
     // Initialize selected file subjects
-    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_filename_subject, selected_filename_buffer, "", "selected_filename");
-    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_thumbnail_subject, selected_thumbnail_buffer, DEFAULT_PLACEHOLDER_THUMB, "selected_thumbnail");
-    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_print_time_subject, selected_print_time_buffer, "", "selected_print_time");
-    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_filament_weight_subject, selected_filament_weight_buffer, "", "selected_filament_weight");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_filename_subject_, selected_filename_buffer_, "",
+                                        "selected_filename");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_thumbnail_subject_, selected_thumbnail_buffer_,
+                                        DEFAULT_PLACEHOLDER_THUMB, "selected_thumbnail");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_print_time_subject_, selected_print_time_buffer_,
+                                        "", "selected_print_time");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(selected_filament_weight_subject_,
+                                        selected_filament_weight_buffer_, "",
+                                        "selected_filament_weight");
 
     // Initialize detail view visibility subject (0 = hidden, 1 = visible)
-    UI_SUBJECT_INIT_AND_REGISTER_INT(detail_view_visible_subject, 0, "detail_view_visible");
+    UI_SUBJECT_INIT_AND_REGISTER_INT(detail_view_visible_subject_, 0, "detail_view_visible");
 
-    spdlog::debug("Print select panel subjects initialized");
+    subjects_initialized_ = true;
+    spdlog::debug("[{}] Subjects initialized", get_name());
 }
 
-// ============================================================================
-// Panel setup (call after XML creation)
-// ============================================================================
-void ui_panel_print_select_setup(lv_obj_t* panel_root, lv_obj_t* parent_screen) {
-    if (!panel_root) {
-        spdlog::error("Cannot setup print select panel: panel_root is null");
+void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
+    PanelBase::setup(panel, parent_screen);
+
+    if (!panel_) {
+        spdlog::error("[{}] Cannot setup: panel is null", get_name());
         return;
     }
 
-    panel_root_widget = panel_root;
-    parent_screen_widget = parent_screen;
-
     // Find widget references
-    card_view_container = lv_obj_find_by_name(panel_root, "card_view_container");
-    list_view_container = lv_obj_find_by_name(panel_root, "list_view_container");
-    list_rows_container = lv_obj_find_by_name(panel_root, "list_rows_container");
-    empty_state_container = lv_obj_find_by_name(panel_root, "empty_state_container");
-    view_toggle_btn = lv_obj_find_by_name(panel_root, "view_toggle_btn");
-    view_toggle_icon = lv_obj_find_by_name(panel_root, "view_toggle_icon");
+    card_view_container_ = lv_obj_find_by_name(panel_, "card_view_container");
+    list_view_container_ = lv_obj_find_by_name(panel_, "list_view_container");
+    list_rows_container_ = lv_obj_find_by_name(panel_, "list_rows_container");
+    empty_state_container_ = lv_obj_find_by_name(panel_, "empty_state_container");
+    view_toggle_btn_ = lv_obj_find_by_name(panel_, "view_toggle_btn");
+    view_toggle_icon_ = lv_obj_find_by_name(panel_, "view_toggle_icon");
 
-    if (!card_view_container || !list_view_container || !list_rows_container ||
-        !empty_state_container || !view_toggle_btn || !view_toggle_icon) {
-        spdlog::error("Failed to find required widgets in print select panel");
+    if (!card_view_container_ || !list_view_container_ || !list_rows_container_ ||
+        !empty_state_container_ || !view_toggle_btn_ || !view_toggle_icon_) {
+        spdlog::error("[{}] Failed to find required widgets", get_name());
         return;
     }
 
     // Wire up view toggle button
-    lv_obj_add_event_cb(
-        view_toggle_btn,
-        [](lv_event_t* e) {
-            (void)e;
-            ui_panel_print_select_toggle_view();
-        },
-        LV_EVENT_CLICKED, nullptr);
+    lv_obj_add_event_cb(view_toggle_btn_, on_view_toggle_clicked_static, LV_EVENT_CLICKED, this);
 
     // Wire up column header click handlers
-    static const char* header_names[] = {"header_filename", "header_size", "header_modified",
-                                         "header_print_time"};
-    // IMPORTANT: Static storage so pointers remain valid after function returns
-    static PrintSelectSortColumn columns[] = {
-        PrintSelectSortColumn::FILENAME, PrintSelectSortColumn::SIZE,
-        PrintSelectSortColumn::MODIFIED, PrintSelectSortColumn::PRINT_TIME};
+    // We need to pack both 'this' and column index into user_data
+    // Use a simple encoding: store column index in the low bits of a pointer-sized int
+    struct HeaderBinding {
+        const char* name;
+        PrintSelectSortColumn column;
+    };
+    static const HeaderBinding headers[] = {{"header_filename", PrintSelectSortColumn::FILENAME},
+                                             {"header_size", PrintSelectSortColumn::SIZE},
+                                             {"header_modified", PrintSelectSortColumn::MODIFIED},
+                                             {"header_print_time", PrintSelectSortColumn::PRINT_TIME}};
 
-    for (int i = 0; i < 4; i++) {
-        lv_obj_t* header = lv_obj_find_by_name(panel_root, header_names[i]);
+    for (const auto& binding : headers) {
+        lv_obj_t* header = lv_obj_find_by_name(panel_, binding.name);
         if (header) {
-            lv_obj_add_event_cb(
-                header,
-                [](lv_event_t* e) {
-                    PrintSelectSortColumn* col = (PrintSelectSortColumn*)lv_event_get_user_data(e);
-                    ui_panel_print_select_sort_by(*col);
-                },
-                LV_EVENT_CLICKED, &columns[i]);
+            // Encode column in user_data: we'll use the address of the static array entry
+            // The callback will recover the column from the difference
+            lv_obj_add_event_cb(header, on_header_clicked_static, LV_EVENT_CLICKED, this);
+            // Store column index in the object's user_data for recovery
+            lv_obj_set_user_data(header, reinterpret_cast<void*>(static_cast<intptr_t>(binding.column)));
         }
     }
 
     // Create detail view (confirmation dialog created on-demand)
     create_detail_view();
 
-    // Register resize callback for responsive card layout
-    ui_resize_handler_register(on_resize);
+    // Register resize callback
+    // Note: ui_resize_handler_register expects a C callback, so we use a static trampoline
+    // We store 'this' in a static variable since the resize system doesn't support user_data
+    // This is safe because there's only one PrintSelectPanel instance
+    static PrintSelectPanel* resize_self = nullptr;
+    resize_self = this;
+    ui_resize_handler_register([]() {
+        if (resize_self) {
+            resize_self->handle_resize();
+        }
+    });
 
     // Mark panel as fully initialized (enables resize callbacks)
-    panel_initialized = true;
+    panel_initialized_ = true;
 
     // Try to refresh from Moonraker, fall back to test data if not connected
-    MoonrakerAPI* api = get_moonraker_api();
-    if (api) {
-        // Refresh real files from Moonraker
-        ui_panel_print_select_refresh_files();
+    if (api_) {
+        refresh_files();
     } else {
-        // Fall back to test data if Moonraker not available
-        spdlog::info("MoonrakerAPI not available, using test data");
-        ui_panel_print_select_populate_test_data(panel_root);
+        spdlog::info("[{}] MoonrakerAPI not available, using test data", get_name());
+        populate_test_data();
     }
 
-    spdlog::debug("Print select panel setup complete");
+    spdlog::debug("[{}] Setup complete", get_name());
 }
 
 // ============================================================================
-// View toggle
+// Public API
 // ============================================================================
-void ui_panel_print_select_toggle_view() {
-    if (current_view_mode == PrintSelectViewMode::CARD) {
+
+void PrintSelectPanel::toggle_view() {
+    if (current_view_mode_ == PrintSelectViewMode::CARD) {
         // Switch to list view
-        current_view_mode = PrintSelectViewMode::LIST;
-        lv_obj_add_flag(card_view_container, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_remove_flag(list_view_container, LV_OBJ_FLAG_HIDDEN);
+        current_view_mode_ = PrintSelectViewMode::LIST;
+        lv_obj_add_flag(card_view_container_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(list_view_container_, LV_OBJ_FLAG_HIDDEN);
 
         // Update icon to show grid_view (indicates you can switch back to card view)
         const void* grid_icon = lv_xml_get_image(NULL, "mat_grid_view");
         if (grid_icon) {
-            lv_image_set_src(view_toggle_icon, grid_icon);
+            lv_image_set_src(view_toggle_icon_, grid_icon);
         }
-        spdlog::debug("Switched to list view");
+        spdlog::debug("[{}] Switched to list view", get_name());
     } else {
         // Switch to card view
-        current_view_mode = PrintSelectViewMode::CARD;
-        lv_obj_remove_flag(card_view_container, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(list_view_container, LV_OBJ_FLAG_HIDDEN);
+        current_view_mode_ = PrintSelectViewMode::CARD;
+        lv_obj_remove_flag(card_view_container_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(list_view_container_, LV_OBJ_FLAG_HIDDEN);
 
         // Update icon to show list (indicates you can switch to list view)
         const void* list_icon = lv_xml_get_image(NULL, "mat_list");
         if (list_icon) {
-            lv_image_set_src(view_toggle_icon, list_icon);
+            lv_image_set_src(view_toggle_icon_, list_icon);
         }
-        spdlog::debug("Switched to card view");
+        spdlog::debug("[{}] Switched to card view", get_name());
     }
 
     update_empty_state();
 }
 
-// ============================================================================
-// Sorting
-// ============================================================================
-static void apply_sort() {
-    std::sort(
-        file_list.begin(), file_list.end(), [](const PrintFileData& a, const PrintFileData& b) {
-            bool result = false;
-
-            switch (current_sort_column) {
-            case PrintSelectSortColumn::FILENAME:
-                result = a.filename < b.filename;
-                break;
-            case PrintSelectSortColumn::SIZE:
-                result = a.file_size_bytes < b.file_size_bytes;
-                break;
-            case PrintSelectSortColumn::MODIFIED:
-                result = a.modified_timestamp > b.modified_timestamp; // Newer first by default
-                break;
-            case PrintSelectSortColumn::PRINT_TIME:
-                result = a.print_time_minutes < b.print_time_minutes;
-                break;
-            case PrintSelectSortColumn::FILAMENT:
-                result = a.filament_grams < b.filament_grams;
-                break;
-            }
-
-            // Reverse if descending
-            if (current_sort_direction == PrintSelectSortDirection::DESCENDING) {
-                result = !result;
-            }
-
-            return result;
-        });
-}
-
-void ui_panel_print_select_sort_by(PrintSelectSortColumn column) {
+void PrintSelectPanel::sort_by(PrintSelectSortColumn column) {
     // Toggle direction if same column, otherwise default to ascending
-    if (column == current_sort_column) {
-        current_sort_direction = (current_sort_direction == PrintSelectSortDirection::ASCENDING)
-                                     ? PrintSelectSortDirection::DESCENDING
-                                     : PrintSelectSortDirection::ASCENDING;
+    if (column == current_sort_column_) {
+        current_sort_direction_ = (current_sort_direction_ == PrintSelectSortDirection::ASCENDING)
+                                      ? PrintSelectSortDirection::DESCENDING
+                                      : PrintSelectSortDirection::ASCENDING;
     } else {
-        current_sort_column = column;
-        current_sort_direction = PrintSelectSortDirection::ASCENDING;
+        current_sort_column_ = column;
+        current_sort_direction_ = PrintSelectSortDirection::ASCENDING;
     }
 
     apply_sort();
     update_sort_indicators();
 
     // Repopulate current view
-    if (current_view_mode == PrintSelectViewMode::CARD) {
+    if (current_view_mode_ == PrintSelectViewMode::CARD) {
         populate_card_view();
     } else {
         populate_list_view();
     }
 
-    spdlog::debug("Sorted by column {}, direction {}", (int)column, (int)current_sort_direction);
+    spdlog::debug("[{}] Sorted by column {}, direction {}", get_name(), static_cast<int>(column),
+                  static_cast<int>(current_sort_direction_));
 }
 
-static void update_sort_indicators() {
-    // Update column header icons to show sort direction
-    const char* header_names[] = {"header_filename", "header_size", "header_modified",
-                                  "header_print_time"};
-    PrintSelectSortColumn columns[] = {PrintSelectSortColumn::FILENAME, PrintSelectSortColumn::SIZE,
-                                       PrintSelectSortColumn::MODIFIED,
-                                       PrintSelectSortColumn::PRINT_TIME};
-
-    for (int i = 0; i < 4; i++) {
-        // Find both up and down icon components
-        char icon_up_name[64];
-        char icon_down_name[64];
-        snprintf(icon_up_name, sizeof(icon_up_name), "%s_icon_up", header_names[i]);
-        snprintf(icon_down_name, sizeof(icon_down_name), "%s_icon_down", header_names[i]);
-
-        lv_obj_t* icon_up = lv_obj_find_by_name(panel_root_widget, icon_up_name);
-        lv_obj_t* icon_down = lv_obj_find_by_name(panel_root_widget, icon_down_name);
-
-        if (icon_up && icon_down) {
-            if (columns[i] == current_sort_column) {
-                // Show appropriate arrow icon, hide the other
-                if (current_sort_direction == PrintSelectSortDirection::ASCENDING) {
-                    lv_obj_remove_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_add_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
-                } else {
-                    lv_obj_add_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_remove_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
-                }
-            } else {
-                // Hide both icons for non-sorted columns
-                lv_obj_add_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
-            }
-        }
-    }
-}
-
-// ============================================================================
-// Refresh files from Moonraker
-// ============================================================================
-void ui_panel_print_select_refresh_files() {
-    MoonrakerAPI* api = get_moonraker_api();
-    if (!api) {
-        spdlog::warn("Cannot refresh files: MoonrakerAPI not initialized");
+void PrintSelectPanel::refresh_files() {
+    if (!api_) {
+        spdlog::warn("[{}] Cannot refresh files: MoonrakerAPI not initialized", get_name());
         return;
     }
 
-    spdlog::info("Refreshing file list from Moonraker...");
+    spdlog::info("[{}] Refreshing file list from Moonraker...", get_name());
+
+    // Capture 'this' for async callbacks
+    auto* self = this;
 
     // Request file list from gcodes directory (non-recursive for now)
-    api->list_files(
+    api_->list_files(
         "gcodes", "", false,
         // Success callback
-        [api](const std::vector<FileInfo>& files) {
-            spdlog::info("Received {} files from Moonraker", files.size());
+        [self](const std::vector<FileInfo>& files) {
+            spdlog::info("[{}] Received {} files from Moonraker", self->get_name(), files.size());
 
             // Clear existing file list
-            file_list.clear();
+            self->file_list_.clear();
 
-            // Convert FileInfo to PrintFileData (with placeholder values initially)
+            // Convert FileInfo to PrintFileData
             for (const auto& file : files) {
                 // Skip directories
                 if (file.is_dir)
@@ -531,7 +266,7 @@ void ui_panel_print_select_refresh_files() {
 
                 PrintFileData data;
                 data.filename = file.filename;
-                data.thumbnail_path = DEFAULT_PLACEHOLDER_THUMB;
+                data.thumbnail_path = self->DEFAULT_PLACEHOLDER_THUMB;
                 data.file_size_bytes = file.size;
                 data.modified_timestamp = static_cast<time_t>(file.modified);
                 data.print_time_minutes = 0;
@@ -543,102 +278,90 @@ void ui_panel_print_select_refresh_files() {
                 data.print_time_str = format_print_time(data.print_time_minutes);
                 data.filament_str = format_filament_weight(data.filament_grams);
 
-                file_list.push_back(data);
+                self->file_list_.push_back(data);
             }
 
             // Show files immediately with placeholder metadata
-            apply_sort();
-            update_sort_indicators();
-            populate_card_view();
-            populate_list_view();
-            update_empty_state();
+            self->apply_sort();
+            self->update_sort_indicators();
+            self->populate_card_view();
+            self->populate_list_view();
+            self->update_empty_state();
 
-            spdlog::info("File list updated with {} G-code files (fetching metadata...)",
-                         file_list.size());
+            spdlog::info("[{}] File list updated with {} G-code files (fetching metadata...)",
+                         self->get_name(), self->file_list_.size());
 
             // Now fetch metadata for each file asynchronously
-            for (size_t i = 0; i < file_list.size(); i++) {
-                const std::string filename = file_list[i].filename;
+            for (size_t i = 0; i < self->file_list_.size(); i++) {
+                const std::string filename = self->file_list_[i].filename;
 
-                api->get_file_metadata(
+                self->api_->get_file_metadata(
                     filename,
                     // Metadata success callback
-                    [i, filename](const FileMetadata& metadata) {
+                    [self, i, filename](const FileMetadata& metadata) {
                         // Bounds check (file_list could change during async operation)
-                        if (i >= file_list.size() || file_list[i].filename != filename) {
-                            spdlog::warn("File list changed during metadata fetch for {}",
-                                         filename);
+                        if (i >= self->file_list_.size() ||
+                            self->file_list_[i].filename != filename) {
+                            spdlog::warn("[{}] File list changed during metadata fetch for {}",
+                                         self->get_name(), filename);
                             return;
                         }
 
                         // Update metadata fields
-                        file_list[i].print_time_minutes =
+                        self->file_list_[i].print_time_minutes =
                             static_cast<int>(metadata.estimated_time / 60.0);
-                        file_list[i].filament_grams =
+                        self->file_list_[i].filament_grams =
                             static_cast<float>(metadata.filament_weight_total);
 
                         // Update formatted strings
-                        file_list[i].print_time_str =
-                            format_print_time(file_list[i].print_time_minutes);
-                        file_list[i].filament_str =
-                            format_filament_weight(file_list[i].filament_grams);
+                        self->file_list_[i].print_time_str =
+                            format_print_time(self->file_list_[i].print_time_minutes);
+                        self->file_list_[i].filament_str =
+                            format_filament_weight(self->file_list_[i].filament_grams);
 
-                        spdlog::debug("Updated metadata for {}: {}min, {}g", filename,
-                                      file_list[i].print_time_minutes, file_list[i].filament_grams);
+                        spdlog::debug("[{}] Updated metadata for {}: {}min, {}g", self->get_name(),
+                                      filename, self->file_list_[i].print_time_minutes,
+                                      self->file_list_[i].filament_grams);
 
                         // Handle thumbnails if available
                         if (!metadata.thumbnails.empty()) {
-                            // Use the first (typically largest) thumbnail
                             std::string thumbnail_url =
                                 construct_thumbnail_url(metadata.thumbnails[0]);
-
                             if (!thumbnail_url.empty()) {
-                                spdlog::info("Thumbnail URL for {}: {}", filename, thumbnail_url);
-
+                                spdlog::info("[{}] Thumbnail URL for {}: {}", self->get_name(),
+                                             filename, thumbnail_url);
                                 // TODO: Download thumbnail from URL to local file
-                                // For now, keep using placeholder
-                                // Future enhancement: Download to /tmp/helix_thumbs/ and update
-                                // file_list[i].thumbnail_path
                             }
                         }
 
                         // Re-render views to show updated metadata
-                        populate_card_view();
-                        populate_list_view();
+                        self->populate_card_view();
+                        self->populate_list_view();
                     },
                     // Metadata error callback
-                    [filename](const MoonrakerError& error) {
-                        spdlog::warn("Failed to get metadata for {}: {} ({})", filename,
-                                     error.message, error.get_type_string());
-                        // Keep placeholder values, no need to do anything
+                    [self, filename](const MoonrakerError& error) {
+                        spdlog::warn("[{}] Failed to get metadata for {}: {} ({})", self->get_name(),
+                                     filename, error.message, error.get_type_string());
                     });
             }
         },
         // Error callback
-        [](const MoonrakerError& error) {
+        [self](const MoonrakerError& error) {
             NOTIFY_ERROR("Failed to refresh file list");
-            LOG_ERROR_INTERNAL("File list refresh error: {} ({})", error.message,
-                              error.get_type_string());
+            LOG_ERROR_INTERNAL("[{}] File list refresh error: {} ({})", self->get_name(),
+                               error.message, error.get_type_string());
         });
 }
 
-// ============================================================================
-// Populate views
-// ============================================================================
-void ui_panel_print_select_populate_test_data(lv_obj_t* panel_root) {
-    if (!panel_root) {
-        spdlog::error("Cannot populate: panel_root is null");
-        return;
-    }
-
+void PrintSelectPanel::populate_test_data() {
     // Clear existing file list
-    file_list.clear();
+    file_list_.clear();
 
     // Generate test file data
     struct TestFile {
         const char* filename;
         size_t size_bytes;
-        int days_ago; // For timestamp calculation
+        int days_ago;
         int print_time_mins;
         float filament_grams;
     };
@@ -661,7 +384,7 @@ void ui_panel_print_select_populate_test_data(lv_obj_t* panel_root) {
         data.filename = file.filename;
         data.thumbnail_path = DEFAULT_PLACEHOLDER_THUMB;
         data.file_size_bytes = file.size_bytes;
-        data.modified_timestamp = now - (file.days_ago * 86400); // 86400 seconds per day
+        data.modified_timestamp = now - (file.days_ago * 86400);
         data.print_time_minutes = file.print_time_mins;
         data.filament_grams = file.filament_grams;
 
@@ -671,62 +394,204 @@ void ui_panel_print_select_populate_test_data(lv_obj_t* panel_root) {
         data.print_time_str = format_print_time(data.print_time_minutes);
         data.filament_str = format_filament_weight(data.filament_grams);
 
-        file_list.push_back(data);
+        file_list_.push_back(data);
     }
 
-    // Apply initial sort
+    // Apply initial sort and populate views
     apply_sort();
     update_sort_indicators();
-
-    // Populate both views
     populate_card_view();
     populate_list_view();
-
-    // Update empty state
     update_empty_state();
 
-    spdlog::debug("Populated print select panel with {} test files", (int)file_list.size());
+    spdlog::debug("[{}] Populated with {} test files", get_name(), file_list_.size());
 }
 
-static void populate_card_view() {
-    if (!card_view_container)
+void PrintSelectPanel::set_selected_file(const char* filename, const char* thumbnail_src,
+                                          const char* print_time, const char* filament_weight) {
+    lv_subject_copy_string(&selected_filename_subject_, filename);
+    lv_subject_copy_string(&selected_thumbnail_subject_, thumbnail_src);
+    lv_subject_copy_string(&selected_print_time_subject_, print_time);
+    lv_subject_copy_string(&selected_filament_weight_subject_, filament_weight);
+
+    spdlog::info("[{}] Selected file: {}", get_name(), filename);
+}
+
+void PrintSelectPanel::show_detail_view() {
+    if (detail_view_widget_) {
+        lv_obj_remove_flag(detail_view_widget_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(detail_view_widget_);
+        lv_subject_set_int(&detail_view_visible_subject_, 1);
+
+        // Scale images after showing (layout must be calculated first)
+        scale_detail_images();
+    }
+}
+
+void PrintSelectPanel::hide_detail_view() {
+    if (detail_view_widget_) {
+        lv_obj_add_flag(detail_view_widget_, LV_OBJ_FLAG_HIDDEN);
+        lv_subject_set_int(&detail_view_visible_subject_, 0);
+    }
+}
+
+void PrintSelectPanel::show_delete_confirmation() {
+    // Configure modal
+    ui_modal_config_t config = {.position = {.use_alignment = true, .alignment = LV_ALIGN_CENTER},
+                                .backdrop_opa = 180,
+                                .keyboard = nullptr,
+                                .persistent = false,
+                                .on_close = nullptr};
+
+    // Create message with current filename
+    char msg_buf[256];
+    snprintf(msg_buf, sizeof(msg_buf),
+             "Are you sure you want to delete '%s'? This action cannot be undone.",
+             selected_filename_buffer_);
+
+    const char* attrs[] = {"title", "Delete File?", "message", msg_buf, NULL};
+
+    confirmation_dialog_widget_ = ui_modal_show("confirmation_dialog", &config, attrs);
+
+    if (!confirmation_dialog_widget_) {
+        spdlog::error("[{}] Failed to create confirmation dialog", get_name());
+        return;
+    }
+
+    // Wire up cancel button
+    lv_obj_t* cancel_btn = lv_obj_find_by_name(confirmation_dialog_widget_, "dialog_cancel_btn");
+    if (cancel_btn) {
+        lv_obj_add_event_cb(cancel_btn, on_cancel_delete_static, LV_EVENT_CLICKED, this);
+    }
+
+    // Wire up confirm button
+    lv_obj_t* confirm_btn = lv_obj_find_by_name(confirmation_dialog_widget_, "dialog_confirm_btn");
+    if (confirm_btn) {
+        lv_obj_add_event_cb(confirm_btn, on_confirm_delete_static, LV_EVENT_CLICKED, this);
+    }
+
+    spdlog::info("[{}] Delete confirmation dialog shown", get_name());
+}
+
+void PrintSelectPanel::set_print_status_panel(lv_obj_t* panel) {
+    print_status_panel_widget_ = panel;
+    spdlog::debug("[{}] Print status panel reference set", get_name());
+}
+
+// ============================================================================
+// Internal Methods
+// ============================================================================
+
+std::string PrintSelectPanel::construct_thumbnail_url(const std::string& relative_path) {
+    Config* config = Config::get_instance();
+    if (!config) {
+        spdlog::error("Cannot construct thumbnail URL: Config not available");
+        return "";
+    }
+
+    try {
+        std::string host = config->get<std::string>(config->df() + "moonraker_host");
+        int port = config->get<int>(config->df() + "moonraker_port");
+        return "http://" + host + ":" + std::to_string(port) + "/server/files/gcodes/" +
+               relative_path;
+    } catch (const std::exception& e) {
+        spdlog::error("Failed to construct thumbnail URL: {}", e.what());
+        return "";
+    }
+}
+
+CardDimensions PrintSelectPanel::calculate_card_dimensions() {
+    if (!card_view_container_) {
+        spdlog::error("[{}] Cannot calculate dimensions: container is null", get_name());
+        return {4, 2, CARD_MIN_WIDTH, CARD_DEFAULT_HEIGHT};
+    }
+
+    lv_coord_t container_width = lv_obj_get_content_width(card_view_container_);
+
+    // Calculate available height from parent panel dimensions
+    lv_obj_t* panel_root = lv_obj_get_parent(card_view_container_);
+    if (!panel_root) {
+        spdlog::error("[{}] Cannot find panel root", get_name());
+        return {4, 2, CARD_MIN_WIDTH, CARD_DEFAULT_HEIGHT};
+    }
+
+    lv_coord_t panel_height = lv_obj_get_height(panel_root);
+    lv_obj_t* top_bar = lv_obj_get_child(panel_root, 0);
+    lv_coord_t top_bar_height = top_bar ? lv_obj_get_height(top_bar) : 60;
+    lv_coord_t panel_gap = lv_obj_get_style_pad_row(panel_root, LV_PART_MAIN);
+    lv_coord_t container_padding = lv_obj_get_style_pad_top(card_view_container_, LV_PART_MAIN) +
+                                   lv_obj_get_style_pad_bottom(card_view_container_, LV_PART_MAIN);
+    lv_coord_t available_height = panel_height - top_bar_height - container_padding - panel_gap;
+
+    CardDimensions dims;
+
+    // Determine optimal number of rows based on available height
+    dims.num_rows = (available_height >= ROW_COUNT_3_MIN_HEIGHT) ? 3 : 2;
+
+    // Calculate card height based on rows
+    int total_row_gaps = (dims.num_rows - 1) * CARD_GAP;
+    dims.card_height = (available_height - total_row_gaps) / dims.num_rows;
+
+    // Try different column counts
+    for (int cols = 10; cols >= 1; cols--) {
+        int total_gaps = (cols - 1) * CARD_GAP;
+        int card_width = (container_width - total_gaps) / cols;
+
+        if (card_width >= CARD_MIN_WIDTH && card_width <= CARD_MAX_WIDTH) {
+            dims.num_columns = cols;
+            dims.card_width = card_width;
+
+            spdlog::debug("[{}] Calculated card layout: {} rows x {} columns, card={}x{}",
+                          get_name(), dims.num_rows, dims.num_columns, dims.card_width,
+                          dims.card_height);
+            return dims;
+        }
+    }
+
+    // Fallback
+    dims.num_columns = container_width / (CARD_MIN_WIDTH + CARD_GAP);
+    if (dims.num_columns < 1)
+        dims.num_columns = 1;
+    dims.card_width = CARD_MIN_WIDTH;
+
+    spdlog::warn("[{}] No optimal card layout found, using fallback: {} columns", get_name(),
+                 dims.num_columns);
+    return dims;
+}
+
+void PrintSelectPanel::populate_card_view() {
+    if (!card_view_container_)
         return;
 
     // Clear existing cards
-    lv_obj_clean(card_view_container);
+    lv_obj_clean(card_view_container_);
 
-    // CRITICAL: Force layout calculation before querying dimensions (prevents segfault on tiny
-    // screens)
-    lv_obj_update_layout(card_view_container);
+    // Force layout calculation
+    lv_obj_update_layout(card_view_container_);
 
-    // Calculate optimal card dimensions based on actual container width
-    CardDimensions dims = calculate_card_dimensions(card_view_container);
+    // Calculate optimal card dimensions
+    CardDimensions dims = calculate_card_dimensions();
 
     // Update container gap
-    lv_obj_set_style_pad_gap(card_view_container, CARD_GAP, LV_PART_MAIN);
+    lv_obj_set_style_pad_gap(card_view_container_, CARD_GAP, LV_PART_MAIN);
 
-    for (const auto& file : file_list) {
-        // Create XML attributes array
-        const char* attrs[] = {"thumbnail_src",
-                               file.thumbnail_path.c_str(),
-                               "filename",
-                               file.filename.c_str(),
-                               "print_time",
-                               file.print_time_str.c_str(),
-                               "filament_weight",
-                               file.filament_str.c_str(),
+    for (size_t i = 0; i < file_list_.size(); i++) {
+        const auto& file = file_list_[i];
+
+        const char* attrs[] = {"thumbnail_src",   file.thumbnail_path.c_str(),
+                               "filename",        file.filename.c_str(),
+                               "print_time",      file.print_time_str.c_str(),
+                               "filament_weight", file.filament_str.c_str(),
                                NULL};
 
-        // Create card component
-        lv_obj_t* card = (lv_obj_t*)lv_xml_create(card_view_container, CARD_COMPONENT_NAME, attrs);
+        lv_obj_t* card = static_cast<lv_obj_t*>(lv_xml_create(card_view_container_, CARD_COMPONENT_NAME, attrs));
 
         if (card) {
-            // Override card dimensions to calculated optimal size
             lv_obj_set_width(card, dims.card_width);
             lv_obj_set_height(card, dims.card_height);
-            lv_obj_set_style_flex_grow(card, 0, LV_PART_MAIN); // Disable flex_grow
+            lv_obj_set_style_flex_grow(card, 0, LV_PART_MAIN);
 
-            // Calculate proper filename label height based on font
+            // Calculate proper filename label height
             lv_obj_t* filename_label = lv_obj_find_by_name(card, "filename_label");
             if (filename_label) {
                 const lv_font_t* font = lv_obj_get_style_text_font(filename_label, LV_PART_MAIN);
@@ -736,432 +601,418 @@ static void populate_card_view() {
                 }
             }
 
-            // Thumbnail scaling is handled by XML inner_align="contain"
-            // No manual C++ scaling needed - let LVGL handle it
-
             // Attach click handler
-            attach_card_click_handler(card, file);
+            attach_card_click_handler(card, i);
         }
     }
 }
 
-static void populate_list_view() {
-    if (!list_rows_container)
+void PrintSelectPanel::populate_list_view() {
+    if (!list_rows_container_)
         return;
 
     // Clear existing rows
-    lv_obj_clean(list_rows_container);
+    lv_obj_clean(list_rows_container_);
 
-    for (const auto& file : file_list) {
-        // Create XML attributes array
-        const char* attrs[] = {"filename",
-                               file.filename.c_str(),
-                               "file_size",
-                               file.size_str.c_str(),
-                               "modified_date",
-                               file.modified_str.c_str(),
-                               "print_time",
-                               file.print_time_str.c_str(),
+    for (size_t i = 0; i < file_list_.size(); i++) {
+        const auto& file = file_list_[i];
+
+        const char* attrs[] = {"filename",      file.filename.c_str(),
+                               "file_size",     file.size_str.c_str(),
+                               "modified_date", file.modified_str.c_str(),
+                               "print_time",    file.print_time_str.c_str(),
                                NULL};
 
-        // Create list row from XML component
-        lv_obj_t* row = (lv_obj_t*)lv_xml_create(list_rows_container, "print_file_list_row", attrs);
+        lv_obj_t* row = static_cast<lv_obj_t*>(lv_xml_create(list_rows_container_, "print_file_list_row", attrs));
 
-        // Attach click handler
         if (row) {
-            attach_row_click_handler(row, file);
+            attach_row_click_handler(row, i);
         }
     }
 }
 
-static void update_empty_state() {
-    if (!empty_state_container)
+void PrintSelectPanel::apply_sort() {
+    auto sort_column = current_sort_column_;
+    auto sort_direction = current_sort_direction_;
+
+    std::sort(file_list_.begin(), file_list_.end(),
+              [sort_column, sort_direction](const PrintFileData& a, const PrintFileData& b) {
+                  bool result = false;
+
+                  switch (sort_column) {
+                  case PrintSelectSortColumn::FILENAME:
+                      result = a.filename < b.filename;
+                      break;
+                  case PrintSelectSortColumn::SIZE:
+                      result = a.file_size_bytes < b.file_size_bytes;
+                      break;
+                  case PrintSelectSortColumn::MODIFIED:
+                      result = a.modified_timestamp > b.modified_timestamp;
+                      break;
+                  case PrintSelectSortColumn::PRINT_TIME:
+                      result = a.print_time_minutes < b.print_time_minutes;
+                      break;
+                  case PrintSelectSortColumn::FILAMENT:
+                      result = a.filament_grams < b.filament_grams;
+                      break;
+                  }
+
+                  if (sort_direction == PrintSelectSortDirection::DESCENDING) {
+                      result = !result;
+                  }
+
+                  return result;
+              });
+}
+
+void PrintSelectPanel::update_empty_state() {
+    if (!empty_state_container_)
         return;
 
-    bool is_empty = file_list.empty();
+    bool is_empty = file_list_.empty();
 
     if (is_empty) {
-        // Show empty state, hide views
-        lv_obj_remove_flag(empty_state_container, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(card_view_container, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(list_view_container, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_flag(empty_state_container_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(card_view_container_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(list_view_container_, LV_OBJ_FLAG_HIDDEN);
     } else {
-        // Hide empty state, show current view
-        lv_obj_add_flag(empty_state_container, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(empty_state_container_, LV_OBJ_FLAG_HIDDEN);
 
-        if (current_view_mode == PrintSelectViewMode::CARD) {
-            lv_obj_remove_flag(card_view_container, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(list_view_container, LV_OBJ_FLAG_HIDDEN);
+        if (current_view_mode_ == PrintSelectViewMode::CARD) {
+            lv_obj_remove_flag(card_view_container_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(list_view_container_, LV_OBJ_FLAG_HIDDEN);
         } else {
-            lv_obj_add_flag(card_view_container, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_remove_flag(list_view_container, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(card_view_container_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_remove_flag(list_view_container_, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
 
-// ============================================================================
-// Detail view management
-// ============================================================================
-void ui_panel_print_select_set_file(const char* filename, const char* thumbnail_src,
-                                    const char* print_time, const char* filament_weight) {
-    lv_subject_copy_string(&selected_filename_subject, filename);
-    lv_subject_copy_string(&selected_thumbnail_subject, thumbnail_src);
-    lv_subject_copy_string(&selected_print_time_subject, print_time);
-    lv_subject_copy_string(&selected_filament_weight_subject, filament_weight);
+void PrintSelectPanel::update_sort_indicators() {
+    const char* header_names[] = {"header_filename", "header_size", "header_modified",
+                                  "header_print_time"};
+    PrintSelectSortColumn columns[] = {PrintSelectSortColumn::FILENAME, PrintSelectSortColumn::SIZE,
+                                       PrintSelectSortColumn::MODIFIED,
+                                       PrintSelectSortColumn::PRINT_TIME};
 
-    spdlog::info("Selected file: %s", filename);
+    for (int i = 0; i < 4; i++) {
+        char icon_up_name[64];
+        char icon_down_name[64];
+        snprintf(icon_up_name, sizeof(icon_up_name), "%s_icon_up", header_names[i]);
+        snprintf(icon_down_name, sizeof(icon_down_name), "%s_icon_down", header_names[i]);
+
+        lv_obj_t* icon_up = lv_obj_find_by_name(panel_, icon_up_name);
+        lv_obj_t* icon_down = lv_obj_find_by_name(panel_, icon_down_name);
+
+        if (icon_up && icon_down) {
+            if (columns[i] == current_sort_column_) {
+                if (current_sort_direction_ == PrintSelectSortDirection::ASCENDING) {
+                    lv_obj_remove_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_add_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
+                } else {
+                    lv_obj_add_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_remove_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
+                }
+            } else {
+                lv_obj_add_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+    }
 }
 
-// ============================================================================
-// Detail view image scaling helper
-// ============================================================================
-static void scale_detail_images() {
-    if (!detail_view_widget)
-        return;
-
-    // Find thumbnail section to get target dimensions
-    lv_obj_t* thumbnail_section = lv_obj_find_by_name(detail_view_widget, "thumbnail_section");
-    if (!thumbnail_section) {
-        spdlog::warn("Thumbnail section not found in detail view, cannot scale images");
+void PrintSelectPanel::create_detail_view() {
+    if (!parent_screen_) {
+        spdlog::error("[{}] Cannot create detail view: parent_screen is null", get_name());
         return;
     }
 
-    // Force layout update to get accurate dimensions (CRITICAL for flex layouts)
+    if (detail_view_widget_) {
+        spdlog::error("[{}] Detail view already exists", get_name());
+        return;
+    }
+
+    detail_view_widget_ = static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "print_file_detail", nullptr));
+
+    if (!detail_view_widget_) {
+        LOG_ERROR_INTERNAL("[{}] Failed to create detail view from XML", get_name());
+        NOTIFY_ERROR("Failed to load file details");
+        return;
+    }
+
+    // Calculate width to fill remaining space after navigation bar
+    lv_coord_t screen_width = lv_obj_get_width(parent_screen_);
+    lv_coord_t nav_width = UI_NAV_WIDTH(screen_width);
+    lv_obj_set_width(detail_view_widget_, screen_width - nav_width);
+
+    // Set responsive padding for content area
+    lv_obj_t* content_container = lv_obj_find_by_name(detail_view_widget_, "content_container");
+    if (content_container) {
+        lv_coord_t padding = ui_get_header_content_padding(lv_obj_get_height(parent_screen_));
+        lv_obj_set_style_pad_all(content_container, padding, 0);
+    }
+
+    lv_obj_add_flag(detail_view_widget_, LV_OBJ_FLAG_HIDDEN);
+
+    // Wire up back button
+    lv_obj_t* back_button = lv_obj_find_by_name(detail_view_widget_, "back_button");
+    if (back_button) {
+        lv_obj_add_event_cb(back_button, on_back_button_clicked_static, LV_EVENT_CLICKED, this);
+    }
+
+    // Wire up delete button
+    lv_obj_t* delete_button = lv_obj_find_by_name(detail_view_widget_, "delete_button");
+    if (delete_button) {
+        lv_obj_add_event_cb(delete_button, on_delete_button_clicked_static, LV_EVENT_CLICKED, this);
+    }
+
+    // Wire up print button
+    lv_obj_t* print_button = lv_obj_find_by_name(detail_view_widget_, "print_button");
+    if (print_button) {
+        lv_obj_add_event_cb(print_button, on_print_button_clicked_static, LV_EVENT_CLICKED, this);
+    }
+
+    // Click backdrop to close
+    lv_obj_add_event_cb(detail_view_widget_, on_detail_backdrop_clicked_static, LV_EVENT_CLICKED,
+                        this);
+
+    spdlog::debug("[{}] Detail view created", get_name());
+}
+
+void PrintSelectPanel::scale_detail_images() {
+    if (!detail_view_widget_)
+        return;
+
+    lv_obj_t* thumbnail_section = lv_obj_find_by_name(detail_view_widget_, "thumbnail_section");
+    if (!thumbnail_section) {
+        spdlog::warn("[{}] Thumbnail section not found in detail view", get_name());
+        return;
+    }
+
     lv_obj_update_layout(thumbnail_section);
 
     lv_coord_t section_width = lv_obj_get_content_width(thumbnail_section);
     lv_coord_t section_height = lv_obj_get_content_height(thumbnail_section);
 
-    spdlog::debug("Detail view thumbnail section: %dx%d", section_width, section_height);
+    spdlog::debug("[{}] Detail view thumbnail section: {}x{}", get_name(), section_width,
+                  section_height);
 
-    // Scale gradient background to cover the entire section
-    lv_obj_t* gradient_bg = lv_obj_find_by_name(detail_view_widget, "gradient_background");
+    lv_obj_t* gradient_bg = lv_obj_find_by_name(detail_view_widget_, "gradient_background");
     if (gradient_bg) {
         ui_image_scale_to_cover(gradient_bg, section_width, section_height);
     }
 
-    // Scale thumbnail to contain within section (no cropping)
-    lv_obj_t* thumbnail = lv_obj_find_by_name(detail_view_widget, "detail_thumbnail");
+    lv_obj_t* thumbnail = lv_obj_find_by_name(detail_view_widget_, "detail_thumbnail");
     if (thumbnail) {
         ui_image_scale_to_contain(thumbnail, section_width, section_height, LV_IMAGE_ALIGN_TOP_MID);
     }
 }
 
-void ui_panel_print_select_show_detail_view() {
-    if (detail_view_widget) {
-        lv_obj_remove_flag(detail_view_widget, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(detail_view_widget);
-        lv_subject_set_int(&detail_view_visible_subject, 1);
-
-        // Scale images after showing (layout must be calculated first)
-        scale_detail_images();
+void PrintSelectPanel::hide_delete_confirmation() {
+    if (confirmation_dialog_widget_) {
+        ui_modal_hide(confirmation_dialog_widget_);
+        confirmation_dialog_widget_ = nullptr;
     }
 }
 
-void ui_panel_print_select_hide_detail_view() {
-    if (detail_view_widget) {
-        lv_obj_add_flag(detail_view_widget, LV_OBJ_FLAG_HIDDEN);
-        lv_subject_set_int(&detail_view_visible_subject, 0);
+void PrintSelectPanel::handle_resize() {
+    if (!panel_initialized_)
+        return;
+
+    spdlog::info("[{}] Handling resize event", get_name());
+
+    if (current_view_mode_ == PrintSelectViewMode::CARD && card_view_container_) {
+        populate_card_view();
+    }
+
+    if (detail_view_widget_ && parent_screen_) {
+        lv_obj_t* content_container = lv_obj_find_by_name(detail_view_widget_, "content_container");
+        if (content_container) {
+            lv_coord_t padding = ui_get_header_content_padding(lv_obj_get_height(parent_screen_));
+            lv_obj_set_style_pad_all(content_container, padding, 0);
+        }
     }
 }
 
-static void create_detail_view() {
-    if (!parent_screen_widget) {
-        spdlog::error("Cannot create detail view: parent_screen_widget is null");
+void PrintSelectPanel::attach_card_click_handler(lv_obj_t* card, size_t file_index) {
+    // Store file index in widget user_data
+    lv_obj_set_user_data(card, reinterpret_cast<void*>(file_index));
+    lv_obj_add_event_cb(card, on_file_clicked_static, LV_EVENT_CLICKED, this);
+}
+
+void PrintSelectPanel::attach_row_click_handler(lv_obj_t* row, size_t file_index) {
+    lv_obj_set_user_data(row, reinterpret_cast<void*>(file_index));
+    lv_obj_add_event_cb(row, on_file_clicked_static, LV_EVENT_CLICKED, this);
+}
+
+void PrintSelectPanel::handle_file_click(size_t file_index) {
+    if (file_index >= file_list_.size()) {
+        spdlog::error("[{}] Invalid file index: {}", get_name(), file_index);
         return;
     }
 
-    if (detail_view_widget) {
-        spdlog::error("Detail view already exists");
-        return;
-    }
+    const auto& file = file_list_[file_index];
+    set_selected_file(file.filename.c_str(), file.thumbnail_path.c_str(),
+                      file.print_time_str.c_str(), file.filament_str.c_str());
+    show_detail_view();
+}
 
-    // Create detail view from XML component (as child of screen for full overlay)
-    detail_view_widget =
-        (lv_obj_t*)lv_xml_create(parent_screen_widget, "print_file_detail", nullptr);
+void PrintSelectPanel::start_print() {
+    std::string filename_to_print(selected_filename_buffer_);
+    auto* self = this;
 
-    if (!detail_view_widget) {
-        LOG_ERROR_INTERNAL("Failed to create detail view from XML");
-        NOTIFY_ERROR("Failed to load file details");
-        return;
-    }
+    if (api_) {
+        spdlog::info("[{}] Starting print: {}", get_name(), filename_to_print);
 
-    // Calculate width to fill remaining space after navigation bar (screen-size agnostic)
-    lv_coord_t screen_width = lv_obj_get_width(parent_screen_widget);
-    lv_coord_t nav_width = UI_NAV_WIDTH(screen_width);
-    lv_obj_set_width(detail_view_widget, screen_width - nav_width);
+        api_->start_print(
+            filename_to_print,
+            // Success callback
+            [self]() {
+                spdlog::info("[{}] Print started successfully", self->get_name());
 
-    // Set responsive padding for content area
-    lv_obj_t* content_container = lv_obj_find_by_name(detail_view_widget, "content_container");
-    if (content_container) {
-        lv_coord_t padding = ui_get_header_content_padding(lv_obj_get_height(parent_screen_widget));
-        lv_obj_set_style_pad_all(content_container, padding, 0);
-        spdlog::debug("[PrintSelect] Detail view content padding: %dpx (responsive)", padding);
-    }
+                if (self->print_status_panel_widget_) {
+                    self->hide_detail_view();
+                    ui_nav_push_overlay(self->print_status_panel_widget_);
 
-    lv_obj_add_flag(detail_view_widget, LV_OBJ_FLAG_HIDDEN);
-
-    // NOTE: Image scaling is done in scale_detail_images() when the detail view is shown,
-    // not here during creation, because the flex layout dimensions aren't calculated yet.
-
-    // Wire up back button
-    lv_obj_t* back_button = lv_obj_find_by_name(detail_view_widget, "back_button");
-    if (back_button) {
-        lv_obj_add_event_cb(
-            back_button,
-            [](lv_event_t* e) {
-                (void)e;
-                ui_panel_print_select_hide_detail_view();
-            },
-            LV_EVENT_CLICKED, nullptr);
-    }
-
-    // Wire up delete button
-    lv_obj_t* delete_button = lv_obj_find_by_name(detail_view_widget, "delete_button");
-    if (delete_button) {
-        lv_obj_add_event_cb(
-            delete_button,
-            [](lv_event_t* e) {
-                (void)e;
-                ui_panel_print_select_show_delete_confirmation();
-            },
-            LV_EVENT_CLICKED, nullptr);
-    }
-
-    // Wire up print button
-    lv_obj_t* print_button = lv_obj_find_by_name(detail_view_widget, "print_button");
-    if (print_button) {
-        lv_obj_add_event_cb(
-            print_button,
-            [](lv_event_t* e) {
-                (void)e;
-
-                // Get the filename to print
-                std::string filename_to_print(selected_filename_buffer);
-
-                // Get MoonrakerAPI instance
-                MoonrakerAPI* api = get_moonraker_api();
-                if (api) {
-                    spdlog::info("Starting print: {}", filename_to_print);
-
-                    // Start the print via Moonraker
-                    api->start_print(
-                        filename_to_print,
-                        // Success callback
-                        []() {
-                            spdlog::info("Print started successfully");
-
-                            if (print_status_panel_widget) {
-                                // Hide detail view
-                                ui_panel_print_select_hide_detail_view();
-
-                                // Push print status panel onto navigation history
-                                ui_nav_push_overlay(print_status_panel_widget);
-
-                                // Hide print select panel (will be restored by nav history when
-                                // going back)
-                                if (panel_root_widget) {
-                                    lv_obj_add_flag(panel_root_widget, LV_OBJ_FLAG_HIDDEN);
-                                }
-
-                                // Show print status panel
-                                lv_obj_remove_flag(print_status_panel_widget, LV_OBJ_FLAG_HIDDEN);
-                                lv_obj_move_foreground(print_status_panel_widget);
-
-                                // Note: Print status panel will now show real print progress from
-                                // Moonraker via the PrinterState subjects that are updated from
-                                // notifications
-                            } else {
-                                spdlog::error(
-                                    "Print status panel not set - cannot show print progress");
-                            }
-                        },
-                        // Error callback
-                        [filename_to_print](const MoonrakerError& error) {
-                            NOTIFY_ERROR("Failed to start print: {}", error.message);
-                            LOG_ERROR_INTERNAL("Print start failed for {}: {} ({})",
-                                              filename_to_print, error.message,
-                                              error.get_type_string());
-                        });
-                } else {
-                    // Fall back to mock print if MoonrakerAPI not available
-                    spdlog::warn("MoonrakerAPI not available - using mock print");
-
-                    if (print_status_panel_widget) {
-                        ui_panel_print_select_hide_detail_view();
-                        ui_nav_push_overlay(print_status_panel_widget);
-
-                        if (panel_root_widget) {
-                            lv_obj_add_flag(panel_root_widget, LV_OBJ_FLAG_HIDDEN);
-                        }
-
-                        const char* filename = selected_filename_buffer;
-                        lv_obj_remove_flag(print_status_panel_widget, LV_OBJ_FLAG_HIDDEN);
-                        lv_obj_move_foreground(print_status_panel_widget);
-
-                        // Start mock print (250 layers, 3 hours = 10800 seconds)
-                        ui_panel_print_status_start_mock_print(filename, 250, 10800);
-
-                        spdlog::info("Started mock print for: %s", filename);
+                    if (self->panel_) {
+                        lv_obj_add_flag(self->panel_, LV_OBJ_FLAG_HIDDEN);
                     }
-                }
-            },
-            LV_EVENT_CLICKED, nullptr);
-    }
 
-    // Click backdrop to close
-    lv_obj_add_event_cb(
-        detail_view_widget,
-        [](lv_event_t* e) {
-            lv_obj_t* target = (lv_obj_t*)lv_event_get_target(e);
-            lv_obj_t* current_target = (lv_obj_t*)lv_event_get_current_target(e);
-            if (target == current_target) {
-                ui_panel_print_select_hide_detail_view();
-            }
-        },
-        LV_EVENT_CLICKED, nullptr);
-
-    spdlog::debug("Detail view created");
-}
-
-// ============================================================================
-// Delete confirmation dialog
-// ============================================================================
-static void hide_delete_confirmation() {
-    if (confirmation_dialog_widget) {
-        ui_modal_hide(confirmation_dialog_widget);
-        confirmation_dialog_widget = nullptr;
-    }
-}
-
-void ui_panel_print_select_show_delete_confirmation() {
-    // Configure modal: centered, non-persistent (create on demand), no keyboard
-    ui_modal_config_t config = {.position = {.use_alignment = true, .alignment = LV_ALIGN_CENTER},
-                                .backdrop_opa = 180,
-                                .keyboard = nullptr,
-                                .persistent = false, // Create on demand
-                                .on_close = nullptr};
-
-    // Create message with current filename
-    char msg_buf[256];
-    snprintf(msg_buf, sizeof(msg_buf),
-             "Are you sure you want to delete '%s'? This action cannot be undone.",
-             selected_filename_buffer);
-
-    const char* attrs[] = {"title", "Delete File?", "message", msg_buf, NULL};
-
-    confirmation_dialog_widget = ui_modal_show("confirmation_dialog", &config, attrs);
-
-    if (!confirmation_dialog_widget) {
-        spdlog::error("Failed to create confirmation dialog");
-        return;
-    }
-
-    // Wire up cancel button
-    lv_obj_t* cancel_btn = lv_obj_find_by_name(confirmation_dialog_widget, "dialog_cancel_btn");
-    if (cancel_btn) {
-        lv_obj_add_event_cb(
-            cancel_btn,
-            [](lv_event_t* e) {
-                (void)e;
-                hide_delete_confirmation();
-            },
-            LV_EVENT_CLICKED, nullptr);
-    }
-
-    // Wire up confirm button
-    lv_obj_t* confirm_btn = lv_obj_find_by_name(confirmation_dialog_widget, "dialog_confirm_btn");
-    if (confirm_btn) {
-        lv_obj_add_event_cb(
-            confirm_btn,
-            [](lv_event_t* e) {
-                (void)e;
-
-                // Get the filename to delete
-                std::string filename_to_delete(selected_filename_buffer);
-
-                // Get MoonrakerAPI instance
-                MoonrakerAPI* api = get_moonraker_api();
-                if (api) {
-                    spdlog::info("Deleting file: {}", filename_to_delete);
-
-                    // Delete the file via Moonraker
-                    api->delete_file(
-                        filename_to_delete,
-                        // Success callback
-                        []() {
-                            spdlog::info("File deleted successfully");
-
-                            // Hide dialogs
-                            hide_delete_confirmation();
-                            ui_panel_print_select_hide_detail_view();
-
-                            // Refresh the file list
-                            ui_panel_print_select_refresh_files();
-                        },
-                        // Error callback
-                        [](const MoonrakerError& error) {
-                            NOTIFY_ERROR("Failed to delete file");
-                            LOG_ERROR_INTERNAL("File delete error: {} ({})", error.message,
-                                              error.get_type_string());
-
-                            // Hide confirmation dialog but keep detail view open
-                            hide_delete_confirmation();
-                        });
+                    lv_obj_remove_flag(self->print_status_panel_widget_, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_move_foreground(self->print_status_panel_widget_);
                 } else {
-                    NOTIFY_WARNING("Cannot delete file: printer not connected");
-                    hide_delete_confirmation();
+                    spdlog::error("[{}] Print status panel not set", self->get_name());
                 }
             },
-            LV_EVENT_CLICKED, nullptr);
+            // Error callback
+            [self, filename_to_print](const MoonrakerError& error) {
+                NOTIFY_ERROR("Failed to start print: {}", error.message);
+                LOG_ERROR_INTERNAL("[{}] Print start failed for {}: {} ({})", self->get_name(),
+                                   filename_to_print, error.message, error.get_type_string());
+            });
+    } else {
+        // Fall back to mock print
+        spdlog::warn("[{}] MoonrakerAPI not available - using mock print", get_name());
+
+        if (print_status_panel_widget_) {
+            hide_detail_view();
+            ui_nav_push_overlay(print_status_panel_widget_);
+
+            if (panel_) {
+                lv_obj_add_flag(panel_, LV_OBJ_FLAG_HIDDEN);
+            }
+
+            lv_obj_remove_flag(print_status_panel_widget_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(print_status_panel_widget_);
+
+            get_global_print_status_panel().start_mock_print(selected_filename_buffer_, 250, 10800);
+
+            spdlog::info("[{}] Started mock print for: {}", get_name(), selected_filename_buffer_);
+        }
     }
+}
 
-    spdlog::info("Delete confirmation dialog shown");
+void PrintSelectPanel::delete_file() {
+    std::string filename_to_delete(selected_filename_buffer_);
+    auto* self = this;
+
+    if (api_) {
+        spdlog::info("[{}] Deleting file: {}", get_name(), filename_to_delete);
+
+        api_->delete_file(
+            filename_to_delete,
+            // Success callback
+            [self]() {
+                spdlog::info("[{}] File deleted successfully", self->get_name());
+                self->hide_delete_confirmation();
+                self->hide_detail_view();
+                self->refresh_files();
+            },
+            // Error callback
+            [self](const MoonrakerError& error) {
+                NOTIFY_ERROR("Failed to delete file");
+                LOG_ERROR_INTERNAL("[{}] File delete error: {} ({})", self->get_name(),
+                                   error.message, error.get_type_string());
+                self->hide_delete_confirmation();
+            });
+    } else {
+        NOTIFY_WARNING("Cannot delete file: printer not connected");
+        hide_delete_confirmation();
+    }
 }
 
 // ============================================================================
-// Event handlers
+// Static Callbacks (trampolines)
 // ============================================================================
-static void attach_card_click_handler(lv_obj_t* card, const PrintFileData& file_data) {
-    // Allocate persistent data
-    PrintFileData* data = new PrintFileData(file_data);
 
-    lv_obj_add_event_cb(
-        card,
-        [](lv_event_t* e) {
-            PrintFileData* data = (PrintFileData*)lv_event_get_user_data(e);
-
-            ui_panel_print_select_set_file(data->filename.c_str(), data->thumbnail_path.c_str(),
-                                           data->print_time_str.c_str(),
-                                           data->filament_str.c_str());
-
-            ui_panel_print_select_show_detail_view();
-        },
-        LV_EVENT_CLICKED, data);
+void PrintSelectPanel::on_view_toggle_clicked_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    if (self) {
+        self->toggle_view();
+    }
 }
 
-static void attach_row_click_handler(lv_obj_t* row, const PrintFileData& file_data) {
-    // Allocate persistent data
-    PrintFileData* data = new PrintFileData(file_data);
-
-    lv_obj_add_event_cb(
-        row,
-        [](lv_event_t* e) {
-            PrintFileData* data = (PrintFileData*)lv_event_get_user_data(e);
-
-            ui_panel_print_select_set_file(data->filename.c_str(), data->thumbnail_path.c_str(),
-                                           data->print_time_str.c_str(),
-                                           data->filament_str.c_str());
-
-            ui_panel_print_select_show_detail_view();
-        },
-        LV_EVENT_CLICKED, data);
+void PrintSelectPanel::on_header_clicked_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    auto* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    if (self && target) {
+        // Recover column from widget's user_data
+        auto column =
+            static_cast<PrintSelectSortColumn>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(target)));
+        self->sort_by(column);
+    }
 }
 
-// ============================================================================
-// Print status panel integration
-// ============================================================================
-void ui_panel_print_select_set_print_status_panel(lv_obj_t* panel) {
-    print_status_panel_widget = panel;
-    spdlog::debug("Print status panel reference set");
+void PrintSelectPanel::on_file_clicked_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    auto* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    if (self && target) {
+        size_t file_index = reinterpret_cast<size_t>(lv_obj_get_user_data(target));
+        self->handle_file_click(file_index);
+    }
+}
+
+void PrintSelectPanel::on_back_button_clicked_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    if (self) {
+        self->hide_detail_view();
+    }
+}
+
+void PrintSelectPanel::on_delete_button_clicked_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    if (self) {
+        self->show_delete_confirmation();
+    }
+}
+
+void PrintSelectPanel::on_print_button_clicked_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    if (self) {
+        self->start_print();
+    }
+}
+
+void PrintSelectPanel::on_detail_backdrop_clicked_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    auto* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    auto* current_target = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    // Only close if clicking the backdrop itself, not child widgets
+    if (self && target == current_target) {
+        self->hide_detail_view();
+    }
+}
+
+void PrintSelectPanel::on_confirm_delete_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    if (self) {
+        self->delete_file();
+    }
+}
+
+void PrintSelectPanel::on_cancel_delete_static(lv_event_t* e) {
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    if (self) {
+        self->hide_delete_confirmation();
+    }
 }

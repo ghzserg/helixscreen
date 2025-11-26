@@ -1,44 +1,82 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
+#pragma once
 
-#ifndef UI_PANEL_GLYPHS_H
-#define UI_PANEL_GLYPHS_H
-
-#include <lvgl/lvgl.h>
+#include "ui_panel_base.h"
 
 /**
- * @brief Create and initialize the glyphs panel
+ * @file ui_panel_glyphs.h
+ * @brief Glyphs panel displaying all LVGL symbols with their names
  *
- * Creates a panel displaying all LVGL symbol glyphs with their names.
- * The panel features:
- * - Scrollable vertical list of all symbols
- * - Each entry shows icon + symbolic name (e.g., "LV_SYMBOL_AUDIO")
- * - Count of total symbols in header
+ * A diagnostic panel that displays the complete set of LVGL symbol glyphs
+ * from lv_symbol_def.h, useful for reference when selecting icons for UI.
+ *
+ * ## Key Features:
+ * - Scrollable vertical list of all ~60 LVGL symbols
+ * - Each entry shows the icon + symbolic constant name (e.g., "LV_SYMBOL_AUDIO")
+ * - Header displays total symbol count
  * - Proper theming via globals.xml constants
  *
- * @param parent Parent object to attach panel to
- * @return lv_obj_t* The created panel object
+ * ## Migration Notes:
+ * Second panel migrated to class-based architecture (Phase 2).
+ * Display-only panel with no subjects or printer connectivity.
+ *
+ * @see PanelBase for base class documentation
+ * @see TestPanel for similar simple panel pattern
  */
-lv_obj_t* ui_panel_glyphs_create(lv_obj_t* parent);
+class GlyphsPanel : public PanelBase {
+  public:
+    /**
+     * @brief Construct GlyphsPanel with injected dependencies
+     *
+     * @param printer_state Reference to PrinterState (not actively used)
+     * @param api Pointer to MoonrakerAPI (not actively used)
+     *
+     * @note Dependencies are passed for interface consistency with PanelBase,
+     *       but this panel doesn't require printer connectivity.
+     */
+    GlyphsPanel(PrinterState& printer_state, MoonrakerAPI* api);
 
-#endif // UI_PANEL_GLYPHS_H
+    ~GlyphsPanel() override = default;
+
+    //
+    // === PanelBase Implementation ===
+    //
+
+    /**
+     * @brief No-op for GlyphsPanel (no subjects to initialize)
+     */
+    void init_subjects() override;
+
+    /**
+     * @brief Setup the glyphs panel and populate with symbol entries
+     *
+     * Updates the symbol count label and creates glyph display items
+     * for all LVGL symbols in the scrollable content area.
+     *
+     * @param panel Root panel object from lv_xml_create()
+     * @param parent_screen Parent screen (unused for this panel)
+     */
+    void setup(lv_obj_t* panel, lv_obj_t* parent_screen) override;
+
+    const char* get_name() const override { return "Glyphs Panel"; }
+    const char* get_xml_component_name() const override { return "glyphs_panel"; }
+
+  private:
+    /**
+     * @brief Populate the content area with glyph display items
+     *
+     * Creates a styled row for each LVGL symbol showing the icon
+     * and its constant name. Items are added to the scrollable
+     * content area found within the panel.
+     */
+    void populate_glyphs();
+};
+
+
+// Global instance accessor (needed by main.cpp)
+GlyphsPanel& get_global_glyphs_panel();
+
+// Legacy create wrapper (test panel - still used by main.cpp)
+lv_obj_t* ui_panel_glyphs_create(lv_obj_t* parent);

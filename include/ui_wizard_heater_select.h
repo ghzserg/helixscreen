@@ -1,72 +1,115 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
-
 #pragma once
 
 #include "lvgl/lvgl.h"
 
+#include <memory>
+#include <string>
+#include <vector>
+
 /**
- * @brief Initialize subjects for heater select screen
+ * @file ui_wizard_heater_select.h
+ * @brief Wizard heater selection step - configures bed and hotend heaters
  *
- * Creates and registers reactive subjects:
- * - bed_heater_selected (int) - Selected bed heater index in dropdown
- * - hotend_heater_selected (int) - Selected hotend heater index in dropdown
+ * Uses hardware discovery from MoonrakerClient to populate dropdowns.
+ *
+ * ## Class-Based Architecture (Phase 6)
+ *
+ * Migrated from function-based to class-based design with:
+ * - Instance members instead of static globals
+ * - Static trampolines for LVGL callbacks
+ * - Global singleton getter for backwards compatibility
+ *
+ * ## Subject Bindings (2 total):
+ *
+ * - bed_heater_selected (int) - Selected bed heater index
+ * - hotend_heater_selected (int) - Selected hotend heater index
  *
  * Note: This screen does not use separate sensor dropdowns. The selected
  * heater names are automatically used as sensor names since Klipper heater
  * objects inherently provide temperature readings.
  */
-void ui_wizard_heater_select_init_subjects();
 
 /**
- * @brief Register event callbacks for heater select screen
- *
- * Registers callbacks for dropdown changes (attached programmatically)
+ * @class WizardHeaterSelectStep
+ * @brief Heater configuration step for the first-run wizard
  */
-void ui_wizard_heater_select_register_callbacks();
+class WizardHeaterSelectStep {
+  public:
+    WizardHeaterSelectStep();
+    ~WizardHeaterSelectStep();
 
-/**
- * @brief Create heater select screen UI
- *
- * Creates the combined bed + hotend heater selection form from
- * wizard_heater_select.xml
- *
- * @param parent Parent container (wizard_content)
- * @return Root object of the screen, or nullptr on failure
- */
-lv_obj_t* ui_wizard_heater_select_create(lv_obj_t* parent);
+    // Non-copyable
+    WizardHeaterSelectStep(const WizardHeaterSelectStep&) = delete;
+    WizardHeaterSelectStep& operator=(const WizardHeaterSelectStep&) = delete;
 
-/**
- * @brief Cleanup heater select screen resources
- *
- * Saves heater selections to config (both heater and sensor paths)
- * and releases resources
- */
-void ui_wizard_heater_select_cleanup();
+    // Movable
+    WizardHeaterSelectStep(WizardHeaterSelectStep&& other) noexcept;
+    WizardHeaterSelectStep& operator=(WizardHeaterSelectStep&& other) noexcept;
 
-/**
- * @brief Check if heater selection is complete
- *
- * @return true (always validated for baseline implementation)
- */
-bool ui_wizard_heater_select_is_validated();
+    /**
+     * @brief Initialize reactive subjects
+     */
+    void init_subjects();
+
+    /**
+     * @brief Register event callbacks
+     */
+    void register_callbacks();
+
+    /**
+     * @brief Create the heater selection UI from XML
+     *
+     * @param parent Parent container (wizard_content)
+     * @return Root object of the step, or nullptr on failure
+     */
+    lv_obj_t* create(lv_obj_t* parent);
+
+    /**
+     * @brief Cleanup resources and save selections to config
+     */
+    void cleanup();
+
+    /**
+     * @brief Check if step is validated
+     *
+     * @return true (always validated for baseline)
+     */
+    bool is_validated() const;
+
+    /**
+     * @brief Get step name for logging
+     */
+    const char* get_name() const { return "Wizard Heater"; }
+
+    // Public access to subjects for helper functions
+    lv_subject_t* get_bed_heater_subject() { return &bed_heater_selected_; }
+    lv_subject_t* get_hotend_heater_subject() { return &hotend_heater_selected_; }
+
+    std::vector<std::string>& get_bed_heater_items() { return bed_heater_items_; }
+    std::vector<std::string>& get_hotend_heater_items() { return hotend_heater_items_; }
+
+  private:
+    // Screen instance
+    lv_obj_t* screen_root_ = nullptr;
+
+    // Subjects
+    lv_subject_t bed_heater_selected_;
+    lv_subject_t hotend_heater_selected_;
+
+    // Dynamic options storage (for event callback mapping)
+    std::vector<std::string> bed_heater_items_;
+    std::vector<std::string> hotend_heater_items_;
+
+    // Track initialization
+    bool subjects_initialized_ = false;
+};
+
+// ============================================================================
+// Global Instance Access
+// ============================================================================
+
+WizardHeaterSelectStep* get_wizard_heater_select_step();
+void destroy_wizard_heater_select_step();

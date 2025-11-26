@@ -1,41 +1,68 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
-
 #include "ui_panel_test.h"
 
+#include "app_globals.h"
+#include "printer_state.h"
 #include "ui_keyboard.h"
 #include "ui_theme.h"
 
 #include <spdlog/spdlog.h>
 
 #include <cstdio>
+#include <memory>
 
-void ui_panel_test_setup(lv_obj_t* test_panel) {
-    if (!test_panel) {
-        spdlog::error("[Test Panel] NULL panel");
+// ============================================================================
+// CONSTRUCTOR
+// ============================================================================
+
+TestPanel::TestPanel(PrinterState& printer_state, MoonrakerAPI* api)
+    : PanelBase(printer_state, api) {
+    // TestPanel doesn't use PrinterState or MoonrakerAPI, but we accept
+    // them for interface consistency with other panels
+}
+
+// ============================================================================
+// PANELBASE IMPLEMENTATION
+// ============================================================================
+
+void TestPanel::init_subjects() {
+    if (subjects_initialized_) {
+        spdlog::warn("[{}] init_subjects() called twice - ignoring", get_name());
         return;
     }
 
+    // TestPanel has no subjects to initialize
+    subjects_initialized_ = true;
+    spdlog::debug("[{}] Subjects initialized (none required)", get_name());
+}
+
+void TestPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
+    // Call base class to store panel_ and parent_screen_
+    PanelBase::setup(panel, parent_screen);
+
+    if (!panel_) {
+        spdlog::error("[{}] NULL panel", get_name());
+        return;
+    }
+
+    // Populate diagnostic labels
+    populate_labels();
+
+    // Register keyboard for textarea
+    lv_obj_t* keyboard_textarea = lv_obj_find_by_name(panel_, "keyboard_test_textarea");
+    if (keyboard_textarea) {
+        ui_keyboard_register_textarea(keyboard_textarea);
+        spdlog::info("[{}] Registered keyboard for textarea", get_name());
+    }
+}
+
+// ============================================================================
+// PRIVATE HELPERS
+// ============================================================================
+
+void TestPanel::populate_labels() {
     // Get screen dimensions using custom breakpoints optimized for our hardware
     lv_display_t* display = lv_display_get_default();
     int32_t hor_res = lv_display_get_horizontal_resolution(display);
@@ -65,38 +92,45 @@ void ui_panel_test_setup(lv_obj_t* test_panel) {
     }
 
     // Find info labels
-    lv_obj_t* screen_size_label = lv_obj_find_by_name(test_panel, "screen_size_label");
-    lv_obj_t* switch_size_label = lv_obj_find_by_name(test_panel, "switch_size_label");
-    lv_obj_t* row_height_label = lv_obj_find_by_name(test_panel, "row_height_label");
+    lv_obj_t* screen_size_label = lv_obj_find_by_name(panel_, "screen_size_label");
+    lv_obj_t* switch_size_label = lv_obj_find_by_name(panel_, "switch_size_label");
+    lv_obj_t* row_height_label = lv_obj_find_by_name(panel_, "row_height_label");
 
     // Populate labels
     char buffer[128];
 
     if (screen_size_label) {
-        snprintf(buffer, sizeof(buffer), "Screen Size: %s (%dx%d, max=%d)", size_category, hor_res,
-                 ver_res, greater_res);
+        snprintf(buffer, sizeof(buffer), "Screen Size: %s (%dx%d, max=%d)",
+                 size_category, hor_res, ver_res, greater_res);
         lv_label_set_text(screen_size_label, buffer);
     }
 
     if (switch_size_label) {
-        snprintf(buffer, sizeof(buffer), "Switch Size: %dx%dpx (knob padding varies)", switch_width,
-                 switch_height);
+        snprintf(buffer, sizeof(buffer), "Switch Size: %dx%dpx (knob padding varies)",
+                 switch_width, switch_height);
         lv_label_set_text(switch_size_label, buffer);
     }
 
     if (row_height_label) {
-        snprintf(buffer, sizeof(buffer), "Row Height: %dpx (fits switch + padding)", row_height);
+        snprintf(buffer, sizeof(buffer), "Row Height: %dpx (fits switch + padding)",
+                 row_height);
         lv_label_set_text(row_height_label, buffer);
     }
 
-    // Register keyboard for textarea
-    lv_obj_t* keyboard_textarea = lv_obj_find_by_name(test_panel, "keyboard_test_textarea");
-    if (keyboard_textarea) {
-        ui_keyboard_register_textarea(keyboard_textarea);
-        spdlog::info("[Test Panel] Registered keyboard for textarea");
-    }
+    spdlog::info("[{}] Setup complete: {} ({}x{}, max={}), switch={}x{}, row={}px",
+                 get_name(), size_category, hor_res, ver_res, greater_res,
+                 switch_width, switch_height, row_height);
+}
 
-    spdlog::info("[Test Panel] Setup complete: {} ({}x{}, max={}), switch={}x{}, row={}px",
-                 size_category, hor_res, ver_res, greater_res, switch_width, switch_height,
-                 row_height);
+// ============================================================================
+// GLOBAL INSTANCE (needed by main.cpp)
+// ============================================================================
+
+static std::unique_ptr<TestPanel> g_test_panel;
+
+TestPanel& get_global_test_panel() {
+    if (!g_test_panel) {
+        g_test_panel = std::make_unique<TestPanel>(get_printer_state(), nullptr);
+    }
+    return *g_test_panel;
 }

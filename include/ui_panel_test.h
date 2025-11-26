@@ -1,43 +1,75 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/*
- * Copyright (C) 2025 356C LLC
- * Author: Preston Brown <pbrown@brown-house.net>
- *
- * This file is part of HelixScreen.
- *
- * HelixScreen is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * HelixScreen is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
- */
+#pragma once
 
-#ifndef UI_PANEL_TEST_H
-#define UI_PANEL_TEST_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "lvgl/lvgl.h"
+#include "ui_panel_base.h"
 
 /**
- * Setup test panel - populate info labels with screen/switch sizes
- * Call this after test_panel is created from XML
+ * @file ui_panel_test.h
+ * @brief Test panel for debugging screen dimensions and widget sizing
+ *
+ * A simple diagnostic panel that displays screen resolution information
+ * and validates switch/row sizing across different breakpoints.
+ *
+ * ## Key Features:
+ * - Displays current screen dimensions and size category
+ * - Shows calculated switch and row heights for current resolution
+ * - Provides keyboard test textarea for input validation
+ *
+ * ## Migration Notes:
+ * This is the first panel migrated to the class-based architecture.
+ * It serves as a template for simple panels with no subjects.
+ *
+ * @see PanelBase for base class documentation
  */
-void ui_panel_test_setup(lv_obj_t* test_panel);
+class TestPanel : public PanelBase {
+  public:
+    /**
+     * @brief Construct TestPanel with injected dependencies
+     *
+     * @param printer_state Reference to PrinterState (not actively used)
+     * @param api Pointer to MoonrakerAPI (not actively used)
+     *
+     * @note Dependencies are passed for interface consistency with PanelBase,
+     *       but this panel doesn't require printer connectivity.
+     */
+    TestPanel(PrinterState& printer_state, MoonrakerAPI* api);
 
-#ifdef __cplusplus
-}
-#endif
+    ~TestPanel() override = default;
 
-#endif // UI_PANEL_TEST_H
+    //
+    // === PanelBase Implementation ===
+    //
+
+    /**
+     * @brief No-op for TestPanel (no subjects to initialize)
+     */
+    void init_subjects() override;
+
+    /**
+     * @brief Setup the test panel with diagnostic information
+     *
+     * Populates screen size labels and registers keyboard for textarea.
+     *
+     * @param panel Root panel object from lv_xml_create()
+     * @param parent_screen Parent screen (unused for this panel)
+     */
+    void setup(lv_obj_t* panel, lv_obj_t* parent_screen) override;
+
+    const char* get_name() const override { return "Test Panel"; }
+    const char* get_xml_component_name() const override { return "test_panel"; }
+
+  private:
+    /**
+     * @brief Populate diagnostic labels with screen size information
+     *
+     * Determines breakpoint category and calculates appropriate
+     * switch/row dimensions based on screen resolution.
+     */
+    void populate_labels();
+};
+
+
+// Global instance accessor (needed by main.cpp)
+TestPanel& get_global_test_panel();

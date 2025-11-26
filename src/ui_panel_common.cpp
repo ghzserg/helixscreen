@@ -308,7 +308,8 @@ lv_obj_t* ui_overlay_panel_wire_back_button(lv_obj_t* panel, const char* header_
 
 lv_obj_t* ui_overlay_panel_wire_right_button(lv_obj_t* panel,
                                              lv_event_cb_t callback,
-                                             const char* header_name) {
+                                             const char* header_name,
+                                             void* user_data) {
     if (!panel || !callback || !header_name) {
         spdlog::warn("[PanelCommon] Invalid parameters for overlay right button wiring");
         return nullptr;
@@ -328,8 +329,8 @@ lv_obj_t* ui_overlay_panel_wire_right_button(lv_obj_t* panel,
         return nullptr;
     }
 
-    // Wire to provided callback
-    lv_obj_add_event_cb(right_btn, callback, LV_EVENT_CLICKED, nullptr);
+    // Wire to provided callback with user_data
+    lv_obj_add_event_cb(right_btn, callback, LV_EVENT_CLICKED, user_data);
     spdlog::debug("[PanelCommon] Right button wired in header '{}'", header_name);
 
     return right_btn;
