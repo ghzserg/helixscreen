@@ -8,9 +8,9 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_nav.h"
-#include "ui_panel_controls_extrusion.h"
+#include "ui_panel_extrusion.h"
 #include "ui_panel_motion.h"
-#include "ui_temp_control_panel.h"
+#include "ui_panel_temp_control.h"
 
 #include <spdlog/spdlog.h>
 

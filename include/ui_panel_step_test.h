@@ -63,7 +63,7 @@ class StepTestPanel : public PanelBase {
     void setup(lv_obj_t* panel, lv_obj_t* parent_screen) override;
 
     const char* get_name() const override { return "Step Test Panel"; }
-    const char* get_xml_component_name() const override { return "step_progress_test"; }
+    const char* get_xml_component_name() const override { return "step_test_panel"; }
 
   private:
     //

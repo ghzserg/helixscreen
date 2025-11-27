@@ -68,8 +68,8 @@ TEST_PANEL_DEPS := \
     $(OBJ_DIR)/ui_panel_base.o \
     $(OBJ_DIR)/ui_panel_home.o \
     $(OBJ_DIR)/ui_panel_controls.o \
-    $(OBJ_DIR)/ui_temp_control_panel.o \
-    $(OBJ_DIR)/ui_panel_controls_extrusion.o \
+    $(OBJ_DIR)/ui_panel_temp_control.o \
+    $(OBJ_DIR)/ui_panel_extrusion.o \
     $(OBJ_DIR)/ui_panel_motion.o \
     $(OBJ_DIR)/ui_panel_filament.o \
     $(OBJ_DIR)/ui_panel_settings.o \

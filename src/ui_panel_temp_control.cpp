@@ -1,7 +1,7 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "ui_temp_control_panel.h"
+#include "ui_panel_temp_control.h"
 
 #include "app_constants.h"
 #include "moonraker_api.h"

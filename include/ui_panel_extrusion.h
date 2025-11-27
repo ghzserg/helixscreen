@@ -6,7 +6,7 @@
 #include "ui_panel_base.h"
 
 /**
- * @file ui_panel_controls_extrusion.h
+ * @file ui_panel_extrusion.h
  * @brief Extrusion control panel - filament extrude/retract with safety checks
  *
  * Provides manual filament control with:

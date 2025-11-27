@@ -1,7 +1,7 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "ui_panel_controls_extrusion.h"
+#include "ui_panel_extrusion.h"
 
 #include "app_constants.h"
 #include "app_globals.h"
