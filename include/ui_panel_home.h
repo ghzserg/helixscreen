@@ -155,10 +155,9 @@ class HomePanel : public PanelBase {
     lv_color_t light_icon_on_color_;
     lv_color_t light_icon_off_color_;
 
-    // Cached widget references (for direct updates)
-    lv_obj_t* network_icon_label_ = nullptr;
-    lv_obj_t* network_text_label_ = nullptr;
-    lv_obj_t* light_icon_label_ = nullptr;
+    // Light icon widget reference (for img_recolor on/off state - no XML binding for this)
+    // Note: Network widgets removed - XML bind_text handles updates automatically
+    lv_obj_t* light_icon_ = nullptr;
 
     //
     // === Private Helpers ===
@@ -166,7 +165,7 @@ class HomePanel : public PanelBase {
 
     void init_home_panel_colors();
     void update_tip_of_day();
-    void setup_responsive_sizing();
+    void setup_responsive_icon_fonts();
     void close_tip_dialog();
 
     //
@@ -180,7 +179,6 @@ class HomePanel : public PanelBase {
     void handle_tip_rotation_timer();
 
     // Observer instance methods
-    void on_network_changed();
     void on_light_color_changed(lv_subject_t* subject);
 
     //
@@ -192,7 +190,6 @@ class HomePanel : public PanelBase {
     static void tip_text_clicked_cb(lv_event_t* e);
     static void tip_dialog_close_cb(lv_event_t* e);
     static void tip_rotation_timer_cb(lv_timer_t* timer);
-    static void network_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
     static void light_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
 };
 

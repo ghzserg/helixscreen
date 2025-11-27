@@ -8,6 +8,7 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_fonts.h"
+#include "ui_icon.h"
 #include "ui_nav.h"
 #include "ui_subject_registry.h"
 #include "ui_theme.h"
@@ -101,45 +102,28 @@ void HomePanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         return;
     }
 
-    spdlog::debug("[{}] Setting up observers and responsive sizing...", get_name());
+    spdlog::debug("[{}] Setting up observers...", get_name());
 
-    // Use LVGL 9's name-based widget lookup - resilient to layout changes
-    network_icon_label_ = lv_obj_find_by_name(panel_, "network_icon");
-    network_text_label_ = lv_obj_find_by_name(panel_, "network_label");
-    light_icon_label_ = lv_obj_find_by_name(panel_, "light_icon");
-
-    if (!network_icon_label_ || !network_text_label_ || !light_icon_label_) {
-        spdlog::error("[{}] Failed to find named widgets (net_icon={}, net_label={}, light={})",
-                      get_name(),
-                      static_cast<void*>(network_icon_label_),
-                      static_cast<void*>(network_text_label_),
-                      static_cast<void*>(light_icon_label_));
+    // Light icon needs C++ for img_recolor (on/off state) - no XML binding for this
+    // Network icon/label use bind_text in XML - no C++ lookup needed!
+    light_icon_ = lv_obj_find_by_name(panel_, "light_icon");
+    if (!light_icon_) {
+        spdlog::error("[{}] Failed to find light_icon widget", get_name());
         return;
     }
 
-    // Apply responsive sizing based on screen dimensions
-    setup_responsive_sizing();
-
-    // Add observers to watch subjects and update widgets
-    // Pass 'this' as user_data for static trampolines
-    auto* net_obs1 = lv_subject_add_observer(&network_icon_subject_, network_observer_cb, this);
-    auto* net_obs2 = lv_subject_add_observer(&network_label_subject_, network_observer_cb, this);
-    auto* net_obs3 = lv_subject_add_observer(&network_color_subject_, network_observer_cb, this);
+    // Light icon color observer - needed for on/off visual state
     auto* light_obs = lv_subject_add_observer(&light_icon_color_subject_, light_observer_cb, this);
-
-    // Register observers for RAII cleanup
-    register_observer(net_obs1);
-    register_observer(net_obs2);
-    register_observer(net_obs3);
     register_observer(light_obs);
 
     // Apply initial light icon color (observers only fire on *changes*, not initial state)
-    if (light_icon_label_) {
-        lv_color_t initial_color = lv_subject_get_color(&light_icon_color_subject_);
-        lv_obj_set_style_img_recolor(light_icon_label_, initial_color, LV_PART_MAIN);
-        lv_obj_set_style_img_recolor_opa(light_icon_label_, 255, LV_PART_MAIN);
-        spdlog::debug("[{}] Applied initial light icon color", get_name());
-    }
+    lv_color_t initial_color = lv_subject_get_color(&light_icon_color_subject_);
+    lv_obj_set_style_img_recolor(light_icon_, initial_color, LV_PART_MAIN);
+    lv_obj_set_style_img_recolor_opa(light_icon_, 255, LV_PART_MAIN);
+    spdlog::debug("[{}] Applied initial light icon color", get_name());
+
+    // Apply responsive icon font sizes (fonts are discrete, can't be scaled in XML)
+    setup_responsive_icon_fonts();
 
     // Start tip rotation timer (60 seconds = 60000ms)
     if (!tip_rotation_timer_) {
@@ -197,77 +181,66 @@ void HomePanel::update_tip_of_day() {
     }
 }
 
-void HomePanel::setup_responsive_sizing() {
-    // Get screen dimensions for responsive sizing
+void HomePanel::setup_responsive_icon_fonts() {
+    // Layout/sizing is handled by XML, but icon fonts need C++ because fonts are discrete sizes.
+    // XML can't conditionally switch fonts based on screen size.
     lv_display_t* display = lv_display_get_default();
     int32_t screen_height = lv_display_get_vertical_resolution(display);
 
-    // 1. Set responsive printer image size and SCALE (not just crop/pad)
-    lv_obj_t* printer_image = lv_obj_find_by_name(panel_, "printer_image");
-    if (printer_image) {
-        int32_t printer_size;
-        uint16_t zoom_level;  // 256 = 100%, 128 = 50%, 512 = 200%
+    // Select icon sizes and label fonts based on screen size
+    const lv_font_t* fa_icon_font;
+    const char* mat_icon_size;
+    const lv_font_t* label_font;
+    int icon_px;
 
-        // Calculate printer image size and zoom based on screen height
-        if (screen_height <= UI_SCREEN_TINY_H) {
-            printer_size = 150;  // Tiny screens (480x320)
-            zoom_level = 96;     // 37.5% zoom to scale 400px -> 150px
-        } else if (screen_height <= UI_SCREEN_SMALL_H) {
-            printer_size = 250;  // Small screens (800x480)
-            zoom_level = 160;    // 62.5% zoom to scale 400px -> 250px
-        } else if (screen_height <= UI_SCREEN_MEDIUM_H) {
-            printer_size = 300;  // Medium screens (1024x600)
-            zoom_level = 192;    // 75% zoom to scale 400px -> 300px
-        } else {
-            printer_size = 400;  // Large screens (1280x720+)
-            zoom_level = 256;    // 100% zoom (original size)
-        }
-
-        lv_obj_set_width(printer_image, printer_size);
-        lv_obj_set_height(printer_image, printer_size);
-        lv_image_set_scale(printer_image, zoom_level);
-        spdlog::debug("[{}] Set printer image: size={}px, zoom={} ({}%) for screen height {}",
-                      get_name(), printer_size, zoom_level, (zoom_level * 100) / 256, screen_height);
-    } else {
-        spdlog::warn("[{}] Printer image not found - size not adjusted", get_name());
-    }
-
-    // 2. Set responsive info card icon sizes
-    const lv_font_t* info_icon_font;
     if (screen_height <= UI_SCREEN_TINY_H) {
-        info_icon_font = &fa_icons_24;  // Tiny: 24px icons
+        fa_icon_font = &fa_icons_24;  // Tiny: 24px icons
+        mat_icon_size = "sm";         // 24x24
+        label_font = UI_FONT_SMALL;   // Smaller text labels to save space
+        icon_px = 24;
     } else if (screen_height <= UI_SCREEN_SMALL_H) {
-        info_icon_font = &fa_icons_24;  // Small: 24px icons
+        fa_icon_font = &fa_icons_32;  // Small: 32px icons
+        mat_icon_size = "md";         // 32x32
+        label_font = UI_FONT_BODY;    // Normal text
+        icon_px = 32;
     } else {
-        info_icon_font = &fa_icons_48;  // Medium/Large: 48px icons
+        fa_icon_font = &fa_icons_64;  // Medium/Large: 64px icons
+        mat_icon_size = "xl";         // 64x64
+        label_font = UI_FONT_BODY;    // Normal text
+        icon_px = 64;
     }
 
+    // Network icon (FontAwesome label)
+    lv_obj_t* network_icon = lv_obj_find_by_name(panel_, "network_icon");
+    if (network_icon) {
+        lv_obj_set_style_text_font(network_icon, fa_icon_font, 0);
+    }
+
+    // Network label text
+    lv_obj_t* network_label = lv_obj_find_by_name(panel_, "network_label");
+    if (network_label) {
+        lv_obj_set_style_text_font(network_label, label_font, 0);
+    }
+
+    // Temperature icon (Material Design icon widget)
     lv_obj_t* temp_icon = lv_obj_find_by_name(panel_, "temp_icon");
     if (temp_icon) {
-        lv_obj_set_style_text_font(temp_icon, info_icon_font, 0);
+        ui_icon_set_size(temp_icon, mat_icon_size);
     }
 
-    if (network_icon_label_) {
-        lv_obj_set_style_text_font(network_icon_label_, info_icon_font, 0);
-    }
-    if (light_icon_label_) {
-        lv_obj_set_style_text_font(light_icon_label_, info_icon_font, 0);
-    }
-
-    // 3. Set responsive status text font for tiny screens
-    if (screen_height <= UI_SCREEN_TINY_H) {
-        lv_obj_t* status_text = lv_obj_find_by_name(panel_, "status_text_label");
-        if (status_text) {
-            lv_obj_set_style_text_font(status_text, UI_FONT_HEADING, 0);
-            spdlog::debug("[{}] Set status text to UI_FONT_HEADING for tiny screen", get_name());
-        }
+    // Temperature label text
+    lv_obj_t* temp_label = lv_obj_find_by_name(panel_, "temp_text_label");
+    if (temp_label) {
+        lv_obj_set_style_text_font(temp_label, label_font, 0);
     }
 
-    int icon_size = (info_icon_font == &fa_icons_24)   ? 24
-                  : (info_icon_font == &fa_icons_32) ? 32
-                                                     : 48;
-    spdlog::debug("[{}] Set info card icons to {}px for screen height {}",
-                  get_name(), icon_size, screen_height);
+    // Light icon (Material Design icon widget) - also set size for consistency
+    if (light_icon_) {
+        ui_icon_set_size(light_icon_, mat_icon_size);
+    }
+
+    spdlog::debug("[{}] Set icons to {}px, labels to {} for screen height {}",
+                  get_name(), icon_px, (label_font == UI_FONT_SMALL) ? "small" : "body", screen_height);
 }
 
 void HomePanel::close_tip_dialog() {
@@ -345,36 +318,15 @@ void HomePanel::handle_tip_rotation_timer() {
     update_tip_of_day();
 }
 
-void HomePanel::on_network_changed() {
-    if (!network_icon_label_ || !network_text_label_) {
-        return;
-    }
-
-    // Update network icon text
-    const char* icon = lv_subject_get_string(&network_icon_subject_);
-    if (icon) {
-        lv_label_set_text(network_icon_label_, icon);
-    }
-
-    // Update network label text
-    const char* label = lv_subject_get_string(&network_label_subject_);
-    if (label) {
-        lv_label_set_text(network_text_label_, label);
-    }
-
-    // Network icon/label colors are now handled by theme
-    spdlog::trace("[{}] Network observer updated widgets", get_name());
-}
-
 void HomePanel::on_light_color_changed(lv_subject_t* subject) {
-    if (!light_icon_label_) {
+    if (!light_icon_) {
         return;
     }
 
-    // Update light icon color using image recolor (Material Design icons are monochrome)
+    // Update light icon color using image recolor (on/off visual state)
     lv_color_t color = lv_subject_get_color(subject);
-    lv_obj_set_style_img_recolor(light_icon_label_, color, LV_PART_MAIN);
-    lv_obj_set_style_img_recolor_opa(light_icon_label_, 255, LV_PART_MAIN);
+    lv_obj_set_style_img_recolor(light_icon_, color, LV_PART_MAIN);
+    lv_obj_set_style_img_recolor_opa(light_icon_, 255, LV_PART_MAIN);
 
     spdlog::trace("[{}] Light observer updated icon color", get_name());
 }
@@ -434,14 +386,6 @@ void HomePanel::tip_rotation_timer_cb(lv_timer_t* timer) {
     auto* self = static_cast<HomePanel*>(lv_timer_get_user_data(timer));
     if (self) {
         self->handle_tip_rotation_timer();
-    }
-}
-
-void HomePanel::network_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
-    (void)subject;  // We read subjects directly in the handler
-    auto* self = static_cast<HomePanel*>(lv_observer_get_user_data(observer));
-    if (self) {
-        self->on_network_changed();
     }
 }
 
