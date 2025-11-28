@@ -14,7 +14,9 @@
 #include "app_globals.h"
 #include "config.h"
 #include "moonraker_api.h"
+#include "printer_images.h"
 #include "printer_state.h"
+#include "printer_types.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
@@ -148,6 +150,18 @@ void HomePanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
 
     // Find printer image for connection state dimming
     printer_image_ = lv_obj_find_by_name(panel_, "printer_image");
+
+    // Load printer-specific image based on configured type
+    if (printer_image_) {
+        Config* cfg = Config::get_instance();
+        std::string printer_type =
+            cfg->get<std::string>(WizardConfigPaths::PRINTER_TYPE, "Unknown");
+        int type_index = PrinterTypes::find_printer_type_index(printer_type);
+        const char* image_path = PrinterImages::get_image_path(type_index);
+        lv_image_set_src(printer_image_, image_path);
+        spdlog::debug("[{}] Printer image set: type='{}' (idx={}) -> {}", get_name(), printer_type,
+                      type_index, image_path);
+    }
 
     // Apply initial connection state dimming
     int conn_state = lv_subject_get_int(printer_state_.get_printer_connection_state_subject());

@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <sstream>
+#include <string>
+
 /**
  * @brief Shared printer type definitions for wizard and auto-detection
  *
@@ -40,24 +43,27 @@ namespace PrinterTypes {
 /**
  * @brief Printer type names as newline-separated string for LVGL roller
  *
- * Format: Each line is a printer type option
- * Default selection: Index 34 ("Unknown")
+ * Format: Each line is a printer type option (sorted alphabetically by brand)
+ * Default selection: Index 39 ("Unknown")
  */
-inline constexpr const char* PRINTER_TYPES_ROLLER = "Anycubic i3 Mega\n"
+inline constexpr const char* PRINTER_TYPES_ROLLER = "Anycubic Chiron\n"
+                                                    "Anycubic i3 Mega\n"
                                                     "Anycubic Kobra\n"
                                                     "Anycubic Vyper\n"
-                                                    "Bambu Lab X1\n"
                                                     "Bambu Lab P1P\n"
+                                                    "Bambu Lab X1\n"
                                                     "Creality CR-10\n"
                                                     "Creality Ender 3\n"
                                                     "Creality Ender 5\n"
                                                     "Creality K1\n"
+                                                    "Doron Velta\n"
                                                     "FlashForge Adventurer 5M\n"
                                                     "FlashForge Adventurer 5M Pro\n"
                                                     "FlashForge Creator Pro\n"
                                                     "FlashForge Dreamer\n"
-                                                    "LulzBot TAZ\n"
+                                                    "FLSUN Delta\n"
                                                     "LulzBot Mini\n"
+                                                    "LulzBot TAZ\n"
                                                     "MakerBot Replicator\n"
                                                     "Prusa i3 MK3\n"
                                                     "Prusa i3 MK4\n"
@@ -65,8 +71,10 @@ inline constexpr const char* PRINTER_TYPES_ROLLER = "Anycubic i3 Mega\n"
                                                     "Prusa XL\n"
                                                     "Qidi Tech X-Max\n"
                                                     "Qidi Tech X-Plus\n"
-                                                    "Raise3D Pro2\n"
                                                     "Raise3D E2\n"
+                                                    "Raise3D Pro2\n"
+                                                    "RatRig V-Core 3\n"
+                                                    "RatRig V-Minion\n"
                                                     "Sovol SV01\n"
                                                     "Sovol SV06\n"
                                                     "Ultimaker 2+\n"
@@ -74,19 +82,41 @@ inline constexpr const char* PRINTER_TYPES_ROLLER = "Anycubic i3 Mega\n"
                                                     "Ultimaker S3\n"
                                                     "Voron 0.1\n"
                                                     "Voron 2.4\n"
-                                                    "Voron Trident\n"
                                                     "Voron Switchwire\n"
+                                                    "Voron Trident\n"
                                                     "Custom/Other\n"
                                                     "Unknown";
 
 /**
  * @brief Number of printer types in the list
  */
-inline constexpr int PRINTER_TYPE_COUNT = 35;
+inline constexpr int PRINTER_TYPE_COUNT = 40;
 
 /**
  * @brief Default printer type index (Unknown)
  */
-inline constexpr int DEFAULT_PRINTER_TYPE_INDEX = 34;
+inline constexpr int DEFAULT_PRINTER_TYPE_INDEX = 39;
+
+/**
+ * @brief Find printer type index by name
+ *
+ * Searches PRINTER_TYPES_ROLLER for a matching printer name.
+ *
+ * @param printer_name Name to search for (e.g., "Voron 2.4")
+ * @return Index (0-based) if found, DEFAULT_PRINTER_TYPE_INDEX if not found
+ */
+inline int find_printer_type_index(const std::string& printer_name) {
+    std::istringstream stream(PRINTER_TYPES_ROLLER);
+    std::string line;
+    int index = 0;
+
+    while (std::getline(stream, line)) {
+        if (line == printer_name) {
+            return index;
+        }
+        ++index;
+    }
+    return DEFAULT_PRINTER_TYPE_INDEX;
+}
 
 } // namespace PrinterTypes

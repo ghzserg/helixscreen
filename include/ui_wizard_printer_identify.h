@@ -120,6 +120,9 @@ class WizardPrinterIdentifyStep {
     // Screen instance
     lv_obj_t* screen_root_ = nullptr;
 
+    // Printer preview image widget
+    lv_obj_t* printer_preview_image_ = nullptr;
+
     // Subjects (3 total)
     lv_subject_t printer_name_;
     lv_subject_t printer_type_selected_;

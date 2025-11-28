@@ -15,6 +15,7 @@
 #include "lvgl/lvgl.h"
 #include "moonraker_client.h"
 #include "printer_detector.h"
+#include "printer_images.h"
 #include "printer_types.h"
 #include "wizard_config_paths.h"
 
@@ -67,6 +68,7 @@ WizardPrinterIdentifyStep::~WizardPrinterIdentifyStep() {
     // NOTE: Do NOT call LVGL functions here - LVGL may be destroyed first
     // NOTE: Do NOT log here - spdlog may be destroyed first
     screen_root_ = nullptr;
+    printer_preview_image_ = nullptr;
 }
 
 // ============================================================================
@@ -74,8 +76,8 @@ WizardPrinterIdentifyStep::~WizardPrinterIdentifyStep() {
 // ============================================================================
 
 WizardPrinterIdentifyStep::WizardPrinterIdentifyStep(WizardPrinterIdentifyStep&& other) noexcept
-    : screen_root_(other.screen_root_), printer_name_(other.printer_name_),
-      printer_type_selected_(other.printer_type_selected_),
+    : screen_root_(other.screen_root_), printer_preview_image_(other.printer_preview_image_),
+      printer_name_(other.printer_name_), printer_type_selected_(other.printer_type_selected_),
       printer_detection_status_(other.printer_detection_status_),
       printer_identify_validated_(other.printer_identify_validated_),
       subjects_initialized_(other.subjects_initialized_) {
@@ -86,6 +88,7 @@ WizardPrinterIdentifyStep::WizardPrinterIdentifyStep(WizardPrinterIdentifyStep&&
 
     // Null out other
     other.screen_root_ = nullptr;
+    other.printer_preview_image_ = nullptr;
     other.subjects_initialized_ = false;
     other.printer_identify_validated_ = false;
 }
@@ -94,6 +97,7 @@ WizardPrinterIdentifyStep&
 WizardPrinterIdentifyStep::operator=(WizardPrinterIdentifyStep&& other) noexcept {
     if (this != &other) {
         screen_root_ = other.screen_root_;
+        printer_preview_image_ = other.printer_preview_image_;
         printer_name_ = other.printer_name_;
         printer_type_selected_ = other.printer_type_selected_;
         printer_detection_status_ = other.printer_detection_status_;
@@ -107,6 +111,7 @@ WizardPrinterIdentifyStep::operator=(WizardPrinterIdentifyStep&& other) noexcept
 
         // Null out other
         other.screen_root_ = nullptr;
+        other.printer_preview_image_ = nullptr;
         other.subjects_initialized_ = false;
         other.printer_identify_validated_ = false;
     }
@@ -346,6 +351,13 @@ void WizardPrinterIdentifyStep::handle_printer_type_changed(lv_event_t* event) {
     // Update subject
     lv_subject_set_int(&printer_type_selected_, selected);
 
+    // Update printer preview image
+    if (printer_preview_image_) {
+        const char* image_path = PrinterImages::get_image_path(selected);
+        lv_image_set_src(printer_preview_image_, image_path);
+        spdlog::debug("[{}] Preview image updated: {}", get_name(), image_path);
+    }
+
     LVGL_SAFE_EVENT_CB_END();
 }
 
@@ -408,6 +420,17 @@ lv_obj_t* WizardPrinterIdentifyStep::create(lv_obj_t* parent) {
         ui_keyboard_register_textarea(name_ta);
         spdlog::debug("[{}] Name textarea configured (initial: '{}')", get_name(),
                       printer_name_buffer_);
+    }
+
+    // Find and set up the printer preview image
+    printer_preview_image_ = lv_obj_find_by_name(screen_root_, "printer_preview_image");
+    if (printer_preview_image_) {
+        int selected = lv_subject_get_int(&printer_type_selected_);
+        const char* image_path = PrinterImages::get_image_path(selected);
+        lv_image_set_src(printer_preview_image_, image_path);
+        spdlog::debug("[{}] Preview image configured: {}", get_name(), image_path);
+    } else {
+        spdlog::warn("[{}] Printer preview image not found in XML", get_name());
     }
 
     lv_obj_update_layout(screen_root_);
@@ -475,6 +498,7 @@ void WizardPrinterIdentifyStep::cleanup() {
 
     // Reset UI references (wizard framework handles deletion)
     screen_root_ = nullptr;
+    printer_preview_image_ = nullptr;
 
     // Reset connection_test_passed to enabled (1) for other wizard steps
     lv_subject_set_int(&connection_test_passed, 1);
