@@ -380,6 +380,14 @@ void ui_nav_set_active(ui_panel_id_t panel_id) {
         return;
     }
 
+    // Update panel stack to reflect new active panel (important for go_back)
+    // Only update if we have panel widgets registered
+    if (panel_widgets[panel_id]) {
+        panel_stack.clear();
+        panel_stack.push_back(panel_widgets[panel_id]);
+        spdlog::debug("Panel stack updated to panel {} (set_active)", static_cast<int>(panel_id));
+    }
+
     // Update active panel subject - this triggers observer and icon color updates
     lv_subject_set_int(&active_panel_subject, panel_id);
     active_panel = panel_id;
