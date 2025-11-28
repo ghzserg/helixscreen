@@ -23,7 +23,7 @@
         <!-- Metadata clip container - clips top rounded corners of inner overlay -->
         <lv_obj width="100%" height="90" style_bg_opa="0" style_border_width="0" style_radius="0" style_pad_all="0" align="bottom_mid" scrollable="false" name="detail_metadata_clip">
           <!-- Inner overlay with rounded corners - taller to hide top radius -->
-          <lv_obj width="100%" height="98" style_bg_opa="204" style_border_width="0" style_radius="#border_radius" style_pad_left="#gap_tiny" style_pad_right="#gap_tiny" style_pad_top="14" style_pad_bottom="#gap_tiny" align="bottom_mid" flex_flow="column" scrollable="false" name="detail_metadata_overlay">
+          <lv_obj width="100%" height="98" style_bg_opa="204" style_border_width="0" style_radius="#border_radius" style_pad_left="#gap_small" style_pad_right="#gap_small" style_pad_top="#gap_large" style_pad_bottom="#gap_small" align="bottom_mid" flex_flow="column" scrollable="false" name="detail_metadata_overlay">
             <!-- Filename with reactive binding -->
             <lv_label bind_text="selected_filename" width="100%" height="24" long_mode="dots" style_text_font="montserrat_18" name="detail_filename_label"/>
             <!-- Metadata row -->
