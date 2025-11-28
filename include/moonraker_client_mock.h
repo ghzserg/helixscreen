@@ -29,6 +29,7 @@
 #include <atomic>
 #include <chrono>
 #include <map>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -54,12 +55,98 @@ class MoonrakerClientMock : public MoonrakerClient {
         MULTI_EXTRUDER      // Multi-extruder test case (2 extruders)
     };
 
+    /**
+     * @brief Print simulation phase state machine
+     *
+     * Tracks the current phase of a simulated print job, including
+     * thermal preheating and cooldown after completion.
+     */
+    enum class MockPrintPhase {
+        IDLE,      ///< No print, room temperature
+        PREHEAT,   ///< Heating to target temps before print starts
+        PRINTING,  ///< Active printing, progress advancing
+        PAUSED,    ///< Print paused, temps maintained
+        COMPLETE,  ///< Print finished, cooling down
+        CANCELLED, ///< Print cancelled, cooling down
+        ERROR      ///< Emergency stop or failure
+    };
+
+    /**
+     * @brief Metadata extracted from G-code for print simulation
+     *
+     * Stores print parameters extracted from G-code file metadata
+     * to drive realistic simulation timing and thermal behavior.
+     */
+    struct MockPrintMetadata {
+        double estimated_time_seconds = 300.0; ///< Default 5 min if not in file
+        uint32_t layer_count = 100;            ///< Default 100 layers
+        double target_bed_temp = 60.0;         ///< First layer bed temp
+        double target_nozzle_temp = 210.0;     ///< First layer nozzle temp
+        double filament_mm = 0.0;              ///< Total filament length
+
+        void reset() {
+            estimated_time_seconds = 300.0;
+            layer_count = 100;
+            target_bed_temp = 60.0;
+            target_nozzle_temp = 210.0;
+            filament_mm = 0.0;
+        }
+    };
+
+    /**
+     * @brief Construct mock client with default real-time simulation speed
+     * @param type Printer type to simulate
+     */
     MoonrakerClientMock(PrinterType type = PrinterType::VORON_24);
+
+    /**
+     * @brief Construct mock client with custom simulation speedup
+     * @param type Printer type to simulate
+     * @param speedup_factor Simulation speed multiplier (e.g., 10.0 = 10x faster)
+     */
+    MoonrakerClientMock(PrinterType type, double speedup_factor);
+
     ~MoonrakerClientMock();
 
     // Prevent copying (has thread state)
     MoonrakerClientMock(const MoonrakerClientMock&) = delete;
     MoonrakerClientMock& operator=(const MoonrakerClientMock&) = delete;
+
+    /**
+     * @brief Set simulation speedup factor at runtime
+     *
+     * Affects both thermal simulation and print progress rates.
+     * A factor of 10.0 means a 30-minute print completes in 3 minutes wall-clock.
+     *
+     * @param factor Speed multiplier (clamped to [0.1, 10000])
+     */
+    void set_simulation_speedup(double factor);
+
+    /**
+     * @brief Get current simulation speedup factor
+     * @return Current speedup multiplier (1.0 = real-time)
+     */
+    double get_simulation_speedup() const;
+
+    /**
+     * @brief Get current print simulation phase
+     * @return Current phase of the print simulation state machine
+     */
+    MockPrintPhase get_print_phase() const {
+        return print_phase_.load();
+    }
+
+    /**
+     * @brief Get current layer number in simulated print
+     * @return Current layer (0-based), or 0 if not printing
+     */
+    int get_current_layer() const;
+
+    /**
+     * @brief Get total layer count for current print
+     * @return Total layers from G-code metadata, or 0 if not printing
+     */
+    int get_total_layers() const;
 
     /**
      * @brief Simulate WebSocket connection (no real network I/O)
@@ -253,6 +340,78 @@ class MoonrakerClientMock : public MoonrakerClient {
      */
     std::string get_print_state_string() const;
 
+    // ========== Unified Print Control (internal implementation) ==========
+    // These methods are called by BOTH G-code commands AND JSON-RPC API
+
+    /**
+     * @brief Start a print job (internal implementation)
+     *
+     * Extracts metadata from the G-code file and begins preheat phase.
+     * Called by both SDCARD_PRINT_FILE G-code and printer.print.start JSON-RPC.
+     *
+     * @param filename G-code filename (relative path)
+     * @return true if print started successfully, false on error
+     */
+    bool start_print_internal(const std::string& filename);
+
+    /**
+     * @brief Pause current print (internal implementation)
+     *
+     * Called by both PAUSE G-code and printer.print.pause JSON-RPC.
+     *
+     * @return true if print was paused, false if not currently printing
+     */
+    bool pause_print_internal();
+
+    /**
+     * @brief Resume paused print (internal implementation)
+     *
+     * Called by both RESUME G-code and printer.print.resume JSON-RPC.
+     *
+     * @return true if print was resumed, false if not currently paused
+     */
+    bool resume_print_internal();
+
+    /**
+     * @brief Cancel current print (internal implementation)
+     *
+     * Called by both CANCEL_PRINT G-code and printer.print.cancel JSON-RPC.
+     *
+     * @return true if print was cancelled, false if no active print
+     */
+    bool cancel_print_internal();
+
+    // ========== Simulation Helpers ==========
+
+    /**
+     * @brief Check if temperature has reached target within tolerance
+     * @param current Current temperature
+     * @param target Target temperature
+     * @param tolerance Acceptable difference (default 2°C)
+     * @return true if within tolerance
+     */
+    bool is_temp_stable(double current, double target, double tolerance = 2.0) const;
+
+    /**
+     * @brief Advance print progress based on simulated time elapsed
+     * @param dt_simulated Simulated time step in seconds (affected by speedup)
+     */
+    void advance_print_progress(double dt_simulated);
+
+    /**
+     * @brief Dispatch enhanced print status notification
+     *
+     * Sends Moonraker-compatible notification with full print_stats
+     * and virtual_sdcard objects.
+     */
+    void dispatch_enhanced_print_status();
+
+    /**
+     * @brief Dispatch print state change notification
+     * @param state New state string ("printing", "paused", "complete", etc.)
+     */
+    void dispatch_print_state_notification(const std::string& state);
+
   private:
     PrinterType printer_type_;
 
@@ -274,7 +433,7 @@ class MoonrakerClientMock : public MoonrakerClient {
     mutable std::mutex homed_axes_mutex_;
     std::string homed_axes_;
 
-    // Print simulation state
+    // Print simulation state (legacy - kept for backward compatibility)
     std::atomic<int> print_state_{
         0}; // 0=standby, 1=printing, 2=paused, 3=complete, 4=cancelled, 5=error
     std::string print_filename_;              // Current print file (protected by print_mutex_)
@@ -283,6 +442,18 @@ class MoonrakerClientMock : public MoonrakerClient {
     std::atomic<int> speed_factor_{100};      // Percentage
     std::atomic<int> flow_factor_{100};       // Percentage
     std::atomic<int> fan_speed_{0};           // 0-255
+
+    // Enhanced print simulation state (phase-based)
+    std::atomic<MockPrintPhase> print_phase_{MockPrintPhase::IDLE};
+    MockPrintMetadata print_metadata_;        // Current print job metadata
+    mutable std::mutex metadata_mutex_;       // Protects print_metadata_
+    std::atomic<double> speedup_factor_{1.0}; // Simulation speedup (1.0 = real-time)
+
+    // Print timing (wall-clock for internal tracking)
+    std::optional<std::chrono::steady_clock::time_point> preheat_start_time_;
+    std::optional<std::chrono::steady_clock::time_point> printing_start_time_;
+    std::chrono::steady_clock::time_point pause_start_time_;
+    double total_pause_duration_sim_{0.0}; // Accumulated pause time in simulated seconds
 
     // LED simulation state (RGBW values 0.0-1.0)
     struct LedColor {

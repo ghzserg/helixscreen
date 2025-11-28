@@ -76,7 +76,6 @@
  * - Initial subscription response has full status in result.status
  */
 
-#include "../catch_amalgamated.hpp"
 #include "moonraker_client_mock.h"
 
 #include <atomic>
@@ -85,6 +84,8 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include "../catch_amalgamated.hpp"
 
 // ============================================================================
 // Test Fixture for Mock Behavior Testing
@@ -185,7 +186,7 @@ class MockBehaviorTestFixture {
     }
 
   private:
-    mutable std::mutex mutex_;  // mutable for const methods
+    mutable std::mutex mutex_; // mutable for const methods
     std::condition_variable cv_;
     std::atomic<bool> callback_invoked_{false};
     std::vector<json> notifications_;
@@ -209,8 +210,7 @@ class TestableMoonrakerMock : public MoonrakerClientMock {
 // Initial State Dispatch Tests
 // ============================================================================
 
-TEST_CASE("MoonrakerClientMock initial state dispatch",
-          "[moonraker][mock][initial_state]") {
+TEST_CASE("MoonrakerClientMock initial state dispatch", "[moonraker][mock][initial_state]") {
     MockBehaviorTestFixture fixture;
 
     SECTION("connect() dispatches initial state via callback") {
@@ -252,7 +252,7 @@ TEST_CASE("MoonrakerClientMock initial state dispatch",
                 const json& status = notification["params"][0];
                 // Guard: status must be an object before calling contains()
                 if (status.is_object() && status.contains("print_stats")) {
-                    initial_status = status;  // COPY, not pointer
+                    initial_status = status; // COPY, not pointer
                     found_initial_status = true;
                     break;
                 }
@@ -260,7 +260,8 @@ TEST_CASE("MoonrakerClientMock initial state dispatch",
         }
         REQUIRE(found_initial_status);
 
-        // Check for required printer objects (matching real Moonraker initial subscription response)
+        // Check for required printer objects (matching real Moonraker initial subscription
+        // response)
         REQUIRE(initial_status.contains("extruder"));
         REQUIRE(initial_status.contains("heater_bed"));
         REQUIRE(initial_status.contains("toolhead"));
@@ -289,16 +290,22 @@ TEST_CASE("MoonrakerClientMock initial state dispatch",
                 }
 
                 // Check extruder structure (matches real Moonraker)
-                if (!status.contains("extruder")) return false;
+                if (!status.contains("extruder"))
+                    return false;
                 const json& extruder = status["extruder"];
-                if (!extruder.contains("temperature") || !extruder.contains("target")) return false;
-                if (!extruder["temperature"].is_number() || !extruder["target"].is_number()) return false;
+                if (!extruder.contains("temperature") || !extruder.contains("target"))
+                    return false;
+                if (!extruder["temperature"].is_number() || !extruder["target"].is_number())
+                    return false;
 
                 // Check heater bed structure
-                if (!status.contains("heater_bed")) return false;
+                if (!status.contains("heater_bed"))
+                    return false;
                 const json& heater_bed = status["heater_bed"];
-                if (!heater_bed.contains("temperature") || !heater_bed.contains("target")) return false;
-                if (!heater_bed["temperature"].is_number() || !heater_bed["target"].is_number()) return false;
+                if (!heater_bed.contains("temperature") || !heater_bed.contains("target"))
+                    return false;
+                if (!heater_bed["temperature"].is_number() || !heater_bed["target"].is_number())
+                    return false;
 
                 return true;
             },
@@ -328,7 +335,7 @@ TEST_CASE("MoonrakerClientMock initial state dispatch",
                 // Guard: status must be an object before calling contains()
                 if (status.is_object() && status.contains("toolhead") &&
                     status["toolhead"].contains("homed_axes")) {
-                    initial_status = status;  // COPY, not pointer
+                    initial_status = status; // COPY, not pointer
                     found_initial_status = true;
                     break;
                 }
@@ -365,7 +372,7 @@ TEST_CASE("MoonrakerClientMock initial state dispatch",
                 const json& status = notification["params"][0];
                 // Guard: status must be an object before calling contains()
                 if (status.is_object() && status.contains("print_stats")) {
-                    initial_status = status;  // COPY, not pointer
+                    initial_status = status; // COPY, not pointer
                     found_initial_status = true;
                     break;
                 }
@@ -469,8 +476,7 @@ TEST_CASE("MoonrakerClientMock notification format matches real Moonraker",
 // Callback Invocation Tests
 // ============================================================================
 
-TEST_CASE("MoonrakerClientMock callback invocation",
-          "[moonraker][mock][callbacks]") {
+TEST_CASE("MoonrakerClientMock callback invocation", "[moonraker][mock][callbacks]") {
     MockBehaviorTestFixture fixture1;
     MockBehaviorTestFixture fixture2;
 
@@ -543,8 +549,7 @@ TEST_CASE("MoonrakerClientMock callback invocation",
 // G-code Temperature Parsing Tests
 // ============================================================================
 
-TEST_CASE("MoonrakerClientMock G-code temperature parsing",
-          "[moonraker][mock][gcode]") {
+TEST_CASE("MoonrakerClientMock G-code temperature parsing", "[moonraker][mock][gcode]") {
     // Note: These tests verify gcode_script returns success.
     // The internal state changes are verified via log output.
     // Notification-based tests were removed due to timing flakiness.
@@ -620,9 +625,7 @@ TEST_CASE("MoonrakerClientMock G-code temperature parsing",
 // Hardware Discovery Tests
 // ============================================================================
 
-TEST_CASE("MoonrakerClientMock hardware discovery",
-          "[moonraker][mock][hardware_discovery]") {
-
+TEST_CASE("MoonrakerClientMock hardware discovery", "[moonraker][mock][hardware_discovery]") {
     SECTION("VORON_24 has correct hardware") {
         MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
 
@@ -636,10 +639,9 @@ TEST_CASE("MoonrakerClientMock hardware discovery",
         REQUIRE(std::find(heaters.begin(), heaters.end(), "extruder") != heaters.end());
 
         // Should have chamber sensor (common on V2.4)
-        bool has_chamber =
-            std::find_if(sensors.begin(), sensors.end(), [](const std::string& s) {
-                return s.find("chamber") != std::string::npos;
-            }) != sensors.end();
+        bool has_chamber = std::find_if(sensors.begin(), sensors.end(), [](const std::string& s) {
+                               return s.find("chamber") != std::string::npos;
+                           }) != sensors.end();
         REQUIRE(has_chamber);
 
         // Should have fans
@@ -746,9 +748,7 @@ TEST_CASE("MoonrakerClientMock hardware discovery",
 // Connection State Tests
 // ============================================================================
 
-TEST_CASE("MoonrakerClientMock connection state",
-          "[moonraker][mock][connection_state]") {
-
+TEST_CASE("MoonrakerClientMock connection state", "[moonraker][mock][connection_state]") {
     SECTION("initial state is DISCONNECTED") {
         MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
         REQUIRE(mock.get_connection_state() == ConnectionState::DISCONNECTED);
@@ -758,9 +758,9 @@ TEST_CASE("MoonrakerClientMock connection state",
         MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
 
         bool connected_callback_invoked = false;
-        mock.connect("ws://mock/websocket",
-                     [&connected_callback_invoked]() { connected_callback_invoked = true; },
-                     []() {});
+        mock.connect(
+            "ws://mock/websocket",
+            [&connected_callback_invoked]() { connected_callback_invoked = true; }, []() {});
 
         REQUIRE(mock.get_connection_state() == ConnectionState::CONNECTED);
         REQUIRE(connected_callback_invoked);
@@ -885,9 +885,7 @@ TEST_CASE("MoonrakerClientMock temperature simulation",
 // Bed Mesh Tests
 // ============================================================================
 
-TEST_CASE("MoonrakerClientMock bed mesh",
-          "[moonraker][mock][bed_mesh]") {
-
+TEST_CASE("MoonrakerClientMock bed mesh", "[moonraker][mock][bed_mesh]") {
     SECTION("bed mesh is generated on construction") {
         MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
 
@@ -979,7 +977,7 @@ TEST_CASE("MoonrakerClientMock bed mesh",
 
         // Verify probed_matrix is 2D array
         REQUIRE(bed_mesh_data["probed_matrix"].is_array());
-        REQUIRE(bed_mesh_data["probed_matrix"].size() == 7);  // 7x7 mesh
+        REQUIRE(bed_mesh_data["probed_matrix"].size() == 7); // 7x7 mesh
         REQUIRE(bed_mesh_data["probed_matrix"][0].is_array());
         REQUIRE(bed_mesh_data["probed_matrix"][0].size() == 7);
 
@@ -1032,20 +1030,17 @@ TEST_CASE("MoonrakerClientMock bed mesh",
         // Create a 5x7 rectangular mesh (5 columns, 7 rows)
         json bed_mesh = {
             {"profile_name", "rectangular"},
-            {"probed_matrix", json::array({
-                json::array({0.01, 0.02, 0.03, 0.04, 0.05}),
-                json::array({0.02, 0.03, 0.04, 0.05, 0.06}),
-                json::array({0.03, 0.04, 0.05, 0.06, 0.07}),
-                json::array({0.04, 0.05, 0.06, 0.07, 0.08}),
-                json::array({0.05, 0.06, 0.07, 0.08, 0.09}),
-                json::array({0.06, 0.07, 0.08, 0.09, 0.10}),
-                json::array({0.07, 0.08, 0.09, 0.10, 0.11})
-            })},
+            {"probed_matrix", json::array({json::array({0.01, 0.02, 0.03, 0.04, 0.05}),
+                                           json::array({0.02, 0.03, 0.04, 0.05, 0.06}),
+                                           json::array({0.03, 0.04, 0.05, 0.06, 0.07}),
+                                           json::array({0.04, 0.05, 0.06, 0.07, 0.08}),
+                                           json::array({0.05, 0.06, 0.07, 0.08, 0.09}),
+                                           json::array({0.06, 0.07, 0.08, 0.09, 0.10}),
+                                           json::array({0.07, 0.08, 0.09, 0.10, 0.11})})},
             {"mesh_min", {10.0, 20.0}},
             {"mesh_max", {200.0, 280.0}},
             {"profiles", {{"rectangular", json::object()}}},
-            {"mesh_params", {{"algo", "bicubic"}}}
-        };
+            {"mesh_params", {{"algo", "bicubic"}}}};
 
         // Wrap in status notification format and dispatch
         json status = {{"bed_mesh", bed_mesh}};
@@ -1056,8 +1051,8 @@ TEST_CASE("MoonrakerClientMock bed mesh",
         REQUIRE(mock.has_bed_mesh());
         const auto& mesh = mock.get_active_bed_mesh();
         REQUIRE(mesh.name == "rectangular");
-        REQUIRE(mesh.x_count == 5);  // 5 columns
-        REQUIRE(mesh.y_count == 7);  // 7 rows
+        REQUIRE(mesh.x_count == 5); // 5 columns
+        REQUIRE(mesh.y_count == 7); // 7 rows
         REQUIRE(mesh.algo == "bicubic");
         REQUIRE(mesh.mesh_min[0] == Catch::Approx(10.0f));
         REQUIRE(mesh.mesh_min[1] == Catch::Approx(20.0f));
@@ -1074,10 +1069,7 @@ TEST_CASE("MoonrakerClientMock bed mesh",
         REQUIRE(mock.has_bed_mesh());
 
         // Now dispatch an empty bed_mesh update (simulates BED_MESH_CLEAR)
-        json bed_mesh = {
-            {"profile_name", ""},
-            {"probed_matrix", json::array()}
-        };
+        json bed_mesh = {{"profile_name", ""}, {"probed_matrix", json::array()}};
         json status = {{"bed_mesh", bed_mesh}};
         mock.dispatch_status_update(status);
 
@@ -1094,11 +1086,9 @@ TEST_CASE("MoonrakerClientMock bed mesh",
         // Minimal bed_mesh: only profile_name and probed_matrix
         json bed_mesh = {
             {"profile_name", "minimal"},
-            {"probed_matrix", json::array({
-                json::array({0.1, 0.2, 0.3}),
-                json::array({0.2, 0.3, 0.4}),
-                json::array({0.3, 0.4, 0.5})
-            })}
+            {"probed_matrix",
+             json::array({json::array({0.1, 0.2, 0.3}), json::array({0.2, 0.3, 0.4}),
+                          json::array({0.3, 0.4, 0.5})})}
             // Missing: mesh_min, mesh_max, profiles, mesh_params
         };
 
@@ -1119,12 +1109,8 @@ TEST_CASE("MoonrakerClientMock bed mesh",
         TestableMoonrakerMock mock(MoonrakerClientMock::PrinterType::VORON_24);
 
         json bed_mesh = {
-            {"profile_name", nullptr},  // JSON null
-            {"probed_matrix", json::array({
-                json::array({0.0, 0.1}),
-                json::array({0.1, 0.2})
-            })}
-        };
+            {"profile_name", nullptr}, // JSON null
+            {"probed_matrix", json::array({json::array({0.0, 0.1}), json::array({0.1, 0.2})})}};
 
         json status = {{"bed_mesh", bed_mesh}};
         mock.dispatch_status_update(status);
@@ -1142,11 +1128,10 @@ TEST_CASE("MoonrakerClientMock bed mesh",
         json bed_mesh = {
             {"profile_name", "test"},
             {"probed_matrix", json::array({
-                json::array({0.1, "invalid", 0.3}),  // Middle value is string
-                json::array({0.2, 0.3, 0.4}),
-                json::array({0.3, 0.4, nullptr})     // Last value is null
-            })}
-        };
+                                  json::array({0.1, "invalid", 0.3}), // Middle value is string
+                                  json::array({0.2, 0.3, 0.4}),
+                                  json::array({0.3, 0.4, nullptr}) // Last value is null
+                              })}};
 
         json status = {{"bed_mesh", bed_mesh}};
         mock.dispatch_status_update(status);
@@ -1164,9 +1149,7 @@ TEST_CASE("MoonrakerClientMock bed mesh",
 // send_jsonrpc Tests
 // ============================================================================
 
-TEST_CASE("MoonrakerClientMock send_jsonrpc methods",
-          "[moonraker][mock][jsonrpc]") {
-
+TEST_CASE("MoonrakerClientMock send_jsonrpc methods", "[moonraker][mock][jsonrpc]") {
     SECTION("send_jsonrpc without params returns success") {
         MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
         REQUIRE(mock.send_jsonrpc("printer.info") == 0);
@@ -1190,8 +1173,8 @@ TEST_CASE("MoonrakerClientMock send_jsonrpc methods",
     SECTION("send_jsonrpc with error callback returns success") {
         MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
         json params = {};
-        REQUIRE(mock.send_jsonrpc("printer.info", params, [](json) {},
-                                  [](const MoonrakerError&) {}, 5000) == 0);
+        REQUIRE(mock.send_jsonrpc(
+                    "printer.info", params, [](json) {}, [](const MoonrakerError&) {}, 5000) == 0);
     }
 }
 
@@ -1201,7 +1184,6 @@ TEST_CASE("MoonrakerClientMock send_jsonrpc methods",
 
 TEST_CASE("MoonrakerClientMock guessing methods work with populated hardware",
           "[moonraker][mock][guessing]") {
-
     SECTION("guess_bed_heater returns heater_bed") {
         MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
         REQUIRE(mock.guess_bed_heater() == "heater_bed");
@@ -1632,8 +1614,7 @@ TEST_CASE("MoonrakerClientMock homed_axes in notifications",
 // Print Job Simulation Tests (Phase 1.6b)
 // ============================================================================
 
-TEST_CASE("MoonrakerClientMock SDCARD_PRINT_FILE starts print",
-          "[moonraker][mock][print][start]") {
+TEST_CASE("MoonrakerClientMock SDCARD_PRINT_FILE starts print", "[moonraker][mock][print][start]") {
     MockBehaviorTestFixture fixture;
 
     SECTION("SDCARD_PRINT_FILE sets state to printing and stores filename") {
@@ -1644,7 +1625,7 @@ TEST_CASE("MoonrakerClientMock SDCARD_PRINT_FILE starts print",
         // Start a print
         mock.gcode_script("SDCARD_PRINT_FILE FILENAME=test_model.gcode");
 
-        // Wait for notification with print_stats showing "printing" state
+        // Wait for notification with print_stats showing "printing" state and filename
         REQUIRE(fixture.wait_for_matching(
             [](const json& n) {
                 if (!n.contains("params") || !n["params"].is_array() || n["params"].empty()) {
@@ -1654,8 +1635,12 @@ TEST_CASE("MoonrakerClientMock SDCARD_PRINT_FILE starts print",
                 if (!status.contains("print_stats")) {
                     return false;
                 }
-                return status["print_stats"]["state"] == "printing" &&
-                       status["print_stats"]["filename"] == "test_model.gcode";
+                const json& ps = status["print_stats"];
+                // Check both state and filename exist before accessing
+                if (!ps.contains("state") || !ps.contains("filename")) {
+                    return false;
+                }
+                return ps["state"] == "printing" && ps["filename"] == "test_model.gcode";
             },
             2000));
 
@@ -1712,7 +1697,8 @@ TEST_CASE("MoonrakerClientMock PAUSE/RESUME state transitions",
                     return false;
                 }
                 const json& status = n["params"][0];
-                return status.contains("print_stats") && status["print_stats"]["state"] == "printing";
+                return status.contains("print_stats") &&
+                       status["print_stats"]["state"] == "printing";
             },
             2000));
 
@@ -1768,7 +1754,8 @@ TEST_CASE("MoonrakerClientMock PAUSE/RESUME state transitions",
                     return false;
                 }
                 const json& status = n["params"][0];
-                return status.contains("print_stats") && status["print_stats"]["state"] == "printing";
+                return status.contains("print_stats") &&
+                       status["print_stats"]["state"] == "printing";
             },
             2000));
 
@@ -1819,7 +1806,8 @@ TEST_CASE("MoonrakerClientMock CANCEL_PRINT resets to standby",
                     return false;
                 }
                 const json& status = n["params"][0];
-                return status.contains("print_stats") && status["print_stats"]["state"] == "printing";
+                return status.contains("print_stats") &&
+                       status["print_stats"]["state"] == "printing";
             },
             2000));
 
@@ -1835,7 +1823,8 @@ TEST_CASE("MoonrakerClientMock CANCEL_PRINT resets to standby",
                     return false;
                 }
                 const json& status = n["params"][0];
-                return status.contains("print_stats") && status["print_stats"]["state"] == "standby";
+                return status.contains("print_stats") &&
+                       status["print_stats"]["state"] == "standby";
             },
             3000)); // Longer timeout since we need to wait for cancelled->standby transition
 
@@ -1988,7 +1977,8 @@ TEST_CASE("MoonrakerClientMock M112 emergency stop sets error state",
                     return false;
                 }
                 const json& status = n["params"][0];
-                return status.contains("print_stats") && status["print_stats"]["state"] == "printing";
+                return status.contains("print_stats") &&
+                       status["print_stats"]["state"] == "printing";
             },
             2000));
 
@@ -2094,7 +2084,8 @@ TEST_CASE("MoonrakerClientMock BED_MESH_CALIBRATE generates new mesh",
                     return false;
                 }
                 const json& status = n["params"][0];
-                if (!status.contains("bed_mesh")) return false;
+                if (!status.contains("bed_mesh"))
+                    return false;
                 const json& bed_mesh = status["bed_mesh"];
                 return bed_mesh.contains("profile_name") &&
                        bed_mesh["profile_name"] == "custom_profile";
@@ -2134,10 +2125,10 @@ TEST_CASE("MoonrakerClientMock BED_MESH_PROFILE LOAD changes active profile",
                     return false;
                 }
                 const json& status = n["params"][0];
-                if (!status.contains("bed_mesh")) return false;
+                if (!status.contains("bed_mesh"))
+                    return false;
                 const json& bed_mesh = status["bed_mesh"];
-                return bed_mesh.contains("profile_name") &&
-                       bed_mesh["profile_name"] == "default";
+                return bed_mesh.contains("profile_name") && bed_mesh["profile_name"] == "default";
             },
             2000));
 

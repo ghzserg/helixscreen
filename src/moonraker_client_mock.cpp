@@ -219,6 +219,47 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type) : printer_type_(type)
     generate_mock_bed_mesh();
 }
 
+MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor)
+    : printer_type_(type) {
+    // Set speedup factor (clamped)
+    speedup_factor_.store(std::clamp(speedup_factor, 0.1, 10000.0));
+
+    spdlog::info("[MoonrakerClientMock] Created with printer type: {}, speedup: {}x",
+                 static_cast<int>(type), speedup_factor_.load());
+
+    // Populate hardware immediately (available for wizard without calling discover_printer())
+    populate_hardware();
+    spdlog::debug(
+        "[MoonrakerClientMock] Hardware populated: {} heaters, {} sensors, {} fans, {} LEDs",
+        heaters_.size(), sensors_.size(), fans_.size(), leds_.size());
+
+    // Generate synthetic bed mesh data
+    generate_mock_bed_mesh();
+}
+
+void MoonrakerClientMock::set_simulation_speedup(double factor) {
+    double clamped = std::clamp(factor, 0.1, 10000.0);
+    speedup_factor_.store(clamped);
+    spdlog::info("[MoonrakerClientMock] Simulation speedup set to {}x", clamped);
+}
+
+double MoonrakerClientMock::get_simulation_speedup() const {
+    return speedup_factor_.load();
+}
+
+int MoonrakerClientMock::get_current_layer() const {
+    std::lock_guard<std::mutex> lock(metadata_mutex_);
+    if (print_metadata_.layer_count == 0) {
+        return 0;
+    }
+    return static_cast<int>(print_progress_.load() * print_metadata_.layer_count);
+}
+
+int MoonrakerClientMock::get_total_layers() const {
+    std::lock_guard<std::mutex> lock(metadata_mutex_);
+    return static_cast<int>(print_metadata_.layer_count);
+}
+
 MoonrakerClientMock::~MoonrakerClientMock() {
     stop_temperature_simulation();
 }
@@ -616,6 +657,79 @@ int MoonrakerClientMock::send_jsonrpc(const std::string& method, const json& par
         return 0;
     }
 
+    // Handle print control API methods (delegate to unified internal handlers)
+    if (method == "printer.print.start") {
+        std::string filename;
+        if (params.contains("filename")) {
+            filename = params["filename"].get<std::string>();
+        }
+        if (!filename.empty()) {
+            if (start_print_internal(filename)) {
+                if (success_cb) {
+                    success_cb(json::object());
+                }
+            } else if (error_cb) {
+                MoonrakerError err;
+                err.type = MoonrakerErrorType::VALIDATION_ERROR;
+                err.message = "Failed to start print";
+                err.method = method;
+                error_cb(err);
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Missing filename parameter";
+            err.method = method;
+            error_cb(err);
+        }
+        return 0;
+    }
+
+    if (method == "printer.print.pause") {
+        if (pause_print_internal()) {
+            if (success_cb) {
+                success_cb(json::object());
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Cannot pause - not currently printing";
+            err.method = method;
+            error_cb(err);
+        }
+        return 0;
+    }
+
+    if (method == "printer.print.resume") {
+        if (resume_print_internal()) {
+            if (success_cb) {
+                success_cb(json::object());
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Cannot resume - not currently paused";
+            err.method = method;
+            error_cb(err);
+        }
+        return 0;
+    }
+
+    if (method == "printer.print.cancel") {
+        if (cancel_print_internal()) {
+            if (success_cb) {
+                success_cb(json::object());
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Cannot cancel - no active print";
+            err.method = method;
+            error_cb(err);
+        }
+        return 0;
+    }
+
     // Unimplemented methods - see docs/MOCK_CLIENT_IMPLEMENTATION_PLAN.md
     spdlog::warn("[MoonrakerClientMock] Method '{}' not implemented - callbacks not invoked",
                  method);
@@ -801,7 +915,7 @@ int MoonrakerClientMock::gcode_script(const std::string& gcode) {
         }
     }
 
-    // Parse print job commands
+    // Parse print job commands (delegate to unified internal handlers)
     // SDCARD_PRINT_FILE FILENAME=xxx - Start printing a file
     if (gcode.find("SDCARD_PRINT_FILE") != std::string::npos) {
         size_t filename_pos = gcode.find("FILENAME=");
@@ -812,39 +926,30 @@ int MoonrakerClientMock::gcode_script(const std::string& gcode) {
             std::string filename =
                 (end != std::string::npos) ? gcode.substr(start, end - start) : gcode.substr(start);
 
-            {
-                std::lock_guard<std::mutex> lock(print_mutex_);
-                print_filename_ = filename;
-            }
-            print_state_.store(1); // printing
-            print_progress_.store(0.0);
-            spdlog::info("[MoonrakerClientMock] Started print: {}", filename);
+            // Use unified internal handler
+            start_print_internal(filename);
         }
     }
     // PAUSE - Pause current print
     else if (gcode == "PAUSE" || gcode.find("PAUSE ") == 0) {
-        if (print_state_.load() == 1) { // Only pause if printing
-            print_state_.store(2);      // paused
-            spdlog::info("[MoonrakerClientMock] Print paused");
-        }
+        pause_print_internal();
     }
     // RESUME - Resume paused print
     else if (gcode == "RESUME" || gcode.find("RESUME ") == 0) {
-        if (print_state_.load() == 2) { // Only resume if paused
-            print_state_.store(1);      // printing
-            spdlog::info("[MoonrakerClientMock] Print resumed");
-        }
+        resume_print_internal();
     }
     // CANCEL_PRINT - Cancel current print
     else if (gcode == "CANCEL_PRINT" || gcode.find("CANCEL_PRINT ") == 0) {
-        print_state_.store(4); // cancelled
-        spdlog::info("[MoonrakerClientMock] Print cancelled");
-        // Note: Transition to standby is handled in simulation loop after brief delay
+        cancel_print_internal();
     }
     // M112 - Emergency stop
     else if (gcode.find("M112") != std::string::npos) {
+        print_phase_.store(MockPrintPhase::ERROR);
         print_state_.store(5); // error
+        extruder_target_.store(0.0);
+        bed_target_.store(0.0);
         spdlog::warn("[MoonrakerClientMock] Emergency stop (M112)!");
+        dispatch_print_state_notification("error");
     }
 
     // ========================================================================
@@ -1096,6 +1201,202 @@ std::string MoonrakerClientMock::get_print_state_string() const {
 }
 
 // ============================================================================
+// Unified Print Control (internal implementation)
+// ============================================================================
+
+bool MoonrakerClientMock::start_print_internal(const std::string& filename) {
+    // Build path to test G-code file
+    std::string full_path = std::string(TEST_GCODE_DIR) + "/" + filename;
+
+    // Extract metadata from G-code file
+    auto meta = gcode::extract_header_metadata(full_path);
+
+    // Populate simulation metadata
+    {
+        std::lock_guard<std::mutex> lock(metadata_mutex_);
+        print_metadata_.estimated_time_seconds =
+            (meta.estimated_time_seconds > 0) ? meta.estimated_time_seconds : 300.0;
+        print_metadata_.layer_count = (meta.layer_count > 0) ? meta.layer_count : 100;
+        print_metadata_.target_bed_temp =
+            (meta.first_layer_bed_temp > 0) ? meta.first_layer_bed_temp : 60.0;
+        print_metadata_.target_nozzle_temp =
+            (meta.first_layer_nozzle_temp > 0) ? meta.first_layer_nozzle_temp : 210.0;
+        print_metadata_.filament_mm = meta.filament_used_mm;
+    }
+
+    // Set temperature targets for preheat
+    double nozzle_target, bed_target;
+    {
+        std::lock_guard<std::mutex> lock(metadata_mutex_);
+        nozzle_target = print_metadata_.target_nozzle_temp;
+        bed_target = print_metadata_.target_bed_temp;
+    }
+    extruder_target_.store(nozzle_target);
+    bed_target_.store(bed_target);
+
+    // Set print filename
+    {
+        std::lock_guard<std::mutex> lock(print_mutex_);
+        print_filename_ = filename;
+    }
+
+    // Reset progress and timing
+    print_progress_.store(0.0);
+    total_pause_duration_sim_ = 0.0;
+    preheat_start_time_ = std::chrono::steady_clock::now();
+    printing_start_time_.reset();
+
+    // Transition to PREHEAT phase
+    print_phase_.store(MockPrintPhase::PREHEAT);
+    print_state_.store(1); // "printing" for backward compatibility
+
+    spdlog::info("[MoonrakerClientMock] Starting print '{}': est_time={:.0f}s, layers={}, "
+                 "nozzle={:.0f}°C, bed={:.0f}°C",
+                 filename, meta.estimated_time_seconds, meta.layer_count, nozzle_target,
+                 bed_target);
+
+    dispatch_print_state_notification("printing");
+    return true;
+}
+
+bool MoonrakerClientMock::pause_print_internal() {
+    MockPrintPhase current_phase = print_phase_.load();
+
+    // Can only pause from PRINTING or PREHEAT
+    if (current_phase != MockPrintPhase::PRINTING && current_phase != MockPrintPhase::PREHEAT) {
+        spdlog::warn("[MoonrakerClientMock] Cannot pause - not currently printing (phase={})",
+                     static_cast<int>(current_phase));
+        return false;
+    }
+
+    // Record pause start time
+    pause_start_time_ = std::chrono::steady_clock::now();
+
+    // Transition to PAUSED
+    print_phase_.store(MockPrintPhase::PAUSED);
+    print_state_.store(2); // "paused" for backward compatibility
+
+    spdlog::info("[MoonrakerClientMock] Print paused at {:.1f}% progress",
+                 print_progress_.load() * 100.0);
+
+    dispatch_print_state_notification("paused");
+    return true;
+}
+
+bool MoonrakerClientMock::resume_print_internal() {
+    if (print_phase_.load() != MockPrintPhase::PAUSED) {
+        spdlog::warn("[MoonrakerClientMock] Cannot resume - not currently paused");
+        return false;
+    }
+
+    // Calculate pause duration and add to total
+    auto pause_real = std::chrono::steady_clock::now() - pause_start_time_;
+    double pause_sim = std::chrono::duration<double>(pause_real).count() * speedup_factor_.load();
+    total_pause_duration_sim_ += pause_sim;
+
+    // Resume to PRINTING phase (skip PREHEAT since temps should still be maintained)
+    print_phase_.store(MockPrintPhase::PRINTING);
+    print_state_.store(1); // "printing" for backward compatibility
+
+    spdlog::info("[MoonrakerClientMock] Print resumed (pause duration: {:.1f}s simulated)",
+                 pause_sim);
+
+    dispatch_print_state_notification("printing");
+    return true;
+}
+
+bool MoonrakerClientMock::cancel_print_internal() {
+    MockPrintPhase current_phase = print_phase_.load();
+
+    // Can cancel from any non-idle phase
+    if (current_phase == MockPrintPhase::IDLE) {
+        spdlog::warn("[MoonrakerClientMock] Cannot cancel - no active print");
+        return false;
+    }
+
+    // Set targets to 0 (begin cooldown)
+    extruder_target_.store(0.0);
+    bed_target_.store(0.0);
+
+    // Transition to CANCELLED
+    print_phase_.store(MockPrintPhase::CANCELLED);
+    print_state_.store(4); // "cancelled" for backward compatibility
+
+    spdlog::info("[MoonrakerClientMock] Print cancelled at {:.1f}% progress",
+                 print_progress_.load() * 100.0);
+
+    dispatch_print_state_notification("cancelled");
+    return true;
+}
+
+// ============================================================================
+// Simulation Helpers
+// ============================================================================
+
+bool MoonrakerClientMock::is_temp_stable(double current, double target, double tolerance) const {
+    return std::abs(current - target) <= tolerance;
+}
+
+void MoonrakerClientMock::advance_print_progress(double dt_simulated) {
+    double total_time;
+    {
+        std::lock_guard<std::mutex> lock(metadata_mutex_);
+        total_time = print_metadata_.estimated_time_seconds;
+    }
+
+    if (total_time <= 0) {
+        return;
+    }
+
+    double rate = 1.0 / total_time; // Progress per simulated second
+    double current = print_progress_.load();
+    print_progress_.store(std::min(1.0, current + rate * dt_simulated));
+}
+
+void MoonrakerClientMock::dispatch_print_state_notification(const std::string& state) {
+    json notification_status = {{"print_stats", {{"state", state}}}};
+    dispatch_status_update(notification_status);
+}
+
+void MoonrakerClientMock::dispatch_enhanced_print_status() {
+    double progress = print_progress_.load();
+    int current_layer = get_current_layer();
+    int total_layers;
+    double total_time;
+    {
+        std::lock_guard<std::mutex> lock(metadata_mutex_);
+        total_layers = static_cast<int>(print_metadata_.layer_count);
+        total_time = print_metadata_.estimated_time_seconds;
+    }
+
+    double elapsed = progress * total_time;
+
+    std::string filename;
+    {
+        std::lock_guard<std::mutex> lock(print_mutex_);
+        filename = print_filename_;
+    }
+
+    MockPrintPhase phase = print_phase_.load();
+    bool is_active = (phase == MockPrintPhase::PRINTING || phase == MockPrintPhase::PREHEAT);
+
+    json status = {{"print_stats",
+                    {{"state", get_print_state_string()},
+                     {"filename", filename},
+                     {"print_duration", elapsed},
+                     {"total_duration", elapsed},
+                     {"filament_used", 0.0},
+                     {"message", ""},
+                     {"info", {{"current_layer", current_layer}, {"total_layer", total_layers}}}}},
+                   {"virtual_sdcard",
+                    {{"file_path", filename}, {"progress", progress}, {"is_active", is_active}}}};
+
+    // Note: dispatch_status_update called separately in the simulation loop
+    // This function builds the enhanced status object
+    dispatch_status_update(status);
+}
+
+// ============================================================================
 // Temperature Simulation
 // ============================================================================
 
@@ -1214,10 +1515,14 @@ void MoonrakerClientMock::stop_temperature_simulation() {
 }
 
 void MoonrakerClientMock::temperature_simulation_loop() {
-    const double dt = SIMULATION_INTERVAL_MS / 1000.0; // Convert to seconds
+    const double base_dt = SIMULATION_INTERVAL_MS / 1000.0; // Base time step (0.5s)
 
     while (simulation_running_.load()) {
         uint32_t tick = tick_count_.fetch_add(1);
+
+        // Get speedup factor and calculate effective time step
+        double speedup = speedup_factor_.load();
+        double effective_dt = base_dt * speedup; // Simulated time step
 
         // Get current temperature state
         double ext_temp = extruder_temp_.load();
@@ -1225,102 +1530,138 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         double bed_temp_val = bed_temp_.load();
         double bed_target_val = bed_target_.load();
 
-        // Simulate extruder temperature change
+        // Simulate extruder temperature change (scaled by speedup)
         if (ext_target > 0) {
             if (ext_temp < ext_target) {
-                ext_temp += EXTRUDER_HEAT_RATE * dt;
+                ext_temp += EXTRUDER_HEAT_RATE * effective_dt;
                 if (ext_temp > ext_target)
                     ext_temp = ext_target;
             } else if (ext_temp > ext_target) {
-                ext_temp -= EXTRUDER_COOL_RATE * dt;
+                ext_temp -= EXTRUDER_COOL_RATE * effective_dt;
                 if (ext_temp < ext_target)
                     ext_temp = ext_target;
             }
         } else {
             if (ext_temp > ROOM_TEMP) {
-                ext_temp -= EXTRUDER_COOL_RATE * dt;
+                ext_temp -= EXTRUDER_COOL_RATE * effective_dt;
                 if (ext_temp < ROOM_TEMP)
                     ext_temp = ROOM_TEMP;
             }
         }
         extruder_temp_.store(ext_temp);
 
-        // Simulate bed temperature change
+        // Simulate bed temperature change (scaled by speedup)
         if (bed_target_val > 0) {
             if (bed_temp_val < bed_target_val) {
-                bed_temp_val += BED_HEAT_RATE * dt;
+                bed_temp_val += BED_HEAT_RATE * effective_dt;
                 if (bed_temp_val > bed_target_val)
                     bed_temp_val = bed_target_val;
             } else if (bed_temp_val > bed_target_val) {
-                bed_temp_val -= BED_COOL_RATE * dt;
+                bed_temp_val -= BED_COOL_RATE * effective_dt;
                 if (bed_temp_val < bed_target_val)
                     bed_temp_val = bed_target_val;
             }
         } else {
             if (bed_temp_val > ROOM_TEMP) {
-                bed_temp_val -= BED_COOL_RATE * dt;
+                bed_temp_val -= BED_COOL_RATE * effective_dt;
                 if (bed_temp_val < ROOM_TEMP)
                     bed_temp_val = ROOM_TEMP;
             }
         }
         bed_temp_.store(bed_temp_val);
 
-        // Get current position (set by G-code commands, not auto-simulated)
+        // ========== Phase-Based Print Simulation ==========
+        MockPrintPhase phase = print_phase_.load();
+
+        switch (phase) {
+        case MockPrintPhase::IDLE:
+            // Nothing special - temps cool to room temp (handled above)
+            break;
+
+        case MockPrintPhase::PREHEAT:
+            // Check if both extruder and bed have reached target temps
+            if (is_temp_stable(ext_temp, ext_target) &&
+                is_temp_stable(bed_temp_val, bed_target_val)) {
+                // Transition to PRINTING phase
+                print_phase_.store(MockPrintPhase::PRINTING);
+                printing_start_time_ = std::chrono::steady_clock::now();
+                spdlog::info("[MoonrakerClientMock] Preheat complete - starting print");
+            }
+            break;
+
+        case MockPrintPhase::PRINTING:
+            // Advance print progress based on file-estimated duration
+            advance_print_progress(effective_dt);
+
+            // Check for completion
+            if (print_progress_.load() >= 1.0) {
+                print_phase_.store(MockPrintPhase::COMPLETE);
+                print_state_.store(3); // "complete" for backward compatibility
+                extruder_target_.store(0.0);
+                bed_target_.store(0.0);
+                spdlog::info("[MoonrakerClientMock] Print complete!");
+                dispatch_print_state_notification("complete");
+            }
+            break;
+
+        case MockPrintPhase::PAUSED:
+            // Temps maintained (targets unchanged), no progress advance
+            break;
+
+        case MockPrintPhase::COMPLETE:
+        case MockPrintPhase::CANCELLED:
+            // Cooling down - transition to IDLE when cool enough
+            if (ext_temp < 50.0 && bed_temp_val < 35.0) {
+                print_phase_.store(MockPrintPhase::IDLE);
+                print_state_.store(0); // "standby" for backward compatibility
+                {
+                    std::lock_guard<std::mutex> lock(print_mutex_);
+                    print_filename_.clear();
+                }
+                print_progress_.store(0.0);
+                {
+                    std::lock_guard<std::mutex> lock(metadata_mutex_);
+                    print_metadata_.reset();
+                }
+                spdlog::info("[MoonrakerClientMock] Cooldown complete - returning to idle");
+                dispatch_print_state_notification("standby");
+            }
+            break;
+
+        case MockPrintPhase::ERROR:
+            // Stay in error state until explicitly cleared (via new print start)
+            break;
+        }
+
+        // ========== Position and Motion State ==========
         double x = pos_x_.load();
         double y = pos_y_.load();
         double z = pos_z_.load();
 
-        // Get homed_axes with thread safety
         std::string homed;
         {
             std::lock_guard<std::mutex> lock(homed_axes_mutex_);
             homed = homed_axes_;
         }
 
-        // Simulate speed/flow oscillation (90-110%)
-        int speed = 100 + static_cast<int>(10.0 * std::sin(tick / 20.0));
-        int flow = 100 + static_cast<int>(5.0 * std::cos(tick / 30.0));
+        // Simulate speed/flow oscillation (90-110%) - only during printing
+        int speed = 100;
+        int flow = 100;
+        if (phase == MockPrintPhase::PRINTING) {
+            speed = 100 + static_cast<int>(10.0 * std::sin(tick / 20.0));
+            flow = 100 + static_cast<int>(5.0 * std::cos(tick / 30.0));
+        }
         speed_factor_.store(speed);
         flow_factor_.store(flow);
 
-        // Simulate fan ramping up (0-255 over 60 ticks)
-        int fan = std::min(255, static_cast<int>((tick / 60.0) * 255.0));
+        // Simulate fan ramping up during print (0-255 over 30 simulated seconds)
+        int fan = 0;
+        if (phase == MockPrintPhase::PRINTING || phase == MockPrintPhase::PREHEAT) {
+            fan = std::min(255, static_cast<int>(print_progress_.load() * 255.0));
+        }
         fan_speed_.store(fan);
 
-        // Simulate print progress
-        int current_print_state = print_state_.load();
-        double progress = print_progress_.load();
-
-        // Static counter for cancelled->standby transition delay
-        static int cancelled_ticks = 0;
-
-        if (current_print_state == 1) { // printing
-            // Increment progress by small amount each tick (complete in ~100 ticks = 50 seconds)
-            progress += 0.01;
-            if (progress >= 1.0) {
-                progress = 1.0;
-                print_state_.store(3); // complete
-                spdlog::info("[MoonrakerClientMock] Print complete");
-            }
-            print_progress_.store(progress);
-        } else if (current_print_state == 4) { // cancelled
-            // Transition to standby after 2 ticks (1 second)
-            cancelled_ticks++;
-            if (cancelled_ticks >= 2) {
-                print_state_.store(0); // standby
-                {
-                    std::lock_guard<std::mutex> lock(print_mutex_);
-                    print_filename_.clear();
-                }
-                print_progress_.store(0.0);
-                cancelled_ticks = 0;
-                spdlog::info("[MoonrakerClientMock] Print state reset to standby after cancel");
-            }
-        } else {
-            cancelled_ticks = 0; // Reset counter if not in cancelled state
-        }
-
-        // Get print state string and filename with thread safety
+        // ========== Build and Dispatch Status Notification ==========
         std::string print_state_str = get_print_state_string();
         std::string filename;
         {
@@ -1328,20 +1669,40 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             filename = print_filename_;
         }
 
-        // Build notification JSON (same format as real Moonraker)
-        // Real Moonraker sends: {"params": [status_object, eventtime]}
+        // Get layer info for enhanced status
+        int current_layer = get_current_layer();
+        int total_layers = get_total_layers();
+        double total_time;
+        {
+            std::lock_guard<std::mutex> lock(metadata_mutex_);
+            total_time = print_metadata_.estimated_time_seconds;
+        }
+        double progress = print_progress_.load();
+        double elapsed = progress * total_time;
+
+        // Build notification JSON (enhanced Moonraker format with layer info)
         json status_obj = {
             {"extruder", {{"temperature", ext_temp}, {"target", ext_target}}},
             {"heater_bed", {{"temperature", bed_temp_val}, {"target", bed_target_val}}},
             {"toolhead", {{"position", {x, y, z, 0.0}}, {"homed_axes", homed}}},
             {"gcode_move", {{"speed_factor", speed / 100.0}, {"extrude_factor", flow / 100.0}}},
             {"fan", {{"speed", fan / 255.0}}},
-            {"print_stats", {{"state", print_state_str}, {"filename", filename}}},
-            {"virtual_sdcard", {{"progress", print_progress_.load()}}}};
-        json notification = {
-            {"method", "notify_status_update"},
-            {"params", json::array({status_obj, tick * dt})} // [status, eventtime]
-        };
+            {"print_stats",
+             {{"state", print_state_str},
+              {"filename", filename},
+              {"print_duration", elapsed},
+              {"total_duration", elapsed},
+              {"filament_used", 0.0},
+              {"message", ""},
+              {"info", {{"current_layer", current_layer}, {"total_layer", total_layers}}}}},
+            {"virtual_sdcard",
+             {{"file_path", filename},
+              {"progress", progress},
+              {"is_active",
+               phase == MockPrintPhase::PRINTING || phase == MockPrintPhase::PREHEAT}}}};
+
+        json notification = {{"method", "notify_status_update"},
+                             {"params", json::array({status_obj, tick * base_dt})}};
 
         // Push notification through all registered callbacks
         std::vector<std::function<void(json)>> callbacks_copy;
@@ -1355,7 +1716,7 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             }
         }
 
-        // Sleep until next update
+        // Sleep wall-clock interval (unchanged by speedup factor)
         std::this_thread::sleep_for(std::chrono::milliseconds(SIMULATION_INTERVAL_MS));
     }
 }
