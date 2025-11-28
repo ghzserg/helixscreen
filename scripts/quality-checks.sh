@@ -4,16 +4,22 @@
 #
 # Quality checks script - single source of truth for pre-commit and CI
 # Usage:
-#   ./scripts/quality-checks.sh           # Check all files (for CI)
-#   ./scripts/quality-checks.sh --staged-only  # Check only staged files (for pre-commit)
+#   ./scripts/quality-checks.sh                      # Check all files (for CI)
+#   ./scripts/quality-checks.sh --staged-only        # Check only staged files (for pre-commit)
+#   ./scripts/quality-checks.sh --auto-fix           # Auto-fix formatting issues
+#   ./scripts/quality-checks.sh --staged-only --auto-fix  # Fix staged files
 
 set -e
 
 # Parse arguments
 STAGED_ONLY=false
-if [ "$1" = "--staged-only" ]; then
-  STAGED_ONLY=true
-fi
+AUTO_FIX=false
+for arg in "$@"; do
+  case "$arg" in
+    --staged-only) STAGED_ONLY=true ;;
+    --auto-fix) AUTO_FIX=true ;;
+  esac
+done
 
 # Change to repo root
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -35,20 +41,16 @@ echo ""
 echo "📝 Checking copyright headers..."
 
 if [ "$STAGED_ONLY" = true ]; then
-  # Pre-commit mode: check only staged files
+  # Pre-commit mode: check only staged files (git-ignored files can't be staged)
   FILES=$(git diff --cached --name-only --diff-filter=ACM | \
     grep -E '\.(cpp|c|h|mm)$' | \
-    grep -v '^libhv/' | \
-    grep -v '^lvgl/' | \
+    grep -v '^lib/' | \
     grep -v '^lv_conf\.h$' | \
-    grep -v '^spdlog/' | \
-    grep -v '^tinygl/' | \
-    grep -v '^wpa_supplicant/' | \
     grep -v '^node_modules/' | \
     grep -v '^build/' | \
     grep -v '/\.' || true)
 else
-  # CI mode: check all files in src/ and include/ (tinygl is excluded as third-party)
+  # CI mode: check all files in src/ and include/ (lib/ is excluded as third-party)
   FILES=$(find src include -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.mm" 2>/dev/null | \
     grep -v '/\.' | \
     grep -v '^lv_conf\.h$' || true)
@@ -160,8 +162,8 @@ echo ""
 # Phase 2: Code Quality Checks
 # ====================================================================
 
-# Code Formatting Check (clang-format)
-echo "🎨 Checking code formatting..."
+# Code Formatting Check (clang-format) - BLOCKING
+echo "🎨 Checking code formatting (clang-format)..."
 if [ -n "$FILES" ]; then
   if command -v clang-format >/dev/null 2>&1; then
     if [ -f ".clang-format" ]; then
@@ -169,19 +171,28 @@ if [ -n "$FILES" ]; then
       for file in $FILES; do
         if [ -f "$file" ]; then
           # Check if file needs formatting
-          FORMATTED=$(clang-format "$file")
-          ORIGINAL=$(cat "$file")
-          if [ "$FORMATTED" != "$ORIGINAL" ]; then
+          if ! clang-format --dry-run --Werror "$file" >/dev/null 2>&1; then
             FORMAT_ISSUES="$FORMAT_ISSUES $file"
+            if [ "$AUTO_FIX" = true ]; then
+              clang-format -i "$file"
+              echo "   ✓ Auto-formatted: $file"
+            fi
           fi
         fi
       done
 
       if [ -n "$FORMAT_ISSUES" ]; then
-        echo "⚠️  Files need formatting:"
-        echo "$FORMAT_ISSUES" | tr ' ' '\n' | grep -v '^$' | sed 's/^/   /'
-        echo "ℹ️  Fix with: clang-format -i <file>"
-        echo "ℹ️  Or run: make format (if available)"
+        if [ "$AUTO_FIX" = true ]; then
+          echo "✅ Auto-formatted files - re-stage them before committing"
+          echo "   Run: git add -u"
+        else
+          echo "❌ Files need formatting:"
+          echo "$FORMAT_ISSUES" | tr ' ' '\n' | grep -v '^$' | sed 's/^/   /'
+          echo ""
+          echo "ℹ️  Fix with: clang-format -i <file>"
+          echo "ℹ️  Or run: ./scripts/quality-checks.sh --auto-fix"
+          EXIT_CODE=1
+        fi
       else
         echo "✅ All files properly formatted"
       fi
@@ -189,7 +200,7 @@ if [ -n "$FILES" ]; then
       echo "ℹ️  No .clang-format file found - skipping format check"
     fi
   else
-    echo "ℹ️  clang-format not found - skipping format check"
+    echo "⚠️  clang-format not found - skipping format check"
     echo "   Install with: brew install clang-format (macOS) or apt install clang-format (Linux)"
   fi
 else
