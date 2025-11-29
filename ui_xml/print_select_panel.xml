@@ -28,12 +28,14 @@
         <icon name="view_toggle_icon" src="mat_list" size="sm" variant="primary"/>
       </lv_button>
     </lv_obj>
-    <!-- Card view container (default visible) -->
+    <!-- Card view container (visible when view_mode == 0) -->
     <lv_obj name="card_view_container" width="100%" height="100%" style_pad_all="0" style_pad_left="#padding_small" style_pad_right="#padding_small" style_pad_gap="#padding_normal" style_border_width="0" flex_flow="row_wrap" scrollable="true" flex_grow="1">
+      <lv_obj-bind_flag_if_eq subject="print_select_view_mode" flag="hidden" ref_value="1"/>
       <!-- Cards will be dynamically added here via C++ -->
     </lv_obj>
-    <!-- List view container (initially hidden) -->
-    <lv_obj name="list_view_container" width="100%" height="100%" style_pad_all="0" style_border_width="0" flex_flow="column" flex_grow="1" hidden="true">
+    <!-- List view container (visible when view_mode == 1) -->
+    <lv_obj name="list_view_container" width="100%" height="100%" style_pad_all="0" style_border_width="0" flex_flow="column" flex_grow="1">
+      <lv_obj-bind_flag_if_eq subject="print_select_view_mode" flag="hidden" ref_value="0"/>
       <!-- Column headers -->
       <lv_obj name="list_header" width="100%" height="#list_header_height" style_border_width="0" style_border_side="bottom" style_pad_left="#nav_padding" style_pad_right="#nav_padding" style_pad_top="0" style_pad_bottom="0" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center">
         <!-- Filename header (flex-grow) -->

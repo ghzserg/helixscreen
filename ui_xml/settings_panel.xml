@@ -26,7 +26,7 @@
       <text_small text="Coming soon"/>
     </ui_card>
     <!-- Card 3: Bed Mesh Calibration -->
-    <ui_card name="card_bed_mesh" width="#launcher_card_width" height="#launcher_card_height" flex_flow="column" flex_main_place="center" flex_cross_place="center" style_radius="#border_radius_large" style_pad_all="#launcher_card_padding">
+    <ui_card name="card_bed_mesh" width="#launcher_card_width" height="#launcher_card_height" flex_flow="column" flex_main_place="center" flex_cross_place="center" style_radius="#border_radius_large" style_pad_all="#launcher_card_padding" clickable="true">
       <!-- Active card -->
       <!-- Icon -->
       <icon src="mat_bedmesh" variant="accent" style_pad_bottom="#launcher_card_icon_padding"/>

@@ -88,9 +88,8 @@ void SettingsPanel::setup_card_handlers() {
     lv_obj_add_event_cb(card_printer_info, on_printer_info_clicked, LV_EVENT_CLICKED, this);
     lv_obj_add_event_cb(card_about, on_about_clicked, LV_EVENT_CLICKED, this);
 
-    // Make only active cards clickable (bed_mesh is the only active one for now)
-    lv_obj_add_flag(card_bed_mesh, LV_OBJ_FLAG_CLICKABLE);
-    // Others are disabled placeholders - no clickable flag
+    // clickable flag for card_bed_mesh is now declared in XML (settings_panel.xml)
+    // Other cards intentionally left non-clickable (placeholders)
 
     spdlog::debug("[{}] Card handlers wired", get_name());
 }

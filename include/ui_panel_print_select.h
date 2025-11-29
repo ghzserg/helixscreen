@@ -26,12 +26,13 @@
  * - Delete confirmation dialog
  * - MoonrakerAPI integration for file listing, deletion, and print start
  *
- * ## Reactive Subjects (5):
+ * ## Reactive Subjects (6):
  * - selected_filename - Currently selected file name
  * - selected_thumbnail - Thumbnail path for detail view
  * - selected_print_time - Formatted print time string
  * - selected_filament_weight - Formatted filament weight string
  * - detail_view_visible - Controls detail overlay visibility
+ * - print_select_view_mode - View mode (0=CARD, 1=LIST) - XML bindings control visibility
  *
  * ## Migration Notes:
  * This is the largest panel in the codebase (1167 lines). Key patterns:
@@ -322,6 +323,9 @@ class PrintSelectPanel : public PanelBase {
     char selected_filament_weight_buffer_[32];
 
     lv_subject_t detail_view_visible_subject_;
+
+    /// View mode subject: 0 = CARD, 1 = LIST (XML bindings control visibility)
+    lv_subject_t view_mode_subject_;
 
     //
     // === Panel State ===

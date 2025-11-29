@@ -102,13 +102,8 @@ void ControlsPanel::setup_card_handlers() {
     lv_obj_add_event_cb(card_fan, on_fan_clicked, LV_EVENT_CLICKED, this);
     lv_obj_add_event_cb(card_motors, on_motors_clicked, LV_EVENT_CLICKED, this);
 
-    // Make cards clickable (except fan which is Phase 2 placeholder)
-    lv_obj_add_flag(card_motion, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_flag(card_nozzle_temp, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_flag(card_bed_temp, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_flag(card_extrusion, LV_OBJ_FLAG_CLICKABLE);
-    // card_fan is disabled (Phase 2), don't make clickable
-    lv_obj_add_flag(card_motors, LV_OBJ_FLAG_CLICKABLE);
+    // clickable flags are now declared in XML (controls_panel.xml)
+    // card_fan intentionally left non-clickable (Phase 2 placeholder)
 
     spdlog::debug("[{}] Card handlers wired", get_name());
 }

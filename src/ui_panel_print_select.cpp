@@ -130,6 +130,9 @@ void PrintSelectPanel::init_subjects() {
     // Initialize detail view visibility subject (0 = hidden, 1 = visible)
     UI_SUBJECT_INIT_AND_REGISTER_INT(detail_view_visible_subject_, 0, "detail_view_visible");
 
+    // Initialize view mode subject (0 = CARD, 1 = LIST) - XML bindings control container visibility
+    UI_SUBJECT_INIT_AND_REGISTER_INT(view_mode_subject_, 0, "print_select_view_mode");
+
     subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized", get_name());
 }
@@ -222,8 +225,9 @@ void PrintSelectPanel::toggle_view() {
     if (current_view_mode_ == PrintSelectViewMode::CARD) {
         // Switch to list view
         current_view_mode_ = PrintSelectViewMode::LIST;
-        lv_obj_add_flag(card_view_container_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_remove_flag(list_view_container_, LV_OBJ_FLAG_HIDDEN);
+
+        // Update reactive subject - XML bindings handle container visibility
+        lv_subject_set_int(&view_mode_subject_, 1);
 
         // Update icon to show grid_view (indicates you can switch back to card view)
         const void* grid_icon = lv_xml_get_image(NULL, "mat_grid_view");
@@ -234,8 +238,9 @@ void PrintSelectPanel::toggle_view() {
     } else {
         // Switch to card view
         current_view_mode_ = PrintSelectViewMode::CARD;
-        lv_obj_remove_flag(card_view_container_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(list_view_container_, LV_OBJ_FLAG_HIDDEN);
+
+        // Update reactive subject - XML bindings handle container visibility
+        lv_subject_set_int(&view_mode_subject_, 0);
 
         // Update icon to show list (indicates you can switch to list view)
         const void* list_icon = lv_xml_get_image(NULL, "mat_list");
