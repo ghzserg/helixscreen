@@ -1,5 +1,23 @@
 # LVGL 9 XML UI Prototype - Development Roadmap
 
+**Last Updated:** 2025-11-28
+
+---
+
+## 🎯 Current Priorities
+
+1. **Phase 13:** Complete G-code ops detection and modification
+2. **Phase 11:** Finish wizard connection/summary screens
+3. **Phase 8:** Implement thumbnail HTTP downloads
+4. **Phase 8:** File upload functionality
+5. **Phase 12:** Production readiness
+
+**Completed Phases:** 1, 2, 3, 4, 14
+**Mostly Complete:** 5, 7, 8
+**In Progress:** 6, 9, 10, 11, 13
+
+---
+
 ## ✅ Phase 1: Foundation (COMPLETED)
 
 - [x] LVGL 9.3 setup with XML support
@@ -117,11 +135,11 @@
 
 ---
 
-## 🎮 Phase 5: Controls Panel (IN PROGRESS)
+## ✅ Phase 5: Controls Panel (MOSTLY COMPLETE)
 
 **Priority: High** - Manual printer control with Bambu X1C-style sub-screens
 
-**Status:** Launcher Complete (Phase 1), Sub-screens Pending
+**Status:** Motion, Nozzle Temp, Bed Temp, Extrusion screens complete. Fan control pending.
 
 ### Phase 1: Launcher Panel ✅ COMPLETE (2025-10-12 Night)
 
@@ -178,46 +196,46 @@
 
 ---
 
-### Phase 3: Motion Sub-Screen (NEXT)
+### Phase 3: Motion Sub-Screen ✅ COMPLETE (2025-11-15)
 
-- [ ] **Movement Controls**
-  - [ ] Button grid jog pad (3×3 grid with center home)
-  - [ ] Z-axis buttons (↑10, ↑1, ↓1, ↓10)
-  - [ ] Distance selector (0.1mm, 1mm, 10mm, 100mm radio buttons)
-  - [ ] Real-time position display (X/Y/Z with reactive subjects)
-  - [ ] Home buttons (All, X, Y, Z)
-  - [ ] Back button navigation
+- [x] **Movement Controls**
+  - [x] Button grid jog pad (3×3 grid with center home)
+  - [x] Z-axis buttons (↑10, ↑1, ↓1, ↓10)
+  - [x] Distance selector (0.1mm, 1mm, 10mm, 100mm radio buttons)
+  - [x] Real-time position display (X/Y/Z with reactive subjects)
+  - [x] Home buttons (All, X, Y, Z)
+  - [x] Back button navigation
+  - [x] Wired to Moonraker gcode_script() API
 
-### Phase 4: Temperature Sub-Screens (PENDING)
+### Phase 4: Temperature Sub-Screens ✅ COMPLETE (2025-11-15)
 
-- [ ] **Nozzle Temperature Screen**
-  - [ ] Current/Target temperature display
-  - [ ] Preset buttons (Off, PLA 210°, PETG 240°, ABS 250°)
-  - [ ] Custom button opens numeric keypad
-  - [ ] Nozzle visualization graphic
-  - [ ] Confirm button with green styling
-  - [ ] Back button navigation
+- [x] **Nozzle Temperature Screen**
+  - [x] Current/Target temperature display with live updates
+  - [x] Preset buttons (Off, PLA 210°, PETG 240°, ABS 250°)
+  - [x] Custom button opens numeric keypad
+  - [x] Temperature graph with real-time data
+  - [x] Confirm button with green styling
+  - [x] Back button navigation
 
-- [ ] **Heatbed Temperature Screen**
-  - [ ] Current/Target temperature display
-  - [ ] Preset buttons (Off, PLA 60°, PETG 80°, ABS 100°)
-  - [ ] Custom button opens numeric keypad
-  - [ ] Bed visualization graphic
-  - [ ] Confirm button with green styling
-  - [ ] Back button navigation
+- [x] **Heatbed Temperature Screen**
+  - [x] Current/Target temperature display with live updates
+  - [x] Preset buttons (Off, PLA 60°, PETG 80°, ABS 100°)
+  - [x] Custom button opens numeric keypad
+  - [x] Temperature graph with real-time data
+  - [x] Confirm button with green styling
+  - [x] Back button navigation
 
-### Phase 5: Extrusion Sub-Screen (PENDING)
+### Phase 5: Extrusion Sub-Screen ✅ COMPLETE (2025-11-15)
 
-- [ ] **Extrude/Retract Controls**
-  - [ ] Amount selector (5mm, 10mm, 25mm, 50mm radio buttons)
-  - [ ] Extrude button (green, icon + text)
-  - [ ] Retract button (orange, icon + text)
-  - [ ] Temperature status card (nozzle temp with checkmark/warning)
-  - [ ] Safety warning when nozzle < 170°C
-  - [ ] Extruder visualization graphic
-  - [ ] Back button navigation
+- [x] **Extrude/Retract Controls**
+  - [x] Amount selector (5mm, 10mm, 25mm, 50mm radio buttons)
+  - [x] Extrude button (green, icon + text)
+  - [x] Retract button (orange, icon + text)
+  - [x] Temperature status card (nozzle temp with checkmark/warning)
+  - [x] Safety warning when nozzle < 170°C
+  - [x] Back button navigation
 
-### Phase 6: Advanced Features (FUTURE)
+### Phase 6: Advanced Features (PENDING)
 
 - [ ] **Fan Control Sub-Screen**
   - [ ] Part cooling fan slider (0-100%)
@@ -243,13 +261,13 @@
   - Reactive tab switching
   - File list updates per storage source
 
-- [~] **Print Status Panel** - Active print monitoring ✅ Logic / ⚠️ UI needs redesign
-  - ✅ Progress bar with mock simulation (0-100%)
+- [x] **Print Status Panel** ✅ COMPLETE (2025-11-18)
+  - ✅ Progress bar with real Moonraker data
   - ✅ Print time/remaining time with reactive updates
-  - ✅ Bed/nozzle temperatures with reactive updates
-  - ✅ Pause/Resume/Cancel/Tune buttons (functional)
+  - ✅ Bed/nozzle temperatures with live updates from printer
+  - ✅ Pause/Resume/Cancel buttons (wired to Moonraker API)
   - ✅ Wired to Print button on file detail view
-  - ⚠️ **UI layout broken** - overlapping elements, poor spacing (Priority 1)
+  - ✅ Responsive flex layout (fixed previous overlap issues)
 
 - [ ] **Filament Panel** - Filament management
   - Load/unload controls
@@ -282,24 +300,25 @@
   - Print progress widget
   - Status badge component
 
-- [ ] **Additional Modal Patterns**
-  - Error message dialogs
-  - Loading indicators
-  - Toast/snackbar notifications
+- [x] **Additional Modal Patterns** ✅ PARTIALLY COMPLETE
+  - [x] ModalBase RAII class for safe lifecycle management (2025-11-17)
+  - [x] Toast/snackbar notifications - floating design, top-right position (2025-11-27)
+  - [ ] Error message dialogs
+  - [ ] Loading indicators
 
 - [ ] **Lists and Scrolling**
   - Virtual scrolling for large lists (100+ items)
   - Settings menu items
   - Log viewer with auto-scroll
 
-## 🔗 Phase 7: Panel Transitions & Polish (FUTURE)
+## 🔗 Phase 7: Panel Transitions & Polish (PARTIALLY COMPLETE)
 
 **Priority: Low** - Visual refinement and animations
 
-- [ ] **Panel Transitions**
-  - Fade in/out animations
-  - Slide animations
-  - Proper cleanup when switching panels
+- [x] **Panel Transitions** ✅ PARTIALLY COMPLETE (2025-11-18)
+  - [x] Slide animations for overlay panels
+  - [ ] Fade in/out animations
+  - [x] Proper cleanup when switching panels (via PanelBase)
 
 - [ ] **Button Feedback**
   - Navbar button press effects
@@ -359,10 +378,11 @@
   - [ ] Upload files
   - [ ] Thumbnail HTTP downloads (needs libhv HttpClient integration)
 
-- [ ] **Real-time Updates** (FUTURE)
-  - [ ] Temperature monitoring (bind to UI)
-  - [ ] Print progress (bind to UI)
-  - [ ] Status changes (bind to UI)
+- [x] **Real-time Updates** ✅ COMPLETE (2025-11-18)
+  - [x] Temperature monitoring - Home panel shows live nozzle/bed temps
+  - [x] Print progress - Print status panel shows live progress
+  - [x] LED control - Wired to Moonraker with reactive bindings
+  - [x] Connection state - Disconnected overlay on home panel
 
 ## 🎭 Phase 9: Theming & Accessibility (PARTIALLY COMPLETE)
 
@@ -443,6 +463,10 @@
   - Hardware filtering (bed, hotend, fans by type, LEDs)
   - Fixed critical layout bug (LV_SIZE_CONTENT → flex_grow)
   - Config template updated with all wizard fields
+- ✅ **Wizard header component extraction** (2025-11-27)
+  - Reusable wizard_header_bar.xml component
+  - Contextual subtitles per wizard step
+  - Improved UX with consistent navigation
 - ⚠️ Connection/printer ID/summary screens (XML exists, not fully wired)
 - ⏳ Next: Real printer testing + remaining wizard step implementation
 
@@ -581,87 +605,103 @@ New users need a guided setup wizard to:
 
 ---
 
-## Current Status
+## 🔧 Phase 13: G-code Pre-Print Modification (IN PROGRESS)
 
-**Active Phase:** Phase 11 - First-Run Wizard **IN PROGRESS** | Phase 8 - Backend Integration **IN PROGRESS**
+**Priority: Medium** - Enable/disable print operations before starting
 
-**Recent Work (2025-11-02):**
+**Status: IN PROGRESS** - Architecture defined, implementation underway
 
-**Phase 11 - Wizard Hardware Selection (Steps 4-7) COMPLETE:**
-- ✅ Dynamic dropdown population from MoonrakerClient discovery
-- ✅ Hardware filtering by type (bed by "bed", hotend by "extruder"/"hotend", fans separated, all LEDs)
-- ✅ Fixed critical layout bug: `height="LV_SIZE_CONTENT"` → `flex_grow="1"` (LV_SIZE_CONTENT fails with nested flex children)
-- ✅ Fixed dropdown name mismatches (led_main_dropdown, part_cooling_fan_dropdown)
-- ✅ Added `get_leds()` API to MoonrakerClient
-- ✅ Updated config template with all wizard fields (network, moonraker, printer sections)
-- ✅ Module-scope vectors for event callback index-to-name mapping
-- ✅ Tested with mock backend - all 4 screens rendering correctly
+### Overview
+Allow users to enable/disable optional print operations (bed leveling, purge line, etc.) before starting a print, with automatic G-code modification.
 
-**Phase 8 - Real File Operations Integration COMPLETE:**
-- ✅ Print Select Panel fetches real files from Moonraker (server.files.list)
-- ✅ Async metadata loading (print time, filament weight, thumbnails)
-- ✅ Progressive UI updates (files appear immediately, metadata loads async)
-- ✅ Thumbnail URL construction (HTTP download deferred to future)
-- ✅ Error handling and bounds checking
-- ✅ Mock mode compatibility maintained
+### Components
 
-**Earlier Work (2025-11-01):**
+- [ ] **GcodeOpsDetector** (`gcode_ops_detector.cpp`)
+  - [ ] Detect bed leveling sequences (G28, G29, BED_MESH_CALIBRATE)
+  - [ ] Detect purge/prime line sequences
+  - [ ] Detect other configurable operations
+  - [ ] Return line ranges for each detected operation
 
-**Phase 8 - Moonraker API Phase 1 COMPLETE:**
-- ✅ Connection state machine with 5 states (DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING, FAILED)
-- ✅ Request timeout tracking with automatic cleanup
-- ✅ Comprehensive error handling (MoonrakerError structure)
-- ✅ Configuration-driven timeouts (no hardcoded values)
-- ✅ MoonrakerAPI facade with high-level domain operations
-- ✅ Full implementation: file ops, job control, motion, temperature, system
-- ✅ Async callbacks with success/error handlers
+- [ ] **GcodeFileModifier** (`gcode_file_modifier.cpp`)
+  - [ ] Comment out line ranges to disable operations
+  - [ ] Inject custom G-code sequences
+  - [ ] Create modified G-code files for printing
 
-**Earlier Work (2025-10-26 Evening):**
-- ✅ Config system with auto-migration and JSON pointer API
-- ✅ MoonrakerClient auto-discovery (objects.list → server.info → printer.info → subscribe)
-- ✅ Intelligent object categorization (heaters, sensors, fans, LEDs)
-- ✅ WebSocket connection on startup with config values
-- ✅ Notification callbacks wired to PrinterState
+- [ ] **CommandSequencer** (`command_sequencer.cpp`)
+  - [ ] Coordinate multi-step print preparation
+  - [ ] Handle async operations (preheat → level → print)
+  - [ ] Manage operation dependencies
 
-**Earlier Work (2025-10-12 Evening):**
+- [ ] **PrinterCapabilities** (`printer_capabilities.cpp`)
+  - [ ] Track what features printer supports
+  - [ ] Auto-detect from Klipper config
+  - [ ] Store in helixconfig.json
 
-**Phase 4 Completion:**
-- ✅ Icon-only view toggle button (40×40px, fa-list ↔ fa-th-large)
-- ✅ Dual view modes: Card view (grid) + List view (sortable table)
-- ✅ List view with 4-column layout: Filename | Size | Modified | Time
-- ✅ Column sorting with visual indicators (▲/▼ arrows)
-- ✅ Empty state message ("No files available for printing")
-- ✅ Reusable confirmation dialog component (confirmation_dialog.xml)
-- ✅ Utility functions: format_file_size(), format_modified_date()
-- ✅ Updated all documentation (requirements v2.0, HANDOFF.md)
-- ✅ Added ICON_LIST and ICON_TH_LARGE to icon system
+### UI Integration
+- [ ] Print file detail checkboxes for:
+  - [ ] "Run bed leveling" (if detected in G-code)
+  - [ ] "Run purge line" (if detected)
+  - [ ] "Preheat before print"
+- [ ] Visual feedback for detected operations
 
-**Phase 3 Completion:**
-- ✅ Print Select Panel with dynamic card system fully working
-- ✅ 4-column grid layout (204×280px cards) optimized for 1024×800
-- ✅ Metadata icons and labels (clock + time, leaf + weight) rendering correctly
-- ✅ Full-screen detail view overlay with large thumbnail
-- ✅ Options panel (filament type dropdown, bed leveling checkbox)
-- ✅ Delete + Print action buttons
-- ✅ Click card to open detail, click back/outside to close
+### Files
+```
+include/gcode_ops_detector.h     # Operation detection API
+include/gcode_file_modifier.h    # G-code modification API
+include/command_sequencer.h      # Multi-step coordination
+include/printer_capabilities.h   # Printer feature tracking
+src/gcode_ops_detector.cpp
+src/gcode_file_modifier.cpp
+src/command_sequencer.cpp
+src/printer_capabilities.cpp
+tests/unit/test_gcode_ops_detector.cpp
+tests/unit/test_gcode_file_modifier.cpp
+tests/unit/test_command_sequencer.cpp
+tests/unit/test_printer_capabilities.cpp
+```
 
-**Design Decisions (Phase 4):**
-- Simplified list view from 7 columns to 4 (removed Thumbnail, Filament, Slicer)
-- View toggle shows opposite mode icon (intuitive UX)
-- Default view: Card mode (remembered per session)
-- Default sort: Filename ascending
+### Design Doc
+See `docs/PRINT_OPTIONS_IMPLEMENTATION_PLAN.md` for full specification.
 
-**Next Priorities:**
-1. **Phase 11:** First-run configuration wizard (Moonraker connection + hardware mapping)
-2. **Phase 8:** Test real file ops with live printer, implement thumbnail downloads
-3. **Phase 8:** Bind real temperature data to UI (replace mock data in home panel)
-4. **Phase 5:** Implement motion controls with gcode_script() integration
-5. **Phase 8:** File upload functionality
+---
 
-**Completed Phases:** 1, 2, 3, 4
-**In Progress:** Phase 5 (Controls Panel), Phase 8 (Backend Integration)
+## ✅ Phase 14: Class-Based Panel Architecture (COMPLETED)
 
-**Phase 8 Started:** 2025-10-26
+**Priority: N/A** - Completed 2025-11-17
+
+**Summary:** Migrated all panels from function-based to class-based architecture using PanelBase.
+
+- [x] **PanelBase class** - Encapsulates panel lifecycle (init, show, hide, destroy)
+- [x] **All 13+ panels migrated** - Home, Controls, Motion, Temps, Print Select, etc.
+- [x] **Wizard steps migrated** - All 7 wizard steps use class-based pattern
+- [x] **Deprecated wrappers removed** - Clean break from old function-based API
+
+**Benefits:**
+- RAII lifecycle management
+- Consistent show/hide behavior
+- Easier testing and maintenance
+- Clear ownership semantics
+
+**Reference:** `docs/archive/PANEL_MIGRATION.md`, `docs/archive/PANEL_REFACTORING_PLAN.md`
+
+---
+
+## Recent Work (2025-11-14 to 2025-11-28)
+
+| Feature | Phase | Date |
+|---------|-------|------|
+| Class-based panel refactoring (PanelBase) | 14 | 2025-11-17 |
+| Print Status → real Moonraker API | 8 | 2025-11-18 |
+| Home Panel → live temps/LEDs | 8 | 2025-11-18 |
+| Motion sub-screen complete | 5 | 2025-11-15 |
+| Temperature sub-screens complete | 5 | 2025-11-15 |
+| Extrusion sub-screen complete | 5 | 2025-11-15 |
+| Toast redesign (floating, top-right) | 6 | 2025-11-27 |
+| Wizard header component extraction | 11 | 2025-11-27 |
+| ModalBase RAII pattern | 6 | 2025-11-17 |
+| Slide animations for overlays | 7 | 2025-11-18 |
+| Printer database v2.0 (50+ printers) | 11 | 2025-11-22 |
+| Clang-format pre-commit hooks | 10 | 2025-11-17 |
 
 ---
 
@@ -674,7 +714,3 @@ New users need a guided setup wizard to:
 - **UI Patterns:** Document reusable patterns in LVGL9_XML_GUIDE.md (e.g., vertical accent bars, dynamic card components)
 - **Responsive Design:** Use constants in globals.xml for easy layout adjustments (4-col vs 3-col grids)
 - **Testing:** Test each phase before moving to next
-
----
-
-**Last Updated:** 2025-11-01

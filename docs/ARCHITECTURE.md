@@ -232,6 +232,88 @@ app_layout.xml
 - **Sub-Panel Overlays** - Motion/temp controls that slide over main content
 - **Global Navigation** - Persistent 5-button navigation bar
 
+## ⚠️ PREFERRED: Class-Based Architecture
+
+**All new code should use class-based patterns.** This applies to:
+- **UI panels** (PanelBase)
+- **Modals** (ModalBase)
+- **Backend managers** (WiFiManager, EthernetManager, MoonrakerClient)
+- **Services and utilities**
+
+### Why Class-Based?
+
+| Benefit | Description |
+|---------|-------------|
+| **RAII** | Resources acquired in constructor, released in destructor - no leaks |
+| **Encapsulation** | State and behavior together, clear ownership |
+| **Testability** | Mock via interface inheritance, isolate dependencies |
+| **Lifecycle** | Explicit init/start/stop/destroy - no hidden state |
+
+### Pattern: Manager Classes (Backend)
+
+```cpp
+class WiFiManager {
+public:
+    static WiFiManager& instance();  // Singleton access
+
+    bool start();   // Initialize and begin operation
+    void stop();    // Graceful shutdown
+
+    // Async operations with callbacks
+    void scan(ScanCallback on_complete);
+    void connect(const std::string& ssid, ConnectCallback on_result);
+
+private:
+    WiFiManager();  // Private constructor for singleton
+    std::unique_ptr<WifiBackend> backend_;  // Pluggable implementation
+};
+```
+
+### Pattern: Panel Classes (Frontend)
+
+```cpp
+class MotionPanel : public PanelBase {
+public:
+    explicit MotionPanel(lv_obj_t* parent);
+    ~MotionPanel() override;
+
+    void show() override;
+    void hide() override;
+
+private:
+    void init_subjects();   // Reactive data setup
+    void setup_events();    // Wire UI callbacks
+    lv_obj_t* root_ = nullptr;
+};
+```
+
+### Pattern: Modal Classes
+
+```cpp
+class ConfirmDialog : public ModalBase {
+public:
+    void show(const std::string& title, ConfirmCallback on_confirm);
+    void dismiss() override;
+
+private:
+    lv_obj_t* backdrop_ = nullptr;
+    lv_obj_t* dialog_ = nullptr;
+};
+```
+
+### ❌ AVOID: Function-Based Patterns
+
+```cpp
+// ❌ OLD PATTERN - Do not use for new code
+void ui_panel_motion_init(lv_obj_t* parent);
+void ui_panel_motion_show();
+void ui_panel_motion_hide();
+
+// ✅ NEW PATTERN - Use classes
+auto motion = std::make_unique<MotionPanel>(parent);
+motion->show();
+```
+
 ## Data Flow Architecture
 
 ### Subject Initialization Pattern

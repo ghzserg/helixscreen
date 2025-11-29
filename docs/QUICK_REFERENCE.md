@@ -2,38 +2,95 @@
 
 Quick patterns and cheat sheets for daily development. For comprehensive documentation, see [LVGL9_XML_GUIDE.md](LVGL9_XML_GUIDE.md).
 
-## Common Patterns
+## Class-Based Patterns (PREFERRED)
 
-### Create XML Component with Reactive Binding
+### Panel Class Pattern
 
 ```cpp
-// Header
+// include/ui_panel_example.h
+class ExamplePanel : public PanelBase {
+public:
+    explicit ExamplePanel(lv_obj_t* parent);
+    ~ExamplePanel() override;
+
+    void show() override;
+    void hide() override;
+    lv_obj_t* get_root() const override { return root_; }
+
+    void update(const std::string& text, int value);
+
+private:
+    void init_subjects();
+    void setup_events();
+
+    lv_obj_t* root_ = nullptr;
+    lv_subject_t text_subject_{};
+    lv_subject_t value_subject_{};
+    char text_buf_[128]{};
+    char value_buf_[32]{};
+};
+
+// src/ui_panel_example.cpp
+ExamplePanel::ExamplePanel(lv_obj_t* parent) {
+    init_subjects();
+    root_ = lv_xml_create(parent, "example_panel", nullptr);
+    setup_events();
+}
+
+void ExamplePanel::init_subjects() {
+    lv_subject_init_string(&text_subject_, text_buf_, nullptr, sizeof(text_buf_), "Initial");
+    lv_subject_init_string(&value_subject_, value_buf_, nullptr, sizeof(value_buf_), "0");
+    lv_xml_register_subject(nullptr, "text_data", &text_subject_);
+    lv_xml_register_subject(nullptr, "value_data", &value_subject_);
+}
+
+void ExamplePanel::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); }
+void ExamplePanel::hide() { lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
+```
+
+### Manager Class Pattern (Backend)
+
+```cpp
+// Singleton manager with pluggable backend
+class ExampleManager {
+public:
+    static ExampleManager& instance();
+
+    bool start();
+    void stop();
+
+    void do_async_work(std::function<void(Result)> callback);
+
+private:
+    ExampleManager() = default;
+    std::unique_ptr<ExampleBackend> backend_;
+};
+```
+
+### Modal Class Pattern
+
+```cpp
+class ConfirmDialog {
+public:
+    void show(const std::string& title, std::function<void()> on_confirm);
+    void dismiss();
+
+private:
+    lv_obj_t* backdrop_ = nullptr;
+    lv_obj_t* dialog_ = nullptr;
+};
+```
+
+---
+
+## Legacy Patterns (avoid for new code)
+
+### Function-Based Panel (❌ OLD)
+
+```cpp
+// ❌ AVOID - Use class-based pattern above
 lv_obj_t* ui_panel_xyz_create(lv_obj_t* parent);
 void ui_panel_xyz_update(const char* text, int value);
-
-// Implementation
-static lv_subject_t text_subject, value_subject;
-static char text_buf[128], value_buf[32];
-
-lv_obj_t* ui_panel_xyz_create(lv_obj_t* parent) {
-    // 1. Init subjects
-    lv_subject_init_string(&text_subject, text_buf, NULL, sizeof(text_buf), "Initial");
-    lv_subject_init_string(&value_subject, value_buf, NULL, sizeof(value_buf), "0");
-
-    // 2. Register globally
-    lv_xml_register_subject(NULL, "text_data", &text_subject);
-    lv_xml_register_subject(NULL, "value_data", &value_subject);
-
-    // 3. Create XML
-    return (lv_obj_t*)lv_xml_create(parent, "panel_xyz", nullptr);
-}
-
-void ui_panel_xyz_update(const char* text, int value) {
-    lv_subject_copy_string(&text_subject, text);
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d", value);
-    lv_subject_copy_string(&value_subject, buf);
-}
 ```
 
 ### XML Component Structure

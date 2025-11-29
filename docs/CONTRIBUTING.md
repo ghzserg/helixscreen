@@ -42,6 +42,51 @@ This document covers code standards, workflow practices, and submission guidelin
 
 ## Code Standards
 
+### Class-Based Architecture (PREFERRED)
+
+**All new code should use class-based patterns** for both frontend and backend components.
+
+**Frontend (Panels, Modals):**
+```cpp
+// ✅ CORRECT: Class-based panel
+class MotionPanel : public PanelBase {
+public:
+    explicit MotionPanel(lv_obj_t* parent);
+    void show() override;
+    void hide() override;
+};
+
+// ❌ AVOID: Function-based (legacy)
+void ui_panel_motion_init(lv_obj_t* parent);
+void ui_panel_motion_show();
+```
+
+**Backend (Managers, Services):**
+```cpp
+// ✅ CORRECT: Manager class with lifecycle
+class WiFiManager {
+public:
+    bool start();
+    void stop();
+    void scan(ScanCallback cb);
+};
+```
+
+See **[ARCHITECTURE.md](ARCHITECTURE.md)** section "PREFERRED: Class-Based Architecture" for complete patterns.
+
+### Code Formatting (clang-format)
+
+**Pre-commit hook enforces clang-format.** Your commit will be rejected if formatting is wrong.
+
+**Auto-fix before commit:**
+```bash
+clang-format -i src/*.cpp include/*.h  # Format all files
+```
+
+**Or let the hook fix it:** The pre-commit hook will auto-format and stage the fixed files. Just commit again.
+
+**Configuration:** `.clang-format` in project root defines the style.
+
 ### Production Safety Rules
 
 **CRITICAL: Mock implementations must NEVER be used in production builds.**
