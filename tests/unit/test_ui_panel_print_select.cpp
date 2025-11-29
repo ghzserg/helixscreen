@@ -34,7 +34,7 @@ bool compare_files(const PrintFileData& a, const PrintFileData& b, PrintSelectSo
         result = a.file_size_bytes < b.file_size_bytes;
         break;
     case PrintSelectSortColumn::MODIFIED:
-        result = a.modified_timestamp > b.modified_timestamp; // Newer first by default
+        result = a.modified_timestamp < b.modified_timestamp; // Older first by default (ascending)
         break;
     case PrintSelectSortColumn::PRINT_TIME:
         result = a.print_time_minutes < b.print_time_minutes;

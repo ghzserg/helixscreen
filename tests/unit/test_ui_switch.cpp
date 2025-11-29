@@ -39,11 +39,39 @@ class SwitchTest {
 public:
     SwitchTest() {
         spdlog::set_level(spdlog::level::debug);
+
+        // Initialize LVGL once (static guard)
+        static bool lvgl_initialized = false;
+        if (!lvgl_initialized) {
+            lv_init();
+            lvgl_initialized = true;
+        }
+
+        // Create a headless display for testing (800x480 = MEDIUM screen)
+        static lv_color_t buf[800 * 10];
+        display_ = lv_display_create(800, 480);
+        lv_display_set_buffers(display_, buf, nullptr, sizeof(buf),
+                               LV_DISPLAY_RENDER_MODE_PARTIAL);
+        lv_display_set_flush_cb(display_, [](lv_display_t* disp,
+                                             const lv_area_t* area,
+                                             uint8_t* px_map) {
+            lv_display_flush_ready(disp);  // Dummy flush for headless testing
+        });
+
+        // Initialize size presets now that display exists
+        ui_switch_init_size_presets();
     }
 
     ~SwitchTest() {
+        if (display_) {
+            lv_display_delete(display_);
+            display_ = nullptr;
+        }
         spdlog::set_level(spdlog::level::warn);
     }
+
+private:
+    lv_display_t* display_ = nullptr;
 };
 
 // ============================================================================

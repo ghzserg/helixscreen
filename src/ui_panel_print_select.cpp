@@ -791,7 +791,7 @@ void PrintSelectPanel::apply_sort() {
                       result = a.file_size_bytes < b.file_size_bytes;
                       break;
                   case PrintSelectSortColumn::MODIFIED:
-                      result = a.modified_timestamp > b.modified_timestamp;
+                      result = a.modified_timestamp < b.modified_timestamp;
                       break;
                   case PrintSelectSortColumn::PRINT_TIME:
                       result = a.print_time_minutes < b.print_time_minutes;
