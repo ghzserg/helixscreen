@@ -532,3 +532,283 @@ These should be wired up as part of this implementation.
 3. **Macro parameter format**: Klipper macros use `PARAM=value` format (no quotes for strings). Chamber soak would be `HELIX_START_PRINT CHAMBER_SOAK=5 CHAMBER_TEMP=45`.
 
 4. **Klipper restart required**: After installing macros, Klipper must restart. This interrupts any active connection and requires reconnection logic.
+
+---
+
+## Stage 7: GCodeFileModifier Integration (IMPLEMENTED)
+
+### Overview
+
+When a user **unchecks** a pre-print option but the G-code file already contains that operation embedded, we need to **disable the embedded operation** rather than just skipping it in the sequencer. This prevents the operation from running even though the user disabled it.
+
+### Architecture
+
+```
+User unchecks "Bed Leveling" in UI
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│               PrintSelectPanel::start_print()            │
+│  1. Read checkbox states                                 │
+│  2. Scan G-code file for embedded operations             │
+│  3. Compare: user wants OFF but file has it ON?          │
+└─────────────────────────────┬───────────────────────────┘
+                              │ Yes - need modification
+                              ▼
+┌─────────────────────────────────────────────────────────┐
+│                   GCodeFileModifier                      │
+│  • Download original file from Moonraker                 │
+│  • disable_operations(scan_result, ops_to_disable)       │
+│  • apply_to_content() → modified G-code string           │
+│  • Upload to .helix_temp/ directory                      │
+└─────────────────────────────┬───────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────┐
+│  api_->start_print(modified_filename)                    │
+│  Cleanup after print completes                           │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Implementation (Already Complete)
+
+**Files implemented:**
+- `include/gcode_file_modifier.h` - Modification types and GCodeFileModifier class
+- `src/gcode_file_modifier.cpp` - Full implementation
+- `tests/unit/test_gcode_file_modifier.cpp` - 10 test cases, 66 assertions
+
+**Key features:**
+- Comment out lines/ranges: `; BED_MESH_CALIBRATE  ; [HelixScreen: Disabled]`
+- Inject G-code before/after specific lines
+- Replace lines with new content
+- Handle macro parameters: `FORCE_LEVELING=true` → `FORCE_LEVELING=FALSE`
+- Integration with `GCodeOpsDetector::ScanResult`
+- Temp file generation with automatic cleanup
+
+### Integration with start_print()
+
+**File: `src/ui_panel_print_select.cpp`**
+
+```cpp
+void PrintSelectPanel::start_print() {
+    // ... read checkbox states ...
+
+    // Check if file has embedded operations that need disabling
+    bool file_has_bed_mesh = cached_scan_result_ &&
+        cached_scan_result_->get_operation(gcode::OperationType::BED_LEVELING).has_value();
+
+    std::vector<gcode::OperationType> ops_to_disable;
+    if (!do_bed_leveling && file_has_bed_mesh) {
+        ops_to_disable.push_back(gcode::OperationType::BED_LEVELING);
+    }
+    // ... similar for QGL, Z_TILT, NOZZLE_CLEAN, HEAT_SOAK
+
+    if (!ops_to_disable.empty()) {
+        // Download → modify → upload → print modified file
+        modify_and_print(filename, ops_to_disable);
+    } else {
+        // Original flow: sequencer for checked ops, or direct print
+        // ... existing code ...
+    }
+}
+```
+
+---
+
+## Stage 8: Capability Override System
+
+### Problem
+
+Auto-detection from Moonraker can't cover everything:
+- Heat soak doesn't require chamber heater (bed-only soak works)
+- Some printers have macros with non-standard names
+- Users may want to force enable/disable features regardless of detection
+
+### Solution: Three-State Override
+
+```cpp
+// In helixconfig.json
+{
+  "capability_overrides": {
+    "heat_soak": "auto",      // "auto" | "enable" | "disable"
+    "bed_leveling": "auto",
+    "qgl": "auto",
+    "z_tilt": "auto",
+    "nozzle_clean": "enable"  // Force enable even if not auto-detected
+  }
+}
+```
+
+### Implementation
+
+**New files:**
+- `include/capability_overrides.h`
+- `src/capability_overrides.cpp`
+
+```cpp
+class CapabilityOverrides {
+public:
+    enum class OverrideState { AUTO, ENABLE, DISABLE };
+
+    bool is_available(const std::string& capability) const {
+        auto override = get_override(capability);
+        if (override == OverrideState::ENABLE) return true;
+        if (override == OverrideState::DISABLE) return false;
+        // AUTO: delegate to PrinterCapabilities
+        return printer_caps_.is_available(capability);
+    }
+
+private:
+    PrinterCapabilities& printer_caps_;
+    std::map<std::string, OverrideState> overrides_;
+};
+```
+
+---
+
+## Stage 9: Concurrent Print Prevention
+
+### Problem
+
+User shouldn't be able to start a new print while one is already running.
+
+### Solution
+
+**UI-level check in start_print():**
+```cpp
+void PrintSelectPanel::start_print() {
+    if (printer_state_.get_print_state() != PrintState::STANDBY) {
+        NOTIFY_ERROR("Cannot start print: printer is {}",
+                     printer_state_.get_print_state_string());
+        return;
+    }
+    // ... rest of start_print
+}
+```
+
+**Reactive UI binding (disable Print button when not standby):**
+```xml
+<lv_button name="print_button">
+  <lv_obj-bind_state_if_not_eq subject="print_state" state="disabled" ref_value="0"/>
+  <text_body text="Print"/>
+</lv_button>
+```
+
+**Fallback:** Moonraker also returns an error if already printing, which we handle.
+
+---
+
+## Stage 10: Memory-Safe Streaming for Large Files
+
+### Problem
+
+Embedded Linux devices may have 256MB-512MB RAM. G-code files can be 100MB+. Loading entire files into memory is unacceptable.
+
+### Solution: Configurable Threshold
+
+```cpp
+constexpr size_t MAX_BUFFERED_FILE_SIZE = 5 * 1024 * 1024;  // 5MB default
+
+// For small files: in-memory (fast)
+std::string apply_to_content(const std::string& content);
+
+// For large files: streaming (memory-safe)
+bool apply_streaming(std::istream& input, std::ostream& output,
+                     const std::vector<Modification>& mods);
+```
+
+### Streaming Implementation
+
+1. **First pass:** Scan file line-by-line for operations (already works)
+2. **Build lookup map:** `std::map<line_number, Modification>` for O(1) per-line
+3. **Stream forward:** Read line, check map, apply modification if found, write
+4. **Chunked upload:** Use HTTP chunked transfer to Moonraker
+
+**Files to modify:**
+- `src/gcode_file_modifier.cpp` - Add `apply_streaming()` method
+- `src/moonraker_api.cpp` - Add chunked upload if not present
+
+---
+
+## Print History Filename Handling
+
+### Problem
+
+Modified files show as `helix_mod_*.gcode` in Moonraker history.
+
+### Research Finding
+
+Moonraker's history namespace is **read-only** for clients - no `server.history.modify` API.
+
+### Options
+
+| Option | Description | Complexity |
+|--------|-------------|------------|
+| **A: Accept** | History shows temp name, user still knows what they printed | Simple |
+| **B: Metadata** | Inject comment: `; HelixScreen Modified: Original: 3DBenchy.gcode` | Medium |
+| **C: Local DB** | Store mapping in local SQLite | Complex |
+
+**Recommendation:** Option A for v1, Option B as enhancement.
+
+---
+
+## Future: HelixScreen Moonraker Plugin
+
+Some limitations could be better solved server-side via `moonraker-helixscreen` plugin:
+
+### What a Plugin Could Solve
+
+| Problem | Client-side Workaround | Plugin Solution |
+|---------|------------------------|-----------------|
+| **Print history** | Embed metadata in G-code | Modify history records directly |
+| **G-code modification** | Download → modify → upload | Modify in-place (no transfer!) |
+| **Large files** | Chunked HTTP transfer | Direct filesystem, zero overhead |
+| **Cleanup** | Track & delete temp files | Plugin manages temp directory |
+
+### Plugin Architecture
+
+```
+moonraker-helixscreen/
+├── __init__.py            # Moonraker component registration
+├── helix_file_modifier.py # Server-side G-code modification
+├── helix_history.py       # History enrichment
+└── helix_api.py           # Custom JSON-RPC endpoints
+```
+
+### Custom API Endpoints (Future)
+
+```python
+# POST server.helix.start_print_with_options
+{
+    "filename": "3DBenchy.gcode",
+    "pre_print_ops": {
+        "heat_soak": true,
+        "bed_leveling": false,  # Disable if in G-code
+        "qgl": true
+    }
+}
+# Plugin handles: modify file, update history, start print
+```
+
+**Phases:**
+- **Phase 1-2:** Client-side solution (works without plugin)
+- **Phase 3+:** Develop Moonraker plugin for optimization
+
+---
+
+## Updated Success Criteria
+
+- [ ] Options dialog shows only available options for detected printer
+- [ ] Bed leveling option triggers `BED_MESH_CALIBRATE` or equivalent
+- [ ] Chamber soak waits for temperature + duration
+- [ ] Nozzle clean runs detected cleaning macro
+- [ ] Print status panel shows "Preparing" phase with progress
+- [ ] Works on printers without HelixScreen macros (injection fallback)
+- [ ] Macro installation available for managed printers
+- [ ] Options preferences persist across sessions
+- [x] **GCodeFileModifier comments out operations when user disables them**
+- [x] **GCodeFileModifier handles macro parameters (FORCE_LEVELING=true → FALSE)**
+- [ ] Capability override system allows force enable/disable
+- [ ] Concurrent print prevention at UI level
+- [ ] Modified file cleanup after print completes
+- [ ] Large file streaming for memory-constrained devices

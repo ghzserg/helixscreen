@@ -1,7 +1,7 @@
 # Pre-Print Options - Session Handoff
 
-**Last Updated:** 2025-11-28
-**Status:** Phase 13 - G-code Pre-Print Modification (IN PROGRESS)
+**Last Updated:** 2025-11-29
+**Status:** Phase 1 Complete - Preparing UI Wired to CommandSequencer
 
 ---
 
@@ -19,6 +19,21 @@
   - Visibility controlled by `printer_has_*` subjects
   - Wired to `start_print()` flow in `ui_panel_print_select.cpp`
 - **Filament type dropdown** auto-populated from G-code metadata
+
+### "Preparing" Phase UI (DONE - Phase 1)
+- **PrintStatusPanel "Preparing" state** with visual feedback:
+  - Added `preparing_overlay` to `ui_xml/print_status_panel.xml` with:
+    - Spinner (LVGL `lv_spinner`)
+    - Operation label bound to `preparing_operation` subject
+    - Progress bar bound to `preparing_progress` subject
+    - Visibility controlled by `preparing_visible` subject (hidden when == 0)
+  - CommandSequencer progress callbacks wired to `set_preparing()`, `set_preparing_progress()`, `end_preparing()`
+  - Print status panel shows immediately when "Print" clicked, shows Preparing overlay during pre-print ops
+  - Transitions to normal print view when preparation completes
+- **Removed mock print infrastructure** from `PrintStatusPanel`:
+  - Removed `start_mock_print()`, `stop_mock_print()`, `tick_mock_print()`
+  - Panel now purely reactive via Moonraker → PrinterState observers
+  - Separation of concerns: UI code has no knowledge of mock infrastructure
 
 ### Test Coverage (DONE)
 - `test_command_sequencer.cpp` - 10 test cases, 108 assertions
@@ -66,13 +81,13 @@ MacroManager needs HTTP file upload to install `helix_macros.cfg`:
 
 Currently stubbed with `TODO` comment in `helix_macro_manager.cpp:293-307`.
 
-### 3. Print Status "Preparing" Phase (Stage 6 from plan)
-**Files:** `src/ui_panel_print_status.cpp` (MODIFY)
+### 3. Print Status "Preparing" Phase (Stage 6 from plan) ✅ DONE
+**Files:** `src/ui_panel_print_status.cpp`, `ui_xml/print_status_panel.xml`
 
-Add visual feedback during pre-print sequence:
-- New `PrintPhase::PREPARING` state
-- Shows "Running bed leveling..." with progress
-- Transitions to `PRINTING` when sequence completes
+Completed:
+- Added `preparing_overlay` with spinner, operation label, and progress bar
+- CommandSequencer callbacks wired to `set_preparing()`, `set_preparing_progress()`, `end_preparing()`
+- Transitions from Preparing → Printing (success) or Idle (failure)
 
 ### 4. Wizard Connection/Summary Screens (Phase 11)
 **Files:** `ui_xml/wizard_*.xml`, `src/ui_wizard_*.cpp`
@@ -155,19 +170,22 @@ Continue implementing the Bambu-style pre-print options feature for HelixScreen.
 COMPLETED:
 - GCodeOpsDetector, PrinterCapabilities, CommandSequencer, MacroManager
 - UI checkboxes in file detail view, wired to start_print() flow
+- PrintStatusPanel "Preparing" phase with spinner, operation label, progress bar
+- CommandSequencer progress callbacks wired to Preparing UI
+- Mock print infrastructure removed (panel is now purely reactive)
 - Comprehensive test coverage
 
 NEXT STEPS (pick one):
 A) Implement GCodeFileModifier to comment out detected ops when user disables them
 B) Implement HTTP file upload in MoonrakerAPI for macro installation
-C) Add "Preparing" phase to PrintStatusPanel with progress feedback
-D) Wire up wizard connection test + summary screens
+C) Wire up wizard connection test + summary screens
 
 Read these files first:
 - docs/PRINT_OPTIONS_IMPLEMENTATION_PLAN.md (full architecture)
 - docs/TESTING_PRE_PRINT_OPTIONS.md (test checklist)
-- src/ui_panel_print_select.cpp (current print flow)
-- src/command_sequencer.cpp (operation sequencing)
+- src/ui_panel_print_select.cpp (current print flow, see start_print())
+- src/ui_panel_print_status.cpp (set_preparing(), end_preparing())
+- ui_xml/print_status_panel.xml (preparing_overlay with spinner)
 
 The project uses LVGL 9.4 with XML-based UI, Moonraker WebSocket API, and Catch2 for testing.
 Build with: make -j
