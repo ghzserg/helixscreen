@@ -47,6 +47,10 @@ typedef struct {
     // Touch drag state
     bool is_dragging;         // Currently in drag gesture
     lv_point_t last_drag_pos; // Last touch position for delta calculation
+
+    // Deferred redraw state (for panels created while hidden)
+    bool had_valid_size;      // Has widget ever had non-zero dimensions
+    bool mesh_data_pending;   // Mesh data was set before widget had valid size
 } bed_mesh_widget_data_t;
 
 /**
@@ -229,9 +233,14 @@ static void bed_mesh_release_cb(lv_event_t* e) {
 
 /**
  * Size changed event handler - update widget on resize
+ *
+ * Critical for panels created while hidden: When mesh data is set before the
+ * widget has valid dimensions, we defer the redraw until SIZE_CHANGED fires
+ * with non-zero dimensions.
  */
 static void bed_mesh_size_changed_cb(lv_event_t* e) {
     lv_obj_t* obj = lv_event_get_target_obj(e);
+    bed_mesh_widget_data_t* data = (bed_mesh_widget_data_t*)lv_obj_get_user_data(obj);
 
     // Get new widget dimensions
     lv_area_t coords;
@@ -240,6 +249,18 @@ static void bed_mesh_size_changed_cb(lv_event_t* e) {
     int height = lv_area_get_height(&coords);
 
     spdlog::debug("[bed_mesh] SIZE_CHANGED: {}x{}", width, height);
+
+    // Check if this is the first time we have valid dimensions
+    if (data && width > 0 && height > 0 && !data->had_valid_size) {
+        data->had_valid_size = true;
+        spdlog::debug("[bed_mesh] First valid size received");
+
+        // If mesh data was set while widget was 0x0, force a proper redraw now
+        if (data->mesh_data_pending) {
+            data->mesh_data_pending = false;
+            spdlog::info("[bed_mesh] Triggering deferred render after gaining valid size");
+        }
+    }
 
     // Trigger redraw with new dimensions
     lv_obj_invalidate(obj);
@@ -310,6 +331,10 @@ static void* bed_mesh_xml_create(lv_xml_parser_state_t* state, const char** attr
     data_ptr->is_dragging = false;
     data_ptr->last_drag_pos = {0, 0};
 
+    // Initialize deferred redraw state (for panels created while hidden)
+    data_ptr->had_valid_size = false;
+    data_ptr->mesh_data_pending = false;
+
     // Transfer ownership to LVGL user_data (will be cleaned up in delete callback)
     lv_obj_set_user_data(obj, data_ptr.release());
 
@@ -363,6 +388,10 @@ void ui_bed_mesh_register(void) {
 
 /**
  * Set mesh data for rendering
+ *
+ * If the widget hasn't been laid out yet (0x0 dimensions), the mesh data is
+ * stored in the renderer but actual rendering is deferred until SIZE_CHANGED
+ * fires with valid dimensions.
  */
 bool ui_bed_mesh_set_data(lv_obj_t* widget, const float* const* mesh, int rows, int cols) {
     if (!widget) {
@@ -388,9 +417,21 @@ bool ui_bed_mesh_set_data(lv_obj_t* widget, const float* const* mesh, int rows, 
         return false;
     }
 
-    spdlog::info("[bed_mesh] Mesh data loaded: {}x{}", rows, cols);
+    // Check if widget has valid dimensions yet
+    int width = lv_obj_get_width(widget);
+    int height = lv_obj_get_height(widget);
 
-    // Automatically redraw after setting new data
+    if (width <= 0 || height <= 0) {
+        // Widget hasn't been laid out yet - defer rendering to SIZE_CHANGED
+        data->mesh_data_pending = true;
+        spdlog::info("[bed_mesh] Mesh data loaded: {}x{} (deferred - widget {}x{})", rows, cols,
+                     width, height);
+    } else {
+        data->mesh_data_pending = false;
+        spdlog::info("[bed_mesh] Mesh data loaded: {}x{}", rows, cols);
+    }
+
+    // Request redraw (will succeed if widget has valid size, otherwise deferred)
     ui_bed_mesh_redraw(widget);
 
     return true;
