@@ -23,21 +23,17 @@
 #include <ctime>
 #include <memory>
 
-// ============================================================================
-// CONSTRUCTOR / DESTRUCTOR
-// ============================================================================
-
 TempControlPanel::TempControlPanel(PrinterState& printer_state, MoonrakerAPI* api)
     : printer_state_(printer_state), api_(api),
       nozzle_min_temp_(AppConstants::Temperature::DEFAULT_MIN_TEMP),
       nozzle_max_temp_(AppConstants::Temperature::DEFAULT_NOZZLE_MAX),
       bed_min_temp_(AppConstants::Temperature::DEFAULT_MIN_TEMP),
       bed_max_temp_(AppConstants::Temperature::DEFAULT_BED_MAX) {
-    // Initialize heater configurations
+
     nozzle_config_ = {.type = HEATER_NOZZLE,
                       .name = "Nozzle",
                       .title = "Nozzle Temperature",
-                      .color = lv_color_hex(0xFF4444), // Default red (loaded from XML later)
+                      .color = lv_color_hex(0xFF4444),
                       .temp_range_max = 320.0f,
                       .y_axis_increment = 80,
                       .presets = {0, 210, 240, 250},
@@ -46,13 +42,12 @@ TempControlPanel::TempControlPanel(PrinterState& printer_state, MoonrakerAPI* ap
     bed_config_ = {.type = HEATER_BED,
                    .name = "Bed",
                    .title = "Heatbed Temperature",
-                   .color = lv_color_hex(0x00CED1), // Default cyan (loaded from XML later)
+                   .color = lv_color_hex(0x00CED1),
                    .temp_range_max = 140.0f,
                    .y_axis_increment = 35,
                    .presets = {0, 60, 80, 100},
                    .keypad_range = {0.0f, 150.0f}};
 
-    // Zero-initialize string buffers
     nozzle_current_buf_.fill('\0');
     nozzle_target_buf_.fill('\0');
     bed_current_buf_.fill('\0');
@@ -60,133 +55,18 @@ TempControlPanel::TempControlPanel(PrinterState& printer_state, MoonrakerAPI* ap
     nozzle_display_buf_.fill('\0');
     bed_display_buf_.fill('\0');
 
-    // Subscribe to PrinterState temperature subjects
-    // Pass 'this' as user_data so static callbacks can access instance
-    nozzle_temp_observer_ = lv_subject_add_observer(printer_state_.get_extruder_temp_subject(),
-                                                    nozzle_temp_observer_cb, this);
-
-    nozzle_target_observer_ = lv_subject_add_observer(printer_state_.get_extruder_target_subject(),
-                                                      nozzle_target_observer_cb, this);
-
-    bed_temp_observer_ =
-        lv_subject_add_observer(printer_state_.get_bed_temp_subject(), bed_temp_observer_cb, this);
-
-    bed_target_observer_ = lv_subject_add_observer(printer_state_.get_bed_target_subject(),
-                                                   bed_target_observer_cb, this);
+    // Subscribe to PrinterState temperature subjects (ObserverGuard handles cleanup)
+    nozzle_temp_observer_ = ObserverGuard(printer_state_.get_extruder_temp_subject(),
+                                          nozzle_temp_observer_cb, this);
+    nozzle_target_observer_ = ObserverGuard(printer_state_.get_extruder_target_subject(),
+                                            nozzle_target_observer_cb, this);
+    bed_temp_observer_ = ObserverGuard(printer_state_.get_bed_temp_subject(),
+                                       bed_temp_observer_cb, this);
+    bed_target_observer_ = ObserverGuard(printer_state_.get_bed_target_subject(),
+                                         bed_target_observer_cb, this);
 
     spdlog::debug("[TempPanel] Constructed - subscribed to PrinterState temperature subjects");
 }
-
-TempControlPanel::~TempControlPanel() {
-    // RAII cleanup: remove all observers
-    if (nozzle_temp_observer_) {
-        lv_observer_remove(nozzle_temp_observer_);
-        nozzle_temp_observer_ = nullptr;
-    }
-    if (nozzle_target_observer_) {
-        lv_observer_remove(nozzle_target_observer_);
-        nozzle_target_observer_ = nullptr;
-    }
-    if (bed_temp_observer_) {
-        lv_observer_remove(bed_temp_observer_);
-        bed_temp_observer_ = nullptr;
-    }
-    if (bed_target_observer_) {
-        lv_observer_remove(bed_target_observer_);
-        bed_target_observer_ = nullptr;
-    }
-}
-
-// Move constructor
-TempControlPanel::TempControlPanel(TempControlPanel&& other) noexcept
-    : printer_state_(other.printer_state_), api_(other.api_),
-      nozzle_temp_observer_(other.nozzle_temp_observer_),
-      nozzle_target_observer_(other.nozzle_target_observer_),
-      bed_temp_observer_(other.bed_temp_observer_),
-      bed_target_observer_(other.bed_target_observer_), nozzle_current_(other.nozzle_current_),
-      nozzle_target_(other.nozzle_target_), bed_current_(other.bed_current_),
-      bed_target_(other.bed_target_), nozzle_pending_(other.nozzle_pending_),
-      bed_pending_(other.bed_pending_), nozzle_min_temp_(other.nozzle_min_temp_),
-      nozzle_max_temp_(other.nozzle_max_temp_), bed_min_temp_(other.bed_min_temp_),
-      bed_max_temp_(other.bed_max_temp_), nozzle_panel_(other.nozzle_panel_),
-      bed_panel_(other.bed_panel_), nozzle_graph_(other.nozzle_graph_),
-      bed_graph_(other.bed_graph_), nozzle_series_id_(other.nozzle_series_id_),
-      bed_series_id_(other.bed_series_id_), nozzle_config_(other.nozzle_config_),
-      bed_config_(other.bed_config_), subjects_initialized_(other.subjects_initialized_) {
-    // Null out source's observers so destructor doesn't double-free
-    other.nozzle_temp_observer_ = nullptr;
-    other.nozzle_target_observer_ = nullptr;
-    other.bed_temp_observer_ = nullptr;
-    other.bed_target_observer_ = nullptr;
-
-    // Copy string buffers
-    nozzle_current_buf_ = other.nozzle_current_buf_;
-    nozzle_target_buf_ = other.nozzle_target_buf_;
-    bed_current_buf_ = other.bed_current_buf_;
-    bed_target_buf_ = other.bed_target_buf_;
-    nozzle_display_buf_ = other.nozzle_display_buf_;
-    bed_display_buf_ = other.bed_display_buf_;
-}
-
-// Move assignment
-TempControlPanel& TempControlPanel::operator=(TempControlPanel&& other) noexcept {
-    if (this != &other) {
-        // Clean up our observers first
-        if (nozzle_temp_observer_)
-            lv_observer_remove(nozzle_temp_observer_);
-        if (nozzle_target_observer_)
-            lv_observer_remove(nozzle_target_observer_);
-        if (bed_temp_observer_)
-            lv_observer_remove(bed_temp_observer_);
-        if (bed_target_observer_)
-            lv_observer_remove(bed_target_observer_);
-
-        // Move everything
-        api_ = other.api_;
-        nozzle_temp_observer_ = other.nozzle_temp_observer_;
-        nozzle_target_observer_ = other.nozzle_target_observer_;
-        bed_temp_observer_ = other.bed_temp_observer_;
-        bed_target_observer_ = other.bed_target_observer_;
-        nozzle_current_ = other.nozzle_current_;
-        nozzle_target_ = other.nozzle_target_;
-        bed_current_ = other.bed_current_;
-        bed_target_ = other.bed_target_;
-        nozzle_pending_ = other.nozzle_pending_;
-        bed_pending_ = other.bed_pending_;
-        nozzle_min_temp_ = other.nozzle_min_temp_;
-        nozzle_max_temp_ = other.nozzle_max_temp_;
-        bed_min_temp_ = other.bed_min_temp_;
-        bed_max_temp_ = other.bed_max_temp_;
-        nozzle_panel_ = other.nozzle_panel_;
-        bed_panel_ = other.bed_panel_;
-        nozzle_graph_ = other.nozzle_graph_;
-        bed_graph_ = other.bed_graph_;
-        nozzle_series_id_ = other.nozzle_series_id_;
-        bed_series_id_ = other.bed_series_id_;
-        nozzle_config_ = other.nozzle_config_;
-        bed_config_ = other.bed_config_;
-        subjects_initialized_ = other.subjects_initialized_;
-
-        // Null out source's observers
-        other.nozzle_temp_observer_ = nullptr;
-        other.nozzle_target_observer_ = nullptr;
-        other.bed_temp_observer_ = nullptr;
-        other.bed_target_observer_ = nullptr;
-
-        // Copy string buffers
-        nozzle_current_buf_ = other.nozzle_current_buf_;
-        nozzle_target_buf_ = other.nozzle_target_buf_;
-        bed_current_buf_ = other.bed_current_buf_;
-        bed_target_buf_ = other.bed_target_buf_;
-        nozzle_display_buf_ = other.nozzle_display_buf_;
-        bed_display_buf_ = other.bed_display_buf_;
-    }
-    return *this;
-}
-
-// ============================================================================
-// OBSERVER CALLBACKS (static trampolines → instance methods)
-// ============================================================================
 
 void TempControlPanel::nozzle_temp_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
     auto* self = static_cast<TempControlPanel*>(lv_observer_get_user_data(observer));
@@ -215,10 +95,6 @@ void TempControlPanel::bed_target_observer_cb(lv_observer_t* observer, lv_subjec
         self->on_bed_target_changed(lv_subject_get_int(subject));
     }
 }
-
-// ============================================================================
-// INSTANCE METHODS FOR TEMPERATURE CHANGES
-// ============================================================================
 
 void TempControlPanel::on_nozzle_temp_changed(int temp) {
     nozzle_current_ = temp;
@@ -302,10 +178,6 @@ void TempControlPanel::on_bed_target_changed(int target) {
     }
 }
 
-// ============================================================================
-// DISPLAY UPDATE HELPERS
-// ============================================================================
-
 void TempControlPanel::update_nozzle_display() {
     // Guard: don't update subject if not initialized yet (observer fires during construction)
     if (!subjects_initialized_) {
@@ -366,10 +238,6 @@ void TempControlPanel::update_bed_display() {
     lv_subject_copy_string(&bed_display_subject_, bed_display_buf_.data());
 }
 
-// ============================================================================
-// SUBJECT INITIALIZATION
-// ============================================================================
-
 void TempControlPanel::init_subjects() {
     if (subjects_initialized_) {
         spdlog::warn("[TempPanel] init_subjects() called twice - ignoring");
@@ -409,10 +277,6 @@ void TempControlPanel::init_subjects() {
     spdlog::debug("[TempPanel] Subjects initialized: nozzle={}/{}°C, bed={}/{}°C", nozzle_current_,
                   nozzle_target_, bed_current_, bed_target_);
 }
-
-// ============================================================================
-// GRAPH CREATION
-// ============================================================================
 
 ui_temp_graph_t* TempControlPanel::create_temp_graph(lv_obj_t* chart_area,
                                                      const heater_config_t* config, int target_temp,
@@ -526,10 +390,6 @@ void TempControlPanel::update_x_axis_labels(
         lv_label_set_text(labels[i], buf);
     }
 }
-
-// ============================================================================
-// EVENT HANDLERS (static trampolines)
-// ============================================================================
 
 void TempControlPanel::nozzle_confirm_cb(lv_event_t* e) {
     auto* self = static_cast<TempControlPanel*>(lv_event_get_user_data(e));
@@ -678,10 +538,6 @@ void TempControlPanel::custom_button_cb(lv_event_t* e) {
     ui_keypad_show(&keypad_config);
 }
 
-// ============================================================================
-// BUTTON SETUP HELPERS
-// ============================================================================
-
 // Static storage for callback data (needed because LVGL holds raw pointers)
 // These persist for the lifetime of the application
 static PresetCallbackData nozzle_preset_data[4];
@@ -725,10 +581,6 @@ void TempControlPanel::setup_confirm_button(lv_obj_t* header, heater_type_t type
                       type == HEATER_NOZZLE ? "Nozzle" : "Bed");
     }
 }
-
-// ============================================================================
-// PANEL SETUP
-// ============================================================================
 
 void TempControlPanel::setup_nozzle_panel(lv_obj_t* panel, lv_obj_t* parent_screen) {
     nozzle_panel_ = panel;
@@ -864,10 +716,6 @@ void TempControlPanel::setup_bed_panel(lv_obj_t* panel, lv_obj_t* parent_screen)
 
     spdlog::debug("[TempPanel] Bed panel setup complete!");
 }
-
-// ============================================================================
-// PUBLIC API
-// ============================================================================
 
 void TempControlPanel::set_nozzle(int current, int target) {
     UITemperatureUtils::validate_and_clamp_pair(current, target, nozzle_min_temp_, nozzle_max_temp_,

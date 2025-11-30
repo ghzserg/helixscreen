@@ -3,48 +3,17 @@
 
 #pragma once
 
-#include "printer_state.h" // For PrintJobState enum
+#include "printer_state.h"
+#include "ui_observer_guard.h"
 #include "ui_panel_base.h"
 
 #include <string>
 
 /**
- * @file ui_panel_print_status.h
  * @brief Print status panel - shows active print progress and controls
  *
- * Displays comprehensive print status including:
- * - Filename and thumbnail
- * - Progress bar and percentage
- * - Layer count (current / total)
- * - Elapsed and remaining time
- * - Nozzle and bed temperatures
- * - Speed and flow percentages
- * - Pause/Resume, Tune, and Cancel buttons
- *
- * ## Phase 5 Migration - High Complexity Panel:
- *
- * This panel has the most subjects (10) and includes mock print simulation
- * for testing without a real printer connection.
- *
- * Key patterns:
- * - 10 reactive subjects for all display fields
- * - Resize callback registration for responsive thumbnail scaling
- * - Mock print simulation with tick-based progression
- * - State machine for print lifecycle
- *
- * ## Reactive Subjects (owned by this panel):
- * - `print_filename` - Current print filename
- * - `print_progress_text` - Progress percentage text (e.g., "45%")
- * - `print_layer_text` - Layer text (e.g., "Layer 42 / 100")
- * - `print_elapsed` - Elapsed time (e.g., "1h 23m")
- * - `print_remaining` - Remaining time (e.g., "2h 45m")
- * - `nozzle_temp_text` - Nozzle temperature (e.g., "215 / 215°C")
- * - `bed_temp_text` - Bed temperature (e.g., "60 / 60°C")
- * - `print_speed_text` - Speed percentage (e.g., "100%")
- * - `print_flow_text` - Flow percentage (e.g., "100%")
- * - `pause_button_text` - Pause/Resume button label
- *
- * @see PanelBase for base class documentation
+ * Displays filename, thumbnail, progress, layers, times, temperatures,
+ * speed/flow, and provides pause/tune/cancel buttons.
  */
 
 /**
@@ -344,25 +313,18 @@ class PrintStatusPanel : public PanelBase {
     void on_led_state_changed(int state);
     void on_print_layer_changed(int current_layer);
 
-    //
-    // === PrinterState Observers (RAII managed) ===
-    //
-
-    lv_observer_t* extruder_temp_observer_ = nullptr;
-    lv_observer_t* extruder_target_observer_ = nullptr;
-    lv_observer_t* bed_temp_observer_ = nullptr;
-    lv_observer_t* bed_target_observer_ = nullptr;
-    lv_observer_t* print_progress_observer_ = nullptr;
-    lv_observer_t* print_state_observer_ = nullptr;
-    lv_observer_t* print_filename_observer_ = nullptr;
-    lv_observer_t* speed_factor_observer_ = nullptr;
-    lv_observer_t* flow_factor_observer_ = nullptr;
-    lv_observer_t* led_state_observer_ = nullptr;
-    lv_observer_t* print_layer_observer_ = nullptr;
-
-    //
-    // === LED State ===
-    //
+    // PrinterState observers (ObserverGuard handles cleanup)
+    ObserverGuard extruder_temp_observer_;
+    ObserverGuard extruder_target_observer_;
+    ObserverGuard bed_temp_observer_;
+    ObserverGuard bed_target_observer_;
+    ObserverGuard print_progress_observer_;
+    ObserverGuard print_state_observer_;
+    ObserverGuard print_filename_observer_;
+    ObserverGuard speed_factor_observer_;
+    ObserverGuard flow_factor_observer_;
+    ObserverGuard led_state_observer_;
+    ObserverGuard print_layer_observer_;
 
     bool led_on_ = false;
     std::string configured_led_;

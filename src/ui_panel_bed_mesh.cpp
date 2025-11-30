@@ -17,15 +17,7 @@
 #include <cstring>
 #include <limits>
 
-// ============================================================================
-// GLOBAL INSTANCE (for legacy API compatibility)
-// ============================================================================
-
 static std::unique_ptr<BedMeshPanel> g_bed_mesh_panel;
-
-// ============================================================================
-// CONSTRUCTOR / DESTRUCTOR
-// ============================================================================
 
 BedMeshPanel::BedMeshPanel(PrinterState& printer_state, MoonrakerAPI* api)
     : PanelBase(printer_state, api) {
@@ -37,22 +29,10 @@ BedMeshPanel::BedMeshPanel(PrinterState& printer_state, MoonrakerAPI* api)
 }
 
 BedMeshPanel::~BedMeshPanel() {
-    // Note: Moonraker callback cleanup would go here if we had unregister API
-    // Currently MoonrakerClient doesn't support unregistering callbacks,
-    // but the callback captures 'this' so we need to be careful about lifetime.
-    // In practice, panels are destroyed when the app exits, so this is safe.
-
-    // NOTE: Do NOT log here! The destructor may be called during static destruction
-    // (via g_bed_mesh_panel) after spdlog has already been destroyed.
-
-    // Clear widget pointers (they're owned by LVGL, not us)
+    // Widget pointers owned by LVGL - just clear them
     canvas_ = nullptr;
     profile_dropdown_ = nullptr;
 }
-
-// ============================================================================
-// PANELBASE IMPLEMENTATION
-// ============================================================================
 
 void BedMeshPanel::init_subjects() {
     if (subjects_initialized_) {
@@ -124,10 +104,6 @@ void BedMeshPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     spdlog::info("[{}] Setup complete!", get_name());
 }
 
-// ============================================================================
-// PUBLIC API
-// ============================================================================
-
 void BedMeshPanel::set_mesh_data(const std::vector<std::vector<float>>& mesh_data) {
     if (!canvas_) {
         spdlog::error("[{}] Cannot set mesh data - canvas not initialized", get_name());
@@ -166,10 +142,6 @@ void BedMeshPanel::redraw() {
 
     ui_bed_mesh_redraw(canvas_);
 }
-
-// ============================================================================
-// PRIVATE HELPERS
-// ============================================================================
 
 void BedMeshPanel::setup_profile_dropdown() {
     lv_obj_t* overlay_content = lv_obj_find_by_name(panel_, "overlay_content");
@@ -348,10 +320,6 @@ void BedMeshPanel::update_info_subjects(const std::vector<std::vector<float>>& m
     lv_subject_copy_string(&bed_mesh_z_range_, z_range_buf_);
 }
 
-// ============================================================================
-// STATIC TRAMPOLINES
-// ============================================================================
-
 void BedMeshPanel::on_panel_delete(lv_event_t* e) {
     auto* self = static_cast<BedMeshPanel*>(lv_event_get_user_data(e));
     if (!self)
@@ -389,11 +357,6 @@ void BedMeshPanel::on_profile_dropdown_changed(lv_event_t* e) {
     }
 }
 
-// ============================================================================
-// DEPRECATED LEGACY API (forwards to global instance)
-// ============================================================================
-
-// Helper to get or create global instance
 BedMeshPanel& get_global_bed_mesh_panel() {
     if (!g_bed_mesh_panel) {
         // Create with dummy PrinterState - legacy API doesn't have proper DI

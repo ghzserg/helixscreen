@@ -22,12 +22,7 @@
 #include <cstring>
 #include <memory>
 
-// Static constexpr member definition (C++14 compatibility)
 constexpr int ExtrusionPanel::AMOUNT_VALUES[4];
-
-// ============================================================================
-// CONSTRUCTOR
-// ============================================================================
 
 ExtrusionPanel::ExtrusionPanel(PrinterState& printer_state, MoonrakerAPI* api)
     : PanelBase(printer_state, api) {
@@ -37,10 +32,6 @@ ExtrusionPanel::ExtrusionPanel(PrinterState& printer_state, MoonrakerAPI* api)
     std::snprintf(warning_temps_buf_, sizeof(warning_temps_buf_), "Current: %d°C\nTarget: %d°C",
                   nozzle_current_, nozzle_target_);
 }
-
-// ============================================================================
-// PANELBASE IMPLEMENTATION
-// ============================================================================
 
 void ExtrusionPanel::init_subjects() {
     if (subjects_initialized_) {
@@ -88,10 +79,6 @@ void ExtrusionPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
 
     spdlog::info("[{}] Setup complete!", get_name());
 }
-
-// ============================================================================
-// PRIVATE SETUP HELPERS
-// ============================================================================
 
 void ExtrusionPanel::setup_amount_buttons() {
     lv_obj_t* overlay_content = lv_obj_find_by_name(panel_, "overlay_content");
@@ -152,10 +139,6 @@ void ExtrusionPanel::setup_temperature_observer() {
                      get_name());
     }
 }
-
-// ============================================================================
-// PRIVATE UPDATE HELPERS
-// ============================================================================
 
 void ExtrusionPanel::update_temp_status() {
     // Status indicator: ✓ (ready), ⚠ (heating), ✗ (too cold)
@@ -227,10 +210,6 @@ void ExtrusionPanel::update_amount_buttons_visual() {
     }
 }
 
-// ============================================================================
-// INSTANCE HANDLERS
-// ============================================================================
-
 void ExtrusionPanel::handle_amount_button(lv_obj_t* btn) {
     const char* name = lv_obj_get_name(btn);
     if (!name)
@@ -280,10 +259,6 @@ void ExtrusionPanel::handle_retract() {
     // }
 }
 
-// ============================================================================
-// STATIC TRAMPOLINES
-// ============================================================================
-
 void ExtrusionPanel::on_amount_button_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[ExtrusionPanel] on_amount_button_clicked");
     auto* self = static_cast<ExtrusionPanel*>(lv_event_get_user_data(e));
@@ -331,10 +306,6 @@ void ExtrusionPanel::on_nozzle_temp_changed(lv_observer_t* observer, lv_subject_
     self->update_safety_state();
 }
 
-// ============================================================================
-// PUBLIC API
-// ============================================================================
-
 void ExtrusionPanel::set_temp(int current, int target) {
     // Validate temperature ranges using dynamic limits
     if (current < nozzle_min_temp_ || current > nozzle_max_temp_) {
@@ -366,30 +337,14 @@ void ExtrusionPanel::set_limits(int min_temp, int max_temp) {
     spdlog::info("[{}] Nozzle temperature limits updated: {}-{}°C", get_name(), min_temp, max_temp);
 }
 
-// ============================================================================
-// DEPRECATED LEGACY API
-// ============================================================================
-//
-// These wrappers maintain backwards compatibility during the transition.
-// They create a global ExtrusionPanel instance and delegate to its methods.
-//
-// TODO(clean-break): Remove after all callers updated to use ExtrusionPanel class
-// ============================================================================
-
-// Global instance for legacy API - created on first use
 static std::unique_ptr<ExtrusionPanel> g_extrusion_panel;
 
-// Helper to get or create the global instance
 ExtrusionPanel& get_global_extrusion_panel() {
     if (!g_extrusion_panel) {
         g_extrusion_panel = std::make_unique<ExtrusionPanel>(get_printer_state(), nullptr);
     }
     return *g_extrusion_panel;
 }
-
-// ============================================================================
-// GLOBAL INSTANCE (needed by main.cpp)
-// ============================================================================
 
 static std::unique_ptr<ExtrusionPanel> g_controls_extrusion_panel;
 

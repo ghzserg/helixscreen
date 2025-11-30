@@ -3,6 +3,7 @@
 
 #include "ui_panel_motion.h"
 
+#include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_jog_pad.h"
 #include "ui_nav.h"
@@ -12,6 +13,7 @@
 #include "ui_utils.h"
 
 #include "app_globals.h"
+#include "moonraker_api.h"
 #include "printer_state.h"
 
 #include <spdlog/spdlog.h>
@@ -23,10 +25,6 @@
 // Distance values in mm (indexed by jog_distance_t)
 static const float distance_values[] = {0.1f, 1.0f, 10.0f, 100.0f};
 
-// ============================================================================
-// CONSTRUCTOR
-// ============================================================================
-
 MotionPanel::MotionPanel(PrinterState& printer_state, MoonrakerAPI* api)
     : PanelBase(printer_state, api) {
     // Initialize buffer contents
@@ -34,10 +32,6 @@ MotionPanel::MotionPanel(PrinterState& printer_state, MoonrakerAPI* api)
     std::strcpy(pos_y_buf_, "Y:    --  mm");
     std::strcpy(pos_z_buf_, "Z:    --  mm");
 }
-
-// ============================================================================
-// PANELBASE IMPLEMENTATION
-// ============================================================================
 
 void MotionPanel::init_subjects() {
     if (subjects_initialized_) {
@@ -50,8 +44,11 @@ void MotionPanel::init_subjects() {
     UI_SUBJECT_INIT_AND_REGISTER_STRING(pos_y_subject_, pos_y_buf_, "Y:    --  mm", "motion_pos_y");
     UI_SUBJECT_INIT_AND_REGISTER_STRING(pos_z_subject_, pos_z_buf_, "Z:    --  mm", "motion_pos_z");
 
+    // Register PrinterState observers (RAII - auto-removed on destruction)
+    register_position_observers();
+
     subjects_initialized_ = true;
-    spdlog::debug("[{}] Subjects initialized: X/Y/Z position displays", get_name());
+    spdlog::debug("[{}] Subjects initialized: X/Y/Z position displays + observers", get_name());
 }
 
 void MotionPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
@@ -63,7 +60,7 @@ void MotionPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         return;
     }
 
-    spdlog::info("[{}] Setting up event handlers...", get_name());
+    spdlog::debug("[{}] Setting up event handlers...", get_name());
 
     // Use standard overlay panel setup (wires header, back button, handles responsive padding)
     ui_overlay_panel_setup_standard(panel_, parent_screen_, "overlay_header", "overlay_content");
@@ -74,12 +71,8 @@ void MotionPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     setup_z_buttons();
     setup_home_buttons();
 
-    spdlog::info("[{}] Setup complete!", get_name());
+    spdlog::debug("[{}] Setup complete!", get_name());
 }
-
-// ============================================================================
-// PRIVATE SETUP HELPERS
-// ============================================================================
 
 void MotionPanel::setup_distance_buttons() {
     const char* dist_names[] = {"dist_0_1", "dist_1", "dist_10", "dist_100"};
@@ -147,7 +140,7 @@ void MotionPanel::setup_jog_pad() {
         // Set initial distance
         ui_jog_pad_set_distance(jog_pad_, current_distance_);
 
-        spdlog::info("[{}] Jog pad widget created (size: {}px)", get_name(), jog_size);
+        spdlog::debug("[{}] Jog pad widget created (size: {}px)", get_name(), jog_size);
     } else {
         spdlog::error("[{}] Failed to create jog pad widget!", get_name());
     }
@@ -164,7 +157,7 @@ void MotionPanel::setup_z_buttons() {
     for (const char* name : z_names) {
         lv_obj_t* btn = lv_obj_find_by_name(overlay_content, name);
         if (btn) {
-            spdlog::debug("[{}] Found '{}' at {}", get_name(), name, (void*)btn);
+            spdlog::trace("[{}] Found '{}' at {}", get_name(), name, (void*)btn);
             lv_obj_add_event_cb(btn, on_z_button_clicked, LV_EVENT_CLICKED, this);
             z_found++;
         } else {
@@ -192,6 +185,22 @@ void MotionPanel::setup_home_buttons() {
     spdlog::debug("[{}] Home buttons (4 buttons)", get_name());
 }
 
+void MotionPanel::register_position_observers() {
+    // Subscribe to PrinterState position updates so UI reflects real printer position
+    // Using ObserverGuard for RAII - observers automatically removed on destruction
+
+    position_x_observer_ = ObserverGuard(printer_state_.get_position_x_subject(),
+                                         on_position_x_changed, this);
+
+    position_y_observer_ = ObserverGuard(printer_state_.get_position_y_subject(),
+                                         on_position_y_changed, this);
+
+    position_z_observer_ = ObserverGuard(printer_state_.get_position_z_subject(),
+                                         on_position_z_changed, this);
+
+    spdlog::debug("[{}] Position observers registered (X/Y/Z via RAII ObserverGuard)", get_name());
+}
+
 void MotionPanel::update_distance_buttons() {
     for (int i = 0; i < 4; i++) {
         if (dist_buttons_[i]) {
@@ -211,16 +220,45 @@ void MotionPanel::update_distance_buttons() {
     }
 }
 
-// ============================================================================
-// INSTANCE HANDLERS
-// ============================================================================
+void MotionPanel::on_position_x_changed(lv_observer_t* observer, lv_subject_t* subject) {
+    auto* self = static_cast<MotionPanel*>(lv_observer_get_user_data(observer));
+    if (!self || !self->subjects_initialized_)
+        return;
+
+    float x = static_cast<float>(lv_subject_get_int(subject));
+    self->current_x_ = x;
+    snprintf(self->pos_x_buf_, sizeof(self->pos_x_buf_), "X: %6.1f mm", x);
+    lv_subject_copy_string(&self->pos_x_subject_, self->pos_x_buf_);
+}
+
+void MotionPanel::on_position_y_changed(lv_observer_t* observer, lv_subject_t* subject) {
+    auto* self = static_cast<MotionPanel*>(lv_observer_get_user_data(observer));
+    if (!self || !self->subjects_initialized_)
+        return;
+
+    float y = static_cast<float>(lv_subject_get_int(subject));
+    self->current_y_ = y;
+    snprintf(self->pos_y_buf_, sizeof(self->pos_y_buf_), "Y: %6.1f mm", y);
+    lv_subject_copy_string(&self->pos_y_subject_, self->pos_y_buf_);
+}
+
+void MotionPanel::on_position_z_changed(lv_observer_t* observer, lv_subject_t* subject) {
+    auto* self = static_cast<MotionPanel*>(lv_observer_get_user_data(observer));
+    if (!self || !self->subjects_initialized_)
+        return;
+
+    float z = static_cast<float>(lv_subject_get_int(subject));
+    self->current_z_ = z;
+    snprintf(self->pos_z_buf_, sizeof(self->pos_z_buf_), "Z: %6.1f mm", z);
+    lv_subject_copy_string(&self->pos_z_subject_, self->pos_z_buf_);
+}
 
 void MotionPanel::handle_distance_button(lv_obj_t* btn) {
     // Find which button was clicked
     for (int i = 0; i < 4; i++) {
         if (btn == dist_buttons_[i]) {
             current_distance_ = (jog_distance_t)i;
-            spdlog::info("[{}] Distance selected: {:.1f}mm", get_name(), distance_values[i]);
+            spdlog::debug("[{}] Distance selected: {:.1f}mm", get_name(), distance_values[i]);
             update_distance_buttons();
             return;
         }
@@ -228,28 +266,42 @@ void MotionPanel::handle_distance_button(lv_obj_t* btn) {
 }
 
 void MotionPanel::handle_z_button(const char* name) {
-    spdlog::info("[{}] Z button callback fired! Button name: '{}'", get_name(),
-                 name ? name : "(null)");
+    spdlog::debug("[{}] Z button callback fired! Button name: '{}'", get_name(),
+                  name ? name : "(null)");
 
     if (!name) {
         spdlog::error("[{}] Button has no name!", get_name());
         return;
     }
 
+    // Determine Z distance from button name
+    double distance = 0.0;
     if (strcmp(name, "z_up_10") == 0) {
-        set_position(current_x_, current_y_, current_z_ + 10.0f);
-        spdlog::info("[{}] Z jog: +10mm (now {:.1f}mm)", get_name(), current_z_);
+        distance = 10.0;
     } else if (strcmp(name, "z_up_1") == 0) {
-        set_position(current_x_, current_y_, current_z_ + 1.0f);
-        spdlog::info("[{}] Z jog: +1mm (now {:.1f}mm)", get_name(), current_z_);
+        distance = 1.0;
     } else if (strcmp(name, "z_down_1") == 0) {
-        set_position(current_x_, current_y_, current_z_ - 1.0f);
-        spdlog::info("[{}] Z jog: -1mm (now {:.1f}mm)", get_name(), current_z_);
+        distance = -1.0;
     } else if (strcmp(name, "z_down_10") == 0) {
-        set_position(current_x_, current_y_, current_z_ - 10.0f);
-        spdlog::info("[{}] Z jog: -10mm (now {:.1f}mm)", get_name(), current_z_);
+        distance = -10.0;
     } else {
         spdlog::error("[{}] Unknown button name: '{}'", get_name(), name);
+        return;
+    }
+
+    spdlog::debug("[{}] Z jog: {:+.0f}mm", get_name(), distance);
+
+    if (api_) {
+        // Z feedrate: 600 mm/min (10 mm/s) - slower for safety
+        constexpr double Z_FEEDRATE = 600.0;
+
+        api_->move_axis(
+            'Z', distance, Z_FEEDRATE, []() { spdlog::debug("[MotionPanel] Z jog complete"); },
+            [](const MoonrakerError& err) { NOTIFY_ERROR("Z jog failed: {}", err.user_message()); });
+    } else {
+        // Fallback for mock/disconnected mode
+        NOTIFY_WARNING("Not connected - Z jog not sent");
+        set_position(current_x_, current_y_, current_z_ + static_cast<float>(distance));
     }
 }
 
@@ -268,10 +320,6 @@ void MotionPanel::handle_home_button(const char* name) {
     }
 }
 
-// ============================================================================
-// JOG PAD CALLBACKS
-// ============================================================================
-
 void MotionPanel::jog_pad_jog_cb(jog_direction_t direction, float distance_mm, void* user_data) {
     auto* self = static_cast<MotionPanel*>(user_data);
     if (self) {
@@ -285,10 +333,6 @@ void MotionPanel::jog_pad_home_cb(void* user_data) {
         self->home('A'); // Home XY
     }
 }
-
-// ============================================================================
-// STATIC TRAMPOLINES
-// ============================================================================
 
 void MotionPanel::on_distance_button_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[MotionPanel] on_distance_button_clicked");
@@ -322,14 +366,13 @@ void MotionPanel::on_home_button_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-// ============================================================================
-// PUBLIC API
-// ============================================================================
-
 void MotionPanel::set_position(float x, float y, float z) {
     current_x_ = x;
     current_y_ = y;
     current_z_ = z;
+
+    if (!subjects_initialized_)
+        return;
 
     // Update subjects (will automatically update bound UI elements)
     snprintf(pos_x_buf_, sizeof(pos_x_buf_), "X: %6.1f mm", x);
@@ -352,9 +395,9 @@ void MotionPanel::jog(jog_direction_t direction, float distance_mm) {
     const char* dir_names[] = {"N(+Y)",    "S(-Y)",    "E(+X)",    "W(-X)",
                                "NE(+X+Y)", "NW(-X+Y)", "SE(+X-Y)", "SW(-X-Y)"};
 
-    spdlog::info("[{}] Jog command: {} {:.1f}mm", get_name(), dir_names[direction], distance_mm);
+    spdlog::debug("[{}] Jog command: {} {:.1f}mm", get_name(), dir_names[direction], distance_mm);
 
-    // Mock position update (simulate jog movement)
+    // Calculate dx/dy from direction
     float dx = 0.0f, dy = 0.0f;
 
     switch (direction) {
@@ -388,38 +431,77 @@ void MotionPanel::jog(jog_direction_t direction, float distance_mm) {
         break;
     }
 
-    set_position(current_x_ + dx, current_y_ + dy, current_z_);
+    // Send jog commands via Moonraker API
+    if (api_) {
+        // Default feedrate: 6000 mm/min (100 mm/s) for XY jog moves
+        constexpr double JOG_FEEDRATE = 6000.0;
 
-    // TODO: Send actual G-code command via Moonraker API
-    // Example: G0 X{new_x} Y{new_y} F{feedrate}
+        if (dx != 0.0f) {
+            api_->move_axis(
+                'X', static_cast<double>(dx), JOG_FEEDRATE,
+                []() { spdlog::debug("[MotionPanel] X jog complete"); },
+                [](const MoonrakerError& err) {
+                    NOTIFY_ERROR("X jog failed: {}", err.user_message());
+                });
+        }
+        if (dy != 0.0f) {
+            api_->move_axis(
+                'Y', static_cast<double>(dy), JOG_FEEDRATE,
+                []() { spdlog::debug("[MotionPanel] Y jog complete"); },
+                [](const MoonrakerError& err) {
+                    NOTIFY_ERROR("Y jog failed: {}", err.user_message());
+                });
+        }
+    } else {
+        // Fallback for mock/disconnected mode - update display locally
+        NOTIFY_WARNING("Not connected - jog command not sent");
+        set_position(current_x_ + dx, current_y_ + dy, current_z_);
+    }
 }
 
 void MotionPanel::home(char axis) {
-    spdlog::info("[{}] Home command: {} axis", get_name(), axis);
+    spdlog::debug("[{}] Home command: {} axis", get_name(), axis);
 
-    // Mock position update (simulate homing)
-    switch (axis) {
-    case 'X':
-        set_position(0.0f, current_y_, current_z_);
-        break;
-    case 'Y':
-        set_position(current_x_, 0.0f, current_z_);
-        break;
-    case 'Z':
-        set_position(current_x_, current_y_, 0.0f);
-        break;
-    case 'A':
-        set_position(0.0f, 0.0f, 0.0f);
-        break; // All axes
+    if (api_) {
+        // Convert axis char to string for API ("" for all, "X", "Y", "Z", or "XY")
+        std::string axes_str;
+        if (axis == 'A') {
+            axes_str = ""; // Empty string = home all
+        } else {
+            axes_str = std::string(1, axis);
+        }
+
+        api_->home_axes(
+            axes_str,
+            [axis]() {
+                if (axis == 'A') {
+                    NOTIFY_SUCCESS("All axes homed");
+                } else {
+                    NOTIFY_SUCCESS("{} axis homed", axis);
+                }
+            },
+            [](const MoonrakerError& err) {
+                NOTIFY_ERROR("Homing failed: {}", err.user_message());
+            });
+    } else {
+        // Fallback for mock/disconnected mode - update display locally
+        NOTIFY_WARNING("Not connected - home command not sent");
+        switch (axis) {
+        case 'X':
+            set_position(0.0f, current_y_, current_z_);
+            break;
+        case 'Y':
+            set_position(current_x_, 0.0f, current_z_);
+            break;
+        case 'Z':
+            set_position(current_x_, current_y_, 0.0f);
+            break;
+        case 'A':
+            set_position(0.0f, 0.0f, 0.0f);
+            break;
+        }
     }
-
-    // TODO: Send actual G-code command via Moonraker API
-    // Example: G28 X (home X), G28 (home all)
 }
-
-// ============================================================================
-// GLOBAL INSTANCE (needed by main.cpp)
-// ============================================================================
 
 static std::unique_ptr<MotionPanel> g_motion_panel;
 

@@ -36,111 +36,54 @@ PrintStatusPanel& get_global_print_status_panel() {
     return *g_print_status_panel;
 }
 
-// ============================================================================
-// CONSTRUCTOR / DESTRUCTOR
-// ============================================================================
-
 PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, MoonrakerAPI* api)
     : PanelBase(printer_state, api) {
-    // Buffers are initialized with default values in header
 
-    // Subscribe to PrinterState temperature subjects
-    extruder_temp_observer_ = lv_subject_add_observer(printer_state_.get_extruder_temp_subject(),
-                                                      extruder_temp_observer_cb, this);
-    extruder_target_observer_ = lv_subject_add_observer(
-        printer_state_.get_extruder_target_subject(), extruder_target_observer_cb, this);
-    bed_temp_observer_ =
-        lv_subject_add_observer(printer_state_.get_bed_temp_subject(), bed_temp_observer_cb, this);
-    bed_target_observer_ = lv_subject_add_observer(printer_state_.get_bed_target_subject(),
-                                                   bed_target_observer_cb, this);
+    // Subscribe to PrinterState temperature subjects (ObserverGuard handles cleanup)
+    extruder_temp_observer_ = ObserverGuard(printer_state_.get_extruder_temp_subject(),
+                                            extruder_temp_observer_cb, this);
+    extruder_target_observer_ = ObserverGuard(printer_state_.get_extruder_target_subject(),
+                                              extruder_target_observer_cb, this);
+    bed_temp_observer_ = ObserverGuard(printer_state_.get_bed_temp_subject(),
+                                       bed_temp_observer_cb, this);
+    bed_target_observer_ = ObserverGuard(printer_state_.get_bed_target_subject(),
+                                         bed_target_observer_cb, this);
 
     // Subscribe to print progress and state
-    print_progress_observer_ = lv_subject_add_observer(printer_state_.get_print_progress_subject(),
-                                                       print_progress_observer_cb, this);
-    // Subscribe to enum subject for type-safe state tracking
-    print_state_observer_ = lv_subject_add_observer(printer_state_.get_print_state_enum_subject(),
-                                                    print_state_observer_cb, this);
-    print_filename_observer_ = lv_subject_add_observer(printer_state_.get_print_filename_subject(),
-                                                       print_filename_observer_cb, this);
+    print_progress_observer_ = ObserverGuard(printer_state_.get_print_progress_subject(),
+                                             print_progress_observer_cb, this);
+    print_state_observer_ = ObserverGuard(printer_state_.get_print_state_enum_subject(),
+                                          print_state_observer_cb, this);
+    print_filename_observer_ = ObserverGuard(printer_state_.get_print_filename_subject(),
+                                             print_filename_observer_cb, this);
 
     // Subscribe to speed/flow factors
-    speed_factor_observer_ = lv_subject_add_observer(printer_state_.get_speed_factor_subject(),
-                                                     speed_factor_observer_cb, this);
-    flow_factor_observer_ = lv_subject_add_observer(printer_state_.get_flow_factor_subject(),
-                                                    flow_factor_observer_cb, this);
+    speed_factor_observer_ = ObserverGuard(printer_state_.get_speed_factor_subject(),
+                                           speed_factor_observer_cb, this);
+    flow_factor_observer_ = ObserverGuard(printer_state_.get_flow_factor_subject(),
+                                          flow_factor_observer_cb, this);
 
     // Subscribe to layer tracking for G-code viewer ghost layer updates
-    print_layer_observer_ = lv_subject_add_observer(
-        printer_state_.get_print_layer_current_subject(), print_layer_observer_cb, this);
+    print_layer_observer_ = ObserverGuard(printer_state_.get_print_layer_current_subject(),
+                                          print_layer_observer_cb, this);
 
-    spdlog::debug("[{}] Subscribed to PrinterState subjects (temps, progress, state, speeds, layer)",
-                  get_name());
+    spdlog::debug("[{}] Subscribed to PrinterState subjects", get_name());
 
     // Load configured LED from wizard settings
     Config* config = Config::get_instance();
     if (config) {
         configured_led_ = config->get<std::string>(WizardConfigPaths::LED_STRIP, "");
         if (!configured_led_.empty()) {
-            // Subscribe to LED state changes from PrinterState
-            led_state_observer_ = lv_subject_add_observer(printer_state_.get_led_state_subject(),
-                                                          led_state_observer_cb, this);
+            led_state_observer_ = ObserverGuard(printer_state_.get_led_state_subject(),
+                                                led_state_observer_cb, this);
             spdlog::debug("[{}] Configured LED: {} (observing state)", get_name(), configured_led_);
         }
     }
 }
 
 PrintStatusPanel::~PrintStatusPanel() {
-    // Note: Do NOT call ui_resize_handler_unregister here!
-    // During static destruction order, the resize handler may already be destroyed.
-    // The resize handler uses a weak reference pattern - if the panel is gone,
-    // it simply won't call the callback.
+    // ObserverGuard handles observer cleanup automatically
     resize_registered_ = false;
-
-    // RAII cleanup: remove PrinterState observers
-    if (extruder_temp_observer_) {
-        lv_observer_remove(extruder_temp_observer_);
-        extruder_temp_observer_ = nullptr;
-    }
-    if (extruder_target_observer_) {
-        lv_observer_remove(extruder_target_observer_);
-        extruder_target_observer_ = nullptr;
-    }
-    if (bed_temp_observer_) {
-        lv_observer_remove(bed_temp_observer_);
-        bed_temp_observer_ = nullptr;
-    }
-    if (bed_target_observer_) {
-        lv_observer_remove(bed_target_observer_);
-        bed_target_observer_ = nullptr;
-    }
-    if (print_progress_observer_) {
-        lv_observer_remove(print_progress_observer_);
-        print_progress_observer_ = nullptr;
-    }
-    if (print_state_observer_) {
-        lv_observer_remove(print_state_observer_);
-        print_state_observer_ = nullptr;
-    }
-    if (print_filename_observer_) {
-        lv_observer_remove(print_filename_observer_);
-        print_filename_observer_ = nullptr;
-    }
-    if (speed_factor_observer_) {
-        lv_observer_remove(speed_factor_observer_);
-        speed_factor_observer_ = nullptr;
-    }
-    if (flow_factor_observer_) {
-        lv_observer_remove(flow_factor_observer_);
-        flow_factor_observer_ = nullptr;
-    }
-    if (led_state_observer_) {
-        lv_observer_remove(led_state_observer_);
-        led_state_observer_ = nullptr;
-    }
-    if (print_layer_observer_) {
-        lv_observer_remove(print_layer_observer_);
-        print_layer_observer_ = nullptr;
-    }
 }
 
 // ============================================================================
