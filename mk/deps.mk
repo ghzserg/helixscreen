@@ -79,7 +79,12 @@ check-deps:
 		echo "         $(YELLOW)brew install python3$(RESET) (macOS)"; \
 	else \
 		echo "$(GREEN)✓ python3 found:$(RESET) $$(python3 --version)"; \
-		if [ ! -f "$(VENV_PYTHON)" ]; then \
+		if ! python3 -c "import venv, ensurepip" 2>/dev/null; then \
+			echo "$(YELLOW)⚠ python3-venv not installed$(RESET)"; WARN=1; \
+			WARN_MSGS="$$WARN_MSGS\n  - python3-venv"; \
+			echo "  Install: $(YELLOW)sudo apt install python3-venv$(RESET) (Debian/Ubuntu)"; \
+			echo "         $(YELLOW)sudo dnf install python3-libs$(RESET) (Fedora/RHEL)"; \
+		elif [ ! -f "$(VENV_PYTHON)" ]; then \
 			echo "$(YELLOW)⚠ Python venv not set up$(RESET)"; WARN=1; \
 			WARN_MSGS="$$WARN_MSGS\n  - Python venv"; \
 			echo "  Run: $(YELLOW)make venv-setup$(RESET)"; \
@@ -533,8 +538,19 @@ endif
 # Python virtual environment setup
 venv-setup:
 	$(ECHO) "$(CYAN)Setting up Python virtual environment...$(RESET)"
-	$(Q)if [ ! -d "$(VENV)" ]; then \
-		python3 -m venv $(VENV) || { echo "$(RED)✗ Failed to create venv$(RESET)"; exit 1; }; \
+	$(Q)if [ ! -f "$(VENV_PIP)" ]; then \
+		rm -rf $(VENV) 2>/dev/null; \
+		python3 -m venv $(VENV) || { \
+			echo "$(RED)✗ Failed to create venv$(RESET)"; \
+			echo "$(YELLOW)On Debian/Ubuntu, install: sudo apt install python3-venv$(RESET)"; \
+			exit 1; \
+		}; \
+		if [ ! -f "$(VENV_PIP)" ]; then \
+			echo "$(RED)✗ venv created but pip missing - python3-venv may not be fully installed$(RESET)"; \
+			echo "$(YELLOW)On Debian/Ubuntu, install: sudo apt install python3-venv$(RESET)"; \
+			rm -rf $(VENV); \
+			exit 1; \
+		fi; \
 		echo "$(GREEN)✓ Virtual environment created$(RESET)"; \
 	else \
 		echo "$(GREEN)✓ Virtual environment exists$(RESET)"; \

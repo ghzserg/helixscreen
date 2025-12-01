@@ -78,26 +78,37 @@ class PngQuant:
     """
 
     def __init__(self, ncolors=256, dither=True, exec_path="") -> None:
-        executable = path.join(exec_path, "pngquant")
-        self.cmd = (f"{executable} {'--nofs' if not dither else ''} "
-                    f"{ncolors}  --force - < ")
+        self.executable = path.join(exec_path, "pngquant")
+        self.ncolors = ncolors
+        self.dither = dither
 
     def convert(self, filename) -> bytes:
         if not os.path.isfile(filename):
-            raise BaseException(f"file not found: {filename}")
+            raise FileNotFoundError(f"file not found: {filename}")
+
+        args = [self.executable]
+        if not self.dither:
+            args.append('--nofs')
+        args.extend([str(self.ncolors), '--force', '-', '<', str(filename)])
 
         try:
-            compressed = subprocess.check_output(
-                f'{self.cmd} "{str(filename)}"',
-                stderr=subprocess.STDOUT,
-                shell=True)
-        except subprocess.CalledProcessError:
-            raise BaseException(
+            # Use stdin redirection safely without shell=True
+            with open(filename, 'rb') as f:
+                compressed = subprocess.check_output(
+                    [self.executable] +
+                    (['--nofs'] if not self.dither else []) +
+                    [str(self.ncolors), '--force', '-'],
+                    stdin=f,
+                    stderr=subprocess.STDOUT)
+        except FileNotFoundError:
+            raise RuntimeError(
                 "cannot find pngquant tool, install it via "
                 "`sudo apt install pngquant` for debian "
                 "or `brew install pngquant` for macintosh "
                 "For windows, you may need to download pngquant.exe from "
                 "https://pngquant.org/, and put it in your PATH.")
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"pngquant failed on {filename}: {e.output}")
 
         return compressed
 
@@ -1353,7 +1364,7 @@ class PNGConverter:
 
     def convert(self, outputname: str):
         if len(self.files) > 1 and outputname is not None:
-            raise BaseException(f"Cannot specify output name when converting more than one file.")
+            raise ValueError("Cannot specify output name when converting more than one file.")
 
         output = []
         for f in self.files:
@@ -1442,9 +1453,9 @@ def main():
         files = list(Path(args.input).rglob("*.[pP][nN][gG]"))
 
         if args.name is not None:
-            raise BaseException(f"invalid input: cannot specify --name when input is a directory")
+            raise ValueError("invalid input: cannot specify --name when input is a directory")
     else:
-        raise BaseException(f"invalid input: {args.input}")
+        raise ValueError(f"invalid input: {args.input}")
 
     if args.verbose:
         logging.basicConfig(level=logging.INFO)
