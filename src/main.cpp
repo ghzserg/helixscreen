@@ -63,6 +63,7 @@
 
 #include "app_globals.h"
 #include "config.h"
+#include "gcode_file_modifier.h"
 #include "lvgl/lvgl.h"
 #include "lvgl/src/libs/svg/lv_svg_decoder.h"
 #include "lvgl/src/xml/lv_xml.h"
@@ -73,10 +74,9 @@
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
 #include "runtime_config.h"
-#include "gcode_file_modifier.h"
 #include "tips_manager.h"
-#include "usb_manager.h"
 #include "usb_backend_mock.h"
+#include "usb_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -137,7 +137,8 @@ static void ensure_project_root_cwd() {
     // Resolve symlinks
     char resolved[PATH_MAX];
     if (realpath(exe_path, resolved)) {
-        strncpy(exe_path, resolved, PATH_MAX);
+        strncpy(exe_path, resolved, PATH_MAX - 1);
+        exe_path[PATH_MAX - 1] = '\0';
     }
 #elif defined(__linux__)
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
@@ -180,8 +181,9 @@ static int SCREEN_HEIGHT = UI_SCREEN_SMALL_H;
 
 // Local instances (registered with app_globals via setters)
 // Note: PrinterState is now a singleton accessed via get_printer_state()
-static MoonrakerClient* moonraker_client = nullptr;
-static MoonrakerAPI* moonraker_api = nullptr;
+// Using unique_ptr for RAII - raw pointers are passed to app_globals for access
+static std::unique_ptr<MoonrakerClient> moonraker_client;
+static std::unique_ptr<MoonrakerAPI> moonraker_api;
 static std::unique_ptr<TempControlPanel> temp_control_panel;
 static std::unique_ptr<UsbManager> usb_manager;
 
@@ -224,13 +226,13 @@ static void initialize_moonraker_client(Config* config);
 // Returns true on success, false if help was shown or error occurred
 static bool parse_command_line_args(
     int argc, char** argv, int& initial_panel, bool& show_motion, bool& show_nozzle_temp,
-    bool& show_bed_temp, bool& show_extrusion, bool& show_fan, bool& show_print_status, bool& show_file_detail,
-    bool& show_keypad, bool& show_keyboard, bool& show_step_test, bool& show_test_panel,
-    bool& show_gcode_test, bool& show_bed_mesh, bool& show_zoffset, bool& show_pid,
-    bool& show_glyphs, bool& show_gradient_test, bool& force_wizard, int& wizard_step,
-    bool& panel_requested, int& display_num, int& x_pos, int& y_pos,
-    bool& screenshot_enabled, int& screenshot_delay_sec, int& timeout_sec,
-    int& verbosity, bool& dark_mode, bool& theme_requested, int& dpi) {
+    bool& show_bed_temp, bool& show_extrusion, bool& show_fan, bool& show_print_status,
+    bool& show_file_detail, bool& show_keypad, bool& show_keyboard, bool& show_step_test,
+    bool& show_test_panel, bool& show_gcode_test, bool& show_bed_mesh, bool& show_zoffset,
+    bool& show_pid, bool& show_glyphs, bool& show_gradient_test, bool& force_wizard,
+    int& wizard_step, bool& panel_requested, int& display_num, int& x_pos, int& y_pos,
+    bool& screenshot_enabled, int& screenshot_delay_sec, int& timeout_sec, int& verbosity,
+    bool& dark_mode, bool& theme_requested, int& dpi) {
     // Parse arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--size") == 0) {
@@ -319,7 +321,8 @@ static bool parse_command_line_args(
                 } else {
                     printf("Unknown panel: %s\n", panel_arg);
                     printf("Available panels: home, controls, motion, nozzle-temp, bed-temp, "
-                           "bed-mesh, zoffset, pid, extrusion, fan, print-status, filament, settings, advanced, "
+                           "bed-mesh, zoffset, pid, extrusion, fan, print-status, filament, "
+                           "settings, advanced, "
                            "print-select, step-test, test, gcode-test, glyphs, gradient-test\n");
                     return false;
                 }
@@ -513,8 +516,9 @@ static bool parse_command_line_args(
 
                 // Parse comma-separated "az:90.5,el:4.0,zoom:15.5" format
                 // Each component is optional
-                char* str_copy = strdup(camera_str);
-                char* token = strtok(str_copy, ",");
+                // Use RAII wrapper to ensure cleanup on all paths
+                std::unique_ptr<char, decltype(&free)> str_copy(strdup(camera_str), free);
+                char* token = strtok(str_copy.get(), ",");
 
                 while (token != nullptr) {
                     // Trim leading whitespace
@@ -530,7 +534,6 @@ static bool parse_command_line_args(
                             g_runtime_config.gcode_camera_azimuth_set = true;
                         } else {
                             printf("Error: Invalid azimuth value in --camera: %s\n", token);
-                            free(str_copy);
                             return false;
                         }
                     } else if (strncmp(token, "el:", 3) == 0) {
@@ -541,7 +544,6 @@ static bool parse_command_line_args(
                             g_runtime_config.gcode_camera_elevation_set = true;
                         } else {
                             printf("Error: Invalid elevation value in --camera: %s\n", token);
-                            free(str_copy);
                             return false;
                         }
                     } else if (strncmp(token, "zoom:", 5) == 0) {
@@ -553,20 +555,17 @@ static bool parse_command_line_args(
                         } else {
                             printf("Error: Invalid zoom value in --camera (must be positive): %s\n",
                                    token);
-                            free(str_copy);
                             return false;
                         }
                     } else {
                         printf("Error: Unknown camera parameter in --camera: %s\n", token);
                         printf("Valid parameters: az:<degrees>, el:<degrees>, zoom:<factor>\n");
-                        free(str_copy);
                         return false;
                     }
 
                     token = strtok(nullptr, ",");
                 }
-
-                free(str_copy);
+                // str_copy automatically freed by unique_ptr destructor
             } else {
                 printf("Error: --camera requires a string argument\n");
                 printf("Format: --camera \"az:90.5,el:4.0,zoom:15.5\" (each parameter optional)\n");
@@ -611,7 +610,8 @@ static bool parse_command_line_args(
             printf("    --real-ethernet    Use real Ethernet hardware (requires --test)\n");
             printf("    --real-moonraker   Connect to real printer (requires --test)\n");
             printf("    --real-files       Use real files from printer (requires --test)\n");
-            printf("    --select-file <name>  Auto-select file in print-select panel and show detail view\n");
+            printf("    --select-file <name>  Auto-select file in print-select panel and show "
+                   "detail view\n");
             printf("\nG-code Viewer Options (require --test):\n");
             printf("  --gcode-file <path>  Load specific G-code file in gcode-test panel\n");
             printf("  --camera <params>    Set camera params: \"az:90.5,el:4.0,zoom:15.5\"\n");
@@ -828,7 +828,8 @@ static void register_xml_components() {
     lv_xml_register_component_from_file("A:ui_xml/glyphs_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/gradient_test_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/app_layout.xml");
-    lv_xml_register_component_from_file("A:ui_xml/wizard_header_bar.xml");  // Must come before wizard_container
+    lv_xml_register_component_from_file(
+        "A:ui_xml/wizard_header_bar.xml"); // Must come before wizard_container
     lv_xml_register_component_from_file("A:ui_xml/wizard_container.xml");
     lv_xml_register_component_from_file("A:ui_xml/network_list_item.xml");
     lv_xml_register_component_from_file("A:ui_xml/wifi_password_modal.xml");
@@ -1131,14 +1132,15 @@ static void initialize_moonraker_client(Config* config) {
     // Create client instance (mock or real based on test mode)
     if (get_runtime_config().should_mock_moonraker()) {
         spdlog::debug("[Test Mode] Creating MOCK Moonraker client (Voron 2.4 profile)");
-        moonraker_client = new MoonrakerClientMock(MoonrakerClientMock::PrinterType::VORON_24);
+        moonraker_client =
+            std::make_unique<MoonrakerClientMock>(MoonrakerClientMock::PrinterType::VORON_24);
     } else {
         spdlog::debug("Creating REAL Moonraker client");
-        moonraker_client = new MoonrakerClient();
+        moonraker_client = std::make_unique<MoonrakerClient>();
     }
 
-    // Register with app_globals
-    set_moonraker_client(moonraker_client);
+    // Register with app_globals (raw pointer for access, main.cpp owns lifetime)
+    set_moonraker_client(moonraker_client.get());
 
     // Configure timeouts from config file
     uint32_t connection_timeout =
@@ -1208,22 +1210,35 @@ static void initialize_moonraker_client(Config* config) {
     spdlog::debug("Creating MoonrakerAPI instance...");
     if (get_runtime_config().should_use_test_files()) {
         spdlog::debug("[Test Mode] Creating MOCK MoonrakerAPI (local file transfers)");
-        moonraker_api = new MoonrakerAPIMock(*moonraker_client, get_printer_state());
+        moonraker_api = std::make_unique<MoonrakerAPIMock>(*moonraker_client, get_printer_state());
     } else {
-        moonraker_api = new MoonrakerAPI(*moonraker_client, get_printer_state());
+        moonraker_api = std::make_unique<MoonrakerAPI>(*moonraker_client, get_printer_state());
     }
 
-    // Register with app_globals
-    set_moonraker_api(moonraker_api);
+    // Register with app_globals (raw pointer for access, main.cpp owns lifetime)
+    set_moonraker_api(moonraker_api.get());
 
-    // Update all panels with API reference
-    get_global_home_panel().set_api(moonraker_api);
-    temp_control_panel->set_api(moonraker_api);
-    print_select_panel->set_api(moonraker_api);
-    print_status_panel->set_api(moonraker_api);
-    motion_panel->set_api(moonraker_api);
-    extrusion_panel->set_api(moonraker_api);
-    bed_mesh_panel->set_api(moonraker_api);
+    // Update all panels with API reference (pass raw pointer, main.cpp owns lifetime)
+    // Note: These panels are initialized in initialize_subjects() before this function
+    get_global_home_panel().set_api(moonraker_api.get());
+    if (temp_control_panel) {
+        temp_control_panel->set_api(moonraker_api.get());
+    }
+    if (print_select_panel) {
+        print_select_panel->set_api(moonraker_api.get());
+    }
+    if (print_status_panel) {
+        print_status_panel->set_api(moonraker_api.get());
+    }
+    if (motion_panel) {
+        motion_panel->set_api(moonraker_api.get());
+    }
+    if (extrusion_panel) {
+        extrusion_panel->set_api(moonraker_api.get());
+    }
+    if (bed_mesh_panel) {
+        bed_mesh_panel->set_api(moonraker_api.get());
+    }
 
     spdlog::debug("Moonraker client initialized (not connected yet)");
 }
@@ -1267,14 +1282,13 @@ int main(int argc, char** argv) {
     int dpi = -1;                 // Display DPI (-1 means use LV_DPI_DEF from lv_conf.h)
 
     // Parse command-line arguments (returns false for help/error)
-    if (!parse_command_line_args(argc, argv, initial_panel, show_motion, show_nozzle_temp,
-                                 show_bed_temp, show_extrusion, show_fan, show_print_status, show_file_detail,
-                                 show_keypad, show_keyboard, show_step_test, show_test_panel,
-                                 show_gcode_test, show_bed_mesh, show_zoffset, show_pid,
-                                 show_glyphs, show_gradient_test, force_wizard, wizard_step,
-                                 panel_requested, display_num, x_pos, y_pos, screenshot_enabled,
-                                 screenshot_delay_sec, timeout_sec, verbosity, dark_mode,
-                                 theme_requested, dpi)) {
+    if (!parse_command_line_args(
+            argc, argv, initial_panel, show_motion, show_nozzle_temp, show_bed_temp, show_extrusion,
+            show_fan, show_print_status, show_file_detail, show_keypad, show_keyboard,
+            show_step_test, show_test_panel, show_gcode_test, show_bed_mesh, show_zoffset, show_pid,
+            show_glyphs, show_gradient_test, force_wizard, wizard_step, panel_requested,
+            display_num, x_pos, y_pos, screenshot_enabled, screenshot_delay_sec, timeout_sec,
+            verbosity, dark_mode, theme_requested, dpi)) {
         return 0; // Help shown or parse error
     }
 
@@ -1661,15 +1675,16 @@ int main(int argc, char** argv) {
         }
         if (show_zoffset) {
             spdlog::debug("Opening Z-offset calibration overlay as requested by command-line flag");
-            lv_obj_t* zoffset_panel = (lv_obj_t*)lv_xml_create(screen, "calibration_zoffset_panel", nullptr);
+            lv_obj_t* zoffset_panel =
+                (lv_obj_t*)lv_xml_create(screen, "calibration_zoffset_panel", nullptr);
             if (zoffset_panel) {
                 spdlog::debug("Z-offset calibration overlay created successfully, calling setup");
-                get_global_zoffset_cal_panel().setup(zoffset_panel, screen, moonraker_client);
+                get_global_zoffset_cal_panel().setup(zoffset_panel, screen, moonraker_client.get());
                 ui_nav_push_overlay(zoffset_panel);
                 spdlog::debug("Z-offset calibration overlay pushed to nav stack");
             } else {
-                spdlog::error(
-                    "Failed to create Z-offset calibration overlay from XML component 'calibration_zoffset_panel'");
+                spdlog::error("Failed to create Z-offset calibration overlay from XML component "
+                              "'calibration_zoffset_panel'");
             }
         }
         if (show_pid) {
@@ -1677,12 +1692,12 @@ int main(int argc, char** argv) {
             lv_obj_t* pid_panel =
                 (lv_obj_t*)lv_xml_create(screen, "calibration_pid_panel", nullptr);
             if (pid_panel) {
-                get_global_pid_cal_panel().setup(pid_panel, screen, moonraker_client);
+                get_global_pid_cal_panel().setup(pid_panel, screen, moonraker_client.get());
                 ui_nav_push_overlay(pid_panel);
                 spdlog::debug("PID tuning overlay pushed to nav stack");
             } else {
-                spdlog::error(
-                    "Failed to create PID tuning overlay from XML component 'calibration_pid_panel'");
+                spdlog::error("Failed to create PID tuning overlay from XML component "
+                              "'calibration_pid_panel'");
             }
         }
         if (show_keypad) {
@@ -1727,7 +1742,7 @@ int main(int argc, char** argv) {
                          g_runtime_config.select_file);
             ui_nav_set_active(UI_PANEL_PRINT_SELECT);
             // Set pending selection - will trigger when file list is loaded
-            auto* print_panel = get_print_select_panel(get_printer_state(), moonraker_api);
+            auto* print_panel = get_print_select_panel(get_printer_state(), moonraker_api.get());
             if (print_panel) {
                 print_panel->set_pending_file_selection(g_runtime_config.select_file);
             }
@@ -1802,9 +1817,8 @@ int main(int argc, char** argv) {
                 // State change callback will handle updating PrinterState
 
                 // Start auto-discovery (must be called AFTER connection is established)
-                moonraker_client->discover_printer([]() {
-                    spdlog::info("✓ Printer auto-discovery complete");
-                });
+                moonraker_client->discover_printer(
+                    []() { spdlog::info("✓ Printer auto-discovery complete"); });
             },
             []() {
                 spdlog::warn("✗ Disconnected from Moonraker");
@@ -1897,11 +1911,13 @@ int main(int argc, char** argv) {
     // Cleanup
     spdlog::info("Shutting down...");
 
-    // Clean up Moonraker instances
-    delete moonraker_api;
-    moonraker_api = nullptr;
-    delete moonraker_client;
-    moonraker_client = nullptr;
+    // Clear app_globals references before destroying instances
+    set_moonraker_api(nullptr);
+    set_moonraker_client(nullptr);
+
+    // Reset unique_ptrs explicitly in correct order (API before client)
+    moonraker_api.reset();
+    moonraker_client.reset();
 
     // Clean up USB manager explicitly BEFORE spdlog shutdown.
     // UsbBackendMock::stop() logs, and we need spdlog alive for that.
