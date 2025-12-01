@@ -23,6 +23,7 @@
 
 #include "moonraker_client_mock.h"
 
+#include "../tests/mocks/mock_printer_state.h"
 #include "gcode_parser.h"
 
 #include <spdlog/spdlog.h>
@@ -262,8 +263,22 @@ int MoonrakerClientMock::get_total_layers() const {
 }
 
 std::set<std::string> MoonrakerClientMock::get_excluded_objects() const {
+    // If shared state is set, use that for consistency with MoonrakerAPIMock
+    if (mock_state_) {
+        return mock_state_->get_excluded_objects();
+    }
+    // Fallback to local state for backward compatibility
     std::lock_guard<std::mutex> lock(excluded_objects_mutex_);
     return excluded_objects_;
+}
+
+void MoonrakerClientMock::set_mock_state(std::shared_ptr<MockPrinterState> state) {
+    mock_state_ = state;
+    if (state) {
+        spdlog::debug("[MoonrakerClientMock] Shared mock state attached");
+    } else {
+        spdlog::debug("[MoonrakerClientMock] Shared mock state detached");
+    }
 }
 
 MoonrakerClientMock::~MoonrakerClientMock() {
@@ -1487,8 +1502,15 @@ int MoonrakerClientMock::gcode_script(const std::string& gcode) {
             }
 
             if (!object_name.empty()) {
-                std::lock_guard<std::mutex> lock(excluded_objects_mutex_);
-                excluded_objects_.insert(object_name);
+                // Update shared state if available
+                if (mock_state_) {
+                    mock_state_->add_excluded_object(object_name);
+                }
+                // Also update local state for backward compatibility
+                {
+                    std::lock_guard<std::mutex> lock(excluded_objects_mutex_);
+                    excluded_objects_.insert(object_name);
+                }
                 spdlog::info("[MoonrakerClientMock] EXCLUDE_OBJECT: '{}' added to exclusion list",
                              object_name);
             }
@@ -1578,6 +1600,9 @@ bool MoonrakerClientMock::start_print_internal(const std::string& filename) {
     printing_start_time_.reset();
 
     // Clear excluded objects from any previous print
+    if (mock_state_) {
+        mock_state_->clear_excluded_objects();
+    }
     {
         std::lock_guard<std::mutex> lock(excluded_objects_mutex_);
         excluded_objects_.clear();
@@ -2217,6 +2242,9 @@ void MoonrakerClientMock::trigger_restart(bool is_firmware) {
     bed_target_.store(0.0);
 
     // Clear excluded objects list (restart clears Klipper state)
+    if (mock_state_) {
+        mock_state_->clear_excluded_objects();
+    }
     {
         std::lock_guard<std::mutex> lock(excluded_objects_mutex_);
         excluded_objects_.clear();

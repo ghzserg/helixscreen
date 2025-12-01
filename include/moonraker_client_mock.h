@@ -29,11 +29,15 @@
 #include <atomic>
 #include <chrono>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
 #include <thread>
 #include <vector>
+
+// Forward declaration for shared state
+class MockPrinterState;
 
 /**
  * @brief Mock Moonraker client for testing without real printer connection
@@ -176,9 +180,30 @@ class MoonrakerClientMock : public MoonrakerClient {
      * Returns the names of objects that have been excluded via
      * EXCLUDE_OBJECT G-code commands during the current print.
      *
+     * If a shared MockPrinterState is set, returns from shared state.
+     * Otherwise falls back to local excluded_objects_ member.
+     *
      * @return Set of excluded object names (thread-safe copy)
      */
     std::set<std::string> get_excluded_objects() const;
+
+    /**
+     * @brief Set shared mock state for coordination with MoonrakerAPIMock
+     *
+     * When set, excluded objects and other state changes are propagated
+     * to the shared state, allowing MoonrakerAPIMock to return consistent
+     * values when queried.
+     *
+     * @param state Shared state pointer (can be nullptr to disable)
+     */
+    void set_mock_state(std::shared_ptr<MockPrinterState> state);
+
+    /**
+     * @brief Get shared mock state (may be nullptr)
+     *
+     * @return Shared state pointer, or nullptr if not set
+     */
+    std::shared_ptr<MockPrinterState> get_mock_state() const { return mock_state_; }
 
     /**
      * @brief Simulate WebSocket connection (no real network I/O)
@@ -544,8 +569,12 @@ class MoonrakerClientMock : public MoonrakerClient {
     std::atomic<double> gcode_offset_z_{0.0}; // Z offset from SET_GCODE_OFFSET
 
     // Excluded objects tracking (for EXCLUDE_OBJECT command)
-    std::set<std::string> excluded_objects_;  // Object names excluded during print
+    std::set<std::string> excluded_objects_;    // Object names excluded during print (local fallback)
     mutable std::mutex excluded_objects_mutex_; // Protects excluded_objects_
+
+    // Shared mock state for coordination with MoonrakerAPIMock
+    // When set, state changes are propagated to this shared object
+    std::shared_ptr<MockPrinterState> mock_state_;
 
     // Simulation tick counter
     std::atomic<uint32_t> tick_count_{0};

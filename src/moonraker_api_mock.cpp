@@ -3,6 +3,8 @@
 
 #include "moonraker_api_mock.h"
 
+#include "../tests/mocks/mock_printer_state.h"
+
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
@@ -122,4 +124,31 @@ void MoonrakerAPIMock::upload_file_with_name(const std::string& root, const std:
     if (on_success) {
         on_success();
     }
+}
+
+// ============================================================================
+// Shared State Methods
+// ============================================================================
+
+void MoonrakerAPIMock::set_mock_state(std::shared_ptr<MockPrinterState> state) {
+    mock_state_ = state;
+    if (state) {
+        spdlog::debug("[MoonrakerAPIMock] Shared mock state attached");
+    } else {
+        spdlog::debug("[MoonrakerAPIMock] Shared mock state detached");
+    }
+}
+
+std::set<std::string> MoonrakerAPIMock::get_excluded_objects_from_mock() const {
+    if (mock_state_) {
+        return mock_state_->get_excluded_objects();
+    }
+    return {};
+}
+
+std::vector<std::string> MoonrakerAPIMock::get_available_objects_from_mock() const {
+    if (mock_state_) {
+        return mock_state_->get_available_objects();
+    }
+    return {};
 }

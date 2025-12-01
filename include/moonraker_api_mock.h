@@ -6,8 +6,13 @@
 
 #include "moonraker_api.h"
 
+#include <memory>
+#include <set>
 #include <string>
 #include <vector>
+
+// Forward declaration for shared state
+class MockPrinterState;
 
 /**
  * @brief Mock MoonrakerAPI for testing without real printer connection
@@ -82,7 +87,51 @@ class MoonrakerAPIMock : public MoonrakerAPI {
                                const std::string& filename, const std::string& content,
                                SuccessCallback on_success, ErrorCallback on_error) override;
 
+    // ========================================================================
+    // Shared State Methods
+    // ========================================================================
+
+    /**
+     * @brief Set shared mock state for coordination with MoonrakerClientMock
+     *
+     * When set, queries for excluded objects and available objects will
+     * return data from the shared state, which is also updated by
+     * MoonrakerClientMock when processing G-code commands.
+     *
+     * @param state Shared state pointer (can be nullptr to disable)
+     */
+    void set_mock_state(std::shared_ptr<MockPrinterState> state);
+
+    /**
+     * @brief Get shared mock state (may be nullptr)
+     *
+     * @return Shared state pointer, or nullptr if not set
+     */
+    std::shared_ptr<MockPrinterState> get_mock_state() const { return mock_state_; }
+
+    /**
+     * @brief Get excluded objects from shared state
+     *
+     * Returns objects excluded via EXCLUDE_OBJECT commands processed by
+     * MoonrakerClientMock. If no shared state is set, returns empty set.
+     *
+     * @return Set of excluded object names
+     */
+    std::set<std::string> get_excluded_objects_from_mock() const;
+
+    /**
+     * @brief Get available objects from shared state
+     *
+     * Returns objects defined via EXCLUDE_OBJECT_DEFINE commands.
+     * If no shared state is set, returns empty vector.
+     *
+     * @return Vector of available object names
+     */
+    std::vector<std::string> get_available_objects_from_mock() const;
+
   private:
+    // Shared mock state for coordination with MoonrakerClientMock
+    std::shared_ptr<MockPrinterState> mock_state_;
     /**
      * @brief Find test file using fallback path search
      *
