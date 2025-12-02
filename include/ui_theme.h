@@ -59,11 +59,13 @@
 #define UI_SCREEN_TINY_W 480
 #define UI_SCREEN_TINY_H 320
 
-// Padding constants (matching globals.xml values)
-#define UI_PADDING_NORMAL 20 // padding_normal - standard padding
-#define UI_PADDING_MEDIUM 12 // padding_medium - buttons, flex items
-#define UI_PADDING_SMALL 10  // padding_small - compact layouts
-#define UI_PADDING_TINY 6    // padding_tiny - very small screens
+// Spacing tokens available (use ui_theme_get_spacing() to read values):
+//   space_xxs: 2/3/4px  (small/medium/large breakpoints)
+//   space_xs:  4/5/6px
+//   space_sm:  6/7/8px
+//   space_md:  8/10/12px
+//   space_lg:  12/16/20px
+//   space_xl:  16/20/24px
 
 // Opacity constants (matching globals.xml values)
 #define UI_DISABLED_OPA 128 // disabled_opa - 50% opacity for disabled/dimmed elements
@@ -215,3 +217,26 @@ int32_t ui_theme_get_font_height(const lv_font_t* font);
  * @param screen Parent screen to calculate width from
  */
 void ui_set_overlay_width(lv_obj_t* obj, lv_obj_t* screen);
+
+/**
+ * @brief Get spacing value from unified space_* system
+ *
+ * Reads the registered space_* constant value from LVGL's XML constant registry.
+ * The value returned is responsive - it depends on what breakpoint was used
+ * during theme initialization (small/medium/large).
+ *
+ * This function is the C++ interface to the unified spacing system. All spacing
+ * in C++ code should use this function to stay consistent with XML layouts.
+ *
+ * Available tokens:
+ *   space_xxs: 2/3/4px  (small/medium/large)
+ *   space_xs:  4/5/6px
+ *   space_sm:  6/7/8px
+ *   space_md:  8/10/12px
+ *   space_lg:  12/16/20px
+ *   space_xl:  16/20/24px
+ *
+ * @param token Spacing token name (e.g., "space_lg", "space_md", "space_xs")
+ * @return Spacing value in pixels, or 0 if token not found
+ */
+int32_t ui_theme_get_spacing(const char* token);

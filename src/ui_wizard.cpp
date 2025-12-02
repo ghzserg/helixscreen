@@ -251,9 +251,9 @@ void ui_wizard_container_register_responsive_constants() {
 
     spdlog::debug("[Wizard] Screen size: {} (greater_res={}px)", size_label, greater_res);
 
-    // 3. Read padding/gap from globals (centralized responsive values)
-    const char* padding_value = lv_xml_get_const(NULL, "padding_normal");
-    const char* gap_value = lv_xml_get_const(NULL, "gap_normal");
+    // 3. Read padding/gap from globals (unified space_* tokens)
+    const char* padding_value = lv_xml_get_const(NULL, "space_lg");
+    const char* gap_value = lv_xml_get_const(NULL, "space_md");
 
     // 4. Define all wizard constants in array
     WizardConstant constants[] = {

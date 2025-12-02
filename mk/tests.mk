@@ -54,7 +54,6 @@ TEST_UI_DEPS := \
     $(OBJ_DIR)/keyboard_layout_provider.o \
     $(OBJ_DIR)/ui_modal.o \
     $(OBJ_DIR)/ui_modal_base.o \
-    $(OBJ_DIR)/ui_modal_tip_detail.o \
     $(OBJ_DIR)/ui_theme.o \
     $(OBJ_DIR)/helix_theme.o \
     $(OBJ_DIR)/ui_utils.o \

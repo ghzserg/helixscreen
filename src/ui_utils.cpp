@@ -89,18 +89,11 @@ std::string format_modified_date(time_t timestamp) {
 }
 
 lv_coord_t ui_get_header_content_padding(lv_coord_t screen_height) {
-    // Aggressive space savings for small screens:
-    // Large/Medium (≥600px): UI_PADDING_NORMAL (20px)
-    // Small (480-599px): UI_PADDING_SMALL (10px)
-    // Tiny (≤479px): UI_PADDING_TINY (6px)
+    (void)screen_height; // Parameter kept for API stability
 
-    if (screen_height >= UI_SCREEN_MEDIUM_H) {
-        return UI_PADDING_NORMAL;
-    } else if (screen_height >= UI_SCREEN_SMALL_H) {
-        return UI_PADDING_SMALL;
-    } else {
-        return UI_PADDING_TINY;
-    }
+    // Use unified space_* system - values are already responsive based on breakpoint
+    // set during theme initialization (space_lg = 12/16/20px at small/medium/large)
+    return ui_theme_get_spacing("space_lg");
 }
 
 lv_coord_t ui_get_responsive_header_height(lv_coord_t screen_height) {

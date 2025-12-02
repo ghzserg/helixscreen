@@ -63,11 +63,11 @@ lv_obj_t* ui_panel_setup_header(lv_obj_t* panel, lv_obj_t* parent_screen, const 
  * @brief Setup responsive padding for content area
  *
  * Configures content area with responsive vertical padding (varies by screen size)
- * and fixed horizontal padding (UI_PADDING_MEDIUM = 12px).
+ * and responsive horizontal padding using the space_md token.
  *
  * Pattern used across all panels:
- * - Vertical (top/bottom): 20px large, 10px small, 6px tiny
- * - Horizontal (left/right): 12px (UI_PADDING_MEDIUM)
+ * - Vertical (top/bottom): space_lg (12/16/20px at small/medium/large)
+ * - Horizontal (left/right): space_md (8/10/12px at small/medium/large)
  *
  * @param panel Panel object containing the content area
  * @param parent_screen Parent screen object for measuring screen height

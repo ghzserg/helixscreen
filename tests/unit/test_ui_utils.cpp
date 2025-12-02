@@ -181,43 +181,36 @@ TEST_CASE("UI Utils: format_modified_date - edge cases", "[ui_utils][format][edg
 // ui_get_header_content_padding() Tests
 // ============================================================================
 
-TEST_CASE("UI Utils: ui_get_header_content_padding - screen sizes", "[ui_utils][responsive]") {
-    SECTION("Tiny screen (320px)") {
-        REQUIRE(ui_get_header_content_padding(320) == UI_PADDING_TINY);
+// NOTE: After the responsive spacing unification (Phase 7), ui_get_header_content_padding()
+// now uses the unified space_* token system. The function returns ui_theme_get_spacing("space_lg"),
+// which is a responsive value set at theme init time based on the display breakpoint.
+// These tests verify the function returns a consistent, positive value (not screen-height dependent).
+
+TEST_CASE("UI Utils: ui_get_header_content_padding - returns space_lg value", "[ui_utils][responsive]") {
+    // After unification, this function returns space_lg regardless of input height
+    // (the height parameter is kept for API stability but ignored)
+
+    SECTION("Returns positive value") {
+        lv_coord_t padding = ui_get_header_content_padding(480);
+        REQUIRE(padding > 0);
     }
 
-    SECTION("Small screen (480px)") {
-        REQUIRE(ui_get_header_content_padding(480) == UI_PADDING_SMALL);
+    SECTION("Returns same value regardless of screen height") {
+        // All calls should return the same value now (space_lg token)
+        lv_coord_t p1 = ui_get_header_content_padding(320);
+        lv_coord_t p2 = ui_get_header_content_padding(480);
+        lv_coord_t p3 = ui_get_header_content_padding(800);
+        lv_coord_t p4 = ui_get_header_content_padding(1080);
+
+        REQUIRE(p1 == p2);
+        REQUIRE(p2 == p3);
+        REQUIRE(p3 == p4);
     }
 
-    SECTION("Small screen upper boundary (599px)") {
-        REQUIRE(ui_get_header_content_padding(599) == UI_PADDING_SMALL);
-    }
-
-    SECTION("Medium screen (600px)") {
-        REQUIRE(ui_get_header_content_padding(600) == UI_PADDING_NORMAL);
-    }
-
-    SECTION("Large screen (800px)") {
-        REQUIRE(ui_get_header_content_padding(800) == UI_PADDING_NORMAL);
-    }
-
-    SECTION("Extra large screen (1080px)") {
-        REQUIRE(ui_get_header_content_padding(1080) == UI_PADDING_NORMAL);
-    }
-}
-
-TEST_CASE("UI Utils: ui_get_header_content_padding - boundary values", "[ui_utils][responsive][edge]") {
-    SECTION("At tiny/small boundary (479px)") {
-        REQUIRE(ui_get_header_content_padding(479) == UI_PADDING_TINY);
-    }
-
-    SECTION("At small/medium boundary (600px)") {
-        REQUIRE(ui_get_header_content_padding(600) == UI_PADDING_NORMAL);
-    }
-
-    SECTION("One pixel before medium (599px)") {
-        REQUIRE(ui_get_header_content_padding(599) == UI_PADDING_SMALL);
+    SECTION("Returns valid space_lg value (12, 16, or 20px)") {
+        // space_lg values at breakpoints: small=12, medium=16, large=20
+        lv_coord_t padding = ui_get_header_content_padding(600);
+        REQUIRE((padding == 12 || padding == 16 || padding == 20));
     }
 }
 

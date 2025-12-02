@@ -286,9 +286,9 @@ void ui_switch_register_responsive_constants() {
     // - Knob padding (style_pad_knob_all) adds visual spacing inside switch
     // - Width = ~2x height to allow knob to slide
     // - Row height calculation CRITICAL:
-    //   * XML uses style_pad_all="#padding_normal" (responsive: 12/16/20px)
+    //   * XML uses style_pad_all="#space_lg" (responsive: 12/16/20px)
     //   * Total row height = switch_height + (2 * container_padding)
-    //   * Container padding varies by screen size via ui_theme_register_responsive_padding()
+    //   * Container padding varies by screen size via ui_theme_register_responsive_spacing()
 
     const char* switch_width;
     const char* switch_height;

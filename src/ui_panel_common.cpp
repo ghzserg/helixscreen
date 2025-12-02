@@ -67,14 +67,14 @@ lv_obj_t* ui_panel_setup_content_padding(lv_obj_t* panel, lv_obj_t* parent_scree
         lv_coord_t vertical_padding =
             ui_get_header_content_padding(lv_obj_get_height(parent_screen));
 
-        // Set vertical padding (top/bottom) responsively, keep horizontal at medium (12px)
+        // Set vertical padding (top/bottom) responsively, keep horizontal at space_md
         lv_obj_set_style_pad_top(content, vertical_padding, 0);
         lv_obj_set_style_pad_bottom(content, vertical_padding, 0);
-        lv_obj_set_style_pad_left(content, UI_PADDING_MEDIUM, 0);
-        lv_obj_set_style_pad_right(content, UI_PADDING_MEDIUM, 0);
+        lv_obj_set_style_pad_left(content, ui_theme_get_spacing("space_md"), 0);
+        lv_obj_set_style_pad_right(content, ui_theme_get_spacing("space_md"), 0);
 
         spdlog::debug("[PanelCommon] Content '{}' padding: top/bottom={}px, left/right={}px",
-                      content_name, vertical_padding, UI_PADDING_MEDIUM);
+                      content_name, vertical_padding, ui_theme_get_spacing("space_md"));
     } else {
         spdlog::warn("[PanelCommon] Content '{}' not found in panel", content_name);
     }
@@ -139,11 +139,11 @@ static void panel_resize_callback_wrapper(ui_panel_resize_context_t* context) {
         lv_coord_t vertical_padding =
             ui_get_header_content_padding(lv_obj_get_height(context->parent_screen));
 
-        // Update vertical padding (top/bottom) responsively, keep horizontal at medium (12px)
+        // Update vertical padding (top/bottom) responsively, keep horizontal at space_md
         lv_obj_set_style_pad_top(content, vertical_padding, 0);
         lv_obj_set_style_pad_bottom(content, vertical_padding, 0);
-        lv_obj_set_style_pad_left(content, UI_PADDING_MEDIUM, 0);
-        lv_obj_set_style_pad_right(content, UI_PADDING_MEDIUM, 0);
+        lv_obj_set_style_pad_left(content, ui_theme_get_spacing("space_md"), 0);
+        lv_obj_set_style_pad_right(content, ui_theme_get_spacing("space_md"), 0);
     }
 }
 
@@ -265,7 +265,7 @@ void ui_overlay_panel_setup_standard(lv_obj_t* panel, lv_obj_t* parent_screen,
     }
 
     // 2. Setup content padding (responsive vertical, fixed horizontal)
-    // Note: overlay_panel.xml already sets style_pad_all="#padding_normal"
+    // Note: overlay_panel.xml already sets style_pad_all="#space_lg"
     // This is a no-op unless we need to override for specific screen sizes
     lv_obj_t* content = lv_obj_find_by_name(panel, content_name);
     if (content) {

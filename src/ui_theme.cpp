@@ -580,3 +580,43 @@ void ui_set_overlay_width(lv_obj_t* obj, lv_obj_t* screen) {
     lv_coord_t nav_width = UI_NAV_WIDTH(screen_width);
     lv_obj_set_width(obj, screen_width - nav_width);
 }
+
+/**
+ * Get spacing value from unified space_* system
+ *
+ * Reads the registered space_* constant value from LVGL's XML constant registry.
+ * The value returned is responsive - it depends on what breakpoint was used
+ * during theme initialization (small/medium/large).
+ *
+ * This function is the C++ interface to the unified spacing system, replacing
+ * the old hardcoded UI_PADDING_* constants. All spacing in C++ code should now
+ * use this function to stay consistent with XML layouts.
+ *
+ * Available tokens and their responsive values:
+ *   space_xxs: 2/3/4px  (small/medium/large)
+ *   space_xs:  4/5/6px
+ *   space_sm:  6/7/8px
+ *   space_md:  8/10/12px
+ *   space_lg:  12/16/20px
+ *   space_xl:  16/20/24px
+ *
+ * @param token Spacing token name (e.g., "space_lg", "space_md", "space_xs")
+ * @return Spacing value in pixels, or 0 if token not found
+ *
+ * Example:
+ *   lv_obj_set_style_pad_all(obj, ui_theme_get_spacing("space_lg"), 0);
+ */
+int32_t ui_theme_get_spacing(const char* token) {
+    if (!token) {
+        spdlog::warn("[Theme] ui_theme_get_spacing: NULL token");
+        return 0;
+    }
+
+    const char* value = lv_xml_get_const(NULL, token);
+    if (!value) {
+        spdlog::warn("[Theme] Spacing token '{}' not found - is theme initialized?", token);
+        return 0;
+    }
+
+    return std::atoi(value);
+}
