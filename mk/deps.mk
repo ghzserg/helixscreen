@@ -324,6 +324,9 @@ install-deps:
 			sdl2:dnf) echo "SDL2-devel";; \
 			npm:brew) echo "node";; \
 			npm:*) echo "npm";; \
+			python3-venv:apt) echo "python3-venv";; \
+			python3-venv:dnf) echo "python3-libs";; \
+			python3-venv:brew) echo "";; \
 			clang-format:brew|clang-format:apt) echo "clang-format";; \
 			clang-format:dnf) echo "clang-tools-extra";; \
 			xmllint:brew) echo "libxml2";; \
@@ -366,6 +369,8 @@ install-deps:
 	fi; \
 	if ! command -v python3 >/dev/null 2>&1; then \
 		INSTALL_NEEDED=1; TO_INSTALL="$$TO_INSTALL python3"; \
+	elif ! python3 -c "import venv, ensurepip" 2>/dev/null; then \
+		INSTALL_NEEDED=1; TO_INSTALL="$$TO_INSTALL $$(add_pkg python3-venv)"; \
 	fi; \
 	if ! command -v clang >/dev/null 2>&1 && ! command -v gcc >/dev/null 2>&1; then \
 		INSTALL_NEEDED=1; TO_INSTALL="$$TO_INSTALL clang"; \
