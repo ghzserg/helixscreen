@@ -3,6 +3,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
   <lv_obj width="100%" height="100%">
-    <lv_label text="Hello World"/>
+    <text_body text="Hello World"/>
   </lv_obj>
 </component>

@@ -11,12 +11,12 @@
   <!-- List row container -->
   <view extends="lv_obj" name="list_row" width="100%" height="content" style_bg_opa="255" style_radius="4" style_border_width="0" style_pad_top="8" style_pad_bottom="8" style_pad_left="8" style_pad_right="8" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" clickable="true">
     <!-- Filename (flex-grow, left-aligned) -->
-    <lv_label name="row_filename" text="$filename" width="510" style_text_font="montserrat_16" style_text_align="left" long_mode="dots" flex_grow="1" style_pad_all="0"/>
+    <text_small name="row_filename" text="$filename" width="510" style_text_align="left" long_mode="dots" flex_grow="1" style_pad_all="0"/>
     <!-- Size (80px, right-aligned) -->
-    <lv_label name="row_size" text="$file_size" width="80" style_text_font="montserrat_16" style_text_align="right" flex_grow="0" style_pad_all="0"/>
+    <text_small name="row_size" text="$file_size" width="80" style_text_align="right" flex_grow="0" style_pad_all="0"/>
     <!-- Modified date (130px, right-aligned) -->
-    <lv_label name="row_modified" text="$modified_date" width="130" style_text_font="montserrat_16" style_text_align="right" flex_grow="0" style_pad_all="0"/>
+    <text_small name="row_modified" text="$modified_date" width="130" style_text_align="right" flex_grow="0" style_pad_all="0"/>
     <!-- Print time (90px, right-aligned) -->
-    <lv_label name="row_print_time" text="$print_time" width="90" style_text_font="montserrat_16" style_text_align="right" flex_grow="0" style_pad_all="0"/>
+    <text_small name="row_print_time" text="$print_time" width="90" style_text_align="right" flex_grow="0" style_pad_all="0"/>
   </view>
 </component>

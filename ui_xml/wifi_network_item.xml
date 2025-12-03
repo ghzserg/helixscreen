@@ -22,7 +22,7 @@
       <!-- Network SSID -->
       <text_body name="ssid_label" style_text_font="#list_item_font" clickable="false"/>
       <!-- Security type (right-justified) -->
-      <lv_label name="security_label" style_text_color="#text_secondary" clickable="false"/>
+      <text_small name="security_label" style_text_color="#text_secondary" clickable="false"/>
     </lv_obj>
   </view>
 </component>

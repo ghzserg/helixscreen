@@ -25,18 +25,18 @@
           <!-- Inner overlay with rounded corners - taller to hide top radius -->
           <lv_obj width="100%" height="98" style_bg_opa="204" style_border_width="0" style_radius="#border_radius" style_pad_left="#space_sm" style_pad_right="#space_sm" style_pad_top="#space_lg" style_pad_bottom="#space_sm" align="bottom_mid" flex_flow="column" scrollable="false" name="detail_metadata_overlay">
             <!-- Filename with reactive binding, specified height so that text will purposely get truncated and not wrap -->
-            <lv_label bind_text="selected_filename" width="100%" height="24" long_mode="dots" style_text_font="montserrat_18" name="detail_filename_label"/>
+            <text_body bind_text="selected_filename" width="100%" height="24" long_mode="dots" name="detail_filename_label"/>
             <!-- Metadata row -->
             <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_top="#space_xs" flex_flow="row" style_pad_gap="#space_xs" flex_grow="1" name="detail_metadata_row">
               <!-- Print time -->
               <lv_obj flex_grow="1" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xxs" style_flex_cross_place="center">
                 <icon src="mat_clock_img" size="xs" variant="accent"/>
-                <lv_label bind_text="selected_print_time" flex_grow="1" style_min_width="35" style_text_color="#text_secondary" style_text_font="montserrat_14" name="detail_time_label"/>
+                <text_small bind_text="selected_print_time" flex_grow="1" style_min_width="35" name="detail_time_label"/>
               </lv_obj>
               <!-- Filament weight -->
               <lv_obj flex_grow="1" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xxs" style_flex_cross_place="center">
                 <icon src="mat_layers_img" size="xs" variant="accent"/>
-                <lv_label bind_text="selected_filament_weight" flex_grow="1" style_min_width="35" style_text_color="#text_secondary" style_text_font="montserrat_14" name="detail_filament_label"/>
+                <text_small bind_text="selected_filament_weight" flex_grow="1" style_min_width="35" name="detail_filament_label"/>
               </lv_obj>
             </lv_obj>
           </lv_obj>

@@ -753,26 +753,49 @@ static bool parse_command_line_args(
     return true;
 }
 
-// Register fonts and images for XML component system
+/**
+ * Register fonts and images for XML component system
+ *
+ * IMPORTANT: Fonts require TWO steps to work:
+ *   1. Enable in lv_conf.h: #define LV_FONT_MONTSERRAT_XX 1
+ *   2. Register here with lv_xml_register_font()
+ *
+ * If either step is missing, LVGL will silently fall back to a different font,
+ * causing visual bugs. The semantic text components (text_heading, text_body,
+ * text_small) in ui_text.cpp will crash with a clear error if a font is not
+ * properly registered - this is intentional to catch configuration errors early.
+ *
+ * See docs/LVGL9_XML_GUIDE.md "Typography - Semantic Text Components" for details.
+ */
 static void register_fonts_and_images() {
     spdlog::debug("Registering fonts and images...");
+
+    // FontAwesome icon fonts (various sizes for different UI elements)
     lv_xml_register_font(NULL, "fa_icons_64", &fa_icons_64);
     lv_xml_register_font(NULL, "fa_icons_48", &fa_icons_48);
     lv_xml_register_font(NULL, "fa_icons_32", &fa_icons_32);
     lv_xml_register_font(NULL, "fa_icons_24", &fa_icons_24);
     lv_xml_register_font(NULL, "fa_icons_16", &fa_icons_16);
+
+    // Arrow icon fonts (for directional controls)
     lv_xml_register_font(NULL, "arrows_64", &arrows_64);
     lv_xml_register_font(NULL, "arrows_48", &arrows_48);
     lv_xml_register_font(NULL, "arrows_32", &arrows_32);
+
+    // Montserrat text fonts - used by semantic text components:
+    // - text_heading uses font_heading (20/26/28 for small/medium/large breakpoints)
+    // - text_body uses font_body (14/18/20 for small/medium/large breakpoints)
+    // - text_small uses font_small (12/16/18 for small/medium/large breakpoints)
+    // ALL sizes used by the responsive typography system MUST be registered here!
     lv_xml_register_font(NULL, "montserrat_10", &lv_font_montserrat_10);
-    lv_xml_register_font(NULL, "montserrat_12", &lv_font_montserrat_12);
-    lv_xml_register_font(NULL, "montserrat_14", &lv_font_montserrat_14);
-    lv_xml_register_font(NULL, "montserrat_16", &lv_font_montserrat_16);
-    lv_xml_register_font(NULL, "montserrat_18", &lv_font_montserrat_18);
-    lv_xml_register_font(NULL, "montserrat_20", &lv_font_montserrat_20);
+    lv_xml_register_font(NULL, "montserrat_12", &lv_font_montserrat_12);  // text_small (small)
+    lv_xml_register_font(NULL, "montserrat_14", &lv_font_montserrat_14);  // text_body (small)
+    lv_xml_register_font(NULL, "montserrat_16", &lv_font_montserrat_16);  // text_small (medium)
+    lv_xml_register_font(NULL, "montserrat_18", &lv_font_montserrat_18);  // text_body (medium), text_small (large)
+    lv_xml_register_font(NULL, "montserrat_20", &lv_font_montserrat_20);  // text_heading (small), text_body (large)
     lv_xml_register_font(NULL, "montserrat_24", &lv_font_montserrat_24);
-    lv_xml_register_font(NULL, "montserrat_26", &lv_font_montserrat_26);
-    lv_xml_register_font(NULL, "montserrat_28", &lv_font_montserrat_28);
+    lv_xml_register_font(NULL, "montserrat_26", &lv_font_montserrat_26);  // text_heading (medium)
+    lv_xml_register_font(NULL, "montserrat_28", &lv_font_montserrat_28);  // text_heading (large), numeric displays
     lv_xml_register_image(NULL, "A:assets/images/printer_400.png",
                           "A:assets/images/printer_400.png");
     lv_xml_register_image(NULL, "filament_spool", "A:assets/images/filament_spool.png");

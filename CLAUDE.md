@@ -38,7 +38,7 @@
 
 | # | Rule | ❌ Wrong | ✅ Correct |
 |---|------|----------|-----------|
-| 1 | No hardcoded colors | `lv_color_hex(0xE0E0E0)` | `ui_theme_parse_color(lv_xml_get_const("card_border"))` |
+| 1 | **Use design tokens** | Hardcoded values | Responsive tokens from `globals.xml` |
 | 2 | Reference existing patterns | Inventing new approach | Study `motion_panel.xml` / `ui_panel_motion.cpp` first |
 | 3 | spdlog only | `printf()`, `cout`, `LV_LOG_*` | `spdlog::info("temp: {}", t)` |
 | 4 | No auto-mock fallbacks | `if(!start()) return Mock()` | Check `RuntimeConfig::should_mock_*()` |
@@ -48,6 +48,16 @@
 | 8 | SPDX headers | 20-line GPL boilerplate | `// SPDX-License-Identifier: GPL-3.0-or-later` |
 | 9 | Class-based architecture | `ui_panel_*_init()` functions | Classes: `MotionPanel`, `WiFiManager` |
 | 10 | Clang-format | Inconsistent formatting | Let pre-commit hook fix it |
+
+**Rule 1 - Design Tokens (MANDATORY):**
+
+| Category | ❌ Wrong | ✅ Correct |
+|----------|----------|-----------|
+| **Colors** | `lv_color_hex(0xE0E0E0)` | `ui_theme_parse_color("#card_border")` |
+| **Spacing** | `style_pad_all="12"` | `style_pad_all="#space_md"` |
+| **Typography** | `<lv_label style_text_font="montserrat_18">` | `<text_heading>`, `<text_body>`, `<text_small>` |
+
+**Typography exceptions:** FontAwesome icons (`fa_icons_*`), large numeric displays (`montserrat_28`)
 
 ---
 

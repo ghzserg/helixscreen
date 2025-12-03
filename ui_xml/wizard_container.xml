@@ -70,7 +70,7 @@
     <lv_obj name="wizard_footer" width="100%" height="content" style_min_height="#wizard_footer_height" style_pad_column="#wizard_gap" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false" style_bg_opa="0" style_border_width="0">
       <!-- BACK BUTTON (hidden on step 1 via conditional binding) -->
       <lv_button name="btn_back" width="#wizard_button_width" height="#button_height">
-        <lv_label text="Back" align="center"/>
+        <text_body text="Back" align="center"/>
         <event_cb trigger="clicked" callback="on_back_clicked"/>
         <!-- Hide when current_step == 1 -->
         <lv_obj-bind_flag_if_eq subject="current_step" flag="hidden" ref_value="1"/>
@@ -79,7 +79,7 @@
       <lv_obj name="wizard_footer_spacer" width="0" height="#button_height" style_border_width="0" style_bg_opa="0" flex_grow="1"/>
       <!-- NEXT/FINISH BUTTON (text bound to subject, clickable only when connection_test_passed == 1) -->
       <lv_button name="btn_next" width="#wizard_button_width" height="#button_height" style_bg_color="#primary_color">
-        <lv_label name="btn_next_label" bind_text="wizard_next_button_text" align="center" style_text_color="#text_primary"/>
+        <text_body name="btn_next_label" bind_text="wizard_next_button_text" align="center" style_text_color="#text_primary"/>
         <event_cb trigger="clicked" callback="on_next_clicked"/>
         <!-- Button is enabled when connection_test_passed == 1 (disabled otherwise) -->
         <lv_obj-bind_state_if_not_eq subject="connection_test_passed" state="disabled" ref_value="1"/>

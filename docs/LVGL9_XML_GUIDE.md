@@ -1888,6 +1888,53 @@ Dynamically apply styles based on subject value:
 </lv_obj>
 ```
 
+### Typography - Semantic Text Components
+
+**⚠️ CRITICAL: Always use semantic text components instead of `<lv_label>` with hardcoded fonts.**
+
+HelixScreen provides three semantic text components that automatically apply responsive typography:
+
+| Component | Purpose | Font Size (small/medium/large breakpoints) |
+|-----------|---------|-------------------------------------------|
+| `<text_heading>` | Section titles, headers | 20px / 26px / 28px |
+| `<text_body>` | Primary content text | 14px / 18px / 20px |
+| `<text_small>` | Secondary info, captions | 12px / 16px / 18px |
+
+**Usage:**
+
+```xml
+<!-- ✅ CORRECT - Use semantic components -->
+<text_heading text="WiFi"/>
+<text_body text="Network connected"/>
+<text_small text="192.168.1.150"/>
+
+<!-- ❌ WRONG - Hardcoded font sizes -->
+<lv_label text="WiFi" style_text_font="montserrat_20"/>
+```
+
+**All standard `lv_label` attributes work:**
+
+```xml
+<text_heading bind_text="title_subject" long_mode="dot"/>
+<text_body text="Static text" align="center"/>
+<text_small bind_text="status" style_text_color="#text_secondary"/>
+```
+
+**Exceptions (keep as `<lv_label>`):**
+- FontAwesome icons: `style_text_font="fa_icons_24"`
+- Large numeric displays: `style_text_font="montserrat_28"` (future: `<text_display>`)
+
+**Why semantic components?**
+1. **Responsive** - Font sizes adapt to screen breakpoints automatically
+2. **Consistent** - Ensures visual hierarchy (heading > body > small)
+3. **Fail-fast** - App crashes immediately if fonts aren't registered (no silent fallbacks)
+4. **Maintainable** - Change typography in one place (`globals.xml`)
+
+**Adding a new font:**
+1. Enable in `lv_conf.h`: `#define LV_FONT_MONTSERRAT_XX 1`
+2. Register in `src/main.cpp`: `lv_xml_register_font(NULL, "montserrat_XX", &lv_font_montserrat_XX);`
+3. Both steps required - fonts must be compiled AND registered!
+
 ---
 
 ## Event Handling

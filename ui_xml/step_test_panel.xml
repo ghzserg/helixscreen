@@ -35,26 +35,26 @@
     <lv_label text="Step Progress Widget Test" style_text_font="montserrat_20" style_pad_bottom="20"/>
     <!-- Vertical progress demo section -->
     <lv_obj name="vertical_section" width="90%" height="380" style_pad_all="#space_lg" style_radius="#border_radius" style_border_width="0" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
-      <lv_label text="Vertical Progress (Retract Wizard)" style_pad_bottom="16"/>
+      <text_body text="Vertical Progress (Retract Wizard)" style_pad_bottom="16"/>
       <!-- Vertical progress widget container (created in C++) -->
       <lv_obj name="vertical_progress_container" width="100%" height="200" style_bg_opa="0" style_border_width="0" style_pad_all="0"/>
     </lv_obj>
     <!-- Horizontal progress demo section -->
     <lv_obj name="horizontal_section" width="100%" height="180" style_pad_all="#space_lg" style_radius="#border_radius" style_border_width="0" style_pad_top="20" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
-      <lv_label text="Horizontal Progress (Leveling Wizard)" style_pad_bottom="16"/>
+      <text_body text="Horizontal Progress (Leveling Wizard)" style_pad_bottom="16"/>
       <!-- Horizontal progress widget container (created in C++) -->
       <lv_obj name="horizontal_progress_container" width="100%" height="120" style_bg_opa="0" style_border_width="0" style_pad_all="0"/>
     </lv_obj>
     <!-- Control buttons -->
     <lv_obj name="button_row" width="90%" height="content" style_bg_opa="0" style_border_width="0" style_pad_top="20" style_pad_all="0" flex_flow="row" style_flex_main_place="space_evenly">
       <lv_button name="btn_prev" width="140" height="#button_height_normal" style_radius="#border_radius">
-        <lv_label text="Previous" align="center"/>
+        <text_body text="Previous" align="center"/>
       </lv_button>
       <lv_button name="btn_next" width="140" height="#button_height_normal" style_bg_color="#primary_color" style_radius="#border_radius">
-        <lv_label text="Next" align="center"/>
+        <text_body text="Next" align="center"/>
       </lv_button>
       <lv_button name="btn_complete" width="140" height="#button_height_normal" style_bg_color="#success_color" style_radius="#border_radius">
-        <lv_label text="Complete" align="center"/>
+        <text_body text="Complete" align="center"/>
       </lv_button>
     </lv_obj>
   </view>

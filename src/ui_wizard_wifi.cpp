@@ -108,8 +108,21 @@ WizardWifiStep::~WizardWifiStep() {
     wifi_manager_.reset();
     ethernet_manager_.reset();
 
-    // NOTE: Do NOT call LVGL functions here - LVGL may be destroyed first
-    // NOTE: Do NOT log here - spdlog may be destroyed first
+    // Deinitialize subjects BEFORE they're destroyed as member variables.
+    // This disconnects any LVGL observers still bound to them, preventing
+    // use-after-free when lv_deinit() later deletes widgets with bindings.
+    if (subjects_initialized_) {
+        lv_subject_deinit(&wifi_enabled_);
+        lv_subject_deinit(&wifi_status_);
+        lv_subject_deinit(&ethernet_status_);
+        lv_subject_deinit(&wifi_scanning_);
+        lv_subject_deinit(&wifi_password_modal_visible_);
+        lv_subject_deinit(&wifi_password_modal_ssid_);
+        lv_subject_deinit(&wifi_connecting_);
+        subjects_initialized_ = false;
+    }
+
+    // Clear pointers (widgets still exist, owned by LVGL)
     screen_root_ = nullptr;
     password_modal_ = nullptr;
     network_list_container_ = nullptr;

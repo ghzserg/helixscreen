@@ -33,22 +33,22 @@
           <!-- Row 1 -->
           <lv_obj width="100%" height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0">
             <lv_button name="btn_travels" flex_grow="1" flag_checkable="true">
-              <lv_label text="Travels" align="center"/>
+              <text_body text="Travels" align="center"/>
             </lv_button>
             <lv_button name="btn_top" flex_grow="1">
-              <lv_label text="Top" align="center"/>
+              <text_body text="Top" align="center"/>
             </lv_button>
             <lv_button name="btn_front" flex_grow="1">
-              <lv_label text="Front" align="center"/>
+              <text_body text="Front" align="center"/>
             </lv_button>
           </lv_obj>
           <!-- Row 2 -->
           <lv_obj width="100%" height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0">
             <lv_button name="btn_side" flex_grow="1">
-              <lv_label text="Side" align="center"/>
+              <text_body text="Side" align="center"/>
             </lv_button>
             <lv_button name="btn_reset" flex_grow="1">
-              <lv_label text="Reset" align="center"/>
+              <text_body text="Reset" align="center"/>
             </lv_button>
           </lv_obj>
         </lv_obj>
@@ -57,10 +57,10 @@
           <lv_label text="Zoom" style_text_font="#font_subheader" style_text_color="#text_primary"/>
           <lv_obj width="100%" height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0">
             <lv_button name="btn_zoom_in" flex_grow="1">
-              <lv_label text="+" align="center"/>
+              <text_body text="+" align="center"/>
             </lv_button>
             <lv_button name="btn_zoom_out" flex_grow="1">
-              <lv_label text="-" align="center"/>
+              <text_body text="-" align="center"/>
             </lv_button>
           </lv_obj>
         </lv_obj>
@@ -84,10 +84,10 @@
           <lv_label text="File" style_text_font="#font_subheader" style_text_color="#text_primary"/>
           <lv_obj width="100%" height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0">
             <lv_button name="btn_load_test" flex_grow="1">
-              <lv_label text="Browse" align="center"/>
+              <text_body text="Browse" align="center"/>
             </lv_button>
             <lv_button name="btn_clear" flex_grow="1">
-              <lv_label text="Clear" align="center"/>
+              <text_body text="Clear" align="center"/>
             </lv_button>
           </lv_obj>
         </lv_obj>

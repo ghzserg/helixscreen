@@ -489,10 +489,7 @@ lv_color_t ui_theme_get_color(const char* base_name) {
         // Fallback: try the base name directly (for static colors like warning_color, error_color)
         const char* base_str = lv_xml_get_const(nullptr, base_name);
         if (base_str) {
-            lv_color_t color = ui_theme_parse_color(base_str);
-            spdlog::trace("[Theme] ui_theme_get_color({}) = {} (0x{:06X}) (static, no theme variants)",
-                          base_name, base_str, lv_color_to_u32(color) & 0xFFFFFF);
-            return color;
+            return ui_theme_parse_color(base_str);
         }
 
         spdlog::error("[Theme] Color not found: {} (no _light/_dark variants, no static fallback)",
@@ -502,13 +499,7 @@ lv_color_t ui_theme_get_color(const char* base_name) {
 
     // Select appropriate variant based on theme mode
     const char* selected_str = use_dark_mode ? dark_str : light_str;
-    lv_color_t color = ui_theme_parse_color(selected_str);
-
-    spdlog::trace("[Theme] ui_theme_get_color({}) = {} (0x{:06X}) ({} mode)", base_name,
-                  selected_str, lv_color_to_u32(color) & 0xFFFFFF,
-                  use_dark_mode ? "dark" : "light");
-
-    return color;
+    return ui_theme_parse_color(selected_str);
 }
 
 /**
@@ -532,9 +523,6 @@ void ui_theme_apply_bg_color(lv_obj_t* obj, const char* base_name, lv_part_t par
 
     lv_color_t color = ui_theme_get_color(base_name);
     lv_obj_set_style_bg_color(obj, color, part);
-
-    spdlog::debug("[Theme] Applied background color {} (0x{:06X}) to object (part={})", base_name,
-                  lv_color_to_u32(color) & 0xFFFFFF, static_cast<int>(part));
 }
 
 /**
@@ -563,11 +551,7 @@ int32_t ui_theme_get_font_height(const lv_font_t* font) {
         return 0;
     }
 
-    int32_t height = lv_font_get_line_height(font);
-
-    spdlog::trace("[Theme] Font line height: {}px", height);
-
-    return height;
+    return lv_font_get_line_height(font);
 }
 
 void ui_set_overlay_width(lv_obj_t* obj, lv_obj_t* screen) {

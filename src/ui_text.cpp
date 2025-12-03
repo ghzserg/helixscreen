@@ -35,8 +35,14 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cstdlib>
+
 /**
  * Helper function to apply semantic font and color to a label
+ *
+ * IMPORTANT: This function will CRASH the application if a font is not found.
+ * This is intentional - silent font fallbacks cause visual bugs that are
+ * extremely hard to debug. If a font is missing, fix lv_conf.h immediately.
  *
  * @param label Label widget to style
  * @param font_const_name Name of font constant in globals.xml (e.g., "font_heading")
@@ -44,21 +50,39 @@
  */
 static void apply_semantic_style(lv_obj_t* label, const char* font_const_name,
                                  const char* color_const_name) {
-    // Apply font
+    // Apply font - FAIL FAST if font is not available
     const char* font_name = lv_xml_get_const(NULL, font_const_name);
-    if (font_name) {
-        const lv_font_t* font = lv_xml_get_font(NULL, font_name);
-        if (font) {
-            lv_obj_set_style_text_font(label, font, 0);
-            spdlog::debug("[ui_text] Applied semantic style: const '{}' → font '{}' (line_height={}px)",
-                          font_const_name, font_name, font->line_height);
-        } else {
-            spdlog::warn("[ui_text] Failed to load font '{}' from constant '{}'", font_name,
+    if (!font_name) {
+        spdlog::critical("[ui_text] FATAL: Font constant '{}' not found in globals.xml",
                          font_const_name);
-        }
-    } else {
-        spdlog::warn("[ui_text] Font constant '{}' not found in globals.xml", font_const_name);
+        spdlog::critical("[ui_text] Check that globals.xml defines this constant");
+        std::exit(EXIT_FAILURE);
     }
+
+    const lv_font_t* font = lv_xml_get_font(NULL, font_name);
+    if (!font) {
+        // Extract font size from name like "montserrat_26" -> "26"
+        std::string font_str(font_name);
+        std::string size_hint;
+        size_t underscore = font_str.rfind('_');
+        if (underscore != std::string::npos) {
+            size_hint = font_str.substr(underscore + 1);
+        }
+
+        spdlog::critical("[ui_text] FATAL: Font '{}' (from constant '{}') is not compiled!",
+                         font_name, font_const_name);
+        if (!size_hint.empty()) {
+            spdlog::critical("[ui_text] FIX: Enable LV_FONT_MONTSERRAT_{} in lv_conf.h",
+                             size_hint);
+        }
+        std::exit(EXIT_FAILURE);
+    }
+
+    lv_obj_set_style_text_font(label, font, 0);
+
+    // Debug: log the actual font being applied
+    spdlog::debug("[ui_text] Applied font '{}' (from '{}') - line_height={}px",
+                  font_name, font_const_name, lv_font_get_line_height(font));
 
     // Apply color
     const char* color_str = lv_xml_get_const(NULL, color_const_name);

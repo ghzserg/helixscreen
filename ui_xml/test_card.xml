@@ -7,18 +7,18 @@
     <!-- Placeholder thumbnail (gray square) -->
     <lv_obj name="card_thumbnail" width="176" height="176" style_radius="6"/>
     <!-- Filename label -->
-    <lv_label name="card_filename" text="test.gcode" style_text_font="montserrat_16" style_pad_top="8"/>
+    <text_body name="card_filename" text="test.gcode" style_pad_top="8"/>
     <!-- Metadata row -->
     <lv_obj flex_flow="row" style_pad_gap="#space_md" style_pad_top="4">
       <!-- Print time -->
       <lv_obj flex_flow="row" style_pad_gap="#space_xs">
         <lv_image src="mat_clock_img" width="16" height="16" scale_x="64" scale_y="64" style_image_recolor_opa="100%" align="center"/>
-        <lv_label name="card_print_time" text="0m" style_text_font="montserrat_16"/>
+        <text_small name="card_print_time" text="0m"/>
       </lv_obj>
       <!-- Filament weight -->
       <lv_obj flex_flow="row" style_pad_gap="#space_xs">
         <lv_image src="mat_spoolman_img" width="16" height="16" scale_x="64" scale_y="64" style_image_recolor_opa="100%" align="center"/>
-        <lv_label name="card_filament" text="0g" style_text_font="montserrat_16"/>
+        <text_small name="card_filament" text="0g"/>
       </lv_obj>
     </lv_obj>
   </view>

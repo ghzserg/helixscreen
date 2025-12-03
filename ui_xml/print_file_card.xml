@@ -39,18 +39,18 @@
       <!-- Inner overlay with rounded corners - taller to extend above clip, hiding top radius -->
       <lv_obj width="100%" height="78" style_bg_opa="#metadata_overlay_opacity" style_border_width="0" style_radius="#border_radius" style_pad_left="#space_xs" style_pad_right="#space_xs" style_pad_top="14" style_pad_bottom="#space_xs" align="bottom_mid" flex_flow="column" scrollable="false" name="metadata_overlay">
         <!-- Filename label (single line, truncated with ...) -->
-        <lv_label text="$filename" width="100%" height="20" long_mode="dots" style_text_font="montserrat_14" name="filename_label"/>
+        <text_small text="$filename" width="100%" height="20" long_mode="dots" name="filename_label"/>
         <!-- Metadata row (horizontal layout, responsive) -->
         <lv_obj width="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_top="#metadata_top_pad" flex_flow="row" style_pad_gap="#space_xs" flex_grow="1" name="metadata_row">
           <!-- Print time (icon + text) -->
           <lv_obj flex_grow="1" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row" style_pad_gap="#icon_text_gap" style_flex_cross_place="center">
             <icon src="mat_clock_img" size="xs" variant="accent"/>
-            <lv_label text="$print_time" flex_grow="1" style_min_width="#metadata_label_min_width" style_text_color="#text_secondary" style_text_font="montserrat_14" name="time_label"/>
+            <text_small text="$print_time" flex_grow="1" style_min_width="#metadata_label_min_width" name="time_label"/>
           </lv_obj>
           <!-- Filament weight (icon + text) -->
           <lv_obj flex_grow="1" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row" style_pad_gap="#icon_text_gap" style_flex_cross_place="center">
             <icon src="mat_layers_img" size="xs" variant="accent"/>
-            <lv_label text="$filament_weight" flex_grow="1" style_min_width="#metadata_label_min_width" style_text_color="#text_secondary" style_text_font="montserrat_14" name="filament_label"/>
+            <text_small text="$filament_weight" flex_grow="1" style_min_width="#metadata_label_min_width" name="filament_label"/>
           </lv_obj>
         </lv_obj>
       </lv_obj>

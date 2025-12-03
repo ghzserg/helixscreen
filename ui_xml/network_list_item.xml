@@ -6,7 +6,7 @@
   <!-- Displays: SSID, signal strength icon, lock icon for encrypted networks, connected indicator -->
   <view extends="lv_obj" width="100%" height="content" style_min_height="44" style_bg_opa="0" style_border_width="0" style_pad_all="#space_xs" style_pad_gap="#space_xs" flex_flow="row" clickable="true" style_flex_main_place="space_between" style_flex_cross_place="center" name="network_item_root">
     <!-- Left: SSID -->
-    <lv_label name="network_ssid" text="Network Name" style_text_font="montserrat_16" flex_grow="1"/>
+    <text_body name="network_ssid" text="Network Name" flex_grow="1"/>
     <!-- Right: Connected indicator + Signal icon -->
     <lv_obj width="60" height="32" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="#space_sm" flex_flow="row" style_flex_main_place="end" style_flex_cross_place="center">
       <!-- Connected indicator (check icon, hidden by default) -->

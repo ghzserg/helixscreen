@@ -21,9 +21,9 @@
     <!-- Row 1: Title + Progress -->
     <lv_obj width="100%" height="content" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" style_bg_opa="0" style_border_width="0" style_pad_all="0">
       <!-- Title: "Printer Setup: Network", etc. -->
-      <lv_label name="wizard_title" bind_text="wizard_title" style_text_font="#wizard_title_font"/>
+      <text_heading name="wizard_title" bind_text="wizard_title"/>
       <!-- Progress: "Step 2 of 7" -->
-      <lv_label name="wizard_progress" bind_text="wizard_progress" style_text_font="#wizard_header_font"/>
+      <text_small name="wizard_progress" bind_text="wizard_progress"/>
     </lv_obj>
     <!-- Row 2: Subtitle (contextual hint) -->
     <text_body name="wizard_subtitle" bind_text="wizard_subtitle" style_text_color="#text_secondary" width="100%"/>
