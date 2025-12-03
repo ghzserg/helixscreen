@@ -18,22 +18,25 @@
  * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../catch_amalgamated.hpp"
-#include "../ui_test_utils.h"
 #include "ui_wizard.h"
 #include "ui_wizard_connection.h"
-#include "moonraker_client.h"
+
+#include "../ui_test_utils.h"
 #include "lvgl/lvgl.h"
+#include "moonraker_client.h"
+
+#include <chrono>
 #include <memory>
 #include <thread>
-#include <chrono>
+
+#include "../catch_amalgamated.hpp"
 
 // ============================================================================
 // Test Fixture for Wizard Connection UI
 // ============================================================================
 
 class WizardConnectionUIFixture {
-public:
+  public:
     WizardConnectionUIFixture() {
         // 1. Initialize LVGL (one-time, with static guard)
         static bool lvgl_initialized = false;
@@ -43,15 +46,13 @@ public:
         }
 
         // 2. Create headless display for testing
-        static lv_color_t buf[800 * 10];
+        alignas(64) static lv_color_t buf[800 * 10];
         display = lv_display_create(800, 480);
-        lv_display_set_buffers(display, buf, nullptr, sizeof(buf),
-                               LV_DISPLAY_RENDER_MODE_PARTIAL);
-        lv_display_set_flush_cb(display, [](lv_display_t* disp,
-                                             const lv_area_t* area,
-                                             uint8_t* px_map) {
-            lv_display_flush_ready(disp);  // Dummy flush for headless testing
-        });
+        lv_display_set_buffers(display, buf, nullptr, sizeof(buf), LV_DISPLAY_RENDER_MODE_PARTIAL);
+        lv_display_set_flush_cb(
+            display, [](lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
+                lv_display_flush_ready(disp); // Dummy flush for headless testing
+            });
 
         // 3. Create test screen
         screen = lv_obj_create(lv_screen_active());
@@ -81,9 +82,12 @@ public:
 
     ~WizardConnectionUIFixture() {
         UITest::cleanup();
-        if (wizard) lv_obj_delete(wizard);
-        if (screen) lv_obj_delete(screen);
-        if (display) lv_display_delete(display);
+        if (wizard)
+            lv_obj_delete(wizard);
+        if (screen)
+            lv_obj_delete(screen);
+        if (display)
+            lv_display_delete(display);
     }
 
     void ensure_components_registered() {
@@ -118,10 +122,8 @@ public:
 // - Run tests with: ./build/bin/run_tests "[ui_integration]"
 // =============================================================================
 
-TEST_CASE_METHOD(WizardConnectionUIFixture,
-                 "Connection UI: All widgets exist",
+TEST_CASE_METHOD(WizardConnectionUIFixture, "Connection UI: All widgets exist",
                  "[wizard][connection][ui][.ui_integration]") {
-
     // Find the main connection screen widgets
     lv_obj_t* ip_input = UITest::find_by_name(screen, "ip_input");
     REQUIRE(ip_input != nullptr);
@@ -136,10 +138,8 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
     REQUIRE(status_label != nullptr);
 }
 
-TEST_CASE_METHOD(WizardConnectionUIFixture,
-                 "Connection UI: Input field interaction",
+TEST_CASE_METHOD(WizardConnectionUIFixture, "Connection UI: Input field interaction",
                  "[wizard][connection][ui][.ui_integration]") {
-
     lv_obj_t* ip_input = UITest::find_by_name(screen, "ip_input");
     REQUIRE(ip_input != nullptr);
 
@@ -160,7 +160,7 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
 
     // Modify port - clear by selecting all and typing over
     lv_textarea_set_cursor_pos(port_input, 0);
-    lv_textarea_set_text(port_input, "");  // Clear existing text
+    lv_textarea_set_text(port_input, ""); // Clear existing text
     UITest::type_text(port_input, "8080");
     UITest::wait_ms(50);
 
@@ -168,10 +168,8 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
     REQUIRE(port_value == "8080");
 }
 
-TEST_CASE_METHOD(WizardConnectionUIFixture,
-                 "Connection UI: Test button state",
+TEST_CASE_METHOD(WizardConnectionUIFixture, "Connection UI: Test button state",
                  "[wizard][connection][ui][.ui_integration]") {
-
     lv_obj_t* test_btn = UITest::find_by_name(screen, "btn_test_connection");
     REQUIRE(test_btn != nullptr);
 
@@ -183,10 +181,8 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
     REQUIRE(UITest::is_visible(test_btn) == true);
 }
 
-TEST_CASE_METHOD(WizardConnectionUIFixture,
-                 "Connection UI: Status label updates",
+TEST_CASE_METHOD(WizardConnectionUIFixture, "Connection UI: Status label updates",
                  "[wizard][connection][ui][.ui_integration]") {
-
     lv_obj_t* status_label = UITest::find_by_name(screen, "connection_status");
     REQUIRE(status_label != nullptr);
 
@@ -196,7 +192,7 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
 
     // Enter invalid IP
     lv_obj_t* ip_input = UITest::find_by_name(screen, "ip_input");
-    lv_textarea_set_text(ip_input, "");  // Clear existing text
+    lv_textarea_set_text(ip_input, ""); // Clear existing text
     UITest::type_text(ip_input, "999.999.999.999");
 
     // Click test button
@@ -209,10 +205,8 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
     REQUIRE(error_status.find("Invalid") != std::string::npos);
 }
 
-TEST_CASE_METHOD(WizardConnectionUIFixture,
-                 "Connection UI: Navigation buttons",
+TEST_CASE_METHOD(WizardConnectionUIFixture, "Connection UI: Navigation buttons",
                  "[wizard][connection][ui][.ui_integration]") {
-
     // Find navigation buttons
     lv_obj_t* back_btn = UITest::find_by_name(screen, "wizard_back_button");
     lv_obj_t* next_btn = UITest::find_by_name(screen, "wizard_next_button");
@@ -229,10 +223,8 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
     REQUIRE(next_text == "Next");
 }
 
-TEST_CASE_METHOD(WizardConnectionUIFixture,
-                 "Connection UI: Title and progress",
+TEST_CASE_METHOD(WizardConnectionUIFixture, "Connection UI: Title and progress",
                  "[wizard][connection][ui][.ui_integration]") {
-
     // Find title and progress labels
     lv_obj_t* title = UITest::find_by_name(screen, "wizard_title");
     lv_obj_t* progress = UITest::find_by_name(screen, "wizard_progress");
@@ -255,9 +247,8 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
 
 // Mock MoonrakerClient for testing
 class MockMoonrakerClient {
-public:
-    int connect(const char* url,
-                std::function<void()> on_connected,
+  public:
+    int connect(const char* url, std::function<void()> on_connected,
                 std::function<void()> on_disconnected) {
         last_url = url;
         connected_callback = on_connected;
@@ -302,10 +293,8 @@ TEST_CASE("Connection UI: Mock connection flow", "[wizard][connection][mock]") {
     SECTION("Successful connection") {
         bool connected = false;
 
-        mock_client.connect("ws://192.168.1.100:7125/websocket",
-            [&connected]() { connected = true; },
-            []() {}
-        );
+        mock_client.connect(
+            "ws://192.168.1.100:7125/websocket", [&connected]() { connected = true; }, []() {});
 
         // Verify URL was captured
         REQUIRE(mock_client.last_url == "ws://192.168.1.100:7125/websocket");
@@ -319,10 +308,9 @@ TEST_CASE("Connection UI: Mock connection flow", "[wizard][connection][mock]") {
     SECTION("Failed connection") {
         bool disconnected = false;
 
-        mock_client.connect("ws://192.168.1.100:7125/websocket",
-            []() {},
-            [&disconnected]() { disconnected = true; }
-        );
+        mock_client.connect(
+            "ws://192.168.1.100:7125/websocket", []() {},
+            [&disconnected]() { disconnected = true; });
 
         // Trigger disconnection/failure
         mock_client.trigger_disconnected();
@@ -340,17 +328,15 @@ TEST_CASE("Connection UI: Mock connection flow", "[wizard][connection][mock]") {
 // Input Validation UI Tests
 // ============================================================================
 
-TEST_CASE_METHOD(WizardConnectionUIFixture,
-                 "Connection UI: Input validation feedback",
+TEST_CASE_METHOD(WizardConnectionUIFixture, "Connection UI: Input validation feedback",
                  "[wizard][connection][ui][validation][.ui_integration]") {
-
     lv_obj_t* ip_input = UITest::find_by_name(screen, "ip_input");
     lv_obj_t* port_input = UITest::find_by_name(screen, "port_input");
     lv_obj_t* test_btn = UITest::find_by_name(screen, "btn_test_connection");
     lv_obj_t* status = UITest::find_by_name(screen, "connection_status");
 
     SECTION("Empty IP address") {
-        lv_textarea_set_text(ip_input, "");  // Clear text
+        lv_textarea_set_text(ip_input, ""); // Clear text
         UITest::click(test_btn);
         UITest::wait_ms(100);
 
@@ -360,7 +346,7 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
 
     SECTION("Invalid port") {
         UITest::type_text(ip_input, "192.168.1.100");
-        lv_textarea_set_text(port_input, "");  // Clear text
+        lv_textarea_set_text(port_input, ""); // Clear text
         UITest::type_text(port_input, "99999");
         UITest::click(test_btn);
         UITest::wait_ms(100);
@@ -370,9 +356,9 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
     }
 
     SECTION("Valid inputs") {
-        lv_textarea_set_text(ip_input, "");  // Clear text
+        lv_textarea_set_text(ip_input, ""); // Clear text
         UITest::type_text(ip_input, "printer.local");
-        lv_textarea_set_text(port_input, "");  // Clear text
+        lv_textarea_set_text(port_input, ""); // Clear text
         UITest::type_text(port_input, "7125");
 
         // Status should allow testing with valid inputs
@@ -390,10 +376,8 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
 // Responsive Layout Tests
 // ============================================================================
 
-TEST_CASE_METHOD(WizardConnectionUIFixture,
-                 "Connection UI: Responsive layout",
+TEST_CASE_METHOD(WizardConnectionUIFixture, "Connection UI: Responsive layout",
                  "[wizard][connection][ui][responsive][.ui_integration]") {
-
     // Get the connection screen container
     lv_obj_t* container = UITest::find_by_name(screen, "wizard_content");
     REQUIRE(container != nullptr);
@@ -415,6 +399,6 @@ TEST_CASE_METHOD(WizardConnectionUIFixture,
     lv_coord_t input_width = lv_obj_get_width(ip_input);
 
     // Input should be reasonably sized
-    REQUIRE(input_width > 200);  // Minimum reasonable width
-    REQUIRE(input_width < width);  // Should not exceed container
+    REQUIRE(input_width > 200);   // Minimum reasonable width
+    REQUIRE(input_width < width); // Should not exceed container
 }

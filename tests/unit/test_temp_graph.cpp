@@ -18,21 +18,22 @@
  * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../catch_amalgamated.hpp"
 #include "../../include/ui_temp_graph.h"
 #include "../../include/ui_theme.h"
 #include "lvgl/lvgl.h"
 
+#include "../catch_amalgamated.hpp"
+
 // Test fixture for temperature graph tests
 class TempGraphTestFixture {
-public:
+  public:
     TempGraphTestFixture() {
         // Initialize LVGL for testing
         lv_init();
 
         // Create a display for testing (headless)
         lv_display_t* disp = lv_display_create(800, 480);
-        static lv_color_t buf1[800 * 10];
+        alignas(64) static lv_color_t buf1[800 * 10];
         lv_display_set_buffers(disp, buf1, NULL, sizeof(buf1), LV_DISPLAY_RENDER_MODE_PARTIAL);
 
         // Create a screen object to use as parent

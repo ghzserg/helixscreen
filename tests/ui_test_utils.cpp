@@ -11,7 +11,9 @@
  */
 
 #include "ui_test_utils.h"
+
 #include "spdlog/spdlog.h"
+
 #include <chrono>
 #include <thread>
 
@@ -92,13 +94,13 @@ bool click_at(int32_t x, int32_t y) {
     last_data.point.x = x;
     last_data.point.y = y;
     last_data.state = LV_INDEV_STATE_PRESSED;
-    lv_timer_handler();  // Process press event
-    wait_ms(50);         // Minimum press duration
+    lv_timer_handler(); // Process press event
+    wait_ms(50);        // Minimum press duration
 
     // Simulate release
     last_data.state = LV_INDEV_STATE_RELEASED;
-    lv_timer_handler();  // Process release event
-    wait_ms(50);         // Allow click handlers to execute
+    lv_timer_handler(); // Process release event
+    wait_ms(50);        // Allow click handlers to execute
 
     spdlog::debug("[UITest] Click simulation complete");
     return true;
@@ -123,7 +125,7 @@ bool type_text(const std::string& text) {
     // Add text directly to textarea
     lv_textarea_add_text(focused, text.c_str());
     lv_timer_handler();
-    wait_ms(50);  // Allow text processing
+    wait_ms(50); // Allow text processing
 
     return true;
 }
@@ -145,7 +147,7 @@ bool type_text(lv_obj_t* textarea, const std::string& text) {
     // Add text directly to textarea
     lv_textarea_add_text(textarea, text.c_str());
     lv_timer_handler();
-    wait_ms(50);  // Allow text processing
+    wait_ms(50); // Allow text processing
 
     return true;
 }
@@ -182,7 +184,7 @@ void wait_ms(uint32_t ms) {
     auto end = start + std::chrono::milliseconds(ms);
 
     while (std::chrono::steady_clock::now() < end) {
-        lv_timer_handler();  // Process LVGL tasks
+        lv_timer_handler(); // Process LVGL tasks
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
@@ -192,17 +194,17 @@ bool wait_until(std::function<bool()> condition, uint32_t timeout_ms) {
     auto end = start + std::chrono::milliseconds(timeout_ms);
 
     while (std::chrono::steady_clock::now() < end) {
-        lv_timer_handler();  // Process LVGL tasks
+        lv_timer_handler(); // Process LVGL tasks
 
         if (condition()) {
-            return true;  // Condition met
+            return true; // Condition met
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     spdlog::warn("[UITest] wait_until() timed out after {}ms", timeout_ms);
-    return false;  // Timeout
+    return false; // Timeout
 }
 
 bool wait_for_visible(lv_obj_t* widget, uint32_t timeout_ms) {
@@ -211,9 +213,8 @@ bool wait_for_visible(lv_obj_t* widget, uint32_t timeout_ms) {
         return false;
     }
 
-    return wait_until([widget]() {
-        return !lv_obj_has_flag(widget, LV_OBJ_FLAG_HIDDEN);
-    }, timeout_ms);
+    return wait_until([widget]() { return !lv_obj_has_flag(widget, LV_OBJ_FLAG_HIDDEN); },
+                      timeout_ms);
 }
 
 bool wait_for_hidden(lv_obj_t* widget, uint32_t timeout_ms) {
@@ -222,9 +223,8 @@ bool wait_for_hidden(lv_obj_t* widget, uint32_t timeout_ms) {
         return false;
     }
 
-    return wait_until([widget]() {
-        return lv_obj_has_flag(widget, LV_OBJ_FLAG_HIDDEN);
-    }, timeout_ms);
+    return wait_until([widget]() { return lv_obj_has_flag(widget, LV_OBJ_FLAG_HIDDEN); },
+                      timeout_ms);
 }
 
 bool wait_for_timers(uint32_t timeout_ms) {
@@ -299,7 +299,8 @@ int count_children_with_marker(lv_obj_t* parent, const char* marker) {
 
     for (uint32_t i = 0; i < child_count; i++) {
         lv_obj_t* child = lv_obj_get_child(parent, i);
-        if (!child) continue;
+        if (!child)
+            continue;
 
         const void* user_data = lv_obj_get_user_data(child);
         if (user_data && strcmp((const char*)user_data, marker) == 0) {
@@ -314,9 +315,9 @@ int count_children_with_marker(lv_obj_t* parent, const char* marker) {
 
 // Stub implementations for main.cpp functions needed by wizard tests
 // These return nullptr since wizard tests don't actually use Moonraker
-#include "moonraker_client.h"
-#include "moonraker_api.h"
 #include "app_globals.h"
+#include "moonraker_api.h"
+#include "moonraker_client.h"
 #include "printer_state.h"
 
 MoonrakerClient* get_moonraker_client() {
@@ -351,9 +352,7 @@ void ui_notification_warning(const char* message) {
 
 void ui_notification_error(const char* message, const char* title, bool modal) {
     spdlog::debug("[Test Stub] ui_notification_error: {} (title={}, modal={})",
-                  message ? message : "(null)",
-                  title ? title : "(null)",
-                  modal);
+                  message ? message : "(null)", title ? title : "(null)", modal);
 }
 
 // Stub implementations for toast functions (tests don't display UI)
@@ -369,9 +368,9 @@ void ui_toast_show(ToastSeverity severity, const char* message, uint32_t duratio
     spdlog::debug("[Test Stub] ui_toast_show: {}", message ? message : "(null)");
 }
 
-void ui_toast_show_with_action(ToastSeverity severity, const char* message,
-                                const char* action_text, toast_action_callback_t action_callback,
-                                void* user_data, uint32_t duration_ms) {
+void ui_toast_show_with_action(ToastSeverity severity, const char* message, const char* action_text,
+                               toast_action_callback_t action_callback, void* user_data,
+                               uint32_t duration_ms) {
     (void)severity;
     (void)action_text;
     (void)action_callback;
@@ -390,3 +389,40 @@ bool ui_toast_is_visible() {
 
 // Note: FanPanel is provided by ui_panel_fan.o which is linked in TEST_PANEL_DEPS
 // The get_global_fan_panel() function is defined in ui_panel_fan.cpp
+
+// Stub implementations for EmergencyStopOverlay (tests don't use the overlay)
+#include "ui_emergency_stop.h"
+
+// Minimal stub EmergencyStopOverlay singleton for test linking
+class EmergencyStopOverlayStub {
+  public:
+    static EmergencyStopOverlayStub& instance() {
+        static EmergencyStopOverlayStub stub;
+        return stub;
+    }
+    void on_panel_changed(const std::string& /* panel_name */) {
+        // No-op in tests
+    }
+    void set_require_confirmation(bool /* require */) {
+        // No-op in tests
+    }
+};
+
+// Provide the real EmergencyStopOverlay interface as stubs
+EmergencyStopOverlay& EmergencyStopOverlay::instance() {
+    // Cast is safe because we only use no-op methods that match the interface
+    return reinterpret_cast<EmergencyStopOverlay&>(EmergencyStopOverlayStub::instance());
+}
+
+void EmergencyStopOverlay::on_panel_changed(const std::string& /* panel_name */) {
+    // No-op in tests
+}
+
+void EmergencyStopOverlay::set_require_confirmation(bool /* require */) {
+    // No-op in tests
+}
+
+// Stub for app_request_restart_for_theme (tests don't restart)
+void app_request_restart_for_theme() {
+    spdlog::debug("[Test Stub] app_request_restart_for_theme called - no-op in tests");
+}

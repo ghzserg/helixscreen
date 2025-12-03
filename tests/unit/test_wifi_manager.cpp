@@ -21,11 +21,13 @@
  * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../catch_amalgamated.hpp"
 #include "../../include/wifi_manager.h"
 #include "../../lvgl/lvgl.h"
-#include <thread>
+
 #include <chrono>
+#include <thread>
+
+#include "../catch_amalgamated.hpp"
 
 /**
  * WiFiManager Unit Tests
@@ -54,7 +56,7 @@ struct LVGLInitializer {
     LVGLInitializer() {
         lv_init();
         lv_display_t* disp = lv_display_create(800, 480);
-        static lv_color_t buf[800 * 10];
+        alignas(64) static lv_color_t buf[800 * 10];
         lv_display_set_buffers(disp, buf, NULL, sizeof(buf), LV_DISPLAY_RENDER_MODE_PARTIAL);
     }
 };
@@ -66,7 +68,7 @@ static LVGLInitializer lvgl_init;
 // ============================================================================
 
 class WiFiManagerTestFixture {
-public:
+  public:
     WiFiManagerTestFixture() {
         // Create fresh instance for each test as shared_ptr
         // CRITICAL: WiFiManager requires init_self_reference() for async callbacks
@@ -108,13 +110,13 @@ public:
 
         while (std::chrono::steady_clock::now() < end) {
             if (condition()) {
-                return true;  // Condition met
+                return true; // Condition met
             }
 
             // Sleep briefly to avoid busy-wait
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        return false;  // Timeout
+        return false; // Timeout
     }
 
     // Test instance (shared_ptr for init_self_reference support)
@@ -165,14 +167,14 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFiManager instance creation", "[wifi
 
 TEST_CASE_METHOD(WiFiManagerTestFixture, "Backend initialization state", "[wifi][backend][init]") {
     SECTION("Backend starts disabled by default") {
-        // CRITICAL: This catches the bug where mock backend was auto-started
-        #ifdef __APPLE__
+// CRITICAL: This catches the bug where mock backend was auto-started
+#ifdef __APPLE__
         // macOS uses mock backend - should start disabled
         REQUIRE_FALSE(wifi_manager->is_enabled());
-        #else
+#else
         // Linux may have different behavior depending on system state
         INFO("Backend enabled: " << wifi_manager->is_enabled());
-        #endif
+#endif
     }
 
     SECTION("Explicit enable starts backend") {
@@ -224,16 +226,14 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Scan callback preservation", "[wifi][s
 
         wifi_manager->start_scan(callback);
 
-        // Trigger LVGL timer processing to fire scan event
-        #ifdef __APPLE__
-        bool got_callback = wait_for_condition([this]() {
-            return scan_callback_count > 0;
-        }, 3000);
+// Trigger LVGL timer processing to fire scan event
+#ifdef __APPLE__
+        bool got_callback = wait_for_condition([this]() { return scan_callback_count > 0; }, 3000);
 
         REQUIRE(got_callback);
         REQUIRE(scan_callback_count == 1);
         REQUIRE(last_networks.size() > 0);
-        #endif
+#endif
     }
 
     SECTION("CRITICAL: stop_scan does NOT clear callback") {
@@ -252,15 +252,13 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Scan callback preservation", "[wifi][s
         // Start again with same callback still registered
         wifi_manager->start_scan(callback);
 
-        #ifdef __APPLE__
-        bool got_callback = wait_for_condition([this]() {
-            return scan_callback_count > 0;
-        }, 3000);
+#ifdef __APPLE__
+        bool got_callback = wait_for_condition([this]() { return scan_callback_count > 0; }, 3000);
 
         // If callback was cleared by stop_scan(), this would fail
         REQUIRE(got_callback);
         REQUIRE(scan_callback_count >= 1);
-        #endif
+#endif
     }
 
     SECTION("Callback survives multiple stop/start cycles") {
@@ -281,13 +279,11 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Scan callback preservation", "[wifi][s
         // Third scan cycle
         wifi_manager->start_scan(callback);
 
-        #ifdef __APPLE__
-        bool got_callback = wait_for_condition([this]() {
-            return scan_callback_count > 0;
-        }, 3000);
+#ifdef __APPLE__
+        bool got_callback = wait_for_condition([this]() { return scan_callback_count > 0; }, 3000);
 
         REQUIRE(got_callback);
-        #endif
+#endif
     }
 
     SECTION("Multiple start_scan calls with different callbacks") {
@@ -309,13 +305,11 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Scan callback preservation", "[wifi][s
         // First scan with callback1
         wifi_manager->start_scan(callback1);
 
-        #ifdef __APPLE__
-        wait_for_condition([&callback1_count]() {
-            return callback1_count > 0;
-        }, 3000);
+#ifdef __APPLE__
+        wait_for_condition([&callback1_count]() { return callback1_count > 0; }, 3000);
         REQUIRE(callback1_count >= 1);
         REQUIRE(callback2_count == 0);
-        #endif
+#endif
 
         // Stop and restart with callback2
         wifi_manager->stop_scan();
@@ -323,13 +317,11 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Scan callback preservation", "[wifi][s
 
         wifi_manager->start_scan(callback2);
 
-        #ifdef __APPLE__
-        wait_for_condition([&callback2_count]() {
-            return callback2_count > 0;
-        }, 3000);
-        REQUIRE(callback1_count == 0);  // Old callback not invoked
-        REQUIRE(callback2_count >= 1);  // New callback invoked
-        #endif
+#ifdef __APPLE__
+        wait_for_condition([&callback2_count]() { return callback2_count > 0; }, 3000);
+        REQUIRE(callback1_count == 0); // Old callback not invoked
+        REQUIRE(callback2_count >= 1); // New callback invoked
+#endif
     }
 }
 
@@ -347,22 +339,22 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Network scanning lifecycle", "[wifi][s
 
         auto networks = wifi_manager->scan_once();
 
-        #ifdef __APPLE__
+#ifdef __APPLE__
         // Mock backend should return 10 networks
         REQUIRE(networks.size() == 10);
-        #else
+#else
         INFO("Networks found: " << networks.size());
-        #endif
+#endif
     }
 
     SECTION("Scan with backend disabled returns empty/fails") {
         // Backend starts disabled - scan should fail gracefully
         auto networks = wifi_manager->scan_once();
 
-        #ifdef __APPLE__
+#ifdef __APPLE__
         // Mock backend may still return data when disabled (test implementation detail)
         INFO("Networks found with disabled backend: " << networks.size());
-        #endif
+#endif
     }
 
     SECTION("Stop scan is idempotent") {
@@ -386,16 +378,15 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Network scanning lifecycle", "[wifi][s
 
         wifi_manager->start_scan(callback);
 
-        #ifdef __APPLE__
+#ifdef __APPLE__
         // Wait for at least 2 scan callbacks (periodic scanning every 7s)
         // First scan: ~2s, second scan: ~9s total
-        bool got_multiple = wait_for_condition([this]() {
-            return scan_callback_count >= 2;
-        }, 10000);
+        bool got_multiple =
+            wait_for_condition([this]() { return scan_callback_count >= 2; }, 10000);
 
         // Note: May only get 1 callback if test runs too fast
         REQUIRE(scan_callback_count >= 1);
-        #endif
+#endif
     }
 }
 
@@ -412,7 +403,7 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi connection management", "[wifi][c
     }
 
     SECTION("Connect to network (mock)") {
-        #ifdef __APPLE__
+#ifdef __APPLE__
         wifi_manager->set_enabled(true);
 
         auto callback = [this](bool success, const std::string& error) {
@@ -427,13 +418,12 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi connection management", "[wifi][c
         wifi_manager->connect(networks[0].ssid, "test_password", callback);
 
         // Wait for connection result
-        bool got_result = wait_for_condition([this]() {
-            return !connection_error.empty() || connection_success;
-        }, 5000);
+        bool got_result = wait_for_condition(
+            [this]() { return !connection_error.empty() || connection_success; }, 5000);
 
         REQUIRE(got_result);
         INFO("Connection result: success=" << connection_success << ", error=" << connection_error);
-        #endif
+#endif
     }
 
     SECTION("Disconnect is safe when not connected") {
@@ -449,12 +439,12 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi status queries", "[wifi][status]"
     SECTION("Hardware detection") {
         bool has_wifi = wifi_manager->has_hardware();
 
-        #ifdef __APPLE__
+#ifdef __APPLE__
         // macOS mock should always have hardware
         REQUIRE(has_wifi == true);
-        #else
+#else
         INFO("WiFi hardware detected: " << (has_wifi ? "yes" : "no"));
-        #endif
+#endif
     }
 
     // SECTION("Ethernet detection") {
@@ -498,13 +488,13 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases", "[wifi][edge-cases]"
 
     SECTION("Idempotent enable") {
         wifi_manager->set_enabled(true);
-        wifi_manager->set_enabled(true);  // Second call is no-op
+        wifi_manager->set_enabled(true); // Second call is no-op
         REQUIRE(wifi_manager->is_enabled());
     }
 
     SECTION("Idempotent disable") {
         wifi_manager->set_enabled(false);
-        wifi_manager->set_enabled(false);  // Second call is no-op
+        wifi_manager->set_enabled(false); // Second call is no-op
         REQUIRE_FALSE(wifi_manager->is_enabled());
     }
 
@@ -521,7 +511,7 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases", "[wifi][edge-cases]"
     }
 
     SECTION("Destructor cleanup during active connection") {
-        #ifdef __APPLE__
+#ifdef __APPLE__
         wifi_manager->set_enabled(true);
 
         auto networks = wifi_manager->scan_once();
@@ -531,7 +521,7 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases", "[wifi][edge-cases]"
             // Destroy while connecting - should cleanup safely
             REQUIRE_NOTHROW(wifi_manager.reset());
         }
-        #endif
+#endif
     }
 }
 
@@ -541,9 +531,10 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases", "[wifi][edge-cases]"
 
 // DISABLED: scan_once() doesn't wait for scan completion - needs to be rewritten to use
 // async scan with callback or explicitly wait for thread completion (2s delay)
-TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi network information", "[wifi][networks][.disabled]") {
+TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi network information",
+                 "[wifi][networks][.disabled]") {
     SECTION("Network data validity") {
-        #ifdef __APPLE__
+#ifdef __APPLE__
         wifi_manager->set_enabled(true);
         auto networks = wifi_manager->scan_once();
 
@@ -562,23 +553,23 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi network information", "[wifi][net
                 REQUIRE_FALSE(net.security_type.empty());
             }
         }
-        #endif
+#endif
     }
 
     SECTION("Networks sorted by signal strength") {
-        #ifdef __APPLE__
+#ifdef __APPLE__
         wifi_manager->set_enabled(true);
         auto networks = wifi_manager->scan_once();
 
         // Mock backend sorts by signal strength (strongest first)
         for (size_t i = 1; i < networks.size(); i++) {
-            REQUIRE(networks[i-1].signal_strength >= networks[i].signal_strength);
+            REQUIRE(networks[i - 1].signal_strength >= networks[i].signal_strength);
         }
-        #endif
+#endif
     }
 
     SECTION("Network security mix") {
-        #ifdef __APPLE__
+#ifdef __APPLE__
         wifi_manager->set_enabled(true);
         auto networks = wifi_manager->scan_once();
 
@@ -586,13 +577,15 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi network information", "[wifi][net
         bool has_open = false;
 
         for (const auto& net : networks) {
-            if (net.is_secured) has_secured = true;
-            if (!net.is_secured) has_open = true;
+            if (net.is_secured)
+                has_secured = true;
+            if (!net.is_secured)
+                has_open = true;
         }
 
         // Mock should provide mix of secured/unsecured networks
         REQUIRE(has_secured);
         REQUIRE(has_open);
-        #endif
+#endif
     }
 }

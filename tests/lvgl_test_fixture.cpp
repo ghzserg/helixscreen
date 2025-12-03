@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "lvgl_test_fixture.h"
+
 #include <chrono>
 #include <thread>
 
@@ -12,13 +13,15 @@ lv_display_t* LVGLTestFixture::s_display = nullptr;
 
 // Display buffer - static to persist across test cases
 // Size: width * 10 lines for partial rendering mode
-static lv_color_t s_display_buf[TEST_DISPLAY_WIDTH * 10];
+// IMPORTANT: Must be aligned to LV_DRAW_BUF_ALIGN (typically 4 or 8 bytes)
+// Using alignas(64) for maximum compatibility with all platforms
+alignas(64) static lv_color_t s_display_buf[TEST_DISPLAY_WIDTH * 10];
 
 /**
  * @brief Flush callback for virtual display (no-op for testing)
  */
 static void test_display_flush_cb(lv_display_t* disp, const lv_area_t* /*area*/,
-                                   uint8_t* /*px_map*/) {
+                                  uint8_t* /*px_map*/) {
     // No actual rendering needed for tests
     lv_display_flush_ready(disp);
 }
@@ -51,8 +54,7 @@ void LVGLTestFixture::ensure_lvgl_initialized() {
         // Create virtual display for headless testing
         s_display = lv_display_create(TEST_DISPLAY_WIDTH, TEST_DISPLAY_HEIGHT);
         if (s_display != nullptr) {
-            lv_display_set_buffers(s_display, s_display_buf, nullptr,
-                                   sizeof(s_display_buf),
+            lv_display_set_buffers(s_display, s_display_buf, nullptr, sizeof(s_display_buf),
                                    LV_DISPLAY_RENDER_MODE_PARTIAL);
             lv_display_set_flush_cb(s_display, test_display_flush_cb);
         }

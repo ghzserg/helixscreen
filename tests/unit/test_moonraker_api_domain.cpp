@@ -6,7 +6,8 @@
  * @brief Unit tests for MoonrakerAPI domain service operations
  *
  * Tests the domain logic migrated from MoonrakerClient to MoonrakerAPI:
- * - Hardware guessing (guess_bed_heater, guess_hotend_heater, guess_bed_sensor, guess_hotend_sensor)
+ * - Hardware guessing (guess_bed_heater, guess_hotend_heater, guess_bed_sensor,
+ * guess_hotend_sensor)
  * - Bed mesh operations (get_active_bed_mesh, get_bed_mesh_profiles, has_bed_mesh)
  * - Object exclusion (get_excluded_objects, get_available_objects)
  *
@@ -15,7 +16,6 @@
  * during the migration.
  */
 
-#include "../catch_amalgamated.hpp"
 #include "../../include/moonraker_api.h"
 #include "../../include/moonraker_client.h"
 #include "../../include/moonraker_client_mock.h"
@@ -23,6 +23,8 @@
 
 #include <chrono>
 #include <thread>
+
+#include "../catch_amalgamated.hpp"
 
 // ============================================================================
 // Global LVGL Initialization (called once)
@@ -35,7 +37,7 @@ struct LVGLInitializerAPIDomain {
         if (!initialized) {
             lv_init();
             lv_display_t* disp = lv_display_create(800, 480);
-            static lv_color_t buf[800 * 10];
+            alignas(64) static lv_color_t buf[800 * 10];
             lv_display_set_buffers(disp, buf, NULL, sizeof(buf), LV_DISPLAY_RENDER_MODE_PARTIAL);
             initialized = true;
         }
@@ -57,8 +59,7 @@ static LVGLInitializerAPIDomain lvgl_init;
  */
 class MoonrakerAPIDomainTestFixture {
   public:
-    MoonrakerAPIDomainTestFixture()
-        : mock_client(MoonrakerClientMock::PrinterType::VORON_24) {
+    MoonrakerAPIDomainTestFixture() : mock_client(MoonrakerClientMock::PrinterType::VORON_24) {
         // Initialize printer state
         state.init_subjects();
 
@@ -191,8 +192,7 @@ TEST_CASE("MoonrakerAPI guessing matches MoonrakerClient guessing",
 // Bed Mesh Tests
 // ============================================================================
 
-TEST_CASE_METHOD(MoonrakerAPIDomainTestFixture,
-                 "MoonrakerAPI::has_bed_mesh returns correct state",
+TEST_CASE_METHOD(MoonrakerAPIDomainTestFixture, "MoonrakerAPI::has_bed_mesh returns correct state",
                  "[moonraker][api][domain][bedmesh]") {
     // Initially the mock client may or may not have bed mesh data
     // This tests that the API method delegates correctly
@@ -289,8 +289,7 @@ TEST_CASE_METHOD(MoonrakerAPIDomainTestFixture,
 // Domain Service Interface Compliance Tests
 // ============================================================================
 
-TEST_CASE("BedMeshProfile struct initialization",
-          "[moonraker][api][domain][bedmesh]") {
+TEST_CASE("BedMeshProfile struct initialization", "[moonraker][api][domain][bedmesh]") {
     BedMeshProfile profile;
 
     SECTION("Default values are correct") {

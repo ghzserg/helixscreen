@@ -18,21 +18,23 @@
  * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../catch_amalgamated.hpp"
 #include "../../include/ui_nav.h"
 #include "../../include/ui_theme.h"
 #include "lvgl/lvgl.h"
 
+#include "../catch_amalgamated.hpp"
+
 // Test fixture for navigation tests
 class NavigationTestFixture {
-public:
+  public:
     NavigationTestFixture() {
         // Initialize LVGL for testing
         lv_init();
 
         // Create a display for testing (headless)
+        // LVGL 9 requires aligned buffers - use alignas(64) for portability
         lv_display_t* disp = lv_display_create(800, 480);
-        static lv_color_t buf1[800 * 10];
+        alignas(64) static lv_color_t buf1[800 * 10];
         lv_display_set_buffers(disp, buf1, NULL, sizeof(buf1), LV_DISPLAY_RENDER_MODE_PARTIAL);
 
         // Initialize navigation system
@@ -81,7 +83,7 @@ TEST_CASE_METHOD(NavigationTestFixture, "Panel switching", "[navigation]") {
 TEST_CASE_METHOD(NavigationTestFixture, "Invalid panel handling", "[navigation]") {
     SECTION("Setting invalid panel ID does not change active panel") {
         ui_panel_id_t original = ui_nav_get_active();
-        ui_nav_set_active((ui_panel_id_t)99);  // Invalid panel ID
+        ui_nav_set_active((ui_panel_id_t)99); // Invalid panel ID
         REQUIRE(ui_nav_get_active() == original);
     }
 }

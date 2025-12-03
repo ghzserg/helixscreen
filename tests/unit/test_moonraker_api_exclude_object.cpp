@@ -18,7 +18,6 @@
  * executing arbitrary G-code commands via EXCLUDE_OBJECT.
  */
 
-#include "../catch_amalgamated.hpp"
 #include "../../include/moonraker_api.h"
 #include "../../include/moonraker_client.h"
 #include "../../include/moonraker_client_mock.h"
@@ -26,6 +25,8 @@
 
 #include <chrono>
 #include <thread>
+
+#include "../catch_amalgamated.hpp"
 
 // ============================================================================
 // Global LVGL Initialization (called once)
@@ -39,7 +40,7 @@ struct LVGLInitializerExcludeObject {
         if (!initialized) {
             lv_init();
             lv_display_t* disp = lv_display_create(800, 480);
-            static lv_color_t buf[800 * 10];
+            alignas(64) static lv_color_t buf[800 * 10];
             lv_display_set_buffers(disp, buf, NULL, sizeof(buf), LV_DISPLAY_RENDER_MODE_PARTIAL);
             initialized = true;
         }
@@ -112,8 +113,7 @@ class ExcludeObjectTestFixture {
  */
 class ExcludeObjectMockTestFixture {
   public:
-    ExcludeObjectMockTestFixture()
-        : mock_client(MoonrakerClientMock::PrinterType::VORON_24) {
+    ExcludeObjectMockTestFixture() : mock_client(MoonrakerClientMock::PrinterType::VORON_24) {
         // Initialize printer state
         state.init_subjects();
 
@@ -308,8 +308,7 @@ TEST_CASE_METHOD(ExcludeObjectTestFixture,
 // Valid Input Acceptance Tests
 // ============================================================================
 
-TEST_CASE_METHOD(ExcludeObjectTestFixture,
-                 "exclude_object accepts valid object names",
+TEST_CASE_METHOD(ExcludeObjectTestFixture, "exclude_object accepts valid object names",
                  "[moonraker][security][valid][exclude_object]") {
     SECTION("Simple object name with underscore") {
         api->exclude_object(
@@ -357,8 +356,7 @@ TEST_CASE_METHOD(ExcludeObjectTestFixture,
 // Edge Cases and Boundary Tests
 // ============================================================================
 
-TEST_CASE_METHOD(ExcludeObjectTestFixture,
-                 "exclude_object handles edge cases",
+TEST_CASE_METHOD(ExcludeObjectTestFixture, "exclude_object handles edge cases",
                  "[moonraker][security][edge][exclude_object]") {
     SECTION("Empty object name rejected") {
         api->exclude_object(
@@ -506,8 +504,7 @@ TEST_CASE_METHOD(ExcludeObjectTestFixture,
 // No Callbacks for Null Handlers
 // ============================================================================
 
-TEST_CASE_METHOD(ExcludeObjectTestFixture,
-                 "exclude_object handles null callbacks gracefully",
+TEST_CASE_METHOD(ExcludeObjectTestFixture, "exclude_object handles null callbacks gracefully",
                  "[moonraker][callbacks][exclude_object]") {
     SECTION("Valid object with null callbacks - no crash") {
         // Should not crash with null callbacks

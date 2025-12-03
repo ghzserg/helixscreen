@@ -18,9 +18,10 @@
  * along with HelixScreen. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../catch_amalgamated.hpp"
-#include "../../src/ui_switch.cpp"  // Include implementation for internal testing
 #include <spdlog/spdlog.h>
+
+#include "../../src/ui_switch.cpp" // Include implementation for internal testing
+#include "../catch_amalgamated.hpp"
 
 /**
  * @brief Unit tests for ui_switch.cpp - Switch widget with semantic size presets
@@ -36,7 +37,7 @@
 
 // Test fixture for switch tests
 class SwitchTest {
-public:
+  public:
     SwitchTest() {
         spdlog::set_level(spdlog::level::debug);
 
@@ -48,15 +49,13 @@ public:
         }
 
         // Create a headless display for testing (800x480 = MEDIUM screen)
-        static lv_color_t buf[800 * 10];
+        alignas(64) static lv_color_t buf[800 * 10];
         display_ = lv_display_create(800, 480);
-        lv_display_set_buffers(display_, buf, nullptr, sizeof(buf),
-                               LV_DISPLAY_RENDER_MODE_PARTIAL);
-        lv_display_set_flush_cb(display_, [](lv_display_t* disp,
-                                             const lv_area_t* area,
-                                             uint8_t* px_map) {
-            lv_display_flush_ready(disp);  // Dummy flush for headless testing
-        });
+        lv_display_set_buffers(display_, buf, nullptr, sizeof(buf), LV_DISPLAY_RENDER_MODE_PARTIAL);
+        lv_display_set_flush_cb(
+            display_, [](lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
+                lv_display_flush_ready(disp); // Dummy flush for headless testing
+            });
 
         // Initialize size presets now that display exists
         ui_switch_init_size_presets();
@@ -70,7 +69,7 @@ public:
         spdlog::set_level(spdlog::level::warn);
     }
 
-private:
+  private:
     lv_display_t* display_ = nullptr;
 };
 
@@ -176,21 +175,21 @@ TEST_CASE("Switch size parsing - edge cases", "[ui_switch][size][edge]") {
         SwitchSizePreset preset;
         bool result = parse_size_preset(" medium", &preset);
 
-        REQUIRE(result == false);  // Leading space should not match
+        REQUIRE(result == false); // Leading space should not match
     }
 
     SECTION("Trailing characters") {
         SwitchSizePreset preset;
         bool result = parse_size_preset("medium ", &preset);
 
-        REQUIRE(result == false);  // Trailing space should not match
+        REQUIRE(result == false); // Trailing space should not match
     }
 
     SECTION("Mixed case") {
         SwitchSizePreset preset;
         bool result = parse_size_preset("Medium", &preset);
 
-        REQUIRE(result == false);  // Only lowercase supported
+        REQUIRE(result == false); // Only lowercase supported
     }
 }
 
@@ -206,13 +205,13 @@ TEST_CASE("Size preset initialization - TINY screen", "[ui_switch][size][init]")
 
     SECTION("TINY preset dimensions (width < 600)") {
         // SIZE_TINY for TINY screen: 32x16, pad=1
-        REQUIRE(SIZE_TINY.width >= 16);   // Minimum viable size
+        REQUIRE(SIZE_TINY.width >= 16); // Minimum viable size
         REQUIRE(SIZE_TINY.height >= 8);
         REQUIRE(SIZE_TINY.knob_pad >= 1);
     }
 
     SECTION("SMALL preset dimensions") {
-        REQUIRE(SIZE_SMALL.width >= SIZE_TINY.width);  // Progressive sizing
+        REQUIRE(SIZE_SMALL.width >= SIZE_TINY.width); // Progressive sizing
         REQUIRE(SIZE_SMALL.height >= SIZE_TINY.height);
     }
 
@@ -265,11 +264,11 @@ TEST_CASE("Size preset initialization - screen size awareness", "[ui_switch][siz
         // SMALL screen (800x480): medium should be ~60-120px wide
         // LARGE screen (1280x720): medium should be ~80-150px wide
 
-        REQUIRE(SIZE_TINY.width >= 16);    // Minimum touchable size
-        REQUIRE(SIZE_TINY.width <= 100);   // Maximum reasonable for tiny screen
+        REQUIRE(SIZE_TINY.width >= 16);  // Minimum touchable size
+        REQUIRE(SIZE_TINY.width <= 100); // Maximum reasonable for tiny screen
 
-        REQUIRE(SIZE_LARGE.width >= 24);   // Larger than tiny
-        REQUIRE(SIZE_LARGE.width <= 200);  // Not absurdly large
+        REQUIRE(SIZE_LARGE.width >= 24);  // Larger than tiny
+        REQUIRE(SIZE_LARGE.width <= 200); // Not absurdly large
     }
 
     SECTION("Knob padding is in valid range") {
@@ -429,14 +428,14 @@ TEST_CASE("API contracts and guarantees", "[ui_switch][api][contract]") {
         // API expects lowercase: tiny, small, medium, large
         SwitchSizePreset preset;
         REQUIRE(parse_size_preset("tiny", &preset) == true);
-        REQUIRE(parse_size_preset("TINY", &preset) == false);  // Uppercase not supported
+        REQUIRE(parse_size_preset("TINY", &preset) == false); // Uppercase not supported
     }
 
     SECTION("Size strings are exact match") {
         // No partial matching or fuzzy matching
         SwitchSizePreset preset;
         REQUIRE(parse_size_preset("medium", &preset) == true);
-        REQUIRE(parse_size_preset("med", &preset) == false);    // Partial not supported
+        REQUIRE(parse_size_preset("med", &preset) == false);     // Partial not supported
         REQUIRE(parse_size_preset("mediumm", &preset) == false); // Extra char not supported
     }
 

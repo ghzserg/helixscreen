@@ -22,14 +22,13 @@
  *   ./build/bin/run_tests "[integration]"
  */
 
-#include "../catch_amalgamated.hpp"
-#include "../mocks/mock_printer_state.h"
 #include "../../include/moonraker_api.h"
 #include "../../include/moonraker_api_mock.h"
 #include "../../include/moonraker_client_mock.h"
 #include "../../include/moonraker_events.h"
 #include "../../include/printer_state.h"
 #include "../../lvgl/lvgl.h"
+#include "../mocks/mock_printer_state.h"
 
 #include <atomic>
 #include <chrono>
@@ -38,6 +37,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "../catch_amalgamated.hpp"
 
 // ============================================================================
 // Global LVGL Initialization (called once per test session)
@@ -50,7 +51,7 @@ struct LVGLInitializerFullStack {
         if (!initialized) {
             lv_init();
             lv_display_t* disp = lv_display_create(800, 480);
-            static lv_color_t buf[800 * 10];
+            alignas(64) static lv_color_t buf[800 * 10];
             lv_display_set_buffers(disp, buf, NULL, sizeof(buf), LV_DISPLAY_RENDER_MODE_PARTIAL);
             initialized = true;
         }
@@ -78,7 +79,8 @@ static LVGLInitializerFullStack lvgl_init;
 class FullStackTestFixture {
   public:
     FullStackTestFixture()
-        : client_(MoonrakerClientMock::PrinterType::VORON_24, 1000.0) // 1000x speedup for fast tests
+        : client_(MoonrakerClientMock::PrinterType::VORON_24,
+                  1000.0) // 1000x speedup for fast tests
     {
         // Create shared state
         shared_state_ = std::make_shared<MockPrinterState>();
@@ -117,10 +119,8 @@ class FullStackTestFixture {
 // Test Case 1: Print Workflow with Object Exclusion
 // ============================================================================
 
-TEST_CASE_METHOD(FullStackTestFixture,
-                 "Full stack: Print workflow with object exclusion",
+TEST_CASE_METHOD(FullStackTestFixture, "Full stack: Print workflow with object exclusion",
                  "[integration][moonraker][exclude]") {
-
     SECTION("Excluded objects sync from client to API") {
         // 1. Verify initial state is clean
         REQUIRE(api_->get_excluded_objects_from_mock().empty());
@@ -199,15 +199,13 @@ TEST_CASE_METHOD(FullStackTestFixture,
 // Test Case 2: Temperature Control Cycle
 // ============================================================================
 
-TEST_CASE_METHOD(FullStackTestFixture,
-                 "Full stack: Temperature control cycle",
+TEST_CASE_METHOD(FullStackTestFixture, "Full stack: Temperature control cycle",
                  "[integration][moonraker][temperature]") {
-
     SECTION("API set_temperature sends G-code command") {
         // Set bed target via API - this sends a G-code command
         bool success_called = false;
-        api_->set_temperature("heater_bed", 60.0,
-            [&success_called]() { success_called = true; },
+        api_->set_temperature(
+            "heater_bed", 60.0, [&success_called]() { success_called = true; },
             [](const MoonrakerError&) { FAIL("Temperature set should succeed"); });
 
         // The mock client should have received the command
@@ -249,10 +247,8 @@ TEST_CASE_METHOD(FullStackTestFixture,
 // Test Case 3: Bed Mesh Access Through API
 // ============================================================================
 
-TEST_CASE_METHOD(FullStackTestFixture,
-                 "Full stack: Bed mesh access through API",
+TEST_CASE_METHOD(FullStackTestFixture, "Full stack: Bed mesh access through API",
                  "[integration][moonraker][bedmesh]") {
-
     SECTION("API and client return consistent bed mesh state") {
         // Check bed mesh availability through API
         bool api_has_mesh = api_->has_bed_mesh();
@@ -319,8 +315,7 @@ class TestableMoonrakerClientMock : public MoonrakerClientMock {
 
 class EventIntegrationFixture {
   public:
-    EventIntegrationFixture()
-        : client_(MoonrakerClientMock::PrinterType::VORON_24, 1000.0) {
+    EventIntegrationFixture() : client_(MoonrakerClientMock::PrinterType::VORON_24, 1000.0) {
         shared_state_ = std::make_shared<MockPrinterState>();
         client_.set_mock_state(shared_state_);
         printer_state_.init_subjects(false);
@@ -381,10 +376,8 @@ class EventIntegrationFixture {
     std::atomic<bool> event_received_{false};
 };
 
-TEST_CASE_METHOD(EventIntegrationFixture,
-                 "Full stack: Event emission and handling",
+TEST_CASE_METHOD(EventIntegrationFixture, "Full stack: Event emission and handling",
                  "[integration][moonraker][events]") {
-
     SECTION("Registered handler receives events") {
         client_.register_event_handler(create_capture_handler());
 
@@ -426,20 +419,19 @@ TEST_CASE_METHOD(EventIntegrationFixture,
         reset();
 
         // Should not receive new events
-        REQUIRE_NOTHROW(client_.test_emit_event(MoonrakerEventType::KLIPPY_DISCONNECTED,
-                                                 "Disconnected", true));
+        REQUIRE_NOTHROW(
+            client_.test_emit_event(MoonrakerEventType::KLIPPY_DISCONNECTED, "Disconnected", true));
         CHECK(event_count() == 0);
     }
 
     SECTION("Event handler exceptions are caught") {
         // Register handler that throws
-        client_.register_event_handler([](const MoonrakerEvent&) {
-            throw std::runtime_error("Handler threw exception");
-        });
+        client_.register_event_handler(
+            [](const MoonrakerEvent&) { throw std::runtime_error("Handler threw exception"); });
 
         // Should not propagate exception
-        REQUIRE_NOTHROW(client_.test_emit_event(MoonrakerEventType::RPC_ERROR,
-                                                 "Trigger exception", true));
+        REQUIRE_NOTHROW(
+            client_.test_emit_event(MoonrakerEventType::RPC_ERROR, "Trigger exception", true));
     }
 }
 
@@ -447,10 +439,8 @@ TEST_CASE_METHOD(EventIntegrationFixture,
 // Test Case 5: Domain Method Parity
 // ============================================================================
 
-TEST_CASE_METHOD(FullStackTestFixture,
-                 "Full stack: Domain method parity",
+TEST_CASE_METHOD(FullStackTestFixture, "Full stack: Domain method parity",
                  "[integration][moonraker][parity]") {
-
     SECTION("guess_bed_heater returns identical results") {
         std::string api_result = api_->guess_bed_heater();
 
@@ -555,10 +545,8 @@ TEST_CASE("Full stack: All printer types work correctly",
 // Test Case 7: Concurrent Access to Shared State
 // ============================================================================
 
-TEST_CASE_METHOD(FullStackTestFixture,
-                 "Full stack: Concurrent access to shared state",
+TEST_CASE_METHOD(FullStackTestFixture, "Full stack: Concurrent access to shared state",
                  "[integration][moonraker][threading]") {
-
     SECTION("Concurrent excluded object operations are thread-safe") {
         std::atomic<bool> stop_flag{false};
         std::atomic<int> add_count{0};
@@ -645,10 +633,8 @@ TEST_CASE_METHOD(FullStackTestFixture,
 // Test Case 8: State Reset and Cleanup
 // ============================================================================
 
-TEST_CASE_METHOD(FullStackTestFixture,
-                 "Full stack: State reset and cleanup",
+TEST_CASE_METHOD(FullStackTestFixture, "Full stack: State reset and cleanup",
                  "[integration][moonraker][lifecycle]") {
-
     SECTION("MockPrinterState reset clears all state") {
         // Set up various state
         shared_state_->extruder_temp = 200.0;
@@ -689,8 +675,7 @@ TEST_CASE_METHOD(FullStackTestFixture,
 // Test Case 9: API Error Handling Integration
 // ============================================================================
 
-TEST_CASE("Full stack: API error callbacks work correctly",
-          "[integration][moonraker][errors]") {
+TEST_CASE("Full stack: API error callbacks work correctly", "[integration][moonraker][errors]") {
     PrinterState state;
     state.init_subjects(false);
 
@@ -707,12 +692,8 @@ TEST_CASE("Full stack: API error callbacks work correctly",
         bool error_called = false;
 
         api.get_excluded_objects(
-            [&success_called](const std::set<std::string>&) {
-                success_called = true;
-            },
-            [&error_called](const MoonrakerError&) {
-                error_called = true;
-            });
+            [&success_called](const std::set<std::string>&) { success_called = true; },
+            [&error_called](const MoonrakerError&) { error_called = true; });
 
         // At least one callback path should exist (mock behavior dependent)
         // This test verifies the API compiles and doesn't crash
@@ -722,8 +703,8 @@ TEST_CASE("Full stack: API error callbacks work correctly",
         // These should return immediately with mock data
         std::string bed = api.guess_bed_heater();
         std::string hotend = api.guess_hotend_heater();
-        (void)api.has_bed_mesh();  // Verify doesn't crash
-        (void)api.get_bed_mesh_profiles();  // Verify doesn't crash
+        (void)api.has_bed_mesh();          // Verify doesn't crash
+        (void)api.get_bed_mesh_profiles(); // Verify doesn't crash
 
         // Values should be valid (not empty for standard printer)
         REQUIRE(!bed.empty());
