@@ -193,6 +193,7 @@ class WiFiManager {
     // Scanning state
     lv_timer_t* scan_timer_;
     std::function<void(const std::vector<WiFiNetwork>&)> scan_callback_;
+    bool scan_pending_; // True when scan triggered, cleared after first SCAN_COMPLETE processed
 
     // Connection state
     std::function<void(bool, const std::string&)> connect_callback_;

@@ -39,7 +39,7 @@
 // Constructor / Destructor
 // ============================================================================
 
-WiFiManager::WiFiManager() : scan_timer_(nullptr) {
+WiFiManager::WiFiManager() : scan_timer_(nullptr), scan_pending_(false) {
     spdlog::debug("[WiFiManager] Initializing with backend system");
 
     // Create platform-appropriate backend (already started by factory)
@@ -150,8 +150,10 @@ void WiFiManager::start_scan(
 
     // Trigger immediate scan
     spdlog::debug("[WiFiManager] About to trigger initial scan");
+    scan_pending_ = true; // Mark scan as pending - cleared after first SCAN_COMPLETE processed
     WiFiError scan_result = backend_->trigger_scan();
     if (!scan_result.success()) {
+        scan_pending_ = false;
         NOTIFY_WARNING("WiFi scan failed. Try again.");
     } else {
         spdlog::debug("[WiFiManager] Initial scan triggered successfully");
@@ -171,8 +173,10 @@ void WiFiManager::scan_timer_callback(lv_timer_t* timer) {
     WiFiManager* manager = static_cast<WiFiManager*>(lv_timer_get_user_data(timer));
     if (manager && manager->backend_) {
         // Trigger scan - results will arrive via SCAN_COMPLETE event
+        manager->scan_pending_ = true; // Mark scan as pending
         WiFiError result = manager->backend_->trigger_scan();
         if (!result.success()) {
+            manager->scan_pending_ = false;
             LOG_WARN_INTERNAL("Periodic scan failed: {}", result.technical_msg);
         }
     }
@@ -311,6 +315,14 @@ void WiFiManager::handle_scan_complete(const std::string& event_data) {
     (void)event_data; // Unused for now
 
     spdlog::debug("[WiFiManager] handle_scan_complete ENTRY (backend thread)");
+
+    // Debounce: wpa_supplicant can emit duplicate SCAN_RESULTS events
+    // Only process the first one per scan cycle
+    if (!scan_pending_) {
+        spdlog::trace("[WiFiManager] Ignoring duplicate SCAN_COMPLETE (already processed)");
+        return;
+    }
+    scan_pending_ = false; // Clear flag - subsequent events for this scan will be ignored
 
     if (!scan_callback_) {
         LOG_WARN_INTERNAL("Scan complete but no callback registered");

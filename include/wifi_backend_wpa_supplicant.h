@@ -246,6 +246,17 @@ class WifiBackendWpaSupplicant : public WifiBackend, private hv::EventLoopThread
     int dbm_to_percentage(int dbm);
     std::string detect_security_type(const std::string& flags, bool& is_secured);
 
+    /**
+     * @brief Map raw wpa_supplicant event to callback name
+     *
+     * Parses the event string to determine which callback should handle it.
+     * Returns empty string for informational events that don't need handling.
+     *
+     * @param event Raw wpa_supplicant event string
+     * @return Callback name ("SCAN_COMPLETE", "CONNECTED", etc.) or empty string
+     */
+    std::string map_event_to_callback(const std::string& event);
+
     struct wpa_ctrl* conn;     ///< Control connection for sending commands
     struct wpa_ctrl* mon_conn; ///< Monitor connection for receiving events (FIXED LEAK)
 

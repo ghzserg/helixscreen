@@ -420,6 +420,33 @@ void WifiBackendWpaSupplicant::cleanup_wpa() {
     spdlog::debug("[WifiBackend] wpa_supplicant connections cleaned up");
 }
 
+std::string WifiBackendWpaSupplicant::map_event_to_callback(const std::string& event) {
+    // Map wpa_supplicant events to registered callback names
+    // Only actionable events are mapped; informational events return empty string
+
+    if (event.find("CTRL-EVENT-SCAN-RESULTS") != std::string::npos) {
+        return "SCAN_COMPLETE";
+    }
+    if (event.find("CTRL-EVENT-CONNECTED") != std::string::npos) {
+        return "CONNECTED";
+    }
+    if (event.find("CTRL-EVENT-DISCONNECTED") != std::string::npos) {
+        return "DISCONNECTED";
+    }
+    // Auth failures can come in multiple forms
+    if (event.find("CTRL-EVENT-SSID-TEMP-DISABLED") != std::string::npos &&
+        event.find("WRONG_KEY") != std::string::npos) {
+        return "AUTH_FAILED";
+    }
+    if (event.find("CTRL-EVENT-AUTH-REJECT") != std::string::npos) {
+        return "AUTH_FAILED";
+    }
+
+    // Informational events - no callback needed
+    // SCAN-STARTED, BSS-ADDED, BSS-REMOVED, REGDOM-CHANGE, SIGNAL-CHANGE, etc.
+    return "";
+}
+
 void WifiBackendWpaSupplicant::handle_wpa_events(void* data, int len) {
     if (data == nullptr || len <= 0) {
         LOG_WARN_INTERNAL("Received empty event");
@@ -431,25 +458,29 @@ void WifiBackendWpaSupplicant::handle_wpa_events(void* data, int len) {
 
     spdlog::trace("[WifiBackend] Event received: {}", event);
 
-    // THREAD SAFETY: Copy callbacks under lock to avoid holding lock during dispatch
-    std::map<std::string, std::function<void(const std::string&)>> callbacks_copy;
-    {
-        std::lock_guard<std::mutex> lock(callbacks_mutex_);
-        callbacks_copy = callbacks; // Copy callbacks map
+    // Determine which callback (if any) should receive this event
+    std::string callback_name = map_event_to_callback(event);
+
+    if (callback_name.empty()) {
+        // Informational event - no callback needed
+        spdlog::trace("[WifiBackend] Ignoring informational event (no matching callback)");
+        return;
     }
 
-    // Broadcast to ALL registered callbacks (outside of lock)
-    spdlog::debug("[WifiBackend] Dispatching event to {} registered callbacks",
-                  callbacks_copy.size());
-    for (const auto& entry : callbacks_copy) {
-        spdlog::trace("[WifiBackend] Dispatching event to callback '{}'", entry.first);
+    // THREAD SAFETY: Lock callbacks during lookup and dispatch
+    std::lock_guard<std::mutex> lock(callbacks_mutex_);
+    auto it = callbacks.find(callback_name);
+    if (it != callbacks.end()) {
+        spdlog::debug("[WifiBackend] Dispatching {} event to callback", callback_name);
         try {
-            entry.second(event);
+            it->second(event);
         } catch (const std::exception& e) {
-            LOG_ERROR_INTERNAL("Exception in callback '{}': {}", entry.first, e.what());
+            LOG_ERROR_INTERNAL("Exception in callback '{}': {}", callback_name, e.what());
         } catch (...) {
-            LOG_ERROR_INTERNAL("Unknown exception in callback '{}'", entry.first);
+            LOG_ERROR_INTERNAL("Unknown exception in callback '{}'", callback_name);
         }
+    } else {
+        spdlog::trace("[WifiBackend] No callback registered for event type: {}", callback_name);
     }
 }
 
