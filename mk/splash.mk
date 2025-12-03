@@ -15,6 +15,11 @@ SPLASH_CXXFLAGS := $(CXXFLAGS) -I$(INC_DIR) $(LVGL_INC) $(SPDLOG_INC) $(LIBHV_IN
 # Note: LVGL is compiled as objects, not a library - link directly against LVGL_OBJS
 SPLASH_LDFLAGS := -lm -lpthread
 
+# Strip binary for embedded targets (matches main binary behavior)
+ifeq ($(STRIP_BINARY),yes)
+    SPLASH_LDFLAGS += -s
+endif
+
 # Add platform-specific libraries for display backend
 ifneq ($(UNAME_S),Darwin)
     # Linux: may need DRM/input libraries
