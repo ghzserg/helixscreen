@@ -55,36 +55,84 @@ lv_color_t ui_theme_parse_color(const char* hex_str) {
 
 // No longer needed - helix_theme.c handles all color patching and input widget styling
 
-// Expat callback data for collecting color base names with _light suffix
-struct ColorParserData {
-    std::vector<std::string> light_color_bases; // Base names (without _light suffix)
+// ============================================================================
+// Responsive Token Pattern Matching
+// ============================================================================
+// Unified system for discovering responsive tokens from globals.xml by suffix:
+// - Colors: xxx_light / xxx_dark -> xxx (theme mode selects variant)
+// - Spacing: xxx_small / xxx_medium / xxx_large -> xxx (breakpoint selects variant)
+// - Fonts: xxx_small / xxx_medium / xxx_large -> xxx (breakpoint selects variant)
+
+// Expat callback data for collecting base names with a specific suffix
+struct SuffixParserData {
+    const char* element_type;            // "color", "px", or "string"
+    const char* suffix;                  // "_light", "_small", etc.
+    std::vector<std::string> base_names; // Collected base names (without suffix)
 };
 
-// Expat element start handler - finds <color name="xxx_light"> elements
-static void XMLCALL color_element_start(void* user_data, const XML_Char* name,
-                                        const XML_Char** attrs) {
-    if (strcmp(name, "color") != 0)
-        return;
+// Generic expat element start handler - finds <element_type name="xxx{suffix}"> elements
+static void XMLCALL suffix_element_start(void* user_data, const XML_Char* name,
+                                         const XML_Char** attrs) {
+    SuffixParserData* data = static_cast<SuffixParserData*>(user_data);
 
-    ColorParserData* data = static_cast<ColorParserData*>(user_data);
+    if (strcmp(name, data->element_type) != 0)
+        return;
 
     // Find the "name" attribute
     for (int i = 0; attrs[i]; i += 2) {
         if (strcmp(attrs[i], "name") == 0) {
-            const char* color_name = attrs[i + 1];
-            size_t len = strlen(color_name);
+            const char* attr_name = attrs[i + 1];
+            size_t len = strlen(attr_name);
+            size_t suffix_len = strlen(data->suffix);
 
-            // Check if name ends with "_light"
-            const char* suffix = "_light";
-            size_t suffix_len = strlen(suffix);
-            if (len > suffix_len && strcmp(color_name + len - suffix_len, suffix) == 0) {
-                // Extract base name (without _light)
-                std::string base_name(color_name, len - suffix_len);
-                data->light_color_bases.push_back(base_name);
+            // Check if name ends with the target suffix
+            if (len > suffix_len && strcmp(attr_name + len - suffix_len, data->suffix) == 0) {
+                // Extract base name (without suffix)
+                std::string base_name(attr_name, len - suffix_len);
+                data->base_names.push_back(base_name);
             }
             break;
         }
     }
+}
+
+/**
+ * Parse globals.xml and collect base names for elements with a given suffix
+ *
+ * @param element_type XML element type ("color", "px", "string")
+ * @param suffix Suffix to match ("_light", "_small", etc.)
+ * @return Vector of base names (without suffix)
+ */
+static std::vector<std::string> parse_globals_for_suffix(const char* element_type,
+                                                         const char* suffix) {
+    std::vector<std::string> result;
+
+    std::ifstream file("ui_xml/globals.xml");
+    if (!file.is_open()) {
+        NOTIFY_ERROR("Could not open ui_xml/globals.xml for {} pattern matching", element_type);
+        return result;
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string xml_content = buffer.str();
+    file.close();
+
+    SuffixParserData parser_data = {element_type, suffix, {}};
+    XML_Parser parser = XML_ParserCreate(nullptr);
+    XML_SetUserData(parser, &parser_data);
+    XML_SetElementHandler(parser, suffix_element_start, nullptr);
+
+    if (XML_Parse(parser, xml_content.c_str(), static_cast<int>(xml_content.size()), XML_TRUE) ==
+        XML_STATUS_ERROR) {
+        NOTIFY_ERROR("XML parse error in globals.xml line {}: {}", XML_GetCurrentLineNumber(parser),
+                     XML_ErrorString(XML_GetErrorCode(parser)));
+        XML_ParserFree(parser);
+        return result;
+    }
+    XML_ParserFree(parser);
+
+    return parser_data.base_names;
 }
 
 /**
@@ -95,36 +143,12 @@ static void XMLCALL color_element_start(void* user_data, const XML_Char* name,
  * based on current theme mode.
  */
 static void ui_theme_register_color_pairs(lv_xml_component_scope_t* scope, bool dark_mode) {
-    // Read globals.xml
-    std::ifstream file("ui_xml/globals.xml");
-    if (!file.is_open()) {
-        NOTIFY_ERROR("Could not open ui_xml/globals.xml for color pair registration");
-        return;
-    }
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    std::string xml_content = buffer.str();
-    file.close();
-
-    // Parse with expat to find _light colors
-    ColorParserData parser_data;
-    XML_Parser parser = XML_ParserCreate(nullptr);
-    XML_SetUserData(parser, &parser_data);
-    XML_SetElementHandler(parser, color_element_start, nullptr);
-
-    if (XML_Parse(parser, xml_content.c_str(), static_cast<int>(xml_content.size()), XML_TRUE) ==
-        XML_STATUS_ERROR) {
-        NOTIFY_ERROR("XML parse error in globals.xml line {}: {}", XML_GetCurrentLineNumber(parser),
-                     XML_ErrorString(XML_GetErrorCode(parser)));
-        XML_ParserFree(parser);
-        return;
-    }
-    XML_ParserFree(parser);
+    // Find all color base names that have _light suffix
+    std::vector<std::string> base_names = parse_globals_for_suffix("color", "_light");
 
     // For each _light color, check if _dark exists and register base name
     int registered = 0;
-    for (const auto& base_name : parser_data.light_color_bases) {
+    for (const auto& base_name : base_names) {
         std::string light_name = base_name + "_light";
         std::string dark_name = base_name + "_dark";
 
@@ -133,16 +157,8 @@ static void ui_theme_register_color_pairs(lv_xml_component_scope_t* scope, bool 
 
         if (light_val && dark_val) {
             const char* selected = dark_mode ? dark_val : light_val;
-            spdlog::debug("[Theme] Registering {}: dark_mode={}, light={}, dark={}, selected={}",
-                          base_name, dark_mode, light_val, dark_val, selected);
+            spdlog::debug("[Theme] Registering color {}: selected={}", base_name, selected);
             lv_xml_register_const(scope, base_name.c_str(), selected);
-
-            // Verify registration worked
-            const char* verify = lv_xml_get_const(nullptr, base_name.c_str());
-            if (verify && strcmp(verify, selected) != 0) {
-                spdlog::error("[Theme] MISMATCH! {} registered as {} but reads back as {}",
-                              base_name, selected, verify);
-            }
             registered++;
         }
     }
@@ -168,15 +184,14 @@ const char* ui_theme_get_breakpoint_suffix(int32_t max_resolution) {
 }
 
 /**
- * Register responsive spacing tokens (space_xxs through space_xl)
+ * Register responsive spacing tokens from globals.xml
  *
- * This function reads the _small/_medium/_large variants from globals.xml
- * and registers the base tokens (space_xxs, space_xs, etc.) based on the
- * current display resolution breakpoint.
+ * Auto-discovers all <px name="xxx_small"> elements and registers base tokens
+ * by matching xxx_small/xxx_medium/xxx_large triplets. This makes the system
+ * fully extensible from globals.xml without C++ code changes.
  *
- * CRITICAL: This works because base constants are NOT defined in globals.xml.
- * LVGL's lv_xml_register_const() silently ignores updates to existing constants,
- * so we must create new entries rather than override existing ones.
+ * CRITICAL: Base tokens must NOT be defined in globals.xml or responsive
+ * overrides will be silently ignored (LVGL ignores duplicate lv_xml_register_const).
  *
  * @param display The LVGL display to get resolution from
  */
@@ -196,78 +211,89 @@ void ui_theme_register_responsive_spacing(lv_display_t* display) {
         return;
     }
 
-    // Register all space_* tokens
-    static const char* tokens[] = {"space_xxs", "space_xs", "space_sm",
-                                   "space_md",  "space_lg", "space_xl"};
-    char variant_name[64];
-    int registered = 0;
+    // Auto-discover all px tokens with _small suffix
+    std::vector<std::string> base_names = parse_globals_for_suffix("px", "_small");
 
-    for (const char* token : tokens) {
-        snprintf(variant_name, sizeof(variant_name), "%s%s", token, size_suffix);
-        const char* value = lv_xml_get_const(NULL, variant_name);
-        if (value) {
-            lv_xml_register_const(scope, token, value);
-            registered++;
-        } else {
-            spdlog::warn("[Theme] Missing spacing variant: {}", variant_name);
+    int registered = 0;
+    for (const auto& base_name : base_names) {
+        // Verify all three variants exist
+        std::string small_name = base_name + "_small";
+        std::string medium_name = base_name + "_medium";
+        std::string large_name = base_name + "_large";
+
+        const char* small_val = lv_xml_get_const(nullptr, small_name.c_str());
+        const char* medium_val = lv_xml_get_const(nullptr, medium_name.c_str());
+        const char* large_val = lv_xml_get_const(nullptr, large_name.c_str());
+
+        if (small_val && medium_val && large_val) {
+            // Select appropriate variant based on breakpoint
+            std::string variant_name = base_name + size_suffix;
+            const char* value = lv_xml_get_const(nullptr, variant_name.c_str());
+            if (value) {
+                spdlog::debug("[Theme] Registering spacing {}: selected={}", base_name, value);
+                lv_xml_register_const(scope, base_name.c_str(), value);
+                registered++;
+            }
         }
     }
 
-    spdlog::debug("[Theme] Responsive spacing: {} ({}px) - registered {} space_* tokens",
-                  size_label, greater_res, registered);
+    spdlog::debug("[Theme] Responsive spacing: {} ({}px) - auto-registered {} tokens", size_label,
+                  greater_res, registered);
 }
 
+/**
+ * Register responsive font tokens from globals.xml
+ *
+ * Auto-discovers all <string name="xxx_small"> elements and registers base tokens
+ * by matching xxx_small/xxx_medium/xxx_large triplets. This makes the system
+ * fully extensible from globals.xml without C++ code changes.
+ *
+ * @param display The LVGL display to get resolution from
+ */
 void ui_theme_register_responsive_fonts(lv_display_t* display) {
-    // Use same breakpoints as padding for consistency
     int32_t hor_res = lv_display_get_horizontal_resolution(display);
     int32_t ver_res = lv_display_get_vertical_resolution(display);
     int32_t greater_res = LV_MAX(hor_res, ver_res);
 
-    const char* size_suffix;
-    const char* size_label;
+    const char* size_suffix = ui_theme_get_breakpoint_suffix(greater_res);
+    const char* size_label = (greater_res <= UI_BREAKPOINT_SMALL_MAX)    ? "SMALL"
+                             : (greater_res <= UI_BREAKPOINT_MEDIUM_MAX) ? "MEDIUM"
+                                                                         : "LARGE";
 
-    if (greater_res <= UI_BREAKPOINT_SMALL_MAX) {
-        size_suffix = "_small";
-        size_label = "SMALL";
-    } else if (greater_res <= UI_BREAKPOINT_MEDIUM_MAX) {
-        size_suffix = "_medium";
-        size_label = "MEDIUM";
-    } else {
-        size_suffix = "_large";
-        size_label = "LARGE";
-    }
-
-    char variant_name[64];
     lv_xml_component_scope_t* scope = lv_xml_component_get_scope("globals");
     if (!scope) {
         spdlog::warn("[Theme] Failed to get globals scope for font constants");
         return;
     }
 
-    // Register font_heading variant
-    snprintf(variant_name, sizeof(variant_name), "font_heading%s", size_suffix);
-    const char* font_heading = lv_xml_get_const(NULL, variant_name);
-    if (font_heading) {
-        lv_xml_register_const(scope, "font_heading", font_heading);
+    // Auto-discover all string tokens with _small suffix
+    std::vector<std::string> base_names = parse_globals_for_suffix("string", "_small");
+
+    int registered = 0;
+    for (const auto& base_name : base_names) {
+        // Verify all three variants exist
+        std::string small_name = base_name + "_small";
+        std::string medium_name = base_name + "_medium";
+        std::string large_name = base_name + "_large";
+
+        const char* small_val = lv_xml_get_const(nullptr, small_name.c_str());
+        const char* medium_val = lv_xml_get_const(nullptr, medium_name.c_str());
+        const char* large_val = lv_xml_get_const(nullptr, large_name.c_str());
+
+        if (small_val && medium_val && large_val) {
+            // Select appropriate variant based on breakpoint
+            std::string variant_name = base_name + size_suffix;
+            const char* value = lv_xml_get_const(nullptr, variant_name.c_str());
+            if (value) {
+                spdlog::debug("[Theme] Registering font {}: selected={}", base_name, value);
+                lv_xml_register_const(scope, base_name.c_str(), value);
+                registered++;
+            }
+        }
     }
 
-    // Register font_body variant
-    snprintf(variant_name, sizeof(variant_name), "font_body%s", size_suffix);
-    const char* font_body = lv_xml_get_const(NULL, variant_name);
-    if (font_body) {
-        lv_xml_register_const(scope, "font_body", font_body);
-    }
-
-    // Register font_small variant
-    snprintf(variant_name, sizeof(variant_name), "font_small%s", size_suffix);
-    const char* font_small = lv_xml_get_const(NULL, variant_name);
-    if (font_small) {
-        lv_xml_register_const(scope, "font_small", font_small);
-    }
-
-    spdlog::debug("[Theme] Responsive fonts: {} ({}px) - heading={}, body={}, small={}", size_label,
-                  greater_res, font_heading ? font_heading : "default",
-                  font_body ? font_body : "default", font_small ? font_small : "default");
+    spdlog::debug("[Theme] Responsive fonts: {} ({}px) - auto-registered {} tokens", size_label,
+                  greater_res, registered);
 }
 
 void ui_theme_init(lv_display_t* display, bool use_dark_mode_param) {

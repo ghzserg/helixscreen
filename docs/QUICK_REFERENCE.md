@@ -288,34 +288,114 @@ ui_step_progress_set_current(progress, 2);  // Now on step 3
 </view>
 ```
 
-### Constants in globals.xml
+### Responsive Theme System
+
+The theme system provides **responsive design tokens** that automatically adapt to screen size. Use these tokens instead of hardcoded pixel values.
+
+**Screen Breakpoints** (determined by `max(width, height)` at startup):
+- **SMALL** (≤480px): Tiny screens like 480×320
+- **MEDIUM** (481-800px): Standard screens like 800×480
+- **LARGE** (>800px): Large screens like 1024×600+
+
+#### Responsive Spacing Tokens
+
+Use `#space_*` tokens for all padding, margins, and gaps:
+
+| Token | SMALL | MEDIUM | LARGE | Use Case |
+|-------|-------|--------|-------|----------|
+| `#space_xxs` | 2px | 3px | 4px | Keypad rows, compact icon gaps |
+| `#space_xs` | 4px | 5px | 6px | Button icon+text, dense info |
+| `#space_sm` | 6px | 7px | 8px | Tight layouts, minor separations |
+| `#space_md` | 8px | 10px | 12px | Standard flex gaps, compact padding |
+| `#space_lg` | 12px | 16px | 20px | Container padding, major sections |
+| `#space_xl` | 16px | 20px | 24px | Emphasis cards, major separations |
 
 ```xml
-<!-- globals.xml -->
-<consts>
-    <!-- Theme colors (read by C++ theme system) -->
-    <color name="primary_color" value="..."/>
-    <color name="secondary_color" value="..."/>
-    <color name="text_primary" value="..."/>
-    <color name="text_secondary" value="..."/>
+<!-- ✅ CORRECT - Responsive spacing -->
+<lv_obj style_pad_all="#space_lg" style_pad_gap="#space_md"/>
+<ui_card style_pad_all="#space_lg"/>
 
-    <!-- Semantic fonts (for manual widget styling) -->
-    <str name="font_heading" value="montserrat_20"/>
-    <str name="font_body" value="montserrat_16"/>
-    <str name="font_small" value="montserrat_12"/>
-
-    <!-- Layout constants -->
-    <px name="nav_width" value="102"/>
-    <px name="padding_normal" value="20"/>
-
-    <!-- Icons -->
-    <str name="icon_home" value=""/>  <!-- UTF-8 char -->
-</consts>
-
-<!-- Usage in XML -->
-<lv_obj style_bg_color="#primary_color"/>
-<lv_label style_text_font="#font_heading" style_text_color="#text_primary"/>
+<!-- ❌ WRONG - Hardcoded pixels -->
+<lv_obj style_pad_all="16" style_pad_gap="10"/>
 ```
+
+**C++ access:** `ui_theme_get_spacing("space_lg")` returns the pixel value.
+
+#### Responsive Typography
+
+Use semantic text components or `#font_*` tokens:
+
+| Token | SMALL | MEDIUM | LARGE | Component |
+|-------|-------|--------|-------|-----------|
+| `#font_heading` | montserrat_20 | montserrat_26 | montserrat_28 | `<text_heading>` |
+| `#font_body` | montserrat_14 | montserrat_18 | montserrat_20 | `<text_body>` |
+| `#font_small` | montserrat_12 | montserrat_16 | montserrat_18 | `<text_small>` |
+
+```xml
+<!-- ✅ PREFERRED - Semantic text components -->
+<text_heading>Section Title</text_heading>
+<text_body>Body text content</text_body>
+<text_small style_text_color="#text_secondary">Helper text</text_small>
+
+<!-- ✅ ALSO OK - Font tokens for custom styling -->
+<lv_label style_text_font="#font_body" style_text_color="#text_primary"/>
+```
+
+#### Theme-Aware Colors (Light/Dark Mode)
+
+Colors with `_light` and `_dark` variants are auto-registered as base names:
+
+```xml
+<!-- globals.xml defines pairs -->
+<color name="card_bg_light" value="#F0F3F9"/>
+<color name="card_bg_dark" value="#1F1F1F"/>
+
+<!-- XML uses base name - theme system selects appropriate variant -->
+<lv_obj style_bg_color="#card_bg"/>
+<lv_label style_text_color="#text_primary"/>
+```
+
+**C++ access:** `ui_theme_get_color("card_bg")` returns the theme-appropriate color.
+
+#### How It Works
+
+1. **globals.xml** defines variants with suffixes (`space_lg_small`, `card_bg_light`, etc.)
+2. **ui_theme.cpp** reads variants at startup and registers base tokens with screen-appropriate values
+3. XML uses base tokens (`#space_lg`, `#card_bg`) which resolve to the correct values
+
+#### Adding New Tokens
+
+All three token types now use **pattern matching** - fully extensible from globals.xml without C++ changes!
+
+| Token Type | How to Add |
+|------------|------------|
+| **Colors** | Add `mycolor_light` and `mycolor_dark` to globals.xml |
+| **Spacing** | Add `myspace_small`, `myspace_medium`, and `myspace_large` to globals.xml (as `<px>` elements) |
+| **Fonts** | Add `myfont_small`, `myfont_medium`, and `myfont_large` to globals.xml (as `<string>` elements) |
+
+**Example - Adding a new spacing token:**
+```xml
+<!-- In globals.xml - add all three variants -->
+<px name="space_xxl_small" value="20"/>
+<px name="space_xxl_medium" value="28"/>
+<px name="space_xxl_large" value="32"/>
+
+<!-- Now usable in XML as #space_xxl -->
+<lv_obj style_pad_all="#space_xxl"/>
+```
+
+**Example - Adding a new responsive font:**
+```xml
+<!-- In globals.xml - add all three variants -->
+<string name="font_display_small" value="montserrat_28"/>
+<string name="font_display_medium" value="montserrat_36"/>
+<string name="font_display_large" value="montserrat_48"/>
+
+<!-- Now usable in XML as #font_display -->
+<lv_label style_text_font="#font_display"/>
+```
+
+**⚠️ CRITICAL:** Base tokens (`space_lg`, `font_body`, `card_bg`) are registered at runtime by C++. Do NOT define base names in globals.xml or responsive overrides will be silently ignored (LVGL ignores duplicate `lv_xml_register_const()` calls).
 
 ## Subject Types & Bindings
 
