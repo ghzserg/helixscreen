@@ -13,8 +13,9 @@
 #   sudo systemctl enable helixscreen
 #   sudo systemctl start helixscreen
 #
-# Logs:
+# Logs (application logs to systemd journal automatically):
 #   sudo journalctl -u helixscreen -f
+#   sudo journalctl -t helix -f          # Filter by syslog identifier
 
 [Unit]
 Description=HelixScreen 3D Printer Touch UI
@@ -41,6 +42,8 @@ ExecStart=/opt/helixscreen/bin/helix-launcher.sh
 # Environment variables
 Environment="HELIX_SCREEN_WIDTH=800"
 Environment="HELIX_SCREEN_HEIGHT=480"
+# Logging: auto-detects journal on systemd systems (can override with HELIX_LOG_DEST)
+# Environment="HELIX_LOG_DEST=journal"
 
 # Restart policy - always restart unless explicitly stopped
 Restart=always

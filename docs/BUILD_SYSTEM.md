@@ -158,14 +158,47 @@ GCC 8 requires `-lstdc++fs` for std::filesystem. This is already configured in `
 
 ### Deploying to Target
 
-After building, copy the binary to your target device:
+**Using make targets (recommended for Pi):**
+```bash
+# Full cycle: build + deploy + run on Pi
+make pi-test
 
+# Deploy only (after building)
+make deploy-pi                    # Deploy binaries + assets
+make deploy-pi-run                # Deploy and run
+
+# Customize target
+make deploy-pi PI_HOST=192.168.1.50 PI_USER=pi
+```
+
+**Manual deployment:**
 ```bash
 # Raspberry Pi
 scp build/pi/bin/helix-screen pi@mainsailos.local:~/
 
 # Adventurer 5M (via SSH or SD card)
 scp build/ad5m/bin/helix-screen root@192.168.1.x:/usr/data/
+```
+
+### Logging on Target
+
+HelixScreen automatically detects the best logging backend:
+
+| Platform | Default Backend | View Logs |
+|----------|----------------|-----------|
+| Linux + systemd | journal | `journalctl -t helix -f` |
+| Linux (no systemd) | syslog | `tail -f /var/log/syslog \| grep helix` |
+| File fallback | rotating file | `tail -f /var/log/helix-screen.log` |
+
+**Override via CLI:**
+```bash
+./helix-screen --log-dest=journal   # Force systemd journal
+./helix-screen --log-dest=file --log-file=/tmp/debug.log
+```
+
+**systemd service:** The included `config/helixscreen.service` automatically logs to journal. View with:
+```bash
+sudo journalctl -u helixscreen -f
 ```
 
 ### Display Backend Selection

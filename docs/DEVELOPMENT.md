@@ -124,6 +124,53 @@ The UI supports dark and light themes:
 
 Theme preference is saved to `helixconfig.json` and persists across launches unless overridden by command-line flags.
 
+### Logging
+
+HelixScreen supports multiple logging backends with automatic detection:
+
+```bash
+# Auto-detect best backend (journal on Linux/systemd, console on macOS)
+./build/bin/helix-screen
+
+# Force specific log destination
+./build/bin/helix-screen --log-dest=journal   # systemd journal (Linux)
+./build/bin/helix-screen --log-dest=syslog    # Traditional syslog (Linux)
+./build/bin/helix-screen --log-dest=file      # Rotating file log
+./build/bin/helix-screen --log-dest=console   # Console only
+
+# File logging with custom path
+./build/bin/helix-screen --log-dest=file --log-file=/tmp/helix-debug.log
+
+# Verbosity levels
+./build/bin/helix-screen -v      # info level
+./build/bin/helix-screen -vv     # debug level
+./build/bin/helix-screen -vvv    # trace level (most verbose)
+```
+
+**Viewing logs on Linux:**
+```bash
+# systemd journal
+journalctl -t helix -f
+
+# syslog (varies by distro)
+tail -f /var/log/syslog | grep helix
+
+# File (auto-detected path)
+tail -f /var/log/helix-screen.log
+# or
+tail -f ~/.local/share/helix-screen/helix.log
+```
+
+**Configuration:** Set `log_dest` in `helixconfig.json` to override the default:
+```json
+{
+  "log_dest": "journal",
+  "log_path": ""
+}
+```
+
+Priority: CLI flags > config file > auto-detect.
+
 ### Keyboard
 
 The on-screen keyboard features:

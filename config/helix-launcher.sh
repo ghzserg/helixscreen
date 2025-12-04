@@ -12,13 +12,20 @@
 #
 # Launcher-specific options:
 #   --debug              Enable trace-level logging (-vvv)
-#   --log=<file>         Log output to file (uses tee for both console and file)
+#   --log-dest=<dest>    Log destination: auto, journal, syslog, file, console
+#   --log-file=<path>    Log file path (when --log-dest=file)
 #
 # Environment variables:
 #   HELIX_DEBUG=1        Same as --debug
-#   HELIX_LOG_FILE=<f>   Same as --log=<file>
+#   HELIX_LOG_DEST=<d>   Same as --log-dest (auto|journal|syslog|file|console)
+#   HELIX_LOG_FILE=<f>   Same as --log-file
 #
 # All other options are passed through to helix-screen.
+#
+# Logging behavior:
+#   - When run via systemd: auto-detects journal (recommended)
+#   - When run interactively: auto-detects console
+#   - Use --log-dest=file --log-file=/path for explicit file logging
 #
 # Installation:
 #   Copy to /opt/helixscreen/bin/ or similar
@@ -29,6 +36,7 @@ set -e
 
 # Debug/verbose mode - pass -vvv to helix-screen for trace-level logging
 DEBUG_MODE="${HELIX_DEBUG:-0}"
+LOG_DEST="${HELIX_LOG_DEST:-auto}"
 LOG_FILE="${HELIX_LOG_FILE:-}"
 
 # Parse launcher-specific arguments
@@ -38,8 +46,11 @@ for arg in "$@"; do
         --debug)
             DEBUG_MODE=1
             ;;
-        --log=*)
-            LOG_FILE="${arg#--log=}"
+        --log-dest=*)
+            LOG_DEST="${arg#--log-dest=}"
+            ;;
+        --log-file=*)
+            LOG_FILE="${arg#--log-file=}"
             ;;
         *)
             PASSTHROUGH_ARGS+=("$arg")
@@ -114,22 +125,30 @@ fi
 # Main app will send SIGUSR1 to splash when it takes over the display
 log "Starting main application"
 
-# Build command with debug flags if requested
-DEBUG_FLAGS=""
+# Build command flags
+EXTRA_FLAGS=""
+
+# Debug mode: trace-level logging
 if [ "${DEBUG_MODE}" = "1" ]; then
-    DEBUG_FLAGS="-vvv"
+    EXTRA_FLAGS="-vvv"
     log "Debug mode enabled (trace-level logging)"
 fi
 
-# Run with optional logging to file
-if [ -n "${LOG_FILE}" ]; then
-    log "Logging output to: ${LOG_FILE}"
-    "${MAIN_BIN}" ${SPLASH_ARGS} ${DEBUG_FLAGS} "${PASSTHROUGH_ARGS[@]}" 2>&1 | tee "${LOG_FILE}"
-    EXIT_CODE=${PIPESTATUS[0]}
-else
-    "${MAIN_BIN}" ${SPLASH_ARGS} ${DEBUG_FLAGS} "${PASSTHROUGH_ARGS[@]}"
-    EXIT_CODE=$?
+# Logging destination
+if [ "${LOG_DEST}" != "auto" ]; then
+    EXTRA_FLAGS="${EXTRA_FLAGS} --log-dest=${LOG_DEST}"
+    log "Log destination: ${LOG_DEST}"
 fi
+
+# Explicit log file path (only meaningful with --log-dest=file)
+if [ -n "${LOG_FILE}" ]; then
+    EXTRA_FLAGS="${EXTRA_FLAGS} --log-file=${LOG_FILE}"
+    log "Log file: ${LOG_FILE}"
+fi
+
+# Run main application
+"${MAIN_BIN}" ${SPLASH_ARGS} ${EXTRA_FLAGS} "${PASSTHROUGH_ARGS[@]}"
+EXIT_CODE=$?
 
 # Ensure splash is terminated (should have exited when main app took display)
 if [ -n "${SPLASH_PID}" ] && kill -0 "${SPLASH_PID}" 2>/dev/null; then
