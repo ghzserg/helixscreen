@@ -321,8 +321,8 @@ static void jog_pad_draw_cb(lv_event_t* e) {
     lv_draw_label_dsc_t home_label_dsc;
     lv_draw_label_dsc_init(&home_label_dsc);
     home_label_dsc.color = state->jog_color_home_text;
-    home_label_dsc.text = LV_SYMBOL_HOME;
-    home_label_dsc.font = &noto_sans_28;
+    home_label_dsc.text = ICON_HOME;
+    home_label_dsc.font = &mdi_icons_32;
     home_label_dsc.align = LV_TEXT_ALIGN_CENTER;
 
     lv_area_t home_label_area;

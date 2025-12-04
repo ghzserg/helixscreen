@@ -49,6 +49,11 @@ enum KeyboardMode {
 static lv_obj_t* g_keyboard = NULL;
 static lv_obj_t* g_context_textarea = NULL; // Currently focused textarea
 
+// Keyboard font with MDI fallback (for rendering icon buttons like backspace, shift, etc.)
+// This is a copy of noto_sans_20 with mdi_icons_24 set as fallback
+static lv_font_t g_keyboard_font;
+static bool g_keyboard_font_initialized = false;
+
 // Keyboard state
 static KeyboardMode g_mode = MODE_ALPHA_LC;
 
@@ -153,8 +158,10 @@ static void apply_keyboard_mode();
 
 // Improved numeric keyboard with PERIOD (critical for IPs and decimals)
 static const char* const kb_map_num_improved[] = {
-    "1", "2", "3", LV_SYMBOL_KEYBOARD,  "\n", "4",   "5", "6", LV_SYMBOL_OK,   "\n",
-    "7", "8", "9", LV_SYMBOL_BACKSPACE, "\n", "+/-", "0", ".", LV_SYMBOL_LEFT, LV_SYMBOL_RIGHT,
+    "1",   "2", "3", ICON_KEYBOARD_CLOSE, "\n",
+    "4",   "5", "6", ICON_CHECK,          "\n",
+    "7",   "8", "9", ICON_BACKSPACE,      "\n",
+    "+/-", "0", ".", ICON_CHEVRON_LEFT,   ICON_CHEVRON_RIGHT,
     ""};
 
 static const lv_buttonmatrix_ctrl_t kb_ctrl_num_improved[] = {
@@ -707,10 +714,10 @@ static void keyboard_event_cb(lv_event_t* e) {
                 apply_keyboard_mode();
                 spdlog::debug("[Keyboard] Mode switch: 123 -> numbers/symbols");
 
-            } else if (btn_text && (strcmp(btn_text, LV_SYMBOL_UP) == 0 ||
-                                    strcmp(btn_text, LV_SYMBOL_EJECT) == 0 ||
-                                    strcmp(btn_text, LV_SYMBOL_UPLOAD) == 0)) {
-                // Shift key pressed
+            } else if (btn_text && (strcmp(btn_text, ICON_KEYBOARD_SHIFT) == 0 ||
+                                    strcmp(btn_text, ICON_KEYBOARD_CAPS) == 0)) {
+                // Shift key pressed (ICON_KEYBOARD_SHIFT for lowercase/one-shot, ICON_KEYBOARD_CAPS
+                // for caps lock)
                 if (g_shift_just_pressed && !g_caps_lock) {
                     g_caps_lock = true;
                     g_one_shot_shift = false;
@@ -732,7 +739,7 @@ static void keyboard_event_cb(lv_event_t* e) {
                 }
                 apply_keyboard_mode();
 
-            } else if (btn_text && strcmp(btn_text, LV_SYMBOL_NEW_LINE) == 0) {
+            } else if (btn_text && strcmp(btn_text, ICON_KEYBOARD_RETURN) == 0) {
                 // Enter key
                 // If LVGL inserted a newline character, remove it (we want Enter to just
                 // close/submit)
@@ -745,12 +752,12 @@ static void keyboard_event_cb(lv_event_t* e) {
                 }
                 ui_keyboard_hide();
 
-            } else if (btn_text && strcmp(btn_text, LV_SYMBOL_KEYBOARD) == 0) {
+            } else if (btn_text && strcmp(btn_text, ICON_KEYBOARD_CLOSE) == 0) {
                 // Close keyboard button
                 spdlog::debug("[Keyboard] Close button pressed");
                 ui_keyboard_hide();
 
-            } else if (btn_text && strcmp(btn_text, LV_SYMBOL_BACKSPACE) == 0) {
+            } else if (btn_text && strcmp(btn_text, ICON_BACKSPACE) == 0) {
                 // Backspace - user char deletion
                 if (g_context_textarea) {
                     lv_textarea_delete_char(g_context_textarea);
@@ -853,8 +860,9 @@ static void keyboard_draw_alternative_chars(lv_event_t* e) {
 
                         if (strcmp(this_text, " ") == 0) {
                             this_width = 2 * unit_width; // Spacer
-                        } else if (strcmp(this_text, LV_SYMBOL_UP) == 0 ||
-                                   strcmp(this_text, LV_SYMBOL_BACKSPACE) == 0) {
+                        } else if (strcmp(this_text, ICON_KEYBOARD_SHIFT) == 0 ||
+                                   strcmp(this_text, ICON_KEYBOARD_CAPS) == 0 ||
+                                   strcmp(this_text, ICON_BACKSPACE) == 0) {
                             this_width = 6 * unit_width; // Shift/Backspace
                         } else {
                             this_width = 4 * unit_width; // Regular button
@@ -906,6 +914,16 @@ void ui_keyboard_init(lv_obj_t* parent) {
 
     spdlog::debug("[Keyboard] Initializing global keyboard");
 
+    // Initialize the keyboard font with MDI fallback (for icon buttons)
+    // This creates a copy of noto_sans_20 with mdi_icons_24 as fallback so that
+    // both regular text and MDI icons (shift, backspace, enter, etc.) render correctly
+    if (!g_keyboard_font_initialized) {
+        memcpy(&g_keyboard_font, &noto_sans_20, sizeof(lv_font_t));
+        g_keyboard_font.fallback = &mdi_icons_24;
+        g_keyboard_font_initialized = true;
+        spdlog::debug("[Keyboard] Created font with MDI fallback");
+    }
+
     // Create keyboard at bottom of screen
     g_keyboard = lv_keyboard_create(parent);
 
@@ -950,7 +968,9 @@ void ui_keyboard_init(lv_obj_t* parent) {
     // These keys already have LV_BUTTONMATRIX_CTRL_CHECKED flag in layout maps
     lv_obj_set_style_bg_color(g_keyboard, key_special_bg, LV_PART_ITEMS | LV_STATE_CHECKED);
 
-    // Key text color (all keys)
+    // Key text styling (all keys)
+    // Use the keyboard font with MDI fallback so icons render correctly
+    lv_obj_set_style_text_font(g_keyboard, &g_keyboard_font, LV_PART_ITEMS);
     lv_obj_set_style_text_color(g_keyboard, key_text, LV_PART_ITEMS);
     lv_obj_set_style_text_opa(g_keyboard, LV_OPA_COVER, LV_PART_ITEMS);
 

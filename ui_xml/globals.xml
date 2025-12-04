@@ -280,12 +280,14 @@
     <!-- U+F005E arrow-top-right -->
     <str name="icon_arrows_all" value="&#xF0026;"/>
     <!-- U+F0026 arrow-all -->
-    <str name="icon_backspace" value="&#xF00AC;"/>
-    <!-- U+F00AC backspace -->
+    <str name="icon_backspace" value="&#xF0B5C;"/>
+    <!-- U+F0B5C backspace-outline (key with X pointing left) -->
     <str name="icon_bell" value="&#xF009A;"/>
     <!-- U+F009A bell (notifications) -->
     <str name="icon_bluetooth" value="&#xF00AF;"/>
     <!-- U+F00AF bluetooth -->
+    <str name="icon_check" value="&#xF012C;"/>
+    <!-- U+F012C check (OK/confirm) -->
     <str name="icon_check_circle" value="&#xF05E1;"/>
     <!-- U+F05E1 check-circle-outline (connected) -->
     <str name="icon_chevron_down" value="&#xF0140;"/>
@@ -316,6 +318,14 @@
     <!-- U+F0770 folder-open -->
     <str name="icon_home" value="&#xF02DC;"/>
     <!-- U+F02DC home -->
+    <str name="icon_keyboard_caps" value="&#xF0632;"/>
+    <!-- U+F0632 apple-keyboard-caps (caps lock indicator) -->
+    <str name="icon_keyboard_close" value="&#xF030F;"/>
+    <!-- U+F030F keyboard-close (dismiss keyboard) -->
+    <str name="icon_keyboard_return" value="&#xF0311;"/>
+    <!-- U+F0311 keyboard-return (enter key) -->
+    <str name="icon_keyboard_shift" value="&#xF0636;"/>
+    <!-- U+F0636 apple-keyboard-shift (shift key) -->
     <str name="icon_leaf" value="&#xF0436;"/>
     <!-- U+F0436 leaf -->
     <str name="icon_lightbulb" value="&#xF0335;"/>

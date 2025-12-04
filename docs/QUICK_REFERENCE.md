@@ -450,6 +450,20 @@ lv_xml_create(...);                           // 6. Create UI
 
 ## Style Properties Cheat Sheet
 
+⚠️ **IMPORTANT:** In `<styles>` definitions, use bare names (`bg_color`). On widgets, use `style_` prefix (`style_bg_color`).
+
+```xml
+<!-- In <styles> section - NO style_ prefix! -->
+<styles>
+    <style name="my_style" bg_color="#ff0000" border_width="4"/>
+</styles>
+
+<!-- On widgets - USE style_ prefix -->
+<view style_bg_color="#card_bg" style_border_width="0">
+    <style name="my_style" selector="checked"/>
+</view>
+```
+
 ```xml
 <!-- Layout -->
 width="100" height="200" x="50" y="100"

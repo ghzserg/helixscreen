@@ -23,6 +23,8 @@
 
 #include "keyboard_layout_provider.h"
 
+#include "ui_fonts.h"
+
 #include "lvgl.h"
 
 /**
@@ -63,9 +65,9 @@ static const char* const kb_map_alpha_lc[] = {
     // Row 2: spacer + a-l (9 letters) + spacer
     " ", "a", "s", "d", "f", "g", "h", "j", "k", "l", " ", "\n",
     // Row 3: [SHIFT] z-m [BACKSPACE] - shift on left, backspace on right (above Enter)
-    LV_SYMBOL_UP, "z", "x", "c", "v", "b", "n", "m", LV_SYMBOL_BACKSPACE, "\n",
+    ICON_KEYBOARD_SHIFT, "z", "x", "c", "v", "b", "n", "m", ICON_BACKSPACE, "\n",
     // Row 4: ?123 + CLOSE + COMMA + SPACEBAR + PERIOD + ENTER
-    "?123", LV_SYMBOL_KEYBOARD, ",", SPACEBAR_TEXT, ".", LV_SYMBOL_NEW_LINE, ""};
+    "?123", ICON_KEYBOARD_CLOSE, ",", SPACEBAR_TEXT, ".", ICON_KEYBOARD_RETURN, ""};
 
 static const lv_buttonmatrix_ctrl_t kb_ctrl_alpha_lc[] = {
     // Row 1: q-p (equal width) - NO_REPEAT to prevent key repeat
@@ -146,27 +148,27 @@ static const lv_buttonmatrix_ctrl_t kb_ctrl_alpha_lc[] = {
                                         LV_BUTTONMATRIX_CTRL_CUSTOM_1 | 3) // Enter
 };
 
-// Uppercase alphabet (caps lock mode - uses eject symbol, no number row)
+// Uppercase alphabet (caps lock mode - uses caps lock symbol, no number row)
 static const char* const kb_map_alpha_uc[] = {
     // Row 1: Q-P (10 letters, uppercase) - numbers 1-0 on long-press
     "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "\n",
     // Row 2: [SPACER] A-L (9 letters, uppercase) [SPACER]
     " ", "A", "S", "D", "F", "G", "H", "J", "K", "L", " ", "\n",
-    // Row 3: [SHIFT] Z-M [BACKSPACE] - eject symbol to indicate caps lock
-    LV_SYMBOL_EJECT, "Z", "X", "C", "V", "B", "N", "M", LV_SYMBOL_BACKSPACE, "\n",
+    // Row 3: [SHIFT] Z-M [BACKSPACE] - caps lock symbol to indicate caps lock
+    ICON_KEYBOARD_CAPS, "Z", "X", "C", "V", "B", "N", "M", ICON_BACKSPACE, "\n",
     // Row 4: ?123 + CLOSE + COMMA + SPACEBAR + PERIOD + ENTER
-    "?123", LV_SYMBOL_KEYBOARD, ",", SPACEBAR_TEXT, ".", LV_SYMBOL_NEW_LINE, ""};
+    "?123", ICON_KEYBOARD_CLOSE, ",", SPACEBAR_TEXT, ".", ICON_KEYBOARD_RETURN, ""};
 
-// Uppercase alphabet (one-shot mode - uses filled/distinct arrow symbol, no number row)
+// Uppercase alphabet (one-shot mode - uses shift symbol, no number row)
 static const char* const kb_map_alpha_uc_oneshot[] = {
     // Row 1: Q-P (10 letters, uppercase) - numbers 1-0 on long-press
     "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "\n",
     // Row 2: [SPACER] A-L (9 letters, uppercase) [SPACER]
     " ", "A", "S", "D", "F", "G", "H", "J", "K", "L", " ", "\n",
-    // Row 3: [SHIFT] Z-M [BACKSPACE] - upload symbol for one-shot (visually distinct)
-    LV_SYMBOL_UPLOAD, "Z", "X", "C", "V", "B", "N", "M", LV_SYMBOL_BACKSPACE, "\n",
+    // Row 3: [SHIFT] Z-M [BACKSPACE] - shift symbol for one-shot (visually distinct)
+    ICON_KEYBOARD_SHIFT, "Z", "X", "C", "V", "B", "N", "M", ICON_BACKSPACE, "\n",
     // Row 4: ?123 + CLOSE + COMMA + SPACEBAR + PERIOD + ENTER
-    "?123", LV_SYMBOL_KEYBOARD, ",", SPACEBAR_TEXT, ".", LV_SYMBOL_NEW_LINE, ""};
+    "?123", ICON_KEYBOARD_CLOSE, ",", SPACEBAR_TEXT, ".", ICON_KEYBOARD_RETURN, ""};
 
 static const lv_buttonmatrix_ctrl_t kb_ctrl_alpha_uc[] = {
     // Row 1: Q-P (equal width) - NO_REPEAT to prevent key repeat
@@ -255,9 +257,9 @@ static const char* const kb_map_numbers_symbols[] = {
     // Row 2: Common symbols (10 keys)
     "-", "/", ":", ";", "(", ")", "$", "&", "@", "*", "\n",
     // Row 3: #+= + punctuation + Backspace (matches alpha row 3 structure)
-    "#+=", ".", ",", "?", "!", "\"", LV_SYMBOL_BACKSPACE, "\n",
+    "#+=", ".", ",", "?", "!", "\"", ICON_BACKSPACE, "\n",
     // Row 4: XYZ + CLOSE + COMMA + SPACEBAR + PERIOD + ENTER
-    "XYZ", LV_SYMBOL_KEYBOARD, ",", SPACEBAR_TEXT, ".", LV_SYMBOL_NEW_LINE, ""};
+    "XYZ", ICON_KEYBOARD_CLOSE, ",", SPACEBAR_TEXT, ".", ICON_KEYBOARD_RETURN, ""};
 
 static const lv_buttonmatrix_ctrl_t kb_ctrl_numbers_symbols[] = {
     // Row 1: Numbers 1-0 (10 keys, equal width 4)
@@ -343,9 +345,9 @@ static const char* const kb_map_alt_symbols[] = {
     // UTF-8 encoding: © = \xc2\xa9, ® = \xc2\xae, ™ = \xe2\x84\xa2, € = \xe2\x82\xac,
     //                 £ = \xc2\xa3, ¥ = \xc2\xa5, ° = \xc2\xb0, ± = \xc2\xb1
     "123", "\xc2\xa9", "\xc2\xae", "\xe2\x84\xa2", "\xe2\x82\xac", "\xc2\xa3", "\xc2\xa5",
-    "\xc2\xb0", "\xc2\xb1", LV_SYMBOL_BACKSPACE, "\n",
+    "\xc2\xb0", "\xc2\xb1", ICON_BACKSPACE, "\n",
     // Row 4: XYZ + CLOSE + COMMA + SPACEBAR + PERIOD + ENTER
-    "XYZ", LV_SYMBOL_KEYBOARD, ",", SPACEBAR_TEXT, ".", LV_SYMBOL_NEW_LINE, ""};
+    "XYZ", ICON_KEYBOARD_CLOSE, ",", SPACEBAR_TEXT, ".", ICON_KEYBOARD_RETURN, ""};
 
 static const lv_buttonmatrix_ctrl_t kb_ctrl_alt_symbols[] = {
     // Row 1: Brackets & math (10 keys, equal width 4)

@@ -179,6 +179,9 @@ Components are reusable UI pieces defined with the `<component>` tag.
     </consts>
 
     <!-- Optional: Local styles -->
+    <!-- IMPORTANT: Style properties do NOT use style_ prefix! -->
+    <!-- Use: bg_color, border_width, text_color -->
+    <!-- NOT: style_bg_color, style_border_width -->
     <styles>
         <style name="style_base" bg_color="0x333" text_color="0xfff"/>
     </styles>
@@ -2369,6 +2372,31 @@ Source: `/lvgl/src/others/xml/lv_xml_style.c:240-241`
 2. Verify exact attribute names (no abbreviations)
 3. Check if attribute exists for that widget type
 4. Test with known-working examples first
+
+#### 4. Style Definitions vs Widget Attributes - NO `style_` Prefix in `<styles>`!
+
+**Problem:** Using `style_` prefix inside `<styles>` definitions silently fails
+```xml
+<!-- ❌ WRONG - style_ prefix doesn't work in <styles> section -->
+<styles>
+    <style name="my_style" style_bg_color="#ff0000" style_border_width="4"/>
+</styles>
+```
+
+**Solution:** Use bare property names inside `<styles>`, save `style_` prefix for widget attributes
+```xml
+<!-- ✅ CORRECT - no prefix in style definitions -->
+<styles>
+    <style name="my_style" bg_color="#ff0000" border_width="4"/>
+</styles>
+
+<!-- ✅ CORRECT - style_ prefix on widget inline attributes -->
+<view style_bg_color="#card_bg" style_border_width="0">
+    <style name="my_style" selector="checked"/>
+</view>
+```
+
+**Why:** Style definitions populate `lv_style_t` objects using property enums like `LV_STYLE_BG_COLOR`. Widget inline attributes call `lv_obj_set_style_*()` functions which have the "style" in their name.
 
 ### Common Issues
 

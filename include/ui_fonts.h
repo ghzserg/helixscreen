@@ -112,8 +112,14 @@ LV_FONT_DECLARE(noto_sans_bold_28);
 // Action icons
 #define ICON_TRASH "\xF3\xB0\x86\xB4"     // U+F01B4 delete
 #define ICON_EDIT "\xF3\xB0\x8F\xAB"      // U+F03EB pencil
-#define ICON_BACKSPACE "\xF3\xB0\x82\xAC" // U+F00AC backspace
+#define ICON_BACKSPACE "\xF3\xB0\xAD\x9C" // U+F0B5C backspace-outline
 #define ICON_LOCK "\xF3\xB0\x8C\xBE"      // U+F033E lock
+
+// Keyboard icons (for on-screen keyboard special keys)
+#define ICON_KEYBOARD_CLOSE "\xF3\xB0\x8C\x8F"  // U+F030F keyboard-close
+#define ICON_KEYBOARD_RETURN "\xF3\xB0\x8C\x91" // U+F0311 keyboard-return (enter)
+#define ICON_KEYBOARD_CAPS "\xF3\xB0\x98\xB2"   // U+F0632 apple-keyboard-caps
+#define ICON_KEYBOARD_SHIFT "\xF3\xB0\x98\xB6"  // U+F0636 apple-keyboard-shift
 
 // Object icons
 #define ICON_CLOCK "\xF3\xB0\x85\x90"     // U+F0150 clock-outline

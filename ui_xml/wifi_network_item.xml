@@ -7,18 +7,27 @@
   <!-- Uses responsive theme tokens: #space_lg for padding, #font_body for text -->
   <!-- Connected network is indicated via LV_STATE_CHECKED - adds left border accent -->
   <!-- Click triggers on_network_item_clicked callback in C++ -->
+
+  <styles>
+    <!-- Style applied when item has LV_STATE_CHECKED (connected network) -->
+    <style name="checked_style"
+           border_width="4"
+           border_side="left"
+           border_color="#primary_color"
+           bg_color="#theme_grey"/>
+  </styles>
+
   <view extends="lv_button" width="100%" scrollable="false" clickable="true"
-        style_bg_opa="1"
+        style_bg_color="#card_bg"
+        style_bg_opa="255"
         style_border_width="0"
         style_shadow_width="0"
         style_pad_all="#space_lg"
         flex_flow="row"
         style_flex_main_place="start"
         style_flex_cross_place="center"
-        style_pad_gap="#space_md"
-        style_checked_border_width="4"
-        style_checked_border_side="left"
-        style_checked_border_color="#primary_color">
+        style_pad_gap="#space_md">
+    <style name="checked_style" selector="checked"/>
     <event_cb trigger="clicked" callback="on_network_item_clicked"/>
     <!-- Signal strength icon (left) - colored with primary theme color -->
     <icon name="signal_icon" src="mat_wifi_strength_4_img" size="sm" variant="accent" clickable="false"/>

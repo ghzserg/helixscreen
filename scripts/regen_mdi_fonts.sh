@@ -107,7 +107,7 @@ fi
 # lv_font_conv handles sparse high codepoints fine without ASCII workaround.
 MDI_ICONS="0xF0026"      # alert (triangle-exclamation), also arrow-all
 MDI_ICONS+=",0xF009A"    # bell (notifications)
-MDI_ICONS+=",0xF00AC"    # backspace
+MDI_ICONS+=",0xF0B5C"    # backspace-outline (key with X pointing left)
 MDI_ICONS+=",0xF00AF"    # bluetooth
 MDI_ICONS+=",0xF012C"    # check
 MDI_ICONS+=",0xF0140"    # chevron-down
@@ -163,6 +163,12 @@ MDI_ICONS+=",0xF005C"    # arrow-top-left
 MDI_ICONS+=",0xF005E"    # arrow-top-right
 MDI_ICONS+=",0xF004E"    # arrow-left-right (arrows-all horizontal)
 MDI_ICONS+=",0xF005F"    # arrow-up-down (arrows-all vertical)
+
+# Keyboard icons (for on-screen keyboard special keys)
+MDI_ICONS+=",0xF030F"    # keyboard-close (dismiss keyboard)
+MDI_ICONS+=",0xF0311"    # keyboard-return (enter key)
+MDI_ICONS+=",0xF0632"    # apple-keyboard-caps (caps lock indicator)
+MDI_ICONS+=",0xF0636"    # apple-keyboard-shift (shift key outline)
 
 # Sizes to generate - matching text font sizes for consistent UI
 SIZES="16 24 32 48 64"

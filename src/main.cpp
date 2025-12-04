@@ -2108,15 +2108,6 @@ int main(int argc, char** argv) {
             break;
         }
 
-        // Check for 'T' key to toggle theme (for testing)
-        static bool t_key_was_pressed = false;
-        if (keyboard_state[SDL_SCANCODE_T] && !t_key_was_pressed) {
-            t_key_was_pressed = true;
-            spdlog::info("'T' pressed - toggling theme");
-            ui_theme_toggle_dark_mode();
-        } else if (!keyboard_state[SDL_SCANCODE_T]) {
-            t_key_was_pressed = false;
-        }
 #endif
 
         // Auto-screenshot after configured delay (only if enabled)

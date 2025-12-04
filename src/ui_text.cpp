@@ -80,7 +80,7 @@ static void apply_semantic_style(lv_obj_t* label, const char* font_const_name,
     lv_obj_set_style_text_font(label, font, 0);
 
     // Debug: log the actual font being applied
-    spdlog::debug("[ui_text] Applied font '{}' (from '{}') - line_height={}px", font_name,
+    spdlog::trace("[ui_text] Applied font '{}' (from '{}') - line_height={}px", font_name,
                   font_const_name, lv_font_get_line_height(font));
 
     // Apply color

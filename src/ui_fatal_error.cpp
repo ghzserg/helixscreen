@@ -55,10 +55,10 @@ void ui_show_fatal_error(const char* title, const char* message, const char* con
     lv_obj_set_flex_align(container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
 
-    // Warning icon (using Unicode character - works with montserrat fonts)
+    // Warning icon (using MDI icon font)
     lv_obj_t* icon = lv_label_create(container);
-    lv_label_set_text(icon, LV_SYMBOL_WARNING);
-    lv_obj_set_style_text_font(icon, &noto_sans_28, 0);
+    lv_label_set_text(icon, ICON_TRIANGLE_EXCLAMATION);
+    lv_obj_set_style_text_font(icon, &mdi_icons_32, 0);
     lv_obj_set_style_text_color(icon, lv_color_hex(0xFF4444), 0);
 
     // Title
@@ -88,7 +88,7 @@ void ui_show_fatal_error(const char* title, const char* message, const char* con
         // List suggestions
         for (int i = 0; suggestions[i] != nullptr; i++) {
             lv_obj_t* suggest = lv_label_create(container);
-            lv_label_set_text_fmt(suggest, LV_SYMBOL_RIGHT " %s", suggestions[i]);
+            lv_label_set_text_fmt(suggest, "• %s", suggestions[i]);
             lv_obj_set_style_text_font(suggest, &noto_sans_12, 0);
             lv_obj_set_style_text_color(suggest, lv_color_hex(0xAAAAAA), 0);
             lv_obj_set_style_pad_top(suggest, 5, 0);
