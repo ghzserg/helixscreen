@@ -10,11 +10,14 @@
  * (at your option) any later version.
  */
 
-#include "../catch_amalgamated.hpp"
+#include "ui_fonts.h"
 #include "ui_theme.h"
+
 #include "../ui_test_utils.h"
 
 #include <cstring>
+
+#include "../catch_amalgamated.hpp"
 
 // Helper to extract RGB from lv_color_t (masks out alpha channel)
 // lv_color_to_u32() returns 0xAARRGGBB, we only care about 0x00RRGGBB
@@ -330,11 +333,12 @@ TEST_CASE("UI Theme: Target hardware resolutions", "[ui_theme][responsive]") {
 }
 
 TEST_CASE("UI Theme: Font height helper", "[ui_theme][responsive]") {
-    // Test that font height helper returns valid values for built-in fonts
+    // Test that font height helper returns valid values for project fonts
+    // Note: This project uses noto_sans_* fonts instead of lv_font_montserrat_*
     SECTION("Valid fonts return positive height") {
-        REQUIRE(ui_theme_get_font_height(&lv_font_montserrat_12) > 0);
-        REQUIRE(ui_theme_get_font_height(&lv_font_montserrat_16) > 0);
-        REQUIRE(ui_theme_get_font_height(&lv_font_montserrat_20) > 0);
+        REQUIRE(ui_theme_get_font_height(&noto_sans_12) > 0);
+        REQUIRE(ui_theme_get_font_height(&noto_sans_16) > 0);
+        REQUIRE(ui_theme_get_font_height(&noto_sans_20) > 0);
     }
 
     SECTION("NULL font returns 0") {
@@ -342,9 +346,9 @@ TEST_CASE("UI Theme: Font height helper", "[ui_theme][responsive]") {
     }
 
     SECTION("Larger fonts have larger heights") {
-        int32_t h12 = ui_theme_get_font_height(&lv_font_montserrat_12);
-        int32_t h16 = ui_theme_get_font_height(&lv_font_montserrat_16);
-        int32_t h20 = ui_theme_get_font_height(&lv_font_montserrat_20);
+        int32_t h12 = ui_theme_get_font_height(&noto_sans_12);
+        int32_t h16 = ui_theme_get_font_height(&noto_sans_16);
+        int32_t h20 = ui_theme_get_font_height(&noto_sans_20);
 
         REQUIRE(h12 < h16);
         REQUIRE(h16 < h20);

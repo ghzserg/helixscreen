@@ -43,11 +43,12 @@ TEST_WIZARD_DEPS := \
     $(OBJ_DIR)/ui_wizard_hardware_selector.o
 
 # UI components (theme, modals, navigation)
-# Note: ui_icon.o and ui_switch.o excluded - their tests include the .cpp directly
+# Note: ui_switch.o excluded - its test includes the .cpp directly
 # Note: ui_notification.o and ui_toast.o excluded - they require full UI init
 #       ui_notification_history.o is the pure C++ circular buffer that tests need
 #       ui_test_utils.o provides stub implementations for ui_toast_* functions
 TEST_UI_DEPS := \
+    $(OBJ_DIR)/ui_icon.o \
     $(OBJ_DIR)/ui_nav.o \
     $(OBJ_DIR)/ui_temp_graph.o \
     $(OBJ_DIR)/ui_keyboard.o \
@@ -169,8 +170,14 @@ test-build:
 # including: [.ui_integration], [.disabled], [.benchmark], [.slow], etc.
 # This is Catch2's hidden test convention.
 
-# Run all non-hidden unit tests (default)
+# Build tests only (does not run)
+# Use 'make test-run' to actually execute the tests
 test: $(TEST_BIN)
+	$(ECHO) "$(GREEN)✓ Test binary ready: $(TEST_BIN)$(RESET)"
+	$(ECHO) "$(CYAN)Run tests with: make test-run$(RESET)"
+
+# Run all non-hidden unit tests
+test-run: $(TEST_BIN)
 	$(ECHO) "$(CYAN)$(BOLD)Running unit tests...$(RESET)"
 	@START_TIME=$$(date +%s); \
 	$(TEST_BIN) "~[.]" && \
@@ -179,13 +186,7 @@ test: $(TEST_BIN)
 	echo "$(GREEN)$(BOLD)✓ All tests passed in $${DURATION}s$(RESET)"
 
 # Alias that rebuilds and runs tests (useful for development)
-tests: $(TEST_BIN)
-	$(ECHO) "$(CYAN)$(BOLD)Running unit tests...$(RESET)"
-	@START_TIME=$$(date +%s); \
-	$(TEST_BIN) "~[.]" && \
-	END_TIME=$$(date +%s); \
-	DURATION=$$((END_TIME - START_TIME)); \
-	echo "$(GREEN)$(BOLD)✓ All tests passed in $${DURATION}s$(RESET)"
+tests: test-run
 
 # ============================================================================
 # Convenience Test Targets - Run tests by component
@@ -657,11 +658,12 @@ help-test:
 	echo "$${B}Test Targets$${X}"; \
 	echo ""; \
 	echo "$${C}Main Test Targets:$${X}"; \
-	echo "  $${G}test$${X}                 - Run all unit tests (excludes hidden/slow)"; \
+	echo "  $${G}test$${X}                 - Build tests (does not run)"; \
+	echo "  $${G}test-run$${X}             - Run all unit tests (excludes hidden/slow)"; \
 	echo "  $${G}test-fast$${X}            - Run fast tests only (skip [slow] tagged)"; \
 	echo "  $${G}test-slow$${X}            - Run only slow tests"; \
 	echo "  $${G}test-verbose$${X}         - Run with per-test timing"; \
-	echo "  $${G}test-build$${X}           - Build tests without running"; \
+	echo "  $${G}test-build$${X}           - Build tests without running (alias for test)"; \
 	echo ""; \
 	echo "$${C}Component Tests:$${X}"; \
 	echo "  $${G}test-gcode$${X}           - G-code parsing and geometry tests"; \

@@ -426,3 +426,15 @@ void EmergencyStopOverlay::set_require_confirmation(bool /* require */) {
 void app_request_restart_for_theme() {
     spdlog::debug("[Test Stub] app_request_restart_for_theme called - no-op in tests");
 }
+
+// Stub for ui_text_input_get_keyboard_hint (tests don't use keyboard hints)
+#include "ui_text_input.h"
+KeyboardHint ui_text_input_get_keyboard_hint(lv_obj_t* /* textarea */) {
+    return KeyboardHint::TEXT;
+}
+
+// Stub for ui_status_bar_set_backdrop_visible (tests don't have status bar)
+#include "ui_status_bar.h"
+void ui_status_bar_set_backdrop_visible(bool /* visible */) {
+    // No-op in tests
+}

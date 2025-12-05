@@ -12,8 +12,14 @@ HelixScreen uses a multi-layered testing strategy with Catch2 v3 as the primary 
 ## Quick Start
 
 ```bash
-# Run all unit tests
+# Build tests (does not run)
 make test
+
+# Run all unit tests
+make test-run
+
+# Run fast tests only (skip slow tests)
+make test-fast
 
 # Run integration tests (with mocks)
 make test-integration
