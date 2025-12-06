@@ -385,6 +385,15 @@ class MoonrakerClientMock : public MoonrakerClient {
     void temperature_simulation_loop();
 
     /**
+     * @brief Dispatch historical temperature data at startup
+     *
+     * Generates 2-3 minutes of synthetic temperature readings and dispatches
+     * them rapidly to observers. This populates the temperature graph with
+     * realistic-looking data immediately upon connection.
+     */
+    void dispatch_historical_temperatures();
+
+    /**
      * @brief Dispatch initial printer state to observers
      *
      * Called during connect() to send initial state, matching the behavior

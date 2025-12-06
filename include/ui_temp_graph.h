@@ -31,9 +31,9 @@
 #define UI_TEMP_GRAPH_DEFAULT_MIN_TEMP 0.0f   // Default Y-axis minimum
 #define UI_TEMP_GRAPH_DEFAULT_MAX_TEMP 100.0f // Default Y-axis maximum
 
-// Gradient opacity defaults
-#define UI_TEMP_GRAPH_GRADIENT_BOTTOM_OPA LV_OPA_60 // Bottom of gradient (darker)
-#define UI_TEMP_GRAPH_GRADIENT_TOP_OPA LV_OPA_10    // Top of gradient (lighter)
+// Gradient opacity defaults (stock chart style: visible at line, fades to transparent)
+#define UI_TEMP_GRAPH_GRADIENT_TOP_OPA LV_OPA_80    // At the line (80% = prominent but not overwhelming)
+#define UI_TEMP_GRAPH_GRADIENT_BOTTOM_OPA LV_OPA_0  // At chart bottom (fully transparent)
 
 /**
  * Temperature series metadata

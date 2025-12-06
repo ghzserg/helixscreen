@@ -19,13 +19,13 @@
     <!-- Use hide_action_button="false" to show the action button -->
     <prop type="string" name="hide_action_button" default="true"/>
   </api>
-  <view extends="lv_obj" width="100%" height="#header_height" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md" style_pad_right="#space_lg" style_pad_top="#space_xs" style_pad_bottom="#space_xs" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false">
+  <view extends="lv_obj" width="100%" height="#header_height" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md" style_pad_right="#space_lg" style_pad_top="#space_xs" style_pad_bottom="#space_xs" flex_flow="row" style_flex_main_place="space_between" style_flex_track_place="center" style_flex_cross_place="center" scrollable="false">
     <!-- Back button (fixed width, left-aligned) -->
-    <lv_button name="back_button" width="#header_back_button_size" height="#header_back_button_size" style_bg_opa="0" style_border_width="0" style_shadow_width="0" scrollable="false">
-      <icon src="back" size="lg" color="#text_primary"/>
+    <lv_button name="back_button" height="100%" style_bg_opa="0" style_border_width="0" style_shadow_width="0" scrollable="false">
+      <icon src="back" size="lg" color="#text_primary" align="center"/>
     </lv_button>
     <!-- Title (flexible width, centered) -->
-    <text_heading name="header_title" text="$title" flex_grow="1" style_text_align="center" scrollable="false"/>
+    <text_heading name="header_title" text="$title" flex_grow="1" align="center" style_text_align="center" scrollable="false"/>
     <!-- Action button (hidden by default, pass hide_action_button="false" to show) -->
     <lv_button name="action_button" width="#header_action_button_width" height="#header_action_button_height" style_radius="#border_radius" style_border_width="0" style_shadow_width="0" scrollable="false" hidden="$hide_action_button">
       <text_body name="action_button_label" text="$action_button_text" align="center"/>

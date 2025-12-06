@@ -38,8 +38,10 @@ HomePanel::HomePanel(PrinterState& printer_state, MoonrakerAPI* api)
     // Note: Connection state dimming is now handled by XML binding to printer_connection_state
     extruder_temp_observer_ =
         ObserverGuard(printer_state_.get_extruder_temp_subject(), extruder_temp_observer_cb, this);
+    extruder_target_observer_ = ObserverGuard(printer_state_.get_extruder_target_subject(),
+                                              extruder_target_observer_cb, this);
 
-    spdlog::debug("[{}] Subscribed to PrinterState extruder temperature", get_name());
+    spdlog::debug("[{}] Subscribed to PrinterState extruder temperature and target", get_name());
 
     // Load configured LED from wizard settings and tell PrinterState to track it
     Config* config = Config::get_instance();
@@ -129,6 +131,17 @@ void HomePanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Widget visibility (light button/divider) is handled by XML bindings to printer_has_led
     // subject Printer image opacity is handled by XML styles bound to printer_connection_state
     // subject No C++ widget manipulation needed - everything is declarative
+
+    // Attach heating icon animator (gradient color + pulse while heating)
+    lv_obj_t* temp_icon = lv_obj_find_by_name(panel_, "temp_icon");
+    if (temp_icon) {
+        temp_icon_animator_.attach(temp_icon);
+        // Initialize with cached values (observers may have already fired)
+        cached_extruder_temp_ = lv_subject_get_int(printer_state_.get_extruder_temp_subject());
+        cached_extruder_target_ = lv_subject_get_int(printer_state_.get_extruder_target_subject());
+        temp_icon_animator_.update(cached_extruder_temp_, cached_extruder_target_);
+        spdlog::debug("[{}] Heating icon animator attached", get_name());
+    }
 
     // Start tip rotation timer (60 seconds = 60000ms)
     if (!tip_rotation_timer_) {
@@ -364,7 +377,21 @@ void HomePanel::on_extruder_temp_changed(int temp) {
     std::snprintf(temp_buffer_, sizeof(temp_buffer_), "%d °C", temp);
     lv_subject_copy_string(&temp_subject_, temp_buffer_);
 
+    // Update cached value and animator
+    cached_extruder_temp_ = temp;
+    update_temp_icon_animation();
+
     spdlog::trace("[{}] Extruder temperature updated: {}°C", get_name(), temp);
+}
+
+void HomePanel::on_extruder_target_changed(int target) {
+    cached_extruder_target_ = target;
+    update_temp_icon_animation();
+    spdlog::trace("[{}] Extruder target updated: {}°C", get_name(), target);
+}
+
+void HomePanel::update_temp_icon_animation() {
+    temp_icon_animator_.update(cached_extruder_temp_, cached_extruder_target_);
 }
 
 void HomePanel::reload_from_config() {
@@ -487,6 +514,13 @@ void HomePanel::extruder_temp_observer_cb(lv_observer_t* observer, lv_subject_t*
     auto* self = static_cast<HomePanel*>(lv_observer_get_user_data(observer));
     if (self) {
         self->on_extruder_temp_changed(lv_subject_get_int(subject));
+    }
+}
+
+void HomePanel::extruder_target_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
+    auto* self = static_cast<HomePanel*>(lv_observer_get_user_data(observer));
+    if (self) {
+        self->on_extruder_target_changed(lv_subject_get_int(subject));
     }
 }
 

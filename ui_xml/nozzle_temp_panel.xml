@@ -53,18 +53,11 @@
       <!-- Right Column (33%): Controls - use space_between for temp card at top, buttons at bottom -->
       <lv_obj name="right_column" width="33%" height="100%" style_bg_opa="0" style_pad_all="0" scrollable="false" style_border_width="0" style_border_opa="0" flex_flow="column" style_flex_main_place="space_between" style_flex_cross_place="center">
         <!-- Current/Target Temperature Display Card with Icon and Status -->
-        <ui_card name="temp_display_card" width="100%" style_radius="0" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <!-- Icon + Temp Row -->
-          <lv_obj style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_md">
-            <!-- Heating icon: two overlapping icons with conditional visibility -->
-            <!-- Secondary (off) icon: hidden when heating (nozzle_heating == 1) -->
-            <icon name="heater_icon_off" src="heater" size="lg" variant="secondary">
-              <lv_obj-bind_flag_if_eq subject="nozzle_heating" flag="hidden" ref_value="1"/>
-            </icon>
-            <!-- Accent (on) icon: hidden when not heating (nozzle_heating == 0) -->
-            <icon name="heater_icon_on" src="heater" size="lg" variant="accent" style_margin_left="-48">
-              <lv_obj-bind_flag_if_eq subject="nozzle_heating" flag="hidden" ref_value="0"/>
-            </icon>
+        <ui_card name="temp_display_card" width="100%" style_radius="0" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs">
+          <!-- Icon + Temp Row (reduced icon size and gap for narrow column) -->
+          <lv_obj style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_sm">
+            <!-- Heating icon: color controlled by HeatingIconAnimator (gradient + pulse) -->
+            <icon name="heater_icon" src="heater" size="sm" variant="secondary"/>
             <lv_obj style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xxs">
               <text_small text="Current / Target" align="center"/>
               <lv_label name="nozzle_temp_display" bind_text="nozzle_temp_display" style_text_font="montserrat_28" align="center"/>

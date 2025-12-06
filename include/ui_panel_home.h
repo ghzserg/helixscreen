@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ui_heating_animator.h"
 #include "ui_observer_guard.h"
 #include "ui_panel_base.h"
 
@@ -106,7 +107,6 @@ class HomePanel : public PanelBase {
 
     // Lazily-created overlay panels (owned by LVGL parent, not us)
     lv_obj_t* nozzle_temp_panel_ = nullptr;
-    lv_obj_t* network_settings_overlay_ = nullptr;
 
     void update_tip_of_day();
     int compute_network_icon_state(); // Maps network type + signal → 0-5
@@ -121,7 +121,9 @@ class HomePanel : public PanelBase {
     void handle_printer_status_clicked();
     void handle_network_clicked();
     void on_extruder_temp_changed(int temp);
+    void on_extruder_target_changed(int target);
     void on_led_state_changed(int state);
+    void update_temp_icon_animation();
 
     static void light_toggle_cb(lv_event_t* e);
     static void print_card_clicked_cb(lv_event_t* e);
@@ -131,10 +133,17 @@ class HomePanel : public PanelBase {
     static void network_clicked_cb(lv_event_t* e);
     static void tip_rotation_timer_cb(lv_timer_t* timer);
     static void extruder_temp_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
+    static void extruder_target_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
     static void led_state_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
 
     ObserverGuard extruder_temp_observer_;
+    ObserverGuard extruder_target_observer_;
     ObserverGuard led_state_observer_;
+
+    // Heating icon animator (gradient color + pulse while heating)
+    HeatingIconAnimator temp_icon_animator_;
+    int cached_extruder_temp_ = 25;
+    int cached_extruder_target_ = 0;
 };
 
 // Global instance accessor (needed by main.cpp)

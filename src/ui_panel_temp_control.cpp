@@ -687,6 +687,15 @@ void TempControlPanel::setup_nozzle_panel(lv_obj_t* panel, lv_obj_t* parent_scre
     setup_preset_buttons(overlay_content, HEATER_NOZZLE);
     setup_custom_button(overlay_content, HEATER_NOZZLE);
 
+    // Attach heating icon animator (simplified to single icon, color controlled programmatically)
+    lv_obj_t* heater_icon = lv_obj_find_by_name(panel, "heater_icon");
+    if (heater_icon) {
+        nozzle_animator_.attach(heater_icon);
+        // Initialize with current state
+        nozzle_animator_.update(nozzle_current_, nozzle_target_);
+        spdlog::debug("[TempPanel] Nozzle heating animator attached");
+    }
+
     spdlog::debug("[TempPanel] Nozzle panel setup complete!");
 }
 
@@ -757,6 +766,16 @@ void TempControlPanel::setup_bed_panel(lv_obj_t* panel, lv_obj_t* parent_screen)
     setup_preset_buttons(overlay_content, HEATER_BED);
     setup_custom_button(overlay_content, HEATER_BED);
 
+    // Attach heating icon animator to the bed icon container
+    // The bed uses composite icons (heat_wave + train_flatbed), we animate the container
+    lv_obj_t* bed_icon = lv_obj_find_by_name(panel, "bed_icon");
+    if (bed_icon) {
+        bed_animator_.attach(bed_icon);
+        // Initialize with current state
+        bed_animator_.update(bed_current_, bed_target_);
+        spdlog::debug("[TempPanel] Bed heating animator attached");
+    }
+
     spdlog::debug("[TempPanel] Bed panel setup complete!");
 }
 
@@ -790,6 +809,9 @@ void TempControlPanel::update_nozzle_status() {
     int heating_state = (nozzle_target_ > 0) ? 1 : 0;
     lv_subject_set_int(&nozzle_heating_subject_, heating_state);
 
+    // Update heating icon animator (gradient color + pulse animation)
+    nozzle_animator_.update(nozzle_current_, nozzle_target_);
+
     spdlog::trace("[TempPanel] Nozzle status: '{}' (heating={})", nozzle_status_buf_.data(),
                   heating_state);
 }
@@ -822,6 +844,9 @@ void TempControlPanel::update_bed_status() {
     // Update heating state for reactive icon visibility (0=off, 1=on)
     int heating_state = (bed_target_ > 0) ? 1 : 0;
     lv_subject_set_int(&bed_heating_subject_, heating_state);
+
+    // Update heating icon animator (gradient color + pulse animation)
+    bed_animator_.update(bed_current_, bed_target_);
 
     spdlog::trace("[TempPanel] Bed status: '{}' (heating={})", bed_status_buf_.data(),
                   heating_state);
@@ -883,8 +908,13 @@ void TempControlPanel::replay_nozzle_history_to_graph() {
     lv_subject_set_int(&nozzle_graph_points_subject_, nozzle_point_count_);
 
     // Replay all samples in chronological order
+    // Debug: Log first few values to track "first value is 0" bug
     for (int i = 0; i < samples_to_replay; i++) {
         int idx = (start_idx + i) % TEMP_HISTORY_SIZE;
+        if (i < 5) {
+            spdlog::info("[TempPanel] DEBUG: Replaying history[{}] = {}°C (ts={}ms)", idx,
+                         nozzle_history_[idx].temp, nozzle_history_[idx].timestamp_ms);
+        }
         ui_temp_graph_update_series(nozzle_graph_, nozzle_series_id_,
                                     static_cast<float>(nozzle_history_[idx].temp));
     }

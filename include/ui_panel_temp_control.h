@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ui_heater_config.h"
+#include "ui_heating_animator.h"
 #include "ui_observer_guard.h"
 #include "ui_temp_graph.h"
 
@@ -166,6 +167,10 @@ class TempControlPanel {
     // Panel widgets
     lv_obj_t* nozzle_panel_ = nullptr;
     lv_obj_t* bed_panel_ = nullptr;
+
+    // Heating icon animators (gradient color + pulse while heating)
+    HeatingIconAnimator nozzle_animator_;
+    HeatingIconAnimator bed_animator_;
 
     // Graph widgets
     ui_temp_graph_t* nozzle_graph_ = nullptr;

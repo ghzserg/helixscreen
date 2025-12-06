@@ -627,7 +627,11 @@ void PrinterState::set_kinematics(const std::string& kinematics) {
     // - Cartesian: bed moves down on Z axis during print
     // - CoreXY, Delta, etc.: gantry/print head moves up on Z axis
     bool bed_moves = (kinematics.find("cartesian") != std::string::npos);
+    int new_value = bed_moves ? 1 : 0;
 
-    lv_subject_set_int(&printer_bed_moves_, bed_moves ? 1 : 0);
-    spdlog::info("[PrinterState] Kinematics set: {} (bed_moves={})", kinematics, bed_moves);
+    // Only log when value actually changes (this gets called frequently from status updates)
+    if (lv_subject_get_int(&printer_bed_moves_) != new_value) {
+        lv_subject_set_int(&printer_bed_moves_, new_value);
+        spdlog::info("[PrinterState] Kinematics set: {} (bed_moves={})", kinematics, bed_moves);
+    }
 }

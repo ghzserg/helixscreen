@@ -106,98 +106,108 @@ static void chart_resize_cb(lv_event_t* e) {
     }
 }
 
-// Event callback for drawing gradient fills under curves (LVGL 9 draw task system)
-// TODO: Currently disabled - needs complete rewrite for LVGL 9's new draw task system
-#if 0
-static void draw_gradient_fill_cb(lv_event_t* e) {
+// Helper: Find series metadata by color (for draw task matching)
+static ui_temp_series_meta_t* find_series_by_color(ui_temp_graph_t* graph, lv_color_t color) {
+    if (!graph)
+        return nullptr;
 
-    // Get chart dimensions
-    lv_area_t chart_area;
-    lv_obj_get_coords(chart, &chart_area);
-
-    // Get chart padding to find data area (for Y coordinates only - X comes from API)
-    lv_coord_t pad_top = lv_obj_get_style_pad_top(chart, LV_PART_MAIN);
-    lv_coord_t pad_bottom = lv_obj_get_style_pad_bottom(chart, LV_PART_MAIN);
-
-    lv_coord_t data_h = lv_area_get_height(&chart_area) - pad_top - pad_bottom;
-
-    // Data area coordinates
-    lv_coord_t data_y1 = chart_area.y1 + pad_top;
-    lv_coord_t data_y2 = data_y1 + data_h;
-
-    // Get point count from chart
-    uint32_t point_cnt = lv_chart_get_point_count(chart);
-    if (point_cnt == 0) return;
-
-    // Draw gradient fill for each visible series
     for (int i = 0; i < graph->series_count; i++) {
-        ui_temp_series_meta_t* meta = &graph->series_meta[i];
-        if (!meta->visible || !meta->chart_series) continue;
-
-        // Draw triangular strips to fill area under curve with gradient
-        // We'll draw vertical strips for each segment between data points
-        for (uint32_t pt = 0; pt < point_cnt - 1; pt++) {
-            // Check if either point has no data (read-only access to internal array)
-            if (meta->chart_series->y_points[pt] == LV_CHART_POINT_NONE ||
-                meta->chart_series->y_points[pt + 1] == LV_CHART_POINT_NONE) {
-                continue;
-            }
-
-            // Get pixel positions from LVGL's public API
-            lv_point_t pos1, pos2;
-            lv_chart_get_point_pos_by_id(chart, meta->chart_series, pt, &pos1);
-            lv_chart_get_point_pos_by_id(chart, meta->chart_series, pt + 1, &pos2);
-
-            // Use the X,Y coordinates directly (LVGL returns absolute screen coords)
-            lv_coord_t x1 = pos1.x;
-            lv_coord_t y1 = pos1.y;
-            lv_coord_t x2 = pos2.x;
-            lv_coord_t y2 = pos2.y;
-
-            // Clamp Y values to data area (handle out-of-range data gracefully)
-            if (y1 < data_y1) y1 = data_y1;
-            if (y2 < data_y1) y2 = data_y1;
-            if (y1 > data_y2) y1 = data_y2;
-            if (y2 > data_y2) y2 = data_y2;
-
-            // Draw trapezoid (two triangles) for this segment
-            // Triangle 1: (x1,y1) -> (x2,y2) -> (x1,data_y2)
-            lv_draw_triangle_dsc_t tri1_dsc;
-            lv_draw_triangle_dsc_init(&tri1_dsc);
-            tri1_dsc.p[0].x = x1; tri1_dsc.p[0].y = y1;      // Top left
-            tri1_dsc.p[1].x = x2; tri1_dsc.p[1].y = y2;      // Top right
-            tri1_dsc.p[2].x = x1; tri1_dsc.p[2].y = data_y2; // Bottom left
-            tri1_dsc.grad.dir = LV_GRAD_DIR_VER;
-            tri1_dsc.grad.stops[0].color = meta->color;
-            tri1_dsc.grad.stops[0].opa = meta->gradient_bottom_opa;
-            tri1_dsc.grad.stops[0].frac = 0;
-            tri1_dsc.grad.stops[1].color = meta->color;
-            tri1_dsc.grad.stops[1].opa = meta->gradient_top_opa;
-            tri1_dsc.grad.stops[1].frac = 255;
-            tri1_dsc.grad.stops_count = 2;
-
-            // Triangle 2: (x2,y2) -> (x2,data_y2) -> (x1,data_y2)
-            lv_draw_triangle_dsc_t tri2_dsc;
-            lv_draw_triangle_dsc_init(&tri2_dsc);
-            tri2_dsc.p[0].x = x2; tri2_dsc.p[0].y = y2;      // Top right
-            tri2_dsc.p[1].x = x2; tri2_dsc.p[1].y = data_y2; // Bottom right
-            tri2_dsc.p[2].x = x1; tri2_dsc.p[2].y = data_y2; // Bottom left
-            tri2_dsc.grad.dir = LV_GRAD_DIR_VER;
-            tri2_dsc.grad.stops[0].color = meta->color;
-            tri2_dsc.grad.stops[0].opa = meta->gradient_bottom_opa;
-            tri2_dsc.grad.stops[0].frac = 0;
-            tri2_dsc.grad.stops[1].color = meta->color;
-            tri2_dsc.grad.stops[1].opa = meta->gradient_top_opa;
-            tri2_dsc.grad.stops[1].frac = 255;
-            tri2_dsc.grad.stops_count = 2;
-
-            // Draw both triangles
-            lv_draw_triangle(layer, &tri1_dsc);
-            lv_draw_triangle(layer, &tri2_dsc);
+        if (graph->series_meta[i].chart_series &&
+            lv_color_to_u32(graph->series_meta[i].color) == lv_color_to_u32(color)) {
+            return &graph->series_meta[i];
         }
     }
+    return nullptr;
 }
-#endif // Gradient fill disabled
+
+// LVGL 9 draw task callback for gradient fills under chart lines
+// Called for each draw task when LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS is set
+static void draw_task_cb(lv_event_t* e) {
+    lv_draw_task_t* draw_task = lv_event_get_draw_task(e);
+    lv_draw_dsc_base_t* base_dsc =
+        static_cast<lv_draw_dsc_base_t*>(lv_draw_task_get_draw_dsc(draw_task));
+
+    // Only process line draws for chart series (LV_PART_ITEMS)
+    if (base_dsc->part != LV_PART_ITEMS ||
+        lv_draw_task_get_type(draw_task) != LV_DRAW_TASK_TYPE_LINE) {
+        return;
+    }
+
+    lv_obj_t* chart = lv_event_get_target_obj(e);
+    ui_temp_graph_t* graph = static_cast<ui_temp_graph_t*>(lv_event_get_user_data(e));
+    if (!graph)
+        return;
+
+    // Get chart coordinates for bottom reference
+    lv_area_t coords;
+    lv_obj_get_coords(chart, &coords);
+
+    // Get line draw descriptor with endpoint coordinates
+    lv_draw_line_dsc_t* line_dsc =
+        static_cast<lv_draw_line_dsc_t*>(lv_draw_task_get_draw_dsc(draw_task));
+
+    // Find the series this line belongs to (match by color)
+    ui_temp_series_meta_t* meta = find_series_by_color(graph, line_dsc->color);
+    lv_opa_t top_opa = meta ? meta->gradient_top_opa : UI_TEMP_GRAPH_GRADIENT_TOP_OPA;
+    lv_opa_t bottom_opa = meta ? meta->gradient_bottom_opa : UI_TEMP_GRAPH_GRADIENT_BOTTOM_OPA;
+    lv_color_t ser_color = line_dsc->color;
+
+    // Calculate opacity fractions based on Y position within chart
+    // Higher Y = lower on screen = closer to bottom = more transparent
+    int32_t full_h = lv_obj_get_height(chart);
+    int32_t fract_upper =
+        (int32_t)(LV_MIN(line_dsc->p1.y, line_dsc->p2.y) - coords.y1) * 255 / full_h;
+    int32_t fract_lower =
+        (int32_t)(LV_MAX(line_dsc->p1.y, line_dsc->p2.y) - coords.y1) * 255 / full_h;
+
+    // Calculate interpolated opacity at each point (top_opa at top, bottom_opa at bottom)
+    lv_opa_t opa_upper =
+        static_cast<lv_opa_t>(top_opa - (top_opa - bottom_opa) * fract_upper / 255);
+    lv_opa_t opa_lower =
+        static_cast<lv_opa_t>(top_opa - (top_opa - bottom_opa) * fract_lower / 255);
+
+    // Draw triangle from line segment down to the lower of the two points
+    // This fills the gap between the line and a horizontal at the lower point
+    lv_draw_triangle_dsc_t tri_dsc;
+    lv_draw_triangle_dsc_init(&tri_dsc);
+    tri_dsc.p[0].x = line_dsc->p1.x;
+    tri_dsc.p[0].y = line_dsc->p1.y;
+    tri_dsc.p[1].x = line_dsc->p2.x;
+    tri_dsc.p[1].y = line_dsc->p2.y;
+    // Third point: at the x of the higher point, at the y of the lower point
+    tri_dsc.p[2].x = line_dsc->p1.y < line_dsc->p2.y ? line_dsc->p1.x : line_dsc->p2.x;
+    tri_dsc.p[2].y = LV_MAX(line_dsc->p1.y, line_dsc->p2.y);
+
+    tri_dsc.grad.dir = LV_GRAD_DIR_VER;
+    tri_dsc.grad.stops[0].color = ser_color;
+    tri_dsc.grad.stops[0].opa = opa_upper;
+    tri_dsc.grad.stops[0].frac = 0;
+    tri_dsc.grad.stops[1].color = ser_color;
+    tri_dsc.grad.stops[1].opa = opa_lower;
+    tri_dsc.grad.stops[1].frac = 255;
+
+    lv_draw_triangle(base_dsc->layer, &tri_dsc);
+
+    // Draw rectangle from the lower line point down to chart bottom
+    // This completes the gradient fill to the bottom of the chart
+    lv_draw_rect_dsc_t rect_dsc;
+    lv_draw_rect_dsc_init(&rect_dsc);
+    rect_dsc.bg_grad.dir = LV_GRAD_DIR_VER;
+    rect_dsc.bg_grad.stops[0].color = ser_color;
+    rect_dsc.bg_grad.stops[0].opa = opa_lower;
+    rect_dsc.bg_grad.stops[0].frac = 0;
+    rect_dsc.bg_grad.stops[1].color = ser_color;
+    rect_dsc.bg_grad.stops[1].opa = bottom_opa;
+    rect_dsc.bg_grad.stops[1].frac = 255;
+
+    lv_area_t rect_area;
+    rect_area.x1 = static_cast<int32_t>(line_dsc->p1.x);
+    rect_area.x2 = static_cast<int32_t>(line_dsc->p2.x) - 1;
+    rect_area.y1 = static_cast<int32_t>(LV_MAX(line_dsc->p1.y, line_dsc->p2.y));
+    rect_area.y2 = static_cast<int32_t>(coords.y2);
+
+    lv_draw_rect(base_dsc->layer, &rect_dsc, &rect_area);
+}
 
 // Create temperature graph widget
 ui_temp_graph_t* ui_temp_graph_create(lv_obj_t* parent) {
@@ -260,12 +270,9 @@ ui_temp_graph_t* ui_temp_graph_create(lv_obj_t* parent) {
     // Configure division line count
     lv_chart_set_div_line_count(graph->chart, 5, 10); // 5 horizontal, 10 vertical division lines
 
-    // TODO: Gradient fill temporarily disabled - requires LVGL 9 draw task system rewrite
-    // The LVGL 8-style event-based custom drawing doesn't work in LVGL 9
-    // Need to implement using lv_draw_task_t API with LV_EVENT_DRAW_TASK_ADDED
-    //
-    // lv_obj_add_flag(graph->chart, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
-    // lv_obj_add_event_cb(graph->chart, draw_gradient_fill_cb, LV_EVENT_DRAW_TASK_ADDED, graph);
+    // Enable LVGL 9 draw task events for gradient fills under chart lines
+    lv_obj_add_flag(graph->chart, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+    lv_obj_add_event_cb(graph->chart, draw_task_cb, LV_EVENT_DRAW_TASK_ADDED, graph);
 
     // Store graph pointer in chart user data for retrieval
     lv_obj_set_user_data(graph->chart, graph);
@@ -422,6 +429,14 @@ void ui_temp_graph_update_series(ui_temp_graph_t* graph, int series_id, float te
     if (!meta) {
         spdlog::error("[TempGraph] Series {} not found", series_id);
         return;
+    }
+
+    // Debug: Log first 10 values pushed to help track down "first value is 0" bug
+    static int debug_count = 0;
+    if (debug_count < 10) {
+        spdlog::info("[TempGraph] DEBUG: Pushing value #{} to series '{}': {:.1f}°C", debug_count,
+                     meta->name, temp);
+        debug_count++;
     }
 
     // Add point to series (shifts old data left)
