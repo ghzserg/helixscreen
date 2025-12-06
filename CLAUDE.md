@@ -1,5 +1,22 @@
 # CLAUDE.md
 
+## 🚨 VERBOSITY FLAGS - READ THIS FIRST! 🚨
+
+**ALWAYS use `-v` or `-vv` when running the app to see logs!**
+
+| Flag | Level | When to Use |
+|------|-------|-------------|
+| (none) | WARN only | NEVER use for debugging - you'll miss all logs! |
+| `-v` | INFO | Basic logging - use for most testing |
+| `-vv` | DEBUG | Detailed logging - use when debugging issues |
+| `-vvv` | TRACE | Extremely verbose - use for deep investigation |
+
+**Example:** `./build/bin/helix-screen --test -p settings -vv`
+
+⚠️ **I KEEP FORGETTING THIS AND WASTING TIME!** ⚠️
+
+---
+
 ## 📚 Lazy Documentation Loading
 
 **Load ONLY when actively working on the topic:**
