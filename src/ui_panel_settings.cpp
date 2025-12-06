@@ -16,6 +16,7 @@
 #include "moonraker_client.h"
 #include "printer_state.h"
 #include "settings_manager.h"
+#include "sound_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -436,8 +437,13 @@ void SettingsPanel::handle_led_light_changed(bool enabled) {
 }
 
 void SettingsPanel::handle_sounds_changed(bool enabled) {
-    spdlog::info("[{}] Sounds toggled: {} (placeholder)", get_name(), enabled ? "ON" : "OFF");
+    spdlog::info("[{}] Sounds toggled: {}", get_name(), enabled ? "ON" : "OFF");
     SettingsManager::instance().set_sounds_enabled(enabled);
+
+    // Play test beep when enabling sounds
+    if (enabled) {
+        SoundManager::instance().play_test_beep();
+    }
 }
 
 void SettingsPanel::handle_completion_alert_changed(bool enabled) {

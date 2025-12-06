@@ -68,6 +68,13 @@ void PrinterCapabilities::parse_objects(const json& objects) {
                 has_led_ = true;
                 spdlog::debug("[PrinterCapabilities] Detected LED output pin: {}", name);
             }
+            // Speaker/buzzer detection for M300 support
+            if (upper_pin.find("BEEPER") != std::string::npos ||
+                upper_pin.find("BUZZER") != std::string::npos ||
+                upper_pin.find("SPEAKER") != std::string::npos) {
+                has_speaker_ = true;
+                spdlog::debug("[PrinterCapabilities] Detected speaker output pin: {}", name);
+            }
         }
         // Chamber heater detection (heater_generic with "chamber" in name)
         else if (name.rfind("heater_generic ", 0) == 0) {
@@ -152,6 +159,7 @@ void PrinterCapabilities::clear() {
     has_accelerometer_ = false;
     has_screws_tilt_ = false;
     has_klippain_shaketune_ = false;
+    has_speaker_ = false;
     macros_.clear();
     helix_macros_.clear();
     nozzle_clean_macro_.clear();
@@ -229,6 +237,8 @@ std::string PrinterCapabilities::summary() const {
         caps.push_back("screws_tilt");
     if (has_klippain_shaketune_)
         caps.push_back("Klippain");
+    if (has_speaker_)
+        caps.push_back("speaker");
 
     if (caps.empty()) {
         ss << "none";

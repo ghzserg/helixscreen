@@ -159,6 +159,18 @@ class PrinterCapabilities {
     }
 
     /**
+     * @brief Check if printer has a speaker/buzzer for audio feedback
+     *
+     * Detects output_pin objects with beeper/buzzer/speaker in the name,
+     * which are commonly used for M300 tone generation.
+     *
+     * @return true if speaker/buzzer output pin was detected
+     */
+    [[nodiscard]] bool has_speaker() const {
+        return has_speaker_;
+    }
+
+    /**
      * @brief Check if printer supports any form of bed leveling
      * @return true if has QGL, Z-tilt, or bed mesh
      */
@@ -295,6 +307,7 @@ class PrinterCapabilities {
     bool has_accelerometer_ = false;
     bool has_screws_tilt_ = false;
     bool has_klippain_shaketune_ = false;
+    bool has_speaker_ = false;
 
     // Macro names (stored uppercase for case-insensitive matching)
     std::unordered_set<std::string> macros_;

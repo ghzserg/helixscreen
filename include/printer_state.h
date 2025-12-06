@@ -186,7 +186,8 @@ class PrinterState {
     // Subject accessors for XML binding
     //
 
-    // Temperature subjects (integer, degrees Celsius)
+    // Temperature subjects (centidegrees: value * 10 for 0.1°C resolution)
+    // Example: 205.3°C is stored as 2053. Divide by 10 for display.
     lv_subject_t* get_extruder_temp_subject() {
         return &extruder_temp_;
     }
@@ -539,6 +540,7 @@ class PrinterState {
     lv_subject_t printer_has_led_;           // Integer: 0=no, 1=yes (for LED light control)
     lv_subject_t printer_has_accelerometer_; // Integer: 0=no, 1=yes (for input shaping)
     lv_subject_t printer_has_spoolman_;      // Integer: 0=no, 1=yes (for filament tracking)
+    lv_subject_t printer_has_speaker_;       // Integer: 0=no, 1=yes (for M300 audio feedback)
     lv_subject_t printer_bed_moves_;         // Integer: 0=no (gantry moves), 1=yes (bed moves on Z)
 
     // Version subjects (for About section)

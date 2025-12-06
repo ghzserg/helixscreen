@@ -82,6 +82,7 @@
 #include "printer_state.h"
 #include "runtime_config.h"
 #include "settings_manager.h"
+#include "sound_manager.h"
 #include "tips_manager.h"
 #include "usb_backend_mock.h"
 #include "usb_manager.h"
@@ -996,6 +997,7 @@ static void initialize_subjects() {
     init_global_advanced_panel(get_printer_state(), nullptr); // Initialize advanced panel instance
     get_global_advanced_panel().init_subjects();              // Advanced panel capability subjects
     ui_wizard_init_subjects(); // Wizard subjects (for first-run config)
+    ui_keypad_init_subjects(); // Keypad display subject (for reactive binding)
 
     // Panels that need MoonrakerAPI - store pointers for deferred set_api()
     print_select_panel = get_print_select_panel(get_printer_state(), nullptr);
@@ -1330,6 +1332,9 @@ static void initialize_moonraker_client(Config* config) {
 
     // Register with app_globals (raw pointer for access, main.cpp owns lifetime)
     set_moonraker_client(moonraker_client.get());
+
+    // Initialize SoundManager with Moonraker client for M300 audio feedback
+    SoundManager::instance().set_moonraker_client(moonraker_client.get());
 
     // Configure timeouts from config file
     uint32_t connection_timeout = static_cast<uint32_t>(
