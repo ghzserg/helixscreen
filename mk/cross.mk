@@ -42,13 +42,28 @@ else ifeq ($(PLATFORM_TARGET),ad5m)
     # Flashforge Adventurer 5M - Cortex-A7 (armv7-a hard-float)
     # Specs: 800x480 display, 110MB RAM, glibc 2.25
     # -------------------------------------------------------------------------
-    CROSS_COMPILE ?= arm-linux-gnueabihf-
+    # FULLY STATIC BUILD: Link everything statically to avoid glibc version
+    # conflicts. The ARM toolchain's sysroot has glibc 2.33 symbols, but AD5M
+    # only has glibc 2.25. Static linking sidesteps this entirely.
+    # Trade-off: Larger binary (~5-8MB vs ~2MB) but guaranteed compatibility.
+    CROSS_COMPILE ?= arm-none-linux-gnueabihf-
     TARGET_ARCH := armv7-a
-    TARGET_TRIPLE := arm-linux-gnueabihf
+    TARGET_TRIPLE := arm-none-linux-gnueabihf
+    # Memory-optimized build flags:
+    # -Os: Optimize for size (vs -O2 for speed)
+    # -flto: Link-Time Optimization for dead code elimination
+    # -ffunction-sections/-fdata-sections: Allow linker to remove unused sections
     # -Wno-error=conversion: LVGL headers have int32_t->float conversions that GCC flags
-    TARGET_CFLAGS := -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -mtune=cortex-a7 -Wno-error=conversion -Wno-error=sign-conversion
-    # GCC 8 requires -lstdc++fs for std::filesystem support (GCC 9+ includes it by default)
-    TARGET_LDFLAGS := -lstdc++fs
+    TARGET_CFLAGS := -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -mtune=cortex-a7 \
+        -Os -flto -ffunction-sections -fdata-sections \
+        -Wno-error=conversion -Wno-error=sign-conversion
+    # -Wl,--gc-sections: Remove unused sections during linking (works with -ffunction-sections)
+    # -flto: Must match compiler flag for LTO to work
+    # -static: Fully static binary - no runtime dependencies on system libs
+    # This avoids glibc version mismatch (binary needs 2.33, system has 2.25)
+    TARGET_LDFLAGS := -Wl,--gc-sections -flto -static
+    # SSL disabled for embedded - Moonraker communication is local/plaintext
+    ENABLE_SSL := no
     DISPLAY_BACKEND := fbdev
     ENABLE_SDL := no
     ENABLE_TINYGL_3D := yes
@@ -115,6 +130,15 @@ ifdef TARGET_CFLAGS
     CXXFLAGS += $(TARGET_CFLAGS)
     SUBMODULE_CFLAGS += $(TARGET_CFLAGS)
     SUBMODULE_CXXFLAGS += $(TARGET_CFLAGS)
+endif
+
+# For size-optimized targets, override -O2 with -Os
+# (GCC uses last optimization flag, but this makes it explicit)
+ifeq ($(PLATFORM_TARGET),ad5m)
+    CFLAGS := $(subst -O2,-Os,$(CFLAGS))
+    CXXFLAGS := $(subst -O2,-Os,$(CXXFLAGS))
+    SUBMODULE_CFLAGS := $(subst -O2,-Os,$(SUBMODULE_CFLAGS))
+    SUBMODULE_CXXFLAGS := $(subst -O2,-Os,$(SUBMODULE_CXXFLAGS))
 endif
 
 ifdef TARGET_LDFLAGS

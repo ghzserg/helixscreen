@@ -199,8 +199,11 @@ check_libraries() {
     fi
 
     # OpenSSL (Linux only - macOS uses system)
+    # Skip for embedded targets with ENABLE_SSL=no (local Moonraker doesn't need TLS)
     if [ "$(uname -s)" != "Darwin" ]; then
-        if check_pkg openssl || check_pkg libssl; then
+        if [ "$ENABLE_SSL" = "no" ]; then
+            ok "openssl: disabled (ENABLE_SSL=no)"
+        elif check_pkg openssl || check_pkg libssl; then
             :  # ok already printed
         elif [ -f "/usr/include/openssl/ssl.h" ] || [ -f "/usr/local/include/openssl/ssl.h" ]; then
             ok "OpenSSL found (system headers)"

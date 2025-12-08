@@ -344,9 +344,13 @@ LDFLAGS_COMMON := $(SDL2_LIBS) $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) -lm -lpth
 ifneq ($(CROSS_COMPILE),)
     # Cross-compilation for embedded Linux targets
     NPROC := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-    # Embedded targets link against libhv, wpa_supplicant, and OpenSSL
+    # Embedded targets link against libhv and wpa_supplicant
     # No SDL2 - display handled by framebuffer/DRM
-    LDFLAGS := $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -lssl -lcrypto -ldl -lm -lpthread
+    # SSL is optional - only needed if connecting to remote Moonraker over HTTPS
+    LDFLAGS := $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -ldl -lm -lpthread
+    ifeq ($(ENABLE_SSL),yes)
+        LDFLAGS += -lssl -lcrypto
+    endif
     # Add target-specific linker flags (e.g., -lstdc++fs for GCC 8)
     LDFLAGS += $(TARGET_LDFLAGS)
     # Add target-specific library path for cross-compilation

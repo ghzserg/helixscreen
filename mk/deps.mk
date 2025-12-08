@@ -21,12 +21,12 @@ VENV_PIP := $(VENV)/bin/pip3
 #
 check-deps:
 ifeq ($(SKIP_OPTIONAL_DEPS),1)
-	@CC="$(CC)" CXX="$(CXX)" \
+	@CC="$(CC)" CXX="$(CXX)" ENABLE_SSL="$(ENABLE_SSL)" \
 		LVGL_DIR="$(LVGL_DIR)" SPDLOG_DIR="$(SPDLOG_DIR)" \
 		LIBHV_DIR="$(LIBHV_DIR)" WPA_DIR="$(WPA_DIR)" VENV="$(VENV)" \
 		./scripts/check-deps.sh --minimal
 else
-	@CC="$(CC)" CXX="$(CXX)" \
+	@CC="$(CC)" CXX="$(CXX)" ENABLE_SSL="$(ENABLE_SSL)" \
 		LVGL_DIR="$(LVGL_DIR)" SPDLOG_DIR="$(SPDLOG_DIR)" \
 		LIBHV_DIR="$(LIBHV_DIR)" WPA_DIR="$(WPA_DIR)" VENV="$(VENV)" \
 		./scripts/check-deps.sh
@@ -332,6 +332,12 @@ endif
 
 # Cross-compilation build (from any host to Linux target)
 ifdef CROSS_COMPILE
+# wpa_supplicant CFLAGS: Strip LTO and section flags since wpa_supplicant is a separate
+# build system that doesn't participate in our LTO linking. LTO-compiled .a files contain
+# GIMPLE IR instead of machine code, which breaks linking when mixed with our LTO objects.
+# Use EXTRA_CFLAGS since wpa_supplicant's Makefile appends EXTRA_CFLAGS to its internal flags.
+WPA_CFLAGS := $(filter-out -flto -ffunction-sections -fdata-sections,$(TARGET_CFLAGS))
+
 $(WPA_CLIENT_LIB): | $(BUILD_DIR)/lib
 	$(ECHO) "$(BOLD)$(BLUE)[WPA]$(RESET) Building wpa_supplicant client library (cross-compile)..."
 	$(Q)if [ ! -f "$(WPA_DIR)/wpa_supplicant/.config" ]; then \
@@ -343,11 +349,14 @@ $(WPA_CLIENT_LIB): | $(BUILD_DIR)/lib
 			exit 1; \
 		fi; \
 	fi
-	$(Q)if [ -f "$(WPA_DIR)/wpa_supplicant/libwpa_client.a" ]; then \
+	$(Q)if [ -f "$(WPA_DIR)/wpa_supplicant/libwpa_client.a" ] || [ -d "$(WPA_DIR)/build" ]; then \
 		echo "$(YELLOW)→ Cleaning wpa_supplicant in-tree artifacts for cross-compilation...$(RESET)"; \
 		$(MAKE) -C $(WPA_DIR)/wpa_supplicant clean; \
+		rm -rf $(WPA_DIR)/build; \
 	fi
-	$(Q)CC=$(CC) CFLAGS="$(TARGET_CFLAGS)" $(MAKE) -C $(WPA_DIR)/wpa_supplicant libwpa_client.a
+	@# Use env -u to unset inherited CFLAGS from parent make, then set clean values
+	@# wpa_supplicant uses EXTRA_CFLAGS for additional flags
+	$(Q)env -u CFLAGS CC="$(CC)" EXTRA_CFLAGS="$(WPA_CFLAGS)" $(MAKE) -C $(WPA_DIR)/wpa_supplicant libwpa_client.a
 	$(Q)cp $(WPA_DIR)/wpa_supplicant/libwpa_client.a $(BUILD_DIR)/lib/libwpa_client.a
 	$(Q)$(RANLIB) $(BUILD_DIR)/lib/libwpa_client.a
 	$(ECHO) "$(GREEN)✓ libwpa_client.a built: $(BUILD_DIR)/lib/libwpa_client.a$(RESET)"

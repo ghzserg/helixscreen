@@ -11,69 +11,72 @@
 #   - RAM: 110MB total
 #   - C Library: glibc 2.25
 #
-# Strategy: Use Debian Buster (glibc 2.28, GCC 8) with static libstdc++ linking.
-# While the host has newer glibc, statically linking libstdc++ and using
-# -static-libgcc avoids most compatibility issues. The binary will still
-# dynamically link glibc, but glibc 2.25 on the device should be compatible
-# with most glibc 2.28 symbols (backwards compatible).
+# Strategy: Use ARM's pre-built GCC 10.3 toolchain with FULLY STATIC linking.
+# This avoids glibc version conflicts - the binary has no runtime glibc dependency.
 #
-# If runtime issues occur, we can switch to a crosstool-ng based toolchain
-# or use a Debian Stretch sysroot.
+# Trade-off: Larger binary (~5-8MB vs ~2MB dynamic) but guaranteed compatibility
+# on any armv7-a Linux system regardless of glibc version.
+#
+# Note: SSL/TLS is disabled for embedded targets - Moonraker communication is local
 
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 LABEL maintainer="HelixScreen <dev@helixscreen.io>"
 LABEL description="Cross-compilation toolchain for Adventurer 5M (armv7-a Cortex-A7)"
 
-# Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Buster is now archived, update sources
-RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
-    sed -i 's|security.debian.org/debian-security|archive.debian.org/debian-security|g' /etc/apt/sources.list && \
-    sed -i '/buster-updates/d' /etc/apt/sources.list
-
-# Install base build tools
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    crossbuild-essential-armhf \
     git \
     pkg-config \
     ca-certificates \
     make \
     cmake \
-    libssl-dev \
     python3 \
+    file \
+    wget \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Add armhf architecture and install target libraries
-RUN dpkg --add-architecture armhf && apt-get update && apt-get install -y --no-install-recommends \
-    libc6-dev:armhf \
-    libstdc++-8-dev:armhf \
-    libssl-dev:armhf \
-    libfmt-dev:armhf \
-    libsystemd-dev:armhf \
-    && rm -rf /var/lib/apt/lists/*
+# Download ARM's pre-built GCC 10.3-2021.07 toolchain
+# This is the official ARM toolchain from developer.arm.com
+# It has a glibc 2.33 sysroot BUT we use -static linking to avoid version issues
+WORKDIR /opt
+RUN wget -q https://developer.arm.com/-/media/Files/downloads/gnu-a/10.3-2021.07/binrel/gcc-arm-10.3-2021.07-x86_64-arm-none-linux-gnueabihf.tar.xz && \
+    tar xf gcc-arm-10.3-2021.07-x86_64-arm-none-linux-gnueabihf.tar.xz && \
+    rm gcc-arm-10.3-2021.07-x86_64-arm-none-linux-gnueabihf.tar.xz && \
+    mv gcc-arm-10.3-2021.07-x86_64-arm-none-linux-gnueabihf arm-toolchain
 
-# Set up cross-compilation environment
-ENV CROSS_COMPILE=arm-linux-gnueabihf-
-ENV CC=arm-linux-gnueabihf-gcc
-ENV CXX=arm-linux-gnueabihf-g++
-ENV AR=arm-linux-gnueabihf-ar
-ENV STRIP=arm-linux-gnueabihf-strip
-ENV RANLIB=arm-linux-gnueabihf-ranlib
-ENV LD=arm-linux-gnueabihf-ld
+# ==============================================================================
+# Cross-Compilation Environment
+# ==============================================================================
 
-# Cortex-A7 specific optimization flags
-# Static link libstdc++ and libgcc to avoid C++ ABI compatibility issues
+ENV PATH="/opt/arm-toolchain/bin:$PATH"
+ENV CROSS_COMPILE=arm-none-linux-gnueabihf-
+ENV CC=arm-none-linux-gnueabihf-gcc
+ENV CXX=arm-none-linux-gnueabihf-g++
+ENV AR=arm-none-linux-gnueabihf-ar
+ENV STRIP=arm-none-linux-gnueabihf-strip
+ENV RANLIB=arm-none-linux-gnueabihf-ranlib
+ENV LD=arm-none-linux-gnueabihf-ld
+
+# Target-specific flags for Cortex-A7
+# Note: -static is added in cross.mk, not here (so libs can be built dynamically)
 ENV TARGET_CFLAGS="-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -mtune=cortex-a7"
+ENV TARGET_LDFLAGS=""
 
-# pkg-config for cross-compilation
-ENV PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig
-ENV PKG_CONFIG_SYSROOT_DIR=/
-
-# Create working directory
+# Working directory
 WORKDIR /src
+
+# Verify the toolchain works
+RUN arm-none-linux-gnueabihf-gcc --version && \
+    arm-none-linux-gnueabihf-g++ --version && \
+    echo "✓ Toolchain verification passed" && \
+    echo "" && \
+    echo "NOTE: This toolchain uses STATIC linking (-static flag in cross.mk)" && \
+    echo "to avoid glibc version conflicts. Binary will be self-contained."
 
 # Default command: build for AD5M
 CMD ["make", "PLATFORM_TARGET=ad5m", "-j"]
