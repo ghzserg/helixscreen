@@ -60,7 +60,8 @@ make -j
 | Infrastructure | ✅ Complete | Coming Soon overlay component created |
 | Panel Stubs | ✅ Complete | 7 stub panels with Coming Soon overlays |
 | Component Registration | ✅ Complete | All new components in main.cpp |
-| Quick Wins | ⬜ Not Started | Layer display, temp presets, power control |
+| **Power Device Control** | ✅ Complete | Full panel with UI polish (4/6 stages) |
+| Quick Wins | 🟡 In Progress | Layer display, temp presets remaining |
 | Core Features | ⬜ Not Started | Macros, console, camera, history |
 
 ---
@@ -96,15 +97,28 @@ ui_xml/
 ├── console_panel.xml          # G-code console (stub)
 ├── camera_panel.xml           # Webcam viewer (stub)
 ├── history_panel.xml          # Print job history (stub)
-├── power_panel.xml            # Power device control (stub)
+├── power_panel.xml            # Power device control (✅ COMPLETE)
+├── power_device_row.xml       # Reusable row component for power devices
 ├── screws_tilt_panel.xml      # Visual bed leveling (stub)
 └── input_shaper_panel.xml     # Resonance calibration (stub)
 ```
 
+### Power Panel Implementation (Complete)
+```
+include/ui_panel_power.h       # Panel class with DeviceRow struct
+src/ui_panel_power.cpp         # XML-based UI, prettify_device_name(), lock support
+include/moonraker_api.h        # get_power_devices(), set_device_power()
+src/moonraker_api.cpp          # Power API implementation
+include/moonraker_api_mock.h   # Mock power methods
+src/moonraker_api_mock.cpp     # 4 test devices, MOCK_EMPTY_POWER env var
+```
+
 ### Modified Files
 ```
-src/main.cpp                   # Component registrations added (lines 1004, 1039-1047)
+src/main.cpp                   # Component registrations, power_device_row, event callbacks
 docs/ROADMAP.md                # Updated with feature parity initiative
+docs/FEATURE_STATUS.md         # Implementation tracker (updated)
+docs/POWER_PANEL_POLISH_PLAN.md # UI polish plan (Stages 1-4 complete)
 ```
 
 ---
@@ -112,15 +126,15 @@ docs/ROADMAP.md                # Updated with feature parity initiative
 ## Priority Tiers
 
 ### TIER 1: CRITICAL (All competitors have)
-| Feature | Complexity | Stub Created |
-|---------|------------|--------------|
-| Temperature Presets | MEDIUM | ❌ (add to temp panels) |
-| Macro Panel | MEDIUM | ✅ `macro_panel.xml` |
-| Console Panel | HIGH | ✅ `console_panel.xml` |
-| Screws Tilt Adjust | HIGH | ✅ `screws_tilt_panel.xml` |
-| Camera/Webcam | HIGH | ✅ `camera_panel.xml` |
-| Print History | MEDIUM | ✅ `history_panel.xml` |
-| Power Device Control | LOW | ✅ `power_panel.xml` |
+| Feature | Complexity | Status |
+|---------|------------|--------|
+| Temperature Presets | MEDIUM | ⬜ Not Started |
+| Macro Panel | MEDIUM | 🚧 Stub: `macro_panel.xml` |
+| Console Panel | HIGH | 🚧 Stub: `console_panel.xml` |
+| Screws Tilt Adjust | HIGH | 🚧 Stub: `screws_tilt_panel.xml` |
+| Camera/Webcam | HIGH | 🚧 Stub: `camera_panel.xml` |
+| Print History | MEDIUM | 🟡 In Progress (separate worktree) |
+| **Power Device Control** | LOW | ✅ **COMPLETE** - `power_panel.xml` + `power_device_row.xml` |
 
 ### TIER 2: HIGH (Most competitors have)
 | Feature | Complexity | Notes |
@@ -144,9 +158,9 @@ docs/ROADMAP.md                # Updated with feature parity initiative
 
 ## Next Actions (Priority Order)
 
-### Phase 2: Quick Wins (Recommended First)
+### Phase 2: Quick Wins (Recommended Next)
 
-#### 1. Layer Display (EASIEST)
+#### 1. Layer Display (EASIEST - Quick Win)
 **Files to modify:**
 - `ui_xml/print_status_panel.xml` - Add layer counter
 - `src/ui_panel_print_status.cpp` - Subscribe to layer info
@@ -161,24 +175,7 @@ docs/ROADMAP.md                # Updated with feature parity initiative
 <lv_label bind_text="print_total_layers"/>
 ```
 
-#### 2. Power Device Control (LOW complexity)
-**Files to create:**
-- `include/ui_panel_power.h`
-- `src/ui_panel_power.cpp`
-
-**Files to modify:**
-- `ui_xml/power_panel.xml` - Replace Coming Soon with actual UI
-- `include/moonraker_api.h` - Add power device methods
-- `src/moonraker_api.cpp` - Implement power device API
-
-**API Endpoints:**
-```
-GET  /machine/device_power/devices
-GET  /machine/device_power/device?device=<name>
-POST /machine/device_power/device  {device: "name", action: "on|off|toggle"}
-```
-
-#### 3. Temperature Presets (MEDIUM complexity)
+#### 2. Temperature Presets (MEDIUM complexity)
 **Files to create:**
 - `ui_xml/temp_preset_modal.xml`
 - `include/temperature_presets.h`
@@ -339,6 +336,27 @@ make -j
 
 ## Session Log
 
+### 2025-12-08 Session 4 - Power Panel Complete
+- **Implemented:** Full Power Device Control panel with UI polish
+- **Key Changes:**
+  - Fixed blue background bug (`ui_theme_parse_color` vs `ui_theme_get_color`)
+  - Created `power_device_row.xml` reusable XML component
+  - Used `ui_switch` component with responsive `size="medium"`
+  - Added `prettify_device_name()` for friendly labels (printer_psu → Printer Power)
+  - Lock icon + "Locked during print" status for print-locked devices
+  - Empty state UI with icon, heading, guidance text
+  - Mock power devices with `MOCK_EMPTY_POWER=1` env var
+- **Rule Fixes:** XML event_cb pattern (Rule 12), design tokens (Rule 1)
+- **Commit:** `ee4ade2` feat(power): complete Power Device Control panel with UI polish
+- **Status:** Stages 1-4 of 6 complete (5-6 optional polish)
+
+**Ready for:** Layer Display (quick win), Temperature Presets
+
+### 2025-12-08 Session 3 - Power Panel Started
+- Created initial Power Panel implementation (functional but needed polish)
+- UI Review identified 5 critical, 4 major issues
+- Created POWER_PANEL_POLISH_PLAN.md with 6-stage fix plan
+
 ### 2025-12-08 Session 2 - Build System Fixes
 - **Problem:** Worktrees don't auto-clone submodules; libhv headers are generated (not in git)
 - **Fixed:**
@@ -357,4 +375,4 @@ make -j
 - Registered all components in main.cpp
 - Committed as `9f75e98` (on feature branch)
 
-**Ready for:** Phase 2 Quick Wins (layer display, temp presets, power control)
+**Ready for:** Layer Display (quick win), Temperature Presets
