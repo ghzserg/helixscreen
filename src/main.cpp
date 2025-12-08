@@ -778,6 +778,13 @@ static bool parse_command_line_args(
             printf("  -s, --size <size>    Screen size: tiny, small, medium, large (default: "
                    "small)\n");
             printf("  -p, --panel <panel>  Initial panel (default: home)\n");
+            printf(
+                "                       Panels: home, controls, motion, nozzle-temp, bed-temp,\n");
+            printf(
+                "                         bed-mesh, zoffset, pid, extrusion, fan, print-status,\n");
+            printf("                         filament, settings, advanced, print-history,\n");
+            printf("                         print-select, step-test, test, gcode-test, glyphs,\n");
+            printf("                         gradient-test\n");
             printf("  -k, --keypad         Show numeric keypad for testing\n");
             printf("  --keyboard           Show keyboard for testing (no textarea)\n");
             printf("  -w, --wizard         Force first-run configuration wizard\n");
