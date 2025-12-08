@@ -139,17 +139,24 @@ AmsBackendMock::~AmsBackendMock() {
 }
 
 AmsError AmsBackendMock::start() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    bool should_emit = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
 
-    if (running_) {
-        return AmsErrorHelper::success();
+        if (running_) {
+            return AmsErrorHelper::success();
+        }
+
+        running_ = true;
+        should_emit = true;
+        spdlog::info("AmsBackendMock: Started");
     }
 
-    running_ = true;
-    spdlog::info("AmsBackendMock: Started");
-
-    // Emit initial state event
-    emit_event(EVENT_STATE_CHANGED);
+    // Emit initial state event OUTSIDE the lock to avoid deadlock
+    // (emit_event also acquires mutex_ to safely copy the callback)
+    if (should_emit) {
+        emit_event(EVENT_STATE_CHANGED);
+    }
 
     return AmsErrorHelper::success();
 }
@@ -162,7 +169,8 @@ void AmsBackendMock::stop() {
     }
 
     running_ = false;
-    spdlog::info("AmsBackendMock: Stopped");
+    // Note: Don't log here - this may be called during static destruction
+    // when spdlog's logger has already been destroyed (causes SIGSEGV)
 }
 
 bool AmsBackendMock::is_running() const {
@@ -409,32 +417,35 @@ AmsError AmsBackendMock::cancel() {
 }
 
 AmsError AmsBackendMock::set_gate_info(int gate_index, const GateInfo& info) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
 
-    if (gate_index < 0 || gate_index >= system_info_.total_gates) {
-        return AmsErrorHelper::invalid_gate(gate_index, system_info_.total_gates - 1);
+        if (gate_index < 0 || gate_index >= system_info_.total_gates) {
+            return AmsErrorHelper::invalid_gate(gate_index, system_info_.total_gates - 1);
+        }
+
+        auto* gate = system_info_.get_gate_global(gate_index);
+        if (!gate) {
+            return AmsErrorHelper::invalid_gate(gate_index, system_info_.total_gates - 1);
+        }
+
+        // Update filament info
+        gate->color_name = info.color_name;
+        gate->color_rgb = info.color_rgb;
+        gate->material = info.material;
+        gate->brand = info.brand;
+        gate->spoolman_id = info.spoolman_id;
+        gate->spool_name = info.spool_name;
+        gate->remaining_weight_g = info.remaining_weight_g;
+        gate->total_weight_g = info.total_weight_g;
+        gate->nozzle_temp_min = info.nozzle_temp_min;
+        gate->nozzle_temp_max = info.nozzle_temp_max;
+        gate->bed_temp = info.bed_temp;
+
+        spdlog::info("AmsBackendMock: Updated gate {} info", gate_index);
     }
 
-    auto* gate = system_info_.get_gate_global(gate_index);
-    if (!gate) {
-        return AmsErrorHelper::invalid_gate(gate_index, system_info_.total_gates - 1);
-    }
-
-    // Update filament info
-    gate->color_name = info.color_name;
-    gate->color_rgb = info.color_rgb;
-    gate->material = info.material;
-    gate->brand = info.brand;
-    gate->spoolman_id = info.spoolman_id;
-    gate->spool_name = info.spool_name;
-    gate->remaining_weight_g = info.remaining_weight_g;
-    gate->total_weight_g = info.total_weight_g;
-    gate->nozzle_temp_min = info.nozzle_temp_min;
-    gate->nozzle_temp_max = info.nozzle_temp_max;
-    gate->bed_temp = info.bed_temp;
-
-    spdlog::info("AmsBackendMock: Updated gate {} info", gate_index);
-
+    // Emit event OUTSIDE the lock to avoid deadlock
     emit_event(EVENT_GATE_CHANGED, std::to_string(gate_index));
     return AmsErrorHelper::success();
 }

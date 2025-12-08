@@ -42,6 +42,24 @@ void AmsPanel::init_subjects() {
     // We just ensure it's initialized before panel creation
     AmsState::instance().init_subjects(true);
 
+    // Create and connect backend if not already present
+    if (!AmsState::instance().get_backend()) {
+        // Factory method checks should_mock_ams() and creates appropriate backend
+        auto backend = AmsBackend::create(AmsType::NONE);
+        if (backend) {
+            // Start backend BEFORE set_backend to avoid deadlock:
+            // start() emits events while holding its internal mutex, and the callback
+            // would call sync_from_backend()->get_system_info() which needs the same mutex.
+            // By starting first, the event fires with no callback registered.
+            backend->start();
+            // Now register the backend (sets up callback for future events)
+            AmsState::instance().set_backend(std::move(backend));
+            // Manually sync state since we started before callback was registered
+            AmsState::instance().sync_from_backend();
+            spdlog::info("[{}] Created and connected AMS backend", get_name());
+        }
+    }
+
     // Register observers for state changes
     gates_version_observer_ = ObserverGuard(AmsState::instance().get_gates_version_subject(),
                                             on_gates_version_changed, this);
