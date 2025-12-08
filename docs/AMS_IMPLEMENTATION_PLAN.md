@@ -3,7 +3,7 @@
 **Feature Branch:** `feature/ams-support`
 **Worktree:** `/Users/pbrown/Code/Printing/helixscreen-ams-feature`
 **Started:** 2025-12-07
-**Last Updated:** 2025-12-07
+**Last Updated:** 2025-12-08
 
 ---
 
@@ -214,9 +214,22 @@ printer.mmu.ttg_map (tool-to-gate mapping)
 printer.mmu.endless_spool_groups
 ```
 
+**Additional Fixes (2025-12-08):**
+- [x] **Deadlock in mock backend** - `start()` and `set_gate_info()` were calling
+      `emit_event()` while holding the mutex. Since `emit_event()` also locks the
+      mutex and `std::mutex` is non-recursive, this caused deadlock. Fixed by
+      releasing the lock before emitting.
+- [x] **Shutdown crash** - `AmsState::~AmsState()` called `stop()` which logged
+      via spdlog, but during static destruction the logger may already be destroyed.
+      Removed logging from `stop()` to prevent SIGSEGV.
+- [x] **CLI access** - Added `-p ams` flag to main.cpp to open AMS panel directly
+      for testing. Also added backend creation in `AmsPanel::init_subjects()`.
+
 **Verification:**
 - [x] Build succeeds
 - [x] Context menu appears on slot tap
+- [x] **Panel displays with mock data** - 4 colored slots (Red/Blue/Green/Yellow)
+- [x] **Clean shutdown** - No crash on exit
 - [ ] Live testing with Happy Hare printer (deferred)
 - [ ] Live testing with AFC printer (deferred)
 
@@ -443,8 +456,14 @@ Add to `include/ui_icon_codepoints.h` and run `make regen-fonts`.
 cd /Users/pbrown/Code/Printing/helixscreen-ams-feature
 make -j
 
-# Run with mock AMS (test mode enables mock)
+# Run AMS panel directly with mock backend (recommended for testing)
+./build/bin/helix-screen --test -p ams -s large -vv
+
+# Run normal UI with mock AMS available
 ./build/bin/helix-screen --test -vv
+
+# With screenshot on startup
+HELIX_AUTO_SCREENSHOT=1 HELIX_AUTO_QUIT_MS=3000 ./build/bin/helix-screen --test -p ams -vv
 
 # Future: Run with real Happy Hare
 ./build/bin/helix-screen --real-ams -vv
