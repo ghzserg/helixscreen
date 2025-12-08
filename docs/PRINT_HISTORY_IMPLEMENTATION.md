@@ -641,8 +641,8 @@ Update this section as stages complete:
 
 | Stage | Status | Notes |
 |-------|--------|-------|
-| 1. Data Layer | ✅ Complete | All tests pass, mock faithful to real API |
-| 2. Dashboard Stats | Not Started | |
+| 1. Data Layer | ✅ Complete | Commit 62d6a22 |
+| 2. Dashboard Stats | 🔜 Next | |
 | 3. History List | Not Started | |
 | 4. Search/Filter/Sort | Not Started | |
 | 5. Detail Overlay | Not Started | |
@@ -653,57 +653,77 @@ Update this section as stages complete:
 
 ## Session Notes
 
-### Session: 2025-12-08 (Stage 1 Implementation)
+### Session: 2025-12-08 (Stage 1 Complete)
 
 **Worktree:** `/Users/pbrown/Code/Printing/helixscreen-print-history`
 **Branch:** `feature/print-history`
+**Commit:** `62d6a22`
 
 **Completed:**
 - ✅ Created `include/print_history_data.h` with:
-  - `PrintHistoryJob` struct
-  - `PrintHistoryTotals` struct
-  - `HistoryTimeFilter` enum
-  - `PrintJobStatus` enum
-  - Helper functions: `parse_job_status()`, `status_to_icon()`, `status_to_variant()`
+  - `PrintHistoryJob` struct with all job metadata
+  - `PrintHistoryTotals` struct for aggregate statistics
+  - `HistoryTimeFilter` enum (DAY, WEEK, MONTH, YEAR, ALL_TIME)
+  - `PrintJobStatus` enum with helper functions
 
 - ✅ Modified `include/moonraker_api.h`:
   - Added `#include "print_history_data.h"`
   - Added `HistoryListCallback` and `HistoryTotalsCallback` types
-  - Added `get_history_list()`, `get_history_totals()`, `delete_history_job()` method signatures
+  - Added `get_history_list()`, `get_history_totals()`, `delete_history_job()`
 
 - ✅ Modified `src/moonraker_api.cpp`:
-  - Added helper functions: `format_history_duration()`, `format_history_date()`, `format_history_filament()`
-  - Added `parse_history_job()` for JSON parsing
+  - Helper functions: `format_history_duration()`, `format_history_date()`, `format_history_filament()`
+  - `parse_history_job()` for JSON parsing
   - Implemented all 3 history API methods
 
 - ✅ Modified `src/moonraker_client_mock.cpp`:
-  - Added 20 mock jobs with realistic data
-  - Added `server.history.list` handler with pagination and time filtering
-  - Added `server.history.totals` handler
-  - Added `server.history.delete_job` handler
+  - 20 mock jobs with realistic data (3DBenchy, calibration_cube, phone_stand, etc.)
+  - `server.history.list` handler with pagination and time filtering
+  - `server.history.totals` handler
+  - `server.history.delete_job` handler
 
-**Next Steps:**
-1. ~~Initialize submodules in worktree~~ ✅
-2. ~~Build and test~~ ✅
-3. ~~Verify history API calls appear in logs~~ ✅
-4. Proceed to Stage 2 (Dashboard Panel)
+- ✅ Added `--test-history` CLI flag for quick API validation
+- ✅ Fixed ccache compiler detection in `scripts/check-deps.sh`
+- ✅ Created `tests/unit/test_print_history_api.cpp` (pending test harness fix)
 
-### Session: 2025-12-08 (Stage 1 Completion)
+**Validation:**
+```bash
+./build/bin/helix-screen --test --test-history -v
+# Output:
+# [History Test] get_history_list SUCCESS: 10 jobs (total: 20)
+# [History Test]   Job 1: 3DBenchy.gcode - 1h 35m (Dec 07, 12:30)
+# [History Test] get_history_totals SUCCESS:
+# [History Test]   Total jobs: 47, Total time: 513000s
+```
 
-**Changes:**
-- Fixed test linker errors (tests.mk was missing several object files)
-- Fixed mock to faithfully reproduce real Moonraker API (no fake breakdown counts)
-- Fixed test expectations to match real API behavior
-- All 4 print history tests pass (59 assertions)
+**Known Issues:**
+- Unit test harness has pre-existing linker errors (unrelated to history feature)
+- `total_completed/cancelled/failed` fields not populated (by design - Moonraker doesn't provide these in totals endpoint)
 
-**Important Design Decision:**
-Real Moonraker's `server.history.totals` doesn't provide `total_completed`, `total_cancelled`, `total_failed` breakdown counts. The mock now correctly returns only what real Moonraker returns. If we need breakdown counts in the UI, we must calculate them client-side from the job list.
+---
 
-**Commits:**
-- `5e5c7b1` fix(history): align mock and tests with real Moonraker API behavior
+### Next Session: Stage 2 - Dashboard Panel
 
-**Ready for Stage 2:**
-Stage 1 (Data Layer) is complete. The API methods work:
-- `get_history_list()` - Returns paginated jobs with metadata
-- `get_history_totals()` - Returns aggregate statistics
-- `delete_history_job()` - Removes job from history
+**Goal:** Create dashboard panel showing stats, accessible from Advanced panel
+
+**Quick Start:**
+```bash
+cd /Users/pbrown/Code/Printing/helixscreen-print-history
+git log --oneline -3  # Verify on feature/print-history branch
+make -j && ./build/bin/helix-screen --test -p advanced -vv
+```
+
+**Files to Create:**
+- `ui_xml/history_dashboard_panel.xml` - Stats layout with time filters
+- `include/ui_panel_history_dashboard.h` - Panel class header
+- `src/ui_panel_history_dashboard.cpp` - Panel implementation
+
+**Files to Modify:**
+- `ui_xml/advanced_panel.xml` - Add "Print History" action row
+- `src/ui_panel_advanced.cpp` - Wire click handler
+- `src/main.cpp` - Register XML component
+
+**Reference Patterns:**
+- `ui_xml/overlay_panel.xml` - Overlay structure
+- `ui_xml/home_panel.xml` - Card layout patterns
+- `src/ui_panel_settings.cpp` - Action row click handling
