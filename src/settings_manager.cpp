@@ -25,6 +25,9 @@ static const int SLEEP_OPTIONS[] = {0, 60, 300, 600, 1800};
 static const int SLEEP_OPTIONS_COUNT = sizeof(SLEEP_OPTIONS) / sizeof(SLEEP_OPTIONS[0]);
 static const char* SLEEP_OPTIONS_TEXT = "Never\n1 minute\n5 minutes\n10 minutes\n30 minutes";
 
+// Completion alert options (Off=0, Notification=1, Alert=2)
+static const char* COMPLETION_ALERT_OPTIONS_TEXT = "Off\nNotification\nAlert";
+
 // ============================================================================
 // BACKLIGHT HARDWARE CONTROL (Linux sysfs)
 // ============================================================================
@@ -288,9 +291,10 @@ void SettingsManager::init_subjects() {
     bool sounds = config->get<bool>("/sounds_enabled", true);
     lv_subject_init_int(&sounds_enabled_subject_, sounds ? 1 : 0);
 
-    // Completion alert (default: true)
-    bool completion = config->get<bool>("/completion_alert", true);
-    lv_subject_init_int(&completion_alert_subject_, completion ? 1 : 0);
+    // Completion alert mode (default: NOTIFICATION=1, handles old bool migration)
+    int completion_mode = config->get<int>("/completion_alert", 1);
+    completion_mode = std::max(0, std::min(2, completion_mode));
+    lv_subject_init_int(&completion_alert_subject_, completion_mode);
 
     // E-Stop confirmation (default: false = immediate action)
     bool estop_confirm = config->get<bool>("/safety/estop_require_confirmation", false);
@@ -320,8 +324,8 @@ void SettingsManager::init_subjects() {
 
     subjects_initialized_ = true;
     spdlog::info("[SettingsManager] Subjects initialized: dark_mode={}, sleep={}s, sounds={}, "
-                 "completion_alert={}, scroll_throw={}, scroll_limit={}",
-                 dark_mode, sleep_sec, sounds, completion, scroll_throw, scroll_limit);
+                 "completion_alert_mode={}, scroll_throw={}, scroll_limit={}",
+                 dark_mode, sleep_sec, sounds, completion_mode, scroll_throw, scroll_limit);
 }
 
 void SettingsManager::set_moonraker_client(MoonrakerClient* client) {
@@ -454,18 +458,22 @@ void SettingsManager::set_sounds_enabled(bool enabled) {
     // Note: Actual sound playback is a placeholder - hardware TBD
 }
 
-bool SettingsManager::get_completion_alert() const {
-    return lv_subject_get_int(const_cast<lv_subject_t*>(&completion_alert_subject_)) != 0;
+CompletionAlertMode SettingsManager::get_completion_alert_mode() const {
+    int val = lv_subject_get_int(const_cast<lv_subject_t*>(&completion_alert_subject_));
+    return static_cast<CompletionAlertMode>(std::max(0, std::min(2, val)));
 }
 
-void SettingsManager::set_completion_alert(bool enabled) {
-    spdlog::info("[SettingsManager] set_completion_alert({})", enabled);
-
-    lv_subject_set_int(&completion_alert_subject_, enabled ? 1 : 0);
-
+void SettingsManager::set_completion_alert_mode(CompletionAlertMode mode) {
+    int val = static_cast<int>(mode);
+    spdlog::info("[SettingsManager] set_completion_alert_mode({})", val);
+    lv_subject_set_int(&completion_alert_subject_, val);
     Config* config = Config::get_instance();
-    config->set<bool>("/completion_alert", enabled);
+    config->set<int>("/completion_alert", val);
     config->save();
+}
+
+const char* SettingsManager::get_completion_alert_options() {
+    return COMPLETION_ALERT_OPTIONS_TEXT;
 }
 
 // =============================================================================

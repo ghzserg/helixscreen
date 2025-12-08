@@ -11,6 +11,9 @@
 
 class MoonrakerClient;
 
+/** @brief Print completion notification mode (Off=0, Notification=1, Alert=2) */
+enum class CompletionAlertMode { OFF = 0, NOTIFICATION = 1, ALERT = 2 };
+
 /**
  * @brief Application settings manager with reactive UI binding
  *
@@ -232,17 +235,14 @@ class SettingsManager {
      */
     void set_sounds_enabled(bool enabled);
 
-    /**
-     * @brief Get completion alert enabled state
-     * @return true if print completion alerts enabled
-     */
-    bool get_completion_alert() const;
+    /** @brief Get completion alert mode (Off/Notification/Alert) */
+    CompletionAlertMode get_completion_alert_mode() const;
 
-    /**
-     * @brief Set completion alert enabled state
-     * @param enabled true to enable completion alerts
-     */
-    void set_completion_alert(bool enabled);
+    /** @brief Set completion alert mode */
+    void set_completion_alert_mode(CompletionAlertMode mode);
+
+    /** @brief Get dropdown options string "Off\nNotification\nAlert" */
+    static const char* get_completion_alert_options();
 
     // =========================================================================
     // SUBJECT ACCESSORS (for XML binding)

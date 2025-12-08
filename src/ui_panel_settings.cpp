@@ -48,6 +48,16 @@ SettingsPanel::SettingsPanel(PrinterState& printer_state, MoonrakerAPI* api)
 // PANELBASE IMPLEMENTATION
 // ============================================================================
 
+// Static callback for XML event_cb (registered with lv_xml_register_event_cb)
+static void on_completion_alert_dropdown_changed(lv_event_t* e) {
+    lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    int index = static_cast<int>(lv_dropdown_get_selected(dropdown));
+    auto mode = static_cast<CompletionAlertMode>(index);
+    spdlog::info("[SettingsPanel] Completion alert changed: {} ({})", index,
+                 index == 0 ? "Off" : (index == 1 ? "Notification" : "Alert"));
+    SettingsManager::instance().set_completion_alert_mode(mode);
+}
+
 void SettingsPanel::init_subjects() {
     if (subjects_initialized_) {
         spdlog::warn("[{}] init_subjects() called twice - ignoring", get_name());
@@ -56,6 +66,10 @@ void SettingsPanel::init_subjects() {
 
     // Initialize SettingsManager subjects (for reactive binding)
     SettingsManager::instance().init_subjects();
+
+    // Register XML event callbacks
+    lv_xml_register_event_cb(nullptr, "on_completion_alert_changed",
+                             on_completion_alert_dropdown_changed);
 
     // Note: BedMeshPanel subjects are initialized in main.cpp during startup
 
@@ -133,17 +147,17 @@ void SettingsPanel::setup_toggle_handlers() {
         }
     }
 
-    // === Completion Alert Toggle ===
+    // === Completion Alert Dropdown ===
+    // Event handler is wired via XML <event_cb>, just set initial value here
     lv_obj_t* completion_row = lv_obj_find_by_name(panel_, "row_completion_alert");
     if (completion_row) {
-        completion_alert_switch_ = lv_obj_find_by_name(completion_row, "toggle");
-        if (completion_alert_switch_) {
-            if (settings.get_completion_alert()) {
-                lv_obj_add_state(completion_alert_switch_, LV_STATE_CHECKED);
-            }
-            lv_obj_add_event_cb(completion_alert_switch_, on_completion_alert_changed,
-                                LV_EVENT_VALUE_CHANGED, this);
-            spdlog::debug("[{}]   ✓ Completion alert toggle", get_name());
+        completion_alert_dropdown_ =
+            lv_obj_find_by_name(completion_row, "completion_alert_dropdown");
+        if (completion_alert_dropdown_) {
+            auto mode = settings.get_completion_alert_mode();
+            lv_dropdown_set_selected(completion_alert_dropdown_, static_cast<uint32_t>(mode));
+            spdlog::debug("[{}]   ✓ Completion alert dropdown (mode={})", get_name(),
+                          static_cast<int>(mode));
         }
     }
 
@@ -445,11 +459,6 @@ void SettingsPanel::handle_sounds_changed(bool enabled) {
     if (enabled) {
         SoundManager::instance().play_test_beep();
     }
-}
-
-void SettingsPanel::handle_completion_alert_changed(bool enabled) {
-    spdlog::info("[{}] Completion alert toggled: {}", get_name(), enabled ? "ON" : "OFF");
-    SettingsManager::instance().set_completion_alert(enabled);
 }
 
 void SettingsPanel::handle_estop_confirm_changed(bool enabled) {
@@ -846,16 +855,6 @@ void SettingsPanel::on_sounds_changed(lv_event_t* e) {
     if (self && self->sounds_switch_) {
         bool enabled = lv_obj_has_state(self->sounds_switch_, LV_STATE_CHECKED);
         self->handle_sounds_changed(enabled);
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void SettingsPanel::on_completion_alert_changed(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_completion_alert_changed");
-    auto* self = static_cast<SettingsPanel*>(lv_event_get_user_data(e));
-    if (self && self->completion_alert_switch_) {
-        bool enabled = lv_obj_has_state(self->completion_alert_switch_, LV_STATE_CHECKED);
-        self->handle_completion_alert_changed(enabled);
     }
     LVGL_SAFE_EVENT_CB_END();
 }
