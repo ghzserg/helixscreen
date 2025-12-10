@@ -65,7 +65,7 @@
 | # | Rule | ❌ Wrong | ✅ Correct |
 |---|------|----------|-----------|
 | 1 | **Use design tokens** | Hardcoded values | Responsive tokens from `globals.xml` |
-| 2 | Reference existing patterns | Inventing new approach | Study `motion_panel.xml` / `ui_panel_motion.cpp` first |
+| 2 | **Search SAME FILE first** | Inventing new approach | Grep the file you're editing for similar patterns before implementing |
 | 3 | spdlog only | `printf()`, `cout`, `LV_LOG_*` | `spdlog::info("temp: {}", t)` |
 | 4 | No auto-mock fallbacks | `if(!start()) return Mock()` | Check `RuntimeConfig::should_mock_*()` |
 | 5 | Read docs BEFORE coding | Start coding immediately | Read relevant guide for the area first |

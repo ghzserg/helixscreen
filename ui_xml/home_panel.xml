@@ -18,6 +18,10 @@
   <styles>
     <!-- Dimmed image when printer is not connected (state 0 or 1) -->
     <style name="image_dimmed" image_opa="128"/>
+    <!-- Notification badge severity colors -->
+    <style name="badge_info" bg_color="#info_color"/>
+    <style name="badge_warning" bg_color="#warning_color"/>
+    <style name="badge_error" bg_color="#error_color"/>
   </styles>
   <!-- Now references global constants from globals.xml -->
   <view extends="lv_obj" width="100%" height="100%" style_pad_all="0" style_border_width="0" flex_flow="column" style_bg_color="#app_bg_color" scrollable="false">
@@ -107,24 +111,14 @@
               <icon name="status_notification_icon" src="notifications" size="#icon_size_card" variant="secondary" align="center" clickable="true">
                 <event_cb trigger="clicked" callback="status_notification_history_clicked"/>
               </icon>
-              <!-- Notification Count Badge -->
-              <lv_obj name="notification_badge" width="18" height="18" align="top_right" x="4" y="-4" style_radius="9" style_border_width="0" style_pad_all="0" hidden="true" scrollable="false" clickable="true">
-                <lv_obj-bind_flag_if_eq subject="notification_count" flag="hidden" ref_value="0"/>
+              <!-- Notification Count Badge - label with circular background, color bound to severity -->
+              <lv_label name="notification_badge" text="" bind_text="notification_count_text" width="18" height="18" align="top_right" x="-2" y="2" style_radius="50%" style_border_width="0" style_shadow_width="0" style_shadow_opa="0" style_outline_width="0" style_bg_opa="255" style_text_align="center" style_text_color="#keyboard_key_light" style_text_font="noto_sans_12" style_pad_top="2" hidden="true" clickable="true">
+                <lv_label-bind_flag_if_eq subject="notification_count" flag="hidden" ref_value="0"/>
+                <bind_style name="badge_info" subject="notification_severity" ref_value="0"/>
+                <bind_style name="badge_warning" subject="notification_severity" ref_value="1"/>
+                <bind_style name="badge_error" subject="notification_severity" ref_value="2"/>
                 <event_cb trigger="clicked" callback="status_notification_history_clicked"/>
-                <!-- Info (blue) - severity 0 -->
-                <lv_obj name="badge_bg_info" width="100%" height="100%" style_radius="9" style_bg_color="#info_color" style_border_width="0">
-                  <lv_obj-bind_flag_if_not_eq subject="notification_severity" flag="hidden" ref_value="0"/>
-                </lv_obj>
-                <!-- Warning (orange) - severity 1 -->
-                <lv_obj name="badge_bg_warning" width="100%" height="100%" style_radius="9" style_bg_color="#warning_color" style_border_width="0" hidden="true">
-                  <lv_obj-bind_flag_if_not_eq subject="notification_severity" flag="hidden" ref_value="1"/>
-                </lv_obj>
-                <!-- Error (red) - severity 2 -->
-                <lv_obj name="badge_bg_error" width="100%" height="100%" style_radius="9" style_bg_color="#error_color" style_border_width="0" hidden="true">
-                  <lv_obj-bind_flag_if_not_eq subject="notification_severity" flag="hidden" ref_value="2"/>
-                </lv_obj>
-                <text_small name="notification_badge_count" bind_text="notification_count_text" style_pad_top="0" align="center" style_text_color="#keyboard_key_light"/>
-              </lv_obj>
+              </lv_label>
             </lv_obj>
           </lv_obj>
         </lv_obj>
