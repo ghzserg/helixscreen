@@ -13,6 +13,7 @@
 
 // Forward declarations
 class WiFiManager;
+class EthernetManager;
 class TempControlPanel;
 
 /**
@@ -102,13 +103,15 @@ class HomePanel : public PanelBase {
     PrintingTip current_tip_;
     std::string configured_led_;
     lv_timer_t* tip_rotation_timer_ = nullptr;
-    lv_timer_t* signal_poll_timer_ = nullptr;   // Polls WiFi signal strength every 5s
-    std::shared_ptr<WiFiManager> wifi_manager_; // For signal strength queries
+    lv_timer_t* signal_poll_timer_ = nullptr;           // Polls WiFi signal strength every 5s
+    std::shared_ptr<WiFiManager> wifi_manager_;         // For signal strength queries
+    std::unique_ptr<EthernetManager> ethernet_manager_; // For Ethernet status queries
 
     // Lazily-created overlay panels (owned by LVGL parent, not us)
     lv_obj_t* nozzle_temp_panel_ = nullptr;
 
     void update_tip_of_day();
+    void detect_network_type();       // Detects WiFi vs Ethernet vs disconnected
     int compute_network_icon_state(); // Maps network type + signal → 0-5
     void update_network_icon_state(); // Updates the subject
     static void signal_poll_timer_cb(lv_timer_t* timer);

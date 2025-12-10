@@ -12,6 +12,7 @@
 
 #include "app_globals.h"
 #include "config.h"
+#include "ethernet_manager.h"
 #include "moonraker_api.h"
 #include "printer_detector.h"
 #include "printer_state.h"
@@ -158,9 +159,15 @@ void HomePanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         spdlog::debug("[{}] WiFiManager initialized for signal strength queries", get_name());
     }
 
-    // Set initial network icon state and start polling
-    // Note: on_activate() would normally do this, but nav system doesn't call lifecycle hooks yet
-    update_network_icon_state();
+    // Initialize EthernetManager for Ethernet status detection
+    if (!ethernet_manager_) {
+        ethernet_manager_ = std::make_unique<EthernetManager>();
+        spdlog::debug("[{}] EthernetManager initialized for connection detection", get_name());
+    }
+
+    // Detect actual network type (Ethernet vs WiFi vs disconnected)
+    // This sets current_network_ and updates the icon state accordingly
+    detect_network_type();
 
     // Start signal polling timer if on WiFi
     if (!signal_poll_timer_ && current_network_ == NETWORK_WIFI) {
@@ -176,15 +183,15 @@ void HomePanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
 }
 
 void HomePanel::on_activate() {
-    // Start signal polling timer when panel becomes visible
+    // Re-detect network type in case it changed while on another panel
+    detect_network_type();
+
+    // Start signal polling timer when panel becomes visible (only for WiFi)
     if (!signal_poll_timer_ && current_network_ == NETWORK_WIFI) {
         signal_poll_timer_ = lv_timer_create(signal_poll_timer_cb, SIGNAL_POLL_INTERVAL_MS, this);
         spdlog::debug("[{}] Started signal polling timer ({}ms interval)", get_name(),
                       SIGNAL_POLL_INTERVAL_MS);
     }
-
-    // Immediately update network icon state
-    update_network_icon_state();
 }
 
 void HomePanel::on_deactivate() {
@@ -209,6 +216,34 @@ void HomePanel::update_tip_of_day() {
     } else {
         spdlog::warn("[{}] Failed to get tip, keeping current", get_name());
     }
+}
+
+void HomePanel::detect_network_type() {
+    // Priority: Ethernet > WiFi > Disconnected
+    // This ensures users on wired connections see the Ethernet icon even if WiFi is also available
+
+    // Check Ethernet first (higher priority - more reliable connection)
+    if (ethernet_manager_) {
+        EthernetInfo eth_info = ethernet_manager_->get_info();
+        if (eth_info.connected) {
+            spdlog::info("[{}] Detected Ethernet connection on {} ({})", get_name(),
+                         eth_info.interface, eth_info.ip_address);
+            set_network(NETWORK_ETHERNET);
+            return;
+        }
+    }
+
+    // Check WiFi second
+    if (wifi_manager_ && wifi_manager_->is_connected()) {
+        spdlog::info("[{}] Detected WiFi connection ({})", get_name(),
+                     wifi_manager_->get_connected_ssid());
+        set_network(NETWORK_WIFI);
+        return;
+    }
+
+    // Neither connected
+    spdlog::info("[{}] No network connection detected", get_name());
+    set_network(NETWORK_DISCONNECTED);
 }
 
 void HomePanel::handle_light_toggle() {

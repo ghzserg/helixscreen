@@ -167,8 +167,8 @@
           <icon name="net_wifi_4" src="wifi_strength_4" size="#icon_size_card" variant="secondary">
             <lv_obj-bind_flag_if_not_eq subject="home_network_icon_state" flag="hidden" ref_value="4"/>
           </icon>
-          <!-- Ethernet (state 5) -->
-          <icon name="net_ethernet" src="ethernet" size="#icon_size_card" variant="secondary">
+          <!-- Ethernet (state 5) - success color indicates active wired connection -->
+          <icon name="net_ethernet" src="ethernet" size="#icon_size_card" variant="success">
             <lv_obj-bind_flag_if_not_eq subject="home_network_icon_state" flag="hidden" ref_value="5"/>
           </icon>
           <text_body name="network_label" bind_text="network_label" style_text_align="center" width="100%"/>
