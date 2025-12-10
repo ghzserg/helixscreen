@@ -80,37 +80,67 @@ WiFiError WifiBackendWpaSupplicant::start() {
         return preflight_result;
     }
 
-    if (isRunning()) {
-        // Event loop already running - schedule initialization in loop thread
-        spdlog::debug("[WifiBackend] Already running, scheduling init_wpa in loop");
+    if (event_loop_active()) {
+        // Thread already running
+        if (init_complete_.load()) {
+            spdlog::debug("[WifiBackend] Already running and initialized");
+            return WiFiErrorHelper::success();
+        }
+        // Thread running but WiFi disabled (after stop()) - re-initialize wpa connections
+        spdlog::info("[WifiBackend] Re-enabling WiFi on existing event loop");
+        init_complete_ = false;
         loop()->runInLoop(std::bind(&WifiBackendWpaSupplicant::init_wpa, this));
-        return WiFiErrorHelper::success();
     } else {
         // Start new event loop thread with initialization callback
         spdlog::info("[WifiBackend] Starting event loop thread");
+        init_complete_ = false;
         try {
             hv::EventLoopThread::start(true, [this]() -> int {
                 WifiBackendWpaSupplicant::init_wpa();
-                return 0; // Return int as expected by libhv (0 = success)
+                return 0;
             });
-            spdlog::info("[WifiBackend] Event loop started successfully");
-            return WiFiErrorHelper::success();
         } catch (const std::exception& e) {
             return WiFiErrorHelper::connection_failed("Failed to start event loop: " +
                                                       std::string(e.what()));
         }
     }
+
+    // Wait for init_wpa() to complete (with timeout)
+    {
+        std::unique_lock<std::mutex> lock(init_mutex_);
+        if (!init_cv_.wait_for(lock, std::chrono::seconds(5), [this] { return init_complete_.load(); })) {
+            spdlog::error("[WifiBackend] Initialization timed out after 5 seconds");
+            return WiFiError(WiFiResult::TIMEOUT, "Backend initialization timed out",
+                             "WiFi system took too long to start");
+        }
+    }
+
+    spdlog::info("[WifiBackend] Backend initialized successfully");
+    return WiFiErrorHelper::success();
 }
 
 void WifiBackendWpaSupplicant::stop() {
-    if (!isRunning()) {
-        spdlog::trace("[WifiBackend] Not running, nothing to stop");
+    // NOTE: We intentionally do NOT stop the EventLoopThread here.
+    // libhv's EventLoopThread doesn't support restart after stop(), so we keep
+    // the thread running and just cleanup wpa connections. This allows set_enabled()
+    // toggle to work reliably.
+
+    if (!init_complete_.load()) {
+        spdlog::trace("[WifiBackend] Already stopped (init not complete)");
         return;
     }
 
-    spdlog::info("[WifiBackend] Stopping event loop thread");
-    hv::EventLoopThread::stop(true); // Block until thread terminates
-    spdlog::trace("[WifiBackend] Event loop stopped");
+    spdlog::info("[WifiBackend] Disabling WiFi backend (keeping event loop alive)");
+
+    // Reset init state so is_running() returns false and start() can re-init
+    init_complete_ = false;
+
+    // Clean up wpa_supplicant connections (runs in current thread context)
+    // The event loop may still fire read callbacks, but handle_wpa_events checks
+    // for valid data before processing.
+    cleanup_wpa();
+
+    spdlog::debug("[WifiBackend] WiFi backend disabled");
 }
 
 void WifiBackendWpaSupplicant::register_event_callback(
@@ -341,10 +371,17 @@ void WifiBackendWpaSupplicant::init_wpa() {
         }
     }
 
+    // Helper to signal completion and notify waiters
+    auto signal_init_complete = [this]() {
+        init_complete_ = true;
+        init_cv_.notify_all();
+    };
+
     if (!socket_found) {
         LOG_ERROR_INTERNAL("Could not find wpa_supplicant socket in /run or /var/run");
         LOG_ERROR_INTERNAL("Is wpa_supplicant daemon running?");
         dispatch_event("INIT_FAILED", "wpa_supplicant socket not found");
+        signal_init_complete();
         return;
     }
 
@@ -354,6 +391,7 @@ void WifiBackendWpaSupplicant::init_wpa() {
         if (conn == NULL) {
             LOG_ERROR_INTERNAL("Failed to open control connection to {}", wpa_socket);
             dispatch_event("INIT_FAILED", "Failed to connect to wpa_supplicant");
+            signal_init_complete();
             return;
         }
         spdlog::debug("[WifiBackend] Opened control connection");
@@ -364,6 +402,7 @@ void WifiBackendWpaSupplicant::init_wpa() {
     if (mon_conn == NULL) {
         LOG_ERROR_INTERNAL("Failed to open monitor connection to {}", wpa_socket);
         dispatch_event("INIT_FAILED", "Failed to connect to wpa_supplicant monitor");
+        signal_init_complete();
         return;
     }
 
@@ -373,6 +412,7 @@ void WifiBackendWpaSupplicant::init_wpa() {
         dispatch_event("INIT_FAILED", "Failed to attach to wpa_supplicant events");
         wpa_ctrl_close(mon_conn);
         mon_conn = NULL; // Clear member to avoid double-close
+        signal_init_complete();
         return;
     }
     spdlog::debug("[WifiBackend] Attached to wpa_supplicant event stream");
@@ -384,31 +424,44 @@ void WifiBackendWpaSupplicant::init_wpa() {
         dispatch_event("INIT_FAILED", "Failed to initialize wpa_supplicant communication");
         wpa_ctrl_close(mon_conn);
         mon_conn = NULL; // Clear member to avoid double-close
+        signal_init_complete();
         return;
     }
     spdlog::trace("[WifiBackend] Monitor socket fd: {}", monfd);
 
     // Register with libhv event loop for async I/O
-    hio_t* io = hio_get(loop()->loop(), monfd);
-    if (io == NULL) {
+    mon_io_ = hio_get(loop()->loop(), monfd);
+    if (mon_io_ == NULL) {
         LOG_ERROR_INTERNAL("Failed to register monitor socket with libhv");
         dispatch_event("INIT_FAILED", "Failed to initialize WiFi event handling");
         wpa_ctrl_close(mon_conn);
+        mon_conn = NULL;
+        signal_init_complete();
         return;
     }
 
     // Set up I/O callbacks
-    hio_set_context(io, this); // Store 'this' pointer for static callback
-    hio_setcb_read(io, WifiBackendWpaSupplicant::_handle_wpa_events); // Static trampoline
-    hio_read_start(io); // Start monitoring socket for events
+    hio_set_context(mon_io_, this); // Store 'this' pointer for static callback
+    hio_setcb_read(mon_io_, WifiBackendWpaSupplicant::_handle_wpa_events); // Static trampoline
+    hio_read_start(mon_io_); // Start monitoring socket for events
 
     spdlog::debug("[WifiBackend] wpa_supplicant backend initialized successfully");
+    signal_init_complete();
 }
 
 void WifiBackendWpaSupplicant::cleanup_wpa() {
     spdlog::trace("[WifiBackend] Cleaning up wpa_supplicant connections");
 
-    // Close monitor connection first (detach from events)
+    // Stop libhv I/O monitoring BEFORE closing the socket
+    // This prevents callbacks on a closed fd and allows re-registration
+    if (mon_io_) {
+        spdlog::trace("[WifiBackend] Stopping libhv I/O monitoring");
+        hio_read_stop(mon_io_);
+        hio_close(mon_io_);
+        mon_io_ = nullptr;
+    }
+
+    // Close monitor connection (detach from events)
     if (mon_conn) {
         spdlog::trace("[WifiBackend] Detaching from wpa_supplicant events");
         wpa_ctrl_detach(mon_conn); // Detach from event stream
@@ -570,11 +623,13 @@ std::string WifiBackendWpaSupplicant::send_command(const std::string& cmd) {
 // ============================================================================
 
 bool WifiBackendWpaSupplicant::is_running() const {
-    return const_cast<WifiBackendWpaSupplicant*>(this)->isRunning();
+    // Use init_complete_ instead of thread state - this tracks "logically enabled"
+    // The thread may still be running after stop() but WiFi is disabled
+    return init_complete_.load();
 }
 
 WiFiError WifiBackendWpaSupplicant::trigger_scan() {
-    if (!isRunning()) {
+    if (!is_running()) {
         return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started",
                          "WiFi system not ready");
     }
@@ -625,7 +680,7 @@ static std::vector<WiFiNetwork> deduplicate_by_ssid(std::vector<WiFiNetwork>& ne
 }
 
 WiFiError WifiBackendWpaSupplicant::get_scan_results(std::vector<WiFiNetwork>& networks) {
-    if (!isRunning()) {
+    if (!is_running()) {
         return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started",
                          "WiFi system not ready");
     }
@@ -674,7 +729,7 @@ static std::string validate_wpa_string(const std::string& input, const std::stri
 
 WiFiError WifiBackendWpaSupplicant::connect_network(const std::string& ssid,
                                                     const std::string& password) {
-    if (!isRunning()) {
+    if (!is_running()) {
         return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started",
                          "WiFi system not ready");
     }
@@ -783,7 +838,7 @@ WiFiError WifiBackendWpaSupplicant::connect_network(const std::string& ssid,
 }
 
 WiFiError WifiBackendWpaSupplicant::disconnect_network() {
-    if (!isRunning()) {
+    if (!is_running()) {
         return WiFiError(WiFiResult::NOT_INITIALIZED, "Backend not started",
                          "WiFi system not ready");
     }

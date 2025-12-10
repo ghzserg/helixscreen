@@ -178,12 +178,20 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Backend initialization state", "[wifi]
     }
 
     SECTION("Explicit enable starts backend") {
+        // Skip if no WiFi hardware available (e.g., Mac Mini without WiFi)
+        if (!wifi_manager->has_hardware()) {
+            SKIP("No WiFi hardware available on this machine");
+        }
         bool success = wifi_manager->set_enabled(true);
         REQUIRE(success);
         REQUIRE(wifi_manager->is_enabled());
     }
 
     SECTION("Explicit disable stops backend") {
+        // Skip if no WiFi hardware available (e.g., Mac Mini without WiFi)
+        if (!wifi_manager->has_hardware()) {
+            SKIP("No WiFi hardware available on this machine");
+        }
         // Enable first
         wifi_manager->set_enabled(true);
         REQUIRE(wifi_manager->is_enabled());
@@ -195,6 +203,10 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Backend initialization state", "[wifi]
     }
 
     SECTION("Backend lifecycle: start → stop → start") {
+        // Skip if no WiFi hardware available (e.g., Mac Mini without WiFi)
+        if (!wifi_manager->has_hardware()) {
+            SKIP("No WiFi hardware available on this machine");
+        }
         // Initial: disabled
         REQUIRE_FALSE(wifi_manager->is_enabled());
 
@@ -487,6 +499,9 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases", "[wifi][edge-cases]"
     }
 
     SECTION("Idempotent enable") {
+        if (!wifi_manager->has_hardware()) {
+            SKIP("No WiFi hardware available on this machine");
+        }
         wifi_manager->set_enabled(true);
         wifi_manager->set_enabled(true); // Second call is no-op
         REQUIRE(wifi_manager->is_enabled());
@@ -503,6 +518,9 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases", "[wifi][edge-cases]"
     }
 
     SECTION("Destructor cleanup during active scan") {
+        if (!wifi_manager->has_hardware()) {
+            SKIP("No WiFi hardware available on this machine");
+        }
         wifi_manager->set_enabled(true);
         wifi_manager->start_scan([](const std::vector<WiFiNetwork>&) {});
 
@@ -512,6 +530,9 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases", "[wifi][edge-cases]"
 
     SECTION("Destructor cleanup during active connection") {
 #ifdef __APPLE__
+        if (!wifi_manager->has_hardware()) {
+            SKIP("No WiFi hardware available on this machine");
+        }
         wifi_manager->set_enabled(true);
 
         auto networks = wifi_manager->scan_once();

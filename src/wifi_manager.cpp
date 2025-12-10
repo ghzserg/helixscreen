@@ -495,3 +495,24 @@ void WiFiManager::handle_auth_failed(const std::string& event_data) {
             }
         });
 }
+
+// ============================================================================
+// Shared Singleton Instance
+// ============================================================================
+
+// Global shared WiFiManager instance
+// Using static local ensures thread-safe lazy initialization (C++11 guarantee)
+static std::shared_ptr<WiFiManager> g_shared_wifi_manager;
+static std::mutex g_wifi_manager_mutex;
+
+std::shared_ptr<WiFiManager> get_wifi_manager() {
+    std::lock_guard<std::mutex> lock(g_wifi_manager_mutex);
+
+    if (!g_shared_wifi_manager) {
+        spdlog::info("[WiFiManager] Creating global instance");
+        g_shared_wifi_manager = std::make_shared<WiFiManager>(/*silent=*/false);
+        g_shared_wifi_manager->init_self_reference(g_shared_wifi_manager);
+    }
+
+    return g_shared_wifi_manager;
+}

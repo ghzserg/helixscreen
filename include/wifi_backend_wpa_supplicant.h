@@ -39,6 +39,8 @@
 #include "hv/EventLoopThread.h"
 #include "hv/hloop.h"
 
+#include <atomic>
+#include <condition_variable>
 #include <mutex>
 
 // Forward declaration - avoid including wpa_ctrl.h in header
@@ -248,6 +250,16 @@ class WifiBackendWpaSupplicant : public WifiBackend, private hv::EventLoopThread
     std::string detect_security_type(const std::string& flags, bool& is_secured);
 
     /**
+     * @brief Check if the libhv event loop thread is active
+     *
+     * Distinct from is_running() which checks if WiFi is logically enabled.
+     * The thread may be active but WiFi disabled (after stop()).
+     */
+    bool event_loop_active() const {
+        return const_cast<WifiBackendWpaSupplicant*>(this)->hv::EventLoopThread::isRunning();
+    }
+
+    /**
      * @brief Map raw wpa_supplicant event to callback name
      *
      * Parses the event string to determine which callback should handle it.
@@ -260,6 +272,7 @@ class WifiBackendWpaSupplicant : public WifiBackend, private hv::EventLoopThread
 
     struct wpa_ctrl* conn;     ///< Control connection for sending commands
     struct wpa_ctrl* mon_conn; ///< Monitor connection for receiving events (FIXED LEAK)
+    hio_t* mon_io_{nullptr};   ///< libhv I/O handle for monitor socket (must cleanup on re-init)
 
     // Thread safety for callbacks (accessed from multiple threads)
     std::mutex callbacks_mutex_; ///< Protects callbacks map from race conditions
@@ -268,6 +281,11 @@ class WifiBackendWpaSupplicant : public WifiBackend, private hv::EventLoopThread
 
     // Change detection for status logging (reduces log noise)
     ConnectionStatus last_logged_status_; ///< Previous status for change detection
+
+    // Init synchronization - ensures init_wpa() completes before start() returns
+    std::mutex init_mutex_;
+    std::condition_variable init_cv_;
+    std::atomic<bool> init_complete_{false};
 };
 
 #endif // __APPLE__

@@ -65,6 +65,7 @@ TEST_UI_DEPS := \
     $(OBJ_DIR)/ui_bed_mesh.o \
     $(OBJ_DIR)/ui_notification_history.o \
     $(OBJ_DIR)/ui_heating_animator.o \
+    $(OBJ_DIR)/ui_ams_mini_status.o \
     $(FONT_OBJS)
 
 # UI panel components (all panels for smoke tests)
@@ -134,6 +135,7 @@ TEST_CONFIG_DEPS := \
 # GCode parsing, geometry, rendering, and file modification (for gcode tests and bed mesh)
 # ui_gcode_viewer.o is required by ui_panel_print_status.o for integrated layer tracking
 # gcode_renderer.o + gcode_tinygl_renderer.o are required by ui_gcode_viewer.o
+# bed_mesh_*.o files provide rendering primitives for the 3D bed mesh visualization
 TEST_GCODE_DEPS := \
     $(OBJ_DIR)/gcode_parser.o \
     $(OBJ_DIR)/gcode_ops_detector.o \
@@ -146,7 +148,10 @@ TEST_GCODE_DEPS := \
     $(OBJ_DIR)/bed_mesh_coordinate_transform.o \
     $(OBJ_DIR)/bed_mesh_renderer.o \
     $(OBJ_DIR)/bed_mesh_gradient.o \
-    $(OBJ_DIR)/bed_mesh_projection.o
+    $(OBJ_DIR)/bed_mesh_projection.o \
+    $(OBJ_DIR)/bed_mesh_geometry.o \
+    $(OBJ_DIR)/bed_mesh_overlays.o \
+    $(OBJ_DIR)/bed_mesh_rasterizer.o
 
 # Platform-specific dependencies (Linux wpa_supplicant, macOS frameworks via LDFLAGS)
 TEST_PLATFORM_DEPS := $(WPA_DEPS)

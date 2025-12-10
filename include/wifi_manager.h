@@ -222,3 +222,13 @@ class WiFiManager {
     // Timer callbacks (must be static for LVGL)
     static void scan_timer_callback(lv_timer_t* timer);
 };
+
+/**
+ * @brief Get the global WiFiManager instance
+ *
+ * Returns a lazily-created singleton WiFiManager. Use this from all
+ * components (wizard, home panel, etc.) rather than creating instances.
+ *
+ * @return Shared pointer to the global WiFiManager instance
+ */
+std::shared_ptr<WiFiManager> get_wifi_manager();
