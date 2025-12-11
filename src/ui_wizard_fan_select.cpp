@@ -25,6 +25,47 @@
 #include <vector>
 
 // ============================================================================
+// Smart Guessing Functions
+// ============================================================================
+
+/**
+ * Guess the best part cooling fan from the filtered list.
+ *
+ * Priority order:
+ * 1. "fan" - Klipper's canonical part cooling fan [fan] section
+ * 2. Any fan_generic containing "part" in the name
+ * 3. First item in list (fallback)
+ *
+ * @param items The filtered list of potential part cooling fans
+ * @return The best guess fan name, or empty string if list is empty
+ */
+static std::string guess_part_cooling_fan(const std::vector<std::string>& items) {
+    if (items.empty()) {
+        return "";
+    }
+
+    // First priority: exact match for "fan" (Klipper's standard part cooling fan)
+    for (const auto& item : items) {
+        if (item == "fan") {
+            spdlog::debug("[Wizard Fan] Guessed part cooling fan: 'fan' (canonical)");
+            return item;
+        }
+    }
+
+    // Second priority: fan_generic with "part" in the name
+    for (const auto& item : items) {
+        if (item.find("part") != std::string::npos) {
+            spdlog::debug("[Wizard Fan] Guessed part cooling fan: '{}' (contains 'part')", item);
+            return item;
+        }
+    }
+
+    // Fallback: first item
+    spdlog::debug("[Wizard Fan] Guessed part cooling fan: '{}' (first in list)", items[0]);
+    return items[0];
+}
+
+// ============================================================================
 // Global Instance
 // ============================================================================
 

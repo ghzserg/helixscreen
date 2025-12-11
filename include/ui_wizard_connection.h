@@ -5,7 +5,9 @@
 
 #include "lvgl/lvgl.h"
 
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 
 /**
@@ -131,6 +133,32 @@ class WizardConnectionStep {
         return "Wizard Connection";
     }
 
+    /**
+     * @brief Check if this step has been cleaned up
+     *
+     * Thread-safe check for use in async callbacks. Returns true if cleanup()
+     * has been called, meaning any pending async work should be abandoned.
+     *
+     * @return true if cleanup has been called
+     */
+    bool is_stale() const {
+        return cleanup_called_.load(std::memory_order_acquire);
+    }
+
+    /**
+     * @brief Check if a connection generation is still current
+     *
+     * Thread-safe check for use in async callbacks. Returns true if the
+     * given generation matches the current generation, meaning the callback
+     * is still relevant.
+     *
+     * @param generation The generation captured when the async operation started
+     * @return true if the generation is still current
+     */
+    bool is_current_generation(uint64_t generation) const {
+        return connection_generation_.load(std::memory_order_acquire) == generation;
+    }
+
   private:
     // Screen instance
     lv_obj_t* screen_root_ = nullptr;
@@ -148,18 +176,23 @@ class WizardConnectionStep {
     char connection_status_icon_buffer_[8];
     char connection_status_text_buffer_[256];
 
-    // State tracking
+    // State tracking (main thread only)
     bool connection_validated_ = false;
     bool subjects_initialized_ = false;
 
-    // Auto-probe state for localhost detection
-    AutoProbeState auto_probe_state_ = AutoProbeState::IDLE;
-    bool auto_probe_attempted_ = false;
+    // Thread-safe state for async callback guards
+    std::atomic<bool> cleanup_called_{false};          ///< Guards async callbacks after navigation
+    std::atomic<uint64_t> connection_generation_{0};   ///< Invalidates stale callbacks
+
+    // Auto-probe state for localhost detection (atomic for cross-thread access)
+    std::atomic<AutoProbeState> auto_probe_state_{AutoProbeState::IDLE};
+    bool auto_probe_attempted_ = false;  // Main thread only
     lv_timer_t* auto_probe_timer_ = nullptr;
 
-    // Saved values for async callback (connection test result)
-    std::string saved_ip_;
-    std::string saved_port_;
+    // Saved values for async callback - protected by mutex for thread-safe access
+    mutable std::mutex saved_values_mutex_;
+    std::string saved_ip_;    // Protected by saved_values_mutex_
+    std::string saved_port_;  // Protected by saved_values_mutex_
 
     // Event handler implementations
     void handle_test_connection_clicked();

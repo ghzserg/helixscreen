@@ -264,9 +264,15 @@ void WizardConnectionStep::handle_test_connection_clicked() {
     // Disconnect any previous connection attempt
     client->disconnect();
 
-    // Store IP/port for async callback
-    saved_ip_ = ip;
-    saved_port_ = port_str;
+    // Increment generation to invalidate any pending callbacks from previous attempts
+    uint64_t this_generation = ++connection_generation_;
+
+    // Store IP/port for async callback (thread-safe)
+    {
+        std::lock_guard<std::mutex> lock(saved_values_mutex_);
+        saved_ip_ = ip;
+        saved_port_ = port_str;
+    }
 
     // Set UI to testing state
     lv_subject_set_int(&connection_testing_, 1);
@@ -282,16 +288,28 @@ void WizardConnectionStep::handle_test_connection_clicked() {
     // Construct WebSocket URL
     std::string ws_url = "ws://" + std::string(ip) + ":" + std::string(port_str) + "/websocket";
 
-    // Capture 'this' for async callbacks
-    // NOTE: This is safe because the WizardConnectionStep instance outlives the connection test
+    // Capture generation counter to detect stale callbacks
+    // If cleanup_called_ or generation changes, callback will be ignored
     WizardConnectionStep* self = this;
 
     int result = client->connect(
         ws_url.c_str(),
-        // On connected callback
-        [self]() { self->on_connection_success(); },
-        // On disconnected callback
-        [self]() { self->on_connection_failure(); });
+        // On connected callback - check generation before proceeding
+        [self, this_generation]() {
+            if (self->is_stale() || !self->is_current_generation(this_generation)) {
+                spdlog::debug("[Wizard Connection] Ignoring stale success callback");
+                return;
+            }
+            self->on_connection_success();
+        },
+        // On disconnected callback - check generation before proceeding
+        [self, this_generation]() {
+            if (self->is_stale() || !self->is_current_generation(this_generation)) {
+                spdlog::debug("[Wizard Connection] Ignoring stale failure callback");
+                return;
+            }
+            self->on_connection_failure();
+        });
 
     // Disable automatic reconnection for wizard testing
     client->setReconnect(nullptr);
@@ -308,87 +326,149 @@ void WizardConnectionStep::handle_test_connection_clicked() {
 }
 
 void WizardConnectionStep::on_connection_success() {
-    spdlog::info("[{}] Connection successful!", get_name());
+    // NOTE: This is called from WebSocket thread - only do thread-safe operations here
+    spdlog::info("[Wizard Connection] Connection successful!");
 
-    // Show "discovering" status - don't enable Next yet until discovery completes
-    const char* spinner_icon = lv_xml_get_const(nullptr, "icon_loading");
-    lv_subject_copy_string(&connection_status_icon_, spinner_icon ? spinner_icon : "");
-    lv_subject_copy_string(&connection_status_text_, "Connected! Discovering printer...");
-    lv_subject_set_int(&connection_testing_, 0);
-    // NOTE: connection_validated_ and connection_test_passed stay false until discovery completes
+    // Defer ALL operations (including config) to main thread
+    lv_async_call(
+        [](void* ctx) {
+            auto* self = static_cast<WizardConnectionStep*>(ctx);
 
-    // Save configuration
-    Config* config = Config::get_instance();
-    try {
-        std::string default_printer =
-            config->get<std::string>("/default_printer", "default_printer");
-        std::string printer_path = "/printers/" + default_printer;
-
-        config->set(printer_path + "/moonraker_host", saved_ip_);
-        config->set(printer_path + "/moonraker_port", std::stoi(saved_port_));
-        if (config->save()) {
-            spdlog::debug("[{}] Saved configuration: {}:{}", get_name(), saved_ip_, saved_port_);
-        } else {
-            spdlog::error("[{}] Failed to save configuration!", get_name());
-            NOTIFY_ERROR("Failed to save printer configuration");
-        }
-    } catch (const std::exception& e) {
-        spdlog::error("[{}] Failed to save config: {}", get_name(), e.what());
-        NOTIFY_ERROR("Error saving configuration: {}", e.what());
-    }
-
-    // Trigger hardware discovery - only enable Next when this completes
-    MoonrakerClient* client = get_moonraker_client();
-    if (client) {
-        // Capture 'this' to update UI when discovery completes
-        WizardConnectionStep* self = this;
-        client->discover_printer([self]() {
-            spdlog::info("[Wizard Connection] Hardware discovery complete!");
-            MoonrakerClient* client = get_moonraker_client();
-            if (client) {
-                auto heaters = client->get_heaters();
-                auto sensors = client->get_sensors();
-                auto fans = client->get_fans();
-                spdlog::info("[Wizard Connection] Discovered {} heaters, {} sensors, {} fans",
-                             heaters.size(), sensors.size(), fans.size());
-                spdlog::info("[Wizard Connection] Hostname: '{}'", client->get_hostname());
+            if (self->is_stale()) {
+                spdlog::debug("[Wizard Connection] Cleanup called, skipping connection success UI");
+                return;
             }
 
-            // NOW enable Next button - discovery is complete
-            const char* check_icon = lv_xml_get_const(nullptr, "icon_check_circle");
-            lv_subject_copy_string(&self->connection_status_icon_, check_icon ? check_icon : "");
-            lv_subject_copy_string(&self->connection_status_text_, "Connection successful!");
-            self->connection_validated_ = true;
-            lv_subject_set_int(&connection_test_passed, 1);
-        });
-    } else {
-        // No client available - still show success but warn
-        const char* check_icon = lv_xml_get_const(nullptr, "icon_check_circle");
-        lv_subject_copy_string(&connection_status_icon_, check_icon ? check_icon : "");
-        lv_subject_copy_string(&connection_status_text_, "Connected (no discovery)");
-        connection_validated_ = true;
-        lv_subject_set_int(&connection_test_passed, 1);
-    }
+            // Get saved values under lock
+            std::string ip, port;
+            {
+                std::lock_guard<std::mutex> lock(self->saved_values_mutex_);
+                ip = self->saved_ip_;
+                port = self->saved_port_;
+            }
+
+            // NOW safe to access config (on main thread)
+            Config* config = Config::get_instance();
+            try {
+                std::string default_printer =
+                    config->get<std::string>("/default_printer", "default_printer");
+                std::string printer_path = "/printers/" + default_printer;
+
+                config->set(printer_path + "/moonraker_host", ip);
+                config->set(printer_path + "/moonraker_port", std::stoi(port));
+                if (config->save()) {
+                    spdlog::debug("[Wizard Connection] Saved configuration: {}:{}", ip, port);
+                } else {
+                    spdlog::error("[Wizard Connection] Failed to save configuration!");
+                }
+            } catch (const std::exception& e) {
+                spdlog::error("[Wizard Connection] Failed to save config: {}", e.what());
+            }
+
+            // Show "discovering" status - don't enable Next yet until discovery completes
+            const char* spinner_icon = lv_xml_get_const(nullptr, "icon_loading");
+            lv_subject_copy_string(&self->connection_status_icon_,
+                                   spinner_icon ? spinner_icon : "");
+            lv_subject_copy_string(&self->connection_status_text_,
+                                   "Connected! Discovering printer...");
+            lv_subject_set_int(&self->connection_testing_, 0);
+
+            // Trigger hardware discovery - only enable Next when this completes
+            MoonrakerClient* client = get_moonraker_client();
+            if (client) {
+                // Capture generation for discovery callback
+                uint64_t discover_gen = self->connection_generation_.load();
+
+                client->discover_printer([self, discover_gen]() {
+                    // Check if still valid before queueing UI update
+                    if (self->is_stale() || !self->is_current_generation(discover_gen)) {
+                        spdlog::debug("[Wizard Connection] Ignoring stale discovery callback");
+                        return;
+                    }
+
+                    spdlog::info("[Wizard Connection] Hardware discovery complete!");
+
+                    // Defer discovery UI update to main thread
+                    lv_async_call(
+                        [](void* ctx2) {
+                            auto* self2 = static_cast<WizardConnectionStep*>(ctx2);
+
+                            if (self2->is_stale()) {
+                                spdlog::debug("[Wizard Connection] Cleanup called, skipping "
+                                              "discovery UI update");
+                                return;
+                            }
+
+                            MoonrakerClient* client = get_moonraker_client();
+                            if (client) {
+                                auto heaters = client->get_heaters();
+                                auto sensors = client->get_sensors();
+                                auto fans = client->get_fans();
+                                spdlog::info(
+                                    "[Wizard Connection] Discovered {} heaters, {} sensors, {} fans",
+                                    heaters.size(), sensors.size(), fans.size());
+                                spdlog::info("[Wizard Connection] Hostname: '{}'",
+                                             client->get_hostname());
+                            }
+
+                            // NOW enable Next button - discovery is complete
+                            const char* check_icon = lv_xml_get_const(nullptr, "icon_check_circle");
+                            lv_subject_copy_string(&self2->connection_status_icon_,
+                                                   check_icon ? check_icon : "");
+                            lv_subject_copy_string(&self2->connection_status_text_,
+                                                   "Connection successful!");
+                            self2->connection_validated_ = true;
+                            lv_subject_set_int(&connection_test_passed, 1);
+                        },
+                        self);
+                });
+            } else {
+                // No client available - still show success but warn
+                const char* check_icon = lv_xml_get_const(nullptr, "icon_check_circle");
+                lv_subject_copy_string(&self->connection_status_icon_,
+                                       check_icon ? check_icon : "");
+                lv_subject_copy_string(&self->connection_status_text_, "Connected (no discovery)");
+                self->connection_validated_ = true;
+                lv_subject_set_int(&connection_test_passed, 1);
+            }
+        },
+        this);
 }
 
 void WizardConnectionStep::on_connection_failure() {
-    // Check if we're still in testing mode
-    int testing_state = lv_subject_get_int(&connection_testing_);
-    spdlog::debug("[{}] on_disconnected fired, connection_testing={}", get_name(), testing_state);
+    // NOTE: This is called from WebSocket thread - only do thread-safe operations here
+    spdlog::debug("[Wizard Connection] on_disconnected fired");
 
-    if (testing_state == 1) {
-        spdlog::error("[{}] Connection failed", get_name());
+    // Defer LVGL operations to main thread
+    lv_async_call(
+        [](void* ctx) {
+            auto* self = static_cast<WizardConnectionStep*>(ctx);
 
-        const char* error_icon = lv_xml_get_const(nullptr, "icon_xmark_circle");
-        lv_subject_copy_string(&connection_status_icon_, error_icon ? error_icon : "");
-        lv_subject_copy_string(&connection_status_text_,
-                               "Connection failed. Check IP/port and try again.");
-        lv_subject_set_int(&connection_testing_, 0);
-        connection_validated_ = false;
-        lv_subject_set_int(&connection_test_passed, 0);
-    } else {
-        spdlog::debug("[{}] Ignoring disconnect (not in testing mode)", get_name());
-    }
+            if (self->is_stale()) {
+                spdlog::debug("[Wizard Connection] Cleanup called, skipping connection failure UI");
+                return;
+            }
+
+            // Check if we're still in testing mode (must check on main thread)
+            int testing_state = lv_subject_get_int(&self->connection_testing_);
+            spdlog::debug("[Wizard Connection] Connection failure, testing_state={}", testing_state);
+
+            if (testing_state == 1) {
+                spdlog::error("[Wizard Connection] Connection failed");
+
+                const char* error_icon = lv_xml_get_const(nullptr, "icon_xmark_circle");
+                lv_subject_copy_string(&self->connection_status_icon_,
+                                       error_icon ? error_icon : "");
+                lv_subject_copy_string(&self->connection_status_text_,
+                                       "Connection failed. Check IP/port and try again.");
+                lv_subject_set_int(&self->connection_testing_, 0);
+                self->connection_validated_ = false;
+                lv_subject_set_int(&connection_test_passed, 0);
+            } else {
+                spdlog::debug("[Wizard Connection] Ignoring disconnect (not in testing mode)");
+            }
+        },
+        this);
 }
 
 // ============================================================================
@@ -437,7 +517,10 @@ void WizardConnectionStep::attempt_auto_probe() {
 
     // Mark as attempted (prevents re-probe on re-entry)
     auto_probe_attempted_ = true;
-    auto_probe_state_ = AutoProbeState::IN_PROGRESS;
+    auto_probe_state_.store(AutoProbeState::IN_PROGRESS);
+
+    // Increment generation to invalidate any stale callbacks
+    uint64_t this_generation = ++connection_generation_;
 
     // Clear timer reference (it's already fired)
     auto_probe_timer_ = nullptr;
@@ -446,16 +529,19 @@ void WizardConnectionStep::attempt_auto_probe() {
     MoonrakerClient* client = get_moonraker_client();
     if (!client) {
         spdlog::warn("[{}] Auto-probe: MoonrakerClient not available", get_name());
-        auto_probe_state_ = AutoProbeState::FAILED;
+        auto_probe_state_.store(AutoProbeState::FAILED);
         return;
     }
 
     // Disconnect any previous connection
     client->disconnect();
 
-    // Store probe target for callbacks
-    saved_ip_ = probe_ip;
-    saved_port_ = probe_port;
+    // Store probe target for callbacks (thread-safe)
+    {
+        std::lock_guard<std::mutex> lock(saved_values_mutex_);
+        saved_ip_ = probe_ip;
+        saved_port_ = probe_port;
+    }
 
     // Show subtle probing indicator
     const char* probe_icon = lv_xml_get_const(nullptr, "icon_question_circle");
@@ -473,15 +559,29 @@ void WizardConnectionStep::attempt_auto_probe() {
 
     WizardConnectionStep* self = this;
     int result = client->connect(
-        ws_url.c_str(), [self]() { self->on_auto_probe_success(); },
-        [self]() { self->on_auto_probe_failure(); });
+        ws_url.c_str(),
+        // Check generation before invoking callback
+        [self, this_generation]() {
+            if (self->is_stale() || !self->is_current_generation(this_generation)) {
+                spdlog::debug("[Wizard Connection] Ignoring stale auto-probe success");
+                return;
+            }
+            self->on_auto_probe_success();
+        },
+        [self, this_generation]() {
+            if (self->is_stale() || !self->is_current_generation(this_generation)) {
+                spdlog::debug("[Wizard Connection] Ignoring stale auto-probe failure");
+                return;
+            }
+            self->on_auto_probe_failure();
+        });
 
     // Disable auto-reconnect for probe
     client->setReconnect(nullptr);
 
     if (result != 0) {
         spdlog::debug("[{}] Auto-probe: Failed to initiate connection", get_name());
-        auto_probe_state_ = AutoProbeState::FAILED;
+        auto_probe_state_.store(AutoProbeState::FAILED);
         lv_subject_set_int(&connection_testing_, 0);
         // Silent failure - clear status
         lv_subject_copy_string(&connection_status_icon_, "");
@@ -490,101 +590,169 @@ void WizardConnectionStep::attempt_auto_probe() {
 }
 
 void WizardConnectionStep::on_auto_probe_success() {
-    // Verify we're still in auto-probe mode (not user-initiated test)
-    if (auto_probe_state_ != AutoProbeState::IN_PROGRESS) {
-        spdlog::debug("[{}] Ignoring auto-probe success (state changed)", get_name());
+    // NOTE: This is called from WebSocket thread - only do thread-safe operations here
+
+    // Verify we're still in auto-probe mode (atomic read)
+    if (auto_probe_state_.load() != AutoProbeState::IN_PROGRESS) {
+        spdlog::debug("[Wizard Connection] Ignoring auto-probe success (state changed)");
         return;
     }
 
-    spdlog::info("[{}] Auto-probe successful! Connected to {}:{}", get_name(), saved_ip_,
-                 saved_port_);
-
-    auto_probe_state_ = AutoProbeState::SUCCEEDED;
-
-    // Update subjects with the successful connection target
-    // (may already be set if loaded from config, but ensure consistency)
-    lv_subject_copy_string(&connection_ip_, saved_ip_.c_str());
-    lv_subject_copy_string(&connection_port_, saved_port_.c_str());
-
-    // Hide help text on successful auto-probe
-    if (screen_root_) {
-        lv_obj_t* help_text = lv_obj_find_by_name(screen_root_, "help_text");
-        if (help_text) {
-            lv_obj_add_flag(help_text, LV_OBJ_FLAG_HIDDEN);
-        }
+    // Get saved values under lock for logging
+    std::string ip_copy, port_copy;
+    {
+        std::lock_guard<std::mutex> lock(saved_values_mutex_);
+        ip_copy = saved_ip_;
+        port_copy = saved_port_;
     }
 
-    // Show "discovering" status - don't enable Next until discovery completes
-    const char* spinner_icon = lv_xml_get_const(nullptr, "icon_loading");
-    lv_subject_copy_string(&connection_status_icon_, spinner_icon ? spinner_icon : "");
-    lv_subject_copy_string(&connection_status_text_, "Connected, discovering...");
+    spdlog::info("[Wizard Connection] Auto-probe successful! Connected to {}:{}", ip_copy,
+                 port_copy);
 
-    // Clear testing state
-    lv_subject_set_int(&connection_testing_, 0);
-    // NOTE: connection_validated_ and connection_test_passed stay false until discovery completes
+    auto_probe_state_.store(AutoProbeState::SUCCEEDED);
 
-    // Save configuration (same as manual test success)
-    Config* config = Config::get_instance();
-    try {
-        std::string default_printer =
-            config->get<std::string>("/default_printer", "default_printer");
-        std::string printer_path = "/printers/" + default_printer;
+    // Defer ALL operations (including config) to main thread
+    lv_async_call(
+        [](void* ctx) {
+            auto* self = static_cast<WizardConnectionStep*>(ctx);
 
-        config->set(printer_path + "/moonraker_host", saved_ip_);
-        config->set(printer_path + "/moonraker_port", std::stoi(saved_port_));
-        if (config->save()) {
-            spdlog::debug("[{}] Auto-probe: Saved configuration", get_name());
-        }
-    } catch (const std::exception& e) {
-        spdlog::error("[{}] Auto-probe: Failed to save config: {}", get_name(), e.what());
-    }
-
-    // Trigger hardware discovery - only enable Next when this completes
-    MoonrakerClient* client = get_moonraker_client();
-    if (client) {
-        WizardConnectionStep* self = this;
-        client->discover_printer([self]() {
-            spdlog::info("[Wizard Connection] Auto-probe: Hardware discovery complete");
-            MoonrakerClient* client = get_moonraker_client();
-            if (client) {
-                spdlog::info("[Wizard Connection] Auto-probe: Hostname: '{}'",
-                             client->get_hostname());
+            if (self->is_stale()) {
+                spdlog::debug("[Wizard Connection] Cleanup called, skipping auto-probe UI update");
+                return;
             }
 
-            // NOW enable Next button - discovery is complete
-            const char* check_icon = lv_xml_get_const(nullptr, "icon_check_circle");
-            lv_subject_copy_string(&self->connection_status_icon_, check_icon ? check_icon : "");
-            lv_subject_copy_string(&self->connection_status_text_, "Connection successful!");
-            self->connection_validated_ = true;
-            lv_subject_set_int(&connection_test_passed, 1);
-        });
-    } else {
-        // No client - still show success
-        const char* check_icon = lv_xml_get_const(nullptr, "icon_check_circle");
-        lv_subject_copy_string(&connection_status_icon_, check_icon ? check_icon : "");
-        lv_subject_copy_string(&connection_status_text_, "Connection successful!");
-        connection_validated_ = true;
-        lv_subject_set_int(&connection_test_passed, 1);
-    }
+            // Get saved values under lock
+            std::string ip, port;
+            {
+                std::lock_guard<std::mutex> lock(self->saved_values_mutex_);
+                ip = self->saved_ip_;
+                port = self->saved_port_;
+            }
+
+            // NOW safe to access config (on main thread)
+            Config* config = Config::get_instance();
+            try {
+                std::string default_printer =
+                    config->get<std::string>("/default_printer", "default_printer");
+                std::string printer_path = "/printers/" + default_printer;
+
+                config->set(printer_path + "/moonraker_host", ip);
+                config->set(printer_path + "/moonraker_port", std::stoi(port));
+                if (config->save()) {
+                    spdlog::debug("[Wizard Connection] Auto-probe: Saved configuration");
+                }
+            } catch (const std::exception& e) {
+                spdlog::error("[Wizard Connection] Auto-probe: Failed to save config: {}", e.what());
+            }
+
+            // Update subjects with the successful connection target
+            lv_subject_copy_string(&self->connection_ip_, ip.c_str());
+            lv_subject_copy_string(&self->connection_port_, port.c_str());
+
+            // Hide help text on successful auto-probe
+            if (self->screen_root_) {
+                lv_obj_t* help_text = lv_obj_find_by_name(self->screen_root_, "help_text");
+                if (help_text) {
+                    lv_obj_add_flag(help_text, LV_OBJ_FLAG_HIDDEN);
+                }
+            }
+
+            // Show "discovering" status - don't enable Next until discovery completes
+            const char* spinner_icon = lv_xml_get_const(nullptr, "icon_loading");
+            lv_subject_copy_string(&self->connection_status_icon_,
+                                   spinner_icon ? spinner_icon : "");
+            lv_subject_copy_string(&self->connection_status_text_, "Connected, discovering...");
+
+            // Clear testing state
+            lv_subject_set_int(&self->connection_testing_, 0);
+
+            // Trigger hardware discovery - only enable Next when this completes
+            MoonrakerClient* client = get_moonraker_client();
+            if (client) {
+                // Capture generation for discovery callback
+                uint64_t discover_gen = self->connection_generation_.load();
+
+                client->discover_printer([self, discover_gen]() {
+                    // Check if still valid before queueing UI update
+                    if (self->is_stale() || !self->is_current_generation(discover_gen)) {
+                        spdlog::debug("[Wizard Connection] Ignoring stale discovery callback");
+                        return;
+                    }
+
+                    spdlog::info("[Wizard Connection] Auto-probe: Hardware discovery complete");
+
+                    // Defer discovery completion UI update to main thread
+                    lv_async_call(
+                        [](void* ctx2) {
+                            auto* self2 = static_cast<WizardConnectionStep*>(ctx2);
+
+                            if (self2->is_stale()) {
+                                spdlog::debug("[Wizard Connection] Cleanup called, skipping "
+                                              "discovery UI update");
+                                return;
+                            }
+
+                            MoonrakerClient* client = get_moonraker_client();
+                            if (client) {
+                                spdlog::info("[Wizard Connection] Hostname: '{}'",
+                                             client->get_hostname());
+                            }
+
+                            // NOW enable Next button - discovery is complete
+                            const char* check_icon = lv_xml_get_const(nullptr, "icon_check_circle");
+                            lv_subject_copy_string(&self2->connection_status_icon_,
+                                                   check_icon ? check_icon : "");
+                            lv_subject_copy_string(&self2->connection_status_text_,
+                                                   "Connection successful!");
+                            self2->connection_validated_ = true;
+                            lv_subject_set_int(&connection_test_passed, 1);
+                        },
+                        self);
+                });
+            } else {
+                // No client - still show success
+                const char* check_icon = lv_xml_get_const(nullptr, "icon_check_circle");
+                lv_subject_copy_string(&self->connection_status_icon_,
+                                       check_icon ? check_icon : "");
+                lv_subject_copy_string(&self->connection_status_text_, "Connection successful!");
+                self->connection_validated_ = true;
+                lv_subject_set_int(&connection_test_passed, 1);
+            }
+        },
+        this);
 }
 
 void WizardConnectionStep::on_auto_probe_failure() {
-    // Verify we're still in auto-probe mode
-    if (auto_probe_state_ != AutoProbeState::IN_PROGRESS) {
-        spdlog::debug("[{}] Ignoring auto-probe failure (state changed)", get_name());
+    // NOTE: This is called from WebSocket thread - only do thread-safe operations here
+
+    // Verify we're still in auto-probe mode (atomic read)
+    if (auto_probe_state_.load() != AutoProbeState::IN_PROGRESS) {
+        spdlog::debug("[Wizard Connection] Ignoring auto-probe failure (state changed)");
         return;
     }
 
-    spdlog::debug("[{}] Auto-probe: No printer at localhost (silent failure)", get_name());
+    spdlog::debug("[Wizard Connection] Auto-probe: No printer at localhost (silent failure)");
 
-    auto_probe_state_ = AutoProbeState::FAILED;
+    auto_probe_state_.store(AutoProbeState::FAILED);
 
-    // Silent failure - just clear status, don't show error
-    lv_subject_copy_string(&connection_status_icon_, "");
-    lv_subject_copy_string(&connection_status_text_, "");
-    lv_subject_set_int(&connection_testing_, 0);
+    // Defer LVGL operations to main thread
+    lv_async_call(
+        [](void* ctx) {
+            auto* self = static_cast<WizardConnectionStep*>(ctx);
 
-    // Leave fields empty - user will enter manually
+            if (self->is_stale()) {
+                spdlog::debug("[Wizard Connection] Cleanup called, skipping auto-probe failure UI");
+                return;
+            }
+
+            // Silent failure - just clear status, don't show error
+            lv_subject_copy_string(&self->connection_status_icon_, "");
+            lv_subject_copy_string(&self->connection_status_text_, "");
+            lv_subject_set_int(&self->connection_testing_, 0);
+
+            // Leave fields empty - user will enter manually
+        },
+        this);
 }
 
 // ============================================================================
@@ -595,9 +763,9 @@ void WizardConnectionStep::handle_ip_input_changed() {
     LVGL_SAFE_EVENT_CB_BEGIN("[Wizard Connection] handle_ip_input_changed");
 
     // If auto-probe is in progress, cancel it
-    if (auto_probe_state_ == AutoProbeState::IN_PROGRESS) {
+    if (auto_probe_state_.load() == AutoProbeState::IN_PROGRESS) {
         spdlog::debug("[{}] User input during auto-probe, cancelling", get_name());
-        auto_probe_state_ = AutoProbeState::FAILED; // Mark as failed to ignore callbacks
+        auto_probe_state_.store(AutoProbeState::FAILED); // Mark as failed to ignore callbacks
         MoonrakerClient* client = get_moonraker_client();
         if (client) {
             client->disconnect();
@@ -623,9 +791,9 @@ void WizardConnectionStep::handle_port_input_changed() {
     LVGL_SAFE_EVENT_CB_BEGIN("[Wizard Connection] handle_port_input_changed");
 
     // If auto-probe is in progress, cancel it
-    if (auto_probe_state_ == AutoProbeState::IN_PROGRESS) {
+    if (auto_probe_state_.load() == AutoProbeState::IN_PROGRESS) {
         spdlog::debug("[{}] User input during auto-probe, cancelling", get_name());
-        auto_probe_state_ = AutoProbeState::FAILED; // Mark as failed to ignore callbacks
+        auto_probe_state_.store(AutoProbeState::FAILED); // Mark as failed to ignore callbacks
         MoonrakerClient* client = get_moonraker_client();
         if (client) {
             client->disconnect();
@@ -670,6 +838,9 @@ void WizardConnectionStep::register_callbacks() {
 
 lv_obj_t* WizardConnectionStep::create(lv_obj_t* parent) {
     spdlog::debug("[{}] Creating connection screen", get_name());
+
+    // Reset cleanup guard for fresh screen (atomic store with release semantics)
+    cleanup_called_.store(false, std::memory_order_release);
 
     if (!parent) {
         LOG_ERROR_INTERNAL("[{}] Cannot create: null parent", get_name());
@@ -738,6 +909,9 @@ lv_obj_t* WizardConnectionStep::create(lv_obj_t* parent) {
 void WizardConnectionStep::cleanup() {
     spdlog::debug("[{}] Cleaning up connection screen", get_name());
 
+    // Mark cleanup as called to guard async callbacks (atomic store with release semantics)
+    cleanup_called_.store(true, std::memory_order_release);
+
     // Cancel any pending auto-probe timer
     if (auto_probe_timer_) {
         lv_timer_delete(auto_probe_timer_);
@@ -746,7 +920,7 @@ void WizardConnectionStep::cleanup() {
 
     // If a connection test or auto-probe is in progress, cancel it
     if (lv_subject_get_int(&connection_testing_) == 1 ||
-        auto_probe_state_ == AutoProbeState::IN_PROGRESS) {
+        auto_probe_state_.load() == AutoProbeState::IN_PROGRESS) {
         MoonrakerClient* client = get_moonraker_client();
         if (client) {
             client->disconnect();
@@ -755,7 +929,7 @@ void WizardConnectionStep::cleanup() {
     }
 
     // Reset auto-probe state (but NOT auto_probe_attempted_ - that persists)
-    auto_probe_state_ = AutoProbeState::IDLE;
+    auto_probe_state_.store(AutoProbeState::IDLE);
 
     // Clear status
     lv_subject_copy_string(&connection_status_icon_, "");
