@@ -67,6 +67,9 @@ static void ui_dialog_xml_apply(lv_xml_parser_state_t* state, const char** attrs
     // No shadow by default
     lv_obj_set_style_shadow_width(obj, 0, LV_PART_MAIN);
 
+    // Clip children to rounded corners (for full-bleed buttons at bottom)
+    lv_obj_set_style_clip_corner(obj, true, LV_PART_MAIN);
+
     spdlog::trace("[Dialog] Applied LVGL button grey background (0x{:06X})",
                   lv_color_to_u32(bg_color) & 0xFFFFFF);
 
@@ -76,5 +79,5 @@ static void ui_dialog_xml_apply(lv_xml_parser_state_t* state, const char** attrs
 
 void ui_dialog_register(void) {
     lv_xml_register_widget("ui_dialog", ui_dialog_xml_create, ui_dialog_xml_apply);
-    spdlog::debug("[Dialog] Registered <ui_dialog> widget with LVGL XML system");
+    spdlog::trace("[Dialog] Registered <ui_dialog> widget with LVGL XML system");
 }
