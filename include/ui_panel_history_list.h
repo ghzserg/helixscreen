@@ -138,9 +138,17 @@ class HistoryListPanel : public PanelBase {
     void set_jobs(const std::vector<PrintHistoryJob>& jobs);
 
     /**
-     * @brief Refresh the list from the API
+     * @brief Refresh the list from the API (fetches first page)
      */
     void refresh_from_api();
+
+    /**
+     * @brief Load more jobs (infinite scroll)
+     *
+     * Called when user scrolls near the bottom of the list.
+     * Appends next page of results to existing jobs.
+     */
+    void load_more();
 
     //
     // === Static Event Callbacks (public for XML registration) ===
@@ -198,6 +206,12 @@ class HistoryListPanel : public PanelBase {
 
     // Connection state observer to auto-refresh when connected
     lv_observer_t* connection_observer_ = nullptr;
+
+    // Pagination state for infinite scroll
+    static constexpr int PAGE_SIZE = 100; ///< Jobs per API request
+    uint64_t total_job_count_ = 0;        ///< Total jobs on server (from API)
+    bool is_loading_more_ = false;        ///< True while fetching next page
+    bool has_more_data_ = true;           ///< False when all jobs loaded
 
     // Filter/sort state
     std::string search_query_;                                         ///< Current search text
@@ -421,6 +435,27 @@ class HistoryListPanel : public PanelBase {
 
     // Search timer callback (private - not used for XML registration)
     static void on_search_timer_static(lv_timer_t* timer);
+
+    //
+    // === Infinite Scroll ===
+    //
+
+    /**
+     * @brief Check if scroll is near bottom and load more if needed
+     */
+    void check_scroll_position();
+
+    /**
+     * @brief Static callback for scroll events
+     */
+    static void on_scroll_static(lv_event_t* e);
+
+    /**
+     * @brief Append rows for newly loaded jobs (without clearing existing rows)
+     *
+     * @param start_index Index in filtered_jobs_ to start appending from
+     */
+    void append_rows(size_t start_index);
 };
 
 /**

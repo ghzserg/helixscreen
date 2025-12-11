@@ -1698,7 +1698,15 @@ std::string MoonrakerClientMock::get_print_state_string() const {
 
 bool MoonrakerClientMock::start_print_internal(const std::string& filename) {
     // Build path to test G-code file
-    std::string full_path = std::string(TEST_GCODE_DIR) + "/" + filename;
+    // Handle both bare filenames (e.g., "3DBenchy.gcode") and full paths
+    std::string full_path;
+    if (filename.find(TEST_GCODE_DIR) == 0) {
+        // Already a full path, use as-is
+        full_path = filename;
+    } else {
+        // Bare filename, prepend test directory
+        full_path = std::string(TEST_GCODE_DIR) + "/" + filename;
+    }
 
     // Extract metadata from G-code file
     auto meta = helix::gcode::extract_header_metadata(full_path);
@@ -1885,7 +1893,7 @@ void MoonrakerClientMock::dispatch_enhanced_print_status() {
                     {{"state", get_print_state_string()},
                      {"filename", filename},
                      {"print_duration", elapsed},
-                     {"total_duration", elapsed},
+                     {"total_duration", total_time}, // Bug fix: was using elapsed, should be total
                      {"filament_used", 0.0},
                      {"message", ""},
                      {"info", {{"current_layer", current_layer}, {"total_layer", total_layers}}}}},
@@ -2356,7 +2364,7 @@ void MoonrakerClientMock::temperature_simulation_loop() {
              {{"state", print_state_str},
               {"filename", filename},
               {"print_duration", elapsed},
-              {"total_duration", elapsed},
+              {"total_duration", total_time}, // Bug fix: was using elapsed, should be total
               {"filament_used", 0.0},
               {"message", ""},
               {"info", {{"current_layer", current_layer}, {"total_layer", total_layers}}}}},

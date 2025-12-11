@@ -29,6 +29,11 @@
 // Global instance for legacy API and resize callback
 static std::unique_ptr<PrintStatusPanel> g_print_status_panel;
 
+// Forward declarations for XML event callbacks (registered in init_subjects)
+static void on_tune_speed_changed_cb(lv_event_t* e);
+static void on_tune_flow_changed_cb(lv_event_t* e);
+static void on_tune_reset_clicked_cb(lv_event_t* e);
+
 // Helper to get or create the global instance
 PrintStatusPanel& get_global_print_status_panel() {
     if (!g_print_status_panel) {
@@ -71,6 +76,12 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, MoonrakerAPI* ap
     excluded_objects_observer_ = ObserverGuard(
         printer_state_.get_excluded_objects_version_subject(), excluded_objects_observer_cb, this);
 
+    // Subscribe to print time tracking
+    print_duration_observer_ = ObserverGuard(printer_state_.get_print_duration_subject(),
+                                              print_duration_observer_cb, this);
+    print_time_left_observer_ = ObserverGuard(printer_state_.get_print_time_left_subject(),
+                                               print_time_left_observer_cb, this);
+
     spdlog::debug("[{}] Subscribed to PrinterState subjects", get_name());
 
     // Load configured LED from wizard settings
@@ -110,9 +121,11 @@ void PrintStatusPanel::init_subjects() {
         return;
     }
 
-    // Initialize all 10 subjects with default values
+    // Initialize all subjects with default values
+    // Note: Using "print_filename_display" to avoid collision with PrinterState's "print_filename"
+    // This subject contains the formatted display name (path stripped, extension removed)
     UI_SUBJECT_INIT_AND_REGISTER_STRING(filename_subject_, filename_buf_, "No print active",
-                                        "print_filename");
+                                        "print_filename_display");
     UI_SUBJECT_INIT_AND_REGISTER_STRING(progress_text_subject_, progress_text_buf_, "0%",
                                         "print_progress_text");
     UI_SUBJECT_INIT_AND_REGISTER_STRING(layer_text_subject_, layer_text_buf_, "Layer 0 / 0",
@@ -126,9 +139,10 @@ void PrintStatusPanel::init_subjects() {
                                         "bed_temp_text");
     UI_SUBJECT_INIT_AND_REGISTER_STRING(speed_subject_, speed_buf_, "100%", "print_speed_text");
     UI_SUBJECT_INIT_AND_REGISTER_STRING(flow_subject_, flow_buf_, "100%", "print_flow_text");
-    // Pause button icon (F04C=pause, F04B=play)
-    UI_SUBJECT_INIT_AND_REGISTER_STRING(pause_button_subject_, pause_button_buf_, "\xEF\x81\x8C",
-                                        "pause_button_icon");
+    // Pause button icon - MDI icons (pause=F03E4, play=F040A)
+    // UTF-8: pause=F3 B0 8F A4, play=F3 B0 90 8A
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(pause_button_subject_, pause_button_buf_,
+                                        "\xF3\xB0\x8F\xA4", "pause_button_icon");
 
     // Preparing state subjects
     UI_SUBJECT_INIT_AND_REGISTER_INT(preparing_visible_subject_, 0, "preparing_visible");
@@ -146,6 +160,11 @@ void PrintStatusPanel::init_subjects() {
                                         "tune_speed_display");
     UI_SUBJECT_INIT_AND_REGISTER_STRING(tune_flow_subject_, tune_flow_buf_, "100%",
                                         "tune_flow_display");
+
+    // Register XML event callbacks for tune panel
+    lv_xml_register_event_cb(nullptr, "on_tune_speed_changed", on_tune_speed_changed_cb);
+    lv_xml_register_event_cb(nullptr, "on_tune_flow_changed", on_tune_flow_changed_cb);
+    lv_xml_register_event_cb(nullptr, "on_tune_reset_clicked", on_tune_reset_clicked_cb);
 
     subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized (17 subjects)", get_name());
@@ -348,15 +367,18 @@ void PrintStatusPanel::load_gcode_file(const char* file_path) {
                 filename = "print.gcode";
             }
 
-            // Start print via MoonrakerAPI
-            // In test mode, mock Moonraker handles simulation via observers
-            if (self->api_) {
+            // Start print via MoonrakerAPI if not already printing
+            // In test mode with auto-start, a print may already be running
+            if (self->api_ && self->current_state_ == PrintState::Idle) {
                 self->api_->start_print(
                     filename,
                     []() { spdlog::info("[PrintStatusPanel] Print started via Moonraker"); },
                     [](const MoonrakerError& err) {
                         spdlog::error("[PrintStatusPanel] Failed to start print: {}", err.message);
                     });
+            } else if (self->current_state_ != PrintState::Idle) {
+                spdlog::debug("[{}] Print already running - skipping duplicate start_print",
+                              self->get_name());
             } else {
                 spdlog::warn("[{}] No API available - G-code loaded but print not started",
                              self->get_name());
@@ -391,12 +413,21 @@ void PrintStatusPanel::update_all_displays() {
     lv_subject_copy_string(&remaining_subject_, remaining_buf_);
 
     // Temperatures (stored as centi-degrees ×10, divide for display)
-    std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_), "%d / %d°C", nozzle_current_ / 10,
-                  nozzle_target_ / 10);
+    // Show "--" for target when heater is off (target=0) for better UX
+    if (nozzle_target_ > 0) {
+        std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_), "%d / %d°C", nozzle_current_ / 10,
+                      nozzle_target_ / 10);
+    } else {
+        std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_), "%d / --", nozzle_current_ / 10);
+    }
     lv_subject_copy_string(&nozzle_temp_subject_, nozzle_temp_buf_);
 
-    std::snprintf(bed_temp_buf_, sizeof(bed_temp_buf_), "%d / %d°C", bed_current_ / 10,
-                  bed_target_ / 10);
+    if (bed_target_ > 0) {
+        std::snprintf(bed_temp_buf_, sizeof(bed_temp_buf_), "%d / %d°C", bed_current_ / 10,
+                      bed_target_ / 10);
+    } else {
+        std::snprintf(bed_temp_buf_, sizeof(bed_temp_buf_), "%d / --", bed_current_ / 10);
+    }
     lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
 
     // Speeds
@@ -406,11 +437,12 @@ void PrintStatusPanel::update_all_displays() {
     std::snprintf(flow_buf_, sizeof(flow_buf_), "%d%%", flow_percent_);
     lv_subject_copy_string(&flow_subject_, flow_buf_);
 
-    // Update pause button icon based on state (F04B=play, F04C=pause)
+    // Update pause button icon based on state - MDI icons (play=F040A, pause=F03E4)
+    // UTF-8: play=F3 B0 90 8A, pause=F3 B0 8F A4
     if (current_state_ == PrintState::Paused) {
-        std::snprintf(pause_button_buf_, sizeof(pause_button_buf_), "\xEF\x81\x8B"); // play icon
+        std::snprintf(pause_button_buf_, sizeof(pause_button_buf_), "\xF3\xB0\x90\x8A"); // play icon
     } else {
-        std::snprintf(pause_button_buf_, sizeof(pause_button_buf_), "\xEF\x81\x8C"); // pause icon
+        std::snprintf(pause_button_buf_, sizeof(pause_button_buf_), "\xF3\xB0\x8F\xA4"); // pause icon
     }
     lv_subject_copy_string(&pause_button_subject_, pause_button_buf_);
 }
@@ -797,6 +829,20 @@ void PrintStatusPanel::excluded_objects_observer_cb(lv_observer_t* observer,
     }
 }
 
+void PrintStatusPanel::print_duration_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
+    auto* self = static_cast<PrintStatusPanel*>(lv_observer_get_user_data(observer));
+    if (self) {
+        self->on_print_duration_changed(lv_subject_get_int(subject));
+    }
+}
+
+void PrintStatusPanel::print_time_left_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
+    auto* self = static_cast<PrintStatusPanel*>(lv_observer_get_user_data(observer));
+    if (self) {
+        self->on_print_time_left_changed(lv_subject_get_int(subject));
+    }
+}
+
 // ============================================================================
 // OBSERVER INSTANCE METHODS
 // ============================================================================
@@ -869,16 +915,22 @@ void PrintStatusPanel::on_print_state_changed(PrintJobState job_state) {
                      print_job_state_to_string(job_state), static_cast<int>(new_state));
 
         // Toggle G-code viewer visibility based on print state
-        // Show viewer during printing/paused, hide during idle/complete
-        bool show_viewer = (new_state == PrintState::Printing || new_state == PrintState::Paused);
+        // Show viewer during printing/paused/complete (keep final render visible on completion)
+        // Only hide viewer when returning to idle
+        bool show_viewer = (new_state == PrintState::Printing || new_state == PrintState::Paused ||
+                            new_state == PrintState::Complete);
         show_gcode_viewer(show_viewer);
     }
 }
 
 void PrintStatusPanel::on_print_filename_changed(const char* filename) {
     if (filename && filename[0] != '\0') {
-        set_filename(filename);
-        spdlog::debug("[{}] Filename updated: {}", get_name(), filename);
+        // Only update if filename actually changed (avoid log spam from frequent status updates)
+        std::string display_name = get_display_filename(filename);
+        if (display_name != filename_buf_) {
+            set_filename(filename);
+            spdlog::debug("[{}] Filename updated: {}", get_name(), display_name);
+        }
     }
 }
 
@@ -912,6 +964,11 @@ void PrintStatusPanel::on_print_layer_changed(int current_layer) {
     int total_layers = lv_subject_get_int(printer_state_.get_print_layer_total_subject());
     total_layers_ = total_layers;
 
+    // Guard: subjects may not be initialized if called from constructor's observer setup
+    if (!subjects_initialized_) {
+        return;
+    }
+
     // Update the layer text display
     std::snprintf(layer_text_buf_, sizeof(layer_text_buf_), "Layer %d / %d", current_layer_,
                   total_layers_);
@@ -919,8 +976,16 @@ void PrintStatusPanel::on_print_layer_changed(int current_layer) {
 
     // Update G-code viewer ghost layer if viewer is active and visible
     if (gcode_viewer_ && !lv_obj_has_flag(gcode_viewer_, LV_OBJ_FLAG_HIDDEN)) {
-        ui_gcode_viewer_set_print_progress(gcode_viewer_, current_layer);
-        spdlog::trace("[{}] G-code viewer ghost layer updated to {}", get_name(), current_layer);
+        // Map from Moonraker layer count (e.g., 240) to viewer layer count (e.g., 2912)
+        // The slicer metadata and parsed G-code often have different layer counts
+        int viewer_max_layer = ui_gcode_viewer_get_max_layer(gcode_viewer_);
+        int viewer_layer = current_layer;
+        if (total_layers_ > 0 && viewer_max_layer > 0) {
+            viewer_layer = (current_layer * viewer_max_layer) / total_layers_;
+        }
+        ui_gcode_viewer_set_print_progress(gcode_viewer_, viewer_layer);
+        spdlog::trace("[{}] G-code viewer ghost layer updated to {} (Moonraker: {}/{})",
+                      get_name(), viewer_layer, current_layer, total_layers_);
     }
 }
 
@@ -950,6 +1015,32 @@ void PrintStatusPanel::on_excluded_objects_changed() {
     }
 }
 
+void PrintStatusPanel::on_print_duration_changed(int seconds) {
+    elapsed_seconds_ = seconds;
+
+    // Guard: subjects may not be initialized if called from constructor's observer setup
+    if (!subjects_initialized_) {
+        return;
+    }
+
+    format_time(elapsed_seconds_, elapsed_buf_, sizeof(elapsed_buf_));
+    lv_subject_copy_string(&elapsed_subject_, elapsed_buf_);
+    spdlog::trace("[{}] Print duration updated: {}s", get_name(), seconds);
+}
+
+void PrintStatusPanel::on_print_time_left_changed(int seconds) {
+    remaining_seconds_ = seconds;
+
+    // Guard: subjects may not be initialized if called from constructor's observer setup
+    if (!subjects_initialized_) {
+        return;
+    }
+
+    format_time(remaining_seconds_, remaining_buf_, sizeof(remaining_buf_));
+    lv_subject_copy_string(&remaining_subject_, remaining_buf_);
+    spdlog::trace("[{}] Time remaining updated: {}s", get_name(), seconds);
+}
+
 // ============================================================================
 // TUNE PANEL HELPERS
 // ============================================================================
@@ -958,34 +1049,11 @@ void PrintStatusPanel::setup_tune_panel(lv_obj_t* panel) {
     // Use standard overlay panel setup for back button handling
     ui_overlay_panel_setup_standard(panel, parent_screen_, "overlay_header", "overlay_content");
 
-    lv_obj_t* overlay_content = lv_obj_find_by_name(panel, "overlay_content");
-    if (!overlay_content) {
-        spdlog::error("[{}] Tune panel: overlay_content not found!", get_name());
-        return;
-    }
+    // Event handlers are registered via XML event_cb declarations
+    // (on_tune_speed_changed, on_tune_flow_changed, on_tune_reset_clicked)
+    // Callbacks registered in init_subjects() via lv_xml_register_event_cb()
 
-    // Wire speed slider
-    lv_obj_t* speed_slider = lv_obj_find_by_name(overlay_content, "speed_slider");
-    if (speed_slider) {
-        lv_obj_add_event_cb(speed_slider, on_speed_slider_changed, LV_EVENT_VALUE_CHANGED, this);
-        spdlog::debug("[{}] Speed slider wired", get_name());
-    }
-
-    // Wire flow slider
-    lv_obj_t* flow_slider = lv_obj_find_by_name(overlay_content, "flow_slider");
-    if (flow_slider) {
-        lv_obj_add_event_cb(flow_slider, on_flow_slider_changed, LV_EVENT_VALUE_CHANGED, this);
-        spdlog::debug("[{}] Flow slider wired", get_name());
-    }
-
-    // Wire reset button
-    lv_obj_t* reset_btn = lv_obj_find_by_name(overlay_content, "btn_reset");
-    if (reset_btn) {
-        lv_obj_add_event_cb(reset_btn, on_reset_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}] Reset button wired", get_name());
-    }
-
-    spdlog::debug("[{}] Tune panel setup complete", get_name());
+    spdlog::debug("[{}] Tune panel setup complete (events wired via XML)", get_name());
 }
 
 void PrintStatusPanel::update_tune_display() {
@@ -996,98 +1064,104 @@ void PrintStatusPanel::update_tune_display() {
     lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
 }
 
-void PrintStatusPanel::on_speed_slider_changed(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_speed_slider_changed");
-    auto* self = static_cast<PrintStatusPanel*>(lv_event_get_user_data(e));
-    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
+void PrintStatusPanel::handle_tune_speed_changed(int value) {
+    // Update display immediately for responsive feel
+    std::snprintf(tune_speed_buf_, sizeof(tune_speed_buf_), "%d%%", value);
+    lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
 
-    if (self && slider) {
-        int value = lv_slider_get_value(slider);
-
-        // Update display immediately for responsive feel
-        std::snprintf(self->tune_speed_buf_, sizeof(self->tune_speed_buf_), "%d%%", value);
-        lv_subject_copy_string(&self->tune_speed_subject_, self->tune_speed_buf_);
-
-        // Send G-code command
-        if (self->api_) {
-            std::string gcode = "M220 S" + std::to_string(value);
-            self->api_->execute_gcode(
-                gcode, [value]() { spdlog::debug("[PrintStatusPanel] Speed set to {}%", value); },
-                [](const MoonrakerError& err) {
-                    spdlog::error("[PrintStatusPanel] Failed to set speed: {}", err.message);
-                    NOTIFY_ERROR("Failed to set print speed: {}", err.user_message());
-                });
-        }
+    // Send G-code command
+    if (api_) {
+        std::string gcode = "M220 S" + std::to_string(value);
+        api_->execute_gcode(
+            gcode, [value]() { spdlog::debug("[PrintStatusPanel] Speed set to {}%", value); },
+            [](const MoonrakerError& err) {
+                spdlog::error("[PrintStatusPanel] Failed to set speed: {}", err.message);
+                NOTIFY_ERROR("Failed to set print speed: {}", err.user_message());
+            });
     }
-    LVGL_SAFE_EVENT_CB_END();
 }
 
-void PrintStatusPanel::on_flow_slider_changed(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_flow_slider_changed");
-    auto* self = static_cast<PrintStatusPanel*>(lv_event_get_user_data(e));
-    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
+void PrintStatusPanel::handle_tune_flow_changed(int value) {
+    // Update display immediately for responsive feel
+    std::snprintf(tune_flow_buf_, sizeof(tune_flow_buf_), "%d%%", value);
+    lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
 
-    if (self && slider) {
-        int value = lv_slider_get_value(slider);
-
-        // Update display immediately for responsive feel
-        std::snprintf(self->tune_flow_buf_, sizeof(self->tune_flow_buf_), "%d%%", value);
-        lv_subject_copy_string(&self->tune_flow_subject_, self->tune_flow_buf_);
-
-        // Send G-code command
-        if (self->api_) {
-            std::string gcode = "M221 S" + std::to_string(value);
-            self->api_->execute_gcode(
-                gcode, [value]() { spdlog::debug("[PrintStatusPanel] Flow set to {}%", value); },
-                [](const MoonrakerError& err) {
-                    spdlog::error("[PrintStatusPanel] Failed to set flow: {}", err.message);
-                    NOTIFY_ERROR("Failed to set flow rate: {}", err.user_message());
-                });
-        }
+    // Send G-code command
+    if (api_) {
+        std::string gcode = "M221 S" + std::to_string(value);
+        api_->execute_gcode(
+            gcode, [value]() { spdlog::debug("[PrintStatusPanel] Flow set to {}%", value); },
+            [](const MoonrakerError& err) {
+                spdlog::error("[PrintStatusPanel] Failed to set flow: {}", err.message);
+                NOTIFY_ERROR("Failed to set flow rate: {}", err.user_message());
+            });
     }
-    LVGL_SAFE_EVENT_CB_END();
 }
 
-void PrintStatusPanel::on_reset_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_reset_clicked");
-    auto* self = static_cast<PrintStatusPanel*>(lv_event_get_user_data(e));
-
-    if (self && self->tune_panel_) {
-        lv_obj_t* overlay_content = lv_obj_find_by_name(self->tune_panel_, "overlay_content");
-        if (overlay_content) {
-            // Reset sliders to 100%
-            lv_obj_t* speed_slider = lv_obj_find_by_name(overlay_content, "speed_slider");
-            lv_obj_t* flow_slider = lv_obj_find_by_name(overlay_content, "flow_slider");
-
-            if (speed_slider) {
-                lv_slider_set_value(speed_slider, 100, LV_ANIM_ON);
-            }
-            if (flow_slider) {
-                lv_slider_set_value(flow_slider, 100, LV_ANIM_ON);
-            }
-
-            // Update displays
-            std::snprintf(self->tune_speed_buf_, sizeof(self->tune_speed_buf_), "100%%");
-            lv_subject_copy_string(&self->tune_speed_subject_, self->tune_speed_buf_);
-            std::snprintf(self->tune_flow_buf_, sizeof(self->tune_flow_buf_), "100%%");
-            lv_subject_copy_string(&self->tune_flow_subject_, self->tune_flow_buf_);
-
-            // Send G-code commands
-            if (self->api_) {
-                self->api_->execute_gcode(
-                    "M220 S100", []() { spdlog::debug("[PrintStatusPanel] Speed reset to 100%"); },
-                    [](const MoonrakerError& err) {
-                        NOTIFY_ERROR("Failed to reset speed: {}", err.user_message());
-                    });
-                self->api_->execute_gcode(
-                    "M221 S100", []() { spdlog::debug("[PrintStatusPanel] Flow reset to 100%"); },
-                    [](const MoonrakerError& err) {
-                        NOTIFY_ERROR("Failed to reset flow: {}", err.user_message());
-                    });
-            }
-        }
+void PrintStatusPanel::handle_tune_reset() {
+    if (!tune_panel_) {
+        return;
     }
-    LVGL_SAFE_EVENT_CB_END();
+
+    lv_obj_t* overlay_content = lv_obj_find_by_name(tune_panel_, "overlay_content");
+    if (!overlay_content) {
+        return;
+    }
+
+    // Reset sliders to 100%
+    lv_obj_t* speed_slider = lv_obj_find_by_name(overlay_content, "speed_slider");
+    lv_obj_t* flow_slider = lv_obj_find_by_name(overlay_content, "flow_slider");
+
+    if (speed_slider) {
+        lv_slider_set_value(speed_slider, 100, LV_ANIM_ON);
+    }
+    if (flow_slider) {
+        lv_slider_set_value(flow_slider, 100, LV_ANIM_ON);
+    }
+
+    // Update displays
+    std::snprintf(tune_speed_buf_, sizeof(tune_speed_buf_), "100%%");
+    lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
+    std::snprintf(tune_flow_buf_, sizeof(tune_flow_buf_), "100%%");
+    lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
+
+    // Send G-code commands
+    if (api_) {
+        api_->execute_gcode(
+            "M220 S100", []() { spdlog::debug("[PrintStatusPanel] Speed reset to 100%"); },
+            [](const MoonrakerError& err) {
+                NOTIFY_ERROR("Failed to reset speed: {}", err.user_message());
+            });
+        api_->execute_gcode(
+            "M221 S100", []() { spdlog::debug("[PrintStatusPanel] Flow reset to 100%"); },
+            [](const MoonrakerError& err) {
+                NOTIFY_ERROR("Failed to reset flow: {}", err.user_message());
+            });
+    }
+}
+
+// ============================================================================
+// XML EVENT CALLBACKS (free functions using global accessor)
+// ============================================================================
+
+static void on_tune_speed_changed_cb(lv_event_t* e) {
+    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    if (slider) {
+        int value = lv_slider_get_value(slider);
+        get_global_print_status_panel().handle_tune_speed_changed(value);
+    }
+}
+
+static void on_tune_flow_changed_cb(lv_event_t* e) {
+    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    if (slider) {
+        int value = lv_slider_get_value(slider);
+        get_global_print_status_panel().handle_tune_flow_changed(value);
+    }
+}
+
+static void on_tune_reset_clicked_cb(lv_event_t* /*e*/) {
+    get_global_print_status_panel().handle_tune_reset();
 }
 
 // ============================================================================
@@ -1100,7 +1174,9 @@ void PrintStatusPanel::set_temp_control_panel(TempControlPanel* temp_panel) {
 }
 
 void PrintStatusPanel::set_filename(const char* filename) {
-    std::snprintf(filename_buf_, sizeof(filename_buf_), "%s", filename);
+    // Strip path and .gcode extension for clean display
+    std::string display_name = get_display_filename(filename ? filename : "");
+    std::snprintf(filename_buf_, sizeof(filename_buf_), "%s", display_name.c_str());
     lv_subject_copy_string(&filename_subject_, filename_buf_);
 }
 

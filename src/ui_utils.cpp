@@ -31,6 +31,49 @@
 #include <ctime>
 #include <vector>
 
+// ============================================================================
+// Filename Utilities
+// ============================================================================
+
+std::string get_filename_basename(const std::string& path) {
+    if (path.empty()) {
+        return path;
+    }
+
+    // Find last path separator
+    size_t last_sep = path.find_last_of("/\\");
+    if (last_sep == std::string::npos) {
+        return path; // No separator, already just a filename
+    }
+
+    return path.substr(last_sep + 1);
+}
+
+std::string strip_gcode_extension(const std::string& filename) {
+    // Common G-code extensions (case-insensitive check)
+    static const std::vector<std::string> extensions = {".gcode", ".GCODE", ".Gcode", ".gco",
+                                                        ".GCO",   ".Gco",   ".g",     ".G"};
+
+    for (const auto& ext : extensions) {
+        if (filename.size() > ext.size()) {
+            size_t pos = filename.size() - ext.size();
+            if (filename.compare(pos, ext.size(), ext) == 0) {
+                return filename.substr(0, pos);
+            }
+        }
+    }
+
+    return filename;
+}
+
+std::string get_display_filename(const std::string& path) {
+    return strip_gcode_extension(get_filename_basename(path));
+}
+
+// ============================================================================
+// Time Formatting
+// ============================================================================
+
 std::string format_print_time(int minutes) {
     char buf[32];
     if (minutes < 60) {

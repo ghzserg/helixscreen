@@ -178,6 +178,10 @@ void PrinterState::init_subjects(bool register_xml) {
     lv_subject_init_int(&print_layer_current_, 0);
     lv_subject_init_int(&print_layer_total_, 0);
 
+    // Print time tracking subjects (in seconds)
+    lv_subject_init_int(&print_duration_, 0);
+    lv_subject_init_int(&print_time_left_, 0);
+
     // Motion subjects
     lv_subject_init_int(&position_x_, 0);
     lv_subject_init_int(&position_y_, 0);
@@ -240,6 +244,8 @@ void PrinterState::init_subjects(bool register_xml) {
         lv_xml_register_subject(NULL, "print_state_enum", &print_state_enum_);
         lv_xml_register_subject(NULL, "print_layer_current", &print_layer_current_);
         lv_xml_register_subject(NULL, "print_layer_total", &print_layer_total_);
+        lv_xml_register_subject(NULL, "print_duration", &print_duration_);
+        lv_xml_register_subject(NULL, "print_time_left", &print_time_left_);
         lv_xml_register_subject(NULL, "position_x", &position_x_);
         lv_xml_register_subject(NULL, "position_y", &position_y_);
         lv_xml_register_subject(NULL, "position_z", &position_z_);
@@ -377,6 +383,20 @@ void PrinterState::update_from_status(const json& state) {
                 int total_layer = info["total_layer"].get<int>();
                 lv_subject_set_int(&print_layer_total_, total_layer);
             }
+        }
+
+        // Update print time tracking (elapsed and remaining)
+        if (stats.contains("print_duration") && stats["print_duration"].is_number()) {
+            int elapsed_seconds = static_cast<int>(stats["print_duration"].get<double>());
+            lv_subject_set_int(&print_duration_, elapsed_seconds);
+        }
+
+        if (stats.contains("total_duration") && stats["total_duration"].is_number()) {
+            // total_duration is the estimated total time, calculate remaining
+            int total_seconds = static_cast<int>(stats["total_duration"].get<double>());
+            int elapsed_seconds = lv_subject_get_int(&print_duration_);
+            int remaining_seconds = std::max(0, total_seconds - elapsed_seconds);
+            lv_subject_set_int(&print_time_left_, remaining_seconds);
         }
     }
 

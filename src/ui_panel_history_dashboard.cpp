@@ -222,9 +222,10 @@ void HistoryDashboardPanel::refresh_data() {
     spdlog::debug("[{}] Fetching history since {} (filter={})", get_name(), since,
                   static_cast<int>(current_filter_));
 
-    // Fetch with generous limit - dashboard just needs aggregate stats
+    // Fetch with reasonable limit - dashboard just needs aggregate stats
+    // Keep at 100 to ensure small response size (~160KB max)
     api_->get_history_list(
-        200, // limit
+        100, // limit
         0,   // start
         since, 0.0,
         [this](const std::vector<PrintHistoryJob>& jobs, uint64_t total_count) {
@@ -239,27 +240,12 @@ void HistoryDashboardPanel::refresh_data() {
 }
 
 void HistoryDashboardPanel::update_statistics(const std::vector<PrintHistoryJob>& jobs) {
-    // Update empty state subject (use class member directly)
+    // Update subject to drive XML bindings (0=no jobs, 1=has jobs)
+    // XML bindings will automatically show/hide stats, charts, and empty state
     lv_subject_set_int(&history_has_jobs_subject_, jobs.empty() ? 0 : 1);
 
-    // Show/hide appropriate containers
-    if (stats_grid_) {
-        if (jobs.empty()) {
-            lv_obj_add_flag(stats_grid_, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_remove_flag(stats_grid_, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-    if (charts_section_) {
-        if (jobs.empty()) {
-            lv_obj_add_flag(charts_section_, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_remove_flag(charts_section_, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-
     if (jobs.empty()) {
-        // Clear stats
+        // Clear stats labels (bindings hide the containers, but labels keep old values)
         if (stat_total_prints_)
             lv_label_set_text(stat_total_prints_, "0");
         if (stat_print_time_)

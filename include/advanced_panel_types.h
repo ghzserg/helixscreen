@@ -75,7 +75,7 @@ struct ScrewTiltResult {
      */
     [[nodiscard]] std::string friendly_adjustment() const {
         if (is_reference) {
-            return "Reference";  // This screw is the baseline - no adjustment needed
+            return "Reference"; // This screw is the baseline - no adjustment needed
         }
         if (adjustment.empty() || adjustment == "00:00") {
             return "Level";
@@ -101,7 +101,7 @@ struct ScrewTiltResult {
         // Determine specific magnitude description
         std::string amount;
         if (total_minutes <= 5) {
-            return "Level";  // Within tolerance
+            return "Level"; // Within tolerance
         } else if (total_minutes <= 10) {
             amount = "1/8 turn";
         } else if (total_minutes <= 20) {
@@ -124,7 +124,7 @@ struct ScrewTiltResult {
         } else if (is_counter) {
             return "Loosen " + amount;
         }
-        return adjustment;  // Fallback to raw format
+        return adjustment; // Fallback to raw format
     }
 };
 

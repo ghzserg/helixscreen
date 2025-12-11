@@ -17,9 +17,11 @@
           <text_heading name="speed_display" bind_text="tune_speed_display"/>
         </lv_obj>
         <lv_obj name="speed_slider_container" width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_left="#space_xs" style_pad_right="#space_sm" scrollable="false" flex_flow="row" style_flex_cross_place="center" flag_overflow_visible="true">
-          <lv_slider name="speed_slider" flex_grow="1" min_value="50" max_value="200" value="100"/>
+          <lv_slider name="speed_slider" flex_grow="1" min_value="50" max_value="200" value="100">
+            <event_cb trigger="value_changed" callback="on_tune_speed_changed"/>
+          </lv_slider>
         </lv_obj>
-        <text_small text="Controls print head movement speed (M220)" style_text_color="#text_secondary"/>
+        <text_small text="Controls print head movement speed (M220)"/>
       </ui_card>
 
       <!-- Flow Control Section -->
@@ -29,17 +31,21 @@
           <text_heading name="flow_display" bind_text="tune_flow_display"/>
         </lv_obj>
         <lv_obj name="flow_slider_container" width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_left="#space_xs" style_pad_right="#space_sm" scrollable="false" flex_flow="row" style_flex_cross_place="center" flag_overflow_visible="true">
-          <lv_slider name="flow_slider" flex_grow="1" min_value="75" max_value="125" value="100"/>
+          <lv_slider name="flow_slider" flex_grow="1" min_value="75" max_value="125" value="100">
+            <event_cb trigger="value_changed" callback="on_tune_flow_changed"/>
+          </lv_slider>
         </lv_obj>
-        <text_small text="Controls extrusion multiplier (M221)" style_text_color="#text_secondary"/>
+        <text_small text="Controls extrusion multiplier (M221)"/>
       </ui_card>
 
       <!-- Spacer -->
       <lv_obj flex_grow="1" style_bg_opa="0" style_border_width="0" scrollable="false"/>
 
       <!-- Reset Button -->
-      <lv_button name="btn_reset" width="100%" height="#button_height" style_radius="#border_radius" style_border_width="0">
-        <text_body text="Reset to 100%" align="center"/>
+      <lv_button name="btn_reset" width="100%" height="#button_height" style_radius="#border_radius" style_border_width="0" flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs">
+        <event_cb trigger="clicked" callback="on_tune_reset_clicked"/>
+        <icon src="refresh" size="sm"/>
+        <text_body text="Reset to 100%"/>
       </lv_button>
 
     </lv_obj>

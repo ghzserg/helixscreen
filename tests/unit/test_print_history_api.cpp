@@ -17,8 +17,11 @@
 #include "../../include/printer_state.h"
 #include "../../lvgl/lvgl.h"
 
+#include <spdlog/fmt/fmt.h>
+
 #include <atomic>
 #include <chrono>
+#include <sstream>
 #include <thread>
 #include <vector>
 
@@ -209,4 +212,727 @@ TEST_CASE_METHOD(PrintHistoryTestFixture, "delete_history_job calls success call
 
     REQUIRE(success_called.load());
     REQUIRE_FALSE(error_called.load());
+}
+
+// ============================================================================
+// Real-World JSON Parsing Tests
+// ============================================================================
+
+// Real Moonraker response with null values (captured from actual Voron printer)
+static const char* REAL_MOONRAKER_HISTORY_RESPONSE = R"({
+    "result": {
+        "count": 796,
+        "jobs": [
+            {
+                "job_id": "000313",
+                "user": "_TRUSTED_USER_",
+                "filename": "Body744_ASA_1h40m.gcode",
+                "status": "completed",
+                "start_time": 1760570869.4063392,
+                "end_time": 1760576647.4602716,
+                "print_duration": 5481.505679905,
+                "total_duration": 5778.059486547,
+                "filament_used": 6170.388689999407,
+                "metadata": {
+                    "size": 13922674,
+                    "slicer": "OrcaSlicer",
+                    "slicer_version": "2.3.1",
+                    "layer_count": 47,
+                    "object_height": 9.4,
+                    "estimated_time": 6027,
+                    "nozzle_diameter": 0.4,
+                    "layer_height": 0.2,
+                    "first_layer_height": 0.2,
+                    "first_layer_extr_temp": 260.0,
+                    "first_layer_bed_temp": 90.0,
+                    "chamber_temp": 0.0,
+                    "filament_name": "Generic ASA @Voron v2",
+                    "filament_type": "ASA;ASA;ASA;ASA",
+                    "thumbnails": [
+                        {"width": 32, "height": 32, "size": 990, "relative_path": ".thumbs/Body744_ASA_1h40m-32x32.png"},
+                        {"width": 300, "height": 300, "size": 16304, "relative_path": ".thumbs/Body744_ASA_1h40m-300x300.png"}
+                    ]
+                },
+                "auxiliary_data": [
+                    {"provider": "spoolman", "name": "spool_ids", "value": [5, null], "description": "Spool IDs used", "units": null}
+                ],
+                "exists": true
+            },
+            {
+                "job_id": "000312",
+                "user": "_TRUSTED_USER_",
+                "filename": "Body744_ASA_1h40m.gcode",
+                "status": "cancelled",
+                "start_time": 1760569839.3108423,
+                "end_time": 1760570661.1919284,
+                "print_duration": 293.3458584309999,
+                "total_duration": 821.8611410999999,
+                "filament_used": 285.66931999999963,
+                "metadata": {},
+                "auxiliary_data": [
+                    {"provider": "spoolman", "name": "spool_ids", "value": [5], "description": "Spool IDs used", "units": null}
+                ],
+                "exists": true
+            },
+            {
+                "job_id": "000311",
+                "user": "_TRUSTED_USER_",
+                "filename": "Belt_bracket.gcode",
+                "status": "klippy_shutdown",
+                "start_time": 1759265379.2184007,
+                "end_time": 1759265554.49163,
+                "print_duration": 0.0,
+                "total_duration": 175.64103475003503,
+                "filament_used": 0.0,
+                "metadata": {
+                    "layer_count": 60,
+                    "first_layer_extr_temp": 260.0,
+                    "first_layer_bed_temp": 90.0,
+                    "filament_type": "ASA"
+                },
+                "auxiliary_data": [],
+                "exists": true
+            }
+        ]
+    }
+})";
+
+TEST_CASE("Parse real Moonraker history response with nulls", "[moonraker][history][parsing]") {
+    // This tests that our JSON parsing handles real-world responses
+    // including null values in auxiliary_data
+
+    auto j = nlohmann::json::parse(REAL_MOONRAKER_HISTORY_RESPONSE);
+
+    REQUIRE(j.contains("result"));
+    REQUIRE(j["result"].contains("count"));
+    REQUIRE(j["result"]["count"].get<int>() == 796);
+    REQUIRE(j["result"].contains("jobs"));
+    REQUIRE(j["result"]["jobs"].is_array());
+    REQUIRE(j["result"]["jobs"].size() == 3);
+}
+
+TEST_CASE("Parse history job with null auxiliary_data values", "[moonraker][history][parsing]") {
+    auto j = nlohmann::json::parse(REAL_MOONRAKER_HISTORY_RESPONSE);
+    const auto& jobs = j["result"]["jobs"];
+
+    // First job has null in auxiliary_data.value array
+    const auto& job0 = jobs[0];
+    REQUIRE(job0["auxiliary_data"][0]["value"][1].is_null());
+    REQUIRE(job0["auxiliary_data"][0]["units"].is_null());
+
+    // But the core fields should all be accessible
+    REQUIRE(job0["job_id"].get<std::string>() == "000313");
+    REQUIRE(job0["filename"].get<std::string>() == "Body744_ASA_1h40m.gcode");
+    REQUIRE(job0["status"].get<std::string>() == "completed");
+    REQUIRE(job0["print_duration"].get<double>() > 5000.0);
+    REQUIRE(job0["filament_used"].get<double>() > 6000.0);
+}
+
+TEST_CASE("Parse history job with empty metadata", "[moonraker][history][parsing]") {
+    auto j = nlohmann::json::parse(REAL_MOONRAKER_HISTORY_RESPONSE);
+    const auto& jobs = j["result"]["jobs"];
+
+    // Second job has empty metadata
+    const auto& job1 = jobs[1];
+    REQUIRE(job1["metadata"].empty());
+
+    // But core fields are still valid
+    REQUIRE(job1["status"].get<std::string>() == "cancelled");
+    REQUIRE(job1["print_duration"].get<double>() > 200.0);
+}
+
+TEST_CASE("Parse history job with klippy_shutdown status", "[moonraker][history][parsing]") {
+    auto j = nlohmann::json::parse(REAL_MOONRAKER_HISTORY_RESPONSE);
+    const auto& jobs = j["result"]["jobs"];
+
+    // Third job has klippy_shutdown status and zero print_duration
+    const auto& job2 = jobs[2];
+    REQUIRE(job2["status"].get<std::string>() == "klippy_shutdown");
+    REQUIRE(job2["print_duration"].get<double>() == 0.0);
+    REQUIRE(job2["filament_used"].get<double>() == 0.0);
+}
+
+TEST_CASE("json::value() handles missing keys with defaults", "[moonraker][history][parsing]") {
+    // Test that nlohmann::json's value() function returns defaults for missing keys
+    auto j = nlohmann::json::parse(R"({"name": "test"})");
+
+    REQUIRE(j.value("name", "") == "test");
+    REQUIRE(j.value("missing_string", "default") == "default");
+    REQUIRE(j.value("missing_int", 42) == 42);
+    REQUIRE(j.value("missing_double", 3.14) == 3.14);
+    REQUIRE(j.value("missing_bool", true) == true);
+}
+
+TEST_CASE("json::value() handles null values", "[moonraker][history][parsing]") {
+    // Test how value() handles explicit null values
+    auto j = nlohmann::json::parse(R"({"value": null, "number": 42, "obj": {"nested": "yes"}})");
+
+    // value() works on objects for getting nested keys with defaults
+    REQUIRE(j["obj"].value("nested", "no") == "yes");
+    REQUIRE(j["obj"].value("missing", "default") == "default");
+
+    // For explicit nulls, we need is_null() check
+    REQUIRE(j["value"].is_null());
+
+    // And getting a value from null throws - this is the real issue
+    // We should NOT call value() on a json object that IS null
+    REQUIRE_THROWS(j["value"].value("anything", 0));
+}
+
+// ============================================================================
+// PrintHistoryJob Parsing Tests
+// ============================================================================
+
+// Helper function to parse a job JSON into PrintHistoryJob (mirrors MoonrakerAPI logic)
+static PrintHistoryJob parse_history_job(const nlohmann::json& job_json) {
+    PrintHistoryJob job;
+    job.job_id = job_json.value("job_id", "");
+    job.filename = job_json.value("filename", "");
+    job.start_time = job_json.value("start_time", 0.0);
+    job.end_time = job_json.value("end_time", 0.0);
+    job.print_duration = job_json.value("print_duration", 0.0);
+    job.total_duration = job_json.value("total_duration", 0.0);
+    job.filament_used = job_json.value("filament_used", 0.0);
+    job.exists = job_json.value("exists", false);
+
+    // Parse status string to enum
+    std::string status_str = job_json.value("status", "");
+    if (status_str == "completed") {
+        job.status = PrintJobStatus::COMPLETED;
+    } else if (status_str == "cancelled") {
+        job.status = PrintJobStatus::CANCELLED;
+    } else if (status_str == "error" || status_str == "klippy_shutdown" ||
+               status_str == "klippy_disconnect") {
+        job.status = PrintJobStatus::ERROR;
+    } else if (status_str == "in_progress" || status_str == "printing") {
+        job.status = PrintJobStatus::IN_PROGRESS;
+    } else {
+        job.status = PrintJobStatus::UNKNOWN;
+    }
+
+    // Parse metadata if present (matches PrintHistoryJob struct fields)
+    if (job_json.contains("metadata") && job_json["metadata"].is_object()) {
+        const auto& meta = job_json["metadata"];
+        job.filament_type = meta.value("filament_type", "");
+        job.layer_count = meta.value("layer_count", 0u);
+        job.layer_height = meta.value("layer_height", 0.0);
+        job.nozzle_temp = meta.value("first_layer_extr_temp", 0.0);
+        job.bed_temp = meta.value("first_layer_bed_temp", 0.0);
+    }
+
+    return job;
+}
+
+TEST_CASE("Parse completed job correctly", "[moonraker][history][parsing]") {
+    auto job_json = nlohmann::json::parse(R"({
+        "job_id": "000313",
+        "filename": "Body744_ASA_1h40m.gcode",
+        "status": "completed",
+        "start_time": 1760570869.4063392,
+        "end_time": 1760576647.4602716,
+        "print_duration": 5481.505679905,
+        "total_duration": 5778.059486547,
+        "filament_used": 6170.388689999407,
+        "exists": true,
+        "metadata": {
+            "slicer": "OrcaSlicer",
+            "layer_count": 47,
+            "layer_height": 0.2,
+            "first_layer_extr_temp": 260.0,
+            "first_layer_bed_temp": 90.0,
+            "filament_type": "ASA;ASA;ASA;ASA"
+        }
+    })");
+
+    PrintHistoryJob job = parse_history_job(job_json);
+
+    REQUIRE(job.job_id == "000313");
+    REQUIRE(job.filename == "Body744_ASA_1h40m.gcode");
+    REQUIRE(job.status == PrintJobStatus::COMPLETED);
+    REQUIRE(job.print_duration > 5400.0);
+    REQUIRE(job.filament_used > 6000.0);
+    REQUIRE(job.layer_count == 47);
+    REQUIRE(job.layer_height == 0.2);
+    REQUIRE(job.nozzle_temp == 260.0);
+    REQUIRE(job.bed_temp == 90.0);
+    REQUIRE(job.filament_type == "ASA;ASA;ASA;ASA");
+    REQUIRE(job.exists == true);
+}
+
+TEST_CASE("Parse cancelled job correctly", "[moonraker][history][parsing]") {
+    auto job_json = nlohmann::json::parse(R"({
+        "job_id": "000312",
+        "filename": "Body744_ASA_1h40m.gcode",
+        "status": "cancelled",
+        "start_time": 1760569839.3108423,
+        "end_time": 1760570661.1919284,
+        "print_duration": 293.3458584309999,
+        "total_duration": 821.8611410999999,
+        "filament_used": 285.66931999999963,
+        "metadata": {}
+    })");
+
+    PrintHistoryJob job = parse_history_job(job_json);
+
+    REQUIRE(job.job_id == "000312");
+    REQUIRE(job.status == PrintJobStatus::CANCELLED);
+    REQUIRE(job.print_duration < 300.0);
+    // Empty metadata should not cause crash - fields have defaults
+    REQUIRE(job.filament_type.empty());
+    REQUIRE(job.layer_count == 0);
+}
+
+TEST_CASE("Parse klippy_shutdown as error status", "[moonraker][history][parsing]") {
+    auto job_json = nlohmann::json::parse(R"({
+        "job_id": "000311",
+        "filename": "Belt_bracket.gcode",
+        "status": "klippy_shutdown",
+        "start_time": 1759265379.2184007,
+        "end_time": 1759265554.49163,
+        "print_duration": 0.0,
+        "total_duration": 175.64103475003503,
+        "filament_used": 0.0,
+        "metadata": {
+            "layer_count": 60,
+            "filament_type": "ASA"
+        }
+    })");
+
+    PrintHistoryJob job = parse_history_job(job_json);
+
+    REQUIRE(job.job_id == "000311");
+    // klippy_shutdown should map to ERROR status
+    REQUIRE(job.status == PrintJobStatus::ERROR);
+    REQUIRE(job.print_duration == 0.0);
+    REQUIRE(job.filament_used == 0.0);
+    // Metadata should still parse
+    REQUIRE(job.layer_count == 60);
+    REQUIRE(job.filament_type == "ASA");
+}
+
+TEST_CASE("Parse job with missing optional fields", "[moonraker][history][parsing]") {
+    // Minimal job - only required fields
+    auto job_json = nlohmann::json::parse(R"({
+        "job_id": "000001",
+        "filename": "test.gcode",
+        "status": "completed",
+        "start_time": 1000000.0,
+        "print_duration": 3600.0,
+        "filament_used": 1000.0
+    })");
+
+    PrintHistoryJob job = parse_history_job(job_json);
+
+    REQUIRE(job.job_id == "000001");
+    REQUIRE(job.status == PrintJobStatus::COMPLETED);
+    // Optional fields should have safe defaults
+    REQUIRE(job.end_time == 0.0);
+    REQUIRE(job.total_duration == 0.0);
+    REQUIRE(job.filament_type.empty());
+    REQUIRE(job.layer_count == 0);
+    REQUIRE(job.exists == false); // No metadata means file might not exist
+}
+
+// ============================================================================
+// Statistics Calculation Tests
+// ============================================================================
+
+// Helper to calculate statistics from a job list (mirrors UI code)
+struct HistoryStats {
+    int total_jobs = 0;
+    int completed_jobs = 0;
+    int cancelled_jobs = 0;
+    int error_jobs = 0;
+    double total_print_time = 0.0;
+    double total_filament = 0.0;
+    double success_rate = 0.0;
+};
+
+static HistoryStats calculate_stats(const std::vector<PrintHistoryJob>& jobs) {
+    HistoryStats stats;
+    stats.total_jobs = static_cast<int>(jobs.size());
+
+    for (const auto& job : jobs) {
+        switch (job.status) {
+        case PrintJobStatus::COMPLETED:
+            stats.completed_jobs++;
+            break;
+        case PrintJobStatus::CANCELLED:
+            stats.cancelled_jobs++;
+            break;
+        case PrintJobStatus::ERROR:
+            stats.error_jobs++;
+            break;
+        default:
+            break;
+        }
+        stats.total_print_time += job.print_duration;
+        stats.total_filament += job.filament_used;
+    }
+
+    if (stats.total_jobs > 0) {
+        stats.success_rate = (static_cast<double>(stats.completed_jobs) / stats.total_jobs) * 100.0;
+    }
+
+    return stats;
+}
+
+TEST_CASE("Calculate statistics from job list", "[moonraker][history][stats]") {
+    std::vector<PrintHistoryJob> jobs;
+
+    // 2 completed jobs
+    PrintHistoryJob job1;
+    job1.status = PrintJobStatus::COMPLETED;
+    job1.print_duration = 3600.0; // 1 hour
+    job1.filament_used = 5000.0;  // 5m
+    jobs.push_back(job1);
+
+    PrintHistoryJob job2;
+    job2.status = PrintJobStatus::COMPLETED;
+    job2.print_duration = 7200.0; // 2 hours
+    job2.filament_used = 10000.0; // 10m
+    jobs.push_back(job2);
+
+    // 1 cancelled job
+    PrintHistoryJob job3;
+    job3.status = PrintJobStatus::CANCELLED;
+    job3.print_duration = 600.0; // 10 min
+    job3.filament_used = 500.0;  // 0.5m
+    jobs.push_back(job3);
+
+    // 1 error job
+    PrintHistoryJob job4;
+    job4.status = PrintJobStatus::ERROR;
+    job4.print_duration = 0.0;
+    job4.filament_used = 0.0;
+    jobs.push_back(job4);
+
+    HistoryStats stats = calculate_stats(jobs);
+
+    REQUIRE(stats.total_jobs == 4);
+    REQUIRE(stats.completed_jobs == 2);
+    REQUIRE(stats.cancelled_jobs == 1);
+    REQUIRE(stats.error_jobs == 1);
+    REQUIRE(stats.total_print_time == 11400.0); // 3.17 hours
+    REQUIRE(stats.total_filament == 15500.0);   // 15.5m
+    REQUIRE(stats.success_rate == 50.0);        // 2/4 = 50%
+}
+
+TEST_CASE("Calculate statistics from empty job list", "[moonraker][history][stats]") {
+    std::vector<PrintHistoryJob> jobs;
+
+    HistoryStats stats = calculate_stats(jobs);
+
+    REQUIRE(stats.total_jobs == 0);
+    REQUIRE(stats.completed_jobs == 0);
+    REQUIRE(stats.success_rate == 0.0);
+    REQUIRE(stats.total_print_time == 0.0);
+    REQUIRE(stats.total_filament == 0.0);
+}
+
+TEST_CASE("Success rate calculation with all completed", "[moonraker][history][stats]") {
+    std::vector<PrintHistoryJob> jobs;
+
+    for (int i = 0; i < 10; i++) {
+        PrintHistoryJob job;
+        job.status = PrintJobStatus::COMPLETED;
+        job.print_duration = 1000.0;
+        jobs.push_back(job);
+    }
+
+    HistoryStats stats = calculate_stats(jobs);
+
+    REQUIRE(stats.total_jobs == 10);
+    REQUIRE(stats.success_rate == 100.0);
+}
+
+// ============================================================================
+// Filament Type Parsing Tests
+// ============================================================================
+
+// Helper to parse filament types from semicolon-separated string
+static std::vector<std::string> parse_filament_types(const std::string& filament_str) {
+    std::vector<std::string> types;
+    if (filament_str.empty())
+        return types;
+
+    std::stringstream ss(filament_str);
+    std::string item;
+    while (std::getline(ss, item, ';')) {
+        // Trim whitespace
+        size_t start = item.find_first_not_of(" \t");
+        size_t end = item.find_last_not_of(" \t");
+        if (start != std::string::npos) {
+            types.push_back(item.substr(start, end - start + 1));
+        }
+    }
+    return types;
+}
+
+TEST_CASE("Parse multi-extruder filament types", "[moonraker][history][parsing]") {
+    std::string filament_str = "ASA;ASA;ASA;ASA";
+    auto types = parse_filament_types(filament_str);
+
+    REQUIRE(types.size() == 4);
+    for (const auto& t : types) {
+        REQUIRE(t == "ASA");
+    }
+}
+
+TEST_CASE("Parse single filament type", "[moonraker][history][parsing]") {
+    std::string filament_str = "PLA";
+    auto types = parse_filament_types(filament_str);
+
+    REQUIRE(types.size() == 1);
+    REQUIRE(types[0] == "PLA");
+}
+
+TEST_CASE("Parse empty filament type", "[moonraker][history][parsing]") {
+    std::string filament_str = "";
+    auto types = parse_filament_types(filament_str);
+
+    REQUIRE(types.empty());
+}
+
+TEST_CASE("Parse mixed filament types with whitespace", "[moonraker][history][parsing]") {
+    std::string filament_str = "PLA ; PETG ; ABS";
+    auto types = parse_filament_types(filament_str);
+
+    REQUIRE(types.size() == 3);
+    REQUIRE(types[0] == "PLA");
+    REQUIRE(types[1] == "PETG");
+    REQUIRE(types[2] == "ABS");
+}
+
+// ============================================================================
+// Real Voron Printer Data Tests (from user's 192.168.1.112)
+// ============================================================================
+
+// Exact JSON response from curl to real Voron printer
+static const char* REAL_VORON_HISTORY_5_JOBS = R"({
+    "result": {
+        "count": 5,
+        "jobs": [
+            {
+                "job_id": "000313",
+                "user": "_TRUSTED_USER_",
+                "filename": "Body744_ASA_1h40m.gcode",
+                "status": "completed",
+                "start_time": 1760570869.4063392,
+                "end_time": 1760576647.4602716,
+                "print_duration": 5481.505679905,
+                "total_duration": 5778.059486547,
+                "filament_used": 6170.388689999407,
+                "metadata": {
+                    "slicer": "OrcaSlicer",
+                    "slicer_version": "2.3.1",
+                    "layer_count": 47,
+                    "layer_height": 0.2,
+                    "first_layer_extr_temp": 260.0,
+                    "first_layer_bed_temp": 90.0,
+                    "filament_type": "ASA;ASA;ASA;ASA",
+                    "mmu_print": 1
+                },
+                "auxiliary_data": [
+                    {"provider": "spoolman", "name": "spool_ids", "value": [5, null], "units": null}
+                ],
+                "exists": true
+            },
+            {
+                "job_id": "000312",
+                "status": "cancelled",
+                "filename": "Body744_ASA_1h40m.gcode",
+                "print_duration": 293.3458584309999,
+                "filament_used": 285.66931999999963,
+                "exists": true
+            },
+            {
+                "job_id": "000311",
+                "filename": "Belt_bracket_v6recovered_ASA_5h0m.gcode",
+                "status": "klippy_shutdown",
+                "print_duration": 0.0,
+                "filament_used": 0.0,
+                "metadata": {
+                    "layer_count": 60,
+                    "filament_type": "ASA;ASA;ASA;PLA"
+                },
+                "exists": true
+            },
+            {
+                "job_id": "000310",
+                "status": "klippy_shutdown",
+                "filename": "lead screw cleaner handle remix.gcode",
+                "print_duration": 0.0,
+                "filament_used": 0.0,
+                "exists": true
+            },
+            {
+                "job_id": "00030F",
+                "status": "completed",
+                "filename": "Belt_bracket_v6recovered_ASA_5h0m.gcode",
+                "print_duration": 17420.564048016007,
+                "filament_used": 63183.214590007825,
+                "auxiliary_data": [
+                    {"provider": "spoolman", "name": "spool_ids", "value": [127, null, 86], "units": null}
+                ],
+                "exists": true
+            }
+        ]
+    }
+})";
+
+TEST_CASE("Parse real Voron printer history data", "[moonraker][history][parsing][voron]") {
+    auto j = nlohmann::json::parse(REAL_VORON_HISTORY_5_JOBS);
+
+    REQUIRE(j["result"]["count"].get<int>() == 5);
+    REQUIRE(j["result"]["jobs"].size() == 5);
+
+    // Parse all jobs
+    std::vector<PrintHistoryJob> jobs;
+    for (const auto& job_json : j["result"]["jobs"]) {
+        jobs.push_back(parse_history_job(job_json));
+    }
+
+    REQUIRE(jobs.size() == 5);
+
+    // Job 0: completed, has full metadata
+    REQUIRE(jobs[0].job_id == "000313");
+    REQUIRE(jobs[0].status == PrintJobStatus::COMPLETED);
+    REQUIRE(jobs[0].print_duration > 5400.0);
+    REQUIRE(jobs[0].filament_used > 6000.0);
+    REQUIRE(jobs[0].layer_count == 47);
+    REQUIRE(jobs[0].filament_type == "ASA;ASA;ASA;ASA");
+
+    // Job 1: cancelled
+    REQUIRE(jobs[1].job_id == "000312");
+    REQUIRE(jobs[1].status == PrintJobStatus::CANCELLED);
+
+    // Jobs 2 & 3: klippy_shutdown should map to ERROR
+    REQUIRE(jobs[2].job_id == "000311");
+    REQUIRE(jobs[2].status == PrintJobStatus::ERROR);
+    REQUIRE(jobs[2].print_duration == 0.0);
+    REQUIRE(jobs[2].filament_type == "ASA;ASA;ASA;PLA"); // Mixed filament types
+
+    REQUIRE(jobs[3].status == PrintJobStatus::ERROR);
+
+    // Job 4: completed with null values in auxiliary_data
+    REQUIRE(jobs[4].job_id == "00030F");
+    REQUIRE(jobs[4].status == PrintJobStatus::COMPLETED);
+    REQUIRE(jobs[4].filament_used > 63000.0); // 63m of filament!
+}
+
+TEST_CASE("Calculate stats from real Voron data", "[moonraker][history][stats][voron]") {
+    auto j = nlohmann::json::parse(REAL_VORON_HISTORY_5_JOBS);
+
+    std::vector<PrintHistoryJob> jobs;
+    for (const auto& job_json : j["result"]["jobs"]) {
+        jobs.push_back(parse_history_job(job_json));
+    }
+
+    HistoryStats stats = calculate_stats(jobs);
+
+    REQUIRE(stats.total_jobs == 5);
+    REQUIRE(stats.completed_jobs == 2);  // 000313, 00030F
+    REQUIRE(stats.cancelled_jobs == 1);  // 000312
+    REQUIRE(stats.error_jobs == 2);      // 000311, 000310 (klippy_shutdown)
+    REQUIRE(stats.success_rate == 40.0); // 2/5 = 40%
+
+    // Print time: 5481.5 + 293.3 + 0 + 0 + 17420.6 = ~23195 seconds
+    REQUIRE(stats.total_print_time > 23000.0);
+
+    // Filament: 6170 + 285 + 0 + 0 + 63183 = ~69638mm
+    REQUIRE(stats.total_filament > 69000.0);
+}
+
+// ============================================================================
+// Large Response Handling Tests
+// ============================================================================
+
+TEST_CASE("Handle large history response (simulating 200+ jobs)",
+          "[moonraker][history][parsing][large]") {
+    // Build a large JSON response similar to what Moonraker returns for printers with lots of
+    // history This tests that our parsing can handle responses in the 300KB+ range
+
+    nlohmann::json response;
+    response["result"]["count"] = 500;
+    auto& jobs = response["result"]["jobs"];
+    jobs = nlohmann::json::array();
+
+    // Generate 200 synthetic jobs (similar to real Moonraker response structure)
+    for (int i = 0; i < 200; i++) {
+        nlohmann::json job;
+        job["job_id"] = fmt::format("{:06d}", i);
+        job["filename"] = fmt::format("Test_Model_{}_PLA_2h30m.gcode", i);
+        job["status"] = (i % 10 == 0) ? "cancelled" : "completed";
+        job["start_time"] = 1760000000.0 + (i * 10000);
+        job["end_time"] = 1760000000.0 + (i * 10000) + 9000;
+        job["print_duration"] = 8500.0 + (i % 1000);
+        job["total_duration"] = 9000.0 + (i % 1000);
+        job["filament_used"] = 5000.0 + (i * 100);
+        job["exists"] = true;
+
+        // Add metadata (makes response larger, like real Moonraker)
+        job["metadata"]["slicer"] = "OrcaSlicer";
+        job["metadata"]["slicer_version"] = "2.3.1";
+        job["metadata"]["layer_count"] = 100 + (i % 50);
+        job["metadata"]["layer_height"] = 0.2;
+        job["metadata"]["first_layer_height"] = 0.25;
+        job["metadata"]["first_layer_extr_temp"] = 210.0;
+        job["metadata"]["first_layer_bed_temp"] = 60.0;
+        job["metadata"]["filament_type"] = "PLA";
+        job["metadata"]["filament_name"] = "Generic PLA @Voron v2";
+        job["metadata"]["estimated_time"] = 9000;
+        job["metadata"]["object_height"] = 50.0 + (i % 20);
+        job["metadata"]["nozzle_diameter"] = 0.4;
+
+        // Add thumbnails array (common in real responses)
+        job["metadata"]["thumbnails"] = nlohmann::json::array();
+        job["metadata"]["thumbnails"].push_back(
+            {{"width", 32},
+             {"height", 32},
+             {"size", 990},
+             {"relative_path", fmt::format(".thumbs/Test_Model_{}-32x32.png", i)}});
+        job["metadata"]["thumbnails"].push_back(
+            {{"width", 300},
+             {"height", 300},
+             {"size", 16304},
+             {"relative_path", fmt::format(".thumbs/Test_Model_{}-300x300.png", i)}});
+
+        jobs.push_back(job);
+    }
+
+    // Serialize and verify size
+    std::string json_str = response.dump();
+    size_t response_size = json_str.size();
+
+    // Should be > 100KB for realistic testing (real 50 jobs ~86KB)
+    REQUIRE(response_size > 100 * 1024);
+    INFO("Generated response size: " << response_size << " bytes (" << response_size / 1024
+                                     << " KB)");
+
+    // Now parse it back (this is what our MoonrakerAPI does)
+    auto parsed = nlohmann::json::parse(json_str);
+    REQUIRE(parsed.contains("result"));
+    REQUIRE(parsed["result"]["count"].get<int>() == 500);
+    REQUIRE(parsed["result"]["jobs"].size() == 200);
+
+    // Parse all jobs into PrintHistoryJob structs
+    std::vector<PrintHistoryJob> parsed_jobs;
+    for (const auto& job_json : parsed["result"]["jobs"]) {
+        parsed_jobs.push_back(parse_history_job(job_json));
+    }
+
+    REQUIRE(parsed_jobs.size() == 200);
+
+    // Verify first and last jobs parsed correctly
+    REQUIRE(parsed_jobs[0].job_id == "000000");
+    REQUIRE(parsed_jobs[199].job_id == "000199");
+
+    // Calculate stats from parsed jobs
+    HistoryStats stats = calculate_stats(parsed_jobs);
+    REQUIRE(stats.total_jobs == 200);
+    // 20 cancelled (every 10th), 180 completed
+    REQUIRE(stats.cancelled_jobs == 20);
+    REQUIRE(stats.completed_jobs == 180);
+    REQUIRE(stats.success_rate == 90.0);
 }

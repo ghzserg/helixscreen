@@ -28,6 +28,47 @@
 #include <ctime>
 #include <string>
 
+// ============================================================================
+// Filename Utilities
+// ============================================================================
+
+/**
+ * @brief Extract basename from a file path
+ *
+ * Returns just the filename portion, stripping any directory path.
+ * Examples: "/path/to/file.gcode" -> "file.gcode", "file.gcode" -> "file.gcode"
+ *
+ * @param path Full path or filename
+ * @return Filename only (basename)
+ */
+std::string get_filename_basename(const std::string& path);
+
+/**
+ * @brief Strip G-code file extensions for display
+ *
+ * Removes common G-code extensions (.gcode, .g, .gco, case-insensitive)
+ * for cleaner display in the UI.
+ *
+ * @param filename The original filename
+ * @return Filename without G-code extension, or original if no match
+ */
+std::string strip_gcode_extension(const std::string& filename);
+
+/**
+ * @brief Get display-friendly filename (basename with extension stripped)
+ *
+ * Combines get_filename_basename() and strip_gcode_extension() for
+ * convenient one-call filename formatting.
+ *
+ * @param path Full path or filename
+ * @return Clean display name (e.g., "/path/to/benchy.gcode" -> "benchy")
+ */
+std::string get_display_filename(const std::string& path);
+
+// ============================================================================
+// Time Formatting
+// ============================================================================
+
 /**
  * @brief Format print time from minutes to human-readable string
  *

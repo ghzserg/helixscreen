@@ -117,6 +117,11 @@ void HistoryListPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Note: XML event callbacks are registered in init_global_history_list_panel()
     // BEFORE the XML is created - that's when lv_xml_register_event_cb must be called
 
+    // Attach scroll event handler for infinite scroll
+    if (list_content_) {
+        lv_obj_add_event_cb(list_content_, on_scroll_static, LV_EVENT_SCROLL_END, this);
+    }
+
     // Wire up back button to navigation system
     ui_panel_setup_back_button(panel_);
 
@@ -187,6 +192,11 @@ void HistoryListPanel::on_deactivate() {
 
     // Clear the received flag so next activation will refresh
     jobs_received_ = false;
+
+    // Reset pagination state
+    total_job_count_ = 0;
+    is_loading_more_ = false;
+    has_more_data_ = true;
 }
 
 // ============================================================================
@@ -214,22 +224,86 @@ void HistoryListPanel::refresh_from_api() {
         return;
     }
 
-    spdlog::debug("[{}] Fetching history from API", get_name());
+    // Reset pagination state for fresh fetch
+    jobs_.clear();
+    total_job_count_ = 0;
+    has_more_data_ = true;
+    is_loading_more_ = false;
+
+    spdlog::debug("[{}] Fetching first page of history (limit={})", get_name(), PAGE_SIZE);
 
     api_->get_history_list(
-        200, // limit
-        0,   // start
-        0.0, // since (no filter)
-        0.0, // before (no filter)
+        PAGE_SIZE, // limit - use page size
+        0,         // start - first page
+        0.0,       // since (no filter)
+        0.0,       // before (no filter)
         [this](const std::vector<PrintHistoryJob>& jobs, uint64_t total) {
             spdlog::info("[{}] Received {} jobs (total: {})", get_name(), jobs.size(), total);
             jobs_ = jobs;
+            total_job_count_ = total;
+            has_more_data_ = (jobs_.size() < total);
             apply_filters_and_sort();
         },
         [this](const MoonrakerError& error) {
             spdlog::error("[{}] Failed to fetch history: {}", get_name(), error.message);
             jobs_.clear();
+            total_job_count_ = 0;
+            has_more_data_ = false;
             apply_filters_and_sort();
+        });
+}
+
+void HistoryListPanel::load_more() {
+    if (!api_ || is_loading_more_ || !has_more_data_) {
+        return;
+    }
+
+    // Check if WebSocket is connected
+    ConnectionState state = api_->get_client().get_connection_state();
+    if (state != ConnectionState::CONNECTED) {
+        spdlog::debug("[{}] Cannot load more: not connected", get_name());
+        return;
+    }
+
+    is_loading_more_ = true;
+    int start_offset = static_cast<int>(jobs_.size());
+
+    spdlog::debug("[{}] Loading more jobs (start={}, limit={})", get_name(), start_offset,
+                  PAGE_SIZE);
+
+    api_->get_history_list(
+        PAGE_SIZE,    // limit
+        start_offset, // start - continue from where we left off
+        0.0,          // since (no filter)
+        0.0,          // before (no filter)
+        [this](const std::vector<PrintHistoryJob>& new_jobs, uint64_t total) {
+            is_loading_more_ = false;
+            total_job_count_ = total;
+
+            if (new_jobs.empty()) {
+                has_more_data_ = false;
+                spdlog::debug("[{}] No more jobs to load", get_name());
+                return;
+            }
+
+            spdlog::info("[{}] Loaded {} more jobs (now have {}, total: {})", get_name(),
+                         new_jobs.size(), jobs_.size() + new_jobs.size(), total);
+
+            // Append new jobs
+            jobs_.insert(jobs_.end(), new_jobs.begin(), new_jobs.end());
+
+            // Check if we've loaded everything
+            has_more_data_ = (jobs_.size() < total);
+
+            // Re-apply filters to the full job list
+            apply_filters_and_sort();
+
+            // Note: apply_filters_and_sort calls populate_list which rebuilds UI
+            // For smoother infinite scroll, we could optimize this to only append
+        },
+        [this](const MoonrakerError& error) {
+            is_loading_more_ = false;
+            spdlog::error("[{}] Failed to load more history: {}", get_name(), error.message);
         });
 }
 
@@ -992,5 +1066,76 @@ void HistoryListPanel::on_detail_delete_static(lv_event_t* e) {
         panel.handle_delete();
     } catch (const std::exception& ex) {
         spdlog::error("[History List] Delete callback error: {}", ex.what());
+    }
+}
+
+// ============================================================================
+// Infinite Scroll Implementation
+// ============================================================================
+
+void HistoryListPanel::on_scroll_static(lv_event_t* e) {
+    auto* panel = static_cast<HistoryListPanel*>(lv_event_get_user_data(e));
+    if (panel) {
+        panel->check_scroll_position();
+    }
+}
+
+void HistoryListPanel::check_scroll_position() {
+    if (!list_content_ || !has_more_data_ || is_loading_more_) {
+        return;
+    }
+
+    // Get scroll position and content height
+    int32_t scroll_y = lv_obj_get_scroll_y(list_content_);
+    int32_t content_height = lv_obj_get_scroll_bottom(list_content_);
+
+    // Load more when within 100px of the bottom
+    constexpr int32_t LOAD_MORE_THRESHOLD = 100;
+
+    if (content_height <= LOAD_MORE_THRESHOLD) {
+        spdlog::debug("[{}] Near bottom (scroll_y={}, remaining={}), loading more...", get_name(),
+                      scroll_y, content_height);
+        load_more();
+    }
+}
+
+void HistoryListPanel::append_rows(size_t start_index) {
+    if (!list_rows_ || start_index >= filtered_jobs_.size()) {
+        return;
+    }
+
+    spdlog::debug("[{}] Appending rows from index {} to {}", get_name(), start_index,
+                  filtered_jobs_.size() - 1);
+
+    for (size_t i = start_index; i < filtered_jobs_.size(); ++i) {
+        const auto& job = filtered_jobs_[i];
+
+        // Get status info
+        const char* status_color = get_status_color(job.status);
+        const char* status_text = get_status_text(job.status);
+
+        // Build attrs for row creation
+        const char* attrs[] = {"filename",
+                               job.filename.c_str(),
+                               "date",
+                               job.date_str.c_str(),
+                               "duration",
+                               job.duration_str.c_str(),
+                               "filament_type",
+                               job.filament_type.empty() ? "Unknown" : job.filament_type.c_str(),
+                               "status",
+                               status_text,
+                               "status_color",
+                               status_color,
+                               NULL};
+
+        lv_obj_t* row =
+            static_cast<lv_obj_t*>(lv_xml_create(list_rows_, "history_list_row", attrs));
+
+        if (row) {
+            attach_row_click_handler(row, i);
+        } else {
+            spdlog::warn("[{}] Failed to create row for job {}", get_name(), i);
+        }
     }
 }

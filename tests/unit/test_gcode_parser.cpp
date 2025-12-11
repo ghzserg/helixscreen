@@ -823,3 +823,147 @@ TEST_CASE("extract_header_metadata - Real multi-extruder file", "[gcode][metadat
         REQUIRE(metadata.filament_type == "PLA");
     }
 }
+
+// ============================================================================
+// Layer Counting Tests
+// ============================================================================
+
+TEST_CASE("GCodeParser - Layer counting with LAYER_CHANGE markers", "[gcode][parser][layers]") {
+    GCodeParser parser;
+
+    SECTION("Use LAYER_CHANGE markers when present") {
+        // Simulate G-code with slicer layer markers - should count 3 layers
+        parser.parse_line(";LAYER_CHANGE");
+        parser.parse_line(";Z:0.2");
+        parser.parse_line("G1 Z0.2 F3000");
+        parser.parse_line("G1 X10 Y10 E1");
+        parser.parse_line("G1 X20 Y10 E2");
+        // Z-hop (should NOT create new layer)
+        parser.parse_line("G1 Z0.5 F3000");  // z-hop up
+        parser.parse_line("G0 X30 Y30");     // travel
+        parser.parse_line("G1 Z0.2 F3000");  // z-hop down
+        parser.parse_line("G1 X40 Y40 E3");  // continue extrusion
+        parser.parse_line(";LAYER_CHANGE");  // Second layer marker
+        parser.parse_line(";Z:0.4");
+        parser.parse_line("G1 Z0.4 F3000");
+        parser.parse_line("G1 X10 Y10 E4");
+        parser.parse_line(";LAYER_CHANGE");  // Third layer marker
+        parser.parse_line(";Z:0.6");
+        parser.parse_line("G1 Z0.6 F3000");
+        parser.parse_line("G1 X10 Y10 E5");
+
+        auto file = parser.finalize();
+
+        // Should have exactly 3 layers (from markers), not more from z-hops
+        REQUIRE(file.layers.size() == 3);
+        REQUIRE(file.layers[0].z_height == Approx(0.2f));
+        REQUIRE(file.layers[1].z_height == Approx(0.4f));
+        REQUIRE(file.layers[2].z_height == Approx(0.6f));
+    }
+
+    SECTION("Fall back to Z-based detection when no markers") {
+        // G-code without slicer markers - must fall back to Z changes
+        parser.parse_line("G1 Z0.2 F3000");
+        parser.parse_line("G1 X10 Y10 E1");
+        parser.parse_line("G1 Z0.4 F3000");
+        parser.parse_line("G1 X20 Y20 E2");
+        parser.parse_line("G1 Z0.6 F3000");
+        parser.parse_line("G1 X30 Y30 E3");
+
+        auto file = parser.finalize();
+
+        // Without markers, falls back to Z-based counting
+        REQUIRE(file.layers.size() == 3);
+    }
+
+    SECTION("LAYER:N format (alternative slicer syntax)") {
+        parser.parse_line(";LAYER:0");
+        parser.parse_line("G1 Z0.2 F3000");
+        parser.parse_line("G1 X10 Y10 E1");
+        parser.parse_line(";LAYER:1");
+        parser.parse_line("G1 Z0.4 F3000");
+        parser.parse_line("G1 X20 Y20 E2");
+
+        auto file = parser.finalize();
+
+        // Should recognize LAYER:N format
+        REQUIRE(file.layers.size() == 2);
+    }
+
+    SECTION("Ignore LAYER_COUNT metadata (not a layer change)") {
+        parser.parse_line("; total layer number = 100");  // Metadata, not layer change
+        parser.parse_line(";LAYER_CHANGE");
+        parser.parse_line("G1 Z0.2 E1");
+        parser.parse_line(";LAYER_CHANGE");
+        parser.parse_line("G1 Z0.4 E2");
+
+        auto file = parser.finalize();
+
+        // Should have 2 layers from markers, not confused by metadata
+        REQUIRE(file.layers.size() == 2);
+    }
+}
+
+TEST_CASE("GCodeParser - Z-hop handling", "[gcode][parser][layers][zhop]") {
+    GCodeParser parser;
+
+    SECTION("Z-hop moves should not create new layers") {
+        // This is the bug scenario: z-hop creates phantom layers
+        parser.parse_line(";LAYER_CHANGE");
+        parser.parse_line("G1 Z0.2 E1");   // Real layer
+        parser.parse_line("G1 X10 Y10 E2");
+        parser.parse_line("G1 Z0.6");      // Z-hop up (travel, no E)
+        parser.parse_line("G0 X50 Y50");   // Travel move
+        parser.parse_line("G1 Z0.2");      // Z-hop down
+        parser.parse_line("G1 X60 Y60 E3");
+
+        auto file = parser.finalize();
+
+        // Should have only 1 layer - the z-hop should not create layers
+        REQUIRE(file.layers.size() == 1);
+        REQUIRE(file.layers[0].z_height == Approx(0.2f));
+    }
+}
+
+TEST_CASE("GCodeParser - Real 3DBenchy layer count", "[gcode][parser][layers][integration]") {
+    // Integration test with real test file
+    std::string test_file = "assets/test_gcodes/3DBenchy.gcode";
+
+    std::ifstream check(test_file);
+    if (!check.good()) {
+        SKIP("Test G-code file not found: " << test_file);
+    }
+    check.close();
+
+    // Parse the entire file line by line
+    GCodeParser parser;
+    std::ifstream file_stream(test_file);
+    std::string line;
+    while (std::getline(file_stream, line)) {
+        parser.parse_line(line);
+    }
+    auto file = parser.finalize();
+
+    SECTION("Layer count matches slicer metadata") {
+        // 3DBenchy has 240 LAYER_CHANGE markers (confirmed via grep)
+        // The parser should count 240 layers, not 2912
+        INFO("Actual layer count: " << file.layers.size());
+        INFO("Expected: ~240 (from slicer metadata, not 2912 from Z movements)");
+
+        // Allow some tolerance for first layer/intro differences
+        REQUIRE(file.layers.size() >= 230);
+        REQUIRE(file.layers.size() <= 250);
+    }
+
+    SECTION("Layer count stored in metadata matches parsed count") {
+        // The metadata layer count should match what we parsed
+        INFO("Parsed layers: " << file.layers.size());
+        INFO("Metadata layer count: " << file.total_layer_count);
+
+        // If metadata has layer count, it should roughly match parsed
+        if (file.total_layer_count > 0) {
+            REQUIRE(file.layers.size() >= static_cast<size_t>(file.total_layer_count * 0.9));
+            REQUIRE(file.layers.size() <= static_cast<size_t>(file.total_layer_count * 1.1));
+        }
+    }
+}

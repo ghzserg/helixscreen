@@ -611,6 +611,19 @@ static bool parse_command_line_args(
             g_runtime_config.use_real_files = true;
         } else if (strcmp(argv[i], "--test-history") == 0) {
             g_runtime_config.test_history_api = true;
+        } else if (strcmp(argv[i], "--sim-speed") == 0) {
+            if (i + 1 < argc) {
+                char* endptr;
+                double val = strtod(argv[++i], &endptr);
+                if (*endptr != '\0' || val < 1.0 || val > 1000.0) {
+                    printf("Error: --sim-speed requires a numeric value (1.0-1000.0)\n");
+                    return false;
+                }
+                g_runtime_config.sim_speedup = val;
+            } else {
+                printf("Error: --sim-speed requires a speedup factor (e.g., 100 for 100x)\n");
+                return false;
+            }
         } else if (strcmp(argv[i], "--select-file") == 0) {
             if (i + 1 < argc) {
                 g_runtime_config.select_file = argv[++i];
@@ -815,6 +828,7 @@ static bool parse_command_line_args(
             printf("    --real-ethernet    Use real Ethernet hardware (requires --test)\n");
             printf("    --real-moonraker   Connect to real printer (requires --test)\n");
             printf("    --real-files       Use real files from printer (requires --test)\n");
+            printf("    --sim-speed <N>    Simulation speedup factor, e.g., 100 for 100x faster\n");
             printf("    --select-file <name>  Auto-select file in print-select panel and show "
                    "detail view\n");
             printf("\nG-code Viewer Options (require --test):\n");
@@ -1495,9 +1509,12 @@ static void initialize_moonraker_client(Config* config) {
 
     // Create client instance (mock or real based on test mode)
     if (get_runtime_config().should_mock_moonraker()) {
-        spdlog::debug("[Test Mode] Creating MOCK Moonraker client (Voron 2.4 profile)");
-        moonraker_client =
-            std::make_unique<MoonrakerClientMock>(MoonrakerClientMock::PrinterType::VORON_24);
+        double speedup = get_runtime_config().sim_speedup;
+        spdlog::debug("[Test Mode] Creating MOCK Moonraker client (Voron 2.4 profile, {}x speed)",
+                      speedup);
+        auto mock = std::make_unique<MoonrakerClientMock>(
+            MoonrakerClientMock::PrinterType::VORON_24, speedup);
+        moonraker_client = std::move(mock);
     } else {
         spdlog::debug("Creating REAL Moonraker client");
         moonraker_client = std::make_unique<MoonrakerClient>();
@@ -1922,6 +1939,9 @@ int main(int argc, char** argv) {
 
     // Register status bar event callbacks BEFORE creating XML (so LVGL can find them)
     ui_status_bar_register_callbacks();
+
+    // Register screws tilt panel callbacks BEFORE creating XML
+    ui_panel_screws_tilt_register_callbacks();
 
     // Create entire UI from XML (single component contains everything)
     lv_obj_t* app_layout = (lv_obj_t*)lv_xml_create(screen, "app_layout", NULL);

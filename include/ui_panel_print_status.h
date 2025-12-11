@@ -198,6 +198,27 @@ class PrintStatusPanel : public PanelBase {
      */
     void set_temp_control_panel(TempControlPanel* temp_panel);
 
+    //
+    // === Tune Panel Handlers (called by XML event callbacks) ===
+    //
+
+    /**
+     * @brief Handle speed slider value change
+     * @param value New speed percentage (50-200)
+     */
+    void handle_tune_speed_changed(int value);
+
+    /**
+     * @brief Handle flow slider value change
+     * @param value New flow percentage (75-125)
+     */
+    void handle_tune_flow_changed(int value);
+
+    /**
+     * @brief Handle reset button click - resets speed/flow to 100%
+     */
+    void handle_tune_reset();
+
   private:
     //
     // === Subjects (owned by this panel) ===
@@ -233,7 +254,7 @@ class PrintStatusPanel : public PanelBase {
     char bed_temp_buf_[32] = "0 / 0°C";
     char speed_buf_[32] = "100%";
     char flow_buf_[32] = "100%";
-    char pause_button_buf_[32] = "Pause";
+    char pause_button_buf_[32] = "\xF3\xB0\x8F\xA4"; // MDI pause icon (F03E4)
 
     //
     // === Instance State ===
@@ -311,11 +332,6 @@ class PrintStatusPanel : public PanelBase {
     static void on_tune_clicked(lv_event_t* e);
     static void on_cancel_clicked(lv_event_t* e);
 
-    // Tune panel slider callbacks
-    static void on_speed_slider_changed(lv_event_t* e);
-    static void on_flow_slider_changed(lv_event_t* e);
-    static void on_reset_clicked(lv_event_t* e);
-
     // Static resize callback (registered with ui_resize_handler)
     static void on_resize_static();
 
@@ -335,6 +351,8 @@ class PrintStatusPanel : public PanelBase {
     static void led_state_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
     static void print_layer_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
     static void excluded_objects_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
+    static void print_duration_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
+    static void print_time_left_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
 
     //
     // === Observer Instance Methods ===
@@ -349,6 +367,8 @@ class PrintStatusPanel : public PanelBase {
     void on_led_state_changed(int state);
     void on_print_layer_changed(int current_layer);
     void on_excluded_objects_changed();
+    void on_print_duration_changed(int seconds);
+    void on_print_time_left_changed(int seconds);
 
     // PrinterState observers (ObserverGuard handles cleanup)
     ObserverGuard extruder_temp_observer_;
@@ -363,6 +383,8 @@ class PrintStatusPanel : public PanelBase {
     ObserverGuard led_state_observer_;
     ObserverGuard print_layer_observer_;
     ObserverGuard excluded_objects_observer_;
+    ObserverGuard print_duration_observer_;
+    ObserverGuard print_time_left_observer_;
 
     bool led_on_ = false;
     std::string configured_led_;

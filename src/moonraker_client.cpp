@@ -292,6 +292,11 @@ int MoonrakerClient::connect(const char* url, std::function<void()> on_connected
             // Check for timed out requests on each message (opportunistic cleanup)
             check_request_timeouts();
 
+            // DEBUG: Log large messages to help diagnose history issue
+            if (msg.size() > 50000) {
+                spdlog::debug("[Moonraker Client] Received large message: {} bytes", msg.size());
+            }
+
             // Parse JSON message
             json j;
             try {
@@ -311,6 +316,10 @@ int MoonrakerClient::connect(const char* url, std::function<void()> on_connected
                 }
 
                 uint64_t id = j["id"].get<uint64_t>();
+
+                // DEBUG: Log every response ID to diagnose history issue
+                spdlog::trace("[Moonraker Client] Got response for id={}, size={} bytes", id,
+                              msg.size());
 
                 // Copy callbacks out before invoking to avoid deadlock
                 std::function<void(json)> success_cb;

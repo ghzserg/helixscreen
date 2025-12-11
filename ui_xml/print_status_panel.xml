@@ -45,16 +45,16 @@
             <!-- Layer Progress (Layer X / Y) -->
             <text_small name="layer_progress_label" text="Layer 0 / 0" bind_text="print_layer_text" width="100%" style_text_color="#text_secondary" style_text_align="left"/>
             <!-- File Name -->
-            <text_body name="file_name" text="benchy.gcode" bind_text="print_filename" width="100%" style_text_align="left"/>
+            <text_body name="file_name" text="benchy.gcode" bind_text="print_filename_display" width="100%" style_text_align="left"/>
             <!-- Status Row: Time/Progress -->
-            <lv_obj width="100%" height="24" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row" style_flex_main_place="space_between" scrollable="false">
+            <lv_obj width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false">
               <!-- Time display: elapsed / remaining -->
-              <lv_obj style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center">
-                <text_body name="print_elapsed" text="00:00:00" bind_text="print_elapsed"/>
-                <text_body text=" / "/>
-                <text_body name="print_remaining" text="00:00:00" bind_text="print_remaining"/>
+              <lv_obj width="content" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" scrollable="false">
+                <text_small name="print_elapsed" text="0h 00m" bind_text="print_elapsed"/>
+                <text_small text=" / "/>
+                <text_small name="print_remaining" text="0h 00m" bind_text="print_remaining"/>
               </lv_obj>
-              <text_body name="print_percent" text="46%" bind_text="print_progress_text"/>
+              <text_small name="print_percent" text="0%" bind_text="print_progress_text"/>
             </lv_obj>
           </lv_obj>
         </lv_obj>

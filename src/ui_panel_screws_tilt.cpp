@@ -326,7 +326,7 @@ static void rotation_anim_cb(void* var, int32_t value) {
 }
 
 void ScrewsTiltPanel::create_screw_indicator(size_t index, const ScrewTiltResult& screw,
-                                              bool is_worst) {
+                                             bool is_worst) {
     if (!bed_diagram_container_) {
         return;
     }
@@ -347,9 +347,8 @@ void ScrewsTiltPanel::create_screw_indicator(size_t index, const ScrewTiltResult
     lv_obj_set_style_bg_color(indicator, bg_color, 0);
     lv_obj_set_style_bg_opa(indicator, LV_OPA_COVER, 0); // Must be AFTER bg_color
 
-    spdlog::debug("[ScrewsTilt] Indicator {} ({}): color=0x{:06X}, is_worst={}",
-                  index, screw.screw_name,
-                  (bg_color.red << 16) | (bg_color.green << 8) | bg_color.blue,
+    spdlog::debug("[ScrewsTilt] Indicator {} ({}): color=0x{:06X}, is_worst={}", index,
+                  screw.screw_name, (bg_color.red << 16) | (bg_color.green << 8) | bg_color.blue,
                   is_worst);
 
     // Create centered icon/text label
@@ -364,8 +363,7 @@ void ScrewsTiltPanel::create_screw_indicator(size_t index, const ScrewTiltResult
         lv_label_set_text(label, "\xF3\xB0\x84\xAC");
     } else {
         // Adjustment needed - show animated rotation icon
-        bool is_clockwise = screw.adjustment.find("CW") == 0 &&
-                            screw.adjustment.find("CCW") != 0;
+        bool is_clockwise = screw.adjustment.find("CW") == 0 && screw.adjustment.find("CCW") != 0;
 
         lv_obj_set_style_text_font(label, &mdi_icons_24, 0);
         // rotate-right (F0467) = clockwise/tighten, rotate-left (F0465) = CCW/loosen
@@ -459,7 +457,7 @@ void ScrewsTiltPanel::update_screw_diagram() {
 }
 
 lv_color_t ScrewsTiltPanel::get_adjustment_color(const ScrewTiltResult& screw,
-                                                  bool is_worst_screw) const {
+                                                 bool is_worst_screw) const {
     // Helper to get color from globals.xml constant
     auto get_theme_color = [](const char* const_name) -> lv_color_t {
         const char* hex = lv_xml_get_const(nullptr, const_name);

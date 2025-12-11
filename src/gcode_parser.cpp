@@ -158,9 +158,21 @@ bool GCodeParser::parse_movement_command(const std::string& line) {
         new_position.z = is_absolute_positioning_ ? value : current_position_.z + value;
         has_movement = true;
 
-        // Layer change detected
+        // Layer change detection:
+        // If we have LAYER_CHANGE markers, only start a new layer when we see one
+        // Otherwise fall back to Z-based detection (for older G-code without markers)
         if (std::abs(new_position.z - current_position_.z) > 0.001f) {
-            start_new_layer(new_position.z);
+            if (use_layer_markers_) {
+                // Layer marker mode: only start layer if marker was seen
+                if (pending_layer_marker_) {
+                    start_new_layer(new_position.z);
+                    pending_layer_marker_ = false;
+                }
+                // Otherwise ignore Z movement (it's a z-hop or adjustment)
+            } else {
+                // Legacy mode: every Z change is a new layer
+                start_new_layer(new_position.z);
+            }
         }
     }
 
@@ -297,11 +309,32 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
     // OrcaSlicer/PrusaSlicer format: "; key = value"
     // Use fuzzy matching to handle variations across slicers
 
-    if (line.length() < 3 || line[0] != ';') {
+    if (line.length() < 2 || line[0] != ';') {
         return;
     }
 
-    // Skip '; ' to get key=value part
+    // Check for layer change markers FIRST (before key=value parsing)
+    // Common formats: ";LAYER_CHANGE", ";LAYER:N", "; LAYER_CHANGE"
+    std::string content_upper = line.substr(1);
+    // Remove leading whitespace for comparison
+    size_t ws_start = 0;
+    while (ws_start < content_upper.length() && std::isspace(content_upper[ws_start])) {
+        ws_start++;
+    }
+    content_upper = content_upper.substr(ws_start);
+    std::transform(content_upper.begin(), content_upper.end(), content_upper.begin(), ::toupper);
+
+    // Detect layer change markers (but not LAYER_COUNT which is metadata)
+    if (content_upper.find("LAYER_CHANGE") == 0 || content_upper.find("LAYER:") == 0) {
+        // Mark that we found layer markers (prefer this over Z-based detection)
+        use_layer_markers_ = true;
+        pending_layer_marker_ = true;
+        spdlog::trace("Layer marker detected: '{}' (use_markers={}, pending={})", line,
+                      use_layer_markers_, pending_layer_marker_);
+        return; // Don't process as key=value metadata
+    }
+
+    // Skip '; ' to get key=value or key: value part
     std::string content = line.substr(1);
 
     // Trim leading whitespace
@@ -311,15 +344,25 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
     }
     content = content.substr(start);
 
-    // Look for '=' separator
+    // Look for '=' or ':' separator (support both OrcaSlicer and PrusaSlicer formats)
     size_t eq_pos = content.find('=');
-    if (eq_pos == std::string::npos) {
+    size_t colon_pos = content.find(':');
+    size_t sep_pos = std::string::npos;
+
+    // Prefer '=' if present and before any ':', otherwise use ':'
+    if (eq_pos != std::string::npos && (colon_pos == std::string::npos || eq_pos < colon_pos)) {
+        sep_pos = eq_pos;
+    } else if (colon_pos != std::string::npos) {
+        sep_pos = colon_pos;
+    }
+
+    if (sep_pos == std::string::npos) {
         return;
     }
 
     // Extract key and value
-    std::string key = content.substr(0, eq_pos);
-    std::string value = content.substr(eq_pos + 1);
+    std::string key = content.substr(0, sep_pos);
+    std::string value = content.substr(sep_pos + 1);
 
     // Trim whitespace from key and value
     auto trim = [](std::string& s) {
@@ -396,8 +439,10 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
             spdlog::trace("Parsed filament cost: ${}", metadata_filament_cost_);
         } catch (...) {
         }
-    } else if (contains_all({"layer"}) &&
-               (contains_all({"total"}) || contains_all({"number"}) || contains_all({"count"}))) {
+    } else if (contains_all({"layer"}) && contains_all({"total"}) &&
+               (contains_all({"number"}) || contains_all({"count"}) ||
+                key_lower.find("total layer") != std::string::npos)) {
+        // Match "total layer number", "total layers count", but NOT "interlocking_beam_layer_count"
         try {
             metadata_layer_count_ = std::stoi(value);
             spdlog::trace("Parsed total layer count: {}", metadata_layer_count_);

@@ -401,7 +401,9 @@ class GCodeParser {
     float metadata_layer_height_{0.2f};       ///< Layer height (default: 0.2mm)
 
     // Progress tracking
-    size_t lines_parsed_{0}; ///< Line counter
+    size_t lines_parsed_{0};           ///< Line counter
+    bool use_layer_markers_{false};    ///< True if ;LAYER_CHANGE markers found
+    bool pending_layer_marker_{false}; ///< Layer change marker seen, layer not yet started
 };
 
 // ============================================================================

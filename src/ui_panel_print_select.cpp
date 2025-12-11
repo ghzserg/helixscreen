@@ -32,39 +32,7 @@
 // Forward declaration for class-based API
 PrintStatusPanel& get_global_print_status_panel();
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-namespace {
-
-/**
- * @brief Strip common G-code file extensions for display
- *
- * Removes extensions like .gcode, .g, .gco (case-insensitive) from filenames
- * for cleaner display in the UI. The actual filename is preserved for file operations.
- *
- * @param filename The original filename
- * @return Filename without the G-code extension, or original if no match
- */
-std::string strip_gcode_extension(const std::string& filename) {
-    // Common G-code extensions (case-insensitive check)
-    static const std::vector<std::string> extensions = {".gcode", ".GCODE", ".Gcode", ".gco",
-                                                        ".GCO",   ".Gco",   ".g",     ".G"};
-
-    for (const auto& ext : extensions) {
-        if (filename.size() > ext.size()) {
-            size_t pos = filename.size() - ext.size();
-            if (filename.compare(pos, ext.size(), ext) == 0) {
-                return filename.substr(0, pos);
-            }
-        }
-    }
-
-    return filename;
-}
-
-} // namespace
+// Note: strip_gcode_extension() moved to ui_utils.h for DRY reuse across panels
 
 // ============================================================================
 // Global Instance

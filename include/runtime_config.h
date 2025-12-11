@@ -89,6 +89,9 @@ struct RuntimeConfig {
     float gcode_camera_zoom = 1.0f;          ///< Camera zoom level (--gcode-zoom)
     bool gcode_debug_colors = false; ///< Enable per-face debug coloring (--gcode-debug-colors)
 
+    // Mock simulation options
+    double sim_speedup = 1.0; ///< Simulation speedup factor (--sim-speed, requires --test)
+
     /**
      * @brief Check if WiFi should use mock implementation
      * @return true if test mode is enabled and real WiFi is not requested

@@ -155,7 +155,7 @@ class ScrewsTiltPanel {
     // Subjects for reactive screw list (4 slots max)
     static constexpr size_t MAX_SCREWS = 4;
     static constexpr size_t SCREW_NAME_BUF_SIZE = 32;
-    static constexpr size_t SCREW_ADJ_BUF_SIZE = 24;  // "Tighten ¼ turn" etc.
+    static constexpr size_t SCREW_ADJ_BUF_SIZE = 24; // "Tighten ¼ turn" etc.
 
     std::array<lv_subject_t, MAX_SCREWS> screw_visible_subjects_;
     std::array<lv_subject_t, MAX_SCREWS> screw_name_subjects_;
