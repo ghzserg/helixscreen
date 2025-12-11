@@ -5,11 +5,18 @@
 
 #include "../tests/mocks/mock_printer_state.h"
 #include "gcode_parser.h"
+#include "runtime_config.h"
 
 #include <spdlog/spdlog.h>
 
+// Alias for cleaner code - use shared constant from RuntimeConfig
+#define TEST_GCODE_DIR RuntimeConfig::TEST_GCODE_DIR
+
+#include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <sstream>
 
 // Static initialization of path prefixes for fallback search
@@ -241,4 +248,153 @@ std::vector<std::string> MoonrakerAPIMock::get_available_objects_from_mock() con
         return mock_state_->get_available_objects();
     }
     return {};
+}
+
+// ============================================================================
+// MockScrewsTiltState Implementation
+// ============================================================================
+
+MockScrewsTiltState::MockScrewsTiltState() {
+    reset();
+}
+
+void MockScrewsTiltState::reset() {
+    probe_count_ = 0;
+
+    // Initialize 4-corner bed with realistic out-of-level deviations
+    // Positive offset = screw too high, needs CW to lower
+    // Negative offset = screw too low, needs CCW to raise
+    screws_ = {
+        {"front_left", 30.0f, 30.0f, 0.0f, true},      // Reference screw (always 0)
+        {"front_right", 200.0f, 30.0f, 0.15f, false},  // Too high: CW ~3 turns
+        {"rear_right", 200.0f, 200.0f, -0.08f, false}, // Too low: CCW ~1.5 turns
+        {"rear_left", 30.0f, 200.0f, 0.12f, false}     // Too high: CW ~2.5 turns
+    };
+
+    spdlog::info("[MockScrewsTilt] Reset bed to initial out-of-level state");
+}
+
+std::vector<ScrewTiltResult> MockScrewsTiltState::probe() {
+    probe_count_++;
+
+    std::vector<ScrewTiltResult> results;
+    results.reserve(screws_.size());
+
+    // Reference Z height (simulated probe at reference screw)
+    const float base_z = 2.50f;
+
+    for (const auto& screw : screws_) {
+        ScrewTiltResult result;
+        result.screw_name = screw.name;
+        result.x_pos = screw.x_pos;
+        result.y_pos = screw.y_pos;
+        result.z_height = base_z + screw.current_offset;
+        result.is_reference = screw.is_reference;
+
+        if (screw.is_reference) {
+            // Reference screw shows no adjustment
+            result.adjustment = "";
+        } else {
+            result.adjustment = offset_to_adjustment(screw.current_offset);
+        }
+
+        results.push_back(result);
+    }
+
+    spdlog::info("[MockScrewsTilt] Probe #{}: {} screws measured", probe_count_, results.size());
+    for (const auto& r : results) {
+        if (r.is_reference) {
+            spdlog::debug("  {} (base): z={:.3f}", r.screw_name, r.z_height);
+        } else {
+            spdlog::debug("  {}: z={:.3f}, adjust {}", r.screw_name, r.z_height, r.adjustment);
+        }
+    }
+
+    return results;
+}
+
+void MockScrewsTiltState::simulate_user_adjustments() {
+    // Use a random number generator for realistic imperfect adjustments
+    static std::mt19937 rng(std::random_device{}());
+    std::uniform_real_distribution<float> correction_dist(0.70f, 0.95f);
+    std::uniform_real_distribution<float> noise_dist(-0.005f, 0.005f);
+
+    for (auto& screw : screws_) {
+        if (screw.is_reference) {
+            continue; // Reference screw is never adjusted
+        }
+
+        // User corrects 70-95% of the deviation
+        float correction_factor = correction_dist(rng);
+        float new_offset = screw.current_offset * (1.0f - correction_factor);
+
+        // Add small random noise (imperfect adjustment)
+        new_offset += noise_dist(rng);
+
+        spdlog::debug("[MockScrewsTilt] {} adjustment: {:.3f}mm -> {:.3f}mm ({}% correction)",
+                      screw.name, screw.current_offset, new_offset,
+                      static_cast<int>(correction_factor * 100));
+
+        screw.current_offset = new_offset;
+    }
+}
+
+bool MockScrewsTiltState::is_level(float tolerance_mm) const {
+    for (const auto& screw : screws_) {
+        if (screw.is_reference) {
+            continue;
+        }
+        if (std::abs(screw.current_offset) > tolerance_mm) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::string MockScrewsTiltState::offset_to_adjustment(float offset_mm) {
+    // Standard bed screw: M3 with 0.5mm pitch
+    // 1 full turn = 0.5mm of Z change
+    // "Minutes" = 1/60 of a turn (like clock face)
+    const float MM_PER_TURN = 0.5f;
+
+    float abs_offset = std::abs(offset_mm);
+    float turns = abs_offset / MM_PER_TURN;
+    int full_turns = static_cast<int>(turns);
+    int minutes = static_cast<int>((turns - full_turns) * 60.0f);
+
+    // CW (clockwise) lowers the bed corner (reduces positive offset)
+    // CCW (counter-clockwise) raises the bed corner (reduces negative offset)
+    const char* direction = (offset_mm > 0) ? "CW" : "CCW";
+
+    // Format as "CW 01:15" or "CCW 00:30"
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%s %02d:%02d", direction, full_turns, minutes);
+    return std::string(buf);
+}
+
+// ============================================================================
+// MoonrakerAPIMock - Screws Tilt Override
+// ============================================================================
+
+void MoonrakerAPIMock::calculate_screws_tilt(ScrewTiltCallback on_success,
+                                             ErrorCallback /*on_error*/) {
+    spdlog::info("[MoonrakerAPIMock] calculate_screws_tilt called (probe #{})",
+                 mock_bed_state_.get_probe_count() + 1);
+
+    // Simulate probing delay (2 seconds) via timer
+    // For now, call synchronously - in real app this would be async
+    auto results = mock_bed_state_.probe();
+
+    // After showing results, simulate user making adjustments
+    // This prepares the state for the next probe call
+    mock_bed_state_.simulate_user_adjustments();
+
+    if (on_success) {
+        on_success(results);
+    }
+}
+
+void MoonrakerAPIMock::reset_mock_bed_state() {
+    mock_bed_state_.reset();
+    spdlog::info("[MoonrakerAPIMock] Mock bed state reset");
 }

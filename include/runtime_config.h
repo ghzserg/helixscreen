@@ -56,6 +56,29 @@ struct RuntimeConfig {
     const char* select_file =
         nullptr; ///< File to auto-select in print select panel (--select-file)
 
+    // Mock auto-print options (for panel testing without command-line args)
+    bool mock_auto_start_print = false; ///< Auto-start a print in mock mode (set internally)
+    bool mock_auto_history = false; ///< Auto-generate history data in mock mode (set internally)
+
+    /// Test G-code directory (relative to project root or build dir)
+    static constexpr const char* TEST_GCODE_DIR = "assets/test_gcodes";
+
+    /// Default test file used when auto-starting prints or generating mock history
+    static constexpr const char* DEFAULT_TEST_FILE = "3DBenchy.gcode";
+
+    /**
+     * @brief Get full path to default test G-code file
+     * @return Path like "assets/test_gcodes/3DBenchy.gcode"
+     */
+    static const char* get_default_test_file_path() {
+        // Static buffer to hold the constructed path
+        static char path_buf[256] = {};
+        if (path_buf[0] == '\0') {
+            snprintf(path_buf, sizeof(path_buf), "%s/%s", TEST_GCODE_DIR, DEFAULT_TEST_FILE);
+        }
+        return path_buf;
+    }
+
     // G-code viewer options
     const char* gcode_test_file = nullptr;   ///< G-code file to load on startup (--gcode-file)
     bool gcode_camera_azimuth_set = false;   ///< Whether azimuth was set via command line

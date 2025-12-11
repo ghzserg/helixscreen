@@ -11,6 +11,9 @@
 #include <string>
 #include <unordered_set>
 
+// Forward declarations
+class TempControlPanel;
+
 /**
  * @brief Print status panel - shows active print progress and controls
  *
@@ -187,6 +190,14 @@ class PrintStatusPanel : public PanelBase {
         return current_progress_;
     }
 
+    /**
+     * @brief Set reference to TempControlPanel for temperature overlays
+     *
+     * Must be called before temp card click handlers can work.
+     * @param temp_panel Pointer to shared TempControlPanel instance
+     */
+    void set_temp_control_panel(TempControlPanel* temp_panel);
+
   private:
     //
     // === Subjects (owned by this panel) ===
@@ -247,6 +258,21 @@ class PrintStatusPanel : public PanelBase {
     lv_obj_t* print_thumbnail_ = nullptr;
     lv_obj_t* gradient_background_ = nullptr;
 
+    //
+    // === Temperature & Tuning Overlays ===
+    //
+
+    TempControlPanel* temp_control_panel_ = nullptr;
+    lv_obj_t* nozzle_temp_panel_ = nullptr;
+    lv_obj_t* bed_temp_panel_ = nullptr;
+    lv_obj_t* tune_panel_ = nullptr;
+
+    // Tuning panel subjects
+    lv_subject_t tune_speed_subject_;
+    lv_subject_t tune_flow_subject_;
+    char tune_speed_buf_[16] = "100%";
+    char tune_flow_buf_[16] = "100%";
+
     // Resize callback registration flag
     bool resize_registered_ = false;
 
@@ -257,6 +283,8 @@ class PrintStatusPanel : public PanelBase {
     void update_all_displays();
     void show_gcode_viewer(bool show);
     void load_gcode_file(const char* file_path);
+    void setup_tune_panel(lv_obj_t* panel);
+    void update_tune_display();
 
     static void format_time(int seconds, char* buf, size_t buf_size);
 
@@ -282,6 +310,11 @@ class PrintStatusPanel : public PanelBase {
     static void on_pause_clicked(lv_event_t* e);
     static void on_tune_clicked(lv_event_t* e);
     static void on_cancel_clicked(lv_event_t* e);
+
+    // Tune panel slider callbacks
+    static void on_speed_slider_changed(lv_event_t* e);
+    static void on_flow_slider_changed(lv_event_t* e);
+    static void on_reset_clicked(lv_event_t* e);
 
     // Static resize callback (registered with ui_resize_handler)
     static void on_resize_static();

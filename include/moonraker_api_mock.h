@@ -14,6 +14,79 @@
 class MockPrinterState;
 
 /**
+ * @brief Simulated bed screw state for mock bed leveling
+ *
+ * Tracks the "physical" state of bed screws to simulate a realistic
+ * iterative bed leveling session. Each probe shows current deviations,
+ * and after each probe the user is assumed to make adjustments that
+ * bring the bed closer to level.
+ */
+struct MockBedScrew {
+    std::string name;            ///< Screw identifier (e.g., "front_left")
+    float x_pos = 0.0f;          ///< Bed X coordinate (mm)
+    float y_pos = 0.0f;          ///< Bed Y coordinate (mm)
+    float current_offset = 0.0f; ///< Current Z deviation from level (mm)
+    bool is_reference = false;   ///< True for the reference screw (always level)
+};
+
+/**
+ * @brief Mock bed leveling state machine
+ *
+ * Simulates a realistic bed leveling session:
+ * 1. Initial state has screws out of level (0.05-0.20mm deviations)
+ * 2. After each probe, user "adjusts" screws (70-90% correction)
+ * 3. Typically reaches level state after 2-4 iterations
+ */
+class MockScrewsTiltState {
+  public:
+    MockScrewsTiltState();
+
+    /**
+     * @brief Reset bed to initial out-of-level state
+     */
+    void reset();
+
+    /**
+     * @brief Simulate probing the bed and return results
+     * @return Vector of screw results with current deviations
+     */
+    std::vector<ScrewTiltResult> probe();
+
+    /**
+     * @brief Simulate user making adjustments based on probe results
+     *
+     * After seeing probe results, user turns screws. This applies
+     * a 70-90% correction with some randomness to simulate imperfect adjustment.
+     */
+    void simulate_user_adjustments();
+
+    /**
+     * @brief Check if all screws are within tolerance
+     * @param tolerance_mm Maximum acceptable deviation (default 0.02mm)
+     * @return true if bed is considered level
+     */
+    [[nodiscard]] bool is_level(float tolerance_mm = 0.02f) const;
+
+    /**
+     * @brief Get the number of probe iterations performed
+     */
+    [[nodiscard]] int get_probe_count() const {
+        return probe_count_;
+    }
+
+  private:
+    std::vector<MockBedScrew> screws_;
+    int probe_count_ = 0;
+
+    /**
+     * @brief Convert Z offset to turns:minutes adjustment string
+     * @param offset_mm Z deviation in mm (positive = too high, need CW)
+     * @return Adjustment string like "CW 01:15" or "CCW 00:30"
+     */
+    static std::string offset_to_adjustment(float offset_mm);
+};
+
+/**
  * @brief Mock MoonrakerAPI for testing without real printer connection
  *
  * Overrides HTTP file transfer methods to use local test files instead
@@ -144,6 +217,36 @@ class MoonrakerAPIMock : public MoonrakerAPI {
      */
     std::vector<std::string> get_available_objects_from_mock() const;
 
+    // ========================================================================
+    // Overridden Calibration Methods (simulate realistic behavior)
+    // ========================================================================
+
+    /**
+     * @brief Simulate SCREWS_TILT_CALCULATE with iterative bed leveling
+     *
+     * First call returns screws out of level. Subsequent calls show
+     * progressively better alignment as user "adjusts" screws.
+     * Typically reaches level state after 2-4 probes.
+     *
+     * @param on_success Callback with screw adjustment results
+     * @param on_error Error callback (rarely called - mock usually succeeds)
+     */
+    void calculate_screws_tilt(ScrewTiltCallback on_success, ErrorCallback on_error) override;
+
+    /**
+     * @brief Reset the mock bed to initial out-of-level state
+     *
+     * Call this to restart the bed leveling simulation from scratch.
+     */
+    void reset_mock_bed_state();
+
+    /**
+     * @brief Get the mock bed state for inspection/testing
+     */
+    MockScrewsTiltState& get_mock_bed_state() {
+        return mock_bed_state_;
+    }
+
   private:
     // Shared mock state for coordination with MoonrakerClientMock
     std::shared_ptr<MockPrinterState> mock_state_;
@@ -160,9 +263,10 @@ class MoonrakerAPIMock : public MoonrakerAPI {
      */
     std::string find_test_file(const std::string& filename) const;
 
-    /// Base directory name for test G-code files
-    static constexpr const char* TEST_GCODE_DIR = "assets/test_gcodes";
-
     /// Fallback path prefixes to search (from various CWDs)
+    /// Note: Base directory is RuntimeConfig::TEST_GCODE_DIR (defined in runtime_config.h)
     static const std::vector<std::string> PATH_PREFIXES;
+
+    /// Mock bed state for screws tilt simulation
+    MockScrewsTiltState mock_bed_state_;
 };

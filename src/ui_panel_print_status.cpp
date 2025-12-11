@@ -8,6 +8,7 @@
 #include "ui_gcode_viewer.h"
 #include "ui_nav.h"
 #include "ui_panel_common.h"
+#include "ui_panel_temp_control.h"
 #include "ui_subject_registry.h"
 #include "ui_toast.h"
 #include "ui_utils.h"
@@ -140,8 +141,14 @@ void PrintStatusPanel::init_subjects() {
     // Viewer mode subject (0=thumbnail, 1=gcode viewer)
     UI_SUBJECT_INIT_AND_REGISTER_INT(gcode_viewer_mode_subject_, 0, "gcode_viewer_mode");
 
+    // Tuning panel subjects (for tune panel sliders)
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(tune_speed_subject_, tune_speed_buf_, "100%",
+                                        "tune_speed_display");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(tune_flow_subject_, tune_flow_buf_, "100%",
+                                        "tune_flow_display");
+
     subjects_initialized_ = true;
-    spdlog::debug("[{}] Subjects initialized (15 subjects)", get_name());
+    spdlog::debug("[{}] Subjects initialized (17 subjects)", get_name());
 }
 
 void PrintStatusPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
@@ -383,12 +390,13 @@ void PrintStatusPanel::update_all_displays() {
     format_time(remaining_seconds_, remaining_buf_, sizeof(remaining_buf_));
     lv_subject_copy_string(&remaining_subject_, remaining_buf_);
 
-    // Temperatures
-    std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_), "%d / %d°C", nozzle_current_,
-                  nozzle_target_);
+    // Temperatures (stored as centi-degrees ×10, divide for display)
+    std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_), "%d / %d°C", nozzle_current_ / 10,
+                  nozzle_target_ / 10);
     lv_subject_copy_string(&nozzle_temp_subject_, nozzle_temp_buf_);
 
-    std::snprintf(bed_temp_buf_, sizeof(bed_temp_buf_), "%d / %d°C", bed_current_, bed_target_);
+    std::snprintf(bed_temp_buf_, sizeof(bed_temp_buf_), "%d / %d°C", bed_current_ / 10,
+                  bed_target_ / 10);
     lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
 
     // Speeds
@@ -412,13 +420,65 @@ void PrintStatusPanel::update_all_displays() {
 // ============================================================================
 
 void PrintStatusPanel::handle_nozzle_card_click() {
-    spdlog::debug("[{}] Nozzle temp card clicked", get_name());
-    // TODO: Show nozzle temperature adjustment panel
+    spdlog::info("[{}] Nozzle temp card clicked - opening nozzle temp panel", get_name());
+
+    if (!temp_control_panel_) {
+        spdlog::error("[{}] TempControlPanel not initialized", get_name());
+        NOTIFY_ERROR("Temperature panel not available");
+        return;
+    }
+
+    // Create nozzle temp panel on first access (lazy initialization)
+    if (!nozzle_temp_panel_ && parent_screen_) {
+        spdlog::debug("[{}] Creating nozzle temperature panel...", get_name());
+
+        nozzle_temp_panel_ =
+            static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "nozzle_temp_panel", nullptr));
+        if (nozzle_temp_panel_) {
+            temp_control_panel_->setup_nozzle_panel(nozzle_temp_panel_, parent_screen_);
+            lv_obj_add_flag(nozzle_temp_panel_, LV_OBJ_FLAG_HIDDEN);
+            spdlog::info("[{}] Nozzle temp panel created and initialized", get_name());
+        } else {
+            spdlog::error("[{}] Failed to create nozzle temp panel from XML", get_name());
+            NOTIFY_ERROR("Failed to load temperature panel");
+            return;
+        }
+    }
+
+    if (nozzle_temp_panel_) {
+        ui_nav_push_overlay(nozzle_temp_panel_);
+    }
 }
 
 void PrintStatusPanel::handle_bed_card_click() {
-    spdlog::debug("[{}] Bed temp card clicked", get_name());
-    // TODO: Show bed temperature adjustment panel
+    spdlog::info("[{}] Bed temp card clicked - opening bed temp panel", get_name());
+
+    if (!temp_control_panel_) {
+        spdlog::error("[{}] TempControlPanel not initialized", get_name());
+        NOTIFY_ERROR("Temperature panel not available");
+        return;
+    }
+
+    // Create bed temp panel on first access (lazy initialization)
+    if (!bed_temp_panel_ && parent_screen_) {
+        spdlog::debug("[{}] Creating bed temperature panel...", get_name());
+
+        bed_temp_panel_ =
+            static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "bed_temp_panel", nullptr));
+        if (bed_temp_panel_) {
+            temp_control_panel_->setup_bed_panel(bed_temp_panel_, parent_screen_);
+            lv_obj_add_flag(bed_temp_panel_, LV_OBJ_FLAG_HIDDEN);
+            spdlog::info("[{}] Bed temp panel created and initialized", get_name());
+        } else {
+            spdlog::error("[{}] Failed to create bed temp panel from XML", get_name());
+            NOTIFY_ERROR("Failed to load temperature panel");
+            return;
+        }
+    }
+
+    if (bed_temp_panel_) {
+        ui_nav_push_overlay(bed_temp_panel_);
+    }
 }
 
 void PrintStatusPanel::handle_light_button() {
@@ -503,8 +563,44 @@ void PrintStatusPanel::handle_pause_button() {
 }
 
 void PrintStatusPanel::handle_tune_button() {
-    spdlog::info("[{}] Tune button clicked (not yet implemented)", get_name());
-    // TODO: Open tuning overlay with speed/flow/temp adjustments
+    spdlog::info("[{}] Tune button clicked - opening tuning panel", get_name());
+
+    // Create tune panel on first access (lazy initialization)
+    if (!tune_panel_ && parent_screen_) {
+        spdlog::debug("[{}] Creating tuning panel...", get_name());
+
+        tune_panel_ =
+            static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "print_tune_panel", nullptr));
+        if (tune_panel_) {
+            setup_tune_panel(tune_panel_);
+            lv_obj_add_flag(tune_panel_, LV_OBJ_FLAG_HIDDEN);
+            spdlog::info("[{}] Tuning panel created and initialized", get_name());
+        } else {
+            spdlog::error("[{}] Failed to create tuning panel from XML", get_name());
+            NOTIFY_ERROR("Failed to load tuning panel");
+            return;
+        }
+    }
+
+    // Update displays with current values before showing
+    update_tune_display();
+
+    // Set slider values to current PrinterState values
+    if (tune_panel_) {
+        lv_obj_t* overlay_content = lv_obj_find_by_name(tune_panel_, "overlay_content");
+        if (overlay_content) {
+            lv_obj_t* speed_slider = lv_obj_find_by_name(overlay_content, "speed_slider");
+            lv_obj_t* flow_slider = lv_obj_find_by_name(overlay_content, "flow_slider");
+
+            if (speed_slider) {
+                lv_slider_set_value(speed_slider, speed_percent_, LV_ANIM_OFF);
+            }
+            if (flow_slider) {
+                lv_slider_set_value(flow_slider, flow_percent_, LV_ANIM_OFF);
+            }
+        }
+        ui_nav_push_overlay(tune_panel_);
+    }
 }
 
 void PrintStatusPanel::handle_cancel_button() {
@@ -855,8 +951,153 @@ void PrintStatusPanel::on_excluded_objects_changed() {
 }
 
 // ============================================================================
+// TUNE PANEL HELPERS
+// ============================================================================
+
+void PrintStatusPanel::setup_tune_panel(lv_obj_t* panel) {
+    // Use standard overlay panel setup for back button handling
+    ui_overlay_panel_setup_standard(panel, parent_screen_, "overlay_header", "overlay_content");
+
+    lv_obj_t* overlay_content = lv_obj_find_by_name(panel, "overlay_content");
+    if (!overlay_content) {
+        spdlog::error("[{}] Tune panel: overlay_content not found!", get_name());
+        return;
+    }
+
+    // Wire speed slider
+    lv_obj_t* speed_slider = lv_obj_find_by_name(overlay_content, "speed_slider");
+    if (speed_slider) {
+        lv_obj_add_event_cb(speed_slider, on_speed_slider_changed, LV_EVENT_VALUE_CHANGED, this);
+        spdlog::debug("[{}] Speed slider wired", get_name());
+    }
+
+    // Wire flow slider
+    lv_obj_t* flow_slider = lv_obj_find_by_name(overlay_content, "flow_slider");
+    if (flow_slider) {
+        lv_obj_add_event_cb(flow_slider, on_flow_slider_changed, LV_EVENT_VALUE_CHANGED, this);
+        spdlog::debug("[{}] Flow slider wired", get_name());
+    }
+
+    // Wire reset button
+    lv_obj_t* reset_btn = lv_obj_find_by_name(overlay_content, "btn_reset");
+    if (reset_btn) {
+        lv_obj_add_event_cb(reset_btn, on_reset_clicked, LV_EVENT_CLICKED, this);
+        spdlog::debug("[{}] Reset button wired", get_name());
+    }
+
+    spdlog::debug("[{}] Tune panel setup complete", get_name());
+}
+
+void PrintStatusPanel::update_tune_display() {
+    std::snprintf(tune_speed_buf_, sizeof(tune_speed_buf_), "%d%%", speed_percent_);
+    lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
+
+    std::snprintf(tune_flow_buf_, sizeof(tune_flow_buf_), "%d%%", flow_percent_);
+    lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
+}
+
+void PrintStatusPanel::on_speed_slider_changed(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_speed_slider_changed");
+    auto* self = static_cast<PrintStatusPanel*>(lv_event_get_user_data(e));
+    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
+
+    if (self && slider) {
+        int value = lv_slider_get_value(slider);
+
+        // Update display immediately for responsive feel
+        std::snprintf(self->tune_speed_buf_, sizeof(self->tune_speed_buf_), "%d%%", value);
+        lv_subject_copy_string(&self->tune_speed_subject_, self->tune_speed_buf_);
+
+        // Send G-code command
+        if (self->api_) {
+            std::string gcode = "M220 S" + std::to_string(value);
+            self->api_->execute_gcode(
+                gcode, [value]() { spdlog::debug("[PrintStatusPanel] Speed set to {}%", value); },
+                [](const MoonrakerError& err) {
+                    spdlog::error("[PrintStatusPanel] Failed to set speed: {}", err.message);
+                    NOTIFY_ERROR("Failed to set print speed: {}", err.user_message());
+                });
+        }
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void PrintStatusPanel::on_flow_slider_changed(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_flow_slider_changed");
+    auto* self = static_cast<PrintStatusPanel*>(lv_event_get_user_data(e));
+    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
+
+    if (self && slider) {
+        int value = lv_slider_get_value(slider);
+
+        // Update display immediately for responsive feel
+        std::snprintf(self->tune_flow_buf_, sizeof(self->tune_flow_buf_), "%d%%", value);
+        lv_subject_copy_string(&self->tune_flow_subject_, self->tune_flow_buf_);
+
+        // Send G-code command
+        if (self->api_) {
+            std::string gcode = "M221 S" + std::to_string(value);
+            self->api_->execute_gcode(
+                gcode, [value]() { spdlog::debug("[PrintStatusPanel] Flow set to {}%", value); },
+                [](const MoonrakerError& err) {
+                    spdlog::error("[PrintStatusPanel] Failed to set flow: {}", err.message);
+                    NOTIFY_ERROR("Failed to set flow rate: {}", err.user_message());
+                });
+        }
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void PrintStatusPanel::on_reset_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_reset_clicked");
+    auto* self = static_cast<PrintStatusPanel*>(lv_event_get_user_data(e));
+
+    if (self && self->tune_panel_) {
+        lv_obj_t* overlay_content = lv_obj_find_by_name(self->tune_panel_, "overlay_content");
+        if (overlay_content) {
+            // Reset sliders to 100%
+            lv_obj_t* speed_slider = lv_obj_find_by_name(overlay_content, "speed_slider");
+            lv_obj_t* flow_slider = lv_obj_find_by_name(overlay_content, "flow_slider");
+
+            if (speed_slider) {
+                lv_slider_set_value(speed_slider, 100, LV_ANIM_ON);
+            }
+            if (flow_slider) {
+                lv_slider_set_value(flow_slider, 100, LV_ANIM_ON);
+            }
+
+            // Update displays
+            std::snprintf(self->tune_speed_buf_, sizeof(self->tune_speed_buf_), "100%%");
+            lv_subject_copy_string(&self->tune_speed_subject_, self->tune_speed_buf_);
+            std::snprintf(self->tune_flow_buf_, sizeof(self->tune_flow_buf_), "100%%");
+            lv_subject_copy_string(&self->tune_flow_subject_, self->tune_flow_buf_);
+
+            // Send G-code commands
+            if (self->api_) {
+                self->api_->execute_gcode(
+                    "M220 S100", []() { spdlog::debug("[PrintStatusPanel] Speed reset to 100%"); },
+                    [](const MoonrakerError& err) {
+                        NOTIFY_ERROR("Failed to reset speed: {}", err.user_message());
+                    });
+                self->api_->execute_gcode(
+                    "M221 S100", []() { spdlog::debug("[PrintStatusPanel] Flow reset to 100%"); },
+                    [](const MoonrakerError& err) {
+                        NOTIFY_ERROR("Failed to reset flow: {}", err.user_message());
+                    });
+            }
+        }
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+// ============================================================================
 // PUBLIC API
 // ============================================================================
+
+void PrintStatusPanel::set_temp_control_panel(TempControlPanel* temp_panel) {
+    temp_control_panel_ = temp_panel;
+    spdlog::debug("[{}] TempControlPanel reference set", get_name());
+}
 
 void PrintStatusPanel::set_filename(const char* filename) {
     std::snprintf(filename_buf_, sizeof(filename_buf_), "%s", filename);

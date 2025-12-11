@@ -34,9 +34,11 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-// Directory paths for mock G-code files
-static constexpr const char* TEST_GCODE_DIR = "assets/test_gcodes";
+// Directory path for thumbnail cache (test G-code dir comes from RuntimeConfig::TEST_GCODE_DIR)
 static constexpr const char* THUMBNAIL_CACHE_DIR = "build/thumbnail_cache";
+
+// Alias for cleaner code - use shared constant from RuntimeConfig
+#define TEST_GCODE_DIR RuntimeConfig::TEST_GCODE_DIR
 
 /**
  * @brief Scan test directory for G-code files
@@ -289,6 +291,13 @@ int MoonrakerClientMock::connect(const char* url, std::function<void()> on_conne
     // Dispatch initial state BEFORE calling on_connected (matches real Moonraker behavior)
     // Real client sends initial state from subscription response - mock does it here
     dispatch_initial_state();
+
+    // Auto-start a print if configured (e.g., when testing print-status panel)
+    if (get_runtime_config().mock_auto_start_print) {
+        spdlog::info("[MoonrakerClientMock] Auto-starting print simulation with '{}'",
+                     RuntimeConfig::DEFAULT_TEST_FILE);
+        start_print_internal(RuntimeConfig::DEFAULT_TEST_FILE);
+    }
 
     // Immediately invoke connection callback
     if (on_connected) {

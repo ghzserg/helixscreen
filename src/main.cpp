@@ -56,6 +56,7 @@
 #include "ui_panel_notification_history.h"
 #include "ui_panel_print_select.h"
 #include "ui_panel_print_status.h"
+#include "ui_panel_screws_tilt.h"
 #include "ui_panel_settings.h"
 #include "ui_panel_step_test.h"
 #include "ui_panel_temp_control.h"
@@ -383,10 +384,10 @@ static bool parse_command_line_args(
     bool& show_bed_temp, bool& show_extrusion, bool& show_fan, bool& show_print_status,
     bool& show_file_detail, bool& show_keypad, bool& show_keyboard, bool& show_step_test,
     bool& show_test_panel, bool& show_gcode_test, bool& show_bed_mesh, bool& show_zoffset,
-    bool& show_pid, bool& show_glyphs, bool& show_gradient_test, bool& show_history_dashboard,
-    bool& force_wizard, int& wizard_step, bool& panel_requested, int& display_num, int& x_pos,
-    int& y_pos, bool& screenshot_enabled, int& screenshot_delay_sec, int& timeout_sec,
-    int& verbosity, int& dark_mode_cli, int& dpi) {
+    bool& show_pid, bool& show_screws_tilt, bool& show_glyphs, bool& show_gradient_test,
+    bool& show_history_dashboard, bool& force_wizard, int& wizard_step, bool& panel_requested,
+    int& display_num, int& x_pos, int& y_pos, bool& screenshot_enabled, int& screenshot_delay_sec,
+    int& timeout_sec, int& verbosity, int& dark_mode_cli, int& dpi) {
     // Parse arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--size") == 0) {
@@ -468,6 +469,10 @@ static bool parse_command_line_args(
                     show_zoffset = true;
                 } else if (strcmp(panel_arg, "pid") == 0) {
                     show_pid = true;
+                } else if (strcmp(panel_arg, "screws") == 0 ||
+                           strcmp(panel_arg, "screws-tilt") == 0 ||
+                           strcmp(panel_arg, "bed-leveling") == 0) {
+                    show_screws_tilt = true;
                 } else if (strcmp(panel_arg, "history-dashboard") == 0 ||
                            strcmp(panel_arg, "history_dashboard") == 0 ||
                            strcmp(panel_arg, "print-history") == 0) {
@@ -479,8 +484,8 @@ static bool parse_command_line_args(
                 } else {
                     printf("Unknown panel: %s\n", panel_arg);
                     printf("Available panels: home, controls, motion, nozzle-temp, bed-temp, "
-                           "bed-mesh, zoffset, pid, extrusion, fan, print-status, filament, "
-                           "settings, advanced, print-history, "
+                           "bed-mesh, zoffset, pid, screws, extrusion, fan, print-status, "
+                           "filament, settings, advanced, print-history, "
                            "print-select, step-test, test, gcode-test, glyphs, gradient-test\n");
                     return false;
                 }
@@ -919,6 +924,31 @@ static bool parse_command_line_args(
         printf("\n");
     }
 
+    // Auto-configure mock state based on requested panel in test mode
+    // This ensures panels have appropriate data without requiring extra command-line args
+    if (g_runtime_config.test_mode && !g_runtime_config.use_real_moonraker) {
+        // print-status: Auto-start a print simulation so the panel shows content
+        if (show_print_status) {
+            g_runtime_config.mock_auto_start_print = true;
+            // Also set gcode_test_file so the G-code viewer loads the preview
+            g_runtime_config.gcode_test_file = RuntimeConfig::get_default_test_file_path();
+            printf("  [Auto] Mock will simulate active print for print-status panel\n");
+        }
+
+        // print-select: Auto-select a file to show the detail view
+        if (initial_panel == UI_PANEL_PRINT_SELECT && !g_runtime_config.select_file) {
+            g_runtime_config.select_file = RuntimeConfig::DEFAULT_TEST_FILE;
+            printf("  [Auto] Auto-selecting '%s' for print-select panel\n",
+                   RuntimeConfig::DEFAULT_TEST_FILE);
+        }
+
+        // history: Enable mock history data generation
+        if (show_history_dashboard) {
+            g_runtime_config.mock_auto_history = true;
+            printf("  [Auto] Mock will generate history data for history panel\n");
+        }
+    }
+
     return true;
 }
 
@@ -1055,6 +1085,7 @@ static void register_xml_components() {
     lv_xml_register_component_from_file("A:ui_xml/extrusion_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/fan_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/print_status_panel.xml");
+    lv_xml_register_component_from_file("A:ui_xml/print_tune_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/filament_panel.xml");
     // Settings row components (must be registered before settings_panel)
     lv_xml_register_component_from_file("A:ui_xml/setting_section_header.xml");
@@ -1065,9 +1096,10 @@ static void register_xml_components() {
     lv_xml_register_component_from_file("A:ui_xml/setting_slider_row.xml");
     lv_xml_register_component_from_file("A:ui_xml/settings_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/restart_prompt_dialog.xml");
-    // Calibration panels (overlays launched from settings)
+    // Calibration panels (overlays launched from settings/advanced)
     lv_xml_register_component_from_file("A:ui_xml/calibration_zoffset_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/calibration_pid_panel.xml");
+    lv_xml_register_component_from_file("A:ui_xml/screws_tilt_panel.xml");
     spdlog::debug("[XML] Registering bed_mesh_panel.xml...");
     auto ret = lv_xml_register_component_from_file("A:ui_xml/bed_mesh_panel.xml");
     spdlog::debug("[XML] bed_mesh_panel.xml registration returned: {}", (int)ret);
@@ -1167,6 +1199,9 @@ static void initialize_subjects() {
 
     // Inject TempControlPanel into HomePanel for temperature icon click
     get_global_home_panel().set_temp_control_panel(temp_control_panel.get());
+
+    // Inject TempControlPanel into PrintStatusPanel for temp card clicks
+    get_global_print_status_panel().set_temp_control_panel(temp_control_panel.get());
 
     // Initialize notification system (after subjects are ready)
     ui_notification_init();
@@ -1646,6 +1681,7 @@ int main(int argc, char** argv) {
     bool show_bed_mesh = false;          // Special flag for bed mesh overlay panel
     bool show_zoffset = false;           // Special flag for Z-offset calibration panel
     bool show_pid = false;               // Special flag for PID tuning panel
+    bool show_screws_tilt = false;       // Special flag for screws tilt adjust panel
     bool show_glyphs = false;            // Special flag for LVGL glyphs reference panel
     bool show_gradient_test = false;     // Special flag for gradient canvas test panel
     bool show_history_dashboard = false; // Special flag for print history dashboard
@@ -1667,9 +1703,9 @@ int main(int argc, char** argv) {
             argc, argv, initial_panel, show_motion, show_nozzle_temp, show_bed_temp, show_extrusion,
             show_fan, show_print_status, show_file_detail, show_keypad, show_keyboard,
             show_step_test, show_test_panel, show_gcode_test, show_bed_mesh, show_zoffset, show_pid,
-            show_glyphs, show_gradient_test, show_history_dashboard, force_wizard, wizard_step,
-            panel_requested, display_num, x_pos, y_pos, screenshot_enabled, screenshot_delay_sec,
-            timeout_sec, verbosity, dark_mode_cli, dpi)) {
+            show_screws_tilt, show_glyphs, show_gradient_test, show_history_dashboard, force_wizard,
+            wizard_step, panel_requested, display_num, x_pos, y_pos, screenshot_enabled,
+            screenshot_delay_sec, timeout_sec, verbosity, dark_mode_cli, dpi)) {
         return 0; // Help shown or parse error
     }
 
@@ -2133,6 +2169,19 @@ int main(int argc, char** argv) {
             } else {
                 spdlog::error("Failed to create PID tuning overlay from XML component "
                               "'calibration_pid_panel'");
+            }
+        }
+        if (show_screws_tilt) {
+            spdlog::debug("Opening screws tilt overlay as requested by command-line flag");
+            lv_obj_t* screws_panel = (lv_obj_t*)lv_xml_create(screen, "screws_tilt_panel", nullptr);
+            if (screws_panel) {
+                get_global_screws_tilt_panel().setup(screws_panel, screen, moonraker_client.get(),
+                                                     moonraker_api.get());
+                ui_nav_push_overlay(screws_panel);
+                spdlog::debug("Screws tilt overlay pushed to nav stack");
+            } else {
+                spdlog::error("Failed to create screws tilt overlay from XML component "
+                              "'screws_tilt_panel'");
             }
         }
         if (show_history_dashboard) {
