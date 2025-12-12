@@ -31,12 +31,13 @@
                         label="Scroll Sensitivity" icon="fine_tune" description="Lower = more responsive" min="1"
                         max="20" value="5"/>
     <!-- ================================================================== -->
-    <!-- PRINTER SECTION -->
+    <!-- PRINTER SECTION (hidden - LED control available elsewhere) -->
     <!-- ================================================================== -->
-    <setting_section_header title="PRINTER" icon="printer_3d"/>
-    <!-- LED Light Toggle (hidden if no LED capability) -->
+    <setting_section_header title="PRINTER" icon="printer_3d" flag_hidden="true"/>
+    <!-- LED Light Toggle (hidden - available in Controls panel) -->
     <lv_obj name="container_led_light"
-            width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
+            width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+            flag_hidden="true">
       <lv_obj-bind_flag_if_eq subject="printer_has_led" flag="hidden" ref_value="0"/>
       <setting_toggle_row name="row_led_light" label="LED Light" icon="light" description="Toggle printer LED strip"/>
     </lv_obj>
@@ -63,7 +64,9 @@
         <text_small name="description" text="Notify when print finishes" style_text_color="#text_secondary"/>
       </lv_obj>
       <lv_dropdown name="completion_alert_dropdown"
-                   width="140" height="40" options="Off Notification Alert" style_radius="#border_radius"
+                   width="140" height="40" options="Off
+Notification
+Alert" style_radius="#border_radius"
                    style_border_width="0">
         <event_cb trigger="value_changed" callback="on_completion_alert_changed"/>
       </lv_dropdown>
