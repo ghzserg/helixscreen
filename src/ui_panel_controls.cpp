@@ -13,6 +13,7 @@
 #include "ui_panel_motion.h"
 #include "ui_panel_temp_control.h"
 #include "ui_subject_registry.h"
+#include "ui_theme.h"
 
 #include "app_globals.h"
 #include "moonraker_api.h"
@@ -168,11 +169,20 @@ void ControlsPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         return;
     }
 
+    // Cache dynamic container for secondary fans
+    secondary_fans_list_ = lv_obj_find_by_name(panel_, "secondary_fans_list");
+    if (!secondary_fans_list_) {
+        spdlog::warn("[{}] Could not find secondary_fans_list container", get_name());
+    }
+
     // Wire up card click handlers (cards need manual wiring for navigation)
     setup_card_handlers();
 
     // Register observers for live data updates
     register_observers();
+
+    // Populate secondary fans on initial setup (will be empty until discovery)
+    populate_secondary_fans();
 
     spdlog::info("[{}] Setup complete", get_name());
 }
@@ -226,6 +236,11 @@ void ControlsPanel::register_observers() {
     // Subscribe to fan updates
     if (auto* fan = printer_state_.get_fan_speed_subject()) {
         fan_observer_ = ObserverGuard(fan, on_fan_changed, this);
+    }
+
+    // Subscribe to multi-fan list changes (fires when fans are discovered/updated)
+    if (auto* fans_ver = printer_state_.get_fans_version_subject()) {
+        fans_version_observer_ = ObserverGuard(fans_ver, on_fans_version_changed, this);
     }
 
     spdlog::debug("[{}] Observers registered for dashboard live data", get_name());
@@ -327,6 +342,87 @@ void ControlsPanel::update_preheat_status() {
     std::snprintf(preheat_status_buf_, sizeof(preheat_status_buf_), "Noz: %.0f°C  Bed: %.0f°C",
                   nozzle_c, bed_c);
     lv_subject_copy_string(&preheat_status_subject_, preheat_status_buf_);
+}
+
+void ControlsPanel::populate_secondary_fans() {
+    if (!secondary_fans_list_) {
+        return;
+    }
+
+    // Clear existing fan rows
+    lv_obj_clean(secondary_fans_list_);
+
+    const auto& fans = printer_state_.get_fans();
+    int secondary_count = 0;
+
+    for (const auto& fan : fans) {
+        // Skip part cooling fan (it's the hero slider)
+        if (fan.type == FanType::PART_COOLING) {
+            continue;
+        }
+
+        // Create a row for this fan: [Name] [Speed%] [Icon]
+        lv_obj_t* row = lv_obj_create(secondary_fans_list_);
+        lv_obj_set_width(row, LV_PCT(100));
+        lv_obj_set_height(row, LV_SIZE_CONTENT);
+        lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(row, 0, 0);
+        lv_obj_set_style_pad_all(row, 0, 0);
+        lv_obj_set_style_pad_row(row, 0, 0);
+        lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER);
+
+        // Fan name label
+        lv_obj_t* name_label = lv_label_create(row);
+        lv_label_set_text(name_label, fan.display_name.c_str());
+        lv_obj_set_style_text_color(name_label, ui_theme_get_color("text_secondary"), 0);
+        lv_obj_set_style_text_font(name_label, UI_FONT_SMALL, 0);
+
+        // Speed + indicator container
+        lv_obj_t* right_container = lv_obj_create(row);
+        lv_obj_set_size(right_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_set_style_bg_opa(right_container, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(right_container, 0, 0);
+        lv_obj_set_style_pad_all(right_container, 0, 0);
+        lv_obj_remove_flag(right_container, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_flex_flow(right_container, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(right_container, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_column(right_container, 4, 0);
+
+        // Speed percentage
+        char speed_buf[16];
+        if (fan.speed_percent > 0) {
+            std::snprintf(speed_buf, sizeof(speed_buf), "%d%%", fan.speed_percent);
+        } else {
+            std::snprintf(speed_buf, sizeof(speed_buf), "Off");
+        }
+        lv_obj_t* speed_label = lv_label_create(right_container);
+        lv_label_set_text(speed_label, speed_buf);
+        lv_obj_set_style_text_color(speed_label, ui_theme_get_color("text_secondary"), 0);
+        lv_obj_set_style_text_font(speed_label, UI_FONT_SMALL, 0);
+
+        // Indicator icon: ⚙ for auto-controlled, ▸ for controllable
+        lv_obj_t* indicator = lv_label_create(right_container);
+        if (fan.is_controllable) {
+            lv_label_set_text(indicator, LV_SYMBOL_RIGHT); // ▸ means user can control
+        } else {
+            lv_label_set_text(indicator, LV_SYMBOL_SETTINGS); // ⚙ means auto/firmware
+        }
+        lv_obj_set_style_text_color(indicator, ui_theme_get_color("text_tertiary"), 0);
+        lv_obj_set_style_text_font(indicator, UI_FONT_SMALL, 0);
+
+        secondary_count++;
+
+        // Limit to 2-3 visible fans to fit in card
+        if (secondary_count >= 3) {
+            break;
+        }
+    }
+
+    spdlog::debug("[{}] Populated {} secondary fans", get_name(), secondary_count);
 }
 
 // ============================================================================
@@ -1033,6 +1129,14 @@ void ControlsPanel::on_fan_changed(lv_observer_t* obs, lv_subject_t* /* subject 
     auto* self = static_cast<ControlsPanel*>(lv_observer_get_user_data(obs));
     if (self) {
         self->update_fan_display();
+    }
+}
+
+void ControlsPanel::on_fans_version_changed(lv_observer_t* obs, lv_subject_t* /* subject */) {
+    auto* self = static_cast<ControlsPanel*>(lv_observer_get_user_data(obs));
+    if (self) {
+        // Rebuild the secondary fans list when fan discovery completes or speeds update
+        self->populate_secondary_fans();
     }
 }
 

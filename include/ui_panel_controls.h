@@ -140,6 +140,7 @@ class ControlsPanel : public PanelBase {
     ObserverGuard bed_temp_observer_;
     ObserverGuard bed_target_observer_;
     ObserverGuard fan_observer_;
+    ObserverGuard fans_version_observer_; // Multi-fan list changes
 
     //
     // === Lazily-Created Child Panels ===
@@ -162,6 +163,12 @@ class ControlsPanel : public PanelBase {
     lv_obj_t* motors_confirmation_dialog_ = nullptr;
 
     //
+    // === Dynamic UI Containers ===
+    //
+
+    lv_obj_t* secondary_fans_list_ = nullptr; // Container for dynamic fan rows
+
+    //
     // === Private Helpers ===
     //
 
@@ -173,6 +180,7 @@ class ControlsPanel : public PanelBase {
     void update_bed_temp_display();
     void update_fan_display();
     void update_preheat_status();
+    void populate_secondary_fans(); // Build fan list from PrinterState
 
     //
     // === V2 Card Click Handlers (navigation to full panels) ===
@@ -275,6 +283,7 @@ class ControlsPanel : public PanelBase {
     static void on_bed_temp_changed(lv_observer_t* obs, lv_subject_t* subject);
     static void on_bed_target_changed(lv_observer_t* obs, lv_subject_t* subject);
     static void on_fan_changed(lv_observer_t* obs, lv_subject_t* subject);
+    static void on_fans_version_changed(lv_observer_t* obs, lv_subject_t* subject);
 };
 
 // Global instance accessor (needed by main.cpp and XML event_cb trampolines)

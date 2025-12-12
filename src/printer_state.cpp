@@ -7,6 +7,7 @@
 #include "printer_capabilities.h"
 #include "runtime_config.h"
 
+#include <cctype>
 #include <cstring>
 
 // ============================================================================
@@ -110,6 +111,7 @@ void PrinterState::reset_for_testing() {
     lv_subject_deinit(&flow_factor_);
     lv_subject_deinit(&gcode_z_offset_);
     lv_subject_deinit(&fan_speed_);
+    lv_subject_deinit(&fans_version_);
     lv_subject_deinit(&printer_connection_state_);
     lv_subject_deinit(&printer_connection_message_);
     lv_subject_deinit(&network_status_);
@@ -177,6 +179,7 @@ void PrinterState::init_subjects(bool register_xml) {
     lv_subject_init_int(&flow_factor_, 100);
     lv_subject_init_int(&gcode_z_offset_, 0); // Z-offset in microns from homing_origin[2]
     lv_subject_init_int(&fan_speed_, 0);
+    lv_subject_init_int(&fans_version_, 0); // Multi-fan version for UI updates
 
     // Printer connection state subjects (Moonraker WebSocket)
     lv_subject_init_int(&printer_connection_state_, 0); // 0 = disconnected
@@ -244,6 +247,7 @@ void PrinterState::init_subjects(bool register_xml) {
         lv_xml_register_subject(NULL, "flow_factor", &flow_factor_);
         lv_xml_register_subject(NULL, "gcode_z_offset", &gcode_z_offset_);
         lv_xml_register_subject(NULL, "fan_speed", &fan_speed_);
+        lv_xml_register_subject(NULL, "fans_version", &fans_version_);
         lv_xml_register_subject(NULL, "printer_connection_state", &printer_connection_state_);
         lv_xml_register_subject(NULL, "printer_connection_message", &printer_connection_message_);
         lv_xml_register_subject(NULL, "network_status", &network_status_);
@@ -454,6 +458,22 @@ void PrinterState::update_from_status(const json& state) {
             double speed = fan["speed"].get<double>();
             int speed_pct = static_cast<int>(speed * 100.0);
             lv_subject_set_int(&fan_speed_, speed_pct);
+
+            // Also update multi-fan tracking
+            update_fan_speed("fan", speed);
+        }
+    }
+
+    // Check for other fan types in the status update
+    // Moonraker sends fan objects as top-level keys: "heater_fan hotend_fan", "fan_generic xyz"
+    for (const auto& [key, value] : state.items()) {
+        // Skip non-fan objects
+        if (key.rfind("heater_fan ", 0) == 0 || key.rfind("fan_generic ", 0) == 0 ||
+            key.rfind("controller_fan ", 0) == 0) {
+            if (value.is_object() && value.contains("speed")) {
+                double speed = value["speed"].get<double>();
+                update_fan_speed(key, speed);
+            }
         }
     }
 
@@ -561,6 +581,119 @@ void PrinterState::update_from_status(const json& state) {
 json& PrinterState::get_json_state() {
     std::lock_guard<std::mutex> lock(state_mutex_);
     return json_state_;
+}
+
+// ============================================================================
+// MULTI-FAN TRACKING
+// ============================================================================
+
+namespace {
+/**
+ * @brief Convert Moonraker fan object name to human-readable display name
+ *
+ * Examples:
+ * - "fan" -> "Part Cooling"
+ * - "heater_fan hotend_fan" -> "Hotend Fan"
+ * - "fan_generic nevermore" -> "Nevermore"
+ * - "controller_fan electronics_fan" -> "Electronics Fan"
+ */
+std::string fan_object_to_display_name(const std::string& object_name) {
+    // Part cooling fan is just "fan"
+    if (object_name == "fan") {
+        return "Part Cooling";
+    }
+
+    // Extract the suffix after the type prefix
+    // "heater_fan hotend_fan" -> "hotend_fan" -> "Hotend Fan"
+    std::string suffix;
+    size_t space_pos = object_name.find(' ');
+    if (space_pos != std::string::npos && space_pos + 1 < object_name.length()) {
+        suffix = object_name.substr(space_pos + 1);
+    } else {
+        suffix = object_name;
+    }
+
+    // Convert snake_case to Title Case
+    std::string display;
+    bool capitalize_next = true;
+    for (char c : suffix) {
+        if (c == '_') {
+            display += ' ';
+            capitalize_next = true;
+        } else if (capitalize_next) {
+            display += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+            capitalize_next = false;
+        } else {
+            display += c;
+        }
+    }
+    return display;
+}
+
+/**
+ * @brief Determine fan type from Moonraker object name
+ */
+FanType classify_fan_type(const std::string& object_name) {
+    if (object_name == "fan") {
+        return FanType::PART_COOLING;
+    } else if (object_name.rfind("heater_fan ", 0) == 0) {
+        return FanType::HEATER_FAN;
+    } else if (object_name.rfind("controller_fan ", 0) == 0) {
+        return FanType::CONTROLLER_FAN;
+    } else {
+        return FanType::GENERIC_FAN;
+    }
+}
+
+/**
+ * @brief Determine if fan is user-controllable
+ *
+ * Part cooling fans and generic fans can be controlled via SET_FAN_SPEED.
+ * Heater fans and controller fans are auto-controlled by firmware.
+ */
+bool is_fan_controllable(FanType type) {
+    return type == FanType::PART_COOLING || type == FanType::GENERIC_FAN;
+}
+} // namespace
+
+void PrinterState::init_fans(const std::vector<std::string>& fan_objects) {
+    fans_.clear();
+    fans_.reserve(fan_objects.size());
+
+    for (const auto& obj_name : fan_objects) {
+        FanInfo info;
+        info.object_name = obj_name;
+        info.display_name = fan_object_to_display_name(obj_name);
+        info.type = classify_fan_type(obj_name);
+        info.is_controllable = is_fan_controllable(info.type);
+        info.speed_percent = 0;
+
+        spdlog::debug("[PrinterState] Registered fan: {} -> \"{}\" (type={}, controllable={})",
+                      obj_name, info.display_name, static_cast<int>(info.type),
+                      info.is_controllable);
+        fans_.push_back(std::move(info));
+    }
+
+    // Initialize and bump version to notify UI
+    lv_subject_set_int(&fans_version_, lv_subject_get_int(&fans_version_) + 1);
+    spdlog::info("[PrinterState] Initialized {} fans (version {})", fans_.size(),
+                 lv_subject_get_int(&fans_version_));
+}
+
+void PrinterState::update_fan_speed(const std::string& object_name, double speed) {
+    int speed_pct = static_cast<int>(speed * 100.0);
+
+    for (auto& fan : fans_) {
+        if (fan.object_name == object_name) {
+            if (fan.speed_percent != speed_pct) {
+                fan.speed_percent = speed_pct;
+                // Bump version to notify UI of speed change
+                lv_subject_set_int(&fans_version_, lv_subject_get_int(&fans_version_) + 1);
+            }
+            return;
+        }
+    }
+    // Fan not in list - this is normal during initial status before discovery
 }
 
 void PrinterState::set_printer_connection_state(int state, const char* message) {

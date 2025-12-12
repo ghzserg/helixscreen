@@ -9,6 +9,7 @@
 
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "hv/json.hpp" // libhv's nlohmann json (via cpputil/)
 
@@ -85,6 +86,34 @@ PrintJobState parse_print_job_state(const char* state_str);
  * @return Display string (e.g., "Printing", "Paused")
  */
 const char* print_job_state_to_string(PrintJobState state);
+
+// ============================================================================
+// MULTI-FAN TRACKING
+// ============================================================================
+
+/**
+ * @brief Fan type classification for display and control
+ */
+enum class FanType {
+    PART_COOLING,   ///< Main part cooling fan ("fan")
+    HEATER_FAN,     ///< Hotend cooling fan (auto-controlled, not user-adjustable)
+    CONTROLLER_FAN, ///< Electronics cooling (auto-controlled)
+    GENERIC_FAN     ///< User-controllable generic fan (fan_generic)
+};
+
+/**
+ * @brief Fan information for multi-fan display
+ *
+ * Holds display name, current speed, and controllability for each fan
+ * discovered from Moonraker.
+ */
+struct FanInfo {
+    std::string object_name;  ///< Full Moonraker object name (e.g., "heater_fan hotend_fan")
+    std::string display_name; ///< Human-readable name (e.g., "Hotend Fan")
+    FanType type = FanType::GENERIC_FAN;
+    int speed_percent = 0;        ///< Current speed 0-100%
+    bool is_controllable = false; ///< true for fan_generic, false for heater_fan/controller_fan
+};
 
 /**
  * @brief Printer state manager with LVGL 9 reactive subjects
@@ -263,6 +292,41 @@ class PrinterState {
     lv_subject_t* get_fan_speed_subject() {
         return &fan_speed_;
     }
+
+    // ========================================================================
+    // MULTI-FAN API
+    // ========================================================================
+
+    /**
+     * @brief Get all tracked fans
+     * @return Const reference to fan info vector
+     */
+    const std::vector<FanInfo>& get_fans() const {
+        return fans_;
+    }
+
+    /**
+     * @brief Get fans version subject for UI change notification
+     *
+     * Incremented when fan list changes or speeds update.
+     * UI should observe this to rebuild dynamic fan list.
+     */
+    lv_subject_t* get_fans_version_subject() {
+        return &fans_version_;
+    }
+
+    /**
+     * @brief Initialize fan list from discovered fan objects
+     * @param fan_objects List of Moonraker fan object names
+     */
+    void init_fans(const std::vector<std::string>& fan_objects);
+
+    /**
+     * @brief Update speed for a specific fan
+     * @param object_name Moonraker object name (e.g., "heater_fan hotend_fan")
+     * @param speed Speed as 0.0-1.0 (Moonraker format)
+     */
+    void update_fan_speed(const std::string& object_name, double speed);
 
     /**
      * @brief Get G-code Z offset subject for tune panel
@@ -550,6 +614,10 @@ class PrinterState {
     lv_subject_t flow_factor_;
     lv_subject_t gcode_z_offset_; // Integer: Z-offset * 1000 (microns) from homing_origin[2]
     lv_subject_t fan_speed_;
+
+    // Multi-fan tracking
+    std::vector<FanInfo> fans_;   ///< All tracked fans (from discovery)
+    lv_subject_t fans_version_{}; ///< Incremented on fan list/speed changes
 
     // Printer connection state subjects (Moonraker WebSocket)
     lv_subject_t printer_connection_state_;   // Integer: uses PrinterStatus enum values
