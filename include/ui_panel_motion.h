@@ -55,6 +55,7 @@ class MotionPanel : public PanelBase {
     void set_distance(jog_distance_t dist);
     void jog(jog_direction_t direction, float distance_mm);
     void home(char axis);
+    void handle_z_button(const char* name);
 
   private:
     lv_subject_t pos_x_subject_;
@@ -88,13 +89,11 @@ class MotionPanel : public PanelBase {
     void update_distance_buttons();
 
     void handle_distance_button(lv_obj_t* btn);
-    void handle_z_button(const char* name);
     void handle_home_button(const char* name);
 
     static void jog_pad_jog_cb(jog_direction_t direction, float distance_mm, void* user_data);
     static void jog_pad_home_cb(void* user_data);
     static void on_distance_button_clicked(lv_event_t* e);
-    static void on_z_button_clicked(lv_event_t* e);
     static void on_home_button_clicked(lv_event_t* e);
     static void on_position_x_changed(lv_observer_t* observer, lv_subject_t* subject);
     static void on_position_y_changed(lv_observer_t* observer, lv_subject_t* subject);

@@ -198,12 +198,15 @@ class FilamentPanel : public PanelBase {
     // === Static Trampolines ===
     //
 
+    // XML event_cb callbacks (global accessor pattern)
     static void on_manage_slots_clicked(lv_event_t* e);
+    static void on_load_clicked(lv_event_t* e);
+    static void on_unload_clicked(lv_event_t* e);
+    static void on_purge_clicked(lv_event_t* e);
+
+    // Imperative callbacks (use user_data for instance access)
     static void on_preset_button_clicked(lv_event_t* e);
     static void on_custom_button_clicked(lv_event_t* e);
-    static void on_load_button_clicked(lv_event_t* e);
-    static void on_unload_button_clicked(lv_event_t* e);
-    static void on_purge_button_clicked(lv_event_t* e);
 
     // Keypad callback bridge (different signature - not an LVGL event)
     static void custom_temp_keypad_cb(float value, void* user_data);

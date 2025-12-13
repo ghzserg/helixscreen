@@ -41,6 +41,9 @@ void FanPanel::init_subjects() {
     UI_SUBJECT_INIT_AND_REGISTER_STRING(hotend_speed_display_subject_, hotend_speed_buf_,
                                         hotend_speed_buf_, "fan_hotend_speed_display");
 
+    // Register XML event callbacks
+    lv_xml_register_event_cb(nullptr, "on_fan_speed_slider_changed", on_slider_value_changed);
+
     subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized: fan_part_speed_display, fan_hotend_speed_display",
                   get_name());
@@ -79,12 +82,10 @@ void FanPanel::setup_slider() {
         return;
     }
 
-    // Find the slider
+    // Find the slider (event handler registered via XML event_cb)
     fan_speed_slider_ = lv_obj_find_by_name(overlay_content, "fan_speed_slider");
     if (fan_speed_slider_) {
-        lv_obj_add_event_cb(fan_speed_slider_, on_slider_value_changed, LV_EVENT_VALUE_CHANGED,
-                            this);
-        spdlog::debug("[{}] Slider wired (0-100%)", get_name());
+        spdlog::debug("[{}] Slider found (0-100%), event wired via XML", get_name());
     } else {
         spdlog::warn("[{}] fan_speed_slider not found", get_name());
     }
@@ -216,12 +217,9 @@ void FanPanel::on_preset_button_clicked(lv_event_t* e) {
 
 void FanPanel::on_slider_value_changed(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[FanPanel] on_slider_value_changed");
-    auto* self = static_cast<FanPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
-        int value = lv_slider_get_value(slider);
-        self->handle_slider_changed(value);
-    }
+    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    int value = lv_slider_get_value(slider);
+    get_global_fan_panel().handle_slider_changed(value);
     LVGL_SAFE_EVENT_CB_END();
 }
 

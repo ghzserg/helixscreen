@@ -34,6 +34,7 @@ class ExtrusionPanel : public PanelBase {
     int get_speed() const {
         return extrusion_speed_mmpm_;
     }
+    void set_speed(int speed_mmpm);
     bool is_extrusion_allowed() const;
     void set_limits(int min_temp, int max_temp);
 
@@ -96,17 +97,14 @@ class ExtrusionPanel : public PanelBase {
     void start_extrusion_animation(bool is_extruding);
     void stop_extrusion_animation();
 
-    // Static callbacks
+    // Static callbacks (amount buttons use imperative wiring due to loop/index logic)
     static void on_amount_button_clicked(lv_event_t* e);
-    static void on_extrude_clicked(lv_event_t* e);
-    static void on_retract_clicked(lv_event_t* e);
-    static void on_purge_clicked(lv_event_t* e);
-    static void on_speed_changed(lv_event_t* e);
     static void on_nozzle_temp_changed(lv_observer_t* observer, lv_subject_t* subject);
 
     // Observer for nozzle temperature (ObserverGuard handles cleanup)
     ObserverGuard nozzle_temp_observer_;
 };
 
-// Global instance accessor (needed by main.cpp)
+// Global instance accessors
+ExtrusionPanel& get_global_extrusion_panel();
 ExtrusionPanel& get_global_controls_extrusion_panel();

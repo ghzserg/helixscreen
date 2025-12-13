@@ -55,7 +55,9 @@
                   height="40" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_left="8"
                   style_pad_right="20" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                   flag_overflow_visible="true">
-            <lv_slider name="fan_speed_slider" flex_grow="1" min_value="0" max_value="100" value="0"/>
+            <lv_slider name="fan_speed_slider" flex_grow="1" min_value="0" max_value="100" value="0">
+              <event_cb trigger="value_changed" callback="on_fan_speed_slider_changed"/>
+            </lv_slider>
           </lv_obj>
           <lv_label name="fan_speed_value" text="0%" style_text_font="montserrat_28" align="center"/>
         </lv_obj>

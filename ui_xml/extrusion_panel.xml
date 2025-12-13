@@ -75,7 +75,9 @@
                 width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
                 style_pad_left="#space_xs" style_pad_right="#space_sm" scrollable="false" flex_flow="row"
                 style_flex_cross_place="center" flag_overflow_visible="true">
-          <lv_slider name="speed_slider" flex_grow="1" min_value="60" max_value="600" value="300"/>
+          <lv_slider name="speed_slider" flex_grow="1" min_value="60" max_value="600" value="300">
+            <event_cb trigger="value_changed" callback="on_extrusion_speed_changed"/>
+          </lv_slider>
         </lv_obj>
         <!-- Action Buttons: Extrude/Retract side-by-side, Purge below -->
         <!-- Disabled state bound to extrusion_safety_warning_visible: 1=disabled, 0=enabled -->
@@ -90,6 +92,7 @@
                        flex_grow="1" style_radius="#border_radius" style_border_width="0" flex_flow="row"
                        style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs">
               <lv_obj-bind_state_if_eq subject="extrusion_safety_warning_visible" state="disabled" ref_value="1"/>
+              <event_cb trigger="clicked" callback="on_extrusion_extrude"/>
               <icon src="arrow_down" size="sm"/>
               <text_body text="Extrude"/>
             </lv_button>
@@ -97,6 +100,7 @@
                        flex_grow="1" style_radius="#border_radius" style_border_width="0" flex_flow="row"
                        style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs">
               <lv_obj-bind_state_if_eq subject="extrusion_safety_warning_visible" state="disabled" ref_value="1"/>
+              <event_cb trigger="clicked" callback="on_extrusion_retract"/>
               <icon src="arrow_up" size="sm"/>
               <text_body text="Retract"/>
             </lv_button>
@@ -106,6 +110,7 @@
                      width="100%" style_radius="#border_radius" style_border_width="0" flex_flow="row"
                      style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs">
             <lv_obj-bind_state_if_eq subject="extrusion_safety_warning_visible" state="disabled" ref_value="1"/>
+            <event_cb trigger="clicked" callback="on_extrusion_purge"/>
             <icon src="water" size="sm"/>
             <text_body text="Purge 50mm"/>
           </lv_button>

@@ -53,10 +53,26 @@ void ExtrusionPanel::init_subjects() {
     UI_SUBJECT_INIT_AND_REGISTER_STRING(speed_display_subject_, speed_display_buf_,
                                         speed_display_buf_, "extrusion_speed_display");
 
+    // Register XML event callbacks (declarative pattern)
+    lv_xml_register_event_cb(nullptr, "on_extrusion_extrude", [](lv_event_t* /*e*/) {
+        get_global_extrusion_panel().handle_extrude();
+    });
+    lv_xml_register_event_cb(nullptr, "on_extrusion_retract", [](lv_event_t* /*e*/) {
+        get_global_extrusion_panel().handle_retract();
+    });
+    lv_xml_register_event_cb(nullptr, "on_extrusion_purge", [](lv_event_t* /*e*/) {
+        get_global_extrusion_panel().handle_purge();
+    });
+    lv_xml_register_event_cb(nullptr, "on_extrusion_speed_changed", [](lv_event_t* e) {
+        auto& panel = get_global_extrusion_panel();
+        lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
+        if (slider) {
+            panel.set_speed(lv_slider_get_value(slider));
+        }
+    });
+
     subjects_initialized_ = true;
-    spdlog::debug("[{}] Subjects initialized: temp_status, warning_temps, safety_warning_visible, "
-                  "speed_display",
-                  get_name());
+    spdlog::debug("[{}] Subjects initialized and event callbacks registered", get_name());
 }
 
 void ExtrusionPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
@@ -116,29 +132,14 @@ void ExtrusionPanel::setup_action_buttons() {
     if (!overlay_content)
         return;
 
-    // Extrude button
+    // Store widget pointers for potential state updates
+    // Event handlers are wired via XML event_cb (declarative pattern)
     btn_extrude_ = lv_obj_find_by_name(overlay_content, "btn_extrude");
-    if (btn_extrude_) {
-        lv_obj_add_event_cb(btn_extrude_, on_extrude_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}] Extrude button", get_name());
-    }
-
-    // Retract button
     btn_retract_ = lv_obj_find_by_name(overlay_content, "btn_retract");
-    if (btn_retract_) {
-        lv_obj_add_event_cb(btn_retract_, on_retract_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}] Retract button wired", get_name());
-    }
-
-    // Purge button
     btn_purge_ = lv_obj_find_by_name(overlay_content, "btn_purge");
-    if (btn_purge_) {
-        lv_obj_add_event_cb(btn_purge_, on_purge_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}] Purge button wired", get_name());
-    }
-
-    // Safety warning card
     safety_warning_ = lv_obj_find_by_name(overlay_content, "safety_warning");
+
+    spdlog::debug("[{}] Action buttons found (events wired via XML)", get_name());
 }
 
 void ExtrusionPanel::setup_temperature_observer() {
@@ -325,24 +326,6 @@ void ExtrusionPanel::on_amount_button_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-void ExtrusionPanel::on_extrude_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[ExtrusionPanel] on_extrude_clicked");
-    auto* self = static_cast<ExtrusionPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_extrude();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void ExtrusionPanel::on_retract_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[ExtrusionPanel] on_retract_clicked");
-    auto* self = static_cast<ExtrusionPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_retract();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
 void ExtrusionPanel::on_nozzle_temp_changed(lv_observer_t* observer, lv_subject_t* subject) {
     // Get user_data from observer (set when registering)
     auto* self = static_cast<ExtrusionPanel*>(lv_observer_get_user_data(observer));
@@ -398,11 +381,12 @@ void ExtrusionPanel::setup_speed_slider() {
     if (!overlay_content)
         return;
 
+    // Store pointer and set initial value
+    // Event handler is wired via XML event_cb (declarative pattern)
     speed_slider_ = lv_obj_find_by_name(overlay_content, "speed_slider");
     if (speed_slider_) {
         lv_slider_set_value(speed_slider_, extrusion_speed_mmpm_, LV_ANIM_OFF);
-        lv_obj_add_event_cb(speed_slider_, on_speed_changed, LV_EVENT_VALUE_CHANGED, this);
-        spdlog::debug("[{}] Speed slider wired (range 60-600 mm/min)", get_name());
+        spdlog::debug("[{}] Speed slider found (events wired via XML)", get_name());
     }
 }
 
@@ -410,6 +394,12 @@ void ExtrusionPanel::update_speed_display() {
     std::snprintf(speed_display_buf_, sizeof(speed_display_buf_), "%d mm/min",
                   extrusion_speed_mmpm_);
     lv_subject_copy_string(&speed_display_subject_, speed_display_buf_);
+}
+
+void ExtrusionPanel::set_speed(int speed_mmpm) {
+    extrusion_speed_mmpm_ = speed_mmpm;
+    update_speed_display();
+    spdlog::debug("[{}] Speed changed: {} mm/min", get_name(), extrusion_speed_mmpm_);
 }
 
 void ExtrusionPanel::setup_animation_widget() {
@@ -473,27 +463,6 @@ void ExtrusionPanel::stop_extrusion_animation() {
     lv_obj_add_flag(filament_anim_obj_, LV_OBJ_FLAG_HIDDEN);
 
     spdlog::debug("[{}] Animation stopped", get_name());
-}
-
-void ExtrusionPanel::on_speed_changed(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[ExtrusionPanel] on_speed_changed");
-    auto* self = static_cast<ExtrusionPanel*>(lv_event_get_user_data(e));
-    if (self && self->speed_slider_) {
-        self->extrusion_speed_mmpm_ = lv_slider_get_value(self->speed_slider_);
-        self->update_speed_display();
-        spdlog::debug("[{}] Speed changed: {} mm/min", self->get_name(),
-                      self->extrusion_speed_mmpm_);
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void ExtrusionPanel::on_purge_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[ExtrusionPanel] on_purge_clicked");
-    auto* self = static_cast<ExtrusionPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_purge();
-    }
-    LVGL_SAFE_EVENT_CB_END();
 }
 
 static std::unique_ptr<ExtrusionPanel> g_extrusion_panel;

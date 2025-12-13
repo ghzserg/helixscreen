@@ -25,6 +25,12 @@
 // Distance values in mm (indexed by jog_distance_t)
 static const float distance_values[] = {0.1f, 1.0f, 10.0f, 100.0f};
 
+// Forward declarations for XML event callbacks
+static void on_motion_z_up_10(lv_event_t* e);
+static void on_motion_z_up_1(lv_event_t* e);
+static void on_motion_z_down_1(lv_event_t* e);
+static void on_motion_z_down_10(lv_event_t* e);
+
 MotionPanel::MotionPanel(PrinterState& printer_state, MoonrakerAPI* api)
     : PanelBase(printer_state, api) {
     // Initialize buffer contents
@@ -49,12 +55,19 @@ void MotionPanel::init_subjects() {
     UI_SUBJECT_INIT_AND_REGISTER_STRING(z_axis_label_subject_, z_axis_label_buf_, "Z Axis",
                                         "motion_z_axis_label");
 
+    // Register Z-axis button event callbacks for XML event_cb
+    lv_xml_register_event_cb(nullptr, "on_motion_z_up_10", on_motion_z_up_10);
+    lv_xml_register_event_cb(nullptr, "on_motion_z_up_1", on_motion_z_up_1);
+    lv_xml_register_event_cb(nullptr, "on_motion_z_down_1", on_motion_z_down_1);
+    lv_xml_register_event_cb(nullptr, "on_motion_z_down_10", on_motion_z_down_10);
+
     // Register PrinterState observers (RAII - auto-removed on destruction)
     register_position_observers();
 
     subjects_initialized_ = true;
-    spdlog::debug("[{}] Subjects initialized: X/Y/Z position + Z-axis label + observers",
-                  get_name());
+    spdlog::debug(
+        "[{}] Subjects initialized: X/Y/Z position + Z-axis label + observers + Z callbacks",
+        get_name());
 }
 
 void MotionPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
@@ -153,25 +166,9 @@ void MotionPanel::setup_jog_pad() {
 }
 
 void MotionPanel::setup_z_buttons() {
-    lv_obj_t* overlay_content = lv_obj_find_by_name(panel_, "overlay_content");
-    if (!overlay_content)
-        return;
-
-    const char* z_names[] = {"z_up_10", "z_up_1", "z_down_1", "z_down_10"};
-    int z_found = 0;
-
-    for (const char* name : z_names) {
-        lv_obj_t* btn = lv_obj_find_by_name(overlay_content, name);
-        if (btn) {
-            spdlog::trace("[{}] Found '{}' at {}", get_name(), name, (void*)btn);
-            lv_obj_add_event_cb(btn, on_z_button_clicked, LV_EVENT_CLICKED, this);
-            z_found++;
-        } else {
-            spdlog::warn("[{}] Z button '{}' NOT FOUND!", get_name(), name);
-        }
-    }
-
-    spdlog::debug("[{}] Z-axis controls ({}/4 buttons found)", get_name(), z_found);
+    // Z buttons use declarative XML event_cb - callbacks registered in init_subjects()
+    // No imperative lv_obj_add_event_cb() needed
+    spdlog::debug("[{}] Z-axis controls (declarative XML event_cb)", get_name());
 }
 
 void MotionPanel::setup_home_buttons() {
@@ -380,17 +377,6 @@ void MotionPanel::on_distance_button_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-void MotionPanel::on_z_button_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[MotionPanel] on_z_button_clicked");
-    auto* self = static_cast<MotionPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        lv_obj_t* btn = static_cast<lv_obj_t*>(lv_event_get_target(e));
-        const char* name = lv_obj_get_name(btn);
-        self->handle_z_button(name);
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
 void MotionPanel::on_home_button_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[MotionPanel] on_home_button_clicked");
     auto* self = static_cast<MotionPanel*>(lv_event_get_user_data(e));
@@ -516,6 +502,35 @@ void MotionPanel::home(char axis) {
                 NOTIFY_ERROR("Homing failed: {}", err.user_message());
             });
     }
+}
+
+// Static callbacks for XML event_cb (Z-axis buttons)
+static void on_motion_z_up_10(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[MotionPanel] on_motion_z_up_10");
+    (void)e;
+    get_global_motion_panel().handle_z_button("z_up_10");
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+static void on_motion_z_up_1(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[MotionPanel] on_motion_z_up_1");
+    (void)e;
+    get_global_motion_panel().handle_z_button("z_up_1");
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+static void on_motion_z_down_1(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[MotionPanel] on_motion_z_down_1");
+    (void)e;
+    get_global_motion_panel().handle_z_button("z_down_1");
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+static void on_motion_z_down_10(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[MotionPanel] on_motion_z_down_10");
+    (void)e;
+    get_global_motion_panel().handle_z_button("z_down_10");
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 static std::unique_ptr<MotionPanel> g_motion_panel;

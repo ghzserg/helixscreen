@@ -136,6 +136,7 @@
                      height="#button_height" flex_grow="1" style_radius="#border_radius" style_border_width="0"
                      flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
                      style_pad_gap="#space_xs" clickable="true">
+            <event_cb trigger="clicked" callback="on_filament_load"/>
             <lv_obj-bind_state_if_eq subject="filament_safety_warning_visible" state="disabled" ref_value="1"/>
             <icon src="arrow_down" size="sm" variant="primary"/>
             <text_body text="Load"/>
@@ -144,6 +145,7 @@
                      height="#button_height" flex_grow="1" style_radius="#border_radius" style_border_width="0"
                      flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
                      style_pad_gap="#space_xs" clickable="true">
+            <event_cb trigger="clicked" callback="on_filament_unload"/>
             <lv_obj-bind_state_if_eq subject="filament_safety_warning_visible" state="disabled" ref_value="1"/>
             <icon src="arrow_up" size="sm" variant="primary"/>
             <text_body text="Unload"/>
@@ -154,6 +156,7 @@
                    width="100%" height="#button_height" style_radius="#border_radius" style_border_width="0"
                    flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
                    style_pad_gap="#space_xs" clickable="true">
+          <event_cb trigger="clicked" callback="on_filament_purge"/>
           <lv_obj-bind_state_if_eq subject="filament_safety_warning_visible" state="disabled" ref_value="1"/>
           <icon src="water" size="sm" variant="primary"/>
           <text_body text="Purge 10mm"/>

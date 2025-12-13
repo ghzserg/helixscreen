@@ -46,6 +46,9 @@ FilamentPanel::FilamentPanel(PrinterState& printer_state, MoonrakerAPI* api)
 
     // Register XML event callbacks
     lv_xml_register_event_cb(nullptr, "filament_manage_slots_cb", on_manage_slots_clicked);
+    lv_xml_register_event_cb(nullptr, "on_filament_load", on_load_clicked);
+    lv_xml_register_event_cb(nullptr, "on_filament_unload", on_unload_clicked);
+    lv_xml_register_event_cb(nullptr, "on_filament_purge", on_purge_clicked);
 }
 
 // ============================================================================
@@ -105,24 +108,11 @@ void FilamentPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     }
     spdlog::debug("[{}] Preset buttons configured (4)", get_name());
 
-    // Find and setup action buttons
+    // Find action buttons (events handled by XML event_cb, but refs needed for state management)
     btn_load_ = lv_obj_find_by_name(panel_, "btn_load");
-    if (btn_load_) {
-        lv_obj_add_event_cb(btn_load_, on_load_button_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}] Load button configured", get_name());
-    }
-
     btn_unload_ = lv_obj_find_by_name(panel_, "btn_unload");
-    if (btn_unload_) {
-        lv_obj_add_event_cb(btn_unload_, on_unload_button_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}] Unload button configured", get_name());
-    }
-
     btn_purge_ = lv_obj_find_by_name(panel_, "btn_purge");
-    if (btn_purge_) {
-        lv_obj_add_event_cb(btn_purge_, on_purge_button_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}] Purge button configured", get_name());
-    }
+    spdlog::debug("[{}] Action buttons configured (events via XML)", get_name());
 
     // Find safety warning card
     safety_warning_ = lv_obj_find_by_name(panel_, "safety_warning");
@@ -376,6 +366,27 @@ void FilamentPanel::on_manage_slots_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
+void FilamentPanel::on_load_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_load_clicked");
+    LV_UNUSED(e);
+    get_global_filament_panel().handle_load_button();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void FilamentPanel::on_unload_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_unload_clicked");
+    LV_UNUSED(e);
+    get_global_filament_panel().handle_unload_button();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void FilamentPanel::on_purge_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_purge_clicked");
+    LV_UNUSED(e);
+    get_global_filament_panel().handle_purge_button();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
 void FilamentPanel::on_preset_button_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_preset_button_clicked");
     auto* self = static_cast<FilamentPanel*>(lv_event_get_user_data(e));
@@ -406,33 +417,6 @@ void FilamentPanel::on_custom_button_clicked(lv_event_t* e) {
     auto* self = static_cast<FilamentPanel*>(lv_event_get_user_data(e));
     if (self) {
         self->handle_custom_button();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void FilamentPanel::on_load_button_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_load_button_clicked");
-    auto* self = static_cast<FilamentPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_load_button();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void FilamentPanel::on_unload_button_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_unload_button_clicked");
-    auto* self = static_cast<FilamentPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_unload_button();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void FilamentPanel::on_purge_button_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_purge_button_clicked");
-    auto* self = static_cast<FilamentPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_purge_button();
     }
     LVGL_SAFE_EVENT_CB_END();
 }
