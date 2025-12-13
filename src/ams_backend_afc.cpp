@@ -38,12 +38,13 @@ AmsBackendAfc::AmsBackendAfc(MoonrakerAPI* api, MoonrakerClient* client)
 }
 
 AmsBackendAfc::~AmsBackendAfc() {
-    // Clear event callback first to prevent any callbacks during destruction
-    {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
-        event_callback_ = nullptr;
-    }
-    stop();
+    // During static destruction (e.g., program exit), the mutex may be in an
+    // invalid state. Don't try to lock it or call stop() - the AmsState
+    // destructor has already set the shutdown flag and we just need to clean up.
+    // Normal cleanup path: AmsState::set_backend() calls stop() before replacing.
+    // Destruction path: Let unique_ptrs/RAII guards handle cleanup automatically.
+    //
+    // Note: SubscriptionGuard will safely unsubscribe if MoonrakerClient is still valid.
 }
 
 // ============================================================================

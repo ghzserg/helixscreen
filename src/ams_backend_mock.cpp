@@ -149,11 +149,13 @@ AmsBackendMock::AmsBackendMock(int gate_count) {
 }
 
 AmsBackendMock::~AmsBackendMock() {
-    // Signal shutdown and wait for any running operation thread
+    // Signal shutdown and wait for any running operation thread to finish
+    // Using atomic flag - safe without mutex
     shutdown_requested_ = true;
     shutdown_cv_.notify_all();
     wait_for_operation_thread();
-    stop();
+    // Don't call stop() - it would try to lock the mutex which may be invalid
+    // during static destruction. The running_ flag doesn't matter at this point.
 }
 
 void AmsBackendMock::wait_for_operation_thread() {

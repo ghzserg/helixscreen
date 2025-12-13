@@ -71,6 +71,12 @@ enum class AnimDirection {
     UNLOADING = 2 // Animating away from nozzle
 };
 
+// Per-gate filament state for visualizing all installed filaments
+struct GateFilamentState {
+    PathSegment segment = PathSegment::NONE; // How far filament extends
+    uint32_t color = 0x808080;               // Filament color (gray default)
+};
+
 struct FilamentPathData {
     int topology = 1;                    // 0=LINEAR, 1=HUB
     int gate_count = DEFAULT_GATE_COUNT; // Number of gates
@@ -79,6 +85,10 @@ struct FilamentPathData {
     int error_segment = 0;               // Error location (0=none)
     int anim_progress = 0;               // Animation progress 0-100 (for segment transition)
     uint32_t filament_color = DEFAULT_FILAMENT_COLOR;
+
+    // Per-gate filament state (for showing all installed filaments, not just active)
+    static constexpr int MAX_GATES = 16;
+    GateFilamentState gate_filament_states[MAX_GATES] = {};
 
     // Animation state
     int prev_segment = 0; // Previous segment (for smooth transition)
@@ -793,24 +803,37 @@ static void filament_path_draw_cb(lv_event_t* e) {
 
     // ========================================================================
     // Draw lane lines (one per gate, from entry to merge point)
+    // Shows all installed filaments' colors, not just the active gate
     // ========================================================================
     for (int i = 0; i < data->gate_count; i++) {
         int32_t gate_x = x_off + get_gate_x(i, data->gate_count, width);
         bool is_active_gate = (i == data->active_gate);
 
         // Determine line color and width for this gate's lane
+        // Priority: active gate > per-gate filament state > idle
         lv_color_t lane_color = idle_color;
         int32_t lane_width = line_idle;
+        bool has_filament = false;
+        PathSegment gate_segment = PathSegment::NONE;
 
         if (is_active_gate && data->filament_segment > 0) {
-            // This gate's lane has filament
+            // Active gate - use active filament color
+            has_filament = true;
             lane_color = active_color;
             lane_width = line_active;
+            gate_segment = fil_seg;
 
             // Check for error in lane segments
             if (has_error && (error_seg == PathSegment::PREP || error_seg == PathSegment::LANE)) {
                 lane_color = error_color;
             }
+        } else if (i < FilamentPathData::MAX_GATES &&
+                   data->gate_filament_states[i].segment != PathSegment::NONE) {
+            // Non-active gate with installed filament - show its color to its sensor position
+            has_filament = true;
+            lane_color = lv_color_hex(data->gate_filament_states[i].color);
+            lane_width = line_active;
+            gate_segment = data->gate_filament_states[i].segment;
         }
 
         // Draw vertical line from entry to prep sensor
@@ -818,7 +841,7 @@ static void filament_path_draw_cb(lv_event_t* e) {
 
         // Draw prep sensor dot (AFC topology shows these prominently)
         if (data->topology == 1) { // HUB topology
-            bool prep_active = is_active_gate && is_segment_active(PathSegment::PREP, fil_seg);
+            bool prep_active = has_filament && is_segment_active(PathSegment::PREP, gate_segment);
             draw_sensor_dot(layer, gate_x, prep_y, prep_active ? lane_color : idle_color,
                             prep_active, sensor_r);
         }
@@ -1380,6 +1403,44 @@ void ui_filament_path_canvas_stop_animations(lv_obj_t* obj) {
     stop_segment_animation(obj, data);
     stop_error_pulse(obj, data);
     lv_obj_invalidate(obj);
+}
+
+void ui_filament_path_canvas_set_gate_filament(lv_obj_t* obj, int gate_index, int segment,
+                                               uint32_t color) {
+    auto* data = get_data(obj);
+    if (!data || gate_index < 0 || gate_index >= FilamentPathData::MAX_GATES)
+        return;
+
+    auto& state = data->gate_filament_states[gate_index];
+    PathSegment new_segment = static_cast<PathSegment>(segment);
+
+    if (state.segment != new_segment || state.color != color) {
+        state.segment = new_segment;
+        state.color = color;
+        spdlog::trace("[FilamentPath] Gate {} filament: segment={}, color=0x{:06X}", gate_index,
+                      segment, color);
+        lv_obj_invalidate(obj);
+    }
+}
+
+void ui_filament_path_canvas_clear_gate_filaments(lv_obj_t* obj) {
+    auto* data = get_data(obj);
+    if (!data)
+        return;
+
+    bool changed = false;
+    for (int i = 0; i < FilamentPathData::MAX_GATES; i++) {
+        if (data->gate_filament_states[i].segment != PathSegment::NONE) {
+            data->gate_filament_states[i].segment = PathSegment::NONE;
+            data->gate_filament_states[i].color = 0x808080;
+            changed = true;
+        }
+    }
+
+    if (changed) {
+        spdlog::trace("[FilamentPath] Cleared all gate filament states");
+        lv_obj_invalidate(obj);
+    }
 }
 
 void ui_filament_path_canvas_set_bypass_active(lv_obj_t* obj, bool active) {

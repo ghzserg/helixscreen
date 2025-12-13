@@ -65,8 +65,7 @@ struct AmsSlotData {
     // Other UI elements
     lv_obj_t* material_label = nullptr;
     lv_obj_t* status_badge_bg = nullptr; // Status badge background (colored circle)
-    lv_obj_t* status_icon = nullptr;     // Icon inside status badge
-    lv_obj_t* slot_badge = nullptr;      // Slot number badge
+    lv_obj_t* slot_badge = nullptr;      // Slot number label inside status badge
     lv_obj_t* container = nullptr;       // The ams_slot widget itself
 
     // Material text buffer (for subject-driven updates if we add material subjects later)
@@ -221,72 +220,69 @@ static void on_color_changed(lv_observer_t* observer, lv_subject_t* subject) {
 /**
  * @brief Observer callback for gate status changes
  *
- * Updates the status badge overlay with appropriate color and icon.
- * Badge is positioned on the spool for a cleaner look.
+ * Updates the slot badge with status-colored background.
+ * Badge shows slot number and is hidden for EMPTY slots (faded spool is enough).
  */
 static void on_status_changed(lv_observer_t* observer, lv_subject_t* subject) {
     auto* data = static_cast<AmsSlotData*>(lv_observer_get_user_data(observer));
-    if (!data || !data->status_icon) {
+    if (!data || !data->status_badge_bg) {
         return;
     }
 
     int status_int = lv_subject_get_int(subject);
     auto status = static_cast<GateStatus>(status_int);
 
-    // Select icon and badge background color based on status
-    // Use ui_icon::lookup_codepoint() for icon font glyphs
-    const char* icon = ui_icon::lookup_codepoint("help_circle");
-    lv_color_t badge_bg = ui_theme_get_color("text_secondary");
+    // Status-to-color mapping:
+    // - Green (success_color): AVAILABLE, LOADED, FROM_BUFFER - filament ready/in use
+    // - Red (error_color): BLOCKED - problem that needs attention
+    // - Gray (ams_badge_bg): EMPTY, UNKNOWN - no filament or unknown state
+    lv_color_t badge_bg = ui_theme_get_color("ams_badge_bg");
+    bool show_badge = true;
 
     switch (status) {
     case GateStatus::AVAILABLE:
-        icon = ui_icon::lookup_codepoint("check");
+    case GateStatus::LOADED:
+    case GateStatus::FROM_BUFFER:
         badge_bg = ui_theme_get_color("success_color");
         break;
-    case GateStatus::LOADED:
-        icon = ui_icon::lookup_codepoint("arrow_up");
-        badge_bg = ui_theme_get_color("info_color");
-        break;
-    case GateStatus::FROM_BUFFER:
-        icon = ui_icon::lookup_codepoint("check");
-        badge_bg = ui_theme_get_color("warning_color");
+    case GateStatus::BLOCKED:
+        badge_bg = ui_theme_get_color("error_color");
         break;
     case GateStatus::EMPTY:
-        icon = ui_icon::lookup_codepoint("close");
-        badge_bg = ui_theme_get_color("ams_badge_bg");
-        break;
-    case GateStatus::BLOCKED:
-        icon = ui_icon::lookup_codepoint("alert");
-        badge_bg = ui_theme_get_color("error_color");
+        // Hide badge for empty slots - faded spool is enough visual indication
+        show_badge = false;
         break;
     case GateStatus::UNKNOWN:
     default:
-        icon = ui_icon::lookup_codepoint("help_circle");
         badge_bg = ui_theme_get_color("ams_badge_bg");
         break;
     }
 
-    // Update status badge
-    lv_label_set_text(data->status_icon, icon);
-    lv_obj_set_style_text_color(data->status_icon, lv_color_white(), LV_PART_MAIN);
-
-    // Update badge background color
-    if (data->status_badge_bg) {
+    // Show/hide badge based on status
+    if (show_badge) {
+        lv_obj_remove_flag(data->status_badge_bg, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_style_bg_color(data->status_badge_bg, badge_bg, LV_PART_MAIN);
+    } else {
+        lv_obj_add_flag(data->status_badge_bg, LV_OBJ_FLAG_HIDDEN);
     }
 
     // Handle empty slot visual treatment - fade the spool
+    lv_opa_t empty_opa = (status == GateStatus::EMPTY) ? LV_OPA_40 : LV_OPA_COVER;
+
+    // Flat style widgets
     if (data->color_swatch) {
-        lv_opa_t swatch_opa = (status == GateStatus::EMPTY) ? LV_OPA_40 : LV_OPA_COVER;
-        lv_obj_set_style_bg_opa(data->color_swatch, swatch_opa, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(data->color_swatch, empty_opa, LV_PART_MAIN);
     }
     if (data->spool_outer) {
-        lv_opa_t outer_opa = (status == GateStatus::EMPTY) ? LV_OPA_40 : LV_OPA_COVER;
-        lv_obj_set_style_bg_opa(data->spool_outer, outer_opa, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(data->spool_outer, empty_opa, LV_PART_MAIN);
+    }
+    // 3D style widget
+    if (data->spool_canvas) {
+        lv_obj_set_style_opa(data->spool_canvas, empty_opa, LV_PART_MAIN);
     }
 
-    spdlog::trace("[AmsSlot] Slot {} status updated to {}", data->slot_index,
-                  gate_status_to_string(status));
+    spdlog::trace("[AmsSlot] Slot {} status={} badge={}", data->slot_index,
+                  gate_status_to_string(status), show_badge ? "visible" : "hidden");
 }
 
 /**
@@ -531,11 +527,16 @@ static void create_slot_children(lv_obj_t* container, AmsSlotData* data) {
     }
 
     // ========================================================================
-    // STATUS BADGE (overlaid on bottom-right of spool)
+    // SLOT NUMBER BADGE (overlaid on bottom-right of spool)
+    // Shows slot number with status-colored background:
+    // - Green: filament ready (AVAILABLE, LOADED, FROM_BUFFER)
+    // - Red: problem (BLOCKED)
+    // - Hidden: empty slot (EMPTY) - faded spool is enough
+    // - Gray: unknown state (UNKNOWN)
     // ========================================================================
     lv_obj_t* status_badge = lv_obj_create(data->spool_container);
     lv_obj_set_size(status_badge, 20, 20);
-    // Position badge at bottom-right of the canvas area (offset accounts for larger container)
+    // Position badge at bottom-right of the canvas area
     lv_obj_align(status_badge, LV_ALIGN_BOTTOM_RIGHT, -2, -2);
     lv_obj_set_style_radius(status_badge, LV_RADIUS_CIRCLE, LV_PART_MAIN);
     lv_obj_set_style_bg_color(status_badge, ui_theme_get_color("ams_badge_bg"), LV_PART_MAIN);
@@ -546,36 +547,15 @@ static void create_slot_children(lv_obj_t* container, AmsSlotData* data) {
     lv_obj_set_style_pad_all(status_badge, 0, LV_PART_MAIN);
     data->status_badge_bg = status_badge;
 
-    // Status icon inside badge
-    lv_obj_t* status_icon = lv_label_create(status_badge);
-    lv_label_set_text(status_icon, ui_icon::lookup_codepoint("help_circle"));
-    lv_obj_set_style_text_font(status_icon, &mdi_icons_16, LV_PART_MAIN);
-    lv_obj_set_style_text_color(status_icon, lv_color_white(), LV_PART_MAIN);
-    lv_obj_center(status_icon);
-    data->status_icon = status_icon;
-
-    // ========================================================================
-    // SLOT NUMBER BADGE (bottom-left of spool, mirrors status badge)
-    // ========================================================================
-    lv_obj_t* badge_container = lv_obj_create(data->spool_container);
-    lv_obj_set_size(badge_container, 20, 20);
-    lv_obj_align(badge_container, LV_ALIGN_BOTTOM_LEFT, -2, -2);
-    lv_obj_set_style_radius(badge_container, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(badge_container, ui_theme_get_color("ams_badge_bg"), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(badge_container, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(badge_container, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_color(badge_container, ui_theme_get_color("card_bg"), LV_PART_MAIN);
-    lv_obj_remove_flag(badge_container, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_pad_all(badge_container, 0, LV_PART_MAIN);
-
-    lv_obj_t* badge_label = lv_label_create(badge_container);
-    lv_label_set_text(badge_label, "?");
+    // Slot number label inside badge (replaces status icon)
+    lv_obj_t* slot_label = lv_label_create(status_badge);
+    lv_label_set_text(slot_label, "?");
     const char* font_xs_name = lv_xml_get_const(NULL, "font_xs");
     const lv_font_t* font_xs = font_xs_name ? lv_xml_get_font(NULL, font_xs_name) : &noto_sans_12;
-    lv_obj_set_style_text_font(badge_label, font_xs, LV_PART_MAIN);
-    lv_obj_set_style_text_color(badge_label, lv_color_white(), LV_PART_MAIN);
-    lv_obj_center(badge_label);
-    data->slot_badge = badge_label;
+    lv_obj_set_style_text_font(slot_label, font_xs, LV_PART_MAIN);
+    lv_obj_set_style_text_color(slot_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_center(slot_label);
+    data->slot_badge = slot_label;
 
     data->container = container;
 }

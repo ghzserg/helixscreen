@@ -93,6 +93,8 @@ void register_xml_components() {
 
     // Register custom widgets (BEFORE components that use them)
     ui_gcode_viewer_register();
+    // NOTE: AMS widgets (spool_canvas, ams_slot, filament_path_canvas) are
+    // registered lazily in ui_panel_ams.cpp when the AMS panel is first accessed
 
     // Core UI components
     lv_xml_register_component_from_file("A:ui_xml/icon.xml");
@@ -137,9 +139,7 @@ void register_xml_components() {
     lv_xml_register_component_from_file("A:ui_xml/print_tune_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/filament_panel.xml");
 
-    // AMS (multi-filament) panel - slot component must be registered first
-    lv_xml_register_component_from_file("A:ui_xml/ams_slot.xml");
-    lv_xml_register_component_from_file("A:ui_xml/ams_panel.xml");
+    // NOTE: AMS panel (ams_panel.xml) is registered lazily in ui_panel_ams.cpp
 
     // Feature parity stub panel support
     lv_xml_register_component_from_file("A:ui_xml/coming_soon_overlay.xml");
@@ -183,9 +183,10 @@ void register_xml_components() {
 
     // Settings overlay panels
     lv_xml_register_component_from_file("A:ui_xml/display_settings_overlay.xml");
-    lv_xml_register_component_from_file("A:ui_xml/wifi_settings_overlay.xml");
+    lv_xml_register_component_from_file("A:ui_xml/network_settings_overlay.xml");
     lv_xml_register_component_from_file("A:ui_xml/timelapse_settings_overlay.xml");
     lv_xml_register_component_from_file("A:ui_xml/hidden_network_modal.xml");
+    lv_xml_register_component_from_file("A:ui_xml/network_test_modal.xml");
     lv_xml_register_component_from_file("A:ui_xml/wifi_network_item.xml");
 
     // Development tools

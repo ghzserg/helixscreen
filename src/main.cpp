@@ -402,10 +402,10 @@ static void initialize_subjects() {
 
     // Initialize AmsState subjects BEFORE panels so XML bindings can find ams_gate_count
     // This is critical for the home panel's AMS indicator visibility binding
+    // Note: In mock mode, init_subjects() also creates the mock backend internally
     AmsState::instance().init_subjects(true);
 
-    // Initialize AmsPanel subjects (registers XML event callbacks for slots/actions)
-    get_global_ams_panel().init_subjects();
+    // NOTE: AMS panel is lazily initialized when first accessed via get_global_ams_panel()
 
     // Register print completion notification observer (watches print_state_enum for terminal
     // states) - implementation in print_completion.cpp handles panel detection
@@ -434,20 +434,6 @@ static void initialize_subjects() {
     init_zoffset_row_handler();                 // Z-Offset row callback
     ui_wizard_init_subjects();                  // Wizard subjects (for first-run config)
     ui_keypad_init_subjects();                  // Keypad display subject (for reactive binding)
-
-    // In mock mode, create and start the mock backend immediately so the home panel
-    // can display the AMS indicator without requiring navigation to the AMS panel first
-    // (AmsState::init_subjects() was already called earlier, before panel init)
-    if (g_runtime_config.should_mock_ams()) {
-        auto backend = AmsBackend::create(AmsType::NONE); // Factory returns mock in test mode
-        if (backend) {
-            backend->start();
-            AmsState::instance().set_backend(std::move(backend));
-            AmsState::instance().sync_from_backend();
-            spdlog::info("[AMS State] Mock backend initialized at startup ({} gates)",
-                         lv_subject_get_int(AmsState::instance().get_gate_count_subject()));
-        }
-    }
 
     // Panels that need MoonrakerAPI - store pointers for deferred set_api()
     print_select_panel = get_print_select_panel(get_printer_state(), nullptr);
@@ -1363,15 +1349,7 @@ int main(int argc, char** argv) {
         spdlog::error("[Print Status] Failed to create panel");
     }
 
-    // Create AMS panel (overlay for multi-filament management)
-    overlay_panels.ams = (lv_obj_t*)lv_xml_create(screen, "ams_panel", nullptr);
-    if (overlay_panels.ams) {
-        get_global_ams_panel().setup(overlay_panels.ams, screen);
-        lv_obj_add_flag(overlay_panels.ams, LV_OBJ_FLAG_HIDDEN); // Hidden by default
-        spdlog::debug("[AMS] Panel created and ready");
-    } else {
-        spdlog::error("[AMS] Failed to create panel");
-    }
+    // NOTE: AMS panel is created lazily when first accessed via get_global_ams_panel()
 
     spdlog::info("[Init] XML UI created successfully with reactive navigation");
 
@@ -1592,6 +1570,19 @@ int main(int argc, char** argv) {
     // Create gradient test panel if requested (independent of wizard state)
     if (args.overlays.gradient_test) {
         create_overlay_panel(screen, "gradient_test_panel", "gradient test");
+    }
+
+    // Open AMS panel if requested via -p ams
+    if (args.overlays.ams) {
+        spdlog::debug("[Overlay] Opening AMS panel as requested by command-line flag");
+        auto& ams_panel = get_global_ams_panel();
+        if (!ams_panel.are_subjects_initialized()) {
+            ams_panel.init_subjects();
+        }
+        lv_obj_t* panel_obj = ams_panel.get_panel();
+        if (panel_obj) {
+            ui_nav_push_overlay(panel_obj);
+        }
     }
 
     // Connect to Moonraker (only if not in wizard and we have saved config OR CLI override)

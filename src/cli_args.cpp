@@ -138,7 +138,7 @@ static void print_help(const char* program_name) {
     printf("  --gcode-zoom <n>     Set camera zoom level (positive number)\n");
     printf("  --gcode-debug-colors Enable per-face debug coloring\n");
     printf("\nAvailable panels:\n");
-    printf("  home, controls, motion, nozzle-temp, bed-temp, bed-mesh,\n");
+    printf("  home, controls, motion, nozzle-temp, bed-temp, bed-mesh, ams,\n");
     printf("  zoffset, pid, extrusion, print-status, filament, settings, advanced,\n");
     printf("  print-select, step-test, test, gcode-test, glyphs\n");
     printf("\nScreen sizes:\n");
@@ -213,6 +213,8 @@ static bool parse_panel_arg(const char* panel_arg, CliArgs& args) {
         args.overlays.glyphs = true;
     } else if (strcmp(panel_arg, "gradient-test") == 0) {
         args.overlays.gradient_test = true;
+    } else if (strcmp(panel_arg, "ams") == 0) {
+        args.overlays.ams = true;
     } else {
         // Try base panel lookup
         auto panel_id = panel_name_to_id(panel_arg);
@@ -221,7 +223,7 @@ static bool parse_panel_arg(const char* panel_arg, CliArgs& args) {
         } else {
             printf("Unknown panel: %s\n", panel_arg);
             printf("Available panels: home, controls, motion, nozzle-temp, bed-temp, "
-                   "bed-mesh, zoffset, pid, screws, input-shaper, extrusion, fan, "
+                   "bed-mesh, zoffset, pid, screws, input-shaper, extrusion, fan, ams, "
                    "print-status, filament, settings, advanced, print-history, "
                    "print-select, step-test, test, gcode-test, glyphs, gradient-test\n");
             return false;

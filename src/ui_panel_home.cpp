@@ -8,6 +8,8 @@
 #include "ui_event_safety.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
+#include "ui_nav_manager.h"
+#include "ui_panel_ams.h"
 #include "ui_panel_print_status.h"
 #include "ui_panel_temp_control.h"
 #include "ui_subject_registry.h"
@@ -18,11 +20,11 @@
 #include "config.h"
 #include "ethernet_manager.h"
 #include "moonraker_api.h"
+#include "network_settings_overlay.h"
 #include "printer_detector.h"
 #include "printer_state.h"
 #include "thumbnail_cache.h"
 #include "wifi_manager.h"
-#include "wifi_settings_overlay.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
@@ -550,8 +552,8 @@ void HomePanel::handle_printer_status_clicked() {
 void HomePanel::handle_network_clicked() {
     spdlog::info("[{}] Network icon clicked - opening network settings directly", get_name());
 
-    // Open WiFi settings overlay directly (same as Settings panel's Network row)
-    auto& overlay = get_wifi_settings_overlay();
+    // Open Network settings overlay directly (same as Settings panel's Network row)
+    auto& overlay = get_network_settings_overlay();
 
     if (!overlay.is_created()) {
         overlay.init_subjects();
@@ -563,10 +565,17 @@ void HomePanel::handle_network_clicked() {
 }
 
 void HomePanel::handle_ams_clicked() {
-    spdlog::info("[{}] AMS indicator clicked - navigating to filament panel", get_name());
+    spdlog::info("[{}] AMS indicator clicked - opening AMS panel overlay", get_name());
 
-    // Navigate to filament panel for AMS management
-    ui_nav_set_active(UI_PANEL_FILAMENT);
+    // Open AMS panel overlay for multi-filament management
+    auto& ams_panel = get_global_ams_panel();
+    if (!ams_panel.are_subjects_initialized()) {
+        ams_panel.init_subjects();
+    }
+    lv_obj_t* panel_obj = ams_panel.get_panel();
+    if (panel_obj) {
+        ui_nav_push_overlay(panel_obj);
+    }
 }
 
 void HomePanel::on_led_state_changed(int state) {

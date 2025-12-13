@@ -16,10 +16,10 @@
 #include "app_globals.h"
 #include "config.h"
 #include "moonraker_client.h"
+#include "network_settings_overlay.h"
 #include "printer_state.h"
 #include "settings_manager.h"
 #include "sound_manager.h"
-#include "wifi_settings_overlay.h"
 
 #include <spdlog/spdlog.h>
 
@@ -736,7 +736,7 @@ void SettingsPanel::handle_pid_tuning_clicked() {
 void SettingsPanel::handle_network_clicked() {
     spdlog::debug("[{}] Network Settings clicked", get_name());
 
-    auto& overlay = get_wifi_settings_overlay();
+    auto& overlay = get_network_settings_overlay();
 
     if (!overlay.is_created()) {
         overlay.init_subjects();

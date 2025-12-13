@@ -73,6 +73,16 @@ void NavigationManager::overlay_slide_out_complete_cb(lv_anim_t* anim) {
     lv_obj_add_flag(panel, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_translate_x(panel, 0, LV_PART_MAIN);
     spdlog::debug("[NavigationManager] Overlay slide-out complete, panel {} hidden", (void*)panel);
+
+    // Invoke close callback if registered (AFTER animation completes, before any deletion)
+    auto& mgr = NavigationManager::instance();
+    auto it = mgr.overlay_close_callbacks_.find(panel);
+    if (it != mgr.overlay_close_callbacks_.end()) {
+        spdlog::debug("[NavigationManager] Invoking close callback for overlay {}", (void*)panel);
+        auto callback = std::move(it->second);
+        mgr.overlay_close_callbacks_.erase(it);
+        callback(); // Call after erasing to allow re-registration
+    }
 }
 
 void NavigationManager::overlay_animate_slide_in(lv_obj_t* panel) {
@@ -99,6 +109,10 @@ void NavigationManager::overlay_animate_slide_in(lv_obj_t* panel) {
 }
 
 void NavigationManager::overlay_animate_slide_out(lv_obj_t* panel) {
+    // Disable clicks immediately to prevent interaction during animation
+    lv_obj_remove_flag(panel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(panel, LV_OBJ_FLAG_EVENT_BUBBLE);
+
     int32_t panel_width = lv_obj_get_width(panel);
     if (panel_width <= 0) {
         panel_width = OVERLAY_SLIDE_OFFSET;
@@ -285,6 +299,19 @@ void NavigationManager::nav_button_clicked_cb(lv_event_t* event) {
         for (int i = 0; i < UI_PANEL_COUNT; i++) {
             if (mgr.panel_widgets_[i]) {
                 lv_obj_add_flag(mgr.panel_widgets_[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+
+        // Invoke close callbacks for any overlays being cleared
+        // (e.g., AMS panel needs to destroy its UI to free memory)
+        for (lv_obj_t* panel : mgr.panel_stack_) {
+            auto it = mgr.overlay_close_callbacks_.find(panel);
+            if (it != mgr.overlay_close_callbacks_.end()) {
+                auto callback = std::move(it->second);
+                mgr.overlay_close_callbacks_.erase(it);
+                spdlog::debug("[NavigationManager] Invoking close callback for panel {} (navbar)",
+                              (void*)panel);
+                callback();
             }
         }
 
@@ -537,6 +564,25 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel) {
                   (void*)overlay_panel, panel_stack_.size());
 }
 
+void NavigationManager::register_overlay_close_callback(lv_obj_t* overlay_panel,
+                                                        OverlayCloseCallback callback) {
+    if (!overlay_panel || !callback) {
+        return;
+    }
+    overlay_close_callbacks_[overlay_panel] = std::move(callback);
+    spdlog::debug("[NavigationManager] Registered close callback for overlay {}",
+                  (void*)overlay_panel);
+}
+
+void NavigationManager::unregister_overlay_close_callback(lv_obj_t* overlay_panel) {
+    auto it = overlay_close_callbacks_.find(overlay_panel);
+    if (it != overlay_close_callbacks_.end()) {
+        overlay_close_callbacks_.erase(it);
+        spdlog::debug("[NavigationManager] Unregistered close callback for overlay {}",
+                      (void*)overlay_panel);
+    }
+}
+
 bool NavigationManager::go_back() {
     spdlog::debug("[NavigationManager] === go_back() called, stack depth: {} ===",
                   panel_stack_.size());
@@ -555,7 +601,7 @@ bool NavigationManager::go_back() {
         }
     }
 
-    // Animate slide-out if overlay
+    // Animate slide-out if overlay (callback invoked after animation completes)
     if (is_overlay && current_top) {
         overlay_animate_slide_out(current_top);
     }

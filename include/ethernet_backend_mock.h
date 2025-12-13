@@ -5,6 +5,8 @@
 
 #include "ethernet_backend.h"
 
+#include <string>
+
 /**
  * @brief Mock Ethernet backend for simulator and testing
  *
@@ -31,4 +33,7 @@ class EthernetBackendMock : public EthernetBackend {
 
     bool has_interface() override;
     EthernetInfo get_info() override;
+
+  private:
+    std::string real_mac_; ///< Real MAC from system for realistic demo display
 };

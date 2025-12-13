@@ -8,7 +8,9 @@
 #include "ui_event_safety.h"
 #include "ui_filament_path_canvas.h"
 #include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_common.h"
+#include "ui_spool_canvas.h"
 #include "ui_theme.h"
 
 #include "ams_backend.h"
@@ -25,6 +27,39 @@
 
 // Global instance pointer for XML callback access
 static AmsPanel* g_ams_panel_instance = nullptr;
+
+// Lazy registration flag - widgets and XML registered on first use
+static bool s_ams_widgets_registered = false;
+
+/**
+ * @brief Register AMS widgets and XML component (lazy, called once on first use)
+ *
+ * Registers:
+ * - spool_canvas: 3D filament spool visualization widget
+ * - ams_slot: Individual slot widget with spool and status
+ * - filament_path_canvas: Filament routing visualization
+ * - ams_panel.xml: Main panel component
+ * - ams_context_menu.xml: Slot context menu component
+ */
+static void ensure_ams_widgets_registered() {
+    if (s_ams_widgets_registered) {
+        return;
+    }
+
+    spdlog::info("[AMS Panel] Lazy-registering AMS widgets and XML components");
+
+    // Register custom widgets (order matters - dependencies first)
+    ui_spool_canvas_register();
+    ui_ams_slot_register();
+    ui_filament_path_canvas_register();
+
+    // Register XML components
+    lv_xml_register_component_from_file("A:ui_xml/ams_panel.xml");
+    lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml");
+
+    s_ams_widgets_registered = true;
+    spdlog::debug("[AMS Panel] Widget and XML registration complete");
+}
 
 // ============================================================================
 // XML Event Callback Wrappers (for <event_cb> elements in XML)
@@ -73,23 +108,10 @@ void AmsPanel::init_subjects() {
     // We just ensure it's initialized before panel creation
     AmsState::instance().init_subjects(true);
 
-    // Create and connect backend if not already present
-    if (!AmsState::instance().get_backend()) {
-        // Factory method checks should_mock_ams() and creates appropriate backend
-        auto backend = AmsBackend::create(AmsType::NONE);
-        if (backend) {
-            // Start backend BEFORE set_backend to avoid deadlock:
-            // start() emits events while holding its internal mutex, and the callback
-            // would call sync_from_backend()->get_system_info() which needs the same mutex.
-            // By starting first, the event fires with no callback registered.
-            backend->start();
-            // Now register the backend (sets up callback for future events)
-            AmsState::instance().set_backend(std::move(backend));
-            // Manually sync state since we started before callback was registered
-            AmsState::instance().sync_from_backend();
-            spdlog::info("[{}] Created and connected AMS backend", get_name());
-        }
-    }
+    // NOTE: Backend creation is handled by:
+    // - main.cpp (mock mode at startup)
+    // - AmsState::init_backend_from_capabilities() (real printer connection)
+    // Panel should NOT create backends - it just observes the existing one.
 
     // Register observers for state changes
     gates_version_observer_ = ObserverGuard(AmsState::instance().get_gates_version_subject(),
@@ -151,7 +173,39 @@ void AmsPanel::on_activate() {
 
 void AmsPanel::on_deactivate() {
     spdlog::debug("[{}] Deactivated", get_name());
-    // Nothing to pause for now
+    // Note: UI destruction is handled by NavigationManager close callback
+    // registered in get_global_ams_panel()
+}
+
+void AmsPanel::clear_panel_reference() {
+    // Clear all widget references before LVGL object deletion
+    panel_ = nullptr;
+    parent_screen_ = nullptr;
+    slot_grid_ = nullptr;
+    path_canvas_ = nullptr;
+    context_menu_ = nullptr;
+    context_menu_slot_ = -1;
+    current_slot_count_ = 0;
+
+    for (int i = 0; i < MAX_VISIBLE_SLOTS; ++i) {
+        slot_widgets_[i] = nullptr;
+    }
+
+    // Clear observer guards (they reference deleted widgets)
+    gates_version_observer_.reset();
+    action_observer_.reset();
+    current_gate_observer_.reset();
+    gate_count_observer_.reset();
+    path_segment_observer_.reset();
+    path_topology_observer_.reset();
+
+    // Reset subjects_initialized_ so observers are recreated on next access
+    subjects_initialized_ = false;
+
+    // Clear global instance pointer to prevent callbacks from using stale pointer
+    g_ams_panel_instance = nullptr;
+
+    spdlog::debug("[AMS Panel] Cleared all widget references");
 }
 
 // ============================================================================
@@ -1056,10 +1110,62 @@ void AmsPanel::on_context_edit_clicked(lv_event_t* e) {
 // ============================================================================
 
 static std::unique_ptr<AmsPanel> g_ams_panel;
+static lv_obj_t* s_ams_panel_obj = nullptr;
+
+void destroy_ams_panel_ui() {
+    if (s_ams_panel_obj) {
+        spdlog::info("[AMS Panel] Destroying panel UI to free memory");
+
+        // Unregister close callback BEFORE deleting to prevent double-invocation
+        // (e.g., if destroy called manually while panel is in overlay stack)
+        NavigationManager::instance().unregister_overlay_close_callback(s_ams_panel_obj);
+
+        // Clear the panel_ reference in AmsPanel before deleting
+        if (g_ams_panel) {
+            g_ams_panel->clear_panel_reference();
+        }
+
+        lv_obj_delete(s_ams_panel_obj);
+        s_ams_panel_obj = nullptr;
+
+        // Note: Widget registrations remain (LVGL doesn't support unregistration)
+        // Note: g_ams_panel C++ object stays for state preservation
+    }
+}
 
 AmsPanel& get_global_ams_panel() {
     if (!g_ams_panel) {
         g_ams_panel = std::make_unique<AmsPanel>(get_printer_state(), nullptr);
     }
+
+    // Lazy create the panel UI if not yet created
+    if (!s_ams_panel_obj && g_ams_panel) {
+        // Ensure widgets and XML are registered
+        ensure_ams_widgets_registered();
+
+        // Create the panel on the active screen
+        lv_obj_t* screen = lv_scr_act();
+        s_ams_panel_obj = static_cast<lv_obj_t*>(lv_xml_create(screen, "ams_panel", nullptr));
+
+        if (s_ams_panel_obj) {
+            // Initialize subjects if needed
+            if (!g_ams_panel->are_subjects_initialized()) {
+                g_ams_panel->init_subjects();
+            }
+
+            // Setup the panel
+            g_ams_panel->setup(s_ams_panel_obj, screen);
+            lv_obj_add_flag(s_ams_panel_obj, LV_OBJ_FLAG_HIDDEN); // Hidden by default
+
+            // Register close callback to destroy UI when overlay is closed
+            NavigationManager::instance().register_overlay_close_callback(
+                s_ams_panel_obj, []() { destroy_ams_panel_ui(); });
+
+            spdlog::info("[AMS Panel] Lazy-created panel UI with close callback");
+        } else {
+            spdlog::error("[AMS Panel] Failed to create panel from XML");
+        }
+    }
+
     return *g_ams_panel;
 }

@@ -201,10 +201,13 @@ lv_theme_t* helix_theme_init(lv_display_t* display, lv_color_t primary_color,
     lv_style_set_opa(&helix_theme_instance->disabled_style, LV_OPA_50);
 
     // Initialize global pressed state style (scale down + preserve radius for buttons)
-    // 243 = ~95% of 256 (full scale), creates subtle "press in" feedback
+    // 250 = ~98% of 256 (full scale), creates subtle "press in" feedback
+    // Pivot point set to center (50%) so button shrinks uniformly, not toward top-left
     lv_style_init(&helix_theme_instance->pressed_style);
     lv_style_set_radius(&helix_theme_instance->pressed_style, border_radius);
-    lv_style_set_transform_scale(&helix_theme_instance->pressed_style, 243);
+    lv_style_set_transform_scale(&helix_theme_instance->pressed_style, 250);
+    lv_style_set_transform_pivot_x(&helix_theme_instance->pressed_style, LV_PCT(50));
+    lv_style_set_transform_pivot_y(&helix_theme_instance->pressed_style, LV_PCT(50));
 
     // Initialize button press transition (80ms press, 120ms release with slight overshoot)
     lv_style_transition_dsc_init(&button_press_transition, button_press_props,

@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<!-- Copyright 2025 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Network Test Modal - Tests local connection and internet access -->
+<!-- Uses vertical step progress widget created dynamically in C++ -->
+<component>
+  <!-- Step colors for network test (themed with light/dark variants) -->
+  <consts>
+    <!-- Pending step colors (muted) -->
+    <color name="step_pending_light" value="#9E9E9E"/>
+    <color name="step_pending_dark" value="#757575"/>
+    <!-- Active step colors (primary) -->
+    <color name="step_active_light" value="#2196F3"/>
+    <color name="step_active_dark" value="#64B5F6"/>
+    <!-- Completed step colors (success) -->
+    <color name="step_completed_light" value="#4CAF50"/>
+    <color name="step_completed_dark" value="#81C784"/>
+    <!-- Step number text colors -->
+    <color name="step_number_pending_light" value="#757575"/>
+    <color name="step_number_pending_dark" value="#9E9E9E"/>
+    <color name="step_number_active_light" value="#FFFFFF"/>
+    <color name="step_number_active_dark" value="#FFFFFF"/>
+    <!-- Step label text colors -->
+    <color name="step_label_active_light" value="#212121"/>
+    <color name="step_label_active_dark" value="#FFFFFF"/>
+    <color name="step_label_inactive_light" value="#757575"/>
+    <color name="step_label_inactive_dark" value="#9E9E9E"/>
+  </consts>
+  <!-- NOTE: test_complete subject is registered globally in C++ (network_settings_overlay.cpp) -->
+  <!-- Full-screen backdrop overlay -->
+  <view name="network_test_modal"
+        extends="lv_obj" width="100%" height="100%" style_bg_color="#000000" style_bg_opa="180" style_border_width="0"
+        style_pad_all="0" style_radius="0" align="center" clickable="true">
+    <!-- Dialog card -->
+    <ui_dialog name="dialog_card"
+               width="320" height="content" align="center" flex_flow="column" style_flex_main_place="start"
+               style_pad_gap="0">
+      <!-- Header with title -->
+      <lv_obj width="100%"
+              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="#space_lg" flex_flow="row"
+              style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <icon src="lan_check" size="md" variant="accent"/>
+        <text_heading text="Network Test" style_text_align="left" flex_grow="1"/>
+      </lv_obj>
+      <!-- Step progress container - widget created dynamically in C++ -->
+      <lv_obj name="step_container"
+              width="100%" height="content" style_min_height="120" style_bg_opa="0" style_border_width="0"
+              style_pad_left="#space_xl" style_pad_right="#space_lg" style_pad_top="0" style_pad_bottom="#space_lg"
+              scrollable="false"/>
+      <!-- Horizontal divider above button -->
+      <lv_obj width="100%"
+              height="1" style_bg_color="#text_secondary" style_bg_opa="64" style_border_width="0" style_pad_all="0"/>
+      <!-- Close button row -->
+      <lv_obj width="100%" height="#button_height" style_bg_opa="0" style_border_width="0" style_pad_all="0">
+        <lv_button name="btn_close"
+                   width="100%" height="100%" style_radius="#border_radius" style_border_width="0"
+                   style_shadow_width="0" clickable="true">
+          <!-- Disabled while test is running (test_complete=0) -->
+          <lv_obj-bind_state_if_eq subject="test_complete" state="disabled" ref_value="0"/>
+          <text_body text="Close" align="center"/>
+          <event_cb trigger="clicked" callback="on_network_test_close"/>
+        </lv_button>
+      </lv_obj>
+    </ui_dialog>
+  </view>
+</component>

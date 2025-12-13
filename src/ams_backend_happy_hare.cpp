@@ -36,7 +36,9 @@ AmsBackendHappyHare::AmsBackendHappyHare(MoonrakerAPI* api, MoonrakerClient* cli
 }
 
 AmsBackendHappyHare::~AmsBackendHappyHare() {
-    stop();
+    // During static destruction, the mutex may be invalid. Don't call stop()
+    // which would try to lock it. Let RAII guards handle cleanup automatically.
+    // Normal cleanup: AmsState::set_backend() calls stop() before replacing.
 }
 
 // ============================================================================

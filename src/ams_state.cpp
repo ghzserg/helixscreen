@@ -131,6 +131,20 @@ void AmsState::init_subjects(bool register_xml) {
             5, MAX_GATES * 2);
     }
 
+    // Ask the factory for a backend. In mock mode, it returns a mock backend.
+    // In real mode with no printer connected, it returns nullptr.
+    // This keeps mock/real decision entirely in the factory.
+    if (!backend_) {
+        auto backend = AmsBackend::create(AmsType::NONE);
+        if (backend) {
+            backend->start();
+            set_backend(std::move(backend));
+            sync_from_backend();
+            spdlog::info("[AMS State] Backend initialized via factory ({} gates)",
+                         lv_subject_get_int(&gate_count_));
+        }
+    }
+
     initialized_ = true;
 }
 

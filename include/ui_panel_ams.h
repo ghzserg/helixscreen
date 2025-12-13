@@ -84,6 +84,15 @@ class AmsPanel : public PanelBase {
      */
     void refresh_slots();
 
+    /**
+     * @brief Clear internal panel reference before UI destruction
+     *
+     * Called by destroy_ams_panel_ui() before deleting the LVGL object.
+     * Clears panel_, slot_widgets_, and other widget references to prevent
+     * dangling pointers.
+     */
+    void clear_panel_reference();
+
   private:
     // === Slot Management ===
 
@@ -193,8 +202,17 @@ class AmsPanel : public PanelBase {
  * @brief Get global AMS panel singleton
  *
  * Creates the panel on first call, returns cached instance thereafter.
- * Panel is lazily initialized - subjects created but XML not until setup.
+ * Panel is lazily initialized - widgets registered and XML created on first access.
  *
  * @return Reference to global AmsPanel instance
  */
 AmsPanel& get_global_ams_panel();
+
+/**
+ * @brief Destroy the AMS panel UI to free memory
+ *
+ * Deletes the LVGL panel object and canvas buffers. The C++ AmsPanel
+ * object and widget registrations remain for quick recreation.
+ * Call this when the panel is closed to free memory on embedded systems.
+ */
+void destroy_ams_panel_ui();

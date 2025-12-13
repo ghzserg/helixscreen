@@ -6,7 +6,12 @@
 
 #include "lvgl/lvgl.h"
 
+#include <functional>
+#include <unordered_map>
 #include <vector>
+
+/// Callback type for overlay close notifications
+using OverlayCloseCallback = std::function<void()>;
 
 /**
  * @brief Navigation panel identifiers
@@ -134,6 +139,24 @@ class NavigationManager {
     void push_overlay(lv_obj_t* overlay_panel);
 
     /**
+     * @brief Register a callback to be called when an overlay is closed
+     *
+     * The callback is invoked when the overlay is popped from the stack
+     * (via go_back or backdrop click). Useful for cleanup like freeing memory.
+     *
+     * @param overlay_panel The overlay panel to monitor
+     * @param callback Function to call when the overlay closes
+     */
+    void register_overlay_close_callback(lv_obj_t* overlay_panel, OverlayCloseCallback callback);
+
+    /**
+     * @brief Remove a registered close callback for an overlay
+     *
+     * @param overlay_panel The overlay panel to stop monitoring
+     */
+    void unregister_overlay_close_callback(lv_obj_t* overlay_panel);
+
+    /**
      * @brief Navigate back to previous panel
      *
      * @return true if navigation occurred, false if history empty
@@ -193,6 +216,9 @@ class NavigationManager {
 
     // Panel stack: tracks ALL visible panels in z-order
     std::vector<lv_obj_t*> panel_stack_;
+
+    // Overlay close callbacks (called when overlay is popped from stack)
+    std::unordered_map<lv_obj_t*, OverlayCloseCallback> overlay_close_callbacks_;
 
     // Shared overlay backdrop widget
     lv_obj_t* overlay_backdrop_ = nullptr;

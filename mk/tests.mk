@@ -91,7 +91,7 @@ TEST_WIFI_DEPS := \
     $(OBJ_DIR)/wifi_manager.o \
     $(OBJ_DIR)/wifi_backend.o \
     $(OBJ_DIR)/wifi_backend_mock.o \
-    $(OBJ_DIR)/wifi_settings_overlay.o \
+    $(OBJ_DIR)/network_settings_overlay.o \
     $(OBJ_DIR)/wifi_ui_utils.o \
     $(OBJ_DIR)/network_tester.o \
     $(OBJ_DIR)/ethernet_manager.o \
@@ -111,7 +111,7 @@ TEST_SETTINGS_DEPS := \
     $(OBJ_DIR)/sound_manager.o \
     $(OBJ_DIR)/ui_panel_calibration_zoffset.o \
     $(OBJ_DIR)/ui_panel_calibration_pid.o \
-    $(OBJ_DIR)/wifi_settings_overlay.o \
+    $(OBJ_DIR)/network_settings_overlay.o \
     $(OBJ_DIR)/sound_manager.o
 
 # Moonraker/printer components

@@ -12,7 +12,7 @@
     <style name="checked_style" border_width="4" border_side="left" border_color="#primary_color" bg_color="#theme_grey"/>
   </styles>
   <view extends="lv_button"
-        width="100%" scrollable="false" clickable="true" style_bg_color="#card_bg" style_bg_opa="255"
+        width="100%" scrollable="false" clickable="true" style_bg_color="#app_bg_color" style_bg_opa="255"
         style_border_width="0" style_shadow_width="0" style_pad_all="#space_lg" flex_flow="row"
         style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_md">
     <style name="checked_style" selector="checked"/>

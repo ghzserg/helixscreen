@@ -176,6 +176,29 @@ bool ui_filament_path_canvas_is_animating(lv_obj_t* obj);
 void ui_filament_path_canvas_stop_animations(lv_obj_t* obj);
 
 /**
+ * @brief Set per-gate filament state for multi-filament visualization
+ *
+ * Shows filament color from spool to the specified sensor position for gates
+ * that have filament installed, even when not the active gate.
+ *
+ * @param obj The filament_path_canvas widget
+ * @param gate_index Gate index (0-15)
+ * @param segment PathSegment enum value indicating how far filament extends
+ * @param color RGB color (0xRRGGBB) of the filament
+ */
+void ui_filament_path_canvas_set_gate_filament(lv_obj_t* obj, int gate_index, int segment,
+                                               uint32_t color);
+
+/**
+ * @brief Clear all per-gate filament states
+ *
+ * Resets all gates to show as idle (no filament installed).
+ *
+ * @param obj The filament_path_canvas widget
+ */
+void ui_filament_path_canvas_clear_gate_filaments(lv_obj_t* obj);
+
+/**
  * @brief Set bypass mode active state
  *
  * When bypass is active, shows an alternate filament path from the bypass

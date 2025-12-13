@@ -45,6 +45,7 @@ struct OverlayFlags {
     bool glyphs = false;
     bool gradient_test = false;
     bool history_dashboard = false;
+    bool ams = false;
 
     /** @brief Check if any overlay requiring Moonraker data is requested */
     bool needs_moonraker() const {

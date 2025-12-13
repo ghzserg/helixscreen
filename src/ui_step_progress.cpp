@@ -3,6 +3,7 @@
 
 #include "ui_step_progress.h"
 
+#include "ui_fonts.h" // For mdi_icons_16 font
 #include "ui_theme.h"
 #include "ui_widget_memory.h"
 
@@ -325,10 +326,11 @@ lv_obj_t* ui_step_progress_create(lv_obj_t* parent, const ui_step_t* steps, int 
                                     0); // Theme-aware, will be updated by apply_step_styling()
 
         // Create checkmark label (shown for COMPLETED state)
+        // Use MDI check icon (F012C) instead of LV_SYMBOL_OK which isn't in our fonts
         lv_obj_t* checkmark = lv_label_create(circle);
-        lv_label_set_text(checkmark, LV_SYMBOL_OK); // LVGL built-in checkmark symbol
+        lv_label_set_text(checkmark, "\xF3\xB0\x84\xAC"); // MDI check icon (F012C)
         lv_obj_align(checkmark, LV_ALIGN_CENTER, 0, 0);
-        lv_obj_set_style_text_font(checkmark, UI_FONT_BODY, 0);
+        lv_obj_set_style_text_font(checkmark, &mdi_icons_16, 0); // Use MDI icon font
         lv_obj_set_style_text_color(checkmark, color_number_active,
                                     0);                 // Theme-aware checkmark color
         lv_obj_add_flag(checkmark, LV_OBJ_FLAG_HIDDEN); // Hidden by default
