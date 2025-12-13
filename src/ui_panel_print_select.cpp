@@ -19,6 +19,7 @@
 #include "moonraker_api.h"
 #include "printer_state.h"
 #include "runtime_config.h"
+#include "settings_manager.h"
 #include "usb_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -365,6 +366,12 @@ void PrintSelectPanel::toggle_view() {
 
         // Populate list view (initializes pool if needed)
         populate_list_view();
+
+        // Animate list container entrance with crossfade
+        animate_view_entrance(list_view_container_);
+
+        // Animate list rows with staggered entrance (runs in parallel with container fade)
+        animate_list_entrance();
     } else {
         // Switch to card view
         current_view_mode_ = PrintSelectViewMode::CARD;
@@ -381,6 +388,9 @@ void PrintSelectPanel::toggle_view() {
 
         // Repopulate card view
         populate_card_view();
+
+        // Animate card container entrance with crossfade
+        animate_view_entrance(card_view_container_);
     }
 
     update_empty_state();
@@ -1405,6 +1415,110 @@ void PrintSelectPanel::configure_list_row(lv_obj_t* row, size_t index) {
     lv_obj_remove_flag(row, LV_OBJ_FLAG_HIDDEN);
 }
 
+void PrintSelectPanel::animate_list_entrance() {
+    if (list_pool_.empty())
+        return;
+
+    // Skip animation if disabled - show all rows in final state
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        for (lv_obj_t* row : list_pool_) {
+            if (!lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN)) {
+                lv_obj_set_style_translate_y(row, 0, LV_PART_MAIN);
+                lv_obj_set_style_opa(row, LV_OPA_COVER, LV_PART_MAIN);
+            }
+        }
+        spdlog::debug("[{}] Animations disabled - showing list rows instantly", get_name());
+        return;
+    }
+
+    // Animation constants for staggered reveal
+    constexpr int32_t ENTRANCE_DURATION_MS = 150;
+    constexpr int32_t STAGGER_DELAY_MS = 40;
+    constexpr int32_t SLIDE_OFFSET_Y = 15;
+    constexpr size_t MAX_ANIMATED_ROWS = 10;
+
+    // Animate visible pool rows with stagger
+    size_t animated_count = 0;
+    for (size_t i = 0; i < list_pool_.size() && animated_count < MAX_ANIMATED_ROWS; i++) {
+        lv_obj_t* row = list_pool_[i];
+
+        // Only animate visible rows
+        if (lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN)) {
+            continue;
+        }
+
+        // Start row below final position and transparent
+        lv_obj_set_style_translate_y(row, SLIDE_OFFSET_Y, LV_PART_MAIN);
+        lv_obj_set_style_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
+
+        int32_t delay = static_cast<int32_t>(animated_count) * STAGGER_DELAY_MS;
+
+        // Slide up animation
+        lv_anim_t slide_anim;
+        lv_anim_init(&slide_anim);
+        lv_anim_set_var(&slide_anim, row);
+        lv_anim_set_values(&slide_anim, SLIDE_OFFSET_Y, 0);
+        lv_anim_set_duration(&slide_anim, ENTRANCE_DURATION_MS);
+        lv_anim_set_delay(&slide_anim, delay);
+        lv_anim_set_path_cb(&slide_anim, lv_anim_path_ease_out);
+        lv_anim_set_exec_cb(&slide_anim, [](void* obj, int32_t value) {
+            lv_obj_set_style_translate_y(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+        });
+        lv_anim_start(&slide_anim);
+
+        // Fade in animation
+        lv_anim_t fade_anim;
+        lv_anim_init(&fade_anim);
+        lv_anim_set_var(&fade_anim, row);
+        lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
+        lv_anim_set_duration(&fade_anim, ENTRANCE_DURATION_MS);
+        lv_anim_set_delay(&fade_anim, delay);
+        lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
+        lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+            lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                                 LV_PART_MAIN);
+        });
+        lv_anim_start(&fade_anim);
+
+        animated_count++;
+    }
+
+    spdlog::debug("[{}] List entrance animation started ({} rows)", get_name(), animated_count);
+}
+
+void PrintSelectPanel::animate_view_entrance(lv_obj_t* container) {
+    if (!container)
+        return;
+
+    // Skip animation if disabled - show container in final state
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        lv_obj_set_style_opa(container, LV_OPA_COVER, LV_PART_MAIN);
+        spdlog::debug("[{}] Animations disabled - showing view instantly", get_name());
+        return;
+    }
+
+    // Animation constants for view transition
+    constexpr int32_t FADE_DURATION_MS = 150;
+
+    // Start container transparent
+    lv_obj_set_style_opa(container, LV_OPA_TRANSP, LV_PART_MAIN);
+
+    // Fade in animation
+    lv_anim_t fade_anim;
+    lv_anim_init(&fade_anim);
+    lv_anim_set_var(&fade_anim, container);
+    lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_duration(&fade_anim, FADE_DURATION_MS);
+    lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                             LV_PART_MAIN);
+    });
+    lv_anim_start(&fade_anim);
+
+    spdlog::debug("[{}] View entrance animation started", get_name());
+}
+
 void PrintSelectPanel::update_visible_list_rows() {
     if (!list_rows_container_ || list_pool_.empty() || file_list_.empty())
         return;
@@ -1595,6 +1709,73 @@ void PrintSelectPanel::update_sort_indicators() {
                                        PrintSelectSortColumn::MODIFIED,
                                        PrintSelectSortColumn::PRINT_TIME};
 
+    // Animation constants for sort indicator transition
+    constexpr int32_t FADE_DURATION_MS = 200;
+
+    // Check if animations are enabled
+    bool animations_enabled = SettingsManager::instance().get_animations_enabled();
+
+    // Helper lambda for animated show/hide with crossfade
+    auto animate_icon_visibility = [animations_enabled](lv_obj_t* icon, bool show) {
+        if (!icon)
+            return;
+
+        if (show) {
+            // Show icon
+            lv_obj_remove_flag(icon, LV_OBJ_FLAG_HIDDEN);
+
+            if (!animations_enabled) {
+                // Instant show
+                lv_obj_set_style_opa(icon, LV_OPA_COVER, LV_PART_MAIN);
+                return;
+            }
+
+            // Show with fade in
+            lv_obj_set_style_opa(icon, LV_OPA_TRANSP, LV_PART_MAIN);
+
+            lv_anim_t fade_in;
+            lv_anim_init(&fade_in);
+            lv_anim_set_var(&fade_in, icon);
+            lv_anim_set_values(&fade_in, LV_OPA_TRANSP, LV_OPA_COVER);
+            lv_anim_set_duration(&fade_in, FADE_DURATION_MS);
+            lv_anim_set_path_cb(&fade_in, lv_anim_path_ease_out);
+            lv_anim_set_exec_cb(&fade_in, [](void* obj, int32_t value) {
+                lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                                     LV_PART_MAIN);
+            });
+            lv_anim_start(&fade_in);
+        } else {
+            // Hide icon
+            if (!animations_enabled) {
+                // Instant hide
+                lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+                return;
+            }
+
+            // Hide with fade out (hide flag set in completion callback)
+            bool is_visible = !lv_obj_has_flag(icon, LV_OBJ_FLAG_HIDDEN);
+            if (is_visible) {
+                lv_anim_t fade_out;
+                lv_anim_init(&fade_out);
+                lv_anim_set_var(&fade_out, icon);
+                lv_anim_set_values(&fade_out, LV_OPA_COVER, LV_OPA_TRANSP);
+                lv_anim_set_duration(&fade_out, FADE_DURATION_MS);
+                lv_anim_set_path_cb(&fade_out, lv_anim_path_ease_in);
+                lv_anim_set_exec_cb(&fade_out, [](void* obj, int32_t value) {
+                    lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                                         LV_PART_MAIN);
+                });
+                lv_anim_set_completed_cb(&fade_out, [](lv_anim_t* anim) {
+                    lv_obj_add_flag(static_cast<lv_obj_t*>(anim->var), LV_OBJ_FLAG_HIDDEN);
+                });
+                lv_anim_start(&fade_out);
+            } else {
+                // Already hidden, just ensure it stays hidden
+                lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+    };
+
     for (int i = 0; i < 4; i++) {
         char icon_up_name[64];
         char icon_down_name[64];
@@ -1607,15 +1788,15 @@ void PrintSelectPanel::update_sort_indicators() {
         if (icon_up && icon_down) {
             if (columns[i] == current_sort_column_) {
                 if (current_sort_direction_ == PrintSelectSortDirection::ASCENDING) {
-                    lv_obj_remove_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_add_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
+                    animate_icon_visibility(icon_up, true);
+                    animate_icon_visibility(icon_down, false);
                 } else {
-                    lv_obj_add_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_remove_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
+                    animate_icon_visibility(icon_up, false);
+                    animate_icon_visibility(icon_down, true);
                 }
             } else {
-                lv_obj_add_flag(icon_up, LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(icon_down, LV_OBJ_FLAG_HIDDEN);
+                animate_icon_visibility(icon_up, false);
+                animate_icon_visibility(icon_down, false);
             }
         }
     }

@@ -310,6 +310,10 @@ void SettingsManager::init_subjects() {
     scroll_limit = std::max(1, std::min(20, scroll_limit));
     lv_subject_init_int(&scroll_limit_subject_, scroll_limit);
 
+    // Animations enabled (default: true)
+    bool animations = config->get<bool>("/animations_enabled", true);
+    lv_subject_init_int(&animations_enabled_subject_, animations ? 1 : 0);
+
     // Register subjects with LVGL XML system for data binding
     lv_xml_register_subject(nullptr, "settings_dark_mode", &dark_mode_subject_);
     lv_xml_register_subject(nullptr, "settings_display_sleep", &display_sleep_subject_);
@@ -321,11 +325,13 @@ void SettingsManager::init_subjects() {
                             &estop_require_confirmation_subject_);
     lv_xml_register_subject(nullptr, "settings_scroll_throw", &scroll_throw_subject_);
     lv_xml_register_subject(nullptr, "settings_scroll_limit", &scroll_limit_subject_);
+    lv_xml_register_subject(nullptr, "settings_animations_enabled", &animations_enabled_subject_);
 
     subjects_initialized_ = true;
     spdlog::info("[SettingsManager] Subjects initialized: dark_mode={}, sleep={}s, sounds={}, "
-                 "completion_alert_mode={}, scroll_throw={}, scroll_limit={}",
-                 dark_mode, sleep_sec, sounds, completion_mode, scroll_throw, scroll_limit);
+                 "completion_alert_mode={}, scroll_throw={}, scroll_limit={}, animations={}",
+                 dark_mode, sleep_sec, sounds, completion_mode, scroll_throw, scroll_limit,
+                 animations);
 }
 
 void SettingsManager::set_moonraker_client(MoonrakerClient* client) {
@@ -393,6 +399,22 @@ void SettingsManager::set_brightness(int percent) {
     // 3. Persist to config
     Config* config = Config::get_instance();
     config->set<int>("/brightness", clamped);
+    config->save();
+}
+
+bool SettingsManager::get_animations_enabled() const {
+    return lv_subject_get_int(const_cast<lv_subject_t*>(&animations_enabled_subject_)) != 0;
+}
+
+void SettingsManager::set_animations_enabled(bool enabled) {
+    spdlog::info("[SettingsManager] set_animations_enabled({})", enabled);
+
+    // 1. Update subject (UI reacts, animations check this dynamically)
+    lv_subject_set_int(&animations_enabled_subject_, enabled ? 1 : 0);
+
+    // 2. Persist to config
+    Config* config = Config::get_instance();
+    config->set<bool>("/animations_enabled", enabled);
     config->save();
 }
 

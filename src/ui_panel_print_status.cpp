@@ -18,6 +18,7 @@
 #include "moonraker_api.h"
 #include "printer_state.h"
 #include "runtime_config.h"
+#include "settings_manager.h"
 #include "thumbnail_cache.h"
 #include "wizard_config_paths.h"
 
@@ -264,6 +265,12 @@ void PrintStatusPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     btn_tune_ = lv_obj_find_by_name(overlay_content, "btn_tune");
     btn_cancel_ = lv_obj_find_by_name(overlay_content, "btn_cancel");
 
+    // Print complete celebration badge (for animation)
+    success_badge_ = lv_obj_find_by_name(overlay_content, "success_badge");
+    if (success_badge_) {
+        spdlog::debug("[{}]   ✓ Success badge", get_name());
+    }
+
     // Progress bar widget
     progress_bar_ = lv_obj_find_by_name(overlay_content, "print_progress");
     if (progress_bar_) {
@@ -276,6 +283,14 @@ void PrintStatusPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         spdlog::debug("[{}]   ✓ Progress bar", get_name());
     } else {
         spdlog::error("[{}]   ✗ Progress bar NOT FOUND", get_name());
+    }
+
+    // Preparing progress bar (shown during pre-print operations)
+    preparing_progress_bar_ = lv_obj_find_by_name(overlay_content, "preparing_progress_bar");
+    if (preparing_progress_bar_) {
+        lv_bar_set_range(preparing_progress_bar_, 0, 100);
+        lv_bar_set_value(preparing_progress_bar_, 0, LV_ANIM_OFF);
+        spdlog::debug("[{}]   ✓ Preparing progress bar", get_name());
     }
 
     // Check if --gcode-file was specified on command line for this panel
@@ -937,6 +952,14 @@ void PrintStatusPanel::on_print_progress_changed(int progress) {
     std::snprintf(progress_text_buf_, sizeof(progress_text_buf_), "%d%%", current_progress_);
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 
+    // Update progress bar with smooth animation (300ms ease-out) if animations enabled
+    // This complements the subject binding with animated transitions
+    if (progress_bar_) {
+        lv_anim_enable_t anim_enable =
+            SettingsManager::instance().get_animations_enabled() ? LV_ANIM_ON : LV_ANIM_OFF;
+        lv_bar_set_value(progress_bar_, current_progress_, anim_enable);
+    }
+
     spdlog::trace("[{}] Progress updated: {}%", get_name(), current_progress_);
 }
 
@@ -1020,6 +1043,10 @@ void PrintStatusPanel::on_print_state_changed(PrintJobState job_state) {
                 lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
             }
             lv_subject_set_int(&print_complete_visible_subject_, 1);
+
+            // Trigger celebratory animation on the success badge
+            animate_print_complete();
+
             spdlog::info("[{}] Print complete! Final progress: {}%, elapsed: {}s", get_name(),
                          current_progress_, elapsed_seconds_);
         }
@@ -1277,6 +1304,74 @@ void PrintStatusPanel::update_button_states() {
 
     spdlog::debug("[{}] Button states updated: {} (state={})", get_name(),
                   buttons_enabled ? "enabled" : "disabled", static_cast<int>(current_state_));
+}
+
+void PrintStatusPanel::animate_print_complete() {
+    if (!success_badge_) {
+        return;
+    }
+
+    // Skip animation if disabled - show badge in final state
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        constexpr int32_t SCALE_FINAL = 256; // 100% scale
+        lv_obj_set_style_transform_scale(success_badge_, SCALE_FINAL, LV_PART_MAIN);
+        lv_obj_set_style_opa(success_badge_, LV_OPA_COVER, LV_PART_MAIN);
+        spdlog::debug("[{}] Animations disabled - showing success badge instantly", get_name());
+        return;
+    }
+
+    // Animation constants for celebration effect
+    // Stage 1: Quick scale-up with overshoot (300ms)
+    // Stage 2: Settle to final size (150ms)
+    constexpr int32_t CELEBRATION_DURATION_MS = 300;
+    constexpr int32_t SETTLE_DURATION_MS = 150;
+    constexpr int32_t SCALE_START = 128;     // 50% scale (128/256)
+    constexpr int32_t SCALE_OVERSHOOT = 282; // ~110% scale (slight overshoot)
+    constexpr int32_t SCALE_FINAL = 256;     // 100% scale (256/256)
+
+    // Start badge small and transparent
+    lv_obj_set_style_transform_scale(success_badge_, SCALE_START, LV_PART_MAIN);
+    lv_obj_set_style_opa(success_badge_, LV_OPA_TRANSP, LV_PART_MAIN);
+
+    // Stage 1: Scale up with overshoot + fade in
+    lv_anim_t scale_anim;
+    lv_anim_init(&scale_anim);
+    lv_anim_set_var(&scale_anim, success_badge_);
+    lv_anim_set_values(&scale_anim, SCALE_START, SCALE_OVERSHOOT);
+    lv_anim_set_duration(&scale_anim, CELEBRATION_DURATION_MS);
+    lv_anim_set_path_cb(&scale_anim, lv_anim_path_overshoot);
+    lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&scale_anim);
+
+    // Fade in animation (parallel with scale)
+    lv_anim_t fade_anim;
+    lv_anim_init(&fade_anim);
+    lv_anim_set_var(&fade_anim, success_badge_);
+    lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_duration(&fade_anim, CELEBRATION_DURATION_MS);
+    lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                             LV_PART_MAIN);
+    });
+    lv_anim_start(&fade_anim);
+
+    // Stage 2: Settle from overshoot to final size (delayed start)
+    lv_anim_t settle_anim;
+    lv_anim_init(&settle_anim);
+    lv_anim_set_var(&settle_anim, success_badge_);
+    lv_anim_set_values(&settle_anim, SCALE_OVERSHOOT, SCALE_FINAL);
+    lv_anim_set_duration(&settle_anim, SETTLE_DURATION_MS);
+    lv_anim_set_delay(&settle_anim, CELEBRATION_DURATION_MS);
+    lv_anim_set_path_cb(&settle_anim, lv_anim_path_ease_in_out);
+    lv_anim_set_exec_cb(&settle_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&settle_anim);
+
+    spdlog::debug("[{}] Print complete celebration animation started", get_name());
 }
 
 void PrintStatusPanel::handle_tune_speed_changed(int value) {
@@ -1704,6 +1799,13 @@ void PrintStatusPanel::set_preparing(const std::string& operation_name, int curr
         (current_step > 0 && total_steps > 0) ? ((current_step - 1) * 100) / total_steps : 0;
     lv_subject_set_int(&preparing_progress_subject_, progress);
 
+    // Animate bar directly for smooth visual feedback (300ms ease-out) if animations enabled
+    if (preparing_progress_bar_) {
+        lv_anim_enable_t anim_enable =
+            SettingsManager::instance().get_animations_enabled() ? LV_ANIM_ON : LV_ANIM_OFF;
+        lv_bar_set_value(preparing_progress_bar_, progress, anim_enable);
+    }
+
     // Make preparing UI visible
     lv_subject_set_int(&preparing_visible_subject_, 1);
 
@@ -1720,6 +1822,13 @@ void PrintStatusPanel::set_preparing_progress(float progress) {
 
     int pct = static_cast<int>(progress * 100.0f);
     lv_subject_set_int(&preparing_progress_subject_, pct);
+
+    // Animate bar directly for smooth visual feedback (300ms ease-out) if animations enabled
+    if (preparing_progress_bar_) {
+        lv_anim_enable_t anim_enable =
+            SettingsManager::instance().get_animations_enabled() ? LV_ANIM_ON : LV_ANIM_OFF;
+        lv_bar_set_value(preparing_progress_bar_, pct, anim_enable);
+    }
 
     spdlog::trace("[{}] Preparing progress: {}%", get_name(), pct);
 }

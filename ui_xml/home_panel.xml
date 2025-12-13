@@ -88,29 +88,26 @@
                  style_pad_gap="#space_sm">
         <lv_obj-bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
         <event_cb trigger="clicked" callback="print_card_clicked_cb"/>
-
         <!-- IDLE STATE: Benchy + "Print Files" (hidden when print_start_phase != 0) -->
-        <lv_obj name="print_card_idle" width="100%" height="100%"
-                style_bg_opa="0" style_border_width="0" style_pad_all="0"
-                flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
-                style_pad_gap="#space_sm">
+        <lv_obj name="print_card_idle"
+                width="100%" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
+                style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_sm">
           <lv_obj-bind_flag_if_not_eq subject="print_start_phase" flag="hidden" ref_value="0"/>
           <lv_image name="print_card_thumb"
                     width="50%" height="100%" src="A:assets/images/benchy_thumbnail_white.png" inner_align="contain"/>
           <text_body name="print_card_label" text="Print Files"/>
         </lv_obj>
-
         <!-- PRINT_START STATE: Progress + message (hidden when print_start_phase == 0) -->
-        <lv_obj name="print_card_progress" width="100%" height="100%"
-                style_bg_opa="0" style_border_width="0" style_pad_all="#space_sm"
+        <lv_obj name="print_card_progress"
+                width="100%" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="#space_sm"
                 flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
                 style_pad_gap="#space_sm">
           <lv_obj-bind_flag_if_eq subject="print_start_phase" flag="hidden" ref_value="0"/>
           <!-- "Preparing Print" heading -->
           <text_body text="Preparing Print" style_text_color="#text_primary"/>
           <!-- Progress bar -->
-          <lv_bar name="print_start_bar" width="90%" height="8"
-                  bind_value="print_start_progress" range_min="0" range_max="100"
+          <lv_bar name="print_start_bar"
+                  width="90%" height="8" bind_value="print_start_progress" range_min="0" range_max="100"
                   style_bg_color="#app_bg_color" style_radius="4"/>
           <!-- Phase message -->
           <text_small bind_text="print_start_message" style_text_color="#text_secondary"/>
@@ -215,7 +212,9 @@
             <lv_obj-bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
             <event_cb trigger="clicked" callback="temp_clicked_cb"/>
             <icon name="temp_icon" src="heater" size="#icon_size_card" variant="secondary"/>
-            <temp_display name="temp_text_label" width="100%" size="md" show_target="false" bind_current="extruder_temp" bind_target="extruder_target" align="center"/>
+            <temp_display name="temp_text_label"
+                          width="100%" size="md" show_target="false" bind_current="extruder_temp"
+                          bind_target="extruder_target" align="center"/>
           </lv_button>
           <!-- Vertical divider (80% height for visual breathing room) -->
           <lv_obj name="divider1"

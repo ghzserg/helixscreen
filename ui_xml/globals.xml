@@ -251,6 +251,24 @@
     <string name="icon_font_xl_medium" value="mdi_icons_64"/>
     <string name="icon_font_xl_large" value="mdi_icons_64"/>
     <!-- NO BASE icon_font_xl - registered at runtime -->
+    <!-- ===================================================================== -->
+    <!-- Animation Timing Constants                                            -->
+    <!-- ===================================================================== -->
+    <!-- Standardized animation durations for consistent motion design.
+         Use these tokens in XML timelines and C++ animations.
+         Values optimized for 60 FPS on embedded hardware. -->
+    <!-- anim_fast: Micro-interactions (button press, quick feedback) -->
+    <px name="anim_fast" value="150"/>
+    <!-- anim_normal: Standard transitions (toast, modal entrance) -->
+    <px name="anim_normal" value="250"/>
+    <!-- anim_slow: Emphasis animations (celebrations, complex sequences) -->
+    <px name="anim_slow" value="400"/>
+    <!-- anim_stagger: Delay between staggered list items -->
+    <px name="anim_stagger" value="40"/>
+    <!-- anim_press: Button press duration (slightly shorter for responsiveness) -->
+    <px name="anim_press" value="80"/>
+    <!-- anim_release: Button release with overshoot -->
+    <px name="anim_release" value="120"/>
     <!-- Theme colors -->
     <color name="primary_color" value="#AD2724"/>
     <color name="secondary_color" value="#D4A84B"/>

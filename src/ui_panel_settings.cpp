@@ -98,24 +98,7 @@ void SettingsPanel::init_subjects() {
 
     // Register XML event callbacks for toggle switches
     lv_xml_register_event_cb(nullptr, "on_dark_mode_changed", on_dark_mode_changed);
-    lv_xml_register_event_cb(nullptr, "on_led_light_changed", on_led_light_changed);
-    lv_xml_register_event_cb(nullptr, "on_sounds_changed", on_sounds_changed);
-    lv_xml_register_event_cb(nullptr, "on_estop_confirm_changed", on_estop_confirm_changed);
-
-    // Register XML event callbacks for sliders
-    lv_xml_register_event_cb(nullptr, "on_scroll_throw_changed", on_scroll_throw_changed);
-    lv_xml_register_event_cb(nullptr, "on_scroll_limit_changed", on_scroll_limit_changed);
-
-    // Register XML event callbacks for action rows
-    lv_xml_register_event_cb(nullptr, "on_display_settings_clicked", on_display_settings_clicked);
-    lv_xml_register_event_cb(nullptr, "on_bed_mesh_clicked", on_bed_mesh_clicked);
-    lv_xml_register_event_cb(nullptr, "on_z_offset_clicked", on_z_offset_clicked);
-    lv_xml_register_event_cb(nullptr, "on_pid_tuning_clicked", on_pid_tuning_clicked);
-    lv_xml_register_event_cb(nullptr, "on_network_clicked", on_network_clicked);
-    lv_xml_register_event_cb(nullptr, "on_factory_reset_clicked", on_factory_reset_clicked);
-
-    // Register XML event callbacks for toggle switches
-    lv_xml_register_event_cb(nullptr, "on_dark_mode_changed", on_dark_mode_changed);
+    lv_xml_register_event_cb(nullptr, "on_animations_changed", on_animations_changed);
     lv_xml_register_event_cb(nullptr, "on_led_light_changed", on_led_light_changed);
     lv_xml_register_event_cb(nullptr, "on_sounds_changed", on_sounds_changed);
     lv_xml_register_event_cb(nullptr, "on_estop_confirm_changed", on_estop_confirm_changed);
@@ -176,6 +159,22 @@ void SettingsPanel::setup_toggle_handlers() {
                 lv_obj_remove_state(dark_mode_switch_, LV_STATE_CHECKED);
             }
             spdlog::debug("[{}]   ✓ Dark mode toggle", get_name());
+        }
+    }
+
+    // === Animations Toggle ===
+    // Event handler wired via XML <event_cb>, just set initial state here
+    lv_obj_t* animations_row = lv_obj_find_by_name(panel_, "row_animations");
+    if (animations_row) {
+        animations_switch_ = lv_obj_find_by_name(animations_row, "toggle");
+        if (animations_switch_) {
+            // Set initial state from SettingsManager
+            if (settings.get_animations_enabled()) {
+                lv_obj_add_state(animations_switch_, LV_STATE_CHECKED);
+            } else {
+                lv_obj_remove_state(animations_switch_, LV_STATE_CHECKED);
+            }
+            spdlog::debug("[{}]   ✓ Animations toggle", get_name());
         }
     }
 
@@ -376,6 +375,11 @@ void SettingsPanel::handle_dark_mode_changed(bool enabled) {
 
     // Show dialog informing user that restart is required
     show_theme_restart_dialog();
+}
+
+void SettingsPanel::handle_animations_changed(bool enabled) {
+    spdlog::info("[{}] Animations toggled: {}", get_name(), enabled ? "ON" : "OFF");
+    SettingsManager::instance().set_animations_enabled(enabled);
 }
 
 void SettingsPanel::show_theme_restart_dialog() {
@@ -827,6 +831,14 @@ void SettingsPanel::on_dark_mode_changed(lv_event_t* e) {
     auto* toggle = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
     bool enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
     get_global_settings_panel().handle_dark_mode_changed(enabled);
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void SettingsPanel::on_animations_changed(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_animations_changed");
+    auto* toggle = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    bool enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    get_global_settings_panel().handle_animations_changed(enabled);
     LVGL_SAFE_EVENT_CB_END();
 }
 

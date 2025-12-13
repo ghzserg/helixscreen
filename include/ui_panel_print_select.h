@@ -546,6 +546,21 @@ class PrintSelectPanel : public PanelBase {
     void configure_list_row(lv_obj_t* row, size_t index);
 
     /**
+     * @brief Animate visible list rows with staggered entrance
+     *
+     * Each row slides up and fades in with a staggered delay.
+     * Called when switching to list view or initial population.
+     */
+    void animate_list_entrance();
+
+    /**
+     * @brief Animate view container entrance with fade-in
+     *
+     * @param container The view container to animate (card or list)
+     */
+    void animate_view_entrance(lv_obj_t* container);
+
+    /**
      * @brief Handle scroll event for virtualization
      *
      * @param container The scrolled container (card or list view)

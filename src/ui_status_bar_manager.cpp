@@ -8,6 +8,7 @@
 
 #include "app_globals.h"
 #include "printer_state.h"
+#include "settings_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -294,12 +295,60 @@ void StatusBarManager::update_notification_count(size_t count) {
         return;
     }
 
+    // Trigger pulse animation if count increased (new notification arrived)
+    bool should_pulse = (count > previous_notification_count_) && (count > 0);
+    previous_notification_count_ = count;
+
     lv_subject_set_int(&notification_count_subject_, static_cast<int32_t>(count));
 
     snprintf(notification_count_text_buf_, sizeof(notification_count_text_buf_), "%zu", count);
     lv_subject_set_pointer(&notification_count_text_subject_, notification_count_text_buf_);
 
+    // Pulse the badge to draw attention
+    if (should_pulse) {
+        animate_notification_badge();
+    }
+
     spdlog::trace("[StatusBarManager] Notification count updated: {}", count);
+}
+
+void StatusBarManager::animate_notification_badge() {
+    // Skip animation if disabled
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        spdlog::debug("[StatusBarManager] Animations disabled - skipping badge pulse");
+        return;
+    }
+
+    // Find the notification badge on the active screen
+    lv_obj_t* screen = lv_screen_active();
+    if (!screen)
+        return;
+
+    lv_obj_t* badge = lv_obj_find_by_name(screen, "notification_badge");
+    if (!badge)
+        return;
+
+    // Animation constants for attention pulse
+    // Stage 1: Scale up to 130% (300ms with overshoot)
+    // Stage 2: Scale back to 100% (implicit - overshoot settles naturally)
+    constexpr int32_t PULSE_DURATION_MS = 300;
+    constexpr int32_t SCALE_NORMAL = 256; // 100%
+    constexpr int32_t SCALE_PULSE = 333;  // ~130%
+
+    // Scale up animation with overshoot easing (automatically bounces back)
+    lv_anim_t scale_anim;
+    lv_anim_init(&scale_anim);
+    lv_anim_set_var(&scale_anim, badge);
+    lv_anim_set_values(&scale_anim, SCALE_NORMAL, SCALE_PULSE);
+    lv_anim_set_duration(&scale_anim, PULSE_DURATION_MS);
+    lv_anim_set_path_cb(&scale_anim, lv_anim_path_overshoot);
+    lv_anim_set_playback_duration(&scale_anim, PULSE_DURATION_MS / 2);
+    lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&scale_anim);
+
+    spdlog::debug("[StatusBarManager] Notification badge pulse animation started");
 }
 
 void StatusBarManager::update_printer_icon_combined() {

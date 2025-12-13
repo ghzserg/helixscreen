@@ -125,10 +125,9 @@ static void update_slot_bar(SlotBarData* slot, int32_t bar_height) {
         lv_obj_set_style_bg_color(slot->bar_fill, lv_color_hex(slot->color_rgb), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(slot->bar_fill, LV_OPA_COVER, LV_PART_MAIN);
 
-        // Height based on fill percentage within the bar
-        int32_t fill_height = (bar_height * slot->fill_pct) / 100;
-        fill_height = std::max(MIN_FILL_HEIGHT_PX, fill_height);
-        lv_obj_set_height(slot->bar_fill, fill_height);
+        // Use percentage height relative to parent's content area
+        // This ensures fill stays within bar_bg's borders
+        lv_obj_set_height(slot->bar_fill, LV_PCT(slot->fill_pct));
         lv_obj_align(slot->bar_fill, LV_ALIGN_BOTTOM_MID, 0, 0);
         lv_obj_remove_flag(slot->bar_fill, LV_OBJ_FLAG_HIDDEN);
     } else {

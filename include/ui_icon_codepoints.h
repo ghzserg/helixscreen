@@ -34,6 +34,7 @@ static const IconMapping ICON_MAP[] = {
     // Alert/Status icons
     {"alert",              "\xF3\xB0\x80\xA6"},  // F0026 alert/triangle-exclamation
     {"alert_octagon",      "\xF3\xB0\x80\xA9"},  // F0029 alert-octagon
+    {"animation",          "\xF3\xB0\x97\x98"},  // F05D8 animation (stacked rectangles)
 
     // Arrow icons
     {"arrow_down",         "\xF3\xB0\x81\x85"},  // F0045 arrow-down (head descends)

@@ -126,6 +126,22 @@ class SettingsManager {
      */
     void set_brightness(int percent);
 
+    /**
+     * @brief Get animations enabled state
+     * @return true if UI animations are enabled
+     */
+    bool get_animations_enabled() const;
+
+    /**
+     * @brief Set animations enabled state
+     *
+     * Controls whether delightful UI animations (toasts, modals, progress bars,
+     * etc.) play or are instant. Useful for accessibility or performance.
+     *
+     * @param enabled true to enable animations, false for instant transitions
+     */
+    void set_animations_enabled(bool enabled);
+
     // =========================================================================
     // PRINTER SETTINGS
     // =========================================================================
@@ -262,6 +278,11 @@ class SettingsManager {
         return &brightness_subject_;
     }
 
+    /** @brief Animations enabled subject (integer: 0=off, 1=on) */
+    lv_subject_t* subject_animations_enabled() {
+        return &animations_enabled_subject_;
+    }
+
     /** @brief LED enabled subject (integer: 0=off, 1=on) */
     lv_subject_t* subject_led_enabled() {
         return &led_enabled_subject_;
@@ -373,6 +394,7 @@ class SettingsManager {
     lv_subject_t dark_mode_subject_;
     lv_subject_t display_sleep_subject_;
     lv_subject_t brightness_subject_;
+    lv_subject_t animations_enabled_subject_;
     lv_subject_t led_enabled_subject_;
     lv_subject_t sounds_enabled_subject_;
     lv_subject_t completion_alert_subject_;

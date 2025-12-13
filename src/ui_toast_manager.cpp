@@ -5,7 +5,17 @@
 #include "ui_notification_history.h"
 #include "ui_status_bar.h"
 
+#include "settings_manager.h"
+
 #include <spdlog/spdlog.h>
+
+// ============================================================================
+// ANIMATION CONSTANTS
+// ============================================================================
+// Duration values match globals.xml tokens for consistency
+static constexpr int32_t TOAST_ENTRANCE_DURATION_MS = 200; // anim_normal - 50ms for snappier feel
+static constexpr int32_t TOAST_EXIT_DURATION_MS = 150;     // anim_fast
+static constexpr int32_t TOAST_ENTRANCE_OFFSET_Y = -30;    // Slide down from above
 
 // ============================================================================
 // SINGLETON INSTANCE
@@ -67,6 +77,94 @@ static NotificationStatus severity_to_notification_status(ToastSeverity severity
 }
 
 // ============================================================================
+// ANIMATION HELPERS
+// ============================================================================
+
+void ToastManager::animate_entrance(lv_obj_t* toast) {
+    // Skip animation if disabled - just show toast in final state
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        lv_obj_set_style_translate_y(toast, 0, LV_PART_MAIN);
+        lv_obj_set_style_opa(toast, LV_OPA_COVER, LV_PART_MAIN);
+        spdlog::debug("[ToastManager] Animations disabled - showing toast instantly");
+        return;
+    }
+
+    // Start toast above its final position and transparent
+    lv_obj_set_style_translate_y(toast, TOAST_ENTRANCE_OFFSET_Y, LV_PART_MAIN);
+    lv_obj_set_style_opa(toast, LV_OPA_TRANSP, LV_PART_MAIN);
+
+    // Slide down animation (translate_y: -30 → 0)
+    lv_anim_t slide_anim;
+    lv_anim_init(&slide_anim);
+    lv_anim_set_var(&slide_anim, toast);
+    lv_anim_set_values(&slide_anim, TOAST_ENTRANCE_OFFSET_Y, 0);
+    lv_anim_set_duration(&slide_anim, TOAST_ENTRANCE_DURATION_MS);
+    lv_anim_set_path_cb(&slide_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&slide_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_translate_y(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&slide_anim);
+
+    // Fade in animation (opacity: 0 → 255)
+    lv_anim_t fade_anim;
+    lv_anim_init(&fade_anim);
+    lv_anim_set_var(&fade_anim, toast);
+    lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_duration(&fade_anim, TOAST_ENTRANCE_DURATION_MS);
+    lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                             LV_PART_MAIN);
+    });
+    lv_anim_start(&fade_anim);
+
+    spdlog::debug("[ToastManager] Started entrance animation");
+}
+
+void ToastManager::animate_exit(lv_obj_t* toast) {
+    // Skip animation if disabled - directly clean up
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        // Directly delete the toast - no animation
+        if (toast && active_toast_ == toast) {
+            lv_obj_delete(toast);
+            active_toast_ = nullptr;
+            animating_exit_ = false;
+            spdlog::debug("[ToastManager] Animations disabled - hiding toast instantly");
+        }
+        return;
+    }
+
+    // Fade out animation (opacity: current → 0)
+    lv_anim_t fade_anim;
+    lv_anim_init(&fade_anim);
+    lv_anim_set_var(&fade_anim, toast);
+    lv_anim_set_values(&fade_anim, LV_OPA_COVER, LV_OPA_TRANSP);
+    lv_anim_set_duration(&fade_anim, TOAST_EXIT_DURATION_MS);
+    lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_in);
+    lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                             LV_PART_MAIN);
+    });
+    lv_anim_set_completed_cb(&fade_anim, exit_animation_complete_cb);
+    lv_anim_start(&fade_anim);
+
+    spdlog::debug("[ToastManager] Started exit animation");
+}
+
+void ToastManager::exit_animation_complete_cb(lv_anim_t* anim) {
+    lv_obj_t* toast = static_cast<lv_obj_t*>(anim->var);
+    auto& mgr = ToastManager::instance();
+
+    // Delete the toast widget now that animation is complete
+    if (toast && mgr.active_toast_ == toast) {
+        lv_obj_delete(toast);
+        mgr.active_toast_ = nullptr;
+        mgr.animating_exit_ = false;
+        spdlog::debug("[ToastManager] Exit animation complete, toast deleted");
+    }
+}
+
+// ============================================================================
 // TOAST MANAGER IMPLEMENTATION
 // ============================================================================
 
@@ -120,7 +218,7 @@ void ToastManager::show_with_action(ToastSeverity severity, const char* message,
 }
 
 void ToastManager::hide() {
-    if (!active_toast_) {
+    if (!active_toast_ || animating_exit_) {
         return;
     }
 
@@ -135,10 +233,6 @@ void ToastManager::hide() {
     action_user_data_ = nullptr;
     lv_subject_set_int(&action_visible_subject_, 0);
 
-    // Delete toast widget
-    lv_obj_delete(active_toast_);
-    active_toast_ = nullptr;
-
     // Update bell color based on highest unread severity in history
     ToastSeverity highest = NotificationHistory::instance().get_highest_unread_severity();
     size_t unread = NotificationHistory::instance().get_unread_count();
@@ -149,7 +243,11 @@ void ToastManager::hide() {
         ui_status_bar_update_notification(severity_to_notification_status(highest));
     }
 
-    spdlog::debug("[ToastManager] Toast hidden");
+    // Animate exit (widget deletion happens in completion callback)
+    animating_exit_ = true;
+    animate_exit(active_toast_);
+
+    spdlog::debug("[ToastManager] Toast hiding with animation");
 }
 
 bool ToastManager::is_visible() const {
@@ -163,9 +261,21 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
         return;
     }
 
-    // Hide existing toast if any
+    // Immediately delete existing toast if any (skip animation for replacement)
     if (active_toast_) {
-        hide();
+        // Cancel any running animations on the old toast
+        lv_anim_delete(active_toast_, nullptr);
+
+        // Cancel dismiss timer if active
+        if (dismiss_timer_) {
+            lv_timer_delete(dismiss_timer_);
+            dismiss_timer_ = nullptr;
+        }
+
+        // Delete immediately (no exit animation when replacing)
+        lv_obj_delete(active_toast_);
+        active_toast_ = nullptr;
+        animating_exit_ = false;
     }
 
     // Clear action state for basic toasts, keep for action toasts
@@ -196,6 +306,9 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
             lv_obj_add_event_cb(action_btn, action_btn_clicked, LV_EVENT_CLICKED, nullptr);
         }
     }
+
+    // Start entrance animation (slide down + fade in)
+    animate_entrance(active_toast_);
 
     // Create auto-dismiss timer
     dismiss_timer_ = lv_timer_create(dismiss_timer_cb, duration_ms, nullptr);

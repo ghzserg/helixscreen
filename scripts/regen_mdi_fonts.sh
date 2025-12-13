@@ -116,6 +116,7 @@ fi
 
 MDI_ICONS="0xF0026"      # alert (triangle-exclamation)
 MDI_ICONS+=",0xF0029"    # alert-octagon (emergency)
+MDI_ICONS+=",0xF05D8"    # animation (stacked rectangles - for settings)
 MDI_ICONS+=",0xF009A"    # bell (notifications)
 MDI_ICONS+=",0xF00AD"    # block-helper (prohibited)
 MDI_ICONS+=",0xF00AF"    # bluetooth

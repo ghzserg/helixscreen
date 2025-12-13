@@ -45,6 +45,12 @@ typedef struct {
 // Static theme instance (singleton pattern matching LVGL's approach)
 static helix_theme_t* helix_theme_instance = NULL;
 
+// Button press transition descriptor (scale transform)
+// Properties to animate when transitioning to/from pressed state
+static const lv_style_prop_t button_press_props[] = {LV_STYLE_TRANSFORM_SCALE_X,
+                                                     LV_STYLE_TRANSFORM_SCALE_Y, 0};
+static lv_style_transition_dsc_t button_press_transition;
+
 /**
  * Compute input background color from card background
  *
@@ -194,9 +200,15 @@ lv_theme_t* helix_theme_init(lv_display_t* display, lv_color_t primary_color,
     lv_style_init(&helix_theme_instance->disabled_style);
     lv_style_set_opa(&helix_theme_instance->disabled_style, LV_OPA_50);
 
-    // Initialize global pressed state style (preserve radius for buttons)
+    // Initialize global pressed state style (scale down + preserve radius for buttons)
+    // 243 = ~95% of 256 (full scale), creates subtle "press in" feedback
     lv_style_init(&helix_theme_instance->pressed_style);
     lv_style_set_radius(&helix_theme_instance->pressed_style, border_radius);
+    lv_style_set_transform_scale(&helix_theme_instance->pressed_style, 243);
+
+    // Initialize button press transition (80ms press, 120ms release with slight overshoot)
+    lv_style_transition_dsc_init(&button_press_transition, button_press_props,
+                                 lv_anim_path_ease_out, 80, 0, NULL);
 
     // Initialize default button style (grey background with border radius, no shadow, theme-aware
     // text color)
@@ -206,6 +218,7 @@ lv_theme_t* helix_theme_init(lv_display_t* display, lv_color_t primary_color,
     lv_style_set_radius(&helix_theme_instance->button_style, border_radius);
     lv_style_set_shadow_width(&helix_theme_instance->button_style, 0);
     lv_style_set_text_color(&helix_theme_instance->button_style, text_primary_color);
+    lv_style_set_transition(&helix_theme_instance->button_style, &button_press_transition);
 
     // Initialize dropdown indicator style with MDI icon font
     // This ensures LV_SYMBOL_DOWN (overridden to MDI chevron-down in lv_conf.h) renders correctly

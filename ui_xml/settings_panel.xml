@@ -5,49 +5,76 @@
 <!-- Comprehensive settings organized in sections with icons: Appearance, Printer, Notifications, Calibration, System, About -->
 <!-- All styling controlled via XML - C++ only updates subjects and handles callbacks -->
 <component>
-  <view extends="lv_obj" name="settings_panel" width="100%" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" style_pad_gap="0" flex_flow="column" scrollable="true" scroll_dir="ver" style_bg_color="#app_bg_color">
+  <view name="settings_panel"
+        extends="lv_obj" width="100%" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+        style_pad_gap="0" flex_flow="column" scrollable="true" scroll_dir="ver" style_bg_color="#app_bg_color">
     <!-- ================================================================== -->
     <!-- APPEARANCE SECTION -->
     <!-- ================================================================== -->
     <setting_section_header title="APPEARANCE" icon="light"/>
     <!-- Dark Mode Toggle -->
-    <setting_toggle_row name="row_dark_mode" label="Dark Mode" icon="light_off" description="Switch between light and dark themes" callback="on_dark_mode_changed"/>
+    <setting_toggle_row name="row_dark_mode"
+                        label="Dark Mode" icon="light_off" description="Switch between light and dark themes"
+                        callback="on_dark_mode_changed"/>
+    <!-- Animations Toggle -->
+    <setting_toggle_row name="row_animations"
+                        label="Animations" icon="animation" description="Enable UI motion effects"
+                        callback="on_animations_changed"/>
     <!-- Display Settings (opens overlay for brightness + sleep timeout) -->
-    <setting_action_row name="row_display_settings" label="Display Settings" icon="light" description="Brightness and screen timeout" callback="on_display_settings_clicked"/>
+    <setting_action_row name="row_display_settings"
+                        label="Display Settings" icon="light" description="Brightness and screen timeout"
+                        callback="on_display_settings_clicked"/>
     <!-- ================================================================== -->
     <!-- INPUT SECTION -->
     <!-- ================================================================== -->
     <setting_section_header title="INPUT" icon="fine_tune"/>
     <!-- Scroll Momentum slider -->
-    <setting_slider_row name="row_scroll_throw" label="Scroll Momentum" icon="fine_tune" description="Higher = faster deceleration" min="5" max="50" value="25" callback="on_scroll_throw_changed"/>
+    <setting_slider_row name="row_scroll_throw"
+                        label="Scroll Momentum" icon="fine_tune" description="Higher = faster deceleration" min="5"
+                        max="50" value="25" callback="on_scroll_throw_changed"/>
     <!-- Scroll Sensitivity slider -->
-    <setting_slider_row name="row_scroll_limit" label="Scroll Sensitivity" icon="fine_tune" description="Lower = more responsive" min="1" max="20" value="5" callback="on_scroll_limit_changed"/>
+    <setting_slider_row name="row_scroll_limit"
+                        label="Scroll Sensitivity" icon="fine_tune" description="Lower = more responsive" min="1"
+                        max="20" value="5" callback="on_scroll_limit_changed"/>
     <!-- ================================================================== -->
     <!-- PRINTER SECTION -->
     <!-- ================================================================== -->
     <setting_section_header title="PRINTER" icon="printer_3d"/>
     <!-- LED Light Toggle (hidden if no LED capability) -->
-    <lv_obj name="container_led_light" width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
+    <lv_obj name="container_led_light"
+            width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
       <lv_obj-bind_flag_if_eq subject="printer_has_led" flag="hidden" ref_value="0"/>
-      <setting_toggle_row name="row_led_light" label="LED Light" icon="light" description="Toggle printer LED strip" callback="on_led_light_changed"/>
+      <setting_toggle_row name="row_led_light"
+                          label="LED Light" icon="light" description="Toggle printer LED strip"
+                          callback="on_led_light_changed"/>
     </lv_obj>
     <!-- ================================================================== -->
     <!-- NOTIFICATIONS SECTION -->
     <!-- ================================================================== -->
     <setting_section_header title="NOTIFICATIONS" icon="notifications"/>
     <!-- Sounds Toggle (hidden if no speaker capability) -->
-    <lv_obj name="container_sounds" width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
+    <lv_obj name="container_sounds"
+            width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
       <lv_obj-bind_flag_if_eq subject="printer_has_speaker" flag="hidden" ref_value="0"/>
-      <setting_toggle_row name="row_sounds" label="Sounds" icon="notifications" description="Enable audio feedback" callback="on_sounds_changed"/>
+      <setting_toggle_row name="row_sounds"
+                          label="Sounds" icon="notifications" description="Enable audio feedback"
+                          callback="on_sounds_changed"/>
     </lv_obj>
     <!-- Completion Alert Dropdown (Off/Notification/Alert) -->
-    <lv_obj name="row_completion_alert" width="100%" height="content" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" style_bg_opa="0" style_border_width="0" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md" style_pad_bottom="#space_md" style_pad_gap="#space_sm" scrollable="false">
+    <lv_obj name="row_completion_alert"
+            width="100%" height="content" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
+            style_bg_opa="0" style_border_width="0" style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_top="#space_md" style_pad_bottom="#space_md" style_pad_gap="#space_sm" scrollable="false">
       <icon name="row_icon" src="notifications" size="sm" variant="secondary"/>
-      <lv_obj width="content" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" flex_grow="1" scrollable="false">
+      <lv_obj width="content"
+              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="column"
+              style_pad_gap="#space_xs" flex_grow="1" scrollable="false">
         <text_body name="label" text="Print Completion Alert" style_text_color="#text_primary"/>
         <text_small name="description" text="Notify when print finishes" style_text_color="#text_secondary"/>
       </lv_obj>
-      <lv_dropdown name="completion_alert_dropdown" options="Off&#10;Notification&#10;Alert" width="140" height="40" style_radius="#border_radius" style_border_width="0">
+      <lv_dropdown name="completion_alert_dropdown"
+                   width="140" height="40" options="Off Notification Alert" style_radius="#border_radius"
+                   style_border_width="0">
         <event_cb trigger="value_changed" callback="on_completion_alert_changed"/>
       </lv_dropdown>
     </lv_obj>
@@ -56,31 +83,45 @@
     <!-- ================================================================== -->
     <setting_section_header title="SAFETY" icon="alert_octagon"/>
     <!-- E-Stop Confirmation Toggle -->
-    <setting_toggle_row name="row_estop_confirm" label="E-Stop Confirmation" icon="alert_octagon" description="Require confirmation before emergency stop" callback="on_estop_confirm_changed"/>
+    <setting_toggle_row name="row_estop_confirm"
+                        label="E-Stop Confirmation" icon="alert_octagon"
+                        description="Require confirmation before emergency stop" callback="on_estop_confirm_changed"/>
     <!-- ================================================================== -->
     <!-- CALIBRATION SECTION -->
     <!-- ================================================================== -->
     <setting_section_header title="CALIBRATION" icon="fine_tune"/>
     <!-- Bed Mesh Calibration (hidden if no bed mesh capability) -->
-    <lv_obj name="container_bed_mesh" width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
+    <lv_obj name="container_bed_mesh"
+            width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
       <lv_obj-bind_flag_if_eq subject="printer_has_bed_mesh" flag="hidden" ref_value="0"/>
-      <setting_action_row name="row_bed_mesh" label="Bed Mesh Calibration" icon="grid_large" description="Visualize and calibrate bed mesh" callback="on_bed_mesh_clicked"/>
+      <setting_action_row name="row_bed_mesh"
+                          label="Bed Mesh Calibration" icon="grid_large" description="Visualize and calibrate bed mesh"
+                          callback="on_bed_mesh_clicked"/>
     </lv_obj>
     <!-- Z-Offset Calibration (hidden if no probe capability) -->
-    <lv_obj name="container_z_offset" width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
+    <lv_obj name="container_z_offset"
+            width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
       <lv_obj-bind_flag_if_eq subject="printer_has_probe" flag="hidden" ref_value="0"/>
-      <setting_action_row name="row_z_offset" label="Z-Offset Calibration" icon="z_closer" description="Adjust first layer height" callback="on_z_offset_clicked"/>
+      <setting_action_row name="row_z_offset"
+                          label="Z-Offset Calibration" icon="z_closer" description="Adjust first layer height"
+                          callback="on_z_offset_clicked"/>
     </lv_obj>
     <!-- PID Tuning (always shown - extruder is always available) -->
-    <setting_action_row name="row_pid_tuning" label="PID Tuning" icon="heater" description="Tune heater PID parameters" callback="on_pid_tuning_clicked"/>
+    <setting_action_row name="row_pid_tuning"
+                        label="PID Tuning" icon="heater" description="Tune heater PID parameters"
+                        callback="on_pid_tuning_clicked"/>
     <!-- ================================================================== -->
     <!-- SYSTEM SECTION -->
     <!-- ================================================================== -->
     <setting_section_header title="SYSTEM" icon="sysinfo"/>
     <!-- Network Settings -->
-    <setting_action_row name="row_network" label="Network Settings" icon="wifi" description="WiFi and Ethernet configuration" callback="on_network_clicked"/>
+    <setting_action_row name="row_network"
+                        label="Network Settings" icon="wifi" description="WiFi and Ethernet configuration"
+                        callback="on_network_clicked"/>
     <!-- Factory Reset -->
-    <setting_action_row name="row_factory_reset" label="Factory Reset" icon="refresh" description="Reset all settings and restart wizard" callback="on_factory_reset_clicked"/>
+    <setting_action_row name="row_factory_reset"
+                        label="Factory Reset" icon="refresh" description="Reset all settings and restart wizard"
+                        callback="on_factory_reset_clicked"/>
     <!-- ================================================================== -->
     <!-- ABOUT SECTION -->
     <!-- ================================================================== -->
@@ -88,11 +129,11 @@
     <!-- Version Info -->
     <setting_info_row name="row_version" label="Version" icon="info" value="1.0.0"/>
     <!-- Printer Name -->
-    <setting_info_row name="row_printer" label="Printer" icon="printer_3d" value="&#x2014;"/>
+    <setting_info_row name="row_printer" label="Printer" icon="printer_3d" value="—"/>
     <!-- Klipper Version -->
-    <setting_info_row name="row_klipper" label="Klipper" icon="sysinfo" value="&#x2014;"/>
+    <setting_info_row name="row_klipper" label="Klipper" icon="sysinfo" value="—"/>
     <!-- Moonraker Version -->
-    <setting_info_row name="row_moonraker" label="Moonraker" icon="network" value="&#x2014;"/>
+    <setting_info_row name="row_moonraker" label="Moonraker" icon="network" value="—"/>
     <!-- Bottom padding for scroll -->
     <lv_obj width="100%" height="#space_lg" style_bg_opa="0" style_border_width="0" scrollable="false"/>
   </view>

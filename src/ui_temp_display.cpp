@@ -11,6 +11,7 @@
 #include "lvgl/src/xml/lv_xml_utils.h"
 #include "lvgl/src/xml/lv_xml_widget.h"
 #include "lvgl/src/xml/parsers/lv_xml_obj_parser.h"
+#include "settings_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -106,6 +107,8 @@ static void update_heating_color(TempDisplayData* data) {
  *
  * When show_target is true but target temp is 0 (heater off), we hide the
  * separator and target to show just "XX°C" instead of "XX / --°C".
+ *
+ * Animation: fade + slide when appearing/disappearing.
  */
 static void update_target_visibility(TempDisplayData* data) {
     if (!data)
@@ -118,20 +121,87 @@ static void update_target_visibility(TempDisplayData* data) {
     // When show_target is true, hide separator/target dynamically if heater is off
     bool should_show = (data->target_temp > 0);
 
-    if (data->separator_label) {
-        if (should_show) {
-            lv_obj_remove_flag(data->separator_label, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(data->separator_label, LV_OBJ_FLAG_HIDDEN);
+    // Animation constants for target indicator transition
+    constexpr int32_t APPEAR_DURATION_MS = 200;
+    constexpr int32_t DISAPPEAR_DURATION_MS = 150;
+    constexpr int32_t SLIDE_OFFSET_X = 10;
+
+    // Helper to animate show/hide with fade + slide
+    auto animate_label = [](lv_obj_t* label, bool show) {
+        if (!label)
+            return;
+
+        bool is_currently_visible = !lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN);
+        bool animations_enabled = SettingsManager::instance().get_animations_enabled();
+
+        if (show && !is_currently_visible) {
+            // Show label
+            lv_obj_remove_flag(label, LV_OBJ_FLAG_HIDDEN);
+
+            if (!animations_enabled) {
+                // Instant show - set final state immediately
+                lv_obj_set_style_opa(label, LV_OPA_COVER, LV_PART_MAIN);
+                lv_obj_set_style_translate_x(label, 0, LV_PART_MAIN);
+                return;
+            }
+
+            // Animate: fade-in + slide from right
+            lv_obj_set_style_opa(label, LV_OPA_TRANSP, LV_PART_MAIN);
+            lv_obj_set_style_translate_x(label, SLIDE_OFFSET_X, LV_PART_MAIN);
+
+            // Slide animation
+            lv_anim_t slide_anim;
+            lv_anim_init(&slide_anim);
+            lv_anim_set_var(&slide_anim, label);
+            lv_anim_set_values(&slide_anim, SLIDE_OFFSET_X, 0);
+            lv_anim_set_duration(&slide_anim, APPEAR_DURATION_MS);
+            lv_anim_set_path_cb(&slide_anim, lv_anim_path_ease_out);
+            lv_anim_set_exec_cb(&slide_anim, [](void* obj, int32_t value) {
+                lv_obj_set_style_translate_x(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+            });
+            lv_anim_start(&slide_anim);
+
+            // Fade in animation
+            lv_anim_t fade_anim;
+            lv_anim_init(&fade_anim);
+            lv_anim_set_var(&fade_anim, label);
+            lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
+            lv_anim_set_duration(&fade_anim, APPEAR_DURATION_MS);
+            lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
+            lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+                lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                                     LV_PART_MAIN);
+            });
+            lv_anim_start(&fade_anim);
+
+        } else if (!show && is_currently_visible) {
+            if (!animations_enabled) {
+                // Instant hide - no animation
+                lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+                return;
+            }
+
+            // Animate: fade-out then hide
+            lv_anim_t fade_anim;
+            lv_anim_init(&fade_anim);
+            lv_anim_set_var(&fade_anim, label);
+            lv_anim_set_values(&fade_anim, LV_OPA_COVER, LV_OPA_TRANSP);
+            lv_anim_set_duration(&fade_anim, DISAPPEAR_DURATION_MS);
+            lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_in);
+            lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+                lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                                     LV_PART_MAIN);
+            });
+            lv_anim_set_completed_cb(&fade_anim, [](lv_anim_t* anim) {
+                lv_obj_add_flag(static_cast<lv_obj_t*>(anim->var), LV_OBJ_FLAG_HIDDEN);
+            });
+            lv_anim_start(&fade_anim);
         }
-    }
-    if (data->target_label) {
-        if (should_show) {
-            lv_obj_remove_flag(data->target_label, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(data->target_label, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
+        // If already in the desired state, do nothing
+    };
+
+    animate_label(data->separator_label, should_show);
+    animate_label(data->target_label, should_show);
 }
 
 /** Update the display text based on current values */

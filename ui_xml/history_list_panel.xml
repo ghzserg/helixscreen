@@ -20,17 +20,11 @@
         <event_cb trigger="value_changed" callback="history_search_changed"/>
       </lv_textarea>
       <!-- Status filter dropdown -->
-      <lv_dropdown name="filter_status" options="All
-Completed
-Failed
-Cancelled" style_min_width="100">
+      <lv_dropdown name="filter_status" options="All Completed Failed Cancelled" style_min_width="100">
         <event_cb trigger="value_changed" callback="history_filter_status_changed"/>
       </lv_dropdown>
       <!-- Sort dropdown -->
-      <lv_dropdown name="sort_dropdown" options="Date (newest)
-Date (oldest)
-Duration
-Filename" style_min_width="120">
+      <lv_dropdown name="sort_dropdown" options="Date (newest) Date (oldest) Duration Filename" style_min_width="120">
         <event_cb trigger="value_changed" callback="history_sort_changed"/>
       </lv_dropdown>
     </lv_obj>

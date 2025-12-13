@@ -1,58 +1,41 @@
 <?xml version="1.0"?>
 <!-- Copyright 2025 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-
 <!-- Reusable Settings Slider Row Component -->
 <!-- Creates a settings row with label, description, and an inline slider -->
 <!-- Usage: <setting_slider_row label="Scroll Speed" icon="mat_swipe" description="Higher = faster" min="1" max="100" value="50"/> -->
-<!-- Props:
-     - label: Primary label text
-     - icon: Optional left icon (e.g., "mat_swipe"). If empty, no icon shown.
-     - description: Optional secondary description text below label
-     - min: Slider minimum value (default: 0)
-     - max: Slider maximum value (default: 100)
-     - value: Initial slider value (default: 50)
-     - callback: Optional callback name for value_changed event (registered via lv_xml_register_event_cb)
--->
 <component>
   <api>
-    <prop type="string" name="label" default="Setting"/>
-    <prop type="string" name="icon" default=""/>
-    <prop type="string" name="description" default=""/>
-    <prop type="string" name="min" default="0"/>
-    <prop type="string" name="max" default="100"/>
-    <prop type="string" name="value" default="50"/>
-    <prop type="string" name="callback" default=""/>
+    <prop name="label" type="string" default="Setting"/>
+    <prop name="icon" type="string" default=""/>
+    <prop name="description" type="string" default=""/>
+    <prop name="min" type="string" default="0"/>
+    <prop name="max" type="string" default="100"/>
+    <prop name="value" type="string" default="50"/>
+    <prop name="callback" type="string" default=""/>
   </api>
-  <view extends="lv_obj" name="slider_row" width="100%" height="content" flex_flow="column"
-        style_bg_opa="0" style_border_width="0"
-        style_pad_left="#space_lg" style_pad_right="#space_lg"
-        style_pad_top="#space_md" style_pad_bottom="#space_md"
+  <view name="slider_row"
+        extends="lv_obj" width="100%" height="content" flex_flow="column" style_bg_opa="0" style_border_width="0"
+        style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md" style_pad_bottom="#space_md"
         style_pad_gap="#space_xs" scrollable="false">
-
     <!-- Top row: Icon, label, value display -->
-    <lv_obj width="100%" height="content" flex_flow="row"
-            style_flex_main_place="space_between" style_flex_cross_place="center"
+    <lv_obj width="100%"
+            height="content" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
             style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
-
       <!-- Left side: Icon and label -->
-      <lv_obj width="content" height="content" flex_flow="row"
-              style_flex_cross_place="center" style_pad_gap="#space_sm"
+      <lv_obj width="content"
+              height="content" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm"
               style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
         <icon name="row_icon" src="$icon" size="sm" variant="secondary"/>
         <text_body name="label" text="$label" style_text_color="#text_primary"/>
       </lv_obj>
-
       <!-- Right side: Current value -->
       <text_body name="value_label" text="$value" style_text_color="#text_secondary"/>
     </lv_obj>
-
     <!-- Description (if provided) -->
     <text_small name="description" text="$description" style_text_color="#text_secondary"/>
-
     <!-- Slider -->
-    <lv_slider name="slider" width="100%" min_value="$min" max_value="$max" value="$value"
-               style_margin_top="#space_xs">
+    <lv_slider name="slider" width="100%" min_value="$min" max_value="$max" value="$value" style_margin_top="#space_xs">
       <event_cb trigger="value_changed" callback="$callback"/>
     </lv_slider>
   </view>

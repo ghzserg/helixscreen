@@ -74,6 +74,7 @@ class SettingsPanel : public PanelBase {
 
     // Toggle switches
     lv_obj_t* dark_mode_switch_ = nullptr;
+    lv_obj_t* animations_switch_ = nullptr;
     lv_obj_t* led_light_switch_ = nullptr;
     lv_obj_t* sounds_switch_ = nullptr;
     lv_obj_t* estop_confirm_switch_ = nullptr;
@@ -129,6 +130,7 @@ class SettingsPanel : public PanelBase {
     //
 
     void handle_dark_mode_changed(bool enabled);
+    void handle_animations_changed(bool enabled);
     void handle_display_sleep_changed(int index);
     void handle_led_light_changed(bool enabled);
     void handle_sounds_changed(bool enabled);
@@ -150,6 +152,7 @@ class SettingsPanel : public PanelBase {
     //
 
     static void on_dark_mode_changed(lv_event_t* e);
+    static void on_animations_changed(lv_event_t* e);
     static void on_display_sleep_changed(lv_event_t* e);
     static void on_led_light_changed(lv_event_t* e);
     static void on_sounds_changed(lv_event_t* e);

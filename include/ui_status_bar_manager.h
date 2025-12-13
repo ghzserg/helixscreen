@@ -112,6 +112,13 @@ class StatusBarManager {
     void update_notification_count(size_t count);
 
   private:
+    /**
+     * @brief Animate notification badge with attention pulse
+     *
+     * Finds the notification_badge widget on active screen and
+     * triggers scale pulse animation to draw attention.
+     */
+    void animate_notification_badge();
     // Private constructor for singleton
     StatusBarManager() = default;
     ~StatusBarManager() = default;
@@ -157,6 +164,9 @@ class StatusBarManager {
 
     // Track notification panel to prevent multiple instances
     lv_obj_t* notification_panel_obj_ = nullptr;
+
+    // Track previous notification count for pulse animation (only pulse on increase)
+    size_t previous_notification_count_ = 0;
 
     bool subjects_initialized_ = false;
     bool callbacks_registered_ = false;

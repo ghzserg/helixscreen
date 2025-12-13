@@ -4,9 +4,23 @@
 
 #include "ui_keyboard.h"
 
+#include "settings_manager.h"
+
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+
+// ============================================================================
+// ANIMATION CONSTANTS
+// ============================================================================
+// Duration values match globals.xml tokens for consistency
+static constexpr int32_t MODAL_ENTRANCE_DURATION_MS = 250; // anim_normal
+static constexpr int32_t MODAL_EXIT_DURATION_MS = 150;     // anim_fast
+
+// Scale animation uses percentage values (0-256 in LVGL)
+// We animate from 85% (218) to 100% (256), with slight overshoot for bounce
+static constexpr int32_t MODAL_SCALE_START = 218; // ~85% scale
+static constexpr int32_t MODAL_SCALE_END = 256;   // 100% scale
 
 // ============================================================================
 // SINGLETON INSTANCE
@@ -57,6 +71,174 @@ void ModalManager::modal_key_event_cb(lv_event_t* e) {
     if (key == LV_KEY_ESC && !mgr.modal_stack_.empty()) {
         spdlog::debug("[ModalManager] ESC key pressed - closing topmost modal");
         mgr.hide(mgr.modal_stack_.back().modal_obj);
+    }
+}
+
+// ============================================================================
+// ANIMATION HELPERS
+// ============================================================================
+
+void ModalManager::animate_entrance(lv_obj_t* modal) {
+    // Get the dialog card inside the modal backdrop
+    lv_obj_t* dialog = lv_obj_find_by_name(modal, "dialog_card");
+
+    // Skip animation if disabled - show modal in final state
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        lv_obj_set_style_opa(modal, LV_OPA_COVER, LV_PART_MAIN);
+        if (dialog) {
+            lv_obj_set_style_transform_scale(dialog, MODAL_SCALE_END, LV_PART_MAIN);
+            lv_obj_set_style_opa(dialog, LV_OPA_COVER, LV_PART_MAIN);
+        }
+        spdlog::debug("[ModalManager] Animations disabled - showing modal instantly");
+        return;
+    }
+
+    // Start backdrop transparent
+    lv_obj_set_style_opa(modal, LV_OPA_TRANSP, LV_PART_MAIN);
+
+    // If dialog card exists, start it scaled down and transparent
+    if (dialog) {
+        lv_obj_set_style_transform_scale(dialog, MODAL_SCALE_START, LV_PART_MAIN);
+        lv_obj_set_style_opa(dialog, LV_OPA_TRANSP, LV_PART_MAIN);
+    }
+
+    // Fade in backdrop (0 → configured opacity, stored in style)
+    // Note: We fade to full cover, the backdrop_opa was already set
+    lv_anim_t backdrop_anim;
+    lv_anim_init(&backdrop_anim);
+    lv_anim_set_var(&backdrop_anim, modal);
+    lv_anim_set_values(&backdrop_anim, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_duration(&backdrop_anim, MODAL_ENTRANCE_DURATION_MS);
+    lv_anim_set_path_cb(&backdrop_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&backdrop_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                             LV_PART_MAIN);
+    });
+    lv_anim_start(&backdrop_anim);
+
+    // Animate dialog card if found
+    if (dialog) {
+        // Scale up animation (85% → 100%) with overshoot for bounce effect
+        lv_anim_t scale_anim;
+        lv_anim_init(&scale_anim);
+        lv_anim_set_var(&scale_anim, dialog);
+        lv_anim_set_values(&scale_anim, MODAL_SCALE_START, MODAL_SCALE_END);
+        lv_anim_set_duration(&scale_anim, MODAL_ENTRANCE_DURATION_MS);
+        lv_anim_set_path_cb(&scale_anim, lv_anim_path_overshoot);
+        lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
+            lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj),
+                                             static_cast<int16_t>(value), LV_PART_MAIN);
+        });
+        lv_anim_start(&scale_anim);
+
+        // Fade in dialog card (0 → 255)
+        lv_anim_t fade_anim;
+        lv_anim_init(&fade_anim);
+        lv_anim_set_var(&fade_anim, dialog);
+        lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
+        lv_anim_set_duration(&fade_anim, MODAL_ENTRANCE_DURATION_MS);
+        lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
+        lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+            lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                                 LV_PART_MAIN);
+        });
+        lv_anim_start(&fade_anim);
+    }
+
+    spdlog::debug("[ModalManager] Started entrance animation");
+}
+
+void ModalManager::animate_exit(lv_obj_t* modal, bool is_persistent) {
+    // Get the dialog card inside the modal backdrop
+    lv_obj_t* dialog = lv_obj_find_by_name(modal, "dialog_card");
+
+    // Skip animation if disabled - directly hide/delete
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        // Reset dialog scale for potential reuse (persistent modals)
+        if (dialog) {
+            lv_obj_set_style_transform_scale(dialog, MODAL_SCALE_END, LV_PART_MAIN);
+            lv_obj_set_style_opa(dialog, LV_OPA_COVER, LV_PART_MAIN);
+        }
+
+        if (is_persistent) {
+            spdlog::debug("[ModalManager] Animations disabled - hiding persistent modal instantly");
+            lv_obj_add_flag(modal, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_style_opa(modal, LV_OPA_COVER, LV_PART_MAIN);
+        } else {
+            spdlog::debug("[ModalManager] Animations disabled - deleting modal instantly");
+            lv_obj_delete_async(modal);
+        }
+        return;
+    }
+
+    // Fade out backdrop
+    lv_anim_t backdrop_anim;
+    lv_anim_init(&backdrop_anim);
+    lv_anim_set_var(&backdrop_anim, modal);
+    lv_anim_set_values(&backdrop_anim, LV_OPA_COVER, LV_OPA_TRANSP);
+    lv_anim_set_duration(&backdrop_anim, MODAL_EXIT_DURATION_MS);
+    lv_anim_set_path_cb(&backdrop_anim, lv_anim_path_ease_in);
+    lv_anim_set_exec_cb(&backdrop_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                             LV_PART_MAIN);
+    });
+    // Set completion callback on backdrop (it will handle cleanup)
+    lv_anim_set_completed_cb(&backdrop_anim, exit_animation_complete_cb);
+    // Store persistent flag in user_data (low bit: is_persistent)
+    lv_anim_set_user_data(&backdrop_anim,
+                          reinterpret_cast<void*>(static_cast<intptr_t>(is_persistent)));
+    lv_anim_start(&backdrop_anim);
+
+    // Animate dialog card if found
+    if (dialog) {
+        // Scale down animation (100% → 90%)
+        lv_anim_t scale_anim;
+        lv_anim_init(&scale_anim);
+        lv_anim_set_var(&scale_anim, dialog);
+        lv_anim_set_values(&scale_anim, MODAL_SCALE_END, MODAL_SCALE_START);
+        lv_anim_set_duration(&scale_anim, MODAL_EXIT_DURATION_MS);
+        lv_anim_set_path_cb(&scale_anim, lv_anim_path_ease_in);
+        lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
+            lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj),
+                                             static_cast<int16_t>(value), LV_PART_MAIN);
+        });
+        lv_anim_start(&scale_anim);
+
+        // Fade out dialog card
+        lv_anim_t fade_anim;
+        lv_anim_init(&fade_anim);
+        lv_anim_set_var(&fade_anim, dialog);
+        lv_anim_set_values(&fade_anim, LV_OPA_COVER, LV_OPA_TRANSP);
+        lv_anim_set_duration(&fade_anim, MODAL_EXIT_DURATION_MS);
+        lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_in);
+        lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
+            lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
+                                 LV_PART_MAIN);
+        });
+        lv_anim_start(&fade_anim);
+    }
+
+    spdlog::debug("[ModalManager] Started exit animation (persistent={})", is_persistent);
+}
+
+void ModalManager::exit_animation_complete_cb(lv_anim_t* anim) {
+    lv_obj_t* modal = static_cast<lv_obj_t*>(anim->var);
+    bool is_persistent = static_cast<bool>(reinterpret_cast<intptr_t>(anim->user_data));
+
+    // Reset dialog scale for potential reuse (persistent modals)
+    lv_obj_t* dialog = lv_obj_find_by_name(modal, "dialog_card");
+    if (dialog) {
+        lv_obj_set_style_transform_scale(dialog, MODAL_SCALE_END, LV_PART_MAIN);
+        lv_obj_set_style_opa(dialog, LV_OPA_COVER, LV_PART_MAIN);
+    }
+
+    if (is_persistent) {
+        spdlog::debug("[ModalManager] Exit animation complete - hiding persistent modal");
+        lv_obj_add_flag(modal, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_opa(modal, LV_OPA_COVER, LV_PART_MAIN); // Reset for next show
+    } else {
+        spdlog::debug("[ModalManager] Exit animation complete - deleting modal");
+        lv_obj_delete_async(modal);
     }
 }
 
@@ -256,6 +438,9 @@ lv_obj_t* ModalManager::show(const char* component_name, const ui_modal_config_t
         position_keyboard_for_modal(modal);
     }
 
+    // Start entrance animation (backdrop fade + dialog scale/fade)
+    animate_entrance(modal);
+
     spdlog::info("[ModalManager] Modal shown successfully (stack depth: {})", modal_stack_.size());
 
     return modal;
@@ -287,20 +472,17 @@ void ModalManager::hide(lv_obj_t* modal) {
         it->config.keyboard = nullptr;
     }
 
-    // Remove from stack before deleting/hiding
+    // Capture persistence flag before removing from stack
     bool was_persistent = it->config.persistent;
+
+    // Remove from stack before starting exit animation
     modal_stack_.erase(it);
 
-    // Hide or delete based on lifecycle policy
-    if (was_persistent) {
-        spdlog::debug("[ModalManager] Persistent modal - hiding");
-        lv_obj_add_flag(modal, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        spdlog::debug("[ModalManager] Non-persistent modal - async delete");
-        lv_obj_delete_async(modal);
-    }
+    // Start exit animation (hide/delete happens in completion callback)
+    animate_exit(modal, was_persistent);
 
-    spdlog::info("[ModalManager] Modal hidden (stack depth: {})", modal_stack_.size());
+    spdlog::info("[ModalManager] Modal hiding with animation (stack depth: {})",
+                 modal_stack_.size());
 
     // If there are more modals, bring the new topmost to foreground
     if (!modal_stack_.empty()) {

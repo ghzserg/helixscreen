@@ -406,6 +406,7 @@ class PrintStatusPanel : public PanelBase {
 
     // Child widgets
     lv_obj_t* progress_bar_ = nullptr;
+    lv_obj_t* preparing_progress_bar_ = nullptr;
     lv_obj_t* gcode_viewer_ = nullptr;
     lv_obj_t* print_thumbnail_ = nullptr;
     lv_obj_t* gradient_background_ = nullptr;
@@ -423,6 +424,9 @@ class PrintStatusPanel : public PanelBase {
     lv_obj_t* btn_pause_ = nullptr;
     lv_obj_t* btn_tune_ = nullptr;
     lv_obj_t* btn_cancel_ = nullptr;
+
+    // Print completion celebration badge (animated on print complete)
+    lv_obj_t* success_badge_ = nullptr;
 
     //
     // === Temperature & Tuning Overlays ===
@@ -461,7 +465,8 @@ class PrintStatusPanel : public PanelBase {
     void setup_tune_panel(lv_obj_t* panel);
     void update_tune_display();
     void update_z_offset_icons(lv_obj_t* panel); ///< Update Z-offset icons based on kinematics
-    void update_button_states(); ///< Enable/disable buttons based on current print state
+    void update_button_states();   ///< Enable/disable buttons based on current print state
+    void animate_print_complete(); ///< Celebratory animation when print finishes
 
     static void format_time(int seconds, char* buf, size_t buf_size);
 

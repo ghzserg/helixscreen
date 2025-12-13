@@ -20,6 +20,7 @@
 #include "ui_notification.h"
 #include "ui_observer_guard.h"
 #include "ui_panel_advanced.h"
+#include "ui_panel_ams.h"
 #include "ui_panel_bed_mesh.h"
 #include "ui_panel_calibration_pid.h"
 #include "ui_panel_calibration_zoffset.h"
@@ -155,6 +156,7 @@ AdvancedPanel& get_global_advanced_panel();
 void init_global_advanced_panel(PrinterState& printer_state, MoonrakerAPI* api);
 PrintSelectPanel* get_print_select_panel(PrinterState& printer_state, MoonrakerAPI* api);
 PrintStatusPanel& get_global_print_status_panel();
+AmsPanel& get_global_ams_panel();
 ExtrusionPanel& get_global_extrusion_panel();
 BedMeshPanel& get_global_bed_mesh_panel();
 StepTestPanel& get_global_step_test_panel();
@@ -282,6 +284,7 @@ struct OverlayPanels {
     lv_obj_t* bed_temp = nullptr;
     lv_obj_t* extrusion = nullptr;
     lv_obj_t* print_status = nullptr;
+    lv_obj_t* ams = nullptr;
 } static overlay_panels;
 
 // Print completion notification observer (implementation in print_completion.cpp)
@@ -400,6 +403,9 @@ static void initialize_subjects() {
     // Initialize AmsState subjects BEFORE panels so XML bindings can find ams_gate_count
     // This is critical for the home panel's AMS indicator visibility binding
     AmsState::instance().init_subjects(true);
+
+    // Initialize AmsPanel subjects (registers XML event callbacks for slots/actions)
+    get_global_ams_panel().init_subjects();
 
     // Register print completion notification observer (watches print_state_enum for terminal
     // states) - implementation in print_completion.cpp handles panel detection
@@ -1355,6 +1361,16 @@ int main(int argc, char** argv) {
         spdlog::debug("[Print Status] Panel created and wired to print select");
     } else {
         spdlog::error("[Print Status] Failed to create panel");
+    }
+
+    // Create AMS panel (overlay for multi-filament management)
+    overlay_panels.ams = (lv_obj_t*)lv_xml_create(screen, "ams_panel", nullptr);
+    if (overlay_panels.ams) {
+        get_global_ams_panel().setup(overlay_panels.ams, screen);
+        lv_obj_add_flag(overlay_panels.ams, LV_OBJ_FLAG_HIDDEN); // Hidden by default
+        spdlog::debug("[AMS] Panel created and ready");
+    } else {
+        spdlog::error("[AMS] Failed to create panel");
     }
 
     spdlog::info("[Init] XML UI created successfully with reactive navigation");

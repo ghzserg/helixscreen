@@ -112,6 +112,11 @@ class ToastManager {
     void create_toast_internal(ToastSeverity severity, const char* message, uint32_t duration_ms,
                                bool with_action);
 
+    // Animation helpers
+    void animate_entrance(lv_obj_t* toast);
+    void animate_exit(lv_obj_t* toast);
+    static void exit_animation_complete_cb(lv_anim_t* anim);
+
     // Timer callback
     static void dismiss_timer_cb(lv_timer_t* timer);
 
@@ -136,6 +141,7 @@ class ToastManager {
     char action_text_buf_[64] = "";
 
     bool initialized_ = false;
+    bool animating_exit_ = false; // Prevents double-hide during exit animation
 };
 
 // ============================================================================

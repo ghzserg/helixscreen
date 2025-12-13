@@ -183,6 +183,11 @@ class ModalManager {
     void get_auto_keyboard_position(const ui_modal_position_t& modal_pos, lv_align_t* out_align,
                                     int32_t* out_x, int32_t* out_y);
 
+    // Animation helpers
+    void animate_entrance(lv_obj_t* modal);
+    void animate_exit(lv_obj_t* modal, bool is_persistent);
+    static void exit_animation_complete_cb(lv_anim_t* anim);
+
     // Event callbacks (static)
     static void backdrop_click_event_cb(lv_event_t* e);
     static void modal_key_event_cb(lv_event_t* e);
