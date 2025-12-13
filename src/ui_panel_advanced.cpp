@@ -48,8 +48,17 @@ AdvancedPanel::AdvancedPanel(PrinterState& printer_state, MoonrakerAPI* api)
 // ============================================================================
 
 void AdvancedPanel::init_subjects() {
-    // No local subjects - capability subjects are owned by PrinterState
+    // Register XML event callbacks (must be done BEFORE XML is created)
+    lv_xml_register_event_cb(nullptr, "on_advanced_machine_limits", on_machine_limits_clicked);
+    lv_xml_register_event_cb(nullptr, "on_advanced_spoolman", on_spoolman_clicked);
+    lv_xml_register_event_cb(nullptr, "on_advanced_macros", on_macros_clicked);
+
+    // Note: Input shaping uses on_input_shaper_row_clicked registered by InputShaperPanel
+    // Note: Restart row doesn't exist - restart buttons have their own callbacks in
+    // ui_emergency_stop.cpp
+
     subjects_initialized_ = true;
+    spdlog::debug("[{}] Event callbacks registered", get_name());
 }
 
 void AdvancedPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
@@ -61,7 +70,9 @@ void AdvancedPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         return;
     }
 
-    setup_action_handlers();
+    // Event handlers are now declaratively bound via XML event_cb elements
+    // No imperative lv_obj_add_event_cb() calls needed
+
     spdlog::info("[{}] Setup complete", get_name());
 }
 
@@ -70,60 +81,8 @@ void AdvancedPanel::on_activate() {
 }
 
 // ============================================================================
-// SETUP HELPERS
-// ============================================================================
-
-void AdvancedPanel::setup_action_handlers() {
-    // === Input Shaping Row ===
-    input_shaping_row_ = lv_obj_find_by_name(panel_, "row_input_shaping");
-    if (input_shaping_row_) {
-        lv_obj_add_event_cb(input_shaping_row_, on_input_shaping_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}]   ✓ Input shaping action row", get_name());
-    }
-
-    // === Machine Limits Row ===
-    machine_limits_row_ = lv_obj_find_by_name(panel_, "row_machine_limits");
-    if (machine_limits_row_) {
-        lv_obj_add_event_cb(machine_limits_row_, on_machine_limits_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}]   ✓ Machine limits action row", get_name());
-    }
-
-    // === Spoolman Row ===
-    spoolman_row_ = lv_obj_find_by_name(panel_, "row_spoolman");
-    if (spoolman_row_) {
-        lv_obj_add_event_cb(spoolman_row_, on_spoolman_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}]   ✓ Spoolman action row", get_name());
-    }
-
-    // === Macros Row ===
-    macros_row_ = lv_obj_find_by_name(panel_, "row_macros");
-    if (macros_row_) {
-        lv_obj_add_event_cb(macros_row_, on_macros_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}]   ✓ Macros action row", get_name());
-    }
-
-    // === Restart Row ===
-    restart_row_ = lv_obj_find_by_name(panel_, "row_restart");
-    if (restart_row_) {
-        lv_obj_add_event_cb(restart_row_, on_restart_clicked, LV_EVENT_CLICKED, this);
-        spdlog::debug("[{}]   ✓ Restart action row", get_name());
-    }
-}
-
-// ============================================================================
 // NAVIGATION HANDLERS
 // ============================================================================
-
-void AdvancedPanel::handle_input_shaping_clicked() {
-    spdlog::debug("[{}] Input Shaping clicked", get_name());
-
-    MoonrakerClient* client = get_moonraker_client();
-    if (client && client->capabilities().has_klippain_shaketune()) {
-        ui_toast_show(ToastSeverity::INFO, "Input Shaping: Klippain Shake&Tune detected", 2000);
-    } else {
-        ui_toast_show(ToastSeverity::INFO, "Input Shaping: Coming soon", 2000);
-    }
-}
 
 void AdvancedPanel::handle_machine_limits_clicked() {
     spdlog::debug("[{}] Machine Limits clicked", get_name());
@@ -146,41 +105,18 @@ void AdvancedPanel::handle_macros_clicked() {
     }
 }
 
-void AdvancedPanel::handle_restart_clicked() {
-    spdlog::debug("[{}] Restart clicked", get_name());
-    ui_toast_show(ToastSeverity::INFO, "Restart: Coming soon", 2000);
-}
-
 // ============================================================================
-// STATIC EVENT TRAMPOLINES
+// STATIC EVENT CALLBACKS (registered via lv_xml_register_event_cb)
 // ============================================================================
 
-void AdvancedPanel::on_input_shaping_clicked(lv_event_t* e) {
-    auto* self = static_cast<AdvancedPanel*>(lv_event_get_user_data(e));
-    if (self)
-        self->handle_input_shaping_clicked();
+void AdvancedPanel::on_machine_limits_clicked(lv_event_t* /*e*/) {
+    get_global_advanced_panel().handle_machine_limits_clicked();
 }
 
-void AdvancedPanel::on_machine_limits_clicked(lv_event_t* e) {
-    auto* self = static_cast<AdvancedPanel*>(lv_event_get_user_data(e));
-    if (self)
-        self->handle_machine_limits_clicked();
+void AdvancedPanel::on_spoolman_clicked(lv_event_t* /*e*/) {
+    get_global_advanced_panel().handle_spoolman_clicked();
 }
 
-void AdvancedPanel::on_spoolman_clicked(lv_event_t* e) {
-    auto* self = static_cast<AdvancedPanel*>(lv_event_get_user_data(e));
-    if (self)
-        self->handle_spoolman_clicked();
-}
-
-void AdvancedPanel::on_macros_clicked(lv_event_t* e) {
-    auto* self = static_cast<AdvancedPanel*>(lv_event_get_user_data(e));
-    if (self)
-        self->handle_macros_clicked();
-}
-
-void AdvancedPanel::on_restart_clicked(lv_event_t* e) {
-    auto* self = static_cast<AdvancedPanel*>(lv_event_get_user_data(e));
-    if (self)
-        self->handle_restart_clicked();
+void AdvancedPanel::on_macros_clicked(lv_event_t* /*e*/) {
+    get_global_advanced_panel().handle_macros_clicked();
 }

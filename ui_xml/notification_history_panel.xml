@@ -8,8 +8,7 @@
         style_bg_color="#app_bg_color" style_border_width="0" style_pad_all="0" flex_flow="column">
     <!-- Header Bar (uses improved header_bar component) -->
     <header_bar name="overlay_header" title="Notifications" action_button_text="Clear All" hide_action_button="false"/>
-    <!-- NOTE: Filter buttons removed from UI for cleaner look.
-         C++ filter logic retained in ui_panel_notification_history.cpp if needed later. -->
+
     <!-- Content Area (scrollable, hidden when no entries) -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="#space_lg"

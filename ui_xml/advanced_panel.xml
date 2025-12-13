@@ -82,7 +82,9 @@
     <setting_section_header title="MOTION" icon="speed"/>
     <!-- Machine Limits -->
     <setting_action_row name="row_machine_limits"
-                        label="Machine Limits" icon="dashboard" description="Velocity and acceleration limits"/>
+                        label="Machine Limits" icon="dashboard" description="Velocity and acceleration limits">
+      <event_cb trigger="clicked" callback="on_advanced_machine_limits"/>
+    </setting_action_row>
     <!-- ================================================================== -->
     <!-- FILAMENT SECTION -->
     <!-- ================================================================== -->
@@ -92,7 +94,9 @@
             width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
       <lv_obj-bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_spoolman"
-                          label="Spoolman" icon="inventory" description="Filament tracking and inventory"/>
+                          label="Spoolman" icon="inventory" description="Filament tracking and inventory">
+        <event_cb trigger="clicked" callback="on_advanced_spoolman"/>
+      </setting_action_row>
     </lv_obj>
     <!-- Fallback message when Spoolman not available -->
     <lv_obj name="container_no_spoolman"
@@ -105,7 +109,9 @@
     <!-- ================================================================== -->
     <setting_section_header title="AUTOMATION" icon="code_tags"/>
     <!-- Macro Browser -->
-    <setting_action_row name="row_macros" label="Macro Browser" icon="console" description="Execute printer macros"/>
+    <setting_action_row name="row_macros" label="Macro Browser" icon="console" description="Execute printer macros">
+      <event_cb trigger="clicked" callback="on_advanced_macros"/>
+    </setting_action_row>
     <!-- Timelapse Settings -->
     <setting_action_row name="row_timelapse" label="Timelapse" icon="video" description="Configure timelapse recording">
       <lv_obj-bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="0"/>

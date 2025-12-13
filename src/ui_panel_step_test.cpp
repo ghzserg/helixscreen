@@ -46,9 +46,13 @@ void StepTestPanel::init_subjects() {
         return;
     }
 
-    // StepTestPanel has no subjects to initialize
+    // Register XML event callbacks (must be done BEFORE XML is created)
+    lv_xml_register_event_cb(nullptr, "on_step_test_prev", on_prev_clicked);
+    lv_xml_register_event_cb(nullptr, "on_step_test_next", on_next_clicked);
+    lv_xml_register_event_cb(nullptr, "on_step_test_complete", on_complete_clicked);
+
     subjects_initialized_ = true;
-    spdlog::debug("[{}] Subjects initialized (none required)", get_name());
+    spdlog::debug("[{}] Subjects initialized, event callbacks registered", get_name());
 }
 
 void StepTestPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
@@ -63,8 +67,8 @@ void StepTestPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Create the step progress widgets
     create_progress_widgets();
 
-    // Wire up button handlers
-    setup_button_handlers();
+    // Note: Button handlers are now wired via XML event_cb declarations
+    // and registered in init_subjects() via lv_xml_register_event_cb()
 
     spdlog::info("[{}] Setup complete", get_name());
 }
@@ -107,23 +111,6 @@ void StepTestPanel::create_progress_widgets() {
     horizontal_step_ = 1;
     ui_step_progress_set_current(vertical_widget_, vertical_step_);
     ui_step_progress_set_current(horizontal_widget_, horizontal_step_);
-}
-
-void StepTestPanel::setup_button_handlers() {
-    lv_obj_t* btn_prev = lv_obj_find_by_name(panel_, "btn_prev");
-    lv_obj_t* btn_next = lv_obj_find_by_name(panel_, "btn_next");
-    lv_obj_t* btn_complete = lv_obj_find_by_name(panel_, "btn_complete");
-
-    // Pass 'this' as user_data so trampolines can delegate to instance methods
-    if (btn_prev) {
-        lv_obj_add_event_cb(btn_prev, on_prev_clicked, LV_EVENT_CLICKED, this);
-    }
-    if (btn_next) {
-        lv_obj_add_event_cb(btn_next, on_next_clicked, LV_EVENT_CLICKED, this);
-    }
-    if (btn_complete) {
-        lv_obj_add_event_cb(btn_complete, on_complete_clicked, LV_EVENT_CLICKED, this);
-    }
 }
 
 // ============================================================================
@@ -174,33 +161,27 @@ void StepTestPanel::handle_complete() {
 }
 
 // ============================================================================
-// STATIC TRAMPOLINES
+// STATIC EVENT CALLBACKS (registered via lv_xml_register_event_cb)
 // ============================================================================
 
 void StepTestPanel::on_prev_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[StepTestPanel] on_prev_clicked");
-    auto* self = static_cast<StepTestPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_prev();
-    }
+    (void)e; // Unused - we use global accessor
+    get_global_step_test_panel().handle_prev();
     LVGL_SAFE_EVENT_CB_END();
 }
 
 void StepTestPanel::on_next_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[StepTestPanel] on_next_clicked");
-    auto* self = static_cast<StepTestPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_next();
-    }
+    (void)e; // Unused - we use global accessor
+    get_global_step_test_panel().handle_next();
     LVGL_SAFE_EVENT_CB_END();
 }
 
 void StepTestPanel::on_complete_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[StepTestPanel] on_complete_clicked");
-    auto* self = static_cast<StepTestPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_complete();
-    }
+    (void)e; // Unused - we use global accessor
+    get_global_step_test_panel().handle_complete();
     LVGL_SAFE_EVENT_CB_END();
 }
 

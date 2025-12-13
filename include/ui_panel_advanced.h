@@ -89,40 +89,20 @@ class AdvancedPanel : public PanelBase {
 
   private:
     //
-    // === Widget References (Action Rows) ===
-    //
-
-    lv_obj_t* input_shaping_row_ = nullptr;
-    lv_obj_t* machine_limits_row_ = nullptr;
-    lv_obj_t* spoolman_row_ = nullptr;
-    lv_obj_t* macros_row_ = nullptr;
-    lv_obj_t* restart_row_ = nullptr;
-
-    //
-    // === Setup Helpers ===
-    //
-
-    void setup_action_handlers();
-
-    //
     // === Navigation Handlers ===
     //
 
-    void handle_input_shaping_clicked();
     void handle_machine_limits_clicked();
     void handle_spoolman_clicked();
     void handle_macros_clicked();
-    void handle_restart_clicked();
 
     //
-    // === Static Event Trampolines ===
+    // === Static Event Callbacks (registered via lv_xml_register_event_cb) ===
     //
 
-    static void on_input_shaping_clicked(lv_event_t* e);
     static void on_machine_limits_clicked(lv_event_t* e);
     static void on_spoolman_clicked(lv_event_t* e);
     static void on_macros_clicked(lv_event_t* e);
-    static void on_restart_clicked(lv_event_t* e);
 };
 
 /**

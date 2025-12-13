@@ -60,33 +60,6 @@ void NotificationHistoryPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Wire action button ("Clear All") to clear callback
     ui_overlay_panel_wire_action_button(panel_, on_clear_clicked, "overlay_header", this);
 
-    // NOTE: Filter buttons removed from UI for cleaner look.
-    // Filter logic retained for future use if needed.
-#if 0
-    lv_obj_t* filter_all = lv_obj_find_by_name(panel_, "filter_all_btn");
-    if (filter_all) {
-        lv_obj_add_event_cb(filter_all, on_filter_all_clicked, LV_EVENT_CLICKED, this);
-    }
-
-    lv_obj_t* filter_errors = lv_obj_find_by_name(panel_, "filter_errors_btn");
-    if (filter_errors) {
-        lv_obj_add_event_cb(filter_errors, on_filter_errors_clicked, LV_EVENT_CLICKED, this);
-    }
-
-    lv_obj_t* filter_warnings = lv_obj_find_by_name(panel_, "filter_warnings_btn");
-    if (filter_warnings) {
-        lv_obj_add_event_cb(filter_warnings, on_filter_warnings_clicked, LV_EVENT_CLICKED, this);
-    }
-
-    lv_obj_t* filter_info = lv_obj_find_by_name(panel_, "filter_info_btn");
-    if (filter_info) {
-        lv_obj_add_event_cb(filter_info, on_filter_info_clicked, LV_EVENT_CLICKED, this);
-    }
-#endif
-
-    // Reset filter
-    current_filter_ = -1;
-
     // Populate list
     refresh();
 
@@ -103,9 +76,8 @@ void NotificationHistoryPanel::refresh() {
         return;
     }
 
-    // Get entries (filtered or all)
-    auto entries =
-        (current_filter_ < 0) ? history_.get_all() : history_.get_filtered(current_filter_);
+    // Get all entries (filter buttons removed from UI for cleaner look)
+    auto entries = history_.get_all();
 
     // Find content container
     lv_obj_t* overlay_content = lv_obj_find_by_name(panel_, "overlay_content");
@@ -163,13 +135,6 @@ void NotificationHistoryPanel::refresh() {
     spdlog::debug("[{}] Refreshed: {} entries displayed", get_name(), entries.size());
 }
 
-void NotificationHistoryPanel::set_filter(int filter) {
-    if (current_filter_ != filter) {
-        current_filter_ = filter;
-        refresh();
-    }
-}
-
 // ============================================================================
 // PRIVATE HELPERS
 // ============================================================================
@@ -221,22 +186,6 @@ void NotificationHistoryPanel::handle_clear_clicked() {
     spdlog::info("[{}] History cleared by user", get_name());
 }
 
-void NotificationHistoryPanel::handle_filter_all() {
-    set_filter(-1);
-}
-
-void NotificationHistoryPanel::handle_filter_errors() {
-    set_filter(static_cast<int>(ToastSeverity::ERROR));
-}
-
-void NotificationHistoryPanel::handle_filter_warnings() {
-    set_filter(static_cast<int>(ToastSeverity::WARNING));
-}
-
-void NotificationHistoryPanel::handle_filter_info() {
-    set_filter(static_cast<int>(ToastSeverity::INFO));
-}
-
 // ============================================================================
 // STATIC TRAMPOLINES
 // ============================================================================
@@ -246,42 +195,6 @@ void NotificationHistoryPanel::on_clear_clicked(lv_event_t* e) {
     auto* self = static_cast<NotificationHistoryPanel*>(lv_event_get_user_data(e));
     if (self) {
         self->handle_clear_clicked();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void NotificationHistoryPanel::on_filter_all_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[NotificationHistoryPanel] on_filter_all_clicked");
-    auto* self = static_cast<NotificationHistoryPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_filter_all();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void NotificationHistoryPanel::on_filter_errors_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[NotificationHistoryPanel] on_filter_errors_clicked");
-    auto* self = static_cast<NotificationHistoryPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_filter_errors();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void NotificationHistoryPanel::on_filter_warnings_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[NotificationHistoryPanel] on_filter_warnings_clicked");
-    auto* self = static_cast<NotificationHistoryPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_filter_warnings();
-    }
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void NotificationHistoryPanel::on_filter_info_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[NotificationHistoryPanel] on_filter_info_clicked");
-    auto* self = static_cast<NotificationHistoryPanel*>(lv_event_get_user_data(e));
-    if (self) {
-        self->handle_filter_info();
     }
     LVGL_SAFE_EVENT_CB_END();
 }

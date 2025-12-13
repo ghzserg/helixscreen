@@ -12,12 +12,11 @@
  * @file ui_panel_notification_history.h
  * @brief Notification history overlay panel
  *
- * Displays a scrollable list of past notifications with filtering and
- * clear-all functionality. Shows severity-colored cards for each entry.
+ * Displays a scrollable list of past notifications with clear-all
+ * functionality. Shows severity-colored cards for each entry.
  *
  * ## Key Features:
  * - Lists all notifications from NotificationHistory service
- * - Severity-based filtering (errors, warnings, info)
  * - Clear All button to purge history
  * - Empty state when no notifications
  * - Marks notifications as read when viewed
@@ -83,26 +82,10 @@ class NotificationHistoryPanel : public PanelBase {
     /**
      * @brief Refresh the notification list
      *
-     * Called when panel is shown, filter changes, or after clear.
+     * Called when panel is shown or after clear.
      * Rebuilds the list from NotificationHistory service.
      */
     void refresh();
-
-    /**
-     * @brief Set severity filter
-     *
-     * @param filter -1 for all, or ToastSeverity value for filtered view
-     */
-    void set_filter(int filter);
-
-    /**
-     * @brief Get current filter setting
-     *
-     * @return Current filter (-1 = all, or ToastSeverity value)
-     */
-    int get_filter() const {
-        return current_filter_;
-    }
 
   private:
     //
@@ -110,13 +93,6 @@ class NotificationHistoryPanel : public PanelBase {
     //
 
     NotificationHistory& history_;
-
-    //
-    // === Instance State ===
-    //
-
-    /// Current severity filter (-1 = all)
-    int current_filter_ = -1;
 
     //
     // === Subjects ===
@@ -144,20 +120,12 @@ class NotificationHistoryPanel : public PanelBase {
     //
 
     void handle_clear_clicked();
-    void handle_filter_all();
-    void handle_filter_errors();
-    void handle_filter_warnings();
-    void handle_filter_info();
 
     //
     // === Static Trampolines ===
     //
 
     static void on_clear_clicked(lv_event_t* e);
-    static void on_filter_all_clicked(lv_event_t* e);
-    static void on_filter_errors_clicked(lv_event_t* e);
-    static void on_filter_warnings_clicked(lv_event_t* e);
-    static void on_filter_info_clicked(lv_event_t* e);
 };
 
 // Global instance accessor (needed by main.cpp)

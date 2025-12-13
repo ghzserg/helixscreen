@@ -47,7 +47,10 @@ class StepTestPanel : public PanelBase {
     //
 
     /**
-     * @brief No-op for StepTestPanel (no subjects to initialize)
+     * @brief Register XML event callbacks for button interactions
+     *
+     * Registers on_step_test_prev, on_step_test_next, and on_step_test_complete
+     * callbacks via lv_xml_register_event_cb() before XML is created.
      */
     void init_subjects() override;
 
@@ -88,11 +91,6 @@ class StepTestPanel : public PanelBase {
      */
     void create_progress_widgets();
 
-    /**
-     * @brief Wire up button event handlers
-     */
-    void setup_button_handlers();
-
     //
     // === Button Handlers ===
     //
@@ -102,10 +100,10 @@ class StepTestPanel : public PanelBase {
     void handle_complete();
 
     //
-    // === Static Trampolines ===
+    // === Static Event Callbacks ===
     //
-    // LVGL callbacks must be static. These trampolines extract the
-    // StepTestPanel* from user_data and delegate to instance methods.
+    // Registered via lv_xml_register_event_cb() in init_subjects().
+    // Use get_global_step_test_panel() to access instance methods.
     //
 
     static void on_prev_clicked(lv_event_t* e);
