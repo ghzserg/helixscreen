@@ -228,12 +228,13 @@ class MoonrakerClient : public hv::WebSocketClient {
      * @param success_cb Callback for successful response
      * @param error_cb Callback for errors (timeout, JSON-RPC error, etc.)
      * @param timeout_ms Optional timeout override (0 = use default)
+     * @param silent If true, don't emit RPC_ERROR events (for internal probes)
      * @return Request ID for cancellation, or INVALID_REQUEST_ID on error
      */
     virtual RequestId send_jsonrpc(const std::string& method, const json& params,
                                    std::function<void(json)> success_cb,
                                    std::function<void(const MoonrakerError&)> error_cb,
-                                   uint32_t timeout_ms = 0);
+                                   uint32_t timeout_ms = 0, bool silent = false);
 
     /**
      * @brief Cancel a pending JSON-RPC request

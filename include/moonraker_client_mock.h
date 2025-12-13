@@ -271,12 +271,13 @@ class MoonrakerClientMock : public MoonrakerClient {
      * @param success_cb Success callback (not invoked in mock)
      * @param error_cb Error callback (not invoked in mock)
      * @param timeout_ms Timeout (ignored in mock)
+     * @param silent Silent mode (ignored in mock)
      * @return Always returns 0 (success)
      */
     RequestId send_jsonrpc(const std::string& method, const json& params,
                            std::function<void(json)> success_cb,
                            std::function<void(const MoonrakerError&)> error_cb,
-                           uint32_t timeout_ms = 0) override;
+                           uint32_t timeout_ms = 0, bool silent = false) override;
 
     /**
      * @brief Simulate G-code script command

@@ -305,6 +305,7 @@ int MoonrakerClient::connect(const char* url, std::function<void()> on_connected
                 std::function<void(const MoonrakerError&)> error_cb;
                 std::string method_name;
                 bool has_error = false;
+                bool is_silent = false;
                 MoonrakerError error;
 
                 {
@@ -313,6 +314,7 @@ int MoonrakerClient::connect(const char* url, std::function<void()> on_connected
                     if (it != pending_requests_.end()) {
                         PendingRequest& request = it->second;
                         method_name = request.method;
+                        is_silent = request.silent;
 
                         // Check for JSON-RPC error
                         if (j.contains("error")) {
@@ -329,14 +331,19 @@ int MoonrakerClient::connect(const char* url, std::function<void()> on_connected
 
                 // Invoke callbacks outside the lock to avoid deadlock
                 if (has_error) {
-                    spdlog::error("[Moonraker Client] Request {} failed: {}", method_name,
-                                  error.message);
+                    if (!is_silent) {
+                        spdlog::error("[Moonraker Client] Request {} failed: {}", method_name,
+                                      error.message);
 
-                    // Emit RPC error event
-                    emit_event(
-                        MoonrakerEventType::RPC_ERROR,
-                        fmt::format("Printer command '{}' failed: {}", method_name, error.message),
-                        true, method_name);
+                        // Emit RPC error event (only for non-silent requests)
+                        emit_event(
+                            MoonrakerEventType::RPC_ERROR,
+                            fmt::format("Printer command '{}' failed: {}", method_name, error.message),
+                            true, method_name);
+                    } else {
+                        spdlog::debug("[Moonraker Client] Silent request {} failed: {}", method_name,
+                                      error.message);
+                    }
 
                     if (error_cb) {
                         error_cb(error);
@@ -766,7 +773,7 @@ RequestId MoonrakerClient::send_jsonrpc(const std::string& method, const json& p
 RequestId MoonrakerClient::send_jsonrpc(const std::string& method, const json& params,
                                         std::function<void(json)> success_cb,
                                         std::function<void(const MoonrakerError&)> error_cb,
-                                        uint32_t timeout_ms) {
+                                        uint32_t timeout_ms, bool silent) {
     // Atomically fetch and increment to avoid race condition in concurrent calls
     // Note: request_id_ starts at 0, but we increment FIRST, so actual IDs start at 1
     // This ensures we never return 0 (INVALID_REQUEST_ID) for a valid request
@@ -780,6 +787,7 @@ RequestId MoonrakerClient::send_jsonrpc(const std::string& method, const json& p
     request.error_callback = error_cb;
     request.timestamp = std::chrono::steady_clock::now();
     request.timeout_ms = (timeout_ms > 0) ? timeout_ms : default_request_timeout_ms_;
+    request.silent = silent;
 
     // Register request
     {

@@ -92,6 +92,9 @@ struct CliArgs {
     bool memory_report = false; // --memory-report: log memory every 30s
     bool show_memory = false;   // --show-memory: display memory overlay (M key toggle)
 
+    // Moonraker override (for testing/development)
+    std::string moonraker_url; // --moonraker: override config URL (e.g., ws://192.168.1.112:7125)
+
     /** @brief Check if any panels/overlays requiring Moonraker are requested */
     bool needs_moonraker_data() const {
         return overlays.needs_moonraker() || initial_panel >= 0;

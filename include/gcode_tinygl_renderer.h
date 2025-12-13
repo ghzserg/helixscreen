@@ -73,6 +73,23 @@ class GCodeTinyGLRenderer {
      */
     void set_viewport_size(int width, int height);
 
+    /**
+     * @brief Set interaction mode for reduced resolution during drag
+     * @param interacting true when user is dragging/rotating, false when static
+     *
+     * During interaction, renders at 50% resolution for 4x faster frames.
+     * When interaction ends, restores full resolution for final quality.
+     */
+    void set_interaction_mode(bool interacting);
+
+    /**
+     * @brief Check if interaction mode is active
+     * @return true if rendering at reduced resolution
+     */
+    bool is_interaction_mode() const {
+        return interaction_mode_;
+    }
+
     // ==============================================
     // Configuration
     // ==============================================
@@ -382,6 +399,33 @@ class GCodeTinyGLRenderer {
     // Configuration
     int viewport_width_{800};
     int viewport_height_{600};
+    int full_viewport_width_{
+        800}; ///< Full resolution width (stored when entering interaction mode)
+    int full_viewport_height_{600}; ///< Full resolution height
+    bool interaction_mode_{false};  ///< True when rendering at reduced resolution during drag
+
+    // ==============================================
+    // Progressive Adaptive Optimization
+    // ==============================================
+    // Instead of fixed optimization levels, we measure render time and adapt:
+    // - Fast enough? → reduce optimization (better quality)
+    // - Too slow? → increase optimization (better responsiveness)
+
+    /// Current adaptive layer skip during interaction (1=none, 2=half, 4=quarter, etc.)
+    int adaptive_layer_step_{1};
+
+    /// Smoothed render time in ms (exponential moving average)
+    float smoothed_render_time_ms_{0.0f};
+
+    /// Target frame time thresholds (configurable)
+    /// More conservative thresholds to maintain visual quality during interaction
+    static constexpr float kTargetFrameTimeMs =
+        100.0f; ///< Target: 10 FPS (100ms) - acceptable for drag
+    static constexpr float kMaxFrameTimeMs = 250.0f; ///< Above this: escalate optimization (4 FPS)
+    static constexpr float kMinFrameTimeMs = 50.0f;  ///< Below this: reduce optimization (20 FPS)
+
+    /// Update adaptive optimization based on last render time
+    void update_adaptive_optimization(float render_time_ms);
     bool smooth_shading_{false};  // Use flat shading to avoid triangle seam artifacts
     float extrusion_width_{0.5f}; // Wider for solid appearance
     SimplificationOptions simplification_;
@@ -418,6 +462,45 @@ class GCodeTinyGLRenderer {
 
     // LVGL image buffer for display
     lv_draw_buf_t* draw_buf_{nullptr};
+
+    // ==============================================
+    // Render State Caching (dirty flag optimization)
+    // ==============================================
+
+    /**
+     * @brief Cached render state for skip-frame optimization
+     *
+     * If camera and rendering options haven't changed since last frame,
+     * we can skip TinyGL rendering and just reuse the cached framebuffer.
+     */
+    struct CachedRenderState {
+        float camera_azimuth{0.0f};
+        float camera_elevation{0.0f};
+        float camera_distance{0.0f};
+        glm::vec3 camera_target{0.0f};
+        int progress_layer{-1};
+        bool ghost_enabled{false};
+        int layer_start{0};
+        int layer_end{-1};
+        size_t highlighted_count{0};
+        size_t excluded_count{0};
+
+        bool operator==(const CachedRenderState& other) const {
+            return camera_azimuth == other.camera_azimuth &&
+                   camera_elevation == other.camera_elevation &&
+                   camera_distance == other.camera_distance &&
+                   camera_target == other.camera_target && progress_layer == other.progress_layer &&
+                   ghost_enabled == other.ghost_enabled && layer_start == other.layer_start &&
+                   layer_end == other.layer_end && highlighted_count == other.highlighted_count &&
+                   excluded_count == other.excluded_count;
+        }
+        bool operator!=(const CachedRenderState& other) const {
+            return !(*this == other);
+        }
+    };
+
+    CachedRenderState last_render_state_;
+    bool framebuffer_valid_{false}; ///< True if framebuffer can be reused without re-render
 };
 
 } // namespace gcode

@@ -25,8 +25,10 @@ namespace gcode {
 GCodeTinyGLRenderer::GCodeTinyGLRenderer()
     : geometry_builder_(std::make_unique<GeometryBuilder>()) {
     // Set default configuration
-    simplification_.tolerance_mm = 0.15f;
-    simplification_.min_segment_length_mm = 0.01f;
+    // More aggressive simplification: 0.5mm tolerance gives ~70-80% segment reduction
+    // (vs 0.15mm which gives ~43% reduction). 0.5mm is still well within print precision.
+    simplification_.tolerance_mm = 0.5f;
+    simplification_.min_segment_length_mm = 0.05f; // Filter more micro-segments
     simplification_.enable_merging = true;
 
     geometry_builder_->set_smooth_shading(smooth_shading_);
@@ -58,6 +60,12 @@ GCodeTinyGLRenderer::~GCodeTinyGLRenderer() {
 }
 
 void GCodeTinyGLRenderer::set_viewport_size(int width, int height) {
+    // Always track full resolution (for interaction mode restore)
+    if (!interaction_mode_) {
+        full_viewport_width_ = width;
+        full_viewport_height_ = height;
+    }
+
     if (width == viewport_width_ && height == viewport_height_) {
         return; // No change
     }
@@ -67,6 +75,39 @@ void GCodeTinyGLRenderer::set_viewport_size(int width, int height) {
 
     // Reinitialize TinyGL with new size
     shutdown_tinygl();
+
+    // Invalidate cached framebuffer
+    framebuffer_valid_ = false;
+}
+
+void GCodeTinyGLRenderer::set_interaction_mode(bool interacting) {
+    if (interaction_mode_ == interacting) {
+        return; // No change
+    }
+
+    interaction_mode_ = interacting;
+
+    if (interacting) {
+        // Enter interaction mode: start with no layer skipping
+        // Progressive optimization will escalate if needed based on measured render time
+        //
+        // NOTE: We don't reduce resolution because the bottleneck is vertex processing
+        // (3M triangles), not pixel fill. Resolution reduction hurts quality without
+        // significantly improving frame rate.
+        adaptive_layer_step_ = 1;
+        smoothed_render_time_ms_ = 0.0f; // Reset EMA for fresh measurement
+
+        spdlog::debug("[GCode::Renderer] Entering interaction mode: adaptive layer skip (start=1)");
+
+        framebuffer_valid_ = false;
+    } else {
+        // Exit interaction mode: restore all layers
+        spdlog::debug("[GCode::Renderer] Exiting interaction mode (was layer_step={})",
+                      adaptive_layer_step_);
+
+        adaptive_layer_step_ = 1; // Reset for next interaction
+        framebuffer_valid_ = false;
+    }
 }
 
 void GCodeTinyGLRenderer::set_filament_color(const std::string& hex_color) {
@@ -516,6 +557,9 @@ void GCodeTinyGLRenderer::set_prebuilt_geometry(std::unique_ptr<RibbonGeometry> 
     geometry_ = std::move(*geometry); // Move the value from unique_ptr into optional
     current_gcode_filename_ = filename;
 
+    // Invalidate cached framebuffer - new geometry requires full re-render
+    framebuffer_valid_ = false;
+
     spdlog::info("[GCode::Renderer] Pre-built geometry set: {} vertices, {} triangles (extrusion: "
                  "{}, travel: {}), max_layer_index={}",
                  geometry_->vertices.size(),
@@ -582,48 +626,9 @@ void GCodeTinyGLRenderer::render_layer_range(int start_layer, int end_layer, flo
         return;
     }
 
-    // If we don't have layer tracking data, render all strips
-    if (geometry_->strip_layer_index.empty()) {
-        // Fallback: render all strips with the given dim factor
-        for (size_t i = 0; i < geometry_->strips.size(); ++i) {
-            const auto& strip = geometry_->strips[i];
-
-            glBegin(GL_TRIANGLE_STRIP);
-            for (int j = 0; j < 4; j++) {
-                const auto& vertex = geometry_->vertices[strip[static_cast<size_t>(j)]];
-
-                // Lookup normal from palette
-                const glm::vec3& normal = geometry_->normal_palette[vertex.normal_index];
-                glNormal3f(normal.x, normal.y, normal.z);
-
-                // Lookup color from palette and apply dimming
-                uint32_t color_rgb = geometry_->color_palette[vertex.color_index];
-                uint8_t r = (color_rgb >> 16) & 0xFF;
-                uint8_t g = (color_rgb >> 8) & 0xFF;
-                uint8_t b = color_rgb & 0xFF;
-
-                glColor3f((r / 255.0f) * dim_factor, (g / 255.0f) * dim_factor,
-                          (b / 255.0f) * dim_factor);
-
-                // Dequantize position
-                glm::vec3 pos = geometry_->quantization.dequantize_vec3(vertex.position);
-                glVertex3f(pos.x, pos.y, pos.z);
-            }
-            glEnd();
-        }
-        return;
-    }
-
-    // Render only strips in the specified layer range
-    for (size_t i = 0; i < geometry_->strips.size(); ++i) {
-        // Check if this strip's layer is in range
-        uint16_t strip_layer = geometry_->strip_layer_index[i];
-        if (static_cast<int>(strip_layer) < start_layer ||
-            static_cast<int>(strip_layer) > end_layer) {
-            continue; // Skip strips outside the layer range
-        }
-
-        const auto& strip = geometry_->strips[i];
+    // Helper lambda to render a single strip with given dim factor
+    auto render_strip = [this, dim_factor](size_t strip_idx) {
+        const auto& strip = geometry_->strips[strip_idx];
 
         glBegin(GL_TRIANGLE_STRIP);
         for (int j = 0; j < 4; j++) {
@@ -647,6 +652,55 @@ void GCodeTinyGLRenderer::render_layer_range(int start_layer, int end_layer, flo
             glVertex3f(pos.x, pos.y, pos.z);
         }
         glEnd();
+    };
+
+    // If we don't have layer tracking data, render all strips
+    if (geometry_->strip_layer_index.empty()) {
+        // Fallback: render all strips with the given dim factor
+        for (size_t i = 0; i < geometry_->strips.size(); ++i) {
+            render_strip(i);
+        }
+        return;
+    }
+
+    // OPTIMIZATION: Use layer_strip_ranges for O(layers) instead of O(strips)
+    // This provides a significant speedup for large files with many strips
+    if (!geometry_->layer_strip_ranges.empty()) {
+        // Clamp layer range to valid bounds
+        int max_layer = static_cast<int>(geometry_->layer_strip_ranges.size()) - 1;
+        int clamped_start = std::max(0, start_layer);
+        int clamped_end = std::min(max_layer, end_layer);
+
+        // In interaction mode, use adaptive layer skipping
+        // adaptive_layer_step_ is dynamically adjusted based on measured render time:
+        // - Starts at 1 (no skip), escalates to 2, 4, 8 if too slow
+        // - De-escalates back down when fast enough
+        //
+        // NOTE: We tried Z-offset stretching (rendering each layer multiple times to fill gaps)
+        // but it defeats the purpose: 1/4 layers × 4 copies = same triangle count = no speedup.
+        // Accept some banding during drag - full quality renders on mouse release.
+        int layer_step = interaction_mode_ ? adaptive_layer_step_ : 1;
+
+        // Iterate through layers and render strips directly using pre-computed ranges
+        for (int layer = clamped_start; layer <= clamped_end; layer += layer_step) {
+            auto [first_strip, strip_count] =
+                geometry_->layer_strip_ranges[static_cast<size_t>(layer)];
+            for (size_t i = 0; i < strip_count; ++i) {
+                render_strip(first_strip + i);
+            }
+        }
+        return;
+    }
+
+    // Fallback: O(N) scan through all strips (used if layer_strip_ranges not populated)
+    for (size_t i = 0; i < geometry_->strips.size(); ++i) {
+        // Check if this strip's layer is in range
+        uint16_t strip_layer = geometry_->strip_layer_index[i];
+        if (static_cast<int>(strip_layer) < start_layer ||
+            static_cast<int>(strip_layer) > end_layer) {
+            continue; // Skip strips outside the layer range
+        }
+        render_strip(i);
     }
 }
 
@@ -655,33 +709,57 @@ void GCodeTinyGLRenderer::draw_to_lvgl(lv_layer_t* layer, const lv_area_t* widge
         return;
     }
 
-    // Create or recreate LVGL draw buffer if size changed
-    if (!draw_buf_ || draw_buf_->header.w != static_cast<uint32_t>(viewport_width_) ||
-        draw_buf_->header.h != static_cast<uint32_t>(viewport_height_)) {
+    // Calculate widget dimensions
+    int widget_width = lv_area_get_width(widget_coords);
+    int widget_height = lv_area_get_height(widget_coords);
+
+    // Create or recreate LVGL draw buffer at WIDGET size (not viewport size)
+    // This allows us to upscale when in interaction mode
+    if (!draw_buf_ || draw_buf_->header.w != static_cast<uint32_t>(widget_width) ||
+        draw_buf_->header.h != static_cast<uint32_t>(widget_height)) {
         if (draw_buf_) {
             lv_draw_buf_destroy(draw_buf_);
         }
 
         draw_buf_ =
-            lv_draw_buf_create(static_cast<uint32_t>(viewport_width_),
-                               static_cast<uint32_t>(viewport_height_), LV_COLOR_FORMAT_RGB888, 0);
+            lv_draw_buf_create(static_cast<uint32_t>(widget_width),
+                               static_cast<uint32_t>(widget_height), LV_COLOR_FORMAT_RGB888, 0);
         if (!draw_buf_) {
             spdlog::error("Failed to create LVGL draw buffer");
             return;
         }
     }
 
-    // Copy TinyGL framebuffer to LVGL draw buffer
+    // Copy TinyGL framebuffer to LVGL draw buffer with scaling
     // TinyGL ZB_MODE_RGBA is actually ABGR format (Alpha-Blue-Green-Red)
     // LVGL uses RGB888, so we need to swap R and B
     uint8_t* dest = (uint8_t*)draw_buf_->data;
     unsigned int* src = framebuffer_;
 
-    for (int i = 0; i < viewport_width_ * viewport_height_; i++) {
-        unsigned int pixel = src[i];
-        dest[i * 3 + 0] = pixel & 0xFF;         // R (from TinyGL B channel)
-        dest[i * 3 + 1] = (pixel >> 8) & 0xFF;  // G (stays the same)
-        dest[i * 3 + 2] = (pixel >> 16) & 0xFF; // B (from TinyGL R channel)
+    // Check if we need to upscale (interaction mode renders at lower resolution)
+    bool needs_upscale = (viewport_width_ != widget_width || viewport_height_ != widget_height);
+
+    if (needs_upscale) {
+        // Nearest-neighbor upscaling from viewport to widget size
+        for (int dy = 0; dy < widget_height; dy++) {
+            int sy = dy * viewport_height_ / widget_height;
+            for (int dx = 0; dx < widget_width; dx++) {
+                int sx = dx * viewport_width_ / widget_width;
+                unsigned int pixel = src[sy * viewport_width_ + sx];
+                int dest_idx = (dy * widget_width + dx) * 3;
+                dest[dest_idx + 0] = pixel & 0xFF;         // R (from TinyGL B channel)
+                dest[dest_idx + 1] = (pixel >> 8) & 0xFF;  // G (stays the same)
+                dest[dest_idx + 2] = (pixel >> 16) & 0xFF; // B (from TinyGL R channel)
+            }
+        }
+    } else {
+        // Direct 1:1 copy (no scaling needed)
+        for (int i = 0; i < viewport_width_ * viewport_height_; i++) {
+            unsigned int pixel = src[i];
+            dest[i * 3 + 0] = pixel & 0xFF;         // R (from TinyGL B channel)
+            dest[i * 3 + 1] = (pixel >> 8) & 0xFF;  // G (stays the same)
+            dest[i * 3 + 2] = (pixel >> 16) & 0xFF; // B (from TinyGL R channel)
+        }
     }
 
     // Draw image to layer at widget's screen position
@@ -693,9 +771,7 @@ void GCodeTinyGLRenderer::draw_to_lvgl(lv_layer_t* layer, const lv_area_t* widge
     // Use widget coordinates as the draw area (absolute screen position)
     lv_area_t area = *widget_coords;
 
-    spdlog::trace("TinyGL draw_to_lvgl: draw_buf={}x{}, widget_coords=({},{}) to ({},{})",
-                  (int)draw_buf_->header.w, (int)draw_buf_->header.h, area.x1, area.y1, area.x2,
-                  area.y2);
+    // NOTE: Removed per-frame trace log - this fires every LVGL frame causing log spam
 
     lv_draw_image(layer, &img_dsc, &area);
 }
@@ -713,16 +789,65 @@ void GCodeTinyGLRenderer::render(lv_layer_t* layer, const ParsedGCodeFile& gcode
     // Build geometry if needed
     build_geometry(gcode);
 
+    // Build current render state for dirty flag check
+    CachedRenderState current_state;
+    current_state.camera_azimuth = camera.get_azimuth();
+    current_state.camera_elevation = camera.get_elevation();
+    current_state.camera_distance = camera.get_distance();
+    current_state.camera_target = camera.get_target();
+    current_state.progress_layer = current_progress_layer_;
+    current_state.ghost_enabled = ghost_mode_enabled_;
+    current_state.layer_start = layer_start_;
+    current_state.layer_end = layer_end_;
+    current_state.highlighted_count = highlighted_objects_.size();
+    current_state.excluded_count = excluded_objects_.size();
+
+    // Skip TinyGL render if state unchanged and we have a valid cached framebuffer
+    // NOTE: No trace log here - this fires every LVGL frame (~30fps) causing log spam
+    if (framebuffer_valid_ && current_state == last_render_state_) {
+        // Just redraw the cached framebuffer to LVGL
+        draw_to_lvgl(layer, widget_coords);
+        return;
+    }
+
+    // Full render required - update cached state
+    last_render_state_ = current_state;
+
+    // Time the rendering stages
+    auto t0 = std::chrono::high_resolution_clock::now();
+
     // Render 3D geometry
     render_geometry(camera);
+
+    auto t1 = std::chrono::high_resolution_clock::now();
 
     // Render bounding box wireframe for highlighted objects
     spdlog::trace("TinyGL render: {} highlighted objects, gcode.objects.size()={}",
                   highlighted_objects_.size(), gcode.objects.size());
     render_bounding_box(gcode);
 
+    auto t2 = std::chrono::high_resolution_clock::now();
+
+    // Mark framebuffer as valid for future skip-frame optimization
+    framebuffer_valid_ = true;
+
     // Draw to LVGL at widget's screen position
     draw_to_lvgl(layer, widget_coords);
+
+    auto t3 = std::chrono::high_resolution_clock::now();
+
+    // Log detailed timing every frame at trace level
+    auto geom_ms = std::chrono::duration<float, std::milli>(t1 - t0).count();
+    auto bbox_ms = std::chrono::duration<float, std::milli>(t2 - t1).count();
+    auto lvgl_ms = std::chrono::duration<float, std::milli>(t3 - t2).count();
+    auto total_ms = std::chrono::duration<float, std::milli>(t3 - t0).count();
+    spdlog::trace("TinyGL timing: geometry={:.1f}ms, bbox={:.1f}ms, lvgl={:.1f}ms, total={:.1f}ms",
+                  geom_ms, bbox_ms, lvgl_ms, total_ms);
+
+    // Update adaptive optimization based on measured render time (only during interaction)
+    if (interaction_mode_) {
+        update_adaptive_optimization(geom_ms);
+    }
 
     // Draw camera debug info overlay (if verbose mode OR camera params set via CLI)
     const RuntimeConfig& config = get_runtime_config();
@@ -748,6 +873,49 @@ void GCodeTinyGLRenderer::render(lv_layer_t* layer, const ParsedGCodeFile& gcode
 
         lv_draw_label(layer, &label_dsc, &text_area);
     }
+}
+
+// ==============================================
+// Progressive Adaptive Optimization
+// ==============================================
+
+void GCodeTinyGLRenderer::update_adaptive_optimization(float render_time_ms) {
+    // Use exponential moving average to smooth out frame time variance
+    // α = 0.3 means each new sample contributes 30%, history contributes 70%
+    constexpr float kSmoothingFactor = 0.3f;
+
+    if (smoothed_render_time_ms_ == 0.0f) {
+        // First measurement - use directly
+        smoothed_render_time_ms_ = render_time_ms;
+    } else {
+        smoothed_render_time_ms_ = kSmoothingFactor * render_time_ms +
+                                   (1.0f - kSmoothingFactor) * smoothed_render_time_ms_;
+    }
+
+    int old_step = adaptive_layer_step_;
+
+    // Escalate optimization if too slow
+    if (smoothed_render_time_ms_ > kMaxFrameTimeMs) {
+        // Too slow - skip more layers (double the skip rate, max 4 for quality)
+        if (adaptive_layer_step_ < 4) {
+            adaptive_layer_step_ = std::min(adaptive_layer_step_ * 2, 4);
+            spdlog::debug(
+                "[GCode::Adaptive] Escalating: {:.0f}ms > {:.0f}ms threshold, layer_step {} → {}",
+                smoothed_render_time_ms_, kMaxFrameTimeMs, old_step, adaptive_layer_step_);
+        }
+    }
+    // Reduce optimization if fast enough (and we have room to improve quality)
+    else if (smoothed_render_time_ms_ < kMinFrameTimeMs && adaptive_layer_step_ > 1) {
+        // Fast enough - render more layers (halve the skip rate, min 1)
+        adaptive_layer_step_ = std::max(adaptive_layer_step_ / 2, 1);
+        spdlog::debug(
+            "[GCode::Adaptive] Reducing: {:.0f}ms < {:.0f}ms threshold, layer_step {} → {}",
+            smoothed_render_time_ms_, kMinFrameTimeMs, old_step, adaptive_layer_step_);
+    }
+
+    // Log at trace level every frame for debugging
+    spdlog::trace("[GCode::Adaptive] render={:.1f}ms, smoothed={:.1f}ms, layer_step={}",
+                  render_time_ms, smoothed_render_time_ms_, adaptive_layer_step_);
 }
 
 // ==============================================

@@ -26,6 +26,7 @@ struct PendingRequest {
     std::function<void(const MoonrakerError&)> error_callback; ///< Error callback (optional)
     std::chrono::steady_clock::time_point timestamp;           ///< When request was sent
     uint32_t timeout_ms;                                       ///< Timeout in milliseconds
+    bool silent = false; ///< If true, suppress RPC_ERROR events (for internal probes)
 
     /**
      * @brief Check if request has timed out

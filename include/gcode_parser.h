@@ -404,6 +404,10 @@ class GCodeParser {
     size_t lines_parsed_{0};           ///< Line counter
     bool use_layer_markers_{false};    ///< True if ;LAYER_CHANGE markers found
     bool pending_layer_marker_{false}; ///< Layer change marker seen, layer not yet started
+
+    // Warning counters (logged as summary in finalize() instead of per-segment)
+    size_t out_of_range_width_count_{
+        0}; ///< Count of segments with calculated width outside 0.1-2.0mm
 };
 
 // ============================================================================

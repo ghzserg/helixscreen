@@ -137,7 +137,9 @@ TEST_MOONRAKER_DEPS := \
     $(OBJ_DIR)/command_sequencer.o \
     $(OBJ_DIR)/helix_macro_manager.o \
     $(OBJ_DIR)/ams_backend_afc.o \
-    $(OBJ_DIR)/ams_backend_mock.o
+    $(OBJ_DIR)/ams_backend_mock.o \
+    $(OBJ_DIR)/ams_state.o \
+    $(OBJ_DIR)/thumbnail_cache.o
 
 # Configuration and utilities
 TEST_CONFIG_DEPS := \

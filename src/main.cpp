@@ -1507,19 +1507,37 @@ int main(int argc, char** argv) {
         create_overlay_panel(screen, "gradient_test_panel", "gradient test");
     }
 
-    // Connect to Moonraker (only if not in wizard and we have saved config)
+    // Connect to Moonraker (only if not in wizard and we have saved config OR CLI override)
     // Wizard will handle its own connection test
     std::string saved_host = config->get<std::string>(config->df() + "moonraker_host", "");
-    if (!args.force_wizard && !config->is_wizard_required() && !saved_host.empty()) {
-        // Build WebSocket URL from config
-        std::string moonraker_url =
-            "ws://" + config->get<std::string>(config->df() + "moonraker_host") + ":" +
-            std::to_string(config->get<int>(config->df() + "moonraker_port")) + "/websocket";
+    bool has_cli_url = !args.moonraker_url.empty();
+    if (!args.force_wizard && (has_cli_url || (!config->is_wizard_required() && !saved_host.empty()))) {
+        std::string moonraker_url;
+        std::string http_base_url;
 
-        // Build HTTP base URL for file transfers (same host:port, http:// scheme)
-        std::string http_base_url =
-            "http://" + config->get<std::string>(config->df() + "moonraker_host") + ":" +
-            std::to_string(config->get<int>(config->df() + "moonraker_port"));
+        if (has_cli_url) {
+            // Use CLI-provided URL (already normalized to ws://host:port/websocket)
+            moonraker_url = args.moonraker_url;
+            // Extract host:port for HTTP base URL
+            // ws://host:port/websocket -> http://host:port
+            std::string host_port = moonraker_url.substr(5); // Skip "ws://"
+            auto ws_pos = host_port.find("/websocket");
+            if (ws_pos != std::string::npos) {
+                host_port = host_port.substr(0, ws_pos);
+            }
+            http_base_url = "http://" + host_port;
+            spdlog::info("Using CLI-provided Moonraker URL: {}", moonraker_url);
+        } else {
+            // Build WebSocket URL from config
+            moonraker_url =
+                "ws://" + config->get<std::string>(config->df() + "moonraker_host") + ":" +
+                std::to_string(config->get<int>(config->df() + "moonraker_port")) + "/websocket";
+            http_base_url =
+                "http://" + config->get<std::string>(config->df() + "moonraker_host") + ":" +
+                std::to_string(config->get<int>(config->df() + "moonraker_port"));
+        }
+
+        // Set HTTP base URL for file transfers
         moonraker_api->set_http_base_url(http_base_url);
 
         // Register discovery callback (Observer pattern - decouples Moonraker from PrinterState)

@@ -261,11 +261,30 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                 auto* self = static_cast<PrintSelectPanel*>(lv_observer_get_user_data(observer));
                 int32_t state = lv_subject_get_int(subject);
                 // PrinterStatus::CONNECTED = 2
-                if (state == 2 && self && self->file_list_.empty() &&
-                    self->current_source_ == FileSource::PRINTER) {
-                    spdlog::info("[{}] Connection established, refreshing file list",
-                                 self->get_name());
-                    self->refresh_files();
+                if (state == 2 && self) {
+                    // Refresh files if empty
+                    if (self->file_list_.empty() && self->current_source_ == FileSource::PRINTER) {
+                        spdlog::info("[{}] Connection established, refreshing file list",
+                                     self->get_name());
+                        self->refresh_files();
+                    }
+
+                    // Check for helix_print plugin on each connection/reconnection
+                    if (self->api_) {
+                        spdlog::debug("[{}] Connection established, checking for helix_print plugin",
+                                      self->get_name());
+                        self->api_->check_helix_plugin(
+                            [](bool available) {
+                                if (available) {
+                                    spdlog::info("[PrintSelectPanel] helix_print plugin available");
+                                } else {
+                                    spdlog::debug("[PrintSelectPanel] helix_print plugin not available");
+                                }
+                            },
+                            [](const MoonrakerError&) {
+                                // Silently ignore errors - plugin not available
+                            });
+                    }
                 }
             },
             this);
@@ -665,6 +684,7 @@ void PrintSelectPanel::set_api(MoonrakerAPI* api) {
     // Note: Don't auto-refresh here - WebSocket may not be connected yet.
     // refresh_files() has a connection check that will silently return if not connected.
     // Files will be loaded lazily via on_activate() when user navigates to this panel.
+    // helix_print plugin check happens in connection observer (after connection established)
     if (api_ && panel_initialized_) {
         spdlog::debug("[{}] API set, files will load on first view", get_name());
         refresh_files(); // Will early-return if not connected
@@ -2046,8 +2066,8 @@ void PrintSelectPanel::modify_and_print(
     // Step 1: Download the original file
     api_->download_file(
         "gcodes", file_path,
-        // Success: modify and upload
-        [self, original_filename, ops_to_disable](const std::string& content) {
+        // Success: modify and either use plugin or legacy flow
+        [self, original_filename, file_path, ops_to_disable](const std::string& content) {
             // Step 2: Apply modifications
             helix::gcode::GCodeFileModifier modifier;
             modifier.disable_operations(*self->cached_scan_result_, ops_to_disable);
@@ -2058,46 +2078,89 @@ void PrintSelectPanel::modify_and_print(
                 return;
             }
 
-            // Step 3: Upload to .helix_temp directory with unique name
-            // Using timestamp to avoid conflicts
-            std::string temp_filename = ".helix_temp/modified_" +
-                                        std::to_string(std::time(nullptr)) + "_" +
-                                        original_filename;
+            // Build modification identifiers for plugin
+            std::vector<std::string> mod_names;
+            for (const auto& op : ops_to_disable) {
+                mod_names.push_back(
+                    helix::gcode::GCodeOpsDetector::operation_type_name(op) + "_disabled");
+            }
 
-            spdlog::info("[{}] Uploading modified G-code to {}", self->get_name(), temp_filename);
+            // Check if helix_print plugin is available
+            if (self->api_->has_helix_plugin()) {
+                // NEW PATH: Use helix_print plugin (single API call)
+                spdlog::info("[{}] Using helix_print plugin for modified print", self->get_name());
 
-            self->api_->upload_file_with_name(
-                "gcodes", temp_filename, temp_filename, modified_content,
-                // Success: start print with modified file
-                [self, temp_filename, original_filename]() {
-                    spdlog::info("[{}] Modified file uploaded, starting print", self->get_name());
+                self->api_->start_modified_print(
+                    file_path, modified_content, mod_names,
+                    // Success callback
+                    [self, original_filename](const MoonrakerAPI::ModifiedPrintResult& result) {
+                        spdlog::info("[{}] Print started via helix_print plugin: {} -> {}",
+                                     self->get_name(), result.original_filename,
+                                     result.print_filename);
 
-                    // Set thumbnail source to original filename before starting print
-                    // This ensures PrintStatusPanel loads the correct thumbnail
-                    get_global_print_status_panel().set_thumbnail_source(original_filename);
+                        // Set thumbnail source to original filename
+                        get_global_print_status_panel().set_thumbnail_source(original_filename);
 
-                    // Start print with the modified file
-                    self->api_->start_print(
-                        temp_filename,
-                        [self, original_filename]() {
-                            spdlog::info("[{}] Print started with modified G-code (original: {})",
-                                         self->get_name(), original_filename);
-                            if (self->print_status_panel_widget_) {
-                                self->hide_detail_view();
-                                ui_nav_push_overlay(self->print_status_panel_widget_);
-                            }
-                        },
-                        [self, temp_filename](const MoonrakerError& error) {
-                            NOTIFY_ERROR("Failed to start print: {}", error.message);
-                            LOG_ERROR_INTERNAL("[{}] Print start failed for {}: {}",
-                                               self->get_name(), temp_filename, error.message);
-                        });
-                },
-                // Error uploading
-                [self](const MoonrakerError& error) {
-                    NOTIFY_ERROR("Failed to upload modified G-code: {}", error.message);
-                    LOG_ERROR_INTERNAL("[{}] Upload failed: {}", self->get_name(), error.message);
-                });
+                        if (self->print_status_panel_widget_) {
+                            self->hide_detail_view();
+                            ui_nav_push_overlay(self->print_status_panel_widget_);
+                        }
+                    },
+                    // Error callback
+                    [self, original_filename](const MoonrakerError& error) {
+                        NOTIFY_ERROR("Failed to start modified print: {}", error.message);
+                        LOG_ERROR_INTERNAL("[{}] helix_print plugin error for {}: {}",
+                                           self->get_name(), original_filename, error.message);
+                    });
+            } else {
+                // LEGACY PATH: Upload to .helix_temp then start print
+                spdlog::info("[{}] Using legacy flow (helix_print plugin not available)",
+                             self->get_name());
+
+                // Generate unique temp filename
+                std::string temp_filename = ".helix_temp/modified_" +
+                                            std::to_string(std::time(nullptr)) + "_" +
+                                            original_filename;
+
+                spdlog::info("[{}] Uploading modified G-code to {}", self->get_name(),
+                             temp_filename);
+
+                self->api_->upload_file_with_name(
+                    "gcodes", temp_filename, temp_filename, modified_content,
+                    // Success: start print with modified file
+                    [self, temp_filename, original_filename]() {
+                        spdlog::info("[{}] Modified file uploaded, starting print",
+                                     self->get_name());
+
+                        // Set thumbnail source to original filename before starting print
+                        // This ensures PrintStatusPanel loads the correct thumbnail
+                        get_global_print_status_panel().set_thumbnail_source(original_filename);
+
+                        // Start print with the modified file
+                        self->api_->start_print(
+                            temp_filename,
+                            [self, original_filename]() {
+                                spdlog::info(
+                                    "[{}] Print started with modified G-code (original: {})",
+                                    self->get_name(), original_filename);
+                                if (self->print_status_panel_widget_) {
+                                    self->hide_detail_view();
+                                    ui_nav_push_overlay(self->print_status_panel_widget_);
+                                }
+                            },
+                            [self, temp_filename](const MoonrakerError& error) {
+                                NOTIFY_ERROR("Failed to start print: {}", error.message);
+                                LOG_ERROR_INTERNAL("[{}] Print start failed for {}: {}",
+                                                   self->get_name(), temp_filename, error.message);
+                            });
+                    },
+                    // Error uploading
+                    [self](const MoonrakerError& error) {
+                        NOTIFY_ERROR("Failed to upload modified G-code: {}", error.message);
+                        LOG_ERROR_INTERNAL("[{}] Upload failed: {}", self->get_name(),
+                                           error.message);
+                    });
+            }
         },
         // Error downloading
         [self, original_filename](const MoonrakerError& error) {

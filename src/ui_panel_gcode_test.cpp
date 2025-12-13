@@ -114,6 +114,24 @@ void GcodeTestPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     spdlog::info("[{}] Panel setup complete", get_name());
 }
 
+void GcodeTestPanel::on_activate() {
+    spdlog::debug("[{}] on_activate()", get_name());
+
+    // Resume G-code viewer rendering
+    if (gcode_viewer_) {
+        ui_gcode_viewer_set_paused(gcode_viewer_, false);
+    }
+}
+
+void GcodeTestPanel::on_deactivate() {
+    spdlog::debug("[{}] on_deactivate()", get_name());
+
+    // Pause G-code viewer rendering when panel is hidden (CPU optimization)
+    if (gcode_viewer_) {
+        ui_gcode_viewer_set_paused(gcode_viewer_, true);
+    }
+}
+
 // ============================================================================
 // PANEL-SPECIFIC API
 // ============================================================================

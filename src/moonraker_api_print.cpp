@@ -116,3 +116,95 @@ void MoonrakerAPI::get_print_state(StringCallback on_result, ErrorCallback on_er
         },
         on_error);
 }
+
+// ============================================================================
+// HelixPrint Plugin Operations
+// ============================================================================
+
+void MoonrakerAPI::check_helix_plugin(BoolCallback on_result, ErrorCallback on_error) {
+    spdlog::debug("[Moonraker API] Checking for helix_print plugin");
+
+    // Query the plugin's status endpoint
+    // Note: This uses HTTP GET, not JSON-RPC
+    // The plugin registers at /server/helix/status
+
+    // For now, we'll try a JSON-RPC call that the plugin might expose
+    // If that fails, we fall back to assuming no plugin
+    // Use silent=true to suppress error toasts for this internal probe request
+    client_.send_jsonrpc(
+        "server.helix.status", json::object(),
+        [this, on_result](json response) {
+            // Plugin is available
+            bool enabled = true;
+            if (response.contains("result") && response["result"].contains("enabled")) {
+                enabled = response["result"]["enabled"].get<bool>();
+            }
+            helix_plugin_available_ = enabled;
+            helix_plugin_checked_ = true;
+            spdlog::info("[Moonraker API] helix_print plugin detected (enabled={})", enabled);
+            on_result(enabled);
+        },
+        [this, on_result, on_error](const MoonrakerError& err) {
+            // Plugin not available (404 or method not found)
+            helix_plugin_available_ = false;
+            helix_plugin_checked_ = true;
+            spdlog::debug("[Moonraker API] helix_print plugin not available: {}", err.message);
+            // Don't treat this as an error - just means plugin isn't installed
+            on_result(false);
+        },
+        0,     // timeout_ms: use default
+        true); // silent: suppress RPC_ERROR events/toasts
+}
+
+void MoonrakerAPI::start_modified_print(const std::string& original_filename,
+                                        const std::string& modified_content,
+                                        const std::vector<std::string>& modifications,
+                                        ModifiedPrintCallback on_success, ErrorCallback on_error) {
+    // Validate filename path
+    if (!is_safe_path(original_filename)) {
+        NOTIFY_ERROR("Cannot start modified print. File '{}' has invalid path.", original_filename);
+        if (on_error) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Invalid filename contains directory traversal or illegal characters";
+            err.method = "start_modified_print";
+            on_error(err);
+        }
+        return;
+    }
+
+    // Build modifications array
+    json mods_array = json::array();
+    for (const auto& mod : modifications) {
+        mods_array.push_back(mod);
+    }
+
+    json params = {{"original_filename", original_filename},
+                   {"modified_content", modified_content},
+                   {"modifications", mods_array},
+                   {"copy_metadata", true}};
+
+    spdlog::info("[Moonraker API] Starting modified print via helix_print plugin: {}",
+                 original_filename);
+
+    client_.send_jsonrpc(
+        "server.helix.print_modified", params,
+        [on_success, original_filename](json response) {
+            ModifiedPrintResult result;
+            if (response.contains("result")) {
+                const auto& r = response["result"];
+                result.original_filename =
+                    r.value("original_filename", original_filename);
+                result.print_filename = r.value("print_filename", "");
+                result.temp_filename = r.value("temp_filename", "");
+                result.status = r.value("status", "unknown");
+            } else {
+                result.original_filename = original_filename;
+                result.status = "printing";
+            }
+            spdlog::info("[Moonraker API] Modified print started: {} -> {}",
+                         result.original_filename, result.print_filename);
+            on_success(result);
+        },
+        on_error);
+}

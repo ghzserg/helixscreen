@@ -118,6 +118,7 @@ static void print_help(const char* program_name) {
     printf("  --log-file <path>    Log file path (when --log-dest=file)\n");
     printf("  -M, --memory-report  Log memory usage every 30 seconds (development)\n");
     printf("  --show-memory        Show memory stats overlay (press M to toggle)\n");
+    printf("  --moonraker <url>    Override Moonraker URL (e.g., ws://192.168.1.112:7125)\n");
     printf("  -h, --help           Show this help message\n");
     printf("\nTest Mode Options:\n");
     printf("  --test               Enable test mode (uses all mocks by default)\n");
@@ -512,6 +513,28 @@ bool parse_cli_args(int argc, char** argv, CliArgs& args, int& screen_width, int
             args.memory_report = true;
         } else if (strcmp(argv[i], "--show-memory") == 0) {
             args.show_memory = true;
+        }
+        // Moonraker URL override
+        else if (strcmp(argv[i], "--moonraker") == 0 || strncmp(argv[i], "--moonraker=", 12) == 0) {
+            const char* value = nullptr;
+            if (strncmp(argv[i], "--moonraker=", 12) == 0) {
+                value = argv[i] + 12;
+            } else if (i + 1 < argc) {
+                value = argv[++i];
+            } else {
+                printf("Error: --moonraker requires a URL argument\n");
+                return false;
+            }
+            args.moonraker_url = value;
+            // Normalize: accept either host:port or full ws:// URL
+            if (args.moonraker_url.find("://") == std::string::npos) {
+                // Assume ws:// scheme if not provided
+                args.moonraker_url = "ws://" + args.moonraker_url;
+            }
+            // Append /websocket if not present
+            if (args.moonraker_url.find("/websocket") == std::string::npos) {
+                args.moonraker_url += "/websocket";
+            }
         }
         // Log destination
         else if (strcmp(argv[i], "--log-dest") == 0 || strncmp(argv[i], "--log-dest=", 11) == 0) {

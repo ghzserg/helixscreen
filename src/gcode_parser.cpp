@@ -83,6 +83,7 @@ void GCodeParser::reset() {
     objects_.clear();
     global_bounds_ = AABB();
     lines_parsed_ = 0;
+    out_of_range_width_count_ = 0;
 
     // Layers will be created on-demand when segments are added
     // (see add_segment() which creates a layer if layers_ is empty)
@@ -751,9 +752,7 @@ void GCodeParser::add_segment(const glm::vec3& start, const glm::vec3& end, bool
 
             // Sanity check: width should be reasonable (0.1mm to 2.0mm)
             if (segment.width < 0.1f || segment.width > 2.0f) {
-                spdlog::debug("Calculated out-of-range extrusion width: {:.3f}mm (e={:.3f}, "
-                              "dist={:.3f}, layer_h={:.3f}) - using default",
-                              segment.width, e_delta, xy_distance, metadata_layer_height_);
+                out_of_range_width_count_++;
                 segment.width = 0.0f; // Use default
             }
         }
@@ -872,6 +871,12 @@ ParsedGCodeFile GCodeParser::finalize() {
 
     spdlog::info("Parsed G-code: {} layers, {} segments, {} objects", result.layers.size(),
                  result.total_segments, result.objects.size());
+
+    // Log warning summary if any out-of-range width calculations occurred
+    if (out_of_range_width_count_ > 0) {
+        spdlog::debug("G-code parser: {} segments had out-of-range calculated width (used default)",
+                      out_of_range_width_count_);
+    }
 
     // Debug: Log object bounding boxes
     for (const auto& [name, obj] : result.objects) {

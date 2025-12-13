@@ -520,7 +520,8 @@ RequestId MoonrakerClientMock::send_jsonrpc(const std::string& method, const jso
 RequestId MoonrakerClientMock::send_jsonrpc(const std::string& method, const json& params,
                                             std::function<void(json)> success_cb,
                                             std::function<void(const MoonrakerError&)> error_cb,
-                                            [[maybe_unused]] uint32_t timeout_ms) {
+                                            [[maybe_unused]] uint32_t timeout_ms,
+                                            [[maybe_unused]] bool silent) {
     spdlog::debug("[MoonrakerClientMock] Mock send_jsonrpc: {} (with success/error callbacks)",
                   method);
 
