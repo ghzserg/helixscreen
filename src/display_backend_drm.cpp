@@ -45,7 +45,7 @@ bool drm_device_supports_display(const std::string& device_path) {
     uint64_t has_dumb = 0;
     if (drmGetCap(fd, DRM_CAP_DUMB_BUFFER, &has_dumb) < 0 || !has_dumb) {
         close(fd);
-        spdlog::debug("{}: no dumb buffer support", device_path);
+        spdlog::debug("[DRM Backend] {}: no dumb buffer support", device_path);
         return false;
     }
 
@@ -53,7 +53,7 @@ bool drm_device_supports_display(const std::string& device_path) {
     drmModeRes* resources = drmModeGetResources(fd);
     if (!resources) {
         close(fd);
-        spdlog::debug("{}: failed to get DRM resources", device_path);
+        spdlog::debug("[DRM Backend] {}: failed to get DRM resources", device_path);
         return false;
     }
 
@@ -63,7 +63,7 @@ bool drm_device_supports_display(const std::string& device_path) {
         if (connector) {
             if (connector->connection == DRM_MODE_CONNECTED) {
                 has_connected = true;
-                spdlog::debug("{}: found connected connector type {}", device_path,
+                spdlog::debug("[DRM Backend] {}: found connected connector type {}", device_path,
                               connector->connector_type);
             }
             drmModeFreeConnector(connector);
@@ -76,7 +76,7 @@ bool drm_device_supports_display(const std::string& device_path) {
     close(fd);
 
     if (!has_connected) {
-        spdlog::debug("{}: no connected displays", device_path);
+        spdlog::debug("[DRM Backend] {}: no connected displays", device_path);
     }
 
     return has_connected;
@@ -96,7 +96,7 @@ std::string auto_detect_drm_device() {
     // Priority 1: Environment variable override (for debugging/testing)
     const char* env_device = std::getenv("HELIX_DRM_DEVICE");
     if (env_device && env_device[0] != '\0') {
-        spdlog::info("Using DRM device from HELIX_DRM_DEVICE: {}", env_device);
+        spdlog::info("[DRM Backend] Using DRM device from HELIX_DRM_DEVICE: {}", env_device);
         return env_device;
     }
 
@@ -104,17 +104,17 @@ std::string auto_detect_drm_device() {
     Config* cfg = Config::get_instance();
     std::string config_device = cfg->get<std::string>("/display/drm_device", "");
     if (!config_device.empty()) {
-        spdlog::info("Using DRM device from config: {}", config_device);
+        spdlog::info("[DRM Backend] Using DRM device from config: {}", config_device);
         return config_device;
     }
 
     // Priority 3: Auto-detection
-    spdlog::info("Auto-detecting DRM device...");
+    spdlog::info("[DRM Backend] Auto-detecting DRM device...");
 
     // Scan /dev/dri/card* in order
     DIR* dir = opendir("/dev/dri");
     if (!dir) {
-        spdlog::warn("Cannot open /dev/dri, falling back to card0");
+        spdlog::warn("[DRM Backend] Cannot open /dev/dri, falling back to card0");
         return "/dev/dri/card0";
     }
 
@@ -131,14 +131,14 @@ std::string auto_detect_drm_device() {
     std::sort(candidates.begin(), candidates.end());
 
     for (const auto& candidate : candidates) {
-        spdlog::debug("Checking DRM device: {}", candidate);
+        spdlog::debug("[DRM Backend] Checking DRM device: {}", candidate);
         if (drm_device_supports_display(candidate)) {
-            spdlog::info("Auto-detected DRM device: {}", candidate);
+            spdlog::info("[DRM Backend] Auto-detected DRM device: {}", candidate);
             return candidate;
         }
     }
 
-    spdlog::warn("No suitable DRM device found, falling back to card0");
+    spdlog::warn("[DRM Backend] No suitable DRM device found, falling back to card0");
     return "/dev/dri/card0";
 }
 
@@ -153,13 +153,13 @@ bool DisplayBackendDRM::is_available() const {
 
     // Check if DRM device exists
     if (stat(drm_device_.c_str(), &st) != 0) {
-        spdlog::debug("DRM device {} not found", drm_device_);
+        spdlog::debug("[DRM Backend] DRM device {} not found", drm_device_);
         return false;
     }
 
     // Check if we can access it
     if (access(drm_device_.c_str(), R_OK | W_OK) != 0) {
-        spdlog::debug("DRM device {} not accessible (need R/W permissions, check video group)",
+        spdlog::debug("[DRM Backend] DRM device {} not accessible (need R/W permissions, check video group)",
                       drm_device_);
         return false;
     }
@@ -168,20 +168,20 @@ bool DisplayBackendDRM::is_available() const {
 }
 
 lv_display_t* DisplayBackendDRM::create_display(int width, int height) {
-    spdlog::info("Creating DRM display on {}", drm_device_);
+    spdlog::info("[DRM Backend] Creating DRM display on {}", drm_device_);
 
     // LVGL's DRM driver
     display_ = lv_linux_drm_create();
 
     if (display_ == nullptr) {
-        spdlog::error("Failed to create DRM display");
+        spdlog::error("[DRM Backend] Failed to create DRM display");
         return nullptr;
     }
 
     // Set the DRM device path
     lv_linux_drm_set_file(display_, drm_device_.c_str(), -1);
 
-    spdlog::info("DRM display created: {}x{} on {}", width, height, drm_device_);
+    spdlog::info("[DRM Backend] DRM display created: {}x{} on {}", width, height, drm_device_);
     return display_;
 }
 
@@ -192,7 +192,7 @@ lv_indev_t* DisplayBackendDRM::create_input_pointer() {
     const char* env_device = std::getenv("HELIX_TOUCH_DEVICE");
     if (env_device && env_device[0] != '\0') {
         device_override = env_device;
-        spdlog::info("Using touch device from HELIX_TOUCH_DEVICE: {}", device_override);
+        spdlog::info("[DRM Backend] Using touch device from HELIX_TOUCH_DEVICE: {}", device_override);
     }
 
     // Priority 2: Config file override
@@ -200,7 +200,7 @@ lv_indev_t* DisplayBackendDRM::create_input_pointer() {
         Config* cfg = Config::get_instance();
         device_override = cfg->get<std::string>("/display/touch_device", "");
         if (!device_override.empty()) {
-            spdlog::info("Using touch device from config: {}", device_override);
+            spdlog::info("[DRM Backend] Using touch device from config: {}", device_override);
         }
     }
 
@@ -208,60 +208,60 @@ lv_indev_t* DisplayBackendDRM::create_input_pointer() {
     if (!device_override.empty()) {
         pointer_ = lv_libinput_create(LV_INDEV_TYPE_POINTER, device_override.c_str());
         if (pointer_ != nullptr) {
-            spdlog::info("Libinput pointer device created on {}", device_override);
+            spdlog::info("[DRM Backend] Libinput pointer device created on {}", device_override);
             return pointer_;
         }
         // Try evdev as fallback for the specified device
         pointer_ = lv_evdev_create(LV_INDEV_TYPE_POINTER, device_override.c_str());
         if (pointer_ != nullptr) {
-            spdlog::info("Evdev pointer device created on {}", device_override);
+            spdlog::info("[DRM Backend] Evdev pointer device created on {}", device_override);
             return pointer_;
         }
-        spdlog::warn("Could not open specified touch device: {}", device_override);
+        spdlog::warn("[DRM Backend] Could not open specified touch device: {}", device_override);
     }
 
     // Priority 3: Auto-discover using libinput
     // Look for touch or pointer capability devices
-    spdlog::info("Auto-detecting touch/pointer device via libinput...");
+    spdlog::info("[DRM Backend] Auto-detecting touch/pointer device via libinput...");
 
     // Try to find a touch device first (for touchscreens like DSI displays)
     char* touch_path = lv_libinput_find_dev(LV_LIBINPUT_CAPABILITY_TOUCH, true);
     if (touch_path) {
-        spdlog::info("Found touch device: {}", touch_path);
+        spdlog::info("[DRM Backend] Found touch device: {}", touch_path);
         pointer_ = lv_libinput_create(LV_INDEV_TYPE_POINTER, touch_path);
         if (pointer_ != nullptr) {
-            spdlog::info("Libinput touch device created on {}", touch_path);
+            spdlog::info("[DRM Backend] Libinput touch device created on {}", touch_path);
             return pointer_;
         }
-        spdlog::warn("Failed to create libinput device for: {}", touch_path);
+        spdlog::warn("[DRM Backend] Failed to create libinput device for: {}", touch_path);
     }
 
     // Try pointer devices (mouse, trackpad)
     char* pointer_path = lv_libinput_find_dev(LV_LIBINPUT_CAPABILITY_POINTER, false);
     if (pointer_path) {
-        spdlog::info("Found pointer device: {}", pointer_path);
+        spdlog::info("[DRM Backend] Found pointer device: {}", pointer_path);
         pointer_ = lv_libinput_create(LV_INDEV_TYPE_POINTER, pointer_path);
         if (pointer_ != nullptr) {
-            spdlog::info("Libinput pointer device created on {}", pointer_path);
+            spdlog::info("[DRM Backend] Libinput pointer device created on {}", pointer_path);
             return pointer_;
         }
-        spdlog::warn("Failed to create libinput device for: {}", pointer_path);
+        spdlog::warn("[DRM Backend] Failed to create libinput device for: {}", pointer_path);
     }
 
     // Priority 4: Fallback to evdev on common device paths
-    spdlog::warn("Libinput auto-detection failed, trying evdev fallback");
+    spdlog::warn("[DRM Backend] Libinput auto-detection failed, trying evdev fallback");
 
     // Try event1 first (common for touchscreens on Pi)
     const char* fallback_devices[] = {"/dev/input/event1", "/dev/input/event0"};
     for (const char* dev : fallback_devices) {
         pointer_ = lv_evdev_create(LV_INDEV_TYPE_POINTER, dev);
         if (pointer_ != nullptr) {
-            spdlog::info("Evdev pointer device created on {}", dev);
+            spdlog::info("[DRM Backend] Evdev pointer device created on {}", dev);
             return pointer_;
         }
     }
 
-    spdlog::error("Failed to create any input device");
+    spdlog::error("[DRM Backend] Failed to create any input device");
     return nullptr;
 }
 

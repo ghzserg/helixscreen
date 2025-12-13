@@ -21,51 +21,51 @@ bool DisplayBackendSDL::is_available() const {
 }
 
 lv_display_t* DisplayBackendSDL::create_display(int width, int height) {
-    spdlog::debug("Creating SDL display: {}x{}", width, height);
+    spdlog::debug("[SDL Backend] Creating SDL display: {}x{}", width, height);
 
     // LVGL's SDL driver handles SDL_Init and window creation internally
     display_ = lv_sdl_window_create(width, height);
 
     if (display_ == nullptr) {
-        spdlog::error("Failed to create SDL display");
+        spdlog::error("[SDL Backend] Failed to create SDL display");
         return nullptr;
     }
 
-    spdlog::info("SDL display created: {}x{}", width, height);
+    spdlog::info("[SDL Backend] SDL display created: {}x{}", width, height);
     return display_;
 }
 
 lv_indev_t* DisplayBackendSDL::create_input_pointer() {
     if (display_ == nullptr) {
-        spdlog::error("Cannot create input device without display");
+        spdlog::error("[SDL Backend] Cannot create input device without display");
         return nullptr;
     }
 
     mouse_ = lv_sdl_mouse_create();
 
     if (mouse_ == nullptr) {
-        spdlog::error("Failed to create SDL mouse input");
+        spdlog::error("[SDL Backend] Failed to create SDL mouse input");
         return nullptr;
     }
 
-    spdlog::debug("SDL mouse input created");
+    spdlog::debug("[SDL Backend] SDL mouse input created");
     return mouse_;
 }
 
 lv_indev_t* DisplayBackendSDL::create_input_keyboard() {
     if (display_ == nullptr) {
-        spdlog::error("Cannot create keyboard without display");
+        spdlog::error("[SDL Backend] Cannot create keyboard without display");
         return nullptr;
     }
 
     keyboard_ = lv_sdl_keyboard_create();
 
     if (keyboard_ == nullptr) {
-        spdlog::warn("Failed to create SDL keyboard input");
+        spdlog::warn("[SDL Backend] Failed to create SDL keyboard input");
         return nullptr;
     }
 
-    spdlog::debug("SDL keyboard input created");
+    spdlog::debug("[SDL Backend] SDL keyboard input created");
     return keyboard_;
 }
 

@@ -28,13 +28,13 @@ bool DisplayBackendFbdev::is_available() const {
 
     // Check if framebuffer device exists and is accessible
     if (stat(fb_device_.c_str(), &st) != 0) {
-        spdlog::debug("Framebuffer device {} not found", fb_device_);
+        spdlog::debug("[Fbdev Backend] Framebuffer device {} not found", fb_device_);
         return false;
     }
 
     // Check if we can read it (need read access for display)
     if (access(fb_device_.c_str(), R_OK | W_OK) != 0) {
-        spdlog::debug("Framebuffer device {} not accessible (need R/W permissions)", fb_device_);
+        spdlog::debug("[Fbdev Backend] Framebuffer device {} not accessible (need R/W permissions)", fb_device_);
         return false;
     }
 
@@ -42,21 +42,21 @@ bool DisplayBackendFbdev::is_available() const {
 }
 
 lv_display_t* DisplayBackendFbdev::create_display(int width, int height) {
-    spdlog::info("Creating framebuffer display on {}", fb_device_);
+    spdlog::info("[Fbdev Backend] Creating framebuffer display on {}", fb_device_);
 
     // LVGL's framebuffer driver
     // Note: LVGL 9.x uses lv_linux_fbdev_create()
     display_ = lv_linux_fbdev_create();
 
     if (display_ == nullptr) {
-        spdlog::error("Failed to create framebuffer display");
+        spdlog::error("[Fbdev Backend] Failed to create framebuffer display");
         return nullptr;
     }
 
     // Set the framebuffer device path
     lv_linux_fbdev_set_file(display_, fb_device_.c_str());
 
-    spdlog::info("Framebuffer display created: {}x{} on {}", width, height, fb_device_);
+    spdlog::info("[Fbdev Backend] Framebuffer display created: {}x{} on {}", width, height, fb_device_);
     return display_;
 }
 
@@ -68,21 +68,21 @@ lv_indev_t* DisplayBackendFbdev::create_input_pointer() {
     }
 
     if (touch_path.empty()) {
-        spdlog::warn("No touch device found - pointer input disabled");
+        spdlog::warn("[Fbdev Backend] No touch device found - pointer input disabled");
         return nullptr;
     }
 
-    spdlog::info("Creating evdev touch input on {}", touch_path);
+    spdlog::info("[Fbdev Backend] Creating evdev touch input on {}", touch_path);
 
     // LVGL's evdev driver for touch input
     touch_ = lv_evdev_create(LV_INDEV_TYPE_POINTER, touch_path.c_str());
 
     if (touch_ == nullptr) {
-        spdlog::error("Failed to create evdev touch input on {}", touch_path);
+        spdlog::error("[Fbdev Backend] Failed to create evdev touch input on {}", touch_path);
         return nullptr;
     }
 
-    spdlog::info("Evdev touch input created on {}", touch_path);
+    spdlog::info("[Fbdev Backend] Evdev touch input created on {}", touch_path);
     return touch_;
 }
 
@@ -90,7 +90,7 @@ std::string DisplayBackendFbdev::auto_detect_touch_device() const {
     // Check environment variable first
     const char* env_device = std::getenv("HELIX_TOUCH_DEVICE");
     if (env_device != nullptr && strlen(env_device) > 0) {
-        spdlog::debug("Using touch device from HELIX_TOUCH_DEVICE: {}", env_device);
+        spdlog::debug("[Fbdev Backend] Using touch device from HELIX_TOUCH_DEVICE: {}", env_device);
         return env_device;
     }
 
@@ -101,7 +101,7 @@ std::string DisplayBackendFbdev::auto_detect_touch_device() const {
     const char* input_dir = "/dev/input";
     DIR* dir = opendir(input_dir);
     if (dir == nullptr) {
-        spdlog::debug("Cannot open {}", input_dir);
+        spdlog::debug("[Fbdev Backend] Cannot open {}", input_dir);
         return "/dev/input/event0"; // Default fallback
     }
 
@@ -133,11 +133,11 @@ std::string DisplayBackendFbdev::auto_detect_touch_device() const {
     closedir(dir);
 
     if (best_device.empty()) {
-        spdlog::debug("No accessible event device found, using default");
+        spdlog::debug("[Fbdev Backend] No accessible event device found, using default");
         return "/dev/input/event0";
     }
 
-    spdlog::debug("Auto-detected touch device: {}", best_device);
+    spdlog::debug("[Fbdev Backend] Auto-detected touch device: {}", best_device);
     return best_device;
 }
 
