@@ -426,8 +426,8 @@ void PrintSelectPanel::refresh_files() {
         return;
     }
 
-    spdlog::info("[{}] Refreshing file list from Moonraker (path: '{}')...", get_name(),
-                 current_path_.empty() ? "/" : current_path_);
+    spdlog::debug("[{}] Refreshing file list from Moonraker (path: '{}')...", get_name(),
+                  current_path_.empty() ? "/" : current_path_);
 
     // Capture 'this' for async callbacks
     auto* self = this;
@@ -437,7 +437,7 @@ void PrintSelectPanel::refresh_files() {
         "gcodes", current_path_, false,
         // Success callback
         [self](const std::vector<FileInfo>& files) {
-            spdlog::info("[{}] Received {} items from Moonraker", self->get_name(), files.size());
+            spdlog::debug("[{}] Received {} items from Moonraker", self->get_name(), files.size());
 
             // Clear existing file list and metadata tracking
             self->file_list_.clear();
@@ -679,7 +679,7 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
                         self->file_list_[d->index].layer_count = d->layer_count;
                         self->file_list_[d->index].layer_count_str = d->layer_count_str;
 
-                        spdlog::debug("[{}] Updated metadata for {}: {}min, {}g, {} layers",
+                        spdlog::trace("[{}] Updated metadata for {}: {}min, {}g, {} layers",
                                       self->get_name(), d->filename, d->print_time_minutes,
                                       d->filament_grams, d->layer_count);
 
@@ -688,12 +688,12 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
                             if (d->thumb_is_local) {
                                 // Local file exists - use directly (mock mode)
                                 self->file_list_[d->index].thumbnail_path = "A:" + d->thumb_path;
-                                spdlog::debug("[{}] Using local thumbnail for {}: {}",
+                                spdlog::trace("[{}] Using local thumbnail for {}: {}",
                                               self->get_name(), d->filename,
                                               self->file_list_[d->index].thumbnail_path);
                             } else {
                                 // Remote path - download from Moonraker
-                                spdlog::debug("[{}] Downloading thumbnail for {}: {} -> {}",
+                                spdlog::trace("[{}] Downloading thumbnail for {}: {} -> {}",
                                               self->get_name(), d->filename, d->thumb_path,
                                               d->cache_file);
 

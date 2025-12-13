@@ -48,10 +48,10 @@ class GCodeViewerState {
         camera_ = std::make_unique<helix::gcode::GCodeCamera>();
 #ifdef ENABLE_TINYGL_3D
         renderer_ = std::make_unique<helix::gcode::GCodeTinyGLRenderer>();
-        spdlog::info("GCode viewer using TinyGL 3D renderer");
+        spdlog::debug("[GCodeViewer] Using TinyGL 3D renderer");
 #else
         renderer_ = std::make_unique<helix::gcode::GCodeRenderer>();
-        spdlog::info("GCode viewer using LVGL 2D renderer");
+        spdlog::debug("[GCodeViewer] Using LVGL 2D renderer");
 #endif
     }
 
@@ -548,7 +548,7 @@ static void gcode_viewer_size_changed_cb(lv_event_t* e) {
     // Trigger redraw with new aspect ratio
     lv_obj_invalidate(obj);
 
-    spdlog::debug("GCodeViewer SIZE_CHANGED: {}x{}, aspect={:.3f}", width, height,
+    spdlog::trace("[GCodeViewer] SIZE_CHANGED: {}x{}, aspect={:.3f}", width, height,
                   (float)width / (float)height);
 }
 
@@ -560,7 +560,7 @@ static void gcode_viewer_delete_cb(lv_event_t* e) {
     gcode_viewer_state_t* st = get_state(obj);
 
     if (st) {
-        spdlog::debug("GCodeViewer: Widget destroyed");
+        spdlog::trace("[GCodeViewer] Widget destroyed");
         delete st; // RAII destructor handles thread cleanup, timers, etc.
         lv_obj_set_user_data(obj, nullptr);
     }

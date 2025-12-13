@@ -94,7 +94,7 @@ void MoonrakerAPI::get_file_metadata(const std::string& filename, FileMetadataCa
 
     json params = {{"filename", filename}};
 
-    spdlog::debug("[Moonraker API] Getting metadata for file: {}", filename);
+    spdlog::trace("[Moonraker API] Getting metadata for file: {}", filename);
 
     client_.send_jsonrpc(
         "server.files.metadata", params,
@@ -410,7 +410,7 @@ void MoonrakerAPI::download_thumbnail(const std::string& thumbnail_path,
     std::string encoded_path = HUrl::escape(thumbnail_path, "/.-_");
     std::string url = http_base_url_ + "/server/files/gcodes/" + encoded_path;
 
-    spdlog::debug("[Moonraker API] Downloading thumbnail: {} -> {}", url, cache_path);
+    spdlog::trace("[Moonraker API] Downloading thumbnail: {} -> {}", url, cache_path);
 
     // Run HTTP request in a tracked thread to ensure clean shutdown
     launch_http_thread([url, thumbnail_path, cache_path, on_success, on_error]() {
@@ -474,7 +474,7 @@ void MoonrakerAPI::download_thumbnail(const std::string& thumbnail_path,
         file.write(resp->body.data(), static_cast<std::streamsize>(resp->body.size()));
         file.close();
 
-        spdlog::debug("[Moonraker API] Cached thumbnail {} bytes -> {}", resp->body.size(),
+        spdlog::trace("[Moonraker API] Cached thumbnail {} bytes -> {}", resp->body.size(),
                       cache_path);
 
         if (on_success) {

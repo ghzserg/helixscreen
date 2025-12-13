@@ -640,7 +640,7 @@ static void setup_slot_observers(AmsSlotData* data) {
         }
     }
 
-    spdlog::debug("[AmsSlot] Created observers for slot {}", data->slot_index);
+    spdlog::trace("[AmsSlot] Created observers for slot {}", data->slot_index);
 }
 
 // ============================================================================

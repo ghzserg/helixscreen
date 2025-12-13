@@ -258,7 +258,7 @@ void SettingsManager::init_subjects() {
         return;
     }
 
-    spdlog::info("[SettingsManager] Initializing subjects");
+    spdlog::debug("[SettingsManager] Initializing subjects");
 
     // Get initial values from Config
     Config* config = Config::get_instance();

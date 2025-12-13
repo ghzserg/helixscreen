@@ -14,7 +14,7 @@
 std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type) {
     // Check if mock mode is requested
     if (get_runtime_config().should_mock_ams()) {
-        spdlog::info("[AMS Backend] Creating mock backend (mock mode enabled)");
+        spdlog::debug("[AMS Backend] Creating mock backend (mock mode enabled)");
         return std::make_unique<AmsBackendMock>(4);
     }
 
@@ -39,7 +39,7 @@ std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, MoonrakerA
                                                MoonrakerClient* client) {
     // Check if mock mode is requested
     if (get_runtime_config().should_mock_ams()) {
-        spdlog::info("[AMS Backend] Creating mock backend (mock mode enabled)");
+        spdlog::debug("[AMS Backend] Creating mock backend (mock mode enabled)");
         return std::make_unique<AmsBackendMock>(4);
     }
 
@@ -49,7 +49,7 @@ std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, MoonrakerA
             spdlog::error("[AMS Backend] Happy Hare requires MoonrakerAPI and MoonrakerClient");
             return nullptr;
         }
-        spdlog::info("[AMS Backend] Creating Happy Hare backend");
+        spdlog::debug("[AMS Backend] Creating Happy Hare backend");
         return std::make_unique<AmsBackendHappyHare>(api, client);
 
     case AmsType::AFC:
@@ -57,7 +57,7 @@ std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, MoonrakerA
             spdlog::error("[AMS Backend] AFC requires MoonrakerAPI and MoonrakerClient");
             return nullptr;
         }
-        spdlog::info("[AMS Backend] Creating AFC backend");
+        spdlog::debug("[AMS Backend] Creating AFC backend");
         return std::make_unique<AmsBackendAfc>(api, client);
 
     case AmsType::NONE:

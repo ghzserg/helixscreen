@@ -95,7 +95,7 @@ std::string ThumbnailCache::get_if_cached(const std::string& relative_path) cons
     // Check if cached locally
     std::string cache_path = get_cache_path(relative_path);
     if (std::filesystem::exists(cache_path)) {
-        spdlog::debug("[ThumbnailCache] Cache hit for {}", relative_path);
+        spdlog::trace("[ThumbnailCache] Cache hit for {}", relative_path);
         return to_lvgl_path(cache_path);
     }
 
@@ -176,7 +176,7 @@ void ThumbnailCache::fetch(MoonrakerAPI* api, const std::string& relative_path,
     if (is_lvgl_path(relative_path)) {
         std::string local_path = relative_path.substr(2);
         if (std::filesystem::exists(local_path)) {
-            spdlog::debug("[ThumbnailCache] Already LVGL path: {}", relative_path);
+            spdlog::trace("[ThumbnailCache] Already LVGL path: {}", relative_path);
             if (on_success) {
                 on_success(relative_path);
             }
@@ -188,7 +188,7 @@ void ThumbnailCache::fetch(MoonrakerAPI* api, const std::string& relative_path,
 
     // Check local filesystem first (might be a local file path in mock mode)
     if (std::filesystem::exists(relative_path)) {
-        spdlog::debug("[ThumbnailCache] Local file exists: {}", relative_path);
+        spdlog::trace("[ThumbnailCache] Local file exists: {}", relative_path);
         if (on_success) {
             on_success(to_lvgl_path(relative_path));
         }
@@ -216,13 +216,13 @@ void ThumbnailCache::fetch(MoonrakerAPI* api, const std::string& relative_path,
     evict_if_needed();
 
     std::string cache_path = get_cache_path(relative_path);
-    spdlog::debug("[ThumbnailCache] Downloading {} -> {}", relative_path, cache_path);
+    spdlog::trace("[ThumbnailCache] Downloading {} -> {}", relative_path, cache_path);
 
     api->download_thumbnail(
         relative_path, cache_path,
         // Success callback
         [this, on_success, relative_path](const std::string& local_path) {
-            spdlog::debug("[ThumbnailCache] Downloaded {} to {}", relative_path, local_path);
+            spdlog::trace("[ThumbnailCache] Downloaded {} to {}", relative_path, local_path);
             // Check if we need eviction after download
             evict_if_needed();
             if (on_success) {

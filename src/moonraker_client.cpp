@@ -744,7 +744,7 @@ int MoonrakerClient::send_jsonrpc(const std::string& method) {
     rpc["method"] = method;
     rpc["id"] = request_id_++;
 
-    spdlog::debug("[Moonraker Client] send_jsonrpc: {}", rpc.dump());
+    spdlog::trace("[Moonraker Client] send_jsonrpc: {}", rpc.dump());
     return send(rpc.dump());
 }
 
@@ -760,7 +760,7 @@ int MoonrakerClient::send_jsonrpc(const std::string& method, const json& params)
 
     rpc["id"] = request_id_++;
 
-    spdlog::debug("[Moonraker Client] send_jsonrpc: {}", rpc.dump());
+    spdlog::trace("[Moonraker Client] send_jsonrpc: {}", rpc.dump());
     return send(rpc.dump());
 }
 
@@ -799,7 +799,7 @@ RequestId MoonrakerClient::send_jsonrpc(const std::string& method, const json& p
             return INVALID_REQUEST_ID;
         }
         pending_requests_.insert({id, request});
-        spdlog::debug("[Moonraker Client] Registered request {} for method {}, total pending: {}",
+        spdlog::trace("[Moonraker Client] Registered request {} for method {}, total pending: {}",
                       id, method, pending_requests_.size());
     }
 
@@ -814,9 +814,9 @@ RequestId MoonrakerClient::send_jsonrpc(const std::string& method, const json& p
         rpc["params"] = params;
     }
 
-    spdlog::debug("[Moonraker Client] send_jsonrpc: {}", rpc.dump());
+    spdlog::trace("[Moonraker Client] send_jsonrpc: {}", rpc.dump());
     int result = send(rpc.dump());
-    spdlog::debug("[Moonraker Client] send_jsonrpc({}) returned {}", method, result);
+    spdlog::trace("[Moonraker Client] send_jsonrpc({}) returned {}", method, result);
 
     // Return the request ID on success, or INVALID_REQUEST_ID on send failure
     if (result < 0) {
@@ -1134,8 +1134,8 @@ void MoonrakerClient::complete_discovery_subscription(std::function<void()> on_c
         "printer.objects.subscribe", subscribe_params,
         [this, on_complete, subscription_objects](json sub_response) {
             if (sub_response.contains("result")) {
-                spdlog::debug("[Moonraker Client] Subscription complete: {} objects subscribed",
-                              subscription_objects.size());
+                spdlog::info("[Moonraker Client] Subscription complete: {} objects subscribed",
+                             subscription_objects.size());
 
                 // Process initial state from subscription response
                 // Moonraker returns current values in result.status

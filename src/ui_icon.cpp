@@ -290,7 +290,7 @@ void ui_icon_set_source(lv_obj_t* icon, const char* icon_name) {
     }
 
     apply_source(icon, icon_name);
-    spdlog::debug("[Icon] Changed icon source to '{}'", icon_name);
+    spdlog::trace("[Icon] Changed icon source to '{}'", icon_name);
 }
 
 void ui_icon_set_size(lv_obj_t* icon, const char* size_str) {
@@ -301,7 +301,7 @@ void ui_icon_set_size(lv_obj_t* icon, const char* size_str) {
 
     IconSize size = parse_size(size_str);
     apply_size(icon, size);
-    spdlog::debug("[Icon] Changed icon size to '{}'", size_str);
+    spdlog::trace("[Icon] Changed icon size to '{}'", size_str);
 }
 
 void ui_icon_set_variant(lv_obj_t* icon, const char* variant_str) {
@@ -312,7 +312,7 @@ void ui_icon_set_variant(lv_obj_t* icon, const char* variant_str) {
 
     IconVariant variant = parse_variant(variant_str);
     apply_variant(icon, variant);
-    spdlog::debug("[Icon] Changed icon variant to '{}'", variant_str);
+    spdlog::trace("[Icon] Changed icon variant to '{}'", variant_str);
 }
 
 void ui_icon_set_color(lv_obj_t* icon, lv_color_t color, lv_opa_t opa) {

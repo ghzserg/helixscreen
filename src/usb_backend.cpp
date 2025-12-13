@@ -13,13 +13,13 @@
 
 std::unique_ptr<UsbBackend> UsbBackend::create(bool force_mock) {
     if (force_mock) {
-        spdlog::info("[UsbBackend] Creating mock backend (force_mock=true)");
+        spdlog::debug("[UsbBackend] Creating mock backend (force_mock=true)");
         return std::make_unique<UsbBackendMock>();
     }
 
 #ifdef __linux__
     // Linux: Use inotify-based backend for real USB monitoring
-    spdlog::info("[UsbBackend] Linux platform detected - using inotify backend");
+    spdlog::debug("[UsbBackend] Linux platform detected - using inotify backend");
     auto backend = std::make_unique<UsbBackendLinux>();
     UsbError result = backend->start();
     if (result.success()) {
@@ -33,7 +33,7 @@ std::unique_ptr<UsbBackend> UsbBackend::create(bool force_mock) {
 #elif defined(__APPLE__)
     // macOS: Use mock backend for development
     // FSEvents-based backend can be added later for real monitoring
-    spdlog::info("[UsbBackend] macOS platform detected - using mock backend");
+    spdlog::debug("[UsbBackend] macOS platform detected - using mock backend");
     return std::make_unique<UsbBackendMock>();
 #else
     // Unsupported platform: return mock

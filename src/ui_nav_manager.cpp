@@ -355,7 +355,7 @@ void NavigationManager::wire_status_icons(lv_obj_t* navbar) {
         lv_obj_remove_flag(icon_widget, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
 
-        spdlog::debug("[NavigationManager] Status icon {} wired", button_names[i]);
+        spdlog::trace("[NavigationManager] Status icon {} wired", button_names[i]);
     }
 }
 

@@ -308,13 +308,13 @@ void AmsState::update_gate(int gate_index) {
         lv_subject_set_int(&gate_statuses_[gate_index], static_cast<int>(gate.status));
         bump_gates_version();
 
-        spdlog::debug("[AMS State] Updated gate {} - color=0x{:06X}, status={}", gate_index,
+        spdlog::trace("[AMS State] Updated gate {} - color=0x{:06X}, status={}", gate_index,
                       gate.color_rgb, gate_status_to_string(gate.status));
     }
 }
 
 void AmsState::on_backend_event(const std::string& event, const std::string& data) {
-    spdlog::debug("[AMS State] Received event '{}' data='{}'", event, data);
+    spdlog::trace("[AMS State] Received event '{}' data='{}'", event, data);
 
     // Use lv_async_call to post updates to LVGL's main thread
     // This is required because backend events may come from background threads

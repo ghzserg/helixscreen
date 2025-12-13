@@ -70,7 +70,7 @@ void ModalManager::init_subjects() {
         return;
     }
 
-    spdlog::info("[ModalManager] Initializing modal dialog subjects");
+    spdlog::debug("[ModalManager] Initializing modal dialog subjects");
 
     // Initialize integer subjects
     lv_subject_init_int(&dialog_severity_, UI_MODAL_SEVERITY_INFO);
@@ -87,7 +87,7 @@ void ModalManager::init_subjects() {
     lv_xml_register_subject(nullptr, "dialog_cancel_text", &dialog_cancel_text_);
 
     subjects_initialized_ = true;
-    spdlog::info("[ModalManager] Modal dialog subjects registered");
+    spdlog::debug("[ModalManager] Modal dialog subjects registered");
 }
 
 void ModalManager::configure(ui_modal_severity severity, bool show_cancel, const char* primary_text,

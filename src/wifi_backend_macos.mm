@@ -70,7 +70,7 @@ WiFiError WifiBackendMacOS::start() {
         return WiFiErrorHelper::success();
     }
 
-    spdlog::info("[WiFiMacOS] Starting CoreWLAN backend");
+    spdlog::debug("[WiFiMacOS] Starting CoreWLAN backend");
 
     // Check system prerequisites
     WiFiError prereq_check = check_system_prerequisites();

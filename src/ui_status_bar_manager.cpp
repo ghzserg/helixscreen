@@ -55,7 +55,7 @@ enum NotificationSeverityState {
 void StatusBarManager::network_status_observer([[maybe_unused]] lv_observer_t* observer,
                                                lv_subject_t* subject) {
     int32_t network_state = lv_subject_get_int(subject);
-    spdlog::debug("[StatusBarManager] Network observer fired! State: {}", network_state);
+    spdlog::trace("[StatusBarManager] Network observer fired! State: {}", network_state);
 
     // Map integer to NetworkStatus enum
     NetworkStatus status = static_cast<NetworkStatus>(network_state);
@@ -66,7 +66,7 @@ void StatusBarManager::printer_connection_observer([[maybe_unused]] lv_observer_
                                                    lv_subject_t* subject) {
     auto& mgr = StatusBarManager::instance();
     mgr.cached_connection_state_ = lv_subject_get_int(subject);
-    spdlog::debug("[StatusBarManager] Connection state changed to: {}",
+    spdlog::trace("[StatusBarManager] Connection state changed to: {}",
                   mgr.cached_connection_state_);
     mgr.update_printer_icon_combined();
 }
@@ -75,7 +75,7 @@ void StatusBarManager::klippy_state_observer([[maybe_unused]] lv_observer_t* obs
                                              lv_subject_t* subject) {
     auto& mgr = StatusBarManager::instance();
     mgr.cached_klippy_state_ = lv_subject_get_int(subject);
-    spdlog::debug("[StatusBarManager] Klippy state changed to: {}", mgr.cached_klippy_state_);
+    spdlog::trace("[StatusBarManager] Klippy state changed to: {}", mgr.cached_klippy_state_);
     mgr.update_printer_icon_combined();
 }
 
@@ -194,20 +194,20 @@ void StatusBarManager::init() {
 
     // Network status observer
     lv_subject_t* net_subject = printer_state.get_network_status_subject();
-    spdlog::debug("[StatusBarManager] Registering observer on network_status_subject at {}",
+    spdlog::trace("[StatusBarManager] Registering observer on network_status_subject at {}",
                   (void*)net_subject);
     network_observer_ = ObserverGuard(net_subject, network_status_observer, nullptr);
 
     // Printer connection observer
     lv_subject_t* conn_subject = printer_state.get_printer_connection_state_subject();
-    spdlog::debug(
+    spdlog::trace(
         "[StatusBarManager] Registering observer on printer_connection_state_subject at {}",
         (void*)conn_subject);
     connection_observer_ = ObserverGuard(conn_subject, printer_connection_observer, nullptr);
 
     // Klippy state observer
     lv_subject_t* klippy_subject = printer_state.get_klippy_state_subject();
-    spdlog::debug("[StatusBarManager] Registering observer on klippy_state_subject at {}",
+    spdlog::trace("[StatusBarManager] Registering observer on klippy_state_subject at {}",
                   (void*)klippy_subject);
     klippy_observer_ = ObserverGuard(klippy_subject, klippy_state_observer, nullptr);
 
@@ -331,11 +331,11 @@ void StatusBarManager::update_printer_icon_combined() {
     } else { // DISCONNECTED, CONNECTING, RECONNECTING
         if (get_printer_state().was_ever_connected()) {
             new_state = PRINTER_STATE_WARNING;
-            spdlog::debug(
+            spdlog::trace(
                 "[StatusBarManager] Disconnected (was connected) -> printer state WARNING");
         } else {
             new_state = PRINTER_STATE_DISCONNECTED;
-            spdlog::debug("[StatusBarManager] Never connected -> printer state DISCONNECTED");
+            spdlog::trace("[StatusBarManager] Never connected -> printer state DISCONNECTED");
         }
     }
 

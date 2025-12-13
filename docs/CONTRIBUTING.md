@@ -128,28 +128,32 @@ See **[docs/COPYRIGHT_HEADERS.md](docs/COPYRIGHT_HEADERS.md)** for complete deta
 
 ### Logging Standards
 
-**CRITICAL:** All debug, info, warning, and error messages must use **spdlog** for console output.
+**CRITICAL:** All logging must use **spdlog**. See **[docs/LOGGING.md](LOGGING.md)** for comprehensive guidelines.
 
+**Quick Reference:**
+
+| Level | CLI Flag | Use For |
+|-------|----------|---------|
+| **INFO** | `-v` | User-visible milestones only |
+| **DEBUG** | `-vv` | Troubleshooting, batch summaries |
+| **TRACE** | `-vvv` | Per-item loops, wire protocol |
+
+**Message Format:** Always use `[ComponentName]` prefix:
 ```cpp
-#include <spdlog/spdlog.h>
-
-// Log levels (use appropriately):
-spdlog::trace("Very detailed tracing");           // Function entry/exit
-spdlog::debug("Debug information");               // Development details
-spdlog::info("General information");              // Normal operation
-spdlog::warn("Warning condition");                // Recoverable issues
-spdlog::error("Error condition");                 // Failed operations
+spdlog::info("[Home Panel] Setup complete!");
+spdlog::debug("[Theme] Auto-registered 21 color pairs");
+spdlog::trace("[Moonraker Client] send_jsonrpc: {}", rpc.dump());
 ```
 
-**Formatting:**
-- Use **fmt-style formatting**: `spdlog::info("Value: {}", val);`
-- **NOT** printf-style: ~~`spdlog::info("Value: %d", val);`~~
-- Enums must be cast: `spdlog::debug("Panel ID: {}", (int)panel_id);`
+**Loop Pattern:** TRACE for per-item, DEBUG for summary:
+```cpp
+for (const auto& item : items) {
+    spdlog::trace("[Theme] Registering {}", item.name);  // Per-item
+}
+spdlog::debug("[Theme] Registered {} items", count);     // Summary
+```
 
-**Do NOT use:**
-- `printf()` / `fprintf()` - Use spdlog instead
-- `std::cout` / `std::cerr` - Use spdlog instead
-- `LV_LOG_*` macros - Use spdlog instead
+**Do NOT use:** `printf()`, `std::cout`, `LV_LOG_*` - Use spdlog instead
 
 ### Naming Conventions
 

@@ -835,7 +835,7 @@ static void initialize_moonraker_client(Config* config) {
     // Instead, queue the state change and process it on the main thread.
     moonraker_client->set_state_change_callback([](ConnectionState old_state,
                                                    ConnectionState new_state) {
-        spdlog::debug("[main] State change callback invoked: {} -> {} (queueing for main thread)",
+        spdlog::trace("[main] State change callback invoked: {} -> {} (queueing for main thread)",
                       static_cast<int>(old_state), static_cast<int>(new_state));
 
         // Queue state change for main thread processing (same mutex as notifications)
@@ -901,7 +901,7 @@ static void initialize_moonraker_client(Config* config) {
     // Set initial panel for visibility tracking (home_panel is default)
     EmergencyStopOverlay::instance().on_panel_changed("home_panel");
 
-    spdlog::debug("Moonraker client initialized (not connected yet)");
+    spdlog::info("[main] Moonraker client initialized (not connected yet)");
 
     // Create PRINT_START progress collector
     // Monitors notify_gcode_response during print initialization to show phase progress
@@ -1353,7 +1353,7 @@ int main(int argc, char** argv) {
         spdlog::error("Failed to create print status panel");
     }
 
-    spdlog::debug("XML UI created successfully with reactive navigation");
+    spdlog::info("XML UI created successfully with reactive navigation");
 
     // Test notifications - commented out, uncomment to debug notification history
     // if (get_runtime_config().test_mode) {
@@ -1733,7 +1733,7 @@ int main(int argc, char** argv) {
                         "Reconnecting...",  // RECONNECTING
                         "Connection Failed" // FAILED
                     };
-                    spdlog::debug("[main] Processing queued connection state change: {}",
+                    spdlog::trace("[main] Processing queued connection state change: {}",
                                   messages[new_state]);
                     get_printer_state().set_printer_connection_state(new_state,
                                                                      messages[new_state]);

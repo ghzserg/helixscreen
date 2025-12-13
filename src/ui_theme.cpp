@@ -138,7 +138,7 @@ static void ui_theme_register_color_pairs(lv_xml_component_scope_t* scope, bool 
 
         if (light_val && dark_val) {
             const char* selected = dark_mode ? dark_val : light_val;
-            spdlog::debug("[Theme] Registering color {}: selected={}", base_name, selected);
+            spdlog::trace("[Theme] Registering color {}: selected={}", base_name, selected);
             lv_xml_register_const(scope, base_name.c_str(), selected);
             registered++;
         }
@@ -211,7 +211,7 @@ void ui_theme_register_responsive_spacing(lv_display_t* display) {
             std::string variant_name = base_name + size_suffix;
             const char* value = lv_xml_get_const(nullptr, variant_name.c_str());
             if (value) {
-                spdlog::debug("[Theme] Registering spacing {}: selected={}", base_name, value);
+                spdlog::trace("[Theme] Registering spacing {}: selected={}", base_name, value);
                 lv_xml_register_const(scope, base_name.c_str(), value);
                 registered++;
             }
@@ -266,7 +266,7 @@ void ui_theme_register_responsive_fonts(lv_display_t* display) {
             std::string variant_name = base_name + size_suffix;
             const char* value = lv_xml_get_const(nullptr, variant_name.c_str());
             if (value) {
-                spdlog::debug("[Theme] Registering font {}: selected={}", base_name, value);
+                spdlog::trace("[Theme] Registering font {}: selected={}", base_name, value);
                 lv_xml_register_const(scope, base_name.c_str(), value);
                 registered++;
             }

@@ -314,7 +314,7 @@ static void* ui_temp_display_create_cb(lv_xml_parser_state_t* state, const char*
     s_registry[container] = data;
     lv_obj_add_event_cb(container, on_delete, LV_EVENT_DELETE, nullptr);
 
-    spdlog::debug("[temp_display] Created widget (size={}, show_target={})", size ? size : "md",
+    spdlog::trace("[temp_display] Created widget (size={}, show_target={})", size ? size : "md",
                   data->show_target);
 
     return container;
@@ -345,7 +345,7 @@ static void ui_temp_display_apply_cb(lv_xml_parser_state_t* state, const char** 
                 char buf[16];
                 snprintf(buf, sizeof(buf), "%d", data->current_temp);
                 lv_label_set_text(data->current_label, buf);
-                spdlog::debug("[temp_display] Bound current to subject '{}' ({}°C)", value,
+                spdlog::trace("[temp_display] Bound current to subject '{}' ({}°C)", value,
                               data->current_temp);
             } else if (!subject) {
                 spdlog::warn("[temp_display] Subject '{}' not found for bind_current", value);
@@ -367,7 +367,7 @@ static void ui_temp_display_apply_cb(lv_xml_parser_state_t* state, const char** 
                 update_heating_color(data);
                 // Hide separator/target when heater is off
                 update_target_visibility(data);
-                spdlog::debug("[temp_display] Bound target to subject '{}' ({}°C)", value,
+                spdlog::trace("[temp_display] Bound target to subject '{}' ({}°C)", value,
                               data->target_temp);
             } else if (!subject) {
                 spdlog::warn("[temp_display] Subject '{}' not found for bind_target", value);

@@ -723,13 +723,13 @@ void PrinterState::set_printer_connection_state(int state, const char* message) 
         spdlog::debug("[PrinterState] First successful connection - was_ever_connected_ = true");
     }
 
-    spdlog::debug("[PrinterState] Setting printer_connection_state_ subject (at {}) to value {}",
+    spdlog::trace("[PrinterState] Setting printer_connection_state_ subject (at {}) to value {}",
                   (void*)&printer_connection_state_, state);
     lv_subject_set_int(&printer_connection_state_, state);
-    spdlog::debug("[PrinterState] Subject value now: {}",
+    spdlog::trace("[PrinterState] Subject value now: {}",
                   lv_subject_get_int(&printer_connection_state_));
     lv_subject_copy_string(&printer_connection_message_, message);
-    spdlog::debug(
+    spdlog::trace(
         "[PrinterState] Printer connection state update complete, observers should be notified");
 }
 

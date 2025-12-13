@@ -231,12 +231,12 @@ static void bed_mesh_size_changed_cb(lv_event_t* e) {
     int width = lv_area_get_width(&coords);
     int height = lv_area_get_height(&coords);
 
-    spdlog::debug("[bed_mesh] SIZE_CHANGED: {}x{}", width, height);
+    spdlog::trace("[bed_mesh] SIZE_CHANGED: {}x{}", width, height);
 
     // Check if this is the first time we have valid dimensions
     if (data && width > 0 && height > 0 && !data->had_valid_size) {
         data->had_valid_size = true;
-        spdlog::debug("[bed_mesh] First valid size received");
+        spdlog::trace("[bed_mesh] First valid size received");
 
         // If mesh data was set while widget was 0x0, force a proper redraw now
         if (data->mesh_data_pending) {
