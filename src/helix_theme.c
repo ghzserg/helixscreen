@@ -123,9 +123,9 @@ static void helix_theme_apply(lv_theme_t* theme, lv_obj_t* obj) {
         // Set MDI font for the dropdown indicator (chevron symbol)
         lv_obj_add_style(obj, &helix->dropdown_indicator_style, LV_PART_INDICATOR);
     }
-    // Dropdown list also uses input bg for consistency
+    // Dropdown list uses button style to contrast with card backgrounds
     if (lv_obj_check_type(obj, &lv_dropdownlist_class)) {
-        lv_obj_add_style(obj, &helix->input_bg_style, LV_PART_MAIN);
+        lv_obj_add_style(obj, &helix->button_style, LV_PART_MAIN);
     }
 #endif
 
@@ -215,12 +215,15 @@ lv_theme_t* helix_theme_init(lv_display_t* display, lv_color_t primary_color,
 
     // Initialize default button style (grey background with border radius, no shadow, theme-aware
     // text color)
+    // Pivot point set to center (50%) so release animation stays centered (matches pressed_style)
     lv_style_init(&helix_theme_instance->button_style);
     lv_style_set_bg_color(&helix_theme_instance->button_style, theme_grey);
     lv_style_set_bg_opa(&helix_theme_instance->button_style, LV_OPA_COVER);
     lv_style_set_radius(&helix_theme_instance->button_style, border_radius);
     lv_style_set_shadow_width(&helix_theme_instance->button_style, 0);
     lv_style_set_text_color(&helix_theme_instance->button_style, text_primary_color);
+    lv_style_set_transform_pivot_x(&helix_theme_instance->button_style, LV_PCT(50));
+    lv_style_set_transform_pivot_y(&helix_theme_instance->button_style, LV_PCT(50));
     lv_style_set_transition(&helix_theme_instance->button_style, &button_press_transition);
 
     // Initialize dropdown indicator style with MDI icon font

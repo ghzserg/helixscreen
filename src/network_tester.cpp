@@ -53,6 +53,15 @@ void NetworkTester::start_test(Callback callback) {
 
     spdlog::info("[NetworkTester] Starting network connectivity test");
 
+    // CRITICAL: Join any previous thread before starting new one.
+    // If a previous test completed naturally, the thread is still joinable
+    // even though running_ is false. Assigning to a joinable std::thread
+    // causes std::terminate()!
+    if (worker_thread_.joinable()) {
+        spdlog::debug("[NetworkTester] Joining previous worker thread");
+        worker_thread_.join();
+    }
+
     callback_ = callback;
     running_ = true;
     cancelled_ = false;
