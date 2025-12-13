@@ -9,10 +9,15 @@
 
 #include <spdlog/spdlog.h>
 
+#include <atomic>
 #include <cstring>
 
 // Async callback data for thread-safe LVGL updates
 namespace {
+
+// Shutdown flag to prevent async callbacks from accessing destroyed singleton
+static std::atomic<bool> s_shutdown_flag{false};
+
 struct AsyncSyncData {
     bool full_sync;
     int gate_index; // Only used if full_sync == false
@@ -20,6 +25,13 @@ struct AsyncSyncData {
 
 void async_sync_callback(void* data) {
     auto* sync_data = static_cast<AsyncSyncData*>(data);
+
+    // Skip if shutdown is in progress - AmsState singleton may be destroyed
+    if (s_shutdown_flag.load(std::memory_order_acquire)) {
+        delete sync_data;
+        return;
+    }
+
     if (sync_data->full_sync) {
         AmsState::instance().sync_from_backend();
     } else {
@@ -39,6 +51,9 @@ AmsState::AmsState() {
 }
 
 AmsState::~AmsState() {
+    // Signal shutdown to prevent async callbacks from accessing this instance
+    s_shutdown_flag.store(true, std::memory_order_release);
+
     // Note: During static destruction, the MoonrakerClient may already be destroyed.
     // We just release the backend without calling stop() to avoid accessing
     // potentially destroyed dependencies. The RAII SubscriptionGuard in the backend
