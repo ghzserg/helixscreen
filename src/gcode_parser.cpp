@@ -227,7 +227,7 @@ bool GCodeParser::parse_exclude_object_command(const std::string& line) {
                     obj.center.y = std::stof(center_str.substr(comma + 1));
                 } catch (...) {
                     // Internal parsing error - no user notification needed
-                    spdlog::debug("Failed to parse CENTER for object: {}", name);
+                    spdlog::debug("[GCode Parser] Failed to parse CENTER for object: {}", name);
                 }
             }
         }
@@ -264,7 +264,7 @@ bool GCodeParser::parse_exclude_object_command(const std::string& line) {
                                 float y = std::stof(polygon_str.substr(pos, close - pos));
                                 obj.polygon.push_back(glm::vec2(x, y));
                                 pos = close + 1;
-                                spdlog::trace("Parsed polygon point: ({}, {})", x, y);
+                                spdlog::trace("[GCode Parser] Parsed polygon point: ({}, {})", x, y);
                             } else {
                                 break;
                             }
@@ -281,7 +281,7 @@ bool GCodeParser::parse_exclude_object_command(const std::string& line) {
         }
 
         objects_[name] = obj;
-        spdlog::debug("Defined object: {} at ({}, {})", name, obj.center.x, obj.center.y);
+        spdlog::debug("[GCode Parser] Defined object: {} at ({}, {})", name, obj.center.x, obj.center.y);
         return true;
     }
     // EXCLUDE_OBJECT_START NAME=...
@@ -290,14 +290,14 @@ bool GCodeParser::parse_exclude_object_command(const std::string& line) {
             current_object_.clear();
             return false;
         }
-        spdlog::trace("Started object: {}", current_object_);
+        spdlog::trace("[GCode Parser] Started object: {}", current_object_);
         return true;
     }
     // EXCLUDE_OBJECT_END NAME=...
     else if (line.find("EXCLUDE_OBJECT_END") == 0) {
         std::string name;
         if (extract_string_param(line, "NAME", name) && name == current_object_) {
-            spdlog::trace("Ended object: {}", current_object_);
+            spdlog::trace("[GCode Parser] Ended object: {}", current_object_);
             current_object_.clear();
             return true;
         }
@@ -330,7 +330,7 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
         // Mark that we found layer markers (prefer this over Z-based detection)
         use_layer_markers_ = true;
         pending_layer_marker_ = true;
-        spdlog::trace("Layer marker detected: '{}' (use_markers={}, pending={})", line,
+        spdlog::trace("[GCode Parser] Layer marker detected: '{}' (use_markers={}, pending={})", line,
                       use_layer_markers_, pending_layer_marker_);
         return; // Don't process as key=value metadata
     }
@@ -406,38 +406,38 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
         } else {
             // Single color metadata
             metadata_filament_color_ = value;
-            spdlog::trace("Parsed single filament color: {}", value);
+            spdlog::trace("[GCode Parser] Parsed single filament color: {}", value);
         }
     } else if (contains_all({"filament", "type"})) {
         metadata_filament_type_ = value;
-        spdlog::trace("Parsed filament type: {}", value);
+        spdlog::trace("[GCode Parser] Parsed filament type: {}", value);
     } else if (contains_all({"printer", "model"}) || contains_all({"printer", "name"})) {
         metadata_printer_model_ = value;
-        spdlog::trace("Parsed printer model: {}", value);
+        spdlog::trace("[GCode Parser] Parsed printer model: {}", value);
     } else if (contains_all({"nozzle", "diameter"})) {
         try {
             metadata_nozzle_diameter_ = std::stof(value);
-            spdlog::trace("Parsed nozzle diameter: {}mm", metadata_nozzle_diameter_);
+            spdlog::trace("[GCode Parser] Parsed nozzle diameter: {}mm", metadata_nozzle_diameter_);
         } catch (...) {
         }
     } else if (contains_all({"filament"}) &&
                (key_lower.find("[mm]") != std::string::npos || contains_all({"length"}))) {
         try {
             metadata_filament_length_ = std::stof(value);
-            spdlog::trace("Parsed filament length: {}mm", metadata_filament_length_);
+            spdlog::trace("[GCode Parser] Parsed filament length: {}mm", metadata_filament_length_);
         } catch (...) {
         }
     } else if (contains_all({"filament"}) &&
                (key_lower.find("[g]") != std::string::npos || contains_all({"weight"}))) {
         try {
             metadata_filament_weight_ = std::stof(value);
-            spdlog::trace("Parsed filament weight: {}g", metadata_filament_weight_);
+            spdlog::trace("[GCode Parser] Parsed filament weight: {}g", metadata_filament_weight_);
         } catch (...) {
         }
     } else if (contains_all({"filament", "cost"}) || contains_all({"material", "cost"})) {
         try {
             metadata_filament_cost_ = std::stof(value);
-            spdlog::trace("Parsed filament cost: ${}", metadata_filament_cost_);
+            spdlog::trace("[GCode Parser] Parsed filament cost: ${}", metadata_filament_cost_);
         } catch (...) {
         }
     } else if (contains_all({"layer"}) && contains_all({"total"}) &&
@@ -446,7 +446,7 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
         // Match "total layer number", "total layers count", but NOT "interlocking_beam_layer_count"
         try {
             metadata_layer_count_ = std::stoi(value);
-            spdlog::trace("Parsed total layer count: {}", metadata_layer_count_);
+            spdlog::trace("[GCode Parser] Parsed total layer count: {}", metadata_layer_count_);
         } catch (...) {
         }
     } else if ((contains_all({"time"}) &&
@@ -504,11 +504,11 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
 
         if (minutes > 0.0f) {
             metadata_print_time_ = minutes;
-            spdlog::trace("Parsed estimated time: {:.2f} minutes", minutes);
+            spdlog::trace("[GCode Parser] Parsed estimated time: {:.2f} minutes", minutes);
         }
     } else if (contains_all({"generated"}) || contains_all({"slicer"})) {
         metadata_slicer_name_ = value;
-        spdlog::trace("Parsed slicer: {}", value);
+        spdlog::trace("[GCode Parser] Parsed slicer: {}", value);
     }
     // Parse extrusion width metadata
     // OrcaSlicer/PrusaSlicer/SuperSlicer: "; perimeters extrusion width = 0.45mm"
@@ -530,19 +530,19 @@ void GCodeParser::parse_metadata_comment(const std::string& line) {
             // Categorize by feature type
             if (contains_all({"first", "layer"}) || contains_all({"initial", "layer"})) {
                 metadata_first_layer_extrusion_width_ = width;
-                spdlog::trace("Parsed first layer extrusion width: {}mm", width);
+                spdlog::trace("[GCode Parser] Parsed first layer extrusion width: {}mm", width);
             } else if (contains_all({"perimeter"}) || key_lower.find("wall") != std::string::npos) {
                 // Handles "perimeter" (Prusa/Orca) and "wall" (Cura)
                 metadata_perimeter_extrusion_width_ = width;
-                spdlog::trace("Parsed perimeter/wall extrusion width: {}mm", width);
+                spdlog::trace("[GCode Parser] Parsed perimeter/wall extrusion width: {}mm", width);
             } else if (contains_all({"infill"})) {
                 metadata_infill_extrusion_width_ = width;
-                spdlog::trace("Parsed infill extrusion width: {}mm", width);
+                spdlog::trace("[GCode Parser] Parsed infill extrusion width: {}mm", width);
             } else {
                 // General extrusion width (fallback for "line_width", etc.)
                 if (metadata_extrusion_width_ == 0.0f) {
                     metadata_extrusion_width_ = width;
-                    spdlog::trace("Parsed default extrusion width: {}mm", width);
+                    spdlog::trace("[GCode Parser] Parsed default extrusion width: {}mm", width);
                 }
             }
         } catch (...) {
@@ -593,7 +593,7 @@ void GCodeParser::parse_extruder_color_metadata(const std::string& line) {
             palette_str += ", ";
         palette_str += tool_color_palette_[i];
     }
-    spdlog::debug("Parsed {} extruder colors from metadata: [{}]", tool_color_palette_.size(),
+    spdlog::debug("[GCode Parser] Parsed {} extruder colors from metadata: [{}]", tool_color_palette_.size(),
                   palette_str);
 
     // Set metadata_filament_color_ to the first valid color (for single-color rendering fallback)
@@ -630,18 +630,18 @@ void GCodeParser::parse_tool_change_command(const std::string& line) {
     int tool_num = std::stoi(tool_str);
 
     current_tool_index_ = tool_num;
-    spdlog::trace("Tool change: T{}", tool_num);
+    spdlog::trace("[GCode Parser] Tool change: T{}", tool_num);
 }
 
 void GCodeParser::parse_wipe_tower_marker(const std::string& comment) {
     if (comment.find("WIPE_TOWER_START") != std::string::npos ||
         comment.find("WIPE_TOWER_BRIM_START") != std::string::npos) {
         in_wipe_tower_ = true;
-        spdlog::debug("Entering wipe tower section");
+        spdlog::debug("[GCode Parser] Entering wipe tower section");
     } else if (comment.find("WIPE_TOWER_END") != std::string::npos ||
                comment.find("WIPE_TOWER_BRIM_END") != std::string::npos) {
         in_wipe_tower_ = false;
-        spdlog::debug("Exiting wipe tower section");
+        spdlog::debug("[GCode Parser] Exiting wipe tower section");
     }
 }
 
@@ -788,7 +788,7 @@ void GCodeParser::add_segment(const glm::vec3& start, const glm::vec3& end, bool
         static std::map<std::string, int> segment_counts;
         segment_counts[current_object_]++;
         if (segment_counts[current_object_] <= 3) {
-            spdlog::trace("Object '{}' extrusion segment: start=({:.2f},{:.2f},{:.2f}) "
+            spdlog::trace("[GCode Parser] Object '{}' extrusion segment: start=({:.2f},{:.2f},{:.2f}) "
                           "end=({:.2f},{:.2f},{:.2f})",
                           current_object_, start.x, start.y, start.z, end.x, end.y, end.z);
         }
@@ -805,7 +805,7 @@ void GCodeParser::start_new_layer(float z) {
     layer.z_height = z;
     layers_.push_back(layer);
 
-    spdlog::trace("Started layer {} at Z={:.3f}", layers_.size() - 1, z);
+    spdlog::trace("[GCode Parser] Started layer {} at Z={:.3f}", layers_.size() - 1, z);
 }
 
 std::string GCodeParser::trim_line(const std::string& line) {
@@ -869,18 +869,18 @@ ParsedGCodeFile GCodeParser::finalize() {
     // Transfer multi-color tool palette
     result.tool_color_palette = tool_color_palette_;
 
-    spdlog::info("Parsed G-code: {} layers, {} segments, {} objects", result.layers.size(),
+    spdlog::info("[GCode Parser] Parsed G-code: {} layers, {} segments, {} objects", result.layers.size(),
                  result.total_segments, result.objects.size());
 
     // Log warning summary if any out-of-range width calculations occurred
     if (out_of_range_width_count_ > 0) {
-        spdlog::debug("G-code parser: {} segments had out-of-range calculated width (used default)",
+        spdlog::debug("[GCode Parser] {} segments had out-of-range calculated width (used default)",
                       out_of_range_width_count_);
     }
 
     // Debug: Log object bounding boxes
     for (const auto& [name, obj] : result.objects) {
-        spdlog::debug("Object '{}' AABB: min=({:.2f},{:.2f},{:.2f}) max=({:.2f},{:.2f},{:.2f}) "
+        spdlog::debug("[GCode Parser] Object '{}' AABB: min=({:.2f},{:.2f},{:.2f}) max=({:.2f},{:.2f},{:.2f}) "
                       "center=({:.2f},{:.2f},{:.2f})",
                       name, obj.bounding_box.min.x, obj.bounding_box.min.y, obj.bounding_box.min.z,
                       obj.bounding_box.max.x, obj.bounding_box.max.y, obj.bounding_box.max.z,
@@ -949,7 +949,7 @@ std::vector<GCodeThumbnail> extract_thumbnails(const std::string& filepath) {
 
     std::ifstream file(filepath);
     if (!file.is_open()) {
-        spdlog::warn("Cannot open G-code file for thumbnail extraction: {}", filepath);
+        spdlog::warn("[GCode Parser] Cannot open G-code file for thumbnail extraction: {}", filepath);
         return thumbnails;
     }
 
@@ -978,7 +978,7 @@ std::vector<GCodeThumbnail> extract_thumbnails(const std::string& filepath) {
                 base64_data.reserve(static_cast<size_t>(size) * 4 / 3 +
                                     100); // Estimate base64 size
                 in_thumbnail_block = true;
-                spdlog::debug("Found thumbnail {}x{} in {}", w, h, filepath);
+                spdlog::debug("[GCode Parser] Found thumbnail {}x{} in {}", w, h, filepath);
             }
             continue;
         }
@@ -1014,7 +1014,7 @@ std::vector<GCodeThumbnail> extract_thumbnails(const std::string& filepath) {
                   return a.pixel_count() > b.pixel_count();
               });
 
-    spdlog::info("Extracted {} thumbnails from {}", thumbnails.size(), filepath);
+    spdlog::info("[GCode Parser] Extracted {} thumbnails from {}", thumbnails.size(), filepath);
     return thumbnails;
 }
 
@@ -1029,19 +1029,19 @@ GCodeThumbnail get_best_thumbnail(const std::string& filepath) {
 bool save_thumbnail_to_file(const std::string& gcode_path, const std::string& output_path) {
     GCodeThumbnail thumb = get_best_thumbnail(gcode_path);
     if (thumb.png_data.empty()) {
-        spdlog::debug("No thumbnail found in {}", gcode_path);
+        spdlog::debug("[GCode Parser] No thumbnail found in {}", gcode_path);
         return false;
     }
 
     std::ofstream out(output_path, std::ios::binary);
     if (!out.is_open()) {
-        spdlog::error("Cannot write thumbnail to {}", output_path);
+        spdlog::error("[GCode Parser] Cannot write thumbnail to {}", output_path);
         return false;
     }
 
     out.write(reinterpret_cast<const char*>(thumb.png_data.data()),
               static_cast<std::streamsize>(thumb.png_data.size()));
-    spdlog::debug("Saved {}x{} thumbnail to {}", thumb.width, thumb.height, output_path);
+    spdlog::debug("[GCode Parser] Saved {}x{} thumbnail to {}", thumb.width, thumb.height, output_path);
     return true;
 }
 
@@ -1071,7 +1071,7 @@ std::string get_cached_thumbnail(const std::string& gcode_path, const std::strin
     struct stat gcode_stat, cache_stat;
     if (stat(gcode_path.c_str(), &gcode_stat) == 0 && stat(cache_path.c_str(), &cache_stat) == 0) {
         if (cache_stat.st_mtime >= gcode_stat.st_mtime) {
-            spdlog::debug("Using cached thumbnail: {}", cache_path);
+            spdlog::debug("[GCode Parser] Using cached thumbnail: {}", cache_path);
             return cache_path;
         }
     }
@@ -1088,7 +1088,7 @@ std::string get_cached_thumbnail(const std::string& gcode_path, const std::strin
             }
             return ""; // Can't cache, but app continues working
         }
-        spdlog::info("Created thumbnail cache directory: {}", cache_dir);
+        spdlog::info("[GCode Parser] Created thumbnail cache directory: {}", cache_dir);
     }
 
     // Extract and save thumbnail
@@ -1098,7 +1098,7 @@ std::string get_cached_thumbnail(const std::string& gcode_path, const std::strin
 
     // Log write failures only once
     if (!write_error_shown) {
-        spdlog::warn("Could not cache some thumbnails (further warnings suppressed)");
+        spdlog::warn("[GCode Parser] Could not cache some thumbnails (further warnings suppressed)");
         write_error_shown = true;
     }
 

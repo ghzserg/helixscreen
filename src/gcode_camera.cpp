@@ -85,7 +85,7 @@ void GCodeCamera::zoom(float factor) {
 
 void GCodeCamera::fit_to_bounds(const AABB& bounds) {
     if (bounds.is_empty()) {
-        spdlog::warn("Cannot fit camera to empty bounding box");
+        spdlog::warn("[GCode Camera] Cannot fit camera to empty bounding box");
         return;
     }
 
@@ -108,7 +108,7 @@ void GCodeCamera::fit_to_bounds(const AABB& bounds) {
     update_matrices();
 
     spdlog::debug(
-        "Fit camera to bounds: center=({:.1f},{:.1f},{:.1f}), size=({:.1f},{:.1f},{:.1f})",
+        "[GCode Camera] Fit camera to bounds: center=({:.1f},{:.1f},{:.1f}), size=({:.1f},{:.1f},{:.1f})",
         target_.x, target_.y, target_.z, size.x, size.y, size.z);
 }
 
@@ -160,7 +160,7 @@ void GCodeCamera::set_zoom_level(float zoom) {
 
 void GCodeCamera::set_projection_type(ProjectionType type) {
     if (type == ProjectionType::PERSPECTIVE) {
-        spdlog::warn("Perspective projection not fully implemented in Phase 1");
+        spdlog::warn("[GCode Camera] Perspective projection not fully implemented in Phase 1");
     }
 
     projection_type_ = type;
@@ -219,7 +219,7 @@ void GCodeCamera::update_matrices() {
         projection_matrix_ = glm::perspective(fov, aspect_ratio, near_plane_, far_plane_);
     }
 
-    spdlog::trace("Camera updated: azimuth={:.1f}°, elevation={:.1f}°, "
+    spdlog::trace("[GCode Camera] Camera updated: azimuth={:.1f}°, elevation={:.1f}°, "
                   "distance={:.1f}, zoom={:.2f}",
                   azimuth_, elevation_, distance_, zoom_level_);
 }

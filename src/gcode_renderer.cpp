@@ -102,12 +102,12 @@ void GCodeRenderer::reset_colors() {
 void GCodeRenderer::render(lv_layer_t* layer, const ParsedGCodeFile& gcode,
                            const GCodeCamera& camera) {
     if (!layer) {
-        spdlog::error("Cannot render: null layer");
+        spdlog::error("[GCode Renderer] Cannot render: null layer");
         return;
     }
 
     if (gcode.layers.empty()) {
-        spdlog::debug("No layers to render");
+        spdlog::debug("[GCode Renderer] No layers to render");
         return;
     }
 
@@ -170,7 +170,7 @@ void GCodeRenderer::render(lv_layer_t* layer, const ParsedGCodeFile& gcode,
         render_layer(layer, gcode.layers[static_cast<size_t>(i)], transform);
     }
 
-    spdlog::trace("Rendered {} segments, culled {} segments", segments_rendered_, segments_culled_);
+    spdlog::trace("[GCode Renderer] Rendered {} segments, culled {} segments", segments_rendered_, segments_culled_);
 }
 
 void GCodeRenderer::render_layer(lv_layer_t* layer, const Layer& gcode_layer,
