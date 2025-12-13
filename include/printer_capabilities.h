@@ -204,6 +204,29 @@ class PrinterCapabilities {
     }
 
     /**
+     * @brief Get discovered AFC lane names from printer.objects.list
+     *
+     * Extracted from objects like "AFC_stepper lane1", "AFC_stepper lane2", etc.
+     * These are available in ALL AFC versions (unlike the lane_data database).
+     *
+     * @return Vector of lane names (e.g., {"lane1", "lane2", "lane3", "lane4"})
+     */
+    [[nodiscard]] const std::vector<std::string>& get_afc_lane_names() const {
+        return afc_lane_names_;
+    }
+
+    /**
+     * @brief Get discovered AFC hub names from printer.objects.list
+     *
+     * Extracted from objects like "AFC_hub Turtle_1", "AFC_hub Turtle_2", etc.
+     *
+     * @return Vector of hub names (e.g., {"Turtle_1"})
+     */
+    [[nodiscard]] const std::vector<std::string>& get_afc_hub_names() const {
+        return afc_hub_names_;
+    }
+
+    /**
      * @brief Check if printer supports any form of bed leveling
      * @return true if has QGL, Z-tilt, or bed mesh
      */
@@ -353,6 +376,10 @@ class PrinterCapabilities {
     std::string nozzle_clean_macro_;
     std::string purge_line_macro_;
     std::string heat_soak_macro_;
+
+    // AFC-specific discovery (from printer.objects.list, works for ALL AFC versions)
+    std::vector<std::string> afc_lane_names_; ///< Lane names from "AFC_stepper lane*"
+    std::vector<std::string> afc_hub_names_;  ///< Hub names from "AFC_hub *"
 
     /**
      * @brief Convert string to uppercase for comparison

@@ -245,6 +245,13 @@ void MoonrakerClientMock::discover_printer(std::function<void()> on_complete) {
     spdlog::debug("[MoonrakerClientMock] Discovered: {} heaters, {} sensors, {} fans, {} LEDs",
                   heaters_.size(), sensors_.size(), fans_.size(), leds_.size());
 
+    // Early hardware discovery callback (for AMS/MMU initialization)
+    // Must be called BEFORE on_discovery_complete_ to match real implementation timing
+    if (on_hardware_discovered_) {
+        spdlog::debug("[MoonrakerClientMock] Invoking early hardware discovery callback");
+        on_hardware_discovered_(capabilities_);
+    }
+
     // Invoke discovery complete callback with capabilities (for PrinterState binding)
     if (on_discovery_complete_) {
         on_discovery_complete_(capabilities_);

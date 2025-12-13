@@ -879,11 +879,32 @@ void HomePanel::update_ams_indicator(int gate_count) {
         return; // Panel not yet set up
     }
 
-    // Visibility is handled by XML binding to ams_gate_count subject
-    // We only need to refresh the widget content when gate count changes
-    if (gate_count > 0 && ams_indicator_) {
-        ui_ams_mini_status_refresh(ams_indicator_);
-        spdlog::debug("[{}] AMS indicator refreshed ({} gates)", get_name(), gate_count);
+    // Find the AMS button and divider - manually control visibility since XML binding
+    // may not work reliably when subject changes after XML is parsed
+    lv_obj_t* ams_button = lv_obj_find_by_name(panel_, "ams_button");
+    lv_obj_t* ams_divider = lv_obj_find_by_name(panel_, "ams_divider");
+
+    if (gate_count > 0) {
+        // Show AMS button and divider
+        if (ams_button) {
+            lv_obj_remove_flag(ams_button, LV_OBJ_FLAG_HIDDEN);
+            spdlog::debug("[{}] AMS button unhidden (gate_count={})", get_name(), gate_count);
+        }
+        if (ams_divider) {
+            lv_obj_remove_flag(ams_divider, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ams_indicator_) {
+            ui_ams_mini_status_refresh(ams_indicator_);
+            spdlog::debug("[{}] AMS indicator refreshed ({} gates)", get_name(), gate_count);
+        }
+    } else {
+        // Hide AMS button and divider
+        if (ams_button) {
+            lv_obj_add_flag(ams_button, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ams_divider) {
+            lv_obj_add_flag(ams_divider, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 }
 

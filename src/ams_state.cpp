@@ -3,6 +3,10 @@
 
 #include "ams_state.h"
 
+#include "ams_backend_afc.h"
+#include "printer_capabilities.h"
+#include "runtime_config.h"
+
 #include <spdlog/spdlog.h>
 
 #include <cstring>
@@ -35,9 +39,11 @@ AmsState::AmsState() {
 }
 
 AmsState::~AmsState() {
-    if (backend_) {
-        backend_->stop();
-    }
+    // Note: During static destruction, the MoonrakerClient may already be destroyed.
+    // We just release the backend without calling stop() to avoid accessing
+    // potentially destroyed dependencies. The RAII SubscriptionGuard in the backend
+    // will handle cleanup safely.
+    backend_.reset();
 }
 
 void AmsState::init_subjects(bool register_xml) {
@@ -47,7 +53,7 @@ void AmsState::init_subjects(bool register_xml) {
         return;
     }
 
-    spdlog::debug("AmsState: Initializing subjects");
+    spdlog::debug("[AMS State] Initializing subjects");
 
     // System-level subjects
     lv_subject_init_int(&ams_type_, static_cast<int>(AmsType::NONE));
@@ -106,8 +112,8 @@ void AmsState::init_subjects(bool register_xml) {
         }
 
         spdlog::info(
-            "AmsState: Registered {} system subjects, {} path subjects, {} per-gate subjects", 9, 5,
-            MAX_GATES * 2);
+            "[AMS State] Registered {} system subjects, {} path subjects, {} per-gate subjects", 9,
+            5, MAX_GATES * 2);
     }
 
     initialized_ = true;
@@ -117,6 +123,77 @@ void AmsState::reset_for_testing() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     initialized_ = false;
     backend_.reset();
+}
+
+void AmsState::init_backend_from_capabilities(const PrinterCapabilities& caps, MoonrakerAPI* api,
+                                              MoonrakerClient* client) {
+    // Skip if no MMU detected
+    if (!caps.has_mmu()) {
+        spdlog::debug("[AMS State] No MMU detected, skipping backend initialization");
+        return;
+    }
+
+    // Skip if already in mock mode (mock backend was created at startup)
+    if (get_runtime_config().should_mock_ams()) {
+        spdlog::debug("[AMS State] Mock mode active, skipping real backend initialization");
+        return;
+    }
+
+    // Check if backend already exists (with lock)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        if (backend_) {
+            spdlog::debug("[AMS State] Backend already exists, skipping initialization");
+            return;
+        }
+    }
+
+    AmsType detected_type = caps.get_mmu_type();
+    spdlog::info("[AMS State] Detected MMU system: {}", ams_type_to_string(detected_type));
+
+    auto backend = AmsBackend::create(detected_type, api, client);
+    if (backend) {
+        // For AFC backend, pass discovered lane/hub names from capabilities
+        // This works for ALL AFC versions (lane_data database requires v1.0.32+)
+        if (detected_type == AmsType::AFC) {
+            auto* afc_backend = dynamic_cast<AmsBackendAfc*>(backend.get());
+            if (afc_backend) {
+                afc_backend->set_discovered_lanes(caps.get_afc_lane_names(),
+                                                  caps.get_afc_hub_names());
+            }
+        }
+
+        // Set backend (registers event callback)
+        set_backend(std::move(backend));
+
+        // Now start the backend - this subscribes to Moonraker updates
+        // Event callback is already registered so any events will be processed
+        // start() will query initial state asynchronously and emit STATE_CHANGED when data arrives
+        {
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
+            if (backend_) {
+                spdlog::debug("[AMS State] Starting backend");
+                auto result = backend_->start();
+                spdlog::debug("[AMS State] backend->start() returned, result={}",
+                              static_cast<bool>(result));
+            }
+        }
+
+        // Note: Don't call sync_from_backend() here - with the early hardware discovery
+        // callback architecture, the backend receives initial state naturally from the
+        // printer.objects.subscribe response and will emit a STATE_CHANGED event.
+        // The gate_count below reflects the initialized lanes (from discovery), not loaded filament
+        // state.
+        int gate_count = 0;
+        {
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
+            gate_count = lv_subject_get_int(&gate_count_);
+        }
+        spdlog::info("[AMS State] {} backend initialized ({} gates)",
+                     ams_type_to_string(detected_type), gate_count);
+    } else {
+        spdlog::warn("[AMS State] Failed to create {} backend", ams_type_to_string(detected_type));
+    }
 }
 
 void AmsState::set_backend(std::unique_ptr<AmsBackend> backend) {
@@ -135,7 +212,7 @@ void AmsState::set_backend(std::unique_ptr<AmsBackend> backend) {
             on_backend_event(event, data);
         });
 
-        spdlog::info("AmsState: Backend set (type={})", ams_type_to_string(backend_->get_type()));
+        spdlog::info("[AMS State] Backend set (type={})", ams_type_to_string(backend_->get_type()));
     }
 }
 
@@ -212,7 +289,7 @@ void AmsState::sync_from_backend() {
 
     bump_gates_version();
 
-    spdlog::debug("AmsState: Synced from backend - type={}, gates={}, action={}, segment={}",
+    spdlog::debug("[AMS State] Synced from backend - type={}, gates={}, action={}, segment={}",
                   ams_type_to_string(info.type), info.total_gates,
                   ams_action_to_string(info.action),
                   path_segment_to_string(backend_->get_filament_segment()));
@@ -231,13 +308,13 @@ void AmsState::update_gate(int gate_index) {
         lv_subject_set_int(&gate_statuses_[gate_index], static_cast<int>(gate.status));
         bump_gates_version();
 
-        spdlog::debug("AmsState: Updated gate {} - color=0x{:06X}, status={}", gate_index,
+        spdlog::debug("[AMS State] Updated gate {} - color=0x{:06X}, status={}", gate_index,
                       gate.color_rgb, gate_status_to_string(gate.status));
     }
 }
 
 void AmsState::on_backend_event(const std::string& event, const std::string& data) {
-    spdlog::debug("AmsState: Received event '{}' data='{}'", event, data);
+    spdlog::debug("[AMS State] Received event '{}' data='{}'", event, data);
 
     // Use lv_async_call to post updates to LVGL's main thread
     // This is required because backend events may come from background threads
@@ -249,7 +326,7 @@ void AmsState::on_backend_event(const std::string& event, const std::string& dat
         lv_result_t res = lv_async_call(async_sync_callback, sync_data);
         if (res != LV_RESULT_OK) {
             delete sync_data;
-            spdlog::warn("AmsState: lv_async_call failed, state update dropped");
+            spdlog::warn("[AMS State] lv_async_call failed, state update dropped");
         }
     };
 
@@ -274,11 +351,11 @@ void AmsState::on_backend_event(const std::string& event, const std::string& dat
     } else if (event == AmsBackend::EVENT_ERROR) {
         // Error occurred, sync to get error state
         queue_sync(true, -1);
-        spdlog::warn("AmsState: Backend error - {}", data);
+        spdlog::warn("[AMS State] Backend error - {}", data);
     } else if (event == AmsBackend::EVENT_ATTENTION_REQUIRED) {
         // User intervention needed
         queue_sync(true, -1);
-        spdlog::warn("AmsState: Attention required - {}", data);
+        spdlog::warn("[AMS State] Attention required - {}", data);
     }
 }
 

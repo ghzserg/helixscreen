@@ -41,11 +41,13 @@ static constexpr uint32_t AMS_MINI_STATUS_MAGIC = 0x414D5331;
  * @brief Per-slot data stored for each bar
  */
 struct SlotBarData {
-    lv_obj_t* bar_bg = nullptr;   // Background (gray when empty)
-    lv_obj_t* bar_fill = nullptr; // Fill portion (colored)
+    lv_obj_t* bar_bg = nullptr;      // Background (gray when empty)
+    lv_obj_t* bar_fill = nullptr;    // Fill portion (colored)
+    lv_obj_t* status_line = nullptr; // Bottom line (green=loaded, red=empty)
     uint32_t color_rgb = 0x808080;
     int fill_pct = 100;
-    bool present = false;
+    bool present = false; // Filament present in slot
+    bool loaded = false;  // Filament loaded to toolhead
 };
 
 /**
@@ -95,26 +97,55 @@ static int32_t calc_bar_width(int32_t container_width, int visible_count, int32_
     return (container_width - total_gaps) / visible_count;
 }
 
+/** Height of the status indicator line at bottom of slot */
+static constexpr int32_t STATUS_LINE_HEIGHT_PX = 3;
+
 /** Update a single slot bar's appearance */
 static void update_slot_bar(SlotBarData* slot, int32_t height) {
     if (!slot->bar_bg || !slot->bar_fill)
         return;
 
-    // Background: transparent to show parent background
+    // Background: always show a subtle outline so empty slots are visible
+    // Use border instead of background fill for outline effect
     lv_obj_set_style_bg_opa(slot->bar_bg, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(slot->bar_bg, 1, LV_PART_MAIN);
+    lv_obj_set_style_border_color(slot->bar_bg, ui_theme_get_color("text_secondary"), LV_PART_MAIN);
+    lv_obj_set_style_border_opa(slot->bar_bg, LV_OPA_50, LV_PART_MAIN);
 
-    // Fill: colored portion from bottom
+    // Fill: colored portion from bottom (above status line)
     if (slot->present && slot->fill_pct > 0) {
         lv_obj_set_style_bg_color(slot->bar_fill, lv_color_hex(slot->color_rgb), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(slot->bar_fill, LV_OPA_COVER, LV_PART_MAIN);
 
-        // Height based on fill percentage
-        int32_t fill_height = (height * slot->fill_pct) / 100;
+        // Height based on fill percentage, leaving room for status line
+        int32_t available_height = height - STATUS_LINE_HEIGHT_PX;
+        int32_t fill_height = (available_height * slot->fill_pct) / 100;
         fill_height = std::max(MIN_FILL_HEIGHT_PX, fill_height);
         lv_obj_set_height(slot->bar_fill, fill_height);
+        // Position above the status line
+        lv_obj_set_y(slot->bar_fill, 0);
+        lv_obj_set_align(slot->bar_fill, LV_ALIGN_BOTTOM_MID);
         lv_obj_remove_flag(slot->bar_fill, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(slot->bar_fill, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // Status line at bottom: green if loaded, red if empty
+    if (slot->status_line) {
+        if (slot->loaded) {
+            // Green - filament loaded to toolhead from this lane
+            lv_obj_set_style_bg_color(slot->status_line, ui_theme_get_color("success_color"),
+                                      LV_PART_MAIN);
+        } else if (!slot->present) {
+            // Red - lane is empty (no filament)
+            lv_obj_set_style_bg_color(slot->status_line, ui_theme_get_color("error_color"),
+                                      LV_PART_MAIN);
+        } else {
+            // Gray - filament present but not loaded
+            lv_obj_set_style_bg_color(slot->status_line, ui_theme_get_color("text_secondary"),
+                                      LV_PART_MAIN);
+        }
+        lv_obj_set_style_bg_opa(slot->status_line, LV_OPA_COVER, LV_PART_MAIN);
     }
 }
 
@@ -156,7 +187,7 @@ static void rebuild_bars(AmsMiniStatusData* data) {
                 lv_obj_set_style_pad_all(slot->bar_bg, 0, LV_PART_MAIN);
                 lv_obj_set_style_radius(slot->bar_bg, BAR_BORDER_RADIUS_PX, LV_PART_MAIN);
 
-                // Create fill inside
+                // Create fill inside (positioned above status line)
                 slot->bar_fill = lv_obj_create(slot->bar_bg);
                 lv_obj_remove_flag(slot->bar_fill, LV_OBJ_FLAG_SCROLLABLE);
                 lv_obj_set_style_border_width(slot->bar_fill, 0, LV_PART_MAIN);
@@ -164,6 +195,15 @@ static void rebuild_bars(AmsMiniStatusData* data) {
                 lv_obj_set_style_radius(slot->bar_fill, BAR_BORDER_RADIUS_PX, LV_PART_MAIN);
                 lv_obj_set_width(slot->bar_fill, LV_PCT(100));
                 lv_obj_set_align(slot->bar_fill, LV_ALIGN_BOTTOM_MID);
+
+                // Create status line at bottom (green=loaded, red=empty, gray=present)
+                slot->status_line = lv_obj_create(slot->bar_bg);
+                lv_obj_remove_flag(slot->status_line, LV_OBJ_FLAG_SCROLLABLE);
+                lv_obj_set_style_border_width(slot->status_line, 0, LV_PART_MAIN);
+                lv_obj_set_style_pad_all(slot->status_line, 0, LV_PART_MAIN);
+                lv_obj_set_style_radius(slot->status_line, 0, LV_PART_MAIN);
+                lv_obj_set_size(slot->status_line, LV_PCT(100), STATUS_LINE_HEIGHT_PX);
+                lv_obj_set_align(slot->status_line, LV_ALIGN_BOTTOM_MID);
             }
 
             lv_obj_set_size(slot->bar_bg, bar_width, data->height);
@@ -416,11 +456,13 @@ static void sync_from_ams_state(AmsMiniStatusData* data) {
         }
 
         bool present = (gate.status != GateStatus::EMPTY && gate.status != GateStatus::UNKNOWN);
+        bool loaded = (gate.status == GateStatus::LOADED);
 
         SlotBarData* slot = &data->slots[i];
         slot->color_rgb = gate.color_rgb;
         slot->fill_pct = fill_pct;
         slot->present = present;
+        slot->loaded = loaded;
     }
 
     rebuild_bars(data);

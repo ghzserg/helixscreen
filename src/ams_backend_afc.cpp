@@ -38,6 +38,11 @@ AmsBackendAfc::AmsBackendAfc(MoonrakerAPI* api, MoonrakerClient* client)
 }
 
 AmsBackendAfc::~AmsBackendAfc() {
+    // Clear event callback first to prevent any callbacks during destruction
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        event_callback_ = nullptr;
+    }
     stop();
 }
 
@@ -46,50 +51,88 @@ AmsBackendAfc::~AmsBackendAfc() {
 // ============================================================================
 
 AmsError AmsBackendAfc::start() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    bool should_emit = false;
 
-    if (running_) {
-        return AmsErrorHelper::success();
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+
+        if (running_) {
+            return AmsErrorHelper::success();
+        }
+
+        if (!client_) {
+            spdlog::error("[AMS AFC] Cannot start: MoonrakerClient is null");
+            return AmsErrorHelper::not_connected("MoonrakerClient not provided");
+        }
+
+        if (!api_) {
+            spdlog::error("[AMS AFC] Cannot start: MoonrakerAPI is null");
+            return AmsErrorHelper::not_connected("MoonrakerAPI not provided");
+        }
+
+        // Register for status update notifications from Moonraker
+        // AFC state comes via notify_status_update when printer.afc.* changes
+        SubscriptionId id = client_->register_notify_update(
+            [this](const nlohmann::json& notification) { handle_status_update(notification); });
+
+        if (id == INVALID_SUBSCRIPTION_ID) {
+            spdlog::error("[AMS AFC] Failed to register for status updates");
+            return AmsErrorHelper::not_connected("Failed to subscribe to Moonraker updates");
+        }
+
+        // RAII guard - automatically unsubscribes when backend is destroyed or stop() called
+        subscription_ = SubscriptionGuard(client_, id);
+
+        running_ = true;
+        spdlog::info("[AMS AFC] Backend started, subscription ID: {}", id);
+
+        // Detect AFC version (async - results come via callback)
+        // This will set has_lane_data_db_ for v1.0.32+
+        detect_afc_version();
+
+        // If we have discovered lanes (from PrinterCapabilities), initialize them now.
+        // This provides immediate lane data for ALL AFC versions (including < 1.0.32).
+        // For v1.0.32+, query_lane_data() may later supplement this with richer data.
+        if (!lane_names_.empty() && !lanes_initialized_) {
+            spdlog::info("[AMS AFC] Initializing {} lanes from discovery", lane_names_.size());
+            initialize_lanes(lane_names_);
+        }
+
+        should_emit = true;
+    } // Release lock before emitting
+
+    // Note: With the early hardware discovery callback architecture, this backend is
+    // created and started BEFORE printer.objects.subscribe is called. The notification
+    // handler registered above will naturally receive the initial state when the
+    // subscription response arrives. No explicit query_initial_state() needed.
+
+    // Emit initial state event OUTSIDE the lock to avoid deadlock
+    if (should_emit) {
+        emit_event(EVENT_STATE_CHANGED);
     }
-
-    if (!client_) {
-        spdlog::error("[AMS AFC] Cannot start: MoonrakerClient is null");
-        return AmsErrorHelper::not_connected("MoonrakerClient not provided");
-    }
-
-    if (!api_) {
-        spdlog::error("[AMS AFC] Cannot start: MoonrakerAPI is null");
-        return AmsErrorHelper::not_connected("MoonrakerAPI not provided");
-    }
-
-    // Register for status update notifications from Moonraker
-    // AFC state comes via notify_status_update when printer.afc.* changes
-    SubscriptionId id = client_->register_notify_update(
-        [this](const nlohmann::json& notification) { handle_status_update(notification); });
-
-    if (id == INVALID_SUBSCRIPTION_ID) {
-        spdlog::error("[AMS AFC] Failed to register for status updates");
-        return AmsErrorHelper::not_connected("Failed to subscribe to Moonraker updates");
-    }
-
-    // RAII guard - automatically unsubscribes when backend is destroyed or stop() called
-    subscription_ = SubscriptionGuard(client_, id);
-
-    running_ = true;
-    spdlog::info("[AMS AFC] Backend started, subscription ID: {}", id);
-
-    // Detect AFC version (async - results come via callback)
-    detect_afc_version();
-
-    // Emit initial state event (state may be empty until first Moonraker update)
-    // Lane data will be populated when first status update arrives
-    emit_event(EVENT_STATE_CHANGED);
 
     return AmsErrorHelper::success();
 }
 
+void AmsBackendAfc::set_discovered_lanes(const std::vector<std::string>& lane_names,
+                                         const std::vector<std::string>& hub_names) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
+    // Store discovered lane and hub names (from printer.objects.list)
+    // These will be used as a fallback for AFC versions < 1.0.32
+    if (!lane_names.empty()) {
+        lane_names_ = lane_names;
+        spdlog::debug("[AMS AFC] Set {} discovered lanes", lane_names_.size());
+    }
+
+    if (!hub_names.empty()) {
+        hub_names_ = hub_names;
+        spdlog::debug("[AMS AFC] Set {} discovered hubs", hub_names_.size());
+    }
+}
+
 void AmsBackendAfc::stop() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     if (!running_) {
         return;
@@ -111,14 +154,14 @@ bool AmsBackendAfc::is_running() const {
 // ============================================================================
 
 void AmsBackendAfc::set_event_callback(EventCallback callback) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     event_callback_ = std::move(callback);
 }
 
 void AmsBackendAfc::emit_event(const std::string& event, const std::string& data) {
     EventCallback cb;
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         cb = event_callback_;
     }
 
@@ -132,7 +175,7 @@ void AmsBackendAfc::emit_event(const std::string& event, const std::string& data
 // ============================================================================
 
 AmsSystemInfo AmsBackendAfc::get_system_info() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return system_info_;
 }
 
@@ -141,7 +184,7 @@ AmsType AmsBackendAfc::get_type() const {
 }
 
 GateInfo AmsBackendAfc::get_gate_info(int global_index) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     const auto* gate = system_info_.get_gate_global(global_index);
     if (gate) {
@@ -156,22 +199,22 @@ GateInfo AmsBackendAfc::get_gate_info(int global_index) const {
 }
 
 AmsAction AmsBackendAfc::get_current_action() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return system_info_.action;
 }
 
 int AmsBackendAfc::get_current_tool() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return system_info_.current_tool;
 }
 
 int AmsBackendAfc::get_current_gate() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return system_info_.current_gate;
 }
 
 bool AmsBackendAfc::is_filament_loaded() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return system_info_.filament_loaded;
 }
 
@@ -181,12 +224,12 @@ PathTopology AmsBackendAfc::get_topology() const {
 }
 
 PathSegment AmsBackendAfc::get_filament_segment() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return compute_filament_segment_unlocked();
 }
 
 PathSegment AmsBackendAfc::infer_error_segment() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return error_segment_;
 }
 
@@ -293,7 +336,7 @@ void AmsBackendAfc::handle_status_update(const nlohmann::json& notification) {
     bool state_changed = false;
 
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         // Parse global AFC state if present
         if (params.contains("AFC") && params["AFC"].is_object()) {
@@ -589,27 +632,37 @@ void AmsBackendAfc::detect_afc_version() {
     client_->send_jsonrpc(
         "server.database.get_item", params,
         [this](const nlohmann::json& response) {
+            bool should_query_lane_data = false;
+
             if (response.contains("value") && response["value"].is_object()) {
                 const auto& value = response["value"];
                 if (value.contains("version") && value["version"].is_string()) {
                     {
-                        std::lock_guard<std::mutex> lock(mutex_);
+                        std::lock_guard<std::recursive_mutex> lock(mutex_);
                         afc_version_ = value["version"].get<std::string>();
                         system_info_.version = afc_version_;
 
                         // Set capability flags based on version
                         has_lane_data_db_ = version_at_least("1.0.32");
+                        should_query_lane_data = has_lane_data_db_;
                     }
                     spdlog::info("[AMS AFC] Detected AFC version: {} (lane_data DB: {})",
                                  afc_version_, has_lane_data_db_ ? "yes" : "no");
                 }
             }
+
+            // For v1.0.32+, query lane_data database for richer data
+            // This supplements the basic lane info from printer.objects.list
+            if (should_query_lane_data) {
+                query_lane_data();
+            }
         },
         [this](const MoonrakerError& err) {
             spdlog::warn("[AMS AFC] Could not detect AFC version: {}", err.message);
-            std::lock_guard<std::mutex> lock(mutex_);
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
             afc_version_ = "unknown";
             system_info_.version = "unknown";
+            // Don't query lane_data - we'll rely on discovered lanes from capabilities
         });
 }
 
@@ -640,6 +693,65 @@ bool AmsBackendAfc::version_at_least(const std::string& required) const {
 }
 
 // ============================================================================
+// Initial State Query
+// ============================================================================
+
+void AmsBackendAfc::query_initial_state() {
+    if (!client_) {
+        spdlog::warn("[AMS AFC] Cannot query initial state: client is null");
+        return;
+    }
+
+    // Build list of AFC objects to query
+    // We need to get the current state since we were created after the subscription
+    // response was processed
+    nlohmann::json objects_to_query;
+
+    // Add main AFC object
+    objects_to_query["AFC"] = nullptr;
+
+    // Add AFC_stepper objects for each lane
+    for (const auto& lane_name : lane_names_) {
+        std::string key = "AFC_stepper " + lane_name;
+        objects_to_query[key] = nullptr;
+    }
+
+    // Add AFC_hub objects
+    for (const auto& hub_name : hub_names_) {
+        std::string key = "AFC_hub " + hub_name;
+        objects_to_query[key] = nullptr;
+    }
+
+    // Add AFC_extruder
+    objects_to_query["AFC_extruder extruder"] = nullptr;
+
+    nlohmann::json params = {{"objects", objects_to_query}};
+
+    spdlog::debug("[AMS AFC] Querying initial state for {} objects", objects_to_query.size());
+
+    client_->send_jsonrpc(
+        "printer.objects.query", params,
+        [this](const nlohmann::json& response) {
+            // Response structure: {"jsonrpc": "2.0", "result": {"eventtime": ..., "status": {...}},
+            // "id": ...}
+            if (response.contains("result") && response["result"].contains("status") &&
+                response["result"]["status"].is_object()) {
+                // The status object format is the same as notify_status_update params
+                // Wrap it in a format that handle_status_update expects
+                nlohmann::json notification = {
+                    {"params", nlohmann::json::array({response["result"]["status"]})}};
+                handle_status_update(notification);
+                spdlog::info("[AMS AFC] Initial state loaded");
+            } else {
+                spdlog::warn("[AMS AFC] Initial state query returned unexpected format");
+            }
+        },
+        [](const MoonrakerError& err) {
+            spdlog::warn("[AMS AFC] Failed to query initial state: {}", err.message);
+        });
+}
+
+// ============================================================================
 // Lane Data Queries
 // ============================================================================
 
@@ -659,7 +771,7 @@ void AmsBackendAfc::query_lane_data() {
         [this](const nlohmann::json& response) {
             if (response.contains("value") && response["value"].is_object()) {
                 {
-                    std::lock_guard<std::mutex> lock(mutex_);
+                    std::lock_guard<std::recursive_mutex> lock(mutex_);
                     parse_lane_data(response["value"]);
                 }
                 // Emit OUTSIDE the lock to avoid deadlock with callbacks
@@ -854,7 +966,7 @@ AmsError AmsBackendAfc::execute_gcode(const std::string& gcode) {
 AmsError AmsBackendAfc::load_filament(int gate_index) {
     std::string lane_name;
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         AmsError precondition = check_preconditions();
         if (!precondition) {
@@ -888,7 +1000,7 @@ AmsError AmsBackendAfc::load_filament(int gate_index) {
 
 AmsError AmsBackendAfc::unload_filament() {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         AmsError precondition = check_preconditions();
         if (!precondition) {
@@ -908,7 +1020,7 @@ AmsError AmsBackendAfc::unload_filament() {
 AmsError AmsBackendAfc::select_gate(int gate_index) {
     std::string lane_name;
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         AmsError precondition = check_preconditions();
         if (!precondition) {
@@ -937,7 +1049,7 @@ AmsError AmsBackendAfc::select_gate(int gate_index) {
 
 AmsError AmsBackendAfc::change_tool(int tool_number) {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         AmsError precondition = check_preconditions();
         if (!precondition) {
@@ -966,7 +1078,7 @@ AmsError AmsBackendAfc::change_tool(int tool_number) {
 
 AmsError AmsBackendAfc::recover() {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         if (!running_) {
             return AmsErrorHelper::not_connected("AFC backend not started");
@@ -980,7 +1092,7 @@ AmsError AmsBackendAfc::recover() {
 
 AmsError AmsBackendAfc::reset() {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         AmsError precondition = check_preconditions();
         if (!precondition) {
@@ -994,7 +1106,7 @@ AmsError AmsBackendAfc::reset() {
 
 AmsError AmsBackendAfc::cancel() {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         if (!running_) {
             return AmsErrorHelper::not_connected("AFC backend not started");
@@ -1016,7 +1128,7 @@ AmsError AmsBackendAfc::cancel() {
 
 AmsError AmsBackendAfc::set_gate_info(int gate_index, const GateInfo& info) {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         if (gate_index < 0 || gate_index >= system_info_.total_gates) {
             return AmsErrorHelper::invalid_gate(gate_index, system_info_.total_gates - 1);
@@ -1056,7 +1168,7 @@ AmsError AmsBackendAfc::set_gate_info(int gate_index, const GateInfo& info) {
 
 AmsError AmsBackendAfc::set_tool_mapping(int tool_number, int gate_index) {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         if (tool_number < 0 ||
             tool_number >= static_cast<int>(system_info_.tool_to_gate_map.size())) {
@@ -1106,7 +1218,7 @@ AmsError AmsBackendAfc::set_tool_mapping(int tool_number, int gate_index) {
 
 AmsError AmsBackendAfc::enable_bypass() {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         AmsError precondition = check_preconditions();
         if (!precondition) {
@@ -1127,7 +1239,7 @@ AmsError AmsBackendAfc::enable_bypass() {
 
 AmsError AmsBackendAfc::disable_bypass() {
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         if (!running_) {
             return AmsErrorHelper::not_connected("AFC backend not started");
@@ -1145,6 +1257,6 @@ AmsError AmsBackendAfc::disable_bypass() {
 }
 
 bool AmsBackendAfc::is_bypass_active() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return bypass_active_;
 }

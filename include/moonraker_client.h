@@ -511,6 +511,28 @@ class MoonrakerClient : public hv::WebSocketClient {
     }
 
     /**
+     * @brief Set callback for hardware discovery (early phase)
+     *
+     * Called immediately after printer.objects.list is parsed, BEFORE the main
+     * subscription response arrives. This allows hardware-dependent subsystems
+     * (like AMS/MMU backends) to be initialized early enough to receive the
+     * initial state from the subscription.
+     *
+     * Discovery timeline:
+     * 1. printer.objects.list → parse_objects() → **on_hardware_discovered_** (HERE)
+     * 2. server.info
+     * 3. printer.info
+     * 4. MCU queries
+     * 5. printer.objects.subscribe → initial state dispatched to subscribers
+     * 6. on_discovery_complete_
+     *
+     * @param cb Callback invoked with discovered capabilities (early)
+     */
+    void set_on_hardware_discovered(std::function<void(const PrinterCapabilities&)> cb) {
+        on_hardware_discovered_ = cb;
+    }
+
+    /**
      * @brief Set callback for printer discovery completion
      *
      * Called after discover_printer() successfully completes auto-discovery.
@@ -641,6 +663,7 @@ class MoonrakerClient : public hv::WebSocketClient {
     std::vector<std::string> fans_;            // All fan types
     std::vector<std::string> leds_;            // LED outputs
     std::vector<std::string> steppers_;        // Stepper motors (stepper_x, stepper_z, etc.)
+    std::vector<std::string> afc_objects_;     // AFC MMU objects (AFC, AFC_stepper, AFC_hub, etc.)
     std::vector<std::string> printer_objects_; // All Klipper objects (for detection)
     std::string hostname_;                     // Printer hostname from printer.info
     std::string software_version_;             // Klipper software version from printer.info
@@ -651,8 +674,11 @@ class MoonrakerClient : public hv::WebSocketClient {
     std::vector<std::string> mcu_list_;        // All MCU chips (primary + CAN toolheads + host)
     PrinterCapabilities capabilities_;         // QGL, Z-tilt, bed mesh, macros
 
-    // Discovery callback (protected to allow mock to invoke it)
-    std::function<void(const PrinterCapabilities&)> on_discovery_complete_;
+    // Discovery callbacks (protected to allow mock to invoke)
+    std::function<void(const PrinterCapabilities&)>
+        on_hardware_discovered_; // Early phase (after parse_objects)
+    std::function<void(const PrinterCapabilities&)>
+        on_discovery_complete_; // Late phase (after subscription)
 
     // Bed mesh data
     BedMeshProfile active_bed_mesh_;             // Currently active mesh profile

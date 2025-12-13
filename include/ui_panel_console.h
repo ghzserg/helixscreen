@@ -10,9 +10,10 @@
 #include "printer_state.h"
 
 #include <deque>
-#include "hv/json.hpp"
 #include <string>
 #include <vector>
+
+#include "hv/json.hpp"
 
 /**
  * @file ui_panel_console.h

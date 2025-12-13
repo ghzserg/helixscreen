@@ -933,6 +933,13 @@ void MoonrakerClient::discover_printer(std::function<void()> on_complete) {
         const json& objects = response["result"]["objects"];
         parse_objects(objects);
 
+        // Early hardware discovery callback - allows AMS/MMU backends to initialize
+        // BEFORE the subscription response arrives, so they can receive initial state naturally
+        if (on_hardware_discovered_) {
+            spdlog::debug("[Moonraker Client] Invoking early hardware discovery callback");
+            on_hardware_discovered_(capabilities_);
+        }
+
         // Step 2: Get server information
         send_jsonrpc("server.info", {}, [this, on_complete](json info_response) {
             if (info_response.contains("result")) {
@@ -1115,6 +1122,12 @@ void MoonrakerClient::complete_discovery_subscription(std::function<void()> on_c
     // Manual probe (for Z-offset calibration - PROBE_CALIBRATE, Z_ENDSTOP_CALIBRATE)
     subscription_objects["manual_probe"] = nullptr;
 
+    // All discovered AFC objects (AFC, AFC_stepper, AFC_hub, AFC_extruder)
+    // These provide lane status, sensor states, and filament info for MMU support
+    for (const auto& afc_obj : afc_objects_) {
+        subscription_objects[afc_obj] = nullptr;
+    }
+
     json subscribe_params = {{"objects", subscription_objects}};
 
     send_jsonrpc(
@@ -1156,6 +1169,7 @@ void MoonrakerClient::parse_objects(const json& objects) {
     fans_.clear();
     leds_.clear();
     steppers_.clear();
+    afc_objects_.clear();
     printer_objects_.clear();
 
     for (const auto& obj : objects) {
@@ -1215,11 +1229,18 @@ void MoonrakerClient::parse_objects(const json& objects) {
                  name.rfind("dotstar ", 0) == 0) {
             leds_.push_back(name);
         }
+        // AFC MMU objects (AFC_stepper, AFC_hub, AFC_extruder, AFC)
+        // These need subscription for lane state, sensor data, and filament info
+        else if (name == "AFC" || name.rfind("AFC_stepper ", 0) == 0 ||
+                 name.rfind("AFC_hub ", 0) == 0 || name.rfind("AFC_extruder ", 0) == 0) {
+            afc_objects_.push_back(name);
+        }
     }
 
-    spdlog::debug(
-        "[Moonraker Client] Discovered: {} heaters, {} sensors, {} fans, {} LEDs, {} steppers",
-        heaters_.size(), sensors_.size(), fans_.size(), leds_.size(), steppers_.size());
+    spdlog::debug("[Moonraker Client] Discovered: {} heaters, {} sensors, {} fans, {} LEDs, {} "
+                  "steppers, {} AFC objects",
+                  heaters_.size(), sensors_.size(), fans_.size(), leds_.size(), steppers_.size(),
+                  afc_objects_.size());
 
     // Debug output of discovered objects
     if (!heaters_.empty()) {
@@ -1236,6 +1257,9 @@ void MoonrakerClient::parse_objects(const json& objects) {
     }
     if (!steppers_.empty()) {
         spdlog::debug("[Moonraker Client] Steppers: {}", json(steppers_).dump());
+    }
+    if (!afc_objects_.empty()) {
+        spdlog::info("[Moonraker Client] AFC objects: {}", json(afc_objects_).dump());
     }
 
     // Parse printer capabilities (QGL, Z-tilt, bed mesh, macros)

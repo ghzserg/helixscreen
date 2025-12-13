@@ -92,15 +92,33 @@ void PrinterCapabilities::parse_objects(const json& objects) {
                 spdlog::debug("[PrinterCapabilities] Detected chamber sensor: {}", name);
             }
         }
-        // MMU/AMS detection (Happy Hare: mmu, AFC: afc)
+        // MMU/AMS detection (Happy Hare: mmu, AFC: AFC - note uppercase from Klipper)
         else if (name == "mmu") {
             has_mmu_ = true;
             mmu_type_ = AmsType::HAPPY_HARE;
             spdlog::debug("[PrinterCapabilities] Detected Happy Hare MMU");
-        } else if (name == "afc") {
+        } else if (name == "AFC") {
             has_mmu_ = true;
             mmu_type_ = AmsType::AFC;
-            spdlog::debug("[PrinterCapabilities] Detected AFC");
+            spdlog::debug("[PrinterCapabilities] Detected AFC (Box Turtle)");
+        }
+        // AFC lane discovery from AFC_stepper objects (works for ALL AFC versions)
+        else if (name.rfind("AFC_stepper ", 0) == 0) {
+            // Extract lane name from "AFC_stepper lane1" → "lane1"
+            std::string lane_name = name.substr(12); // Remove "AFC_stepper " prefix
+            if (!lane_name.empty()) {
+                afc_lane_names_.push_back(lane_name);
+                spdlog::debug("[PrinterCapabilities] Discovered AFC lane: {}", lane_name);
+            }
+        }
+        // AFC hub discovery from AFC_hub objects
+        else if (name.rfind("AFC_hub ", 0) == 0) {
+            // Extract hub name from "AFC_hub Turtle_1" → "Turtle_1"
+            std::string hub_name = name.substr(8); // Remove "AFC_hub " prefix
+            if (!hub_name.empty()) {
+                afc_hub_names_.push_back(hub_name);
+                spdlog::debug("[PrinterCapabilities] Discovered AFC hub: {}", hub_name);
+            }
         }
         // Timelapse detection (Moonraker-Timelapse plugin)
         else if (name == "timelapse") {
@@ -158,6 +176,21 @@ void PrinterCapabilities::parse_objects(const json& objects) {
         }
     }
 
+    // Sort AFC lane names for consistent ordering (lane1, lane2, lane3, ...)
+    if (!afc_lane_names_.empty()) {
+        std::sort(afc_lane_names_.begin(), afc_lane_names_.end());
+        spdlog::info("[PrinterCapabilities] Discovered {} AFC lanes: {}", afc_lane_names_.size(),
+                     [this]() {
+                         std::ostringstream oss;
+                         for (size_t i = 0; i < afc_lane_names_.size(); ++i) {
+                             if (i > 0)
+                                 oss << ", ";
+                             oss << afc_lane_names_[i];
+                         }
+                         return oss.str();
+                     }());
+    }
+
     spdlog::info("[PrinterCapabilities] {}", summary());
 }
 
@@ -183,6 +216,8 @@ void PrinterCapabilities::clear() {
     nozzle_clean_macro_.clear();
     purge_line_macro_.clear();
     heat_soak_macro_.clear();
+    afc_lane_names_.clear();
+    afc_hub_names_.clear();
 }
 
 // ============================================================================

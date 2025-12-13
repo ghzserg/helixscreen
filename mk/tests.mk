@@ -66,6 +66,8 @@ TEST_UI_DEPS := \
     $(OBJ_DIR)/ui_notification_history.o \
     $(OBJ_DIR)/ui_heating_animator.o \
     $(OBJ_DIR)/ui_ams_mini_status.o \
+    $(OBJ_DIR)/ui_panel_memory_stats.o \
+    $(OBJ_DIR)/memory_utils.o \
     $(FONT_OBJS)
 
 # UI panel components (all panels for smoke tests)
@@ -136,7 +138,9 @@ TEST_MOONRAKER_DEPS := \
     $(OBJ_DIR)/capability_overrides.o \
     $(OBJ_DIR)/command_sequencer.o \
     $(OBJ_DIR)/helix_macro_manager.o \
+    $(OBJ_DIR)/ams_backend.o \
     $(OBJ_DIR)/ams_backend_afc.o \
+    $(OBJ_DIR)/ams_backend_happy_hare.o \
     $(OBJ_DIR)/ams_backend_mock.o \
     $(OBJ_DIR)/ams_state.o \
     $(OBJ_DIR)/thumbnail_cache.o

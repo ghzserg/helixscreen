@@ -10,6 +10,11 @@
 #include <memory>
 #include <mutex>
 
+// Forward declarations
+class PrinterCapabilities;
+class MoonrakerAPI;
+class MoonrakerClient;
+
 /**
  * @file ams_state.h
  * @brief LVGL reactive state management for AMS UI binding
@@ -64,6 +69,20 @@ class AmsState {
      * can be called again after lv_init() creates a new LVGL context.
      */
     void reset_for_testing();
+
+    /**
+     * @brief Initialize AMS backend from detected printer capabilities
+     *
+     * Called after Moonraker discovery completes. If the printer has an MMU system
+     * (AFC/Box Turtle, Happy Hare, etc.), creates and starts the appropriate backend.
+     * Does nothing if no MMU is detected or if already in mock mode.
+     *
+     * @param caps Detected printer capabilities
+     * @param api MoonrakerAPI instance for making API calls
+     * @param client MoonrakerClient instance for WebSocket communication
+     */
+    void init_backend_from_capabilities(const PrinterCapabilities& caps, MoonrakerAPI* api,
+                                        MoonrakerClient* client);
 
     /**
      * @brief Set the AMS backend

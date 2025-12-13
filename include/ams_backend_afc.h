@@ -103,6 +103,21 @@ class AmsBackendAfc : public AmsBackend {
     AmsError disable_bypass() override;
     [[nodiscard]] bool is_bypass_active() const override;
 
+    /**
+     * @brief Set discovered lane and hub names from PrinterCapabilities
+     *
+     * Called before start() to provide lane names discovered from printer.objects.list.
+     * These are used as a fallback when the lane_data database is not available
+     * (AFC versions < 1.0.32).
+     *
+     * For v1.0.32+, query_lane_data() may override/supplement this data.
+     *
+     * @param lane_names Lane names from PrinterCapabilities::get_afc_lane_names()
+     * @param hub_names Hub names from PrinterCapabilities::get_afc_hub_names()
+     */
+    void set_discovered_lanes(const std::vector<std::string>& lane_names,
+                              const std::vector<std::string>& hub_names);
+
   protected:
     // Allow test helper access to private members
     friend class AmsBackendAfcTestHelper;
@@ -126,6 +141,18 @@ class AmsBackendAfc : public AmsBackend {
      * @param afc_data JSON object containing printer.afc data
      */
     void parse_afc_state(const nlohmann::json& afc_data);
+
+    /**
+     * @brief Query current AFC state from Moonraker
+     *
+     * Queries the current state of all AFC objects via printer.objects.query.
+     * With the early hardware discovery callback architecture, this is typically
+     * NOT needed - the backend receives initial state naturally from the
+     * printer.objects.subscribe response.
+     *
+     * Available for manual re-query scenarios (e.g., recovery from errors).
+     */
+    void query_initial_state();
 
     /**
      * @brief Query lane data from Moonraker database
@@ -251,10 +278,10 @@ class AmsBackendAfc : public AmsBackend {
     MoonrakerClient* client_; ///< For subscribing to updates
 
     // State
-    mutable std::mutex mutex_;         ///< Protects state access
-    std::atomic<bool> running_{false}; ///< Backend running state
-    EventCallback event_callback_;     ///< Registered event handler
-    SubscriptionGuard subscription_;   ///< RAII subscription (auto-unsubscribes)
+    mutable std::recursive_mutex mutex_; ///< Protects state access (recursive for callback safety)
+    std::atomic<bool> running_{false};   ///< Backend running state
+    EventCallback event_callback_;       ///< Registered event handler
+    SubscriptionGuard subscription_;     ///< RAII subscription (auto-unsubscribes)
 
     // Cached AFC state
     AmsSystemInfo system_info_;           ///< Current system state

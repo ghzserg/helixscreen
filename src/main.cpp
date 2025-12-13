@@ -397,6 +397,10 @@ static void initialize_subjects() {
     get_printer_state()
         .init_subjects(); // Printer state subjects (CRITICAL: must be before panel creation)
 
+    // Initialize AmsState subjects BEFORE panels so XML bindings can find ams_gate_count
+    // This is critical for the home panel's AMS indicator visibility binding
+    AmsState::instance().init_subjects(true);
+
     // Register print completion notification observer (watches print_state_enum for terminal
     // states) - implementation in print_completion.cpp handles panel detection
     print_completion_observer = helix::init_print_completion_observer();
@@ -425,17 +429,16 @@ static void initialize_subjects() {
     ui_wizard_init_subjects();                  // Wizard subjects (for first-run config)
     ui_keypad_init_subjects();                  // Keypad display subject (for reactive binding)
 
-    // Initialize AmsState subjects early so HomePanel can observe gate_count
     // In mock mode, create and start the mock backend immediately so the home panel
     // can display the AMS indicator without requiring navigation to the AMS panel first
-    AmsState::instance().init_subjects(true);
+    // (AmsState::init_subjects() was already called earlier, before panel init)
     if (g_runtime_config.should_mock_ams()) {
         auto backend = AmsBackend::create(AmsType::NONE); // Factory returns mock in test mode
         if (backend) {
             backend->start();
             AmsState::instance().set_backend(std::move(backend));
             AmsState::instance().sync_from_backend();
-            spdlog::info("AmsState: Mock backend initialized at startup ({} gates)",
+            spdlog::info("[AMS State] Mock backend initialized at startup ({} gates)",
                          lv_subject_get_int(AmsState::instance().get_gate_count_subject()));
         }
     }
@@ -1601,7 +1604,19 @@ int main(int argc, char** argv) {
         // Set HTTP base URL for file transfers
         moonraker_api->set_http_base_url(http_base_url);
 
-        // Register discovery callback (Observer pattern - decouples Moonraker from PrinterState)
+        // Register EARLY hardware discovery callback - fires right after printer.objects.list
+        // This allows AMS/MMU backends to initialize BEFORE the subscription response arrives,
+        // so they can receive initial state naturally without needing a separate query
+        moonraker_client->set_on_hardware_discovered([](const PrinterCapabilities& caps) {
+            // Initialize AMS/MMU backend if detected (AFC/Box Turtle, Happy Hare, etc.)
+            // This must happen EARLY so the backend is ready to receive initial state
+            // from the printer.objects.subscribe response
+            AmsState::instance().init_backend_from_capabilities(caps, moonraker_api.get(),
+                                                                moonraker_client.get());
+        });
+
+        // Register LATE discovery callback - fires after subscription response is processed
+        // Use this for state updates that depend on initial subscription data
         moonraker_client->set_on_discovery_complete([](const PrinterCapabilities& caps) {
             // Update PrinterState with discovered capabilities for reactive UI bindings
             get_printer_state().set_printer_capabilities(caps);

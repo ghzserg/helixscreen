@@ -109,6 +109,22 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
     PathSegment test_compute_filament_segment() const {
         return compute_filament_segment_unlocked();
     }
+
+    // Discovery testing helpers
+    const std::vector<std::string>& get_lane_names() const {
+        return lane_names_;
+    }
+
+    const std::vector<std::string>& get_hub_names() const {
+        return hub_names_;
+    }
+
+    void initialize_lanes_from_discovery() {
+        // Simulates what start() does when lanes are pre-set via set_discovered_lanes()
+        if (!lane_names_.empty() && !lanes_initialized_) {
+            initialize_lanes(lane_names_);
+        }
+    }
 };
 
 // ============================================================================
@@ -403,4 +419,73 @@ TEST_CASE("AFC segment: fallback prioritizes hub over lane sensors per-lane", "[
 
     // Lane 0 has loaded_to_hub=true, so it returns HUB
     REQUIRE(helper.test_compute_filament_segment() == PathSegment::HUB);
+}
+
+// ============================================================================
+// set_discovered_lanes() - Lane Discovery from PrinterCapabilities Tests
+// ============================================================================
+
+TEST_CASE("AFC set_discovered_lanes: sets lane names correctly", "[afc][discovery]") {
+    AmsBackendAfcTestHelper helper;
+
+    std::vector<std::string> lanes = {"lane1", "lane2", "lane3", "lane4"};
+    std::vector<std::string> hubs = {"Turtle_1"};
+
+    helper.set_discovered_lanes(lanes, hubs);
+
+    // After setting lanes, they should be accessible
+    REQUIRE(helper.get_lane_names().size() == 4);
+    REQUIRE(helper.get_lane_names()[0] == "lane1");
+    REQUIRE(helper.get_lane_names()[3] == "lane4");
+}
+
+TEST_CASE("AFC set_discovered_lanes: sets hub names correctly", "[afc][discovery]") {
+    AmsBackendAfcTestHelper helper;
+
+    std::vector<std::string> lanes = {"lane1", "lane2"};
+    std::vector<std::string> hubs = {"Turtle_1", "Turtle_2"};
+
+    helper.set_discovered_lanes(lanes, hubs);
+
+    REQUIRE(helper.get_hub_names().size() == 2);
+    REQUIRE(helper.get_hub_names()[0] == "Turtle_1");
+}
+
+TEST_CASE("AFC set_discovered_lanes: empty lanes doesn't overwrite existing", "[afc][discovery]") {
+    AmsBackendAfcTestHelper helper;
+
+    // First set some lanes
+    std::vector<std::string> lanes = {"lane1", "lane2"};
+    std::vector<std::string> hubs = {"Turtle_1"};
+    helper.set_discovered_lanes(lanes, hubs);
+
+    // Then call with empty lanes - should not overwrite
+    std::vector<std::string> empty_lanes;
+    std::vector<std::string> new_hubs = {"NewHub"};
+    helper.set_discovered_lanes(empty_lanes, new_hubs);
+
+    // Lanes should remain unchanged
+    REQUIRE(helper.get_lane_names().size() == 2);
+    // But hubs should be updated
+    REQUIRE(helper.get_hub_names().size() == 1);
+    REQUIRE(helper.get_hub_names()[0] == "NewHub");
+}
+
+TEST_CASE("AFC segment: works with discovered lanes", "[afc][discovery][segment]") {
+    AmsBackendAfcTestHelper helper;
+
+    // Set lanes via discovery (like PrinterCapabilities would)
+    std::vector<std::string> lanes = {"lane1", "lane2", "lane3", "lane4"};
+    std::vector<std::string> hubs = {"Turtle_1"};
+    helper.set_discovered_lanes(lanes, hubs);
+
+    // Initialize the lanes (like start() would do)
+    helper.initialize_lanes_from_discovery();
+
+    // Now test that sensors work correctly
+    helper.set_current_lane("lane2");
+    helper.set_lane_prep_sensor(1, true);
+    helper.set_lane_load_sensor(1, true);
+
+    REQUIRE(helper.test_compute_filament_segment() == PathSegment::LANE);
 }
