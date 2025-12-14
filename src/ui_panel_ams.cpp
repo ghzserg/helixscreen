@@ -236,6 +236,36 @@ void AmsPanel::on_activate() {
     // Sync state when panel becomes visible
     AmsState::instance().sync_from_backend();
     refresh_slots();
+
+    // Sync Spoolman active spool with currently loaded slot
+    sync_spoolman_active_spool();
+}
+
+void AmsPanel::sync_spoolman_active_spool() {
+    if (!api_) {
+        return;
+    }
+
+    int current_slot = lv_subject_get_int(AmsState::instance().get_current_slot_subject());
+    if (current_slot < 0) {
+        return; // No active slot
+    }
+
+    auto* backend = AmsState::instance().get_backend();
+    if (!backend) {
+        return;
+    }
+
+    SlotInfo slot_info = backend->get_slot_info(current_slot);
+    if (slot_info.spoolman_id > 0) {
+        spdlog::debug("[{}] Syncing Spoolman: slot {} → spool ID {}", get_name(), current_slot,
+                      slot_info.spoolman_id);
+        api_->set_active_spool(
+            slot_info.spoolman_id, []() {},
+            [](const MoonrakerError& err) {
+                spdlog::warn("[AmsPanel] Failed to sync active spool: {}", err.message);
+            });
+    }
 }
 
 void AmsPanel::on_deactivate() {
@@ -996,6 +1026,24 @@ void AmsPanel::on_current_slot_changed(lv_observer_t* observer, lv_subject_t* su
 
     // Also update path canvas when current slot changes
     self->update_path_canvas_from_backend();
+
+    // Auto-set active Spoolman spool when slot becomes active
+    if (slot >= 0 && self->api_) {
+        auto* backend = AmsState::instance().get_backend();
+        if (backend) {
+            SlotInfo slot_info = backend->get_slot_info(slot);
+            if (slot_info.spoolman_id > 0) {
+                spdlog::info("[AmsPanel] Slot {} has Spoolman ID {}, setting as active spool", slot,
+                             slot_info.spoolman_id);
+                self->api_->set_active_spool(
+                    slot_info.spoolman_id,
+                    []() { spdlog::debug("[AmsPanel] Active spool set successfully"); },
+                    [](const MoonrakerError& err) {
+                        spdlog::warn("[AmsPanel] Failed to set active spool: {}", err.message);
+                    });
+            }
+        }
+    }
 }
 
 void AmsPanel::on_path_state_changed(lv_observer_t* observer, lv_subject_t* /*subject*/) {

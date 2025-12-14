@@ -5,141 +5,92 @@
 
 #include "ui_panel_base.h"
 
-#include "advanced_panel_types.h"
-#include "moonraker_api.h"
-#include "printer_state.h"
+#include "advanced_panel_types.h" // For SpoolInfo
 
-#include <lvgl.h>
-#include <memory>
-#include <string>
 #include <vector>
 
 /**
- * @brief Standalone Spoolman panel for filament inventory management
+ * @brief Spoolman filament inventory panel
  *
- * This panel displays all spools from Spoolman and allows users to:
- * - Browse their filament inventory
- * - See remaining weight and percentage
- * - Set a spool as active (for filament tracking)
- * - View low-filament warnings
+ * Displays all spools from Spoolman server with 3D visualization,
+ * weight tracking, and low-stock warnings. Allows setting active spool
+ * for filament usage tracking.
  *
- * The panel is capability-gated - only shown when printer_has_spoolman = 1.
- * Works independently of AMS (supports single-extruder printers).
+ * Features:
+ * - Scrollable list of spools with 3D canvas visualization
+ * - Material, vendor, and weight display
+ * - Low-stock warning (< 100g remaining)
+ * - Click to set active spool
+ * - Refresh button to reload from server
+ *
+ * Capability-gated: Only accessible when printer_has_spoolman=1
  */
 class SpoolmanPanel : public PanelBase {
   public:
-    /**
-     * @brief Construct Spoolman panel
-     * @param printer_state Reference to printer state for capability checking
-     * @param api Moonraker API for Spoolman queries (can be nullptr)
-     */
     SpoolmanPanel(PrinterState& printer_state, MoonrakerAPI* api);
     ~SpoolmanPanel() override = default;
 
-    // Non-copyable
-    SpoolmanPanel(const SpoolmanPanel&) = delete;
-    SpoolmanPanel& operator=(const SpoolmanPanel&) = delete;
-
-    /**
-     * @brief Initialize reactive subjects and event callbacks
-     *
-     * Must be called BEFORE XML is created. Registers:
-     * - spoolman_status subject for status text
-     * - on_spoolman_spool_clicked callback
-     */
     void init_subjects() override;
-
-    /**
-     * @brief Setup panel after XML creation
-     * @param panel The created LVGL panel object
-     * @param parent_screen The parent screen for navigation
-     */
     void setup(lv_obj_t* panel, lv_obj_t* parent_screen) override;
 
-    [[nodiscard]] const char* get_name() const override {
+    const char* get_name() const override {
         return "Spoolman";
     }
-
-    [[nodiscard]] const char* get_xml_component_name() const override {
+    const char* get_xml_component_name() const override {
         return "spoolman_panel";
     }
 
     /**
-     * @brief Refresh the spool list from Spoolman
+     * @brief Refresh spool list from Spoolman server
      *
-     * Called automatically on setup, can be called manually to refresh.
+     * Fetches all spools via MoonrakerAPI and updates the UI.
+     * Shows loading state during fetch, empty state if no spools.
      */
     void refresh_spools();
 
   private:
-    MoonrakerAPI* api_ = nullptr;
+    // ========== UI Widget Pointers ==========
+    lv_obj_t* spool_list_ = nullptr;
+    lv_obj_t* empty_state_ = nullptr;
+    lv_obj_t* loading_state_ = nullptr;
+    lv_obj_t* spool_count_text_ = nullptr;
 
-    // Subjects for reactive binding
-    lv_subject_t status_subject_;
-    char status_buf_[128] = "Loading...";
-
-    // Widget references
-    lv_obj_t* spool_list_container_ = nullptr;
-    lv_obj_t* empty_state_container_ = nullptr;
-
-    // Spool data cache
-    struct SpoolRow {
-        lv_obj_t* container = nullptr;
-        int spool_id = 0;
-        bool is_active = false;
-    };
-    std::vector<SpoolRow> spool_rows_;
+    // ========== State ==========
     std::vector<SpoolInfo> cached_spools_;
+    int active_spool_id_ = -1;
 
-    // Low filament threshold (grams)
-    static constexpr double LOW_THRESHOLD_GRAMS = 100.0;
-
-    /**
-     * @brief Clear all spool rows from the list
-     */
-    void clear_list();
-
-    /**
-     * @brief Populate the list with spools
-     * @param spools Vector of spool info from Spoolman
-     */
-    void populate_list(const std::vector<SpoolInfo>& spools);
-
-    /**
-     * @brief Create a single spool row in the list
-     * @param spool Spool info to display
-     */
-    void create_spool_row(const SpoolInfo& spool);
-
-    /**
-     * @brief Update visual state of a row based on spool data
-     * @param row The row container
-     * @param spool The spool data
-     */
+    // ========== Private Methods ==========
+    void populate_spool_list();
     void update_row_visuals(lv_obj_t* row, const SpoolInfo& spool);
+    void show_loading_state();
+    void show_empty_state();
+    void show_spool_list();
+    void update_spool_count();
 
-    /**
-     * @brief Handle spool row click - set as active
-     * @param spool_id The clicked spool's ID
-     */
-    void handle_spool_clicked(int spool_id);
+    void handle_spool_clicked(lv_obj_t* row);
+    void set_active_spool(int spool_id);
 
-    /**
-     * @brief Update which spool shows as active
-     * @param active_id The newly active spool ID
-     */
-    void update_active_indicator(int active_id);
-
-    // Static event callback
-    static void on_spool_clicked(lv_event_t* e);
+    // ========== Static Event Callbacks ==========
+    static void on_spool_row_clicked(lv_event_t* e);
+    static void on_refresh_clicked(lv_event_t* e);
 };
 
+// ============================================================================
+// Global Instance Accessors
+// ============================================================================
+
 /**
- * @brief Get the global SpoolmanPanel instance
- *
- * Creates the instance on first call. Uses PrinterState and MoonrakerAPI
- * from global getters.
- *
- * @return Reference to the global SpoolmanPanel
+ * @brief Get global SpoolmanPanel instance
+ * @return Reference to the singleton panel
+ * @throws std::runtime_error if not initialized
  */
 SpoolmanPanel& get_global_spoolman_panel();
+
+/**
+ * @brief Initialize global SpoolmanPanel instance
+ * @param printer_state Reference to printer state
+ * @param api Pointer to MoonrakerAPI
+ *
+ * Called by main.cpp during startup.
+ */
+void init_global_spoolman_panel(PrinterState& printer_state, MoonrakerAPI* api);

@@ -103,6 +103,12 @@ class AdvancedPanel : public PanelBase {
     static void on_machine_limits_clicked(lv_event_t* e);
     static void on_spoolman_clicked(lv_event_t* e);
     static void on_macros_clicked(lv_event_t* e);
+
+    //
+    // === Cached Overlay Panels ===
+    //
+
+    lv_obj_t* spoolman_panel_ = nullptr;
 };
 
 /**

@@ -42,6 +42,7 @@
 #include "ui_panel_print_status.h"
 #include "ui_panel_screws_tilt.h"
 #include "ui_panel_settings.h"
+#include "ui_panel_spoolman.h"
 #include "ui_panel_step_test.h"
 #include "ui_panel_temp_control.h"
 #include "ui_panel_test.h"
@@ -157,6 +158,8 @@ void init_global_advanced_panel(PrinterState& printer_state, MoonrakerAPI* api);
 PrintSelectPanel* get_print_select_panel(PrinterState& printer_state, MoonrakerAPI* api);
 PrintStatusPanel& get_global_print_status_panel();
 AmsPanel& get_global_ams_panel();
+SpoolmanPanel& get_global_spoolman_panel();
+void init_global_spoolman_panel(PrinterState& printer_state, MoonrakerAPI* api);
 ExtrusionPanel& get_global_extrusion_panel();
 BedMeshPanel& get_global_bed_mesh_panel();
 StepTestPanel& get_global_step_test_panel();
@@ -417,6 +420,8 @@ static void initialize_subjects() {
     get_global_settings_panel().init_subjects();              // Settings panel launcher
     init_global_advanced_panel(get_printer_state(), nullptr); // Initialize advanced panel instance
     get_global_advanced_panel().init_subjects();              // Advanced panel capability subjects
+    init_global_spoolman_panel(get_printer_state(), nullptr); // Initialize Spoolman panel instance
+    get_global_spoolman_panel().init_subjects();              // Spoolman panel callbacks
     init_global_history_dashboard_panel(get_printer_state(),
                                         nullptr);         // Initialize history dashboard
     get_global_history_dashboard_panel().init_subjects(); // History dashboard subjects
@@ -885,6 +890,8 @@ static void initialize_moonraker_client(Config* config) {
     }
     get_global_history_dashboard_panel().set_api(moonraker_api.get());
     get_global_history_list_panel().set_api(moonraker_api.get());
+    get_global_spoolman_panel().set_api(moonraker_api.get());
+    get_global_ams_panel().set_api(moonraker_api.get());
 
     // Initialize E-Stop overlay with dependencies (creates the floating button)
     EmergencyStopOverlay::instance().init(get_printer_state(), moonraker_api.get());
@@ -1591,7 +1598,20 @@ int main(int argc, char** argv) {
         }
         lv_obj_t* panel_obj = ams_panel.get_panel();
         if (panel_obj) {
+            ams_panel.on_activate(); // Sync state including Spoolman
             ui_nav_push_overlay(panel_obj);
+        }
+    }
+
+    // Open Spoolman panel if requested via -p spoolman
+    if (args.overlays.spoolman) {
+        spdlog::debug("[Overlay] Opening Spoolman panel as requested by command-line flag");
+        auto* panel_obj = static_cast<lv_obj_t*>(lv_xml_create(screen, "spoolman_panel", nullptr));
+        if (panel_obj) {
+            get_global_spoolman_panel().setup(panel_obj, screen);
+            ui_nav_push_overlay(panel_obj);
+        } else {
+            spdlog::error("[Overlay] Failed to create Spoolman panel from XML");
         }
     }
 

@@ -4,6 +4,7 @@
 #include "ui_panel_advanced.h"
 
 #include "ui_nav.h"
+#include "ui_panel_spoolman.h"
 #include "ui_timelapse_settings.h"
 #include "ui_toast.h"
 
@@ -90,8 +91,33 @@ void AdvancedPanel::handle_machine_limits_clicked() {
 }
 
 void AdvancedPanel::handle_spoolman_clicked() {
-    spdlog::debug("[{}] Spoolman clicked", get_name());
-    ui_toast_show(ToastSeverity::INFO, "Spoolman: Coming soon", 2000);
+    spdlog::debug("[{}] Spoolman clicked - opening panel", get_name());
+
+    // Create Spoolman panel on first access (lazy initialization)
+    if (!spoolman_panel_ && parent_screen_) {
+        spdlog::debug("[{}] Creating Spoolman panel...", get_name());
+
+        // Create from XML
+        spoolman_panel_ =
+            static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "spoolman_panel", nullptr));
+        if (spoolman_panel_) {
+            // Setup event handlers and data loading
+            get_global_spoolman_panel().setup(spoolman_panel_, parent_screen_);
+
+            // Initially hidden
+            lv_obj_add_flag(spoolman_panel_, LV_OBJ_FLAG_HIDDEN);
+            spdlog::info("[{}] Spoolman panel created", get_name());
+        } else {
+            spdlog::error("[{}] Failed to create Spoolman panel from XML", get_name());
+            ui_toast_show(ToastSeverity::ERROR, "Failed to open Spoolman", 2000);
+            return;
+        }
+    }
+
+    // Push Spoolman panel onto navigation history and show it
+    if (spoolman_panel_) {
+        ui_nav_push_overlay(spoolman_panel_);
+    }
 }
 
 void AdvancedPanel::handle_macros_clicked() {

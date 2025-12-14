@@ -79,7 +79,8 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
         slot.brand = sample.brand;
 
         // Mock Spoolman data with dramatic fill level differences for demo
-        slot.spoolman_id = 1000 + i;
+        // Use IDs 1-N to match mock Spoolman spools (1-18 in moonraker_api_mock.cpp)
+        slot.spoolman_id = i + 1;
         slot.spool_name = std::string(sample.color_name) + " " + sample.material;
         slot.total_weight_g = 1000.0f;
         // Vary fill levels dramatically: 100%, 75%, 40%, 10% for clear visual difference

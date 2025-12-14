@@ -1,35 +1,141 @@
 <?xml version="1.0"?>
 <!-- Copyright 2025 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  Spoolman Panel - Filament Inventory Management
+
+  Displays all spools from Spoolman server with:
+  - Scrollable list of spool rows (3D visualization, material, weight)
+  - Empty state when no spools available
+  - Click to set active spool (for filament tracking)
+  - Low-stock warnings for spools under 100g
+
+  This panel is capability-gated: only shown when printer_has_spoolman=1
+-->
 <component>
+  <!-- Main panel container -->
   <view name="spoolman_panel"
-        extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_border_width="0"
-        style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
-    <!-- Header Bar -->
+        extends="lv_obj"
+        width="#overlay_panel_width"
+        height="100%"
+        align="right_mid"
+        style_border_width="0"
+        style_pad_all="0"
+        style_bg_opa="255"
+        style_bg_color="#card_bg"
+        scrollable="false"
+        flex_flow="column">
+
+    <!-- Header Bar with back button -->
     <header_bar name="overlay_header" title="Spoolman"/>
+
     <!-- Content Area -->
     <lv_obj name="overlay_content"
-            width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="#space_lg"
-            style_pad_gap="#space_md" scrollable="false" flex_flow="column">
-      <!-- Spool List Container (scrollable) -->
+            width="100%"
+            flex_grow="1"
+            style_bg_opa="0"
+            style_border_width="0"
+            style_pad_all="#space_lg"
+            style_pad_gap="#space_md"
+            scrollable="false"
+            flex_flow="column">
+
+      <!-- Spool List (scrollable) -->
       <lv_obj name="spool_list"
-              width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="true"
-              scroll_dir="ver" flex_flow="column" style_pad_gap="#space_sm"/>
+              width="100%"
+              flex_grow="1"
+              style_bg_opa="0"
+              style_border_width="0"
+              style_pad_all="0"
+              scrollable="true"
+              scroll_dir="ver"
+              flex_flow="column"
+              style_pad_gap="#space_sm"/>
+
       <!-- Empty State (shown when no spools) -->
       <lv_obj name="empty_state"
-              width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0" flex_flow="column"
-              style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true"
-              scrollable="false">
-        <icon src="mdi_inbox" size="xl" variant="secondary"/>
-        <text_heading text="No Spools" style_text_color="#text_secondary" style_text_align="center"/>
-        <text_body width="80%"
-                   text="Configure Spoolman in Moonraker to track your filament inventory"
-                   style_text_color="#text_secondary" style_text_align="center"/>
+              width="100%"
+              flex_grow="1"
+              style_bg_opa="0"
+              style_border_width="0"
+              style_pad_all="0"
+              scrollable="false"
+              flex_flow="column"
+              style_flex_main_place="center"
+              style_flex_cross_place="center"
+              style_flex_track_place="center"
+              style_pad_gap="#space_md"
+              hidden="true">
+
+        <!-- Empty inbox icon -->
+        <icon name="empty_icon"
+              src="inbox_outline"
+              size="xl"
+              variant="secondary"/>
+
+        <!-- Empty message -->
+        <text_heading name="empty_title"
+                      text="No Spools"
+                      style_text_align="center"
+                      style_text_color="#text_secondary"/>
+
+        <text_small name="empty_subtitle"
+                    text="Spoolman has no spools configured"
+                    style_text_align="center"
+                    style_text_color="#text_secondary"/>
       </lv_obj>
-      <!-- Status Message -->
-      <text_small name="status_message"
-                  width="100%" bind_text="spoolman_status" text="" style_text_align="center"
-                  style_text_color="#text_secondary"/>
+
+      <!-- Loading indicator (shown during fetch) -->
+      <lv_obj name="loading_state"
+              width="100%"
+              flex_grow="1"
+              style_bg_opa="0"
+              style_border_width="0"
+              style_pad_all="0"
+              scrollable="false"
+              flex_flow="column"
+              style_flex_main_place="center"
+              style_flex_cross_place="center"
+              style_flex_track_place="center"
+              style_pad_gap="#space_md"
+              hidden="true">
+
+        <spinner name="loading_spinner" size="lg"/>
+
+        <text_small name="loading_text"
+                    text="Loading spools..."
+                    style_text_align="center"
+                    style_text_color="#text_secondary"/>
+      </lv_obj>
+
+      <!-- Status bar at bottom -->
+      <lv_obj name="status_bar"
+              width="100%"
+              height="content"
+              style_bg_opa="0"
+              style_border_width="0"
+              style_pad_all="0"
+              scrollable="false"
+              flex_flow="row"
+              style_flex_main_place="space_between"
+              style_flex_cross_place="center">
+
+        <!-- Spool count -->
+        <text_small name="spool_count_text"
+                    text=""
+                    style_text_color="#text_secondary"/>
+
+        <!-- Refresh button -->
+        <lv_btn name="refresh_btn"
+                width="content"
+                height="content"
+                style_bg_opa="0"
+                style_border_width="0"
+                style_pad_all="#space_sm">
+          <icon src="refresh" size="sm" variant="secondary"/>
+          <event_cb trigger="clicked" callback="on_spoolman_refresh_clicked"/>
+        </lv_btn>
+      </lv_obj>
     </lv_obj>
   </view>
 </component>

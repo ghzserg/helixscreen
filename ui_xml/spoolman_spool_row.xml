@@ -1,32 +1,122 @@
 <?xml version="1.0"?>
 <!-- Copyright 2025 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  Spoolman Spool Row Component
+
+  Displays a single spool with:
+  - 3D spool visualization (48x48 canvas)
+  - Material + color name (e.g., "PLA - Jet Black")
+  - Vendor name
+  - Weight remaining and percentage
+  - Low-stock warning indicator (< 100g)
+  - Active spool indicator
+
+  C++ sets values via lv_obj_find_by_name() + lv_label_set_text() and
+  ui_spool_canvas_set_color/fill_level for dynamic row content.
+-->
 <component>
+  <!-- Root row container (clickable for selection) -->
   <view name="spoolman_spool_row"
-        extends="lv_obj" width="100%" height="content" style_bg_color="#surface_bg" style_bg_opa="255"
-        style_radius="#radius_md" style_pad_all="#space_md" style_border_width="0" scrollable="false" flex_flow="row"
-        style_flex_cross_place="center" style_pad_gap="#space_md">
-    <!-- 3D Spool Canvas (shows fill level visually) -->
-    <spool_canvas name="spool_canvas" size="48" color="0x808080" fill_level="0.5"/>
-    <!-- Info Column -->
+        extends="lv_obj"
+        width="100%"
+        height="content"
+        style_bg_color="#surface_bg"
+        style_bg_opa="255"
+        style_radius="#border_radius"
+        style_border_width="0"
+        style_pad_all="#space_md"
+        scrollable="false"
+        flex_flow="row"
+        style_flex_cross_place="center"
+        style_pad_gap="#space_md"
+        clickable="true">
+
+    <!-- LEFT: 3D Spool Canvas (48x48 fixed size) -->
+    <spool_canvas name="spool_canvas"
+                  size="48"
+                  color="0x808080"
+                  fill_level="0.5"/>
+
+    <!-- MIDDLE: Material/Vendor Info (flex-grow to fill space) -->
     <lv_obj name="info_column"
-            width="content" height="content" flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-            scrollable="false" flex_flow="column" style_pad_gap="#space_xs">
-      <!-- Material + Color Name -->
-      <text_body name="spool_name" text="PLA - Black" style_text_color="#text_primary"/>
-      <!-- Vendor -->
-      <text_small name="spool_vendor" text="Polymaker" style_text_color="#text_secondary"/>
+            width="content"
+            height="content"
+            flex_grow="1"
+            style_bg_opa="0"
+            style_border_width="0"
+            style_pad_all="0"
+            scrollable="false"
+            flex_flow="column"
+            style_pad_gap="#space_xs">
+
+      <!-- Material + Color Name (e.g., "PLA - Jet Black") -->
+      <text_body name="spool_name"
+                 width="100%"
+                 text="PLA - Black"
+                 style_text_color="#text_primary"
+                 long_mode="dots"
+                 style_pad_all="0"
+                 clickable="false"/>
+
+      <!-- Vendor Name -->
+      <text_small name="spool_vendor"
+                  width="100%"
+                  text="Polymaker"
+                  style_text_color="#text_secondary"
+                  long_mode="dots"
+                  style_pad_all="0"
+                  clickable="false"/>
     </lv_obj>
-    <!-- Weight Column (right side) -->
+
+    <!-- RIGHT: Weight Metrics (right-aligned, fixed width) -->
     <lv_obj name="weight_column"
-            width="80" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-            flex_flow="column" style_flex_cross_place="end" style_pad_gap="#space_xs">
-      <!-- Remaining Weight -->
-      <text_body name="weight_text" text="850g" style_text_color="#text_primary" style_text_align="right"/>
-      <!-- Percentage -->
-      <text_small name="percent_text" text="85%" style_text_color="#text_secondary" style_text_align="right"/>
+            width="80"
+            height="content"
+            style_bg_opa="0"
+            style_border_width="0"
+            style_pad_all="0"
+            scrollable="false"
+            flex_flow="column"
+            style_flex_cross_place="end"
+            style_pad_gap="#space_xs">
+
+      <!-- Remaining Weight (e.g., "850g") -->
+      <text_body name="weight_text"
+                 width="100%"
+                 text="850g"
+                 style_text_color="#text_primary"
+                 style_text_align="right"
+                 style_pad_all="0"
+                 clickable="false"/>
+
+      <!-- Percentage (e.g., "85%") -->
+      <text_small name="percent_text"
+                  width="100%"
+                  text="85%"
+                  style_text_color="#text_secondary"
+                  style_text_align="right"
+                  style_pad_all="0"
+                  clickable="false"/>
     </lv_obj>
-    <!-- Active Indicator (checkmark, hidden by default) -->
-    <icon name="active_indicator" src="mdi_check_circle" size="sm" variant="success" hidden="true"/>
+
+    <!-- FAR RIGHT: Low-Stock Warning (conditional, hidden by default) -->
+    <icon name="low_stock_indicator"
+          src="alert_octagon"
+          size="sm"
+          variant="warning"
+          hidden="true"
+          clickable="false"/>
+
+    <!-- Active Selection Indicator (hidden by default) -->
+    <icon name="active_indicator"
+          src="check_circle"
+          size="sm"
+          variant="success"
+          hidden="true"
+          clickable="false"/>
+
+    <!-- Click event for row selection -->
+    <event_cb trigger="clicked" callback="on_spoolman_spool_row_clicked"/>
   </view>
 </component>

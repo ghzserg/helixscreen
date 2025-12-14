@@ -5,6 +5,7 @@
 #include "ui_fonts.h"
 #include "ui_gcode_viewer.h"
 #include "ui_spinner.h"
+#include "ui_spool_canvas.h"
 #include "ui_switch.h"
 #include "ui_text.h"
 #include "ui_text_input.h"
@@ -93,8 +94,13 @@ void register_xml_components() {
 
     // Register custom widgets (BEFORE components that use them)
     ui_gcode_viewer_register();
-    // NOTE: AMS widgets (spool_canvas, ams_slot, filament_path_canvas) are
+    ui_spool_canvas_register(); // Needed by Spoolman panel (and AMS panel)
+    // NOTE: Other AMS widgets (ams_slot, filament_path_canvas) are
     // registered lazily in ui_panel_ams.cpp when the AMS panel is first accessed
+
+    // Spoolman components (MUST be after spool_canvas registration)
+    lv_xml_register_component_from_file("A:ui_xml/spoolman_spool_row.xml");
+    lv_xml_register_component_from_file("A:ui_xml/spoolman_panel.xml");
 
     // Core UI components
     lv_xml_register_component_from_file("A:ui_xml/icon.xml");

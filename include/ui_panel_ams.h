@@ -190,6 +190,10 @@ class AmsPanel : public PanelBase {
     void update_bypass_button_visibility();
     void update_bypass_button_state();
 
+    // === Spoolman Integration ===
+
+    void sync_spoolman_active_spool();
+
     // === Action Handlers (public for XML event callbacks) ===
   public:
     void handle_slot_tap(int slot_index);
