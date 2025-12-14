@@ -54,6 +54,7 @@ extern "C" {
  *   - error_segment: Error location (0-7, PathSegment enum, 0=none)
  *   - anim_progress: Animation progress 0-100
  *   - filament_color: Active filament color (0xRRGGBB)
+ *   - faceted_toolhead: "true" for faceted red style, "false" for Bambu style (default)
  */
 
 /**
@@ -222,6 +223,16 @@ void ui_filament_path_canvas_set_bypass_active(lv_obj_t* obj, bool active);
 typedef void (*filament_path_bypass_cb_t)(void* user_data);
 void ui_filament_path_canvas_set_bypass_callback(lv_obj_t* obj, filament_path_bypass_cb_t cb,
                                                  void* user_data);
+
+/**
+ * @brief Set toolhead renderer style
+ *
+ * Switches between Bambu-style (metallic gray) and faceted (angular red) toolhead rendering.
+ *
+ * @param obj The filament_path_canvas widget
+ * @param faceted true for faceted red style, false for Bambu metallic style (default)
+ */
+void ui_filament_path_canvas_set_faceted_toolhead(lv_obj_t* obj, bool faceted);
 
 #ifdef __cplusplus
 }

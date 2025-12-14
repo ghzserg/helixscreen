@@ -13,6 +13,8 @@
 #include "lvgl/src/xml/lv_xml_parser.h"
 #include "lvgl/src/xml/lv_xml_widget.h"
 #include "lvgl/src/xml/parsers/lv_xml_obj_parser.h"
+#include "nozzle_renderer_bambu.h"
+#include "nozzle_renderer_faceted.h"
 
 #include <spdlog/spdlog.h>
 
@@ -100,6 +102,9 @@ struct FilamentPathData {
     // Bypass mode state
     bool bypass_active = false;       // External spool bypass mode
     uint32_t bypass_color = 0x888888; // Default gray for bypass filament
+
+    // Toolhead renderer style
+    bool use_faceted_toolhead = false; // false = Bambu-style, true = faceted red style
 
     // Callbacks
     filament_path_gate_cb_t gate_callback = nullptr;
@@ -469,378 +474,6 @@ static void draw_filament_tip(lv_layer_t* layer, int32_t x, int32_t y, lv_color_
     draw_sensor_dot(layer, x, y, core_color, true, radius);
 }
 
-// Draw a rectangle with vertical gradient (light at top, dark at bottom)
-static void ph_draw_gradient_rect(lv_layer_t* layer, int32_t x1, int32_t y1, int32_t x2, int32_t y2,
-                                  lv_color_t top_color, lv_color_t bottom_color) {
-    lv_draw_fill_dsc_t fill_dsc;
-    lv_draw_fill_dsc_init(&fill_dsc);
-    fill_dsc.opa = LV_OPA_COVER;
-
-    int32_t height = y2 - y1;
-    if (height <= 0)
-        return;
-
-    for (int32_t y = y1; y <= y2; y++) {
-        float factor = (float)(y - y1) / (float)height;
-        fill_dsc.color = ph_blend(top_color, bottom_color, factor);
-        lv_area_t line = {x1, y, x2, y};
-        lv_draw_fill(layer, &fill_dsc, &line);
-    }
-}
-
-// Draw isometric side face (parallelogram with vertical sides, diagonal top/bottom)
-// Top edge is higher on the right, bottom edge is lower on the right
-// Vertical edges are straight up/down, horizontal edges tilt up-right
-static void ph_draw_iso_side(lv_layer_t* layer, int32_t x, int32_t y1, int32_t y2, int32_t depth,
-                             lv_color_t top_color, lv_color_t bottom_color) {
-    lv_draw_fill_dsc_t fill_dsc;
-    lv_draw_fill_dsc_init(&fill_dsc);
-    fill_dsc.opa = LV_OPA_COVER;
-
-    int32_t height = y2 - y1;
-    if (height <= 0 || depth <= 0)
-        return;
-
-    // The top-left corner is at (x, y1)
-    // The top-right corner is at (x + depth, y1 - depth/2) - tilts UP to the right
-    // The bottom-left corner is at (x, y2)
-    // The bottom-right corner is at (x + depth, y2 - depth/2) - also tilts UP
-    int32_t y_offset = depth / 2;
-
-    // Draw vertical columns from left to right
-    for (int32_t d = 0; d <= depth; d++) {
-        float horiz_factor = (float)d / (float)depth;
-        int32_t col_x = x + d;
-
-        // Y positions tilt up as we go right
-        int32_t col_y1 = y1 - (int32_t)(horiz_factor * y_offset);
-        int32_t col_y2 = y2 - (int32_t)(horiz_factor * y_offset);
-
-        // Draw this vertical column with gradient
-        for (int32_t y = col_y1; y <= col_y2; y++) {
-            float vert_factor = (float)(y - col_y1) / (float)(col_y2 - col_y1);
-            fill_dsc.color = ph_blend(top_color, bottom_color, vert_factor);
-            lv_area_t pixel = {col_x, y, col_x, y};
-            lv_draw_fill(layer, &fill_dsc, &pixel);
-        }
-    }
-}
-
-// Draw the isometric top face of a block (parallelogram tilting up-right)
-// Left edge is lower, right edge is higher - matches side face angle
-static void ph_draw_iso_top(lv_layer_t* layer, int32_t cx, int32_t y, int32_t half_width,
-                            int32_t depth, lv_color_t color) {
-    lv_draw_fill_dsc_t fill_dsc;
-    lv_draw_fill_dsc_init(&fill_dsc);
-    fill_dsc.color = color;
-    fill_dsc.opa = LV_OPA_COVER;
-
-    // The top face connects:
-    // - Front-left corner: (cx - half_width, y)
-    // - Front-right corner: (cx + half_width, y)
-    // - Back-right corner: (cx + half_width + depth, y - depth/2)
-    // - Back-left corner: (cx - half_width + depth, y - depth/2)
-    // This uses the SAME depth/2 slope as the side face
-
-    int32_t y_offset = depth / 2;
-    int32_t front_width = half_width * 2;
-
-    // Draw horizontal lines from front (y) to back (y - y_offset)
-    for (int32_t d = 0; d <= depth; d++) {
-        float factor = (float)d / (float)depth;
-        int32_t row_y = y - (int32_t)(factor * y_offset);
-        int32_t x_start = cx - half_width + d;
-        int32_t x_end = cx + half_width + d;
-
-        lv_area_t line = {x_start, row_y, x_end, row_y};
-        lv_draw_fill(layer, &fill_dsc, &line);
-    }
-}
-
-// Draw nozzle tip (tapered cone shape)
-static void ph_draw_nozzle_tip(lv_layer_t* layer, int32_t cx, int32_t top_y, int32_t top_width,
-                               int32_t bottom_width, int32_t height, lv_color_t left_color,
-                               lv_color_t right_color) {
-    lv_draw_fill_dsc_t fill_dsc;
-    lv_draw_fill_dsc_init(&fill_dsc);
-    fill_dsc.opa = LV_OPA_COVER;
-
-    if (height <= 0)
-        return;
-
-    // Draw tapered shape line by line
-    for (int32_t y = 0; y < height; y++) {
-        float factor = (float)y / (float)height;
-        int32_t half_width =
-            (int32_t)(top_width / 2.0f + (bottom_width / 2.0f - top_width / 2.0f) * factor);
-
-        // Left half (lighter)
-        fill_dsc.color = left_color;
-        lv_area_t left = {cx - half_width, top_y + y, cx, top_y + y};
-        lv_draw_fill(layer, &fill_dsc, &left);
-
-        // Right half (darker for 3D effect)
-        fill_dsc.color = right_color;
-        lv_area_t right = {cx + 1, top_y + y, cx + half_width, top_y + y};
-        lv_draw_fill(layer, &fill_dsc, &right);
-    }
-}
-
-static void draw_nozzle(lv_layer_t* layer, int32_t cx, int32_t cy, lv_color_t color,
-                        int32_t scale_unit) {
-    // Bambu-style print head: tall rectangular body with large circular fan duct
-    // Proportions: roughly 2:1 height to width ratio
-    // cy is the CENTER of the entire print head assembly
-
-    // Base colors - light gray metallic (like Bambu's silver/white head)
-    lv_color_t metal_base = ui_theme_get_color("filament_metal");
-
-    // Lighting: light comes from top-left
-    lv_color_t front_light = ph_lighten(metal_base, 40);
-    lv_color_t front_mid = metal_base;
-    lv_color_t front_dark = ph_darken(metal_base, 25);
-    lv_color_t side_color = ph_darken(metal_base, 40);
-    lv_color_t top_color = ph_lighten(metal_base, 60);
-    lv_color_t outline_color = ph_darken(metal_base, 50);
-
-    // Dimensions scaled by scale_unit - TALL like Bambu (2:1 ratio)
-    int32_t body_half_width = (scale_unit * 18) / 10; // ~18px at scale 10
-    int32_t body_height = scale_unit * 4;             // ~40px at scale 10 (tall!)
-    int32_t body_depth = (scale_unit * 6) / 10;       // ~6px isometric depth
-    int32_t corner_radius = (scale_unit * 3) / 10;    // Rounded corners
-
-    // Shift extruder left so filament line bisects the TOP edge of top surface
-    // The top surface's back edge is shifted right by body_depth, so we compensate
-    cx = cx - body_depth / 2;
-
-    // Nozzle tip dimensions (small at bottom)
-    int32_t tip_top_width = (scale_unit * 8) / 10;
-    int32_t tip_bottom_width = (scale_unit * 3) / 10;
-    int32_t tip_height = (scale_unit * 6) / 10;
-
-    // Fan duct - large, centered on front face
-    int32_t fan_radius = (scale_unit * 12) / 10; // Large fan taking most of front
-
-    // Cap dimensions (raised narrower section on top)
-    int32_t cap_height = body_height / 10;              // ~10% of body
-    int32_t cap_half_width = (body_half_width * 3) / 4; // ~75% of body width
-    int32_t bevel_height = cap_height;                  // Height of bevel transition zone
-
-    // Calculate Y positions - body stays fixed, cap and bevels sit above it
-    int32_t body_top = cy - body_height / 2; // Body top stays at original position
-    int32_t body_bottom = cy + body_height / 2;
-    int32_t cap_bottom = body_top - bevel_height; // Cap ends above bevel zone
-    int32_t cap_top = cap_bottom - cap_height;    // Cap starts above that
-    int32_t tip_top = body_bottom;
-    int32_t tip_bottom = tip_top + tip_height;
-
-    // ========================================
-    // STEP 0: Draw tapered top section (cap + bevel as ONE continuous shape)
-    // ========================================
-    // The top section tapers from narrow (cap_half_width) at cap_top
-    // to wide (body_half_width) at body_top. This is ONE continuous 3D form.
-    {
-        int32_t bevel_width = body_half_width - cap_half_width;
-        int32_t taper_height = body_top - cap_top; // Total height of tapered section
-        lv_draw_fill_dsc_t fill;
-        lv_draw_fill_dsc_init(&fill);
-        fill.opa = LV_OPA_COVER;
-
-        // === TAPERED ISOMETRIC TOP (one continuous surface, narrow to wide) ===
-        // Draw the entire iso top as rows that expand from cap_half_width to body_half_width
-        for (int32_t dy = 0; dy <= taper_height; dy++) {
-            float factor = (float)dy / (float)taper_height;
-            int32_t half_w = cap_half_width + (int32_t)(bevel_width * factor);
-            int32_t y_front = cap_top + dy;
-
-            // Draw this row of the isometric top with depth
-            for (int32_t d = 0; d <= body_depth; d++) {
-                float iso_factor = (float)d / (float)body_depth;
-                int32_t y_offset = (int32_t)(iso_factor * body_depth / 2);
-                int32_t y_row = y_front - y_offset;
-                int32_t x_left = cx - half_w + d;
-                int32_t x_right = cx + half_w + d;
-
-                lv_color_t row_color = ph_blend(top_color, ph_darken(top_color, 20), iso_factor);
-                fill.color = row_color;
-                lv_area_t row = {x_left, y_row, x_right, y_row};
-                lv_draw_fill(layer, &fill, &row);
-            }
-        }
-
-        // === TAPERED FRONT FACE (trapezoid: narrow top, wide bottom) ===
-        // Draw with smooth horizontal gradient: lighter on left, darker on right
-        for (int32_t dy = 0; dy <= taper_height; dy++) {
-            float factor = (float)dy / (float)taper_height;
-            int32_t half_w = cap_half_width + (int32_t)(bevel_width * factor);
-            int32_t y_row = cap_top + dy;
-
-            // Vertical gradient base
-            lv_color_t base_color = ph_blend(front_light, front_dark, factor * 0.6f);
-
-            // Draw the row with horizontal shading gradient
-            for (int32_t x = cx - half_w; x <= cx + half_w; x++) {
-                // Calculate horizontal position factor (-1 at left edge, +1 at right edge)
-                float x_factor = (float)(x - cx) / (float)half_w; // -1 to +1
-
-                // Smooth shading: lighter on left, darker on right
-                // Use a subtle adjustment based on x position
-                lv_color_t pixel_color;
-                if (x_factor < 0) {
-                    // Left side - slightly lighter
-                    pixel_color = ph_lighten(base_color, (int32_t)(-x_factor * 12));
-                } else {
-                    // Right side - slightly darker
-                    pixel_color = ph_darken(base_color, (int32_t)(x_factor * 12));
-                }
-
-                fill.color = pixel_color;
-                lv_area_t pixel = {x, y_row, x, y_row};
-                lv_draw_fill(layer, &fill, &pixel);
-            }
-        }
-
-        // === TAPERED RIGHT SIDE (continuous angled isometric side) ===
-        for (int32_t dy = 0; dy <= taper_height; dy++) {
-            float factor = (float)dy / (float)taper_height;
-            int32_t half_w = cap_half_width + (int32_t)(bevel_width * factor);
-            int32_t y_front = cap_top + dy;
-            int32_t x_base = cx + half_w;
-
-            // Draw isometric depth at this row's edge
-            for (int32_t d = 0; d <= body_depth; d++) {
-                float iso_factor = (float)d / (float)body_depth;
-                int32_t y_offset = (int32_t)(iso_factor * body_depth / 2);
-                lv_color_t side_col = ph_blend(side_color, ph_darken(side_color, 30), iso_factor);
-                fill.color = side_col;
-                lv_area_t pixel = {x_base + d, y_front - y_offset, x_base + d, y_front - y_offset};
-                lv_draw_fill(layer, &fill, &pixel);
-            }
-        }
-
-        // === LEFT EDGE HIGHLIGHT (angled line from narrow top to wide bottom) ===
-        lv_draw_line_dsc_t line_dsc;
-        lv_draw_line_dsc_init(&line_dsc);
-        line_dsc.color = ph_lighten(front_light, 30);
-        line_dsc.width = 1;
-        line_dsc.p1.x = cx - cap_half_width;
-        line_dsc.p1.y = cap_top;
-        line_dsc.p2.x = cx - body_half_width;
-        line_dsc.p2.y = body_top;
-        lv_draw_line(layer, &line_dsc);
-    }
-
-    // ========================================
-    // STEP 1: Draw main body (tall rectangle with rounded corners)
-    // ========================================
-    {
-        // Main body starts below cap - no isometric top (cap provides it)
-
-        // Front face with vertical gradient
-        ph_draw_gradient_rect(layer, cx - body_half_width, body_top, cx + body_half_width,
-                              body_bottom, front_light, front_dark);
-
-        // Right side face (darker, isometric depth)
-        ph_draw_iso_side(layer, cx + body_half_width, body_top, body_bottom, body_depth, side_color,
-                         ph_darken(side_color, 20));
-
-        // Left edge highlight
-        lv_draw_line_dsc_t line_dsc;
-        lv_draw_line_dsc_init(&line_dsc);
-        line_dsc.color = ph_lighten(front_light, 30);
-        line_dsc.width = 1;
-        line_dsc.p1.x = cx - body_half_width;
-        line_dsc.p1.y = body_top;
-        line_dsc.p2.x = cx - body_half_width;
-        line_dsc.p2.y = body_bottom;
-        lv_draw_line(layer, &line_dsc);
-
-        // Outline for definition
-        line_dsc.color = outline_color;
-        line_dsc.p1.x = cx - body_half_width;
-        line_dsc.p1.y = body_bottom;
-        line_dsc.p2.x = cx + body_half_width;
-        line_dsc.p2.y = body_bottom;
-        lv_draw_line(layer, &line_dsc);
-    }
-
-    // ========================================
-    // STEP 2: Draw large circular fan duct (dominates front face)
-    // ========================================
-    {
-        // Fan positioned in center of front face
-        int32_t fan_cx = cx;
-        int32_t fan_cy = cy - (scale_unit * 4) / 10; // Slightly above center
-
-        // Outer bezel ring (raised edge around fan)
-        lv_draw_arc_dsc_t arc_dsc;
-        lv_draw_arc_dsc_init(&arc_dsc);
-        arc_dsc.center.x = fan_cx;
-        arc_dsc.center.y = fan_cy;
-        arc_dsc.radius = fan_radius + 2;
-        arc_dsc.start_angle = 0;
-        arc_dsc.end_angle = 360;
-        arc_dsc.width = 2;
-        arc_dsc.color = ph_lighten(front_mid, 20);
-        arc_dsc.opa = LV_OPA_COVER;
-        lv_draw_arc(layer, &arc_dsc);
-
-        // Main fan opening - outer blade area (DARK)
-        lv_draw_fill_dsc_t fill_dsc;
-        lv_draw_fill_dsc_init(&fill_dsc);
-        fill_dsc.color = ph_darken(metal_base, 80); // Very dark for blade area
-        fill_dsc.opa = LV_OPA_COVER;
-        fill_dsc.radius = fan_radius;
-
-        lv_area_t fan_area = {fan_cx - fan_radius, fan_cy - fan_radius, fan_cx + fan_radius,
-                              fan_cy + fan_radius};
-        lv_draw_fill(layer, &fill_dsc, &fan_area);
-
-        // Inner hub circle (center of fan) - lighter than blade area
-        int32_t hub_r = fan_radius / 3;
-        fill_dsc.color = ph_darken(metal_base, 40); // Lighter hub
-        fill_dsc.radius = hub_r;
-        lv_area_t hub_area = {fan_cx - hub_r, fan_cy - hub_r, fan_cx + hub_r, fan_cy + hub_r};
-        lv_draw_fill(layer, &fill_dsc, &hub_area);
-
-        // Highlight arc on top-left (light reflection on bezel)
-        arc_dsc.radius = fan_radius + 1;
-        arc_dsc.start_angle = 200;
-        arc_dsc.end_angle = 290;
-        arc_dsc.width = 1;
-        arc_dsc.color = ph_lighten(front_light, 50);
-        lv_draw_arc(layer, &arc_dsc);
-    }
-
-    // ========================================
-    // STEP 3: Draw nozzle tip (small tapered bottom)
-    // ========================================
-    {
-        lv_color_t tip_left = ph_lighten(metal_base, 30);
-        lv_color_t tip_right = ph_darken(metal_base, 20);
-
-        // If filament loaded (color differs from nozzle defaults), tint the nozzle tip
-        lv_color_t nozzle_dark = ui_theme_get_color("filament_nozzle_dark");
-        lv_color_t nozzle_light = ui_theme_get_color("filament_nozzle_light");
-        if (!lv_color_eq(color, ph_darken(metal_base, 10)) && !lv_color_eq(color, nozzle_dark) &&
-            !lv_color_eq(color, nozzle_light)) {
-            tip_left = ph_blend(tip_left, color, 0.4f);
-            tip_right = ph_blend(tip_right, color, 0.4f);
-        }
-
-        ph_draw_nozzle_tip(layer, cx, tip_top, tip_top_width, tip_bottom_width, tip_height,
-                           tip_left, tip_right);
-
-        // Bright glint at tip
-        lv_draw_fill_dsc_t fill_dsc;
-        lv_draw_fill_dsc_init(&fill_dsc);
-        fill_dsc.color = lv_color_hex(0xFFFFFF);
-        fill_dsc.opa = LV_OPA_70;
-        lv_area_t glint = {cx - 1, tip_bottom - 1, cx + 1, tip_bottom};
-        lv_draw_fill(layer, &fill_dsc, &glint);
-    }
-}
-
 // ============================================================================
 // Main Draw Callback
 // ============================================================================
@@ -1133,8 +766,12 @@ static void filament_path_draw_cb(lv_event_t* e) {
         draw_vertical_line(layer, center_x, toolhead_y + sensor_r, nozzle_y - extruder_half_height,
                            noz_color, line_active);
 
-        // Extruder/print head icon (responsive size, Bambu-style)
-        draw_nozzle(layer, center_x, nozzle_y, noz_color, data->extruder_scale);
+        // Extruder/print head icon (responsive size)
+        if (data->use_faceted_toolhead) {
+            draw_nozzle_faceted(layer, center_x, nozzle_y, noz_color, data->extruder_scale);
+        } else {
+            draw_nozzle_bambu(layer, center_x, nozzle_y, noz_color, data->extruder_scale);
+        }
     }
 
     // ========================================================================
@@ -1350,6 +987,9 @@ static void filament_path_xml_apply(lv_xml_parser_state_t* state, const char** a
             needs_redraw = true;
         } else if (strcmp(name, "bypass_active") == 0) {
             data->bypass_active = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
+            needs_redraw = true;
+        } else if (strcmp(name, "faceted_toolhead") == 0) {
+            data->use_faceted_toolhead = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
             needs_redraw = true;
         }
     }
@@ -1588,5 +1228,17 @@ void ui_filament_path_canvas_set_bypass_callback(lv_obj_t* obj, filament_path_by
     if (data) {
         data->bypass_callback = cb;
         data->bypass_user_data = user_data;
+    }
+}
+
+void ui_filament_path_canvas_set_faceted_toolhead(lv_obj_t* obj, bool faceted) {
+    auto* data = get_data(obj);
+    if (!data)
+        return;
+
+    if (data->use_faceted_toolhead != faceted) {
+        data->use_faceted_toolhead = faceted;
+        spdlog::debug("[FilamentPath] Toolhead style: {}", faceted ? "faceted" : "bambu");
+        lv_obj_invalidate(obj);
     }
 }

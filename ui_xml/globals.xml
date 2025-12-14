@@ -317,6 +317,9 @@
     <color name="filament_nozzle_dark" value="#888888"/>
     <color name="filament_nozzle_light" value="#666666"/>
     <color name="filament_metal" value="#808890"/>
+    <!-- Faceted toolhead base color (Voron-style red) -->
+    <color name="toolhead_body_dark" value="#E53935"/>
+    <color name="toolhead_body_light" value="#E53935"/>
     <!-- AMS slot colors -->
     <color name="ams_hub_dark" value="#1A1A1A"/>
     <color name="ams_hub_border" value="#333333"/>
