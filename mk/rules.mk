@@ -322,14 +322,18 @@ compile_commands:
 # Files are generated during compilation with -MMD -MP flags.
 #
 # Pattern explanation:
-#   $(OBJ_DIR)/*.d        - App sources in obj root
-#   $(OBJ_DIR)/*/*.d      - App sources in subdirs (e.g., obj/tools/)
-#   $(OBJ_DIR)/lvgl/*.d   - LVGL sources (shallow)
-#   $(OBJ_DIR)/lvgl/*/*.d - LVGL sources (one level deep)
+#   $(OBJ_DIR)/*.d          - App sources in obj root
+#   $(OBJ_DIR)/*/*.d        - App sources in subdirs (e.g., obj/tools/)
+#   $(OBJ_DIR)/tests/*.d    - Unit test sources
+#   $(OBJ_DIR)/tests/*/*.d  - Mock sources and nested test dirs
+#   $(OBJ_DIR)/lvgl/*.d     - LVGL sources (shallow)
+#   $(OBJ_DIR)/lvgl/*/*.d   - LVGL sources (one level deep)
 #   $(OBJ_DIR)/lvgl/*/*/*.d - LVGL sources (two levels deep - libs/thorvg/*)
 #   $(OBJ_DIR)/lvgl/*/*/*/*.d - LVGL sources (three levels deep)
 -include $(wildcard $(OBJ_DIR)/*.d)
 -include $(wildcard $(OBJ_DIR)/*/*.d)
+-include $(wildcard $(OBJ_DIR)/tests/*.d)
+-include $(wildcard $(OBJ_DIR)/tests/*/*.d)
 -include $(wildcard $(OBJ_DIR)/lvgl/*.d)
 -include $(wildcard $(OBJ_DIR)/lvgl/*/*.d)
 -include $(wildcard $(OBJ_DIR)/lvgl/*/*/*.d)

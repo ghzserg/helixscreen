@@ -283,46 +283,53 @@ test-integration: $(TEST_INTEGRATION_BIN)
 	$(ECHO) "$(GREEN)$(BOLD)✓ All integration tests passed!$(RESET)"
 
 # Compile test main (Catch2 runner)
+# Note: No DEPFLAGS for Catch2 infrastructure - rarely changes
 $(TEST_MAIN_OBJ): $(TEST_DIR)/test_main.cpp
 	$(Q)mkdir -p $(dir $@)
 	$(ECHO) "$(BLUE)[TEST-MAIN]$(RESET) $<"
 	$(Q)$(CXX) $(CXXFLAGS) -I$(TEST_DIR) -c $< -o $@
 
 # Compile Catch2 amalgamated source
+# Note: No DEPFLAGS - this is third-party code that never changes
 $(CATCH2_OBJ): $(TEST_DIR)/catch_amalgamated.cpp
 	$(Q)mkdir -p $(dir $@)
 	$(ECHO) "$(BLUE)[CATCH2]$(RESET) $<"
 	$(Q)$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Compile UI test utilities
+# Uses DEPFLAGS to track header dependencies
 $(UI_TEST_UTILS_OBJ): $(TEST_DIR)/ui_test_utils.cpp
 	$(Q)mkdir -p $(dir $@)
 	$(ECHO) "$(CYAN)[UI-TEST]$(RESET) $<"
-	$(Q)$(CXX) $(CXXFLAGS) -I$(TEST_DIR) $(INCLUDES) -c $< -o $@
+	$(Q)$(CXX) $(CXXFLAGS) $(DEPFLAGS) -I$(TEST_DIR) $(INCLUDES) -c $< -o $@
 
 # Compile LVGL test fixture (shared base class for UI tests)
-$(LVGL_TEST_FIXTURE_OBJ): $(TEST_DIR)/lvgl_test_fixture.cpp $(TEST_DIR)/lvgl_test_fixture.h
+# Uses DEPFLAGS to track header dependencies
+$(LVGL_TEST_FIXTURE_OBJ): $(TEST_DIR)/lvgl_test_fixture.cpp
 	$(Q)mkdir -p $(dir $@)
 	$(ECHO) "$(CYAN)[LVGL-FIXTURE]$(RESET) $<"
-	$(Q)$(CXX) $(CXXFLAGS) -I$(TEST_DIR) $(INCLUDES) -c $< -o $@
+	$(Q)$(CXX) $(CXXFLAGS) $(DEPFLAGS) -I$(TEST_DIR) $(INCLUDES) -c $< -o $@
 
 # Compile test fixtures (reusable fixtures with mock initialization helpers)
-$(TEST_FIXTURES_OBJ): $(TEST_DIR)/test_fixtures.cpp $(TEST_DIR)/test_fixtures.h $(TEST_DIR)/lvgl_test_fixture.h
+# Uses DEPFLAGS to track header dependencies
+$(TEST_FIXTURES_OBJ): $(TEST_DIR)/test_fixtures.cpp
 	$(Q)mkdir -p $(dir $@)
 	$(ECHO) "$(CYAN)[TEST-FIXTURE]$(RESET) $<"
-	$(Q)$(CXX) $(CXXFLAGS) -I$(TEST_DIR) $(INCLUDES) -c $< -o $@
+	$(Q)$(CXX) $(CXXFLAGS) $(DEPFLAGS) -I$(TEST_DIR) $(INCLUDES) -c $< -o $@
 
 # Compile test sources
+# Uses DEPFLAGS to track header dependencies for incremental rebuilds
 $(OBJ_DIR)/tests/%.o: $(TEST_UNIT_DIR)/%.cpp
 	$(Q)mkdir -p $(dir $@)
 	$(ECHO) "$(BLUE)[TEST]$(RESET) $<"
-	$(Q)$(CXX) $(CXXFLAGS) -I$(TEST_DIR) $(INCLUDES) -c $< -o $@
+	$(Q)$(CXX) $(CXXFLAGS) $(DEPFLAGS) -I$(TEST_DIR) $(INCLUDES) -c $< -o $@
 
 # Compile mock sources
+# Uses DEPFLAGS to track header dependencies
 $(OBJ_DIR)/tests/mocks/%.o: $(TEST_MOCK_DIR)/%.cpp
 	$(Q)mkdir -p $(dir $@)
 	$(ECHO) "$(YELLOW)[MOCK]$(RESET) $<"
-	$(Q)$(CXX) $(CXXFLAGS) -I$(TEST_MOCK_DIR) $(INCLUDES) -c $< -o $@
+	$(Q)$(CXX) $(CXXFLAGS) $(DEPFLAGS) -I$(TEST_MOCK_DIR) $(INCLUDES) -c $< -o $@
 
 # Dynamic card instantiation test
 TEST_CARDS_BIN := $(BIN_DIR)/test_dynamic_cards

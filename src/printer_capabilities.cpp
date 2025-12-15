@@ -225,7 +225,8 @@ void PrinterCapabilities::parse_objects(const json& objects) {
     // (though this would be unusual - most users have one or the other)
     if (has_tool_changer_ && !tool_names_.empty()) {
         mmu_type_ = AmsType::TOOL_CHANGER;
-        spdlog::info("[PrinterCapabilities] Tool changer with {} tools detected", tool_names_.size());
+        spdlog::info("[PrinterCapabilities] Tool changer with {} tools detected",
+                     tool_names_.size());
     }
 
     spdlog::info("[PrinterCapabilities] {}", summary());

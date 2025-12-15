@@ -309,7 +309,7 @@ void AmsBackendToolChanger::parse_toolchanger_state(const nlohmann::json& tc_dat
 }
 
 void AmsBackendToolChanger::parse_tool_state(const std::string& tool_name,
-                                              const nlohmann::json& tool_data) {
+                                             const nlohmann::json& tool_data) {
     int slot_idx = find_slot_for_tool(tool_name);
     if (slot_idx < 0) {
         spdlog::warn("[AMS ToolChanger] Unknown tool: {}", tool_name);

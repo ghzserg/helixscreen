@@ -3,9 +3,10 @@
 
 #pragma once
 
+#include "ui_subscription_guard.h"
+
 #include "ams_backend.h"
 #include "moonraker_client.h"
-#include "ui_subscription_guard.h"
 
 #include <atomic>
 #include <mutex>
@@ -205,8 +206,8 @@ class AmsBackendToolChanger : public AmsBackend {
     AmsError validate_slot_index(int slot_index) const;
 
     // Dependencies
-    MoonrakerAPI* api_;                  ///< For sending G-code commands
-    MoonrakerClient* client_;            ///< For subscribing to updates
+    MoonrakerAPI* api_;                   ///< For sending G-code commands
+    MoonrakerClient* client_;             ///< For subscribing to updates
     std::vector<std::string> tool_names_; ///< Tool names from discovery
 
     // State
@@ -216,8 +217,8 @@ class AmsBackendToolChanger : public AmsBackend {
     SubscriptionGuard subscription_;   ///< RAII subscription (auto-unsubscribes)
 
     // Cached toolchanger state
-    AmsSystemInfo system_info_;      ///< Current system state
-    bool tools_initialized_{false};  ///< Have we received initial state?
+    AmsSystemInfo system_info_;     ///< Current system state
+    bool tools_initialized_{false}; ///< Have we received initial state?
 
     // Per-tool mounted state (for quick lookup)
     std::vector<bool> tool_mounted_; ///< Which tools are mounted

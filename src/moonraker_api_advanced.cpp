@@ -731,7 +731,8 @@ void MoonrakerAPI::get_spool_usage_history(
 }
 
 void MoonrakerAPI::update_spoolman_spool_weight(int spool_id, double remaining_weight_g,
-                                                SuccessCallback on_success, ErrorCallback on_error) {
+                                                SuccessCallback on_success,
+                                                ErrorCallback on_error) {
     spdlog::info("[Moonraker API] Updating spool {} remaining weight to {:.1f}g", spool_id,
                  remaining_weight_g);
 
@@ -774,7 +775,8 @@ void MoonrakerAPI::update_spoolman_filament_color(int filament_id, const std::st
     client_.send_jsonrpc(
         "server.spoolman.proxy", params,
         [on_success, filament_id, color_hex](json /*response*/) {
-            spdlog::debug("[Moonraker API] Filament {} color updated to {}", filament_id, color_hex);
+            spdlog::debug("[Moonraker API] Filament {} color updated to {}", filament_id,
+                          color_hex);
             if (on_success) {
                 on_success();
             }

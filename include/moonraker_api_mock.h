@@ -354,7 +354,8 @@ class MoonrakerAPIMock : public MoonrakerAPI {
      * @param on_error Error callback (never called)
      */
     void update_spoolman_filament_color(int filament_id, const std::string& color_hex,
-                                        SuccessCallback on_success, ErrorCallback on_error) override;
+                                        SuccessCallback on_success,
+                                        ErrorCallback on_error) override;
 
     /**
      * @brief Enable or disable mock Spoolman integration

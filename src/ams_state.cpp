@@ -221,7 +221,8 @@ void AmsState::init_backend_from_capabilities(const PrinterCapabilities& caps, M
                                               MoonrakerClient* client) {
     // Skip if no MMU or tool changer detected
     if (!caps.has_mmu() && !caps.has_tool_changer()) {
-        spdlog::debug("[AMS State] No MMU or tool changer detected, skipping backend initialization");
+        spdlog::debug(
+            "[AMS State] No MMU or tool changer detected, skipping backend initialization");
         return;
     }
 
