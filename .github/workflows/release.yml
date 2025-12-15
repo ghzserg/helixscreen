@@ -1,0 +1,221 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on v1.0.0, v1.2.3-beta, etc.
+
+# Ensure only one release workflow runs at a time
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # Build embedded platform binaries using Docker cross-compilation
+  # ============================================================================
+  build-pi:
+    name: Build (Raspberry Pi)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: buildx-pi-${{ hashFiles('docker/Dockerfile.pi') }}
+        restore-keys: |
+          buildx-pi-
+
+    - name: Build Pi toolchain image
+      run: |
+        docker buildx build \
+          --cache-from type=local,src=/tmp/.buildx-cache \
+          --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+          --load \
+          -t helixscreen/toolchain-pi \
+          -f docker/Dockerfile.pi \
+          docker/
+
+    - name: Cross-compile for Raspberry Pi
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-pi \
+          make PLATFORM_TARGET=pi SKIP_OPTIONAL_DEPS=1 -j$(nproc)
+
+    - name: Package Pi release
+      run: make release-pi
+
+    - name: Upload Pi artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-pi
+        path: releases/helixscreen-pi-*.tar.gz
+        retention-days: 7
+
+    # Move cache (prevents cache from growing indefinitely)
+    - name: Move cache
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
+
+  build-ad5m:
+    name: Build (Adventurer 5M)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: buildx-ad5m-${{ hashFiles('docker/Dockerfile.ad5m') }}
+        restore-keys: |
+          buildx-ad5m-
+
+    - name: Build AD5M toolchain image
+      run: |
+        docker buildx build \
+          --cache-from type=local,src=/tmp/.buildx-cache \
+          --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+          --load \
+          -t helixscreen/toolchain-ad5m \
+          -f docker/Dockerfile.ad5m \
+          docker/
+
+    - name: Cross-compile for Adventurer 5M
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-ad5m \
+          make PLATFORM_TARGET=ad5m SKIP_OPTIONAL_DEPS=1 -j$(nproc)
+
+    - name: Package AD5M release
+      run: make release-ad5m
+
+    - name: Upload AD5M artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-ad5m
+        path: releases/helixscreen-ad5m-*.tar.gz
+        retention-days: 7
+
+    # Move cache
+    - name: Move cache
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
+
+  # ============================================================================
+  # Create GitHub Release with all artifacts
+  # ============================================================================
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-pi, build-ad5m]
+    permissions:
+      contents: write  # Required to create releases
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Prepare release files
+      run: |
+        mkdir -p release-files
+        find artifacts -name '*.tar.gz' -exec mv {} release-files/ \;
+        echo "Release files:"
+        ls -lh release-files/
+
+    - name: Extract version from tag
+      id: version
+      run: |
+        # Extract version from tag (v1.2.3 -> 1.2.3)
+        VERSION="${GITHUB_REF_NAME#v}"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+
+    - name: Generate release notes
+      id: notes
+      run: |
+        # Try to get annotated tag message, fall back to auto-generated notes
+        TAG_MESSAGE=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME" 2>/dev/null | head -50)
+
+        if [ -n "$TAG_MESSAGE" ] && [ "$TAG_MESSAGE" != "" ]; then
+          echo "Using tag annotation for release notes"
+          echo "$TAG_MESSAGE" > release-notes.md
+        else
+          echo "Generating release notes from commits"
+          cat > release-notes.md << 'EOF'
+        ## What's New
+
+        See the [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for details.
+
+        ## Installation
+
+        ### Raspberry Pi (Mainsail OS)
+        ```bash
+        # Download and extract
+        wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/helixscreen-pi-${{ steps.version.outputs.version }}.tar.gz
+        tar -xzf helixscreen-pi-${{ steps.version.outputs.version }}.tar.gz
+        cd helixscreen
+
+        # Run
+        ./helix-screen
+        ```
+
+        ### Flashforge Adventurer 5M
+        ```bash
+        # Download and extract
+        wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/helixscreen-ad5m-${{ steps.version.outputs.version }}.tar.gz
+        tar -xzf helixscreen-ad5m-${{ steps.version.outputs.version }}.tar.gz
+        cd helixscreen
+
+        # Run
+        ./helix-screen
+        ```
+
+        ## Checksums
+
+        ```
+        $(cd release-files && sha256sum *.tar.gz)
+        ```
+        EOF
+        fi
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: HelixScreen ${{ steps.version.outputs.version }}
+        body_path: release-notes.md
+        draft: false
+        prerelease: ${{ contains(github.ref_name, '-') }}  # v1.0.0-beta -> prerelease
+        files: release-files/*.tar.gz
+        fail_on_unmatched_files: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

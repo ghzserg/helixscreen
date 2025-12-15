@@ -86,3 +86,9 @@ tests/unit/test_*
 # G-Code sample files (binary, bloats repo history)
 assets/gcode/*.gcode
 assets/*.gcode
+
+# ============================================================================
+# Release Artifacts
+# ============================================================================
+# Local staging for release binaries (uploaded to GitHub Releases, not committed)
+releases/
