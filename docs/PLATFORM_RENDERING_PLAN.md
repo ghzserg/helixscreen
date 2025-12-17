@@ -604,7 +604,7 @@ Update this section after each phase:
 |-------|--------|---------|-----------|-------|
 | 1 | ✅ Complete | 2025-12-15 | 2025-12-15 | TinyGL disabled, NEON enabled, 2D renderer API compatibility |
 | 2 | ⬜ Not Started | - | - | Pi OpenGL ES integration |
-| 3 | ⬜ Not Started | - | - | Testing & validation |
+| 3 | 🔄 Partial | 2025-12-15 | - | Native/SDL ✅, AD5M ✅, Pi ⬜ (blocked on Phase 2) |
 | 4 | ⬜ Not Started | - | - | 2D Bed Mesh Heatmap for AD5M |
 | 5 | ⬜ Not Started | - | - | 2D G-code Layer View for AD5M |
 | 6 | ✅ Complete | 2025-12-16 | 2025-12-16 | Pre-rendered splash images (~2 FPS → ~116 FPS). See docs/PRE_RENDERED_IMAGES.md |
