@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <memory>
 
 namespace {
 
@@ -303,7 +304,11 @@ static void hue_touch_handler(lv_event_t* e) {
 
 static void picker_delete_cb(lv_event_t* e) {
     lv_obj_t* obj = lv_event_get_target_obj(e);
-    HsvPickerData* data = static_cast<HsvPickerData*>(lv_obj_get_user_data(obj));
+    // Transfer ownership to unique_ptr for RAII cleanup (exception-safe)
+    std::unique_ptr<HsvPickerData> data(
+        static_cast<HsvPickerData*>(lv_obj_get_user_data(obj)));
+    lv_obj_set_user_data(obj, nullptr);
+
     if (data) {
         if (data->sv_buf) {
             lv_draw_buf_destroy(data->sv_buf);
@@ -311,8 +316,7 @@ static void picker_delete_cb(lv_event_t* e) {
         if (data->hue_buf) {
             lv_draw_buf_destroy(data->hue_buf);
         }
-        delete data;
-        lv_obj_set_user_data(obj, nullptr);
+        // data automatically freed by ~unique_ptr()
     }
 }
 
@@ -329,18 +333,19 @@ static void* ui_hsv_picker_xml_create(lv_xml_parser_state_t* state, const char**
         return nullptr;
     }
 
-    // Initialize data
-    HsvPickerData* data = new HsvPickerData();
-    data->hue = 0.0f;
-    data->saturation = 100.0f;
-    data->value = 100.0f;
-    data->sv_size = DEFAULT_SV_SIZE;
-    data->hue_height = DEFAULT_HUE_HEIGHT;
-    data->gap = DEFAULT_GAP;
-    data->callback = nullptr;
-    data->callback_user_data = nullptr;
+    // Initialize data using RAII pattern
+    auto data_ptr = std::make_unique<HsvPickerData>();
+    data_ptr->hue = 0.0f;
+    data_ptr->saturation = 100.0f;
+    data_ptr->value = 100.0f;
+    data_ptr->sv_size = DEFAULT_SV_SIZE;
+    data_ptr->hue_height = DEFAULT_HUE_HEIGHT;
+    data_ptr->gap = DEFAULT_GAP;
+    data_ptr->callback = nullptr;
+    data_ptr->callback_user_data = nullptr;
 
-    lv_obj_set_user_data(picker, data);
+    // Transfer ownership to LVGL widget
+    lv_obj_set_user_data(picker, data_ptr.release());
 
     // Container styling - NO flex, use explicit positioning
     lv_obj_set_style_bg_opa(picker, LV_OPA_TRANSP, 0);
