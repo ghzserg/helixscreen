@@ -7,7 +7,10 @@
 
 #include <lvgl/lvgl.h>
 
+#include <atomic>
 #include <glm/glm.hpp>
+#include <memory>
+#include <thread>
 
 namespace helix {
 namespace gcode {
@@ -183,9 +186,9 @@ class GCodeLayerRenderer {
      * @brief View mode for 2D layer renderer
      */
     enum class ViewMode {
-        TOP_DOWN,  ///< X/Y plane from above (default)
-        FRONT,     ///< X/Z plane - side profile showing all layers
-        ISOMETRIC  ///< X/Y plane with isometric projection
+        TOP_DOWN, ///< X/Y plane from above (default)
+        FRONT,    ///< X/Z plane - side profile showing all layers
+        ISOMETRIC ///< X/Y plane with isometric projection
     };
 
     /**
@@ -350,7 +353,7 @@ class GCodeLayerRenderer {
     bool show_travels_ = false;
     bool show_extrusions_ = true;
     bool show_supports_ = true;
-    bool depth_shading_ = true; // Enabled by default for 3D-like appearance
+    bool depth_shading_ = true;            // Enabled by default for 3D-like appearance
     ViewMode view_mode_ = ViewMode::FRONT; // Default to front view
 
     // Colors
@@ -380,22 +383,22 @@ class GCodeLayerRenderer {
     size_t last_segment_count_ = 0;
 
     // Incremental render cache - paint new layers on top of previous (SOLID)
-    lv_obj_t* cache_canvas_ = nullptr;  // Hidden canvas for offscreen rendering
+    lv_obj_t* cache_canvas_ = nullptr; // Hidden canvas for offscreen rendering
     lv_draw_buf_t* cache_buf_ = nullptr;
-    int cached_up_to_layer_ = -1;     // Highest layer rendered in cache
-    int cached_width_ = 0;            // Dimensions cache was built for
+    int cached_up_to_layer_ = -1; // Highest layer rendered in cache
+    int cached_width_ = 0;        // Dimensions cache was built for
     int cached_height_ = 0;
 
     // Ghost cache - all layers rendered once at reduced opacity
     lv_obj_t* ghost_canvas_ = nullptr;
     lv_draw_buf_t* ghost_buf_ = nullptr;
     bool ghost_cache_valid_ = false;
-    bool ghost_mode_enabled_ = true;  // Enable ghost mode by default
-    int ghost_rendered_up_to_ = -1;   // Progress tracker for progressive ghost rendering
+    bool ghost_mode_enabled_ = true; // Enable ghost mode by default
+    int ghost_rendered_up_to_ = -1;  // Progress tracker for progressive ghost rendering
 
     // Progressive rendering - render N layers per frame to avoid blocking UI
     static constexpr int LAYERS_PER_FRAME = 15;
-    static constexpr int GHOST_LAYERS_PER_FRAME = 10;  // Keep small to avoid UI blocking
+    static constexpr int GHOST_LAYERS_PER_FRAME = 10; // Keep small to avoid UI blocking
 
     void invalidate_cache();
     void ensure_cache(int width, int height);
@@ -403,11 +406,48 @@ class GCodeLayerRenderer {
     void blit_cache(lv_layer_t* target);
     void destroy_cache();
 
-    // Ghost cache methods
+    // Ghost cache methods (LVGL-based, for main thread progressive rendering)
     void ensure_ghost_cache(int width, int height);
     void render_ghost_layers(int from_layer, int to_layer);
     void blit_ghost_cache(lv_layer_t* target);
     void destroy_ghost_cache();
+
+    // =========================================================================
+    // Background Thread Ghost Rendering
+    // =========================================================================
+    // LVGL is not thread-safe, so background thread renders to a raw pixel
+    // buffer using software Bresenham line drawing, then copies to LVGL buffer
+    // on main thread when complete.
+
+    /// Raw pixel buffer for background thread rendering (ARGB8888)
+    std::unique_ptr<uint8_t[]> ghost_raw_buffer_;
+    int ghost_raw_width_ = 0;
+    int ghost_raw_height_ = 0;
+    int ghost_raw_stride_ = 0; // Bytes per row
+
+    /// Background thread management
+    std::thread ghost_thread_;
+    std::atomic<bool> ghost_thread_cancel_{false};
+    std::atomic<bool> ghost_thread_running_{false};
+    std::atomic<bool> ghost_thread_ready_{false}; // True when raw buffer is complete
+
+    /// Start background ghost rendering (called when new gcode loaded)
+    void start_background_ghost_render();
+
+    /// Cancel any in-progress background ghost render
+    void cancel_background_ghost_render();
+
+    /// Background thread entry point (renders all layers to raw buffer)
+    void background_ghost_render_thread();
+
+    /// Copy completed raw buffer to LVGL ghost_buf_ (called on main thread)
+    void copy_raw_to_ghost_buf();
+
+    /// Software Bresenham line drawing to raw ARGB8888 buffer
+    void draw_line_bresenham(int x0, int y0, int x1, int y1, uint32_t color);
+
+    /// Blend a pixel with alpha into the raw buffer
+    void blend_pixel(int x, int y, uint32_t color);
 };
 
 } // namespace gcode

@@ -12,11 +12,11 @@
 
 #include "ui_gcode_viewer.h"
 
-#include "gcode_layer_renderer.h"
 #include "ui_async_callback.h"
 #include "ui_theme.h"
 
 #include "gcode_camera.h"
+#include "gcode_layer_renderer.h"
 #include "gcode_parser.h"
 #include "memory_utils.h"
 
@@ -27,8 +27,8 @@
 #endif
 
 // FPS tracking constants (same pattern as bed mesh renderer)
-constexpr size_t GCODE_FPS_WINDOW_SIZE = 10;   // Rolling window of frame times
-constexpr float GCODE_FPS_THRESHOLD = 15.0f;  // Fall back to 2D if below this FPS
+constexpr size_t GCODE_FPS_WINDOW_SIZE = 10; // Rolling window of frame times
+constexpr float GCODE_FPS_THRESHOLD = 15.0f; // Fall back to 2D if below this FPS
 
 #include <lvgl/src/xml/lv_xml_parser.h>
 #include <lvgl/src/xml/parsers/lv_xml_obj_parser.h>
@@ -201,8 +201,10 @@ class GCodeViewerState {
 
     /// Helper to check if currently using 2D layer renderer
     bool is_using_2d_mode() const {
-        if (render_mode_ == GCODE_VIEWER_RENDER_2D_LAYER) return true;
-        if (render_mode_ == GCODE_VIEWER_RENDER_AUTO && auto_fallback_to_2d_) return true;
+        if (render_mode_ == GCODE_VIEWER_RENDER_2D_LAYER)
+            return true;
+        if (render_mode_ == GCODE_VIEWER_RENDER_AUTO && auto_fallback_to_2d_)
+            return true;
         return false;
     }
 
@@ -217,7 +219,8 @@ class GCodeViewerState {
 
     /// Calculate average FPS from sample buffer
     float get_average_fps() const {
-        if (fps_sample_count_ == 0) return 0.0f;
+        if (fps_sample_count_ == 0)
+            return 0.0f;
         float total_ms = 0.0f;
         for (size_t i = 0; i < fps_sample_count_; i++) {
             total_ms += fps_samples_[i];
