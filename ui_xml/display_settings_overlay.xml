@@ -81,6 +81,38 @@
         <bind_flag_if_eq subject="settings_has_backlight" flag="hidden" ref_value="0"/>
       </lv_obj>
       <!-- ================================================================== -->
+      <!-- BED MESH RENDER MODE SECTION -->
+      <!-- ================================================================== -->
+      <lv_obj width="100%"
+              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              flex_flow="column" style_pad_gap="#space_sm">
+        <!-- Section Label with Icon -->
+        <lv_obj width="100%"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+          <icon src="grid" size="sm" variant="secondary"/>
+          <text_body text="Bed Mesh Render" style_text_color="#text_primary"/>
+        </lv_obj>
+        <!-- Description -->
+        <text_small width="100%"
+                    text="Choose rendering mode for bed mesh visualization" style_text_color="#text_secondary"
+                    style_text_align="left"/>
+        <!-- Mode Dropdown Row -->
+        <lv_obj name="bed_mesh_mode_row"
+                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                scrollable="false" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
+                style_margin_top="#space_md">
+          <text_body text="Render mode" style_text_color="#text_primary"/>
+          <lv_dropdown name="bed_mesh_mode_dropdown"
+                       width="140" height="#input_height" style_radius="#border_radius" style_border_width="0">
+            <event_cb trigger="value_changed" callback="on_bed_mesh_mode_changed"/>
+          </lv_dropdown>
+        </lv_obj>
+      </lv_obj>
+      <!-- Divider -->
+      <lv_obj width="100%"
+              height="1" style_bg_color="#card_border" style_bg_opa="100" style_border_width="0" scrollable="false"/>
+      <!-- ================================================================== -->
       <!-- DISPLAY SLEEP SECTION -->
       <!-- ================================================================== -->
       <lv_obj width="100%"

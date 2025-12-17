@@ -171,6 +171,27 @@ class SettingsManager {
      */
     void set_gcode_3d_enabled(bool enabled);
 
+    /**
+     * @brief Get bed mesh render mode
+     * @return Render mode (0=Auto, 1=3D, 2=2D heatmap)
+     */
+    int get_bed_mesh_render_mode() const;
+
+    /**
+     * @brief Set bed mesh render mode
+     *
+     * Controls how bed mesh visualization is rendered:
+     * - Auto (0): System decides based on measured FPS
+     * - 3D (1): Always use 3D perspective view
+     * - 2D (2): Always use 2D heatmap (faster on slow hardware)
+     *
+     * @param mode Render mode (0=Auto, 1=3D, 2=2D)
+     */
+    void set_bed_mesh_render_mode(int mode);
+
+    /** @brief Get dropdown options string "Auto\n3D View\n2D Heatmap" */
+    static const char* get_bed_mesh_render_mode_options();
+
     // =========================================================================
     // PRINTER SETTINGS
     // =========================================================================
@@ -322,6 +343,11 @@ class SettingsManager {
         return &gcode_3d_enabled_subject_;
     }
 
+    /** @brief Bed mesh render mode subject (integer: 0=auto, 1=3D, 2=2D) */
+    lv_subject_t* subject_bed_mesh_render_mode() {
+        return &bed_mesh_render_mode_subject_;
+    }
+
     /** @brief LED enabled subject (integer: 0=off, 1=on) */
     lv_subject_t* subject_led_enabled() {
         return &led_enabled_subject_;
@@ -439,6 +465,7 @@ class SettingsManager {
     lv_subject_t has_backlight_subject_;
     lv_subject_t animations_enabled_subject_;
     lv_subject_t gcode_3d_enabled_subject_;
+    lv_subject_t bed_mesh_render_mode_subject_;
     lv_subject_t led_enabled_subject_;
     lv_subject_t sounds_enabled_subject_;
     lv_subject_t completion_alert_subject_;

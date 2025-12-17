@@ -12,6 +12,7 @@
 
 #include "app_globals.h"
 #include "moonraker_api.h"
+#include "settings_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -184,6 +185,17 @@ void BedMeshPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     } else {
         spdlog::info("[{}] No mesh data available from Moonraker", get_name());
     }
+
+    // Apply saved render mode preference from settings
+    int saved_mode = SettingsManager::instance().get_bed_mesh_render_mode();
+    auto render_mode = static_cast<bed_mesh_render_mode_t>(saved_mode);
+    ui_bed_mesh_set_render_mode(canvas_, render_mode);
+    spdlog::debug("[{}] Render mode set from settings: {} ({})", get_name(), saved_mode,
+                  saved_mode == 0 ? "Auto" : (saved_mode == 1 ? "3D" : "2D"));
+
+    // Evaluate render mode based on FPS history from previous sessions
+    // This decides whether to use 3D or 2D fallback mode for AUTO mode
+    ui_bed_mesh_evaluate_render_mode(canvas_);
 
     // Register cleanup handler
     lv_obj_add_event_cb(panel_, on_panel_delete, LV_EVENT_DELETE, this);

@@ -65,6 +65,15 @@ static void on_display_sleep_dropdown_changed(lv_event_t* e) {
     SettingsManager::instance().set_display_sleep_sec(seconds);
 }
 
+// Static callback for bed mesh render mode dropdown
+static void on_bed_mesh_mode_changed(lv_event_t* e) {
+    lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    int mode = static_cast<int>(lv_dropdown_get_selected(dropdown));
+    spdlog::info("[SettingsPanel] Bed mesh render mode changed: {} ({})", mode,
+                 mode == 0 ? "Auto" : (mode == 1 ? "3D" : "2D"));
+    SettingsManager::instance().set_bed_mesh_render_mode(mode);
+}
+
 // Static callback for version row long-press (memory debug toggle)
 // This provides a touch-based way to enable memory debugging on Pi (no keyboard)
 static void on_version_long_pressed(lv_event_t*) {
@@ -90,6 +99,7 @@ void SettingsPanel::init_subjects() {
                              on_completion_alert_dropdown_changed);
     lv_xml_register_event_cb(nullptr, "on_display_sleep_changed",
                              on_display_sleep_dropdown_changed);
+    lv_xml_register_event_cb(nullptr, "on_bed_mesh_mode_changed", on_bed_mesh_mode_changed);
     lv_xml_register_event_cb(nullptr, "on_version_long_pressed", on_version_long_pressed);
 
     // Register XML event callbacks for toggle switches
@@ -629,6 +639,21 @@ void SettingsPanel::handle_display_settings_clicked() {
                 lv_dropdown_set_selected(sleep_dropdown, index);
                 spdlog::debug("[{}] Sleep dropdown initialized to index {} ({}s)", get_name(),
                               index, current_sec);
+            }
+
+            // Initialize bed mesh render mode dropdown
+            lv_obj_t* bed_mesh_dropdown =
+                lv_obj_find_by_name(display_settings_overlay_, "bed_mesh_mode_dropdown");
+            if (bed_mesh_dropdown) {
+                // Set dropdown options
+                lv_dropdown_set_options(bed_mesh_dropdown,
+                                        SettingsManager::get_bed_mesh_render_mode_options());
+                // Set initial selection based on current setting
+                int current_mode = SettingsManager::instance().get_bed_mesh_render_mode();
+                lv_dropdown_set_selected(bed_mesh_dropdown, current_mode);
+                spdlog::debug("[{}] Bed mesh mode dropdown initialized to {} ({})", get_name(),
+                              current_mode,
+                              current_mode == 0 ? "Auto" : (current_mode == 1 ? "3D" : "2D"));
             }
 
             // Initially hidden

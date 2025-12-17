@@ -23,6 +23,9 @@ static const char* SLEEP_OPTIONS_TEXT = "Never\n1 minute\n5 minutes\n10 minutes\
 // Completion alert options (Off=0, Notification=1, Alert=2)
 static const char* COMPLETION_ALERT_OPTIONS_TEXT = "Off\nNotification\nAlert";
 
+// Bed mesh render mode options (Auto=0, 3D=1, 2D=2)
+static const char* BED_MESH_RENDER_MODE_OPTIONS_TEXT = "Auto\n3D View\n2D Heatmap";
+
 SettingsManager& SettingsManager::instance() {
     static SettingsManager instance;
     return instance;
@@ -113,6 +116,11 @@ void SettingsManager::init_subjects() {
     bool gcode_3d = config->get<bool>("/display/gcode_3d_enabled", true);
     lv_subject_init_int(&gcode_3d_enabled_subject_, gcode_3d ? 1 : 0);
 
+    // Bed mesh render mode (default: 0 = Auto)
+    int bed_mesh_mode = config->get<int>("/display/bed_mesh_render_mode", 0);
+    bed_mesh_mode = std::clamp(bed_mesh_mode, 0, 2);
+    lv_subject_init_int(&bed_mesh_render_mode_subject_, bed_mesh_mode);
+
     // Register subjects with LVGL XML system for data binding
     lv_xml_register_subject(nullptr, "settings_dark_mode", &dark_mode_subject_);
     lv_xml_register_subject(nullptr, "settings_display_sleep", &display_sleep_subject_);
@@ -127,6 +135,8 @@ void SettingsManager::init_subjects() {
     lv_xml_register_subject(nullptr, "settings_scroll_limit", &scroll_limit_subject_);
     lv_xml_register_subject(nullptr, "settings_animations_enabled", &animations_enabled_subject_);
     lv_xml_register_subject(nullptr, "settings_gcode_3d_enabled", &gcode_3d_enabled_subject_);
+    lv_xml_register_subject(nullptr, "settings_bed_mesh_render_mode",
+                            &bed_mesh_render_mode_subject_);
 
     subjects_initialized_ = true;
     spdlog::info("[SettingsManager] Subjects initialized: dark_mode={}, sleep={}s, sounds={}, "
@@ -239,6 +249,31 @@ void SettingsManager::set_gcode_3d_enabled(bool enabled) {
     Config* config = Config::get_instance();
     config->set<bool>("/display/gcode_3d_enabled", enabled);
     config->save();
+}
+
+int SettingsManager::get_bed_mesh_render_mode() const {
+    return lv_subject_get_int(const_cast<lv_subject_t*>(&bed_mesh_render_mode_subject_));
+}
+
+void SettingsManager::set_bed_mesh_render_mode(int mode) {
+    // Clamp to valid range (0=Auto, 1=3D, 2=2D)
+    int clamped = std::clamp(mode, 0, 2);
+    spdlog::info("[SettingsManager] set_bed_mesh_render_mode({})", clamped);
+
+    // 1. Update subject (UI reacts)
+    lv_subject_set_int(&bed_mesh_render_mode_subject_, clamped);
+
+    // 2. Persist to config
+    Config* config = Config::get_instance();
+    config->set<int>("/display/bed_mesh_render_mode", clamped);
+    config->save();
+
+    spdlog::debug("[SettingsManager] Bed mesh render mode set to {} ({})", clamped,
+                  clamped == 0 ? "Auto" : (clamped == 1 ? "3D" : "2D"));
+}
+
+const char* SettingsManager::get_bed_mesh_render_mode_options() {
+    return BED_MESH_RENDER_MODE_OPTIONS_TEXT;
 }
 
 // =============================================================================

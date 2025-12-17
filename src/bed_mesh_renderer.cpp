@@ -1471,8 +1471,14 @@ bool bed_mesh_renderer_is_using_2d(bed_mesh_renderer_t* renderer) {
 void bed_mesh_renderer_evaluate_render_mode(bed_mesh_renderer_t* renderer) {
     if (!renderer)
         return;
-    if (renderer->render_mode != BED_MESH_RENDER_MODE_AUTO)
+    if (renderer->render_mode != BED_MESH_RENDER_MODE_AUTO) {
+        spdlog::debug("[Bed Mesh Renderer] Mode evaluation skipped (mode={}, not AUTO)",
+                      static_cast<int>(renderer->render_mode));
         return;
+    }
+
+    spdlog::debug("[Bed Mesh Renderer] Evaluating render mode: {} FPS samples, avg={:.1f} FPS",
+                  renderer->fps_sample_count, calculate_average_fps(renderer));
 
     // Check if we have enough samples and FPS is below threshold
     if (is_fps_below_threshold(renderer, BED_MESH_FPS_THRESHOLD)) {
