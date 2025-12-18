@@ -3,6 +3,7 @@
 
 #include "gcode_layer_renderer.h"
 
+#include "config.h"
 #include "ui_theme.h"
 
 #include <spdlog/spdlog.h>
@@ -22,6 +23,9 @@ namespace gcode {
 GCodeLayerRenderer::GCodeLayerRenderer() {
     // Initialize default colors from theme
     reset_colors();
+
+    // Load configuration values
+    load_config();
 }
 
 GCodeLayerRenderer::~GCodeLayerRenderer() {
@@ -613,10 +617,10 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
         if (cache_buf_ && cache_canvas_) {
             // Check if we need to render new layers
             if (target_layer > cached_up_to_layer_) {
-                // Progressive rendering: only render up to LAYERS_PER_FRAME at a time
+                // Progressive rendering: only render up to layers_per_frame_ at a time
                 // This prevents UI freezing during initial load or big jumps
                 int from_layer = cached_up_to_layer_ + 1;
-                int to_layer = std::min(from_layer + LAYERS_PER_FRAME - 1, target_layer);
+                int to_layer = std::min(from_layer + layers_per_frame_ - 1, target_layer);
 
                 render_layers_to_cache(from_layer, to_layer);
                 cached_up_to_layer_ = to_layer;
@@ -633,7 +637,7 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
                 lv_draw_buf_clear(cache_buf_, nullptr);
                 cached_up_to_layer_ = -1;
 
-                int to_layer = std::min(LAYERS_PER_FRAME - 1, target_layer);
+                int to_layer = std::min(layers_per_frame_ - 1, target_layer);
                 render_layers_to_cache(0, to_layer);
                 cached_up_to_layer_ = to_layer;
                 // Caller checks needs_more_frames() for continuation
@@ -666,12 +670,18 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
 
     // Track render time for diagnostics
     last_render_time_ms_ = lv_tick_get() - start_time;
+    last_frame_render_ms_ = last_render_time_ms_;
     last_segment_count_ = segments_rendered;
+
+    // Adapt layers_per_frame for next frame (if in adaptive mode)
+    if (config_layers_per_frame_ == 0 && view_mode_ == ViewMode::FRONT) {
+        adapt_layers_per_frame();
+    }
 
     // Log performance if layer changed or slow render
     if (current_layer_ != last_rendered_layer_ || last_render_time_ms_ > 50) {
-        spdlog::debug("[GCodeLayerRenderer] Layer {}: {}ms (cached_up_to={})", current_layer_,
-                      last_render_time_ms_, cached_up_to_layer_);
+        spdlog::debug("[GCodeLayerRenderer] Layer {}: {}ms (cached_up_to={}, lpf={})", current_layer_,
+                      last_render_time_ms_, cached_up_to_layer_, layers_per_frame_);
         last_rendered_layer_ = current_layer_;
     }
 }
@@ -1184,6 +1194,84 @@ void GCodeLayerRenderer::draw_line_bresenham(int x0, int y0, int x1, int y1, uin
             err += dx;
             y0 += sy;
         }
+    }
+}
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+void GCodeLayerRenderer::load_config() {
+    auto* config = Config::get_instance();
+    if (!config) {
+        spdlog::debug("[GCodeLayerRenderer] No config instance, using defaults");
+        return;
+    }
+
+    // Load layers_per_frame: 0 = adaptive, 1-100 = fixed
+    config_layers_per_frame_ = config->get<int>("/gcode_viewer/layers_per_frame", 0);
+    config_layers_per_frame_ = std::clamp(config_layers_per_frame_, 0, MAX_LAYERS_PER_FRAME);
+
+    if (config_layers_per_frame_ > 0) {
+        // Fixed value from config
+        layers_per_frame_ = std::clamp(config_layers_per_frame_, MIN_LAYERS_PER_FRAME, MAX_LAYERS_PER_FRAME);
+        spdlog::info("[GCodeLayerRenderer] Using fixed layers_per_frame: {}", layers_per_frame_);
+    } else {
+        // Adaptive mode - start with default, adjust based on render time
+        layers_per_frame_ = DEFAULT_LAYERS_PER_FRAME;
+        spdlog::info("[GCodeLayerRenderer] Using adaptive layers_per_frame (starting at {})",
+                     layers_per_frame_);
+    }
+
+    // Load adaptive target (only used when config_layers_per_frame_ == 0)
+    adaptive_target_ms_ = config->get<int>("/gcode_viewer/adaptive_layer_target_ms", DEFAULT_ADAPTIVE_TARGET_MS);
+    adaptive_target_ms_ = std::clamp(adaptive_target_ms_, 1, 100); // Sensible bounds
+
+    spdlog::debug("[GCodeLayerRenderer] Adaptive target: {}ms", adaptive_target_ms_);
+}
+
+void GCodeLayerRenderer::adapt_layers_per_frame() {
+    // Only adapt when in adaptive mode (config value == 0)
+    if (config_layers_per_frame_ != 0) {
+        return;
+    }
+
+    // Skip adaptation if no meaningful render time yet
+    if (last_frame_render_ms_ == 0) {
+        return;
+    }
+
+    // Adaptive algorithm:
+    // - If render time < target: increase layers_per_frame to cache faster
+    // - If render time > target: decrease layers_per_frame to avoid UI stutter
+    // - Use exponential moving average to smooth adjustments
+
+    int old_lpf = layers_per_frame_;
+
+    if (last_frame_render_ms_ < static_cast<uint32_t>(adaptive_target_ms_)) {
+        // Under budget - can render more layers
+        // Scale up proportionally but cap at 2x increase per frame
+        float ratio = static_cast<float>(adaptive_target_ms_) / std::max(1u, last_frame_render_ms_);
+        ratio = std::min(ratio, 2.0f); // Cap at 2x increase
+        int new_lpf = static_cast<int>(layers_per_frame_ * ratio);
+        // Smooth increase (take average of current and target)
+        layers_per_frame_ = (layers_per_frame_ + new_lpf) / 2;
+    } else if (last_frame_render_ms_ > static_cast<uint32_t>(adaptive_target_ms_ * 2)) {
+        // Significantly over budget - reduce aggressively
+        float ratio = static_cast<float>(adaptive_target_ms_) / std::max(1u, last_frame_render_ms_);
+        layers_per_frame_ = static_cast<int>(layers_per_frame_ * ratio);
+    } else if (last_frame_render_ms_ > static_cast<uint32_t>(adaptive_target_ms_)) {
+        // Slightly over budget - reduce gradually
+        layers_per_frame_ = layers_per_frame_ * 3 / 4; // 75% of current
+    }
+
+    // Clamp to valid range
+    layers_per_frame_ = std::clamp(layers_per_frame_, MIN_LAYERS_PER_FRAME, MAX_LAYERS_PER_FRAME);
+
+    // Log significant changes
+    if (layers_per_frame_ != old_lpf) {
+        spdlog::trace("[GCodeLayerRenderer] Adaptive lpf: {} -> {} (render={}ms, target={}ms)",
+                      old_lpf, layers_per_frame_, last_frame_render_ms_, adaptive_target_ms_);
     }
 }
 

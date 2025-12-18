@@ -80,7 +80,11 @@
     "streaming_mode": "auto",
     "_streaming_mode_comment": "G-code streaming mode for large files. 'auto' (calculate based on RAM), 'on' (always stream), 'off' (always full load). Override with HELIX_GCODE_STREAMING env var.",
     "streaming_threshold_percent": 40,
-    "_streaming_threshold_percent_comment": "Percent of available RAM that triggers streaming mode (1-90). Lower = stream smaller files. Only used when streaming_mode is 'auto'."
+    "_streaming_threshold_percent_comment": "Percent of available RAM that triggers streaming mode (1-90). Lower = stream smaller files. Only used when streaming_mode is 'auto'.",
+    "layers_per_frame": 0,
+    "_layers_per_frame_comment": "Number of layers to render per frame during progressive 2D visualization. 0 = auto (adaptive based on render time, default), 1-100 = fixed value. Higher = faster caching, but may cause UI stutter on slow devices.",
+    "adaptive_layer_target_ms": 16,
+    "_adaptive_layer_target_ms_comment": "Target render time in milliseconds when using adaptive layers_per_frame (only used when layers_per_frame=0). Lower = smoother UI, higher = faster caching. Default 16ms = ~60 FPS."
   },
   "input": {
     "scroll_throw": 25,

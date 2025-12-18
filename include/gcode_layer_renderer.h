@@ -397,8 +397,22 @@ class GCodeLayerRenderer {
     int ghost_rendered_up_to_ = -1;  // Progress tracker for progressive ghost rendering
 
     // Progressive rendering - render N layers per frame to avoid blocking UI
-    static constexpr int LAYERS_PER_FRAME = 15;
-    static constexpr int GHOST_LAYERS_PER_FRAME = 10; // Keep small to avoid UI blocking
+    // These are defaults; actual values come from config or adaptive adjustment
+    static constexpr int DEFAULT_LAYERS_PER_FRAME = 15;
+    static constexpr int MIN_LAYERS_PER_FRAME = 1;
+    static constexpr int MAX_LAYERS_PER_FRAME = 100;
+    static constexpr int DEFAULT_ADAPTIVE_TARGET_MS = 16; // ~60 FPS
+
+    int layers_per_frame_{DEFAULT_LAYERS_PER_FRAME};     ///< Current layers per frame (may be adaptive)
+    int config_layers_per_frame_{0};                      ///< Config value (0 = adaptive)
+    int adaptive_target_ms_{DEFAULT_ADAPTIVE_TARGET_MS};  ///< Target render time for adaptive mode
+    uint32_t last_frame_render_ms_{0};                    ///< Render time of last frame (for adaptive)
+
+    /// Load config values from helixconfig.json
+    void load_config();
+
+    /// Adjust layers_per_frame based on last render time (when config_layers_per_frame_ == 0)
+    void adapt_layers_per_frame();
 
     void invalidate_cache();
     void ensure_cache(int width, int height);
