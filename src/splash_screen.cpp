@@ -25,7 +25,7 @@ namespace {
  *   - large (1280x720): 768x768 logo (60% of 1280)
  *
  * @param screen_width Display width in pixels
- * @return Path to pre-rendered .lvbin file, or empty string if none found
+ * @return Path to pre-rendered .bin file, or empty string if none found
  */
 std::string get_prerendered_splash_path(int screen_width) {
     // Select size category based on screen width
@@ -43,7 +43,7 @@ std::string get_prerendered_splash_path(int screen_width) {
     // Build path to pre-rendered image
     std::string path = "build/assets/images/prerendered/splash-logo-";
     path += size_name;
-    path += ".lvbin";
+    path += ".bin"; // Must be .bin for LVGL's bin decoder
 
     // Check if file exists (without A: prefix for filesystem check)
     if (std::filesystem::exists(path)) {

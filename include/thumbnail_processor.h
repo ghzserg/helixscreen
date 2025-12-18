@@ -58,7 +58,7 @@ struct ThumbnailTarget {
  */
 struct ProcessResult {
     bool success = false;
-    std::string output_path; ///< Path to .lvbin file (empty on failure)
+    std::string output_path; ///< Path to .bin file (empty on failure)
     std::string error;       ///< Error message (empty on success)
     int output_width = 0;    ///< Actual output width (may differ due to aspect ratio)
     int output_height = 0;   ///< Actual output height
@@ -74,7 +74,7 @@ using ProcessErrorCallback = std::function<void(const std::string& error)>;
  * @brief Background thumbnail processor with thread pool
  *
  * Decodes PNG thumbnails, resizes them to target dimensions, and writes
- * LVGL-native binary files (.lvbin) for zero-overhead display.
+ * LVGL-native binary files (.bin) for zero-overhead display.
  *
  * Thread-safe: All public methods can be called from any thread.
  *
@@ -117,7 +117,7 @@ class ThumbnailProcessor {
      * @param png_data Raw PNG file contents
      * @param source_path Original thumbnail path (used for cache key generation)
      * @param target Target dimensions and format
-     * @param on_success Called with path to .lvbin file on success
+     * @param on_success Called with path to .bin file on success
      * @param on_error Called with error message on failure
      */
     void process_async(const std::vector<uint8_t>& png_data, const std::string& source_path,
@@ -144,7 +144,7 @@ class ThumbnailProcessor {
      *
      * @param source_path Original thumbnail path
      * @param target Target dimensions and format
-     * @return LVGL path (A:/...) to .lvbin if cached, empty string otherwise
+     * @return LVGL path (A:/...) to .bin if cached, empty string otherwise
      */
     std::string get_if_processed(const std::string& source_path,
                                  const ThumbnailTarget& target) const;
@@ -174,14 +174,14 @@ class ThumbnailProcessor {
      *
      * Must be called before any processing. Creates directory if needed.
      *
-     * @param path Directory path for cached .lvbin files
+     * @param path Directory path for cached .bin files
      */
     void set_cache_dir(const std::string& path);
 
     /**
      * @brief Clear all cached pre-scaled thumbnails
      *
-     * Removes all .lvbin files from cache directory.
+     * Removes all .bin files from cache directory.
      * Thread-safe but may block briefly.
      */
     void clear_cache();
@@ -213,8 +213,8 @@ class ThumbnailProcessor {
     /**
      * @brief Generate cache filename for a source/target combination
      *
-     * Format: {hash}_{w}x{h}_{format}.lvbin
-     * Example: a1b2c3d4_160x160_ARGB8888.lvbin
+     * Format: {hash}_{w}x{h}_{format}.bin
+     * Example: a1b2c3d4_160x160_ARGB8888.bin
      */
     std::string generate_cache_filename(const std::string& source_path,
                                         const ThumbnailTarget& target) const;

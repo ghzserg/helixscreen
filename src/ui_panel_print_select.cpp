@@ -749,7 +749,7 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
 
                                 get_thumbnail_cache().fetch_optimized(
                                     self->api_, d->thumb_path, target,
-                                    // Success callback - receives pre-scaled .lvbin path
+                                    // Success callback - receives pre-scaled .bin path
                                     [self, file_idx, filename_copy](const std::string& lvgl_path) {
                                         struct ThumbUpdate {
                                             PrintSelectPanel* panel;

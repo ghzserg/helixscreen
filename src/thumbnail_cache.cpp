@@ -377,7 +377,7 @@ std::string ThumbnailCache::get_if_optimized(const std::string& relative_path,
         return "";
     }
 
-    // Check for pre-scaled .lvbin via ThumbnailProcessor
+    // Check for pre-scaled .bin via ThumbnailProcessor
     return helix::ThumbnailProcessor::instance().get_if_processed(relative_path, target);
 }
 
@@ -391,7 +391,7 @@ void ThumbnailCache::fetch_optimized(MoonrakerAPI* api, const std::string& relat
         return;
     }
 
-    // Step 1: Check for pre-scaled .lvbin (instant return)
+    // Step 1: Check for pre-scaled .bin (instant return)
     std::string optimized = get_if_optimized(relative_path, target);
     if (!optimized.empty()) {
         spdlog::trace("[ThumbnailCache] Pre-scaled cache hit: {}", optimized);

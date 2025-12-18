@@ -145,21 +145,21 @@ class ThumbnailCache {
     /**
      * @brief Fetch thumbnail with pre-scaling optimization
      *
-     * Similar to fetch(), but produces pre-scaled LVGL binary files (.lvbin) for
+     * Similar to fetch(), but produces pre-scaled LVGL binary files (.bin) for
      * optimal display performance. Pre-scaled thumbnails render instantly without
      * runtime scaling overhead.
      *
      * Flow:
-     * 1. Check for pre-scaled .lvbin (instant return if found)
+     * 1. Check for pre-scaled .bin (instant return if found)
      * 2. Check for cached PNG (queue for background pre-scaling)
      * 3. Download PNG if needed, then pre-scale
-     * 4. Return .lvbin path on success
+     * 4. Return .bin path on success
      *
      * @param api MoonrakerAPI instance for downloading
      * @param relative_path Moonraker relative path (e.g., ".thumbnails/file.png")
      * @param target Target dimensions for pre-scaling (from
      * ThumbnailProcessor::get_target_for_display())
-     * @param on_success Called with LVGL path to .lvbin on success
+     * @param on_success Called with LVGL path to .bin on success
      * @param on_error Called with error message on failure
      *
      * @note Falls back to PNG on pre-scaling failure - display still works, just slower
@@ -172,12 +172,12 @@ class ThumbnailCache {
     /**
      * @brief Check if a pre-scaled version exists in cache
      *
-     * Fast synchronous lookup for pre-scaled .lvbin files.
+     * Fast synchronous lookup for pre-scaled .bin files.
      * Does not trigger download or processing.
      *
      * @param relative_path Moonraker relative path
      * @param target Target dimensions to check for
-     * @return LVGL path (A:/...) to .lvbin if cached, empty string otherwise
+     * @return LVGL path (A:/...) to .bin if cached, empty string otherwise
      */
     [[nodiscard]] std::string get_if_optimized(const std::string& relative_path,
                                                const helix::ThumbnailTarget& target) const;
@@ -291,7 +291,7 @@ class ThumbnailCache {
      * @brief Process PNG and invoke callback with result
      *
      * Helper for fetch_optimized(). Reads PNG, queues for pre-scaling,
-     * and invokes callback with .lvbin path on success or PNG fallback on error.
+     * and invokes callback with .bin path on success or PNG fallback on error.
      *
      * @param png_lvgl_path LVGL path to the cached PNG
      * @param source_path Original Moonraker relative path (for cache key)

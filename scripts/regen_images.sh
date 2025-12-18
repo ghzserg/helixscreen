@@ -3,7 +3,7 @@
 #
 # Pre-render SPLASH SCREEN images to LVGL binary format
 #
-# This script converts the splash screen logo to EXACT-SIZE .lvbin files for
+# This script converts the splash screen logo to EXACT-SIZE .bin files for
 # each supported screen resolution. Since we know the exact display size at
 # build time, we pre-render at pixel-perfect sizes - NO runtime scaling needed.
 #
@@ -130,7 +130,7 @@ ensure_output_dir() {
 clean_prerendered() {
     echo -e "${YELLOW}Cleaning pre-rendered images...${NC}"
     if [ -d "$OUTPUT_DIR" ]; then
-        rm -rf "$OUTPUT_DIR"/*.lvbin 2>/dev/null || true
+        rm -rf "$OUTPUT_DIR"/*.bin 2>/dev/null || true
         echo -e "${GREEN}✓ Cleaned $OUTPUT_DIR${NC}"
     else
         echo -e "${YELLOW}Nothing to clean (directory doesn't exist)${NC}"
@@ -145,8 +145,8 @@ list_targets() {
         echo -e "  ${GREEN}$description${NC} ($source_path)"
         for screen_spec in "${SCREEN_SIZES[@]}"; do
             IFS=':' read -r name width height logo_size <<< "$screen_spec"
-            output_file="$OUTPUT_DIR/${output_prefix}-${name}.lvbin"
-            echo "    → ${output_prefix}-${name}.lvbin (${logo_size}x${logo_size})"
+            output_file="$OUTPUT_DIR/${output_prefix}-${name}.bin"
+            echo "    → ${output_prefix}-${name}.bin (${logo_size}x${logo_size})"
         done
         echo ""
     done
@@ -160,7 +160,7 @@ render_image() {
 
     local full_source="$PROJECT_DIR/$source_path"
     local output_name="${output_prefix}-${screen_name}"
-    local output_file="$OUTPUT_DIR/${output_name}.lvbin"
+    local output_file="$OUTPUT_DIR/${output_name}.bin"
 
     if [ ! -f "$full_source" ]; then
         echo -e "${RED}    ✗ Source not found: $source_path${NC}"
@@ -181,11 +181,8 @@ render_image() {
         --name "$output_name" \
         "$full_source" 2>/dev/null; then
 
-        # Rename .bin to .lvbin for clarity
-        local bin_file="$OUTPUT_DIR/${output_name}.bin"
-        if [ -f "$bin_file" ]; then
-            mv "$bin_file" "$output_file"
-        fi
+        # LVGLImage.py outputs .bin which is what LVGL's bin decoder requires
+        # (lv_bin_decoder.c only accepts .bin extension)
 
         local size=$(du -h "$output_file" | cut -f1)
         echo -e "${GREEN}✓${NC} ($size)"
@@ -247,7 +244,7 @@ case "${1:-}" in
         echo ""
         echo "Options:"
         echo "  (none)     Generate pre-rendered images (filtered by TARGET_SIZES)"
-        echo "  --clean    Remove generated .lvbin files"
+        echo "  --clean    Remove generated .bin files"
         echo "  --list     List what would be generated"
         echo "  --help     Show this help message"
         echo ""
