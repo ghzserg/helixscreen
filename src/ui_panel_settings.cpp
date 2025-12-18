@@ -115,14 +115,6 @@ void SettingsPanel::init_subjects() {
     SettingsManager::instance().init_subjects();
 
     // Initialize slider value subjects (for reactive binding)
-    lv_subject_init_string(&scroll_throw_value_subject_, scroll_throw_value_buf_, nullptr,
-                           sizeof(scroll_throw_value_buf_), "25");
-    lv_xml_register_subject(nullptr, "scroll_throw_value", &scroll_throw_value_subject_);
-
-    lv_subject_init_string(&scroll_limit_value_subject_, scroll_limit_value_buf_, nullptr,
-                           sizeof(scroll_limit_value_buf_), "5");
-    lv_xml_register_subject(nullptr, "scroll_limit_value", &scroll_limit_value_subject_);
-
     lv_subject_init_string(&brightness_value_subject_, brightness_value_buf_, nullptr,
                            sizeof(brightness_value_buf_), "100%");
     lv_xml_register_subject(nullptr, "brightness_value", &brightness_value_subject_);
@@ -153,10 +145,6 @@ void SettingsPanel::init_subjects() {
     // Note: on_retraction_row_clicked is registered by RetractionSettingsOverlay
     lv_xml_register_event_cb(nullptr, "on_sounds_changed", on_sounds_changed);
     lv_xml_register_event_cb(nullptr, "on_estop_confirm_changed", on_estop_confirm_changed);
-
-    // Register XML event callbacks for sliders
-    lv_xml_register_event_cb(nullptr, "on_scroll_throw_changed", on_scroll_throw_changed);
-    lv_xml_register_event_cb(nullptr, "on_scroll_limit_changed", on_scroll_limit_changed);
 
     // Register XML event callbacks for action rows
     lv_xml_register_event_cb(nullptr, "on_display_settings_clicked", on_display_settings_clicked);
@@ -195,7 +183,6 @@ void SettingsPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
 
     // Setup all handlers and bindings
     setup_toggle_handlers();
-    setup_scroll_sliders();
     setup_action_handlers();
     populate_info_rows();
 
@@ -292,46 +279,6 @@ void SettingsPanel::setup_toggle_handlers() {
                 lv_obj_add_state(estop_confirm_switch_, LV_STATE_CHECKED);
             }
             spdlog::debug("[{}]   ✓ E-Stop confirmation toggle", get_name());
-        }
-    }
-}
-
-void SettingsPanel::setup_scroll_sliders() {
-    auto& settings = SettingsManager::instance();
-
-    // === Scroll Throw (Momentum) Slider ===
-    // Event handler wired via XML <event_cb>, just set initial state here
-    lv_obj_t* scroll_throw_row = lv_obj_find_by_name(panel_, "row_scroll_throw");
-    if (scroll_throw_row) {
-        scroll_throw_slider_ = lv_obj_find_by_name(scroll_throw_row, "slider");
-        scroll_throw_value_label_ = lv_obj_find_by_name(scroll_throw_row, "value_label");
-
-        if (scroll_throw_slider_) {
-            // Set initial value from SettingsManager
-            int value = settings.get_scroll_throw();
-            lv_slider_set_value(scroll_throw_slider_, value, LV_ANIM_OFF);
-            // Update subject (label binding happens in XML)
-            snprintf(scroll_throw_value_buf_, sizeof(scroll_throw_value_buf_), "%d", value);
-            lv_subject_copy_string(&scroll_throw_value_subject_, scroll_throw_value_buf_);
-            spdlog::debug("[{}]   ✓ Scroll throw slider", get_name());
-        }
-    }
-
-    // === Scroll Limit (Sensitivity) Slider ===
-    // Event handler wired via XML <event_cb>, just set initial state here
-    lv_obj_t* scroll_limit_row = lv_obj_find_by_name(panel_, "row_scroll_limit");
-    if (scroll_limit_row) {
-        scroll_limit_slider_ = lv_obj_find_by_name(scroll_limit_row, "slider");
-        scroll_limit_value_label_ = lv_obj_find_by_name(scroll_limit_row, "value_label");
-
-        if (scroll_limit_slider_) {
-            // Set initial value from SettingsManager
-            int value = settings.get_scroll_limit();
-            lv_slider_set_value(scroll_limit_slider_, value, LV_ANIM_OFF);
-            // Update subject (label binding happens in XML)
-            snprintf(scroll_limit_value_buf_, sizeof(scroll_limit_value_buf_), "%d", value);
-            lv_subject_copy_string(&scroll_limit_value_subject_, scroll_limit_value_buf_);
-            spdlog::debug("[{}]   ✓ Scroll limit slider", get_name());
         }
     }
 }
@@ -530,26 +477,6 @@ void SettingsPanel::handle_estop_confirm_changed(bool enabled) {
     EmergencyStopOverlay::instance().set_require_confirmation(enabled);
 }
 
-void SettingsPanel::handle_scroll_throw_changed(int value) {
-    spdlog::info("[{}] Scroll throw changed: {}", get_name(), value);
-    SettingsManager::instance().set_scroll_throw(value);
-
-    // Show restart prompt if this is the first restart-required change
-    if (SettingsManager::instance().is_restart_pending()) {
-        show_restart_prompt();
-    }
-}
-
-void SettingsPanel::handle_scroll_limit_changed(int value) {
-    spdlog::info("[{}] Scroll limit changed: {}", get_name(), value);
-    SettingsManager::instance().set_scroll_limit(value);
-
-    // Show restart prompt if this is the first restart-required change
-    if (SettingsManager::instance().is_restart_pending()) {
-        show_restart_prompt();
-    }
-}
-
 void SettingsPanel::show_restart_prompt() {
     // Only show once per session - check if dialog already exists and is visible
     if (restart_prompt_dialog_ && !lv_obj_has_flag(restart_prompt_dialog_, LV_OBJ_FLAG_HIDDEN)) {
@@ -607,9 +534,11 @@ void SettingsPanel::handle_display_settings_clicked() {
                 // Event handler already wired via XML event_cb
             }
 
-            // Initialize sleep timeout dropdown
+            // Initialize sleep timeout dropdown (inside setting_dropdown_row)
+            lv_obj_t* sleep_row =
+                lv_obj_find_by_name(display_settings_overlay_, "row_display_sleep");
             lv_obj_t* sleep_dropdown =
-                lv_obj_find_by_name(display_settings_overlay_, "sleep_timeout_dropdown");
+                sleep_row ? lv_obj_find_by_name(sleep_row, "dropdown") : nullptr;
             if (sleep_dropdown) {
                 // Set dropdown options
                 lv_dropdown_set_options(sleep_dropdown,
@@ -622,9 +551,11 @@ void SettingsPanel::handle_display_settings_clicked() {
                               index, current_sec);
             }
 
-            // Initialize bed mesh render mode dropdown
+            // Initialize bed mesh render mode dropdown (inside setting_dropdown_row)
+            lv_obj_t* bed_mesh_row =
+                lv_obj_find_by_name(display_settings_overlay_, "row_bed_mesh_mode");
             lv_obj_t* bed_mesh_dropdown =
-                lv_obj_find_by_name(display_settings_overlay_, "bed_mesh_mode_dropdown");
+                bed_mesh_row ? lv_obj_find_by_name(bed_mesh_row, "dropdown") : nullptr;
             if (bed_mesh_dropdown) {
                 // Set dropdown options
                 lv_dropdown_set_options(bed_mesh_dropdown,
@@ -637,9 +568,11 @@ void SettingsPanel::handle_display_settings_clicked() {
                               current_mode == 0 ? "Auto" : (current_mode == 1 ? "3D" : "2D"));
             }
 
-            // Initialize G-code render mode dropdown
+            // Initialize G-code render mode dropdown (inside setting_dropdown_row, currently
+            // hidden)
+            lv_obj_t* gcode_row = lv_obj_find_by_name(display_settings_overlay_, "row_gcode_mode");
             lv_obj_t* gcode_dropdown =
-                lv_obj_find_by_name(display_settings_overlay_, "gcode_mode_dropdown");
+                gcode_row ? lv_obj_find_by_name(gcode_row, "dropdown") : nullptr;
             if (gcode_dropdown) {
                 // Set dropdown options
                 lv_dropdown_set_options(gcode_dropdown,
@@ -678,15 +611,7 @@ void SettingsPanel::handle_filament_sensors_clicked() {
         filament_sensors_overlay_ = static_cast<lv_obj_t*>(
             lv_xml_create(parent_screen_, "filament_sensors_overlay", nullptr));
         if (filament_sensors_overlay_) {
-            // Wire up back button
-            lv_obj_t* header = lv_obj_find_by_name(filament_sensors_overlay_, "overlay_header");
-            if (header) {
-                lv_obj_t* back_btn = lv_obj_find_by_name(header, "back_button");
-                if (back_btn) {
-                    lv_obj_add_event_cb(
-                        back_btn, [](lv_event_t*) { ui_nav_go_back(); }, LV_EVENT_CLICKED, nullptr);
-                }
-            }
+            // Back button already wired via header_bar XML event_cb (on_header_back_clicked)
 
             // Note: Master toggle state and events are handled declaratively via XML:
             // - Initial state via bind_state_if_eq to filament_master_enabled subject
@@ -1041,30 +966,6 @@ void SettingsPanel::on_estop_confirm_changed(lv_event_t* e) {
     auto* toggle = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
     bool enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
     get_global_settings_panel().handle_estop_confirm_changed(enabled);
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void SettingsPanel::on_scroll_throw_changed(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_scroll_throw_changed");
-    auto* slider = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-    int value = lv_slider_get_value(slider);
-    auto& panel = get_global_settings_panel();
-    panel.handle_scroll_throw_changed(value);
-    // Update subject (label binding happens in XML)
-    snprintf(panel.scroll_throw_value_buf_, sizeof(panel.scroll_throw_value_buf_), "%d", value);
-    lv_subject_copy_string(&panel.scroll_throw_value_subject_, panel.scroll_throw_value_buf_);
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void SettingsPanel::on_scroll_limit_changed(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_scroll_limit_changed");
-    auto* slider = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-    int value = lv_slider_get_value(slider);
-    auto& panel = get_global_settings_panel();
-    panel.handle_scroll_limit_changed(value);
-    // Update subject (label binding happens in XML)
-    snprintf(panel.scroll_limit_value_buf_, sizeof(panel.scroll_limit_value_buf_), "%d", value);
-    lv_subject_copy_string(&panel.scroll_limit_value_subject_, panel.scroll_limit_value_buf_);
     LVGL_SAFE_EVENT_CB_END();
 }
 

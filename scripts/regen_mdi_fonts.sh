@@ -209,6 +209,7 @@ MDI_ICONS+=",0xF072E"    # arrow-down-bold (z-closer)
 MDI_ICONS+=",0xF0731"    # arrow-left-bold
 MDI_ICONS+=",0xF0734"    # arrow-right-bold
 MDI_ICONS+=",0xF0737"    # arrow-up-bold (z-farther)
+MDI_ICONS+=",0xF17BF"    # arrow-up-right (retraction)
 MDI_ICONS+=",0xF073A"    # cancel
 MDI_ICONS+=",0xF0758"    # grid-large
 MDI_ICONS+=",0xF0770"    # folder-open
@@ -219,6 +220,7 @@ MDI_ICONS+=",0xF0795"    # arrow-collapse-up (flow-up)
 MDI_ICONS+=",0xF0796"    # arrow-expand-up (bed rises - CoreXY Z farther)
 MDI_ICONS+=",0xF081D"    # fan-off
 MDI_ICONS+=",0xF08E9"    # tune-variant (controls)
+MDI_ICONS+=",0xF1543"    # tune-vertical-variant (scroll momentum)
 
 # WiFi strength icons
 MDI_ICONS+=",0xF091F"    # wifi-strength-1

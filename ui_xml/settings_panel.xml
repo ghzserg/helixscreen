@@ -18,30 +18,12 @@
                         callback="on_animations_changed"/>
     <!-- 3D Preview Toggle -->
     <setting_toggle_row name="row_gcode_3d"
-                        label="3D Preview" icon="cube" description="Interactive 3D G-code during prints"
+                        label="3D Preview" icon="rotate_3d" description="Interactive 3D G-code during prints"
                         callback="on_gcode_3d_changed"/>
     <!-- Display Settings (opens overlay for brightness + sleep timeout) -->
     <setting_action_row name="row_display_settings"
                         label="Display Settings" icon="light" description="Brightness and screen timeout"
                         callback="on_display_settings_clicked"/>
-    <!-- ================================================================== -->
-    <!-- INPUT SECTION -->
-    <!-- ================================================================== -->
-    <setting_section_header title="INPUT" icon="fine_tune"/>
-    <!-- Scroll Momentum slider -->
-    <setting_slider_row name="row_scroll_throw"
-                        label="Scroll Momentum" icon="fine_tune" description="Higher = faster deceleration" min="5"
-                        max="50" value="25" callback="on_scroll_throw_changed">
-      <!-- Bind value label to subject for reactive updates -->
-      <text_body name="value_label" bind_text="scroll_throw_value" style_text_color="#text_secondary"/>
-    </setting_slider_row>
-    <!-- Scroll Sensitivity slider -->
-    <setting_slider_row name="row_scroll_limit"
-                        label="Scroll Sensitivity" icon="fine_tune" description="Lower = more responsive" min="1"
-                        max="20" value="5" callback="on_scroll_limit_changed">
-      <!-- Bind value label to subject for reactive updates -->
-      <text_body name="value_label" bind_text="scroll_limit_value" style_text_color="#text_secondary"/>
-    </setting_slider_row>
     <!-- ================================================================== -->
     <!-- PRINTER SECTION -->
     <!-- ================================================================== -->
@@ -67,9 +49,13 @@
             width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
       <lv_obj-bind_flag_if_eq subject="printer_has_firmware_retraction" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_firmware_retraction"
-                          label="Retraction Settings" icon="arrow_undo"
+                          label="Retraction Settings" icon="arrow_up_right"
                           description="Configure G10/G11 firmware retraction" callback="on_retraction_row_clicked"/>
     </lv_obj>
+    <!-- E-Stop Confirmation Toggle -->
+    <setting_toggle_row name="row_estop_confirm"
+                        label="E-Stop Confirmation" icon="alert_octagon"
+                        description="Require confirmation before emergency stop" callback="on_estop_confirm_changed"/>
     <!-- ================================================================== -->
     <!-- NOTIFICATIONS SECTION -->
     <!-- ================================================================== -->
@@ -95,19 +81,11 @@
         <text_small name="description" text="Notify when print finishes" style_text_color="#text_secondary"/>
       </lv_obj>
       <lv_dropdown name="completion_alert_dropdown"
-                   width="140" height="40" options="Off Notification Alert" style_radius="#border_radius"
+                   width="140" height="40" options="Off&#10;Notification&#10;Alert" style_radius="#border_radius"
                    style_border_width="0">
         <event_cb trigger="value_changed" callback="on_completion_alert_changed"/>
       </lv_dropdown>
     </lv_obj>
-    <!-- ================================================================== -->
-    <!-- SAFETY SECTION -->
-    <!-- ================================================================== -->
-    <setting_section_header title="SAFETY" icon="alert_octagon"/>
-    <!-- E-Stop Confirmation Toggle -->
-    <setting_toggle_row name="row_estop_confirm"
-                        label="E-Stop Confirmation" icon="alert_octagon"
-                        description="Require confirmation before emergency stop" callback="on_estop_confirm_changed"/>
     <!-- ================================================================== -->
     <!-- CALIBRATION SECTION -->
     <!-- ================================================================== -->
@@ -159,9 +137,9 @@
       <text_body name="value" bind_text="printer_value" style_text_color="#text_secondary"/>
     </setting_info_row>
     <!-- Klipper Version -->
-    <setting_info_row name="row_klipper" label="Klipper" icon="sysinfo" value="—"/>
+    <setting_info_row name="row_klipper" label="Klipper" icon="" value="—"/>
     <!-- Moonraker Version -->
-    <setting_info_row name="row_moonraker" label="Moonraker" icon="network" value="—"/>
+    <setting_info_row name="row_moonraker" label="Moonraker" icon="" value="—"/>
     <!-- Bottom padding for scroll -->
     <lv_obj width="100%" height="#space_lg" style_bg_opa="0" style_border_width="0" scrollable="false"/>
   </view>

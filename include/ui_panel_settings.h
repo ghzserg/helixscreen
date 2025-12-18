@@ -84,12 +84,6 @@ class SettingsPanel : public PanelBase {
     lv_obj_t* completion_alert_dropdown_ = nullptr;
     lv_obj_t* display_sleep_dropdown_ = nullptr;
 
-    // Scroll settings sliders
-    lv_obj_t* scroll_throw_slider_ = nullptr;
-    lv_obj_t* scroll_throw_value_label_ = nullptr;
-    lv_obj_t* scroll_limit_slider_ = nullptr;
-    lv_obj_t* scroll_limit_value_label_ = nullptr;
-
     // Restart prompt dialog
     lv_obj_t* restart_prompt_dialog_ = nullptr;
 
@@ -113,8 +107,6 @@ class SettingsPanel : public PanelBase {
     //
 
     // Slider value subjects
-    lv_subject_t scroll_throw_value_subject_;
-    lv_subject_t scroll_limit_value_subject_;
     lv_subject_t brightness_value_subject_;
 
     // Info row subjects
@@ -122,11 +114,9 @@ class SettingsPanel : public PanelBase {
     lv_subject_t printer_value_subject_;
 
     // Static buffers for string subjects (required for lv_subject_init_string)
-    char scroll_throw_value_buf_[8]; // e.g., "50"
-    char scroll_limit_value_buf_[8]; // e.g., "15"
-    char brightness_value_buf_[8];   // e.g., "75%"
-    char version_value_buf_[32];     // e.g., "1.2.3"
-    char printer_value_buf_[64];     // e.g., "Voron 2.4"
+    char brightness_value_buf_[8]; // e.g., "75%"
+    char version_value_buf_[32];   // e.g., "1.2.3"
+    char printer_value_buf_[64];   // e.g., "Voron 2.4"
 
     // Lazily-created overlay panels
     lv_obj_t* display_settings_overlay_ = nullptr;
@@ -143,7 +133,6 @@ class SettingsPanel : public PanelBase {
 
     void setup_toggle_handlers();
     void setup_dropdown();
-    void setup_scroll_sliders();
     void setup_action_handlers();
     void populate_info_rows();
     void show_restart_prompt();
@@ -159,9 +148,6 @@ class SettingsPanel : public PanelBase {
     void handle_led_light_changed(bool enabled);
     void handle_sounds_changed(bool enabled);
     void handle_estop_confirm_changed(bool enabled);
-
-    void handle_scroll_throw_changed(int value);
-    void handle_scroll_limit_changed(int value);
 
     void handle_display_settings_clicked();
     void handle_filament_sensors_clicked();
@@ -184,8 +170,6 @@ class SettingsPanel : public PanelBase {
     static void on_led_light_changed(lv_event_t* e);
     static void on_sounds_changed(lv_event_t* e);
     static void on_estop_confirm_changed(lv_event_t* e);
-    static void on_scroll_throw_changed(lv_event_t* e);
-    static void on_scroll_limit_changed(lv_event_t* e);
 
     static void on_display_settings_clicked(lv_event_t* e);
     static void on_filament_sensors_clicked(lv_event_t* e);

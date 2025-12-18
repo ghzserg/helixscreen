@@ -87,10 +87,14 @@ class UsbBackendLinux : public UsbBackend {
     EventCallback event_callback_;
     std::vector<UsbDrive> cached_drives_;
 
-    // inotify
+    // inotify (when available)
     int inotify_fd_{-1};
     int mounts_watch_fd_{-1};
     std::thread monitor_thread_;
+
+    // Polling fallback (when inotify unavailable)
+    bool use_polling_{false};
+    time_t last_mounts_mtime_{0};
 };
 
 #endif // __linux__

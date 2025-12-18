@@ -241,20 +241,25 @@ void ui_theme_register_responsive_spacing(lv_display_t* display) {
     const char* space_lg_str = lv_xml_get_const(nullptr, "space_lg");
     int32_t gap = space_lg_str ? std::atoi(space_lg_str) : 16; // fallback to 16px
 
-    // Calculate overlay width: screen - nav - gap
-    int32_t overlay_width = hor_res - nav_width - gap;
+    // Calculate overlay widths
+    int32_t overlay_width = hor_res - nav_width - gap; // Standard: screen - nav - gap
+    int32_t overlay_width_full = hor_res - nav_width;  // Full: screen - nav (no gap)
 
     // Register as string constants for XML consumption
     char nav_width_str[16];
     char overlay_width_str[16];
+    char overlay_width_full_str[16];
     snprintf(nav_width_str, sizeof(nav_width_str), "%d", nav_width);
     snprintf(overlay_width_str, sizeof(overlay_width_str), "%d", overlay_width);
+    snprintf(overlay_width_full_str, sizeof(overlay_width_full_str), "%d", overlay_width_full);
 
     lv_xml_register_const(scope, "nav_width", nav_width_str);
     lv_xml_register_const(scope, "overlay_panel_width", overlay_width_str);
+    lv_xml_register_const(scope, "overlay_panel_width_full", overlay_width_full_str);
 
-    spdlog::debug("[Theme] Layout: nav_width={}px, gap={}px, overlay_width={}px", nav_width, gap,
-                  overlay_width);
+    spdlog::debug(
+        "[Theme] Layout: nav_width={}px, gap={}px, overlay_width={}px, overlay_width_full={}px",
+        nav_width, gap, overlay_width, overlay_width_full);
 }
 
 /**

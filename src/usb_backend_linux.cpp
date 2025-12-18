@@ -8,6 +8,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
@@ -34,35 +35,51 @@ UsbError UsbBackendLinux::start() {
         return UsbError(UsbResult::SUCCESS);
     }
 
-    // Initialize inotify
+    // Try inotify first (preferred - event-driven, low CPU)
     inotify_fd_ = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
     if (inotify_fd_ < 0) {
-        spdlog::error("[UsbBackendLinux] Failed to init inotify: {}", strerror(errno));
-        return UsbError(UsbResult::BACKEND_ERROR,
-                        "inotify_init failed: " + std::string(strerror(errno)),
-                        "Failed to initialize USB monitoring");
-    }
+        // inotify not available (e.g., embedded kernels without CONFIG_INOTIFY_USER)
+        // Fall back to polling /proc/mounts modification time
+        if (errno == ENOSYS || errno == ENOENT) {
+            spdlog::warn("[UsbBackendLinux] inotify not available ({}), using polling fallback",
+                         strerror(errno));
+            use_polling_ = true;
 
-    // Watch /proc/mounts for changes (IN_MODIFY fires when mounts change)
-    mounts_watch_fd_ = inotify_add_watch(inotify_fd_, "/proc/mounts", IN_MODIFY);
-    if (mounts_watch_fd_ < 0) {
-        spdlog::error("[UsbBackendLinux] Failed to watch /proc/mounts: {}", strerror(errno));
-        close(inotify_fd_);
-        inotify_fd_ = -1;
-        return UsbError(UsbResult::BACKEND_ERROR, "inotify_add_watch failed",
-                        "Failed to monitor mount events");
+            // Get initial mtime of /proc/mounts
+            struct stat st;
+            if (stat("/proc/mounts", &st) == 0) {
+                last_mounts_mtime_ = st.st_mtime;
+            }
+        } else {
+            spdlog::error("[UsbBackendLinux] Failed to init inotify: {}", strerror(errno));
+            return UsbError(UsbResult::BACKEND_ERROR,
+                            "inotify_init failed: " + std::string(strerror(errno)),
+                            "Failed to initialize USB monitoring");
+        }
+    } else {
+        // Watch /proc/mounts for changes (IN_MODIFY fires when mounts change)
+        mounts_watch_fd_ = inotify_add_watch(inotify_fd_, "/proc/mounts", IN_MODIFY);
+        if (mounts_watch_fd_ < 0) {
+            spdlog::error("[UsbBackendLinux] Failed to watch /proc/mounts: {}", strerror(errno));
+            close(inotify_fd_);
+            inotify_fd_ = -1;
+            return UsbError(UsbResult::BACKEND_ERROR, "inotify_add_watch failed",
+                            "Failed to monitor mount events");
+        }
+        use_polling_ = false;
     }
 
     // Get initial drive list
     cached_drives_ = parse_mounts();
-    spdlog::info("[UsbBackendLinux] Initial scan found {} USB drives", cached_drives_.size());
+    spdlog::info("[UsbBackendLinux] Initial scan found {} USB drives (polling={})",
+                 cached_drives_.size(), use_polling_);
 
     // Start monitor thread
     stop_requested_ = false;
     running_ = true;
     monitor_thread_ = std::thread(&UsbBackendLinux::monitor_thread_func, this);
 
-    spdlog::info("[UsbBackendLinux] Started");
+    spdlog::info("[UsbBackendLinux] Started (mode={})", use_polling_ ? "polling" : "inotify");
     return UsbError(UsbResult::SUCCESS);
 }
 
@@ -94,6 +111,8 @@ void UsbBackendLinux::stop() {
         std::lock_guard<std::mutex> lock(mutex_);
         running_ = false;
         cached_drives_.clear();
+        use_polling_ = false;
+        last_mounts_mtime_ = 0;
     }
 
     spdlog::info("[UsbBackendLinux] Stopped");
@@ -314,48 +333,69 @@ void UsbBackendLinux::get_capacity(const std::string& mount_point, uint64_t& tot
 }
 
 void UsbBackendLinux::monitor_thread_func() {
-    spdlog::debug("[UsbBackendLinux] Monitor thread started");
+    spdlog::debug("[UsbBackendLinux] Monitor thread started (mode={})",
+                  use_polling_ ? "polling" : "inotify");
 
     constexpr size_t EVENT_BUF_SIZE = 4096;
     char event_buf[EVENT_BUF_SIZE];
 
     while (!stop_requested_) {
-        // Poll with timeout so we can check stop_requested_
-        struct pollfd pfd;
-        pfd.fd = inotify_fd_;
-        pfd.events = POLLIN;
-
-        int ret = poll(&pfd, 1, 500); // 500ms timeout
-        if (ret < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            spdlog::error("[UsbBackendLinux] poll() failed: {}", strerror(errno));
-            break;
-        }
-
-        if (ret == 0 || !(pfd.revents & POLLIN)) {
-            continue; // Timeout or no data
-        }
-
-        // Read inotify events
-        ssize_t len = read(inotify_fd_, event_buf, EVENT_BUF_SIZE);
-        if (len < 0) {
-            if (errno == EAGAIN) {
-                continue;
-            }
-            spdlog::error("[UsbBackendLinux] read() failed: {}", strerror(errno));
-            break;
-        }
-
-        // Process events - we don't care about individual events, just that mounts changed
         bool mounts_changed = false;
-        for (char* ptr = event_buf; ptr < event_buf + len;) {
-            auto* event = reinterpret_cast<struct inotify_event*>(ptr);
-            if (event->wd == mounts_watch_fd_) {
-                mounts_changed = true;
+
+        if (use_polling_) {
+            // Polling mode: check /proc/mounts mtime periodically
+            // Sleep first to avoid tight loop
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+            if (stop_requested_) {
+                break;
             }
-            ptr += sizeof(struct inotify_event) + event->len;
+
+            struct stat st;
+            if (stat("/proc/mounts", &st) == 0) {
+                if (st.st_mtime != last_mounts_mtime_) {
+                    spdlog::debug("[UsbBackendLinux] /proc/mounts mtime changed");
+                    last_mounts_mtime_ = st.st_mtime;
+                    mounts_changed = true;
+                }
+            }
+        } else {
+            // inotify mode: event-driven (preferred)
+            struct pollfd pfd;
+            pfd.fd = inotify_fd_;
+            pfd.events = POLLIN;
+
+            int ret = poll(&pfd, 1, 500); // 500ms timeout
+            if (ret < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                spdlog::error("[UsbBackendLinux] poll() failed: {}", strerror(errno));
+                break;
+            }
+
+            if (ret == 0 || !(pfd.revents & POLLIN)) {
+                continue; // Timeout or no data
+            }
+
+            // Read inotify events
+            ssize_t len = read(inotify_fd_, event_buf, EVENT_BUF_SIZE);
+            if (len < 0) {
+                if (errno == EAGAIN) {
+                    continue;
+                }
+                spdlog::error("[UsbBackendLinux] read() failed: {}", strerror(errno));
+                break;
+            }
+
+            // Process events - we don't care about individual events, just that mounts changed
+            for (char* ptr = event_buf; ptr < event_buf + len;) {
+                auto* event = reinterpret_cast<struct inotify_event*>(ptr);
+                if (event->wd == mounts_watch_fd_) {
+                    mounts_changed = true;
+                }
+                ptr += sizeof(struct inotify_event) + event->len;
+            }
         }
 
         if (mounts_changed) {

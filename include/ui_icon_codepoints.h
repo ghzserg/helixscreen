@@ -45,6 +45,7 @@ static const IconMapping ICON_MAP[] = {
     {"arrow_right",        "\xF3\xB0\x81\x94"},  // F0054 arrow-right
     {"arrow_right_bold",   "\xF3\xB0\x9C\xB4"},  // F0734 arrow-right-bold
     {"arrow_up",           "\xF3\xB0\x81\x9D"},  // F005D arrow-up (head ascends)
+    {"arrow_up_right",     "\xF3\xB1\x9E\xBF"},  // F17BF arrow-up-right (retraction)
     {"axis_arrow",         "\xF3\xB0\xB5\x89"},  // F0D49 axis-arrow (all 3 axes)
     {"axis_x_arrow",       "\xF3\xB0\xB5\x8C"},  // F0D4C axis-x-arrow
     {"axis_y_arrow",       "\xF3\xB0\xB5\x91"},  // F0D51 axis-y-arrow
@@ -176,6 +177,7 @@ static const IconMapping ICON_MAP[] = {
     {"tune",               "\xF3\xB0\x98\xAE"},  // F062E tune
     {"undo",               "\xF3\xB0\x95\x8C"},  // F054C undo (counter-clockwise arrow - loosen)
     {"tune_variant",       "\xF3\xB0\xA3\xA9"},  // F08E9 tune-variant
+    {"tune_vertical_variant", "\xF3\xB1\x95\x83"},  // F1543 tune-vertical-variant
 
     // Update
     {"update",             "\xF3\xB0\x9A\xB0"},  // F06B0 update

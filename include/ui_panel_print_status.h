@@ -419,6 +419,13 @@ class PrintStatusPanel : public PanelBase {
     // Prevents redundant thumbnail loads when observer fires repeatedly with same filename
     std::string loaded_thumbnail_filename_;
 
+    // Track whether G-code was successfully loaded into the viewer
+    // When false (memory check failed), don't switch to viewer mode on state changes
+    bool gcode_loaded_ = false;
+
+    // Path to temp G-code file downloaded for viewing (cleaned up on print end)
+    std::string temp_gcode_path_;
+
     // Control buttons (stored for enable/disable on state changes)
     lv_obj_t* btn_timelapse_ = nullptr;
     lv_obj_t* btn_pause_ = nullptr;
@@ -467,6 +474,7 @@ class PrintStatusPanel : public PanelBase {
     void update_z_offset_icons(lv_obj_t* panel); ///< Update Z-offset icons based on kinematics
     void update_button_states();   ///< Enable/disable buttons based on current print state
     void animate_print_complete(); ///< Celebratory animation when print finishes
+    void cleanup_temp_gcode();     ///< Remove temp G-code file downloaded for viewing
 
     static void format_time(int seconds, char* buf, size_t buf_size);
 

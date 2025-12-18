@@ -25,8 +25,8 @@
     <subject name="test_internet_status" type="int" default="0"/>
   </subjects>
   <view name="network_settings_overlay"
-        extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_border_width="0"
-        style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
+        extends="lv_obj" width="#overlay_panel_width_full" height="100%" align="right_mid" style_border_width="0"
+        style_pad_all="0" style_bg_opa="255" style_bg_color="#app_bg_color" scrollable="false" flex_flow="column">
     <!-- Header Bar with title and back button -->
     <header_bar name="overlay_header" title="Network Settings"/>
     <!-- Two-Column Content Area -->

@@ -107,7 +107,7 @@
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0"
                   style_flex_cross_place="center">
             <lv_label text="Ghost:" style_text_font="#font_small" style_text_color="#text_secondary"/>
-            <lv_dropdown name="ghost_mode_dropdown" flex_grow="1" options="Stipple Solid"/>
+            <lv_dropdown name="ghost_mode_dropdown" flex_grow="1" options="Stipple&#10;Solid"/>
           </lv_obj>
         </lv_obj>
         <!-- File Section -->

@@ -2,185 +2,86 @@
 <!-- Copyright 2025 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Display Settings Overlay Panel -->
-<!-- Allows adjustment of screen brightness and display sleep timeout -->
-<!-- XML-First Design: All layout/styling here; C++ only provides subjects and callbacks -->
+<!-- Allows adjustment of dark mode, brightness, and display sleep timeout -->
+<!-- Uses setting_* components for consistency with main settings panel -->
 <component>
   <view name="display_settings_overlay"
-        extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_border_width="0"
-        style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
+        extends="lv_obj" width="#overlay_panel_width_full" height="100%" align="right_mid" style_border_width="0"
+        style_pad_all="0" style_bg_opa="255" style_bg_color="#app_bg_color" scrollable="false" flex_flow="column">
     <!-- Header Bar with title and back button -->
     <header_bar name="overlay_header" title="Display Settings"/>
-    <!-- Content Area -->
+    <!-- Content Area - no padding, rows handle their own -->
     <lv_obj name="overlay_content"
-            width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="#space_lg" scrollable="false"
-            style_border_width="0" flex_flow="column" style_pad_gap="#space_lg">
+            width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="0" scrollable="true"
+            scroll_dir="ver" style_border_width="0" flex_flow="column">
       <!-- ================================================================== -->
-      <!-- DARK MODE SECTION -->
+      <!-- DARK MODE -->
       <!-- ================================================================== -->
-      <lv_obj width="100%"
-              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-              flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
-        <!-- Label with Icon -->
-        <lv_obj width="content"
-                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <icon src="light_off" size="sm" variant="secondary"/>
-          <lv_obj width="content"
-                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                  flex_flow="column" style_pad_gap="#space_xxs">
-            <text_body text="Dark Mode" style_text_color="#text_primary"/>
-            <text_small text="Switch between light and dark themes" style_text_color="#text_secondary"/>
-          </lv_obj>
-        </lv_obj>
-        <!-- Toggle Switch -->
-        <lv_switch name="dark_mode_switch" bind_value="settings_dark_mode">
-          <event_cb trigger="value_changed" callback="on_dark_mode_changed"/>
-        </lv_switch>
-      </lv_obj>
-      <!-- Divider -->
-      <lv_obj width="100%"
-              height="1" style_bg_color="#card_border" style_bg_opa="100" style_border_width="0" scrollable="false"/>
+      <setting_toggle_row name="row_dark_mode"
+                          label="Dark Mode" icon="light_off" description="Switch between light and dark themes"
+                          subject="settings_dark_mode" callback="on_dark_mode_changed"/>
       <!-- ================================================================== -->
-      <!-- BRIGHTNESS SECTION (hidden when no hardware backlight control) -->
+      <!-- BRIGHTNESS (conditional - hidden when no hardware backlight) -->
       <!-- ================================================================== -->
       <lv_obj name="brightness_section"
-              width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_sm">
+              width="100%" height="content" style_bg_opa="0" style_border_width="0" scrollable="false"
+              style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md" style_pad_bottom="#space_md"
+              flex_flow="column" style_pad_gap="#space_xs">
         <bind_flag_if_eq subject="settings_has_backlight" flag="hidden" ref_value="0"/>
-        <!-- Section Label -->
+        <!-- Label row with value display -->
         <lv_obj width="100%"
-                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
+                height="content" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
+                style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
           <lv_obj width="content"
-                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                  flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+                  height="content" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm"
+                  style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
             <icon src="light" size="sm" variant="secondary"/>
             <text_body text="Brightness" style_text_color="#text_primary"/>
           </lv_obj>
-          <!-- Current brightness value display -->
           <text_body name="brightness_value_label" bind_text="brightness_value" style_text_color="#text_secondary"/>
         </lv_obj>
-        <!-- Brightness Slider -->
+        <!-- Description -->
+        <text_small text="Adjust screen brightness level" style_text_color="#text_secondary"/>
+        <!-- Slider with min/max icons -->
         <lv_obj width="100%"
-                height="50" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md"
-                style_pad_right="#space_md" style_pad_top="#space_md" style_pad_bottom="#space_md" scrollable="false"
-                flex_flow="row" style_flex_cross_place="center">
-          <!-- Min icon (sun dim) -->
+                height="content" flex_flow="row" style_flex_cross_place="center" style_bg_opa="0" style_border_width="0"
+                style_pad_all="0" style_pad_gap="#space_sm" style_margin_top="#space_xs" scrollable="false">
           <icon src="light_off" size="xs" variant="secondary"/>
-          <!-- Slider -->
-          <lv_slider name="brightness_slider"
-                     flex_grow="1" min_value="10" max_value="100" value="50" style_margin_left="#space_md"
-                     style_margin_right="#space_md">
+          <lv_slider name="brightness_slider" flex_grow="1" min_value="10" max_value="100" value="50">
             <event_cb trigger="value_changed" callback="on_brightness_changed"/>
           </lv_slider>
-          <!-- Max icon (sun bright) -->
           <icon src="light" size="xs" variant="primary"/>
         </lv_obj>
       </lv_obj>
-      <!-- Divider (hidden when brightness section is hidden) -->
-      <lv_obj name="brightness_divider"
-              width="100%" height="1" style_bg_color="#card_border" style_bg_opa="100" style_border_width="0"
-              scrollable="false">
-        <bind_flag_if_eq subject="settings_has_backlight" flag="hidden" ref_value="0"/>
+      <!-- ================================================================== -->
+      <!-- BED MESH RENDER MODE -->
+      <!-- ================================================================== -->
+      <setting_dropdown_row name="row_bed_mesh_mode"
+                            label="Bed Mesh Render" icon="grid"
+                            description="Choose rendering mode for bed mesh visualization"
+                            callback="on_bed_mesh_mode_changed"/>
+      <!-- ================================================================== -->
+      <!-- G-CODE RENDER MODE (hidden until hardware-accelerated 3D is ready) -->
+      <!-- ================================================================== -->
+      <lv_obj width="100%" height="0" hidden="true" style_pad_all="0" scrollable="false">
+        <setting_dropdown_row name="row_gcode_mode"
+                              label="G-code Preview" icon="printer_3d"
+                              description="Choose rendering mode for G-code visualization"
+                              callback="on_gcode_mode_changed"/>
       </lv_obj>
       <!-- ================================================================== -->
-      <!-- BED MESH RENDER MODE SECTION -->
+      <!-- DISPLAY SLEEP -->
+      <!-- ================================================================== -->
+      <setting_dropdown_row name="row_display_sleep"
+                            label="Display Sleep" icon="clock"
+                            description="Screen will dim after the selected period of inactivity"
+                            callback="on_display_sleep_changed"/>
+      <!-- ================================================================== -->
+      <!-- INFO NOTE -->
       <!-- ================================================================== -->
       <lv_obj width="100%"
-              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_sm">
-        <!-- Section Label with Icon -->
-        <lv_obj width="100%"
-                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <icon src="grid" size="sm" variant="secondary"/>
-          <text_body text="Bed Mesh Render" style_text_color="#text_primary"/>
-        </lv_obj>
-        <!-- Description -->
-        <text_small width="100%"
-                    text="Choose rendering mode for bed mesh visualization" style_text_color="#text_secondary"
-                    style_text_align="left"/>
-        <!-- Mode Dropdown Row -->
-        <lv_obj name="bed_mesh_mode_row"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-                scrollable="false" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
-                style_margin_top="#space_md">
-          <text_body text="Render mode" style_text_color="#text_primary"/>
-          <lv_dropdown name="bed_mesh_mode_dropdown"
-                       width="140" height="#input_height" style_radius="#border_radius" style_border_width="0">
-            <event_cb trigger="value_changed" callback="on_bed_mesh_mode_changed"/>
-          </lv_dropdown>
-        </lv_obj>
-      </lv_obj>
-      <!-- Divider -->
-      <lv_obj width="100%"
-              height="1" style_bg_color="#card_border" style_bg_opa="100" style_border_width="0" scrollable="false"/>
-      <!-- ================================================================== -->
-      <!-- G-CODE RENDER MODE SECTION -->
-      <!-- ================================================================== -->
-      <lv_obj width="100%"
-              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_sm">
-        <!-- Section Label with Icon -->
-        <lv_obj width="100%"
-                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <icon src="printer_3d" size="sm" variant="secondary"/>
-          <text_body text="G-code Preview" style_text_color="#text_primary"/>
-        </lv_obj>
-        <!-- Description -->
-        <text_small width="100%"
-                    text="Choose rendering mode for G-code visualization" style_text_color="#text_secondary"
-                    style_text_align="left"/>
-        <!-- Mode Dropdown Row -->
-        <lv_obj name="gcode_mode_row"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-                scrollable="false" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
-                style_margin_top="#space_md">
-          <text_body text="Render mode" style_text_color="#text_primary"/>
-          <lv_dropdown name="gcode_mode_dropdown"
-                       width="140" height="#input_height" style_radius="#border_radius" style_border_width="0">
-            <event_cb trigger="value_changed" callback="on_gcode_mode_changed"/>
-          </lv_dropdown>
-        </lv_obj>
-      </lv_obj>
-      <!-- Divider -->
-      <lv_obj width="100%"
-              height="1" style_bg_color="#card_border" style_bg_opa="100" style_border_width="0" scrollable="false"/>
-      <!-- ================================================================== -->
-      <!-- DISPLAY SLEEP SECTION -->
-      <!-- ================================================================== -->
-      <lv_obj width="100%"
-              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_sm">
-        <!-- Section Label with Icon -->
-        <lv_obj width="100%"
-                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <icon src="clock" size="sm" variant="secondary"/>
-          <text_body text="Display Sleep" style_text_color="#text_primary"/>
-        </lv_obj>
-        <!-- Description -->
-        <text_small width="100%"
-                    text="Screen will dim after the selected period of inactivity" style_text_color="#text_secondary"
-                    style_text_align="left"/>
-        <!-- Timeout Dropdown Row -->
-        <lv_obj name="timeout_row"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-                scrollable="false" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
-                style_margin_top="#space_md">
-          <text_body text="Sleep after" style_text_color="#text_primary"/>
-          <lv_dropdown name="sleep_timeout_dropdown"
-                       width="140" height="#input_height" style_radius="#border_radius" style_border_width="0">
-            <event_cb trigger="value_changed" callback="on_display_sleep_changed"/>
-          </lv_dropdown>
-        </lv_obj>
-      </lv_obj>
-      <!-- Spacer to push info to bottom -->
-      <lv_obj width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0" scrollable="false"/>
-      <!-- Info Note at bottom -->
-      <lv_obj width="100%"
-              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              height="content" style_bg_opa="0" style_border_width="0" scrollable="false"
+              style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md" style_pad_bottom="#space_lg"
               flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
         <icon src="info" size="xs" variant="secondary"/>
         <text_small text="Touch screen to wake from sleep" style_text_color="#text_secondary"/>

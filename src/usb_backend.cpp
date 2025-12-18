@@ -18,8 +18,8 @@ std::unique_ptr<UsbBackend> UsbBackend::create(bool force_mock) {
     }
 
 #ifdef __linux__
-    // Linux: Use inotify-based backend for real USB monitoring
-    spdlog::debug("[UsbBackend] Linux platform detected - using inotify backend");
+    // Linux: Use native backend (inotify preferred, polling fallback)
+    spdlog::debug("[UsbBackend] Linux platform detected - using native backend");
     auto backend = std::make_unique<UsbBackendLinux>();
     UsbError result = backend->start();
     if (result.success()) {

@@ -113,6 +113,12 @@ PrintStatusPanel::~PrintStatusPanel() {
     // ObserverGuard handles observer cleanup automatically
     resize_registered_ = false;
 
+    // Clean up temp G-code file if any (silent - no logging in destructor per L010)
+    if (!temp_gcode_path_.empty()) {
+        std::remove(temp_gcode_path_.c_str());
+        temp_gcode_path_.clear();
+    }
+
     // CRITICAL: Check if LVGL is still initialized before calling LVGL functions.
     // During static destruction, LVGL may already be torn down.
     if (lv_is_initialized()) {
@@ -335,9 +341,20 @@ void PrintStatusPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Check if --gcode-file was specified on command line for this panel
     const auto& config = get_runtime_config();
     if (config.gcode_test_file && gcode_viewer_) {
-        spdlog::info("[{}] Loading G-code file from command line: {}", get_name(),
-                     config.gcode_test_file);
-        load_gcode_file(config.gcode_test_file);
+        // Check file size and memory safety before loading
+        std::ifstream file(config.gcode_test_file, std::ios::binary | std::ios::ate);
+        if (file) {
+            size_t file_size = static_cast<size_t>(file.tellg());
+            if (helix::is_gcode_3d_render_safe(file_size)) {
+                spdlog::info("[{}] Loading G-code file from command line: {}", get_name(),
+                             config.gcode_test_file);
+                load_gcode_file(config.gcode_test_file);
+            } else {
+                spdlog::warn("[{}] G-code file too large for rendering: {} ({} bytes) - using "
+                             "thumbnail only",
+                             get_name(), config.gcode_test_file, file_size);
+            }
+        }
     }
 
     spdlog::info("[{}] Setup complete!", get_name());
@@ -372,6 +389,18 @@ void PrintStatusPanel::format_time(int seconds, char* buf, size_t buf_size) {
     int hours = seconds / 3600;
     int minutes = (seconds % 3600) / 60;
     std::snprintf(buf, buf_size, "%dh %02dm", hours, minutes);
+}
+
+void PrintStatusPanel::cleanup_temp_gcode() {
+    if (!temp_gcode_path_.empty()) {
+        if (std::remove(temp_gcode_path_.c_str()) == 0) {
+            spdlog::debug("[{}] Cleaned up temp G-code file: {}", get_name(), temp_gcode_path_);
+        } else {
+            spdlog::trace("[{}] Temp G-code file already removed: {}", get_name(),
+                          temp_gcode_path_);
+        }
+        temp_gcode_path_.clear();
+    }
 }
 
 void PrintStatusPanel::show_gcode_viewer(bool show) {
@@ -428,12 +457,16 @@ void PrintStatusPanel::load_gcode_file(const char* file_path) {
             auto* self = static_cast<PrintStatusPanel*>(user_data);
             if (!success) {
                 spdlog::error("[{}] G-code load failed", self->get_name());
+                self->gcode_loaded_ = false;
                 return;
             }
 
             // Get layer count from loaded geometry
             int max_layer = ui_gcode_viewer_get_max_layer(viewer);
             spdlog::info("[{}] G-code loaded: {} layers", self->get_name(), max_layer);
+
+            // Mark G-code as successfully loaded (enables viewer mode on state changes)
+            self->gcode_loaded_ = true;
 
             // Show the viewer (hide gradient and thumbnail)
             self->show_gcode_viewer(true);
@@ -454,7 +487,14 @@ void PrintStatusPanel::load_gcode_file(const char* file_path) {
 
             // Start print via MoonrakerAPI if not already printing
             // In test mode with auto-start, a print may already be running
-            if (self->api_ && self->current_state_ == PrintState::Idle) {
+            // Skip if the file is a temp file (viewing an existing print's G-code, not starting
+            // new)
+            bool is_temp_file = filename && (strncmp(filename, "/tmp/", 5) == 0 ||
+                                             strstr(filename, "helix_print_view"));
+            if (is_temp_file) {
+                spdlog::debug("[{}] Loaded temp file for viewing - not starting print",
+                              self->get_name());
+            } else if (self->api_ && self->current_state_ == PrintState::Idle) {
                 self->api_->start_print(
                     filename,
                     []() { spdlog::info("[PrintStatusPanel] Print started via Moonraker"); },
@@ -1077,16 +1117,19 @@ void PrintStatusPanel::on_print_state_changed(PrintJobState job_state) {
             spdlog::debug("[{}] New print started - clearing complete overlay", get_name());
         }
 
-        // Clear thumbnail tracking when print ends (Complete/Cancelled/Error/Idle)
-        // This ensures it's available during the entire print but cleared for the next one
+        // Clear thumbnail and G-code tracking when print ends (Complete/Cancelled/Error/Idle)
+        // This ensures they're available during the entire print but cleared for the next one
         bool print_ended =
             (new_state == PrintState::Complete || new_state == PrintState::Cancelled ||
              new_state == PrintState::Error || new_state == PrintState::Idle);
         if (print_ended) {
-            if (!thumbnail_source_filename_.empty() || !loaded_thumbnail_filename_.empty()) {
-                spdlog::debug("[{}] Clearing thumbnail tracking (print ended)", get_name());
+            if (!thumbnail_source_filename_.empty() || !loaded_thumbnail_filename_.empty() ||
+                gcode_loaded_ || !temp_gcode_path_.empty()) {
+                spdlog::debug("[{}] Clearing thumbnail/gcode tracking (print ended)", get_name());
                 thumbnail_source_filename_.clear();
                 loaded_thumbnail_filename_.clear();
+                gcode_loaded_ = false;
+                cleanup_temp_gcode();
             }
         }
 
@@ -1095,10 +1138,12 @@ void PrintStatusPanel::on_print_state_changed(PrintJobState job_state) {
                      print_job_state_to_string(job_state), static_cast<int>(new_state));
 
         // Toggle G-code viewer visibility based on print state
-        // Show 3D/2D viewer during preparing/printing/paused (ghost preview during warmup,
-        // real-time progress during print). On completion, show thumbnail instead.
-        bool show_viewer = (new_state == PrintState::Preparing ||
+        // Show 3D/2D viewer during preparing/printing/paused ONLY if G-code was successfully
+        // loaded. If memory check failed (gcode_loaded_ = false), stay in thumbnail mode. On
+        // completion, always show thumbnail.
+        bool want_viewer = (new_state == PrintState::Preparing ||
                             new_state == PrintState::Printing || new_state == PrintState::Paused);
+        bool show_viewer = want_viewer && gcode_loaded_;
         show_gcode_viewer(show_viewer);
 
         // Check for runout condition when entering Paused state
@@ -1795,6 +1840,12 @@ void PrintStatusPanel::load_gcode_for_viewing(const std::string& filename) {
             api_->download_file(
                 "gcodes", filename,
                 [this, filename](const std::string& content) {
+                    // Clean up previous temp file if any
+                    if (!temp_gcode_path_.empty()) {
+                        std::remove(temp_gcode_path_.c_str());
+                        temp_gcode_path_.clear();
+                    }
+
                     // Save to a temp file for the viewer to load
                     std::string temp_path = "/tmp/helix_print_view_" +
                                             std::to_string(std::hash<std::string>{}(filename)) +
@@ -1809,6 +1860,9 @@ void PrintStatusPanel::load_gcode_for_viewing(const std::string& filename) {
 
                     file.write(content.data(), static_cast<std::streamsize>(content.size()));
                     file.close();
+
+                    // Track the temp file for cleanup
+                    temp_gcode_path_ = temp_path;
 
                     spdlog::info("[{}] Downloaded G-code ({} bytes), loading into viewer: {}",
                                  get_name(), content.size(), temp_path);
@@ -1913,8 +1967,11 @@ void PrintStatusPanel::set_preparing(const std::string& operation_name, int curr
                                      int total_steps) {
     current_state_ = PrintState::Preparing;
 
-    // Show G-code viewer during preparation (ghost preview while running macros)
-    show_gcode_viewer(true);
+    // NOTE: Do NOT call show_gcode_viewer(true) here!
+    // The thumbnail should remain visible until G-code successfully loads.
+    // show_gcode_viewer(true) is called in load_gcode_file() callback after successful load.
+    // Calling it prematurely causes a visible "empty viewer" flash on memory-constrained
+    // devices where the async memory check fails and we fall back to thumbnail mode.
 
     // Update operation name with step info: "Homing (1/3)"
     snprintf(preparing_operation_buf_, sizeof(preparing_operation_buf_), "%s (%d/%d)",

@@ -7,7 +7,7 @@ This document provides a comprehensive reference for all environment variables u
 | Category | Count | Prefix |
 |----------|-------|--------|
 | [Display & Backend](#display--backend-configuration) | 7 | `HELIX_` |
-| [G-Code Viewer](#g-code-viewer) | 1 | `HELIX_` |
+| [G-Code Viewer](#g-code-viewer) | 2 | `HELIX_` |
 | [Bed Mesh](#bed-mesh) | 1 | `HELIX_` |
 | [Mock & Testing](#mock--testing) | 9 | `HELIX_MOCK_*` |
 | [UI Automation](#ui-automation) | 3 | `HELIX_AUTO_*` |
@@ -139,6 +139,23 @@ HELIX_GCODE_MODE=2D ./build/bin/helix-screen
 ```
 
 **Note:** 3D mode requires the build to include TinyGL or OpenGL ES support. On platforms without GPU acceleration, 2D mode is recommended for performance.
+
+### `HELIX_FORCE_GCODE_MEMORY_FAIL`
+
+Force the G-code memory safety check to fail, simulating a memory-constrained device like AD5M. Useful for testing thumbnail fallback behavior without deploying to embedded hardware.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `1` (force failure), unset (normal behavior) |
+| **Default** | Unset (normal memory checking) |
+| **File** | `src/memory_utils.cpp` |
+
+```bash
+# Force memory check to fail - viewer falls back to thumbnail mode
+HELIX_FORCE_GCODE_MEMORY_FAIL=1 ./build/bin/helix-screen --test -p print-status -vv
+```
+
+**Use case:** Testing that the thumbnail displays immediately when G-code rendering is unavailable, without needing to deploy to memory-constrained hardware.
 
 ---
 

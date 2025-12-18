@@ -2,6 +2,9 @@
 
 #include "memory_utils.h"
 
+#include <spdlog/spdlog.h>
+
+#include <cstdlib>
 #include <fstream>
 #include <string>
 
@@ -131,6 +134,15 @@ MemoryInfo get_system_memory_info() {
 }
 
 bool is_gcode_3d_render_safe(size_t file_size_bytes) {
+    // Environment variable to force memory failure for testing
+    // Usage: HELIX_FORCE_GCODE_MEMORY_FAIL=1 ./helix-screen --test
+    const char* force_fail = std::getenv("HELIX_FORCE_GCODE_MEMORY_FAIL");
+    if (force_fail && force_fail[0] == '1') {
+        spdlog::debug(
+            "[memory_utils] HELIX_FORCE_GCODE_MEMORY_FAIL=1 - forcing memory check failure");
+        return false;
+    }
+
     MemoryInfo mem = get_system_memory_info();
 
     // If we can't read memory info, be conservative - allow only small files

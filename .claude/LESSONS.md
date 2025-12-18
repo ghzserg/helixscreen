@@ -40,8 +40,8 @@
 > After adding icon to codepoints.h: add to regen_mdi_fonts.sh, run make regen-fonts, then rebuild. Forgetting any step = missing icon
 
 
-### [L010] [+----/-----] No spdlog in destructors
-- **Uses**: 1 | **Learned**: 2025-12-14 | **Last**: 2025-12-14 | **Category**: gotcha
+### [L010] [*----/-----] No spdlog in destructors
+- **Uses**: 2 | **Learned**: 2025-12-14 | **Last**: 2025-12-18 | **Category**: gotcha
 > Never call spdlog::info/warn/error in destructors. Logger may be destroyed before your object during static destruction, causing crash on exit
 
 
