@@ -87,18 +87,28 @@ static const lv_font_t* get_font_for_size(const char* size) {
 }
 
 /**
- * @brief Update current temp label color based on heating state
+ * @brief Update current temp label color based on heating/cooling state
  *
- * When the heater is ON (target > 0), the current temperature is displayed
- * in primary_color to provide visual feedback that heating is active.
- * When OFF, it reverts to text_primary.
+ * Color indicates thermal state:
+ * - Heating (target > 0 AND current < target): primary_color (red)
+ * - Cooling to target (target > 0 AND current > target): info_color (blue)
+ * - Idle/at target (target == 0 OR current == target): text_primary
  */
 static void update_heating_color(TempDisplayData* data) {
     if (!data || !data->current_label)
         return;
 
-    lv_color_t color = (data->target_temp > 0) ? ui_theme_get_color("primary_color")
-                                               : ui_theme_get_color("text_primary");
+    lv_color_t color;
+    if (data->target_temp > 0 && data->current_temp < data->target_temp) {
+        // Heating up to target - RED
+        color = ui_theme_get_color("primary_color");
+    } else if (data->target_temp > 0 && data->current_temp > data->target_temp) {
+        // Cooling down to target - BLUE
+        color = ui_theme_get_color("info_color");
+    } else {
+        // Idle or at target - DEFAULT
+        color = ui_theme_get_color("text_primary");
+    }
     lv_obj_set_style_text_color(data->current_label, color, LV_PART_MAIN);
 }
 
@@ -273,6 +283,8 @@ static void current_temp_observer_cb(lv_observer_t* observer, lv_subject_t* subj
 
     if (data) {
         data->current_temp = temp_deg;
+        // Update color since it depends on current vs target comparison
+        update_heating_color(data);
     }
 
     // Update just this label
