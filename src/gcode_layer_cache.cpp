@@ -335,8 +335,8 @@ bool GCodeLayerCache::check_memory_pressure() {
         }
 
         // Rate limit checks to avoid overhead
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - last_pressure_check_);
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - last_pressure_check_);
         if (elapsed.count() < PRESSURE_CHECK_INTERVAL_MS) {
             return false;
         }
@@ -377,8 +377,7 @@ bool GCodeLayerCache::check_memory_pressure() {
                  "(available RAM: {:.0f}MB, {} layers cached)",
                  static_cast<double>(old_budget) / (1024 * 1024),
                  static_cast<double>(new_budget) / (1024 * 1024),
-                 static_cast<double>(mem.available_kb) / 1024,
-                 cache_.size());
+                 static_cast<double>(mem.available_kb) / 1024, cache_.size());
 
     return true;
 }
@@ -442,8 +441,8 @@ size_t GCodeLayerCache::calculate_adaptive_budget(const MemoryInfo& mem) const {
 int64_t GCodeLayerCache::ms_since_last_pressure_check() const {
     std::lock_guard<std::mutex> lock(mutex_);
     auto now = std::chrono::steady_clock::now();
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-        now - last_pressure_check_).count();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now - last_pressure_check_)
+        .count();
 }
 
 } // namespace gcode

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "gcode_parser.h"
+#include "gcode_streaming_controller.h"
 
 #include <lvgl/lvgl.h>
 
@@ -47,17 +48,50 @@ class GCodeLayerRenderer {
     // =========================================================================
 
     /**
-     * @brief Set G-code data source
+     * @brief Set G-code data source (full file mode)
      * @param gcode Pointer to parsed G-code file (not owned)
+     *
+     * Use this for files small enough to fit in memory. Clears any
+     * streaming controller set via set_streaming_controller().
      */
     void set_gcode(const ParsedGCodeFile* gcode);
 
     /**
-     * @brief Get current G-code data source
-     * @return Pointer to parsed G-code file, or nullptr if not set
+     * @brief Set streaming controller as data source (streaming mode)
+     * @param controller Pointer to streaming controller (not owned)
+     *
+     * Use this for large files that should be streamed layer-by-layer.
+     * Clears any parsed file set via set_gcode().
+     *
+     * In streaming mode:
+     * - Layers are loaded on-demand via the controller
+     * - Prefetching happens automatically for nearby layers
+     * - Memory usage is bounded by the controller's cache budget
+     */
+    void set_streaming_controller(GCodeStreamingController* controller);
+
+    /**
+     * @brief Check if using streaming mode
+     * @return true if streaming controller is set, false if using parsed file
+     */
+    bool is_streaming() const {
+        return streaming_controller_ != nullptr;
+    }
+
+    /**
+     * @brief Get current G-code data source (full file mode only)
+     * @return Pointer to parsed G-code file, or nullptr if not set or in streaming mode
      */
     const ParsedGCodeFile* get_gcode() const {
         return gcode_;
+    }
+
+    /**
+     * @brief Get streaming controller (streaming mode only)
+     * @return Pointer to streaming controller, or nullptr if not in streaming mode
+     */
+    GCodeStreamingController* get_streaming_controller() const {
+        return streaming_controller_;
     }
 
     // =========================================================================
@@ -335,8 +369,9 @@ class GCodeLayerRenderer {
      */
     lv_color_t get_segment_color(const ToolpathSegment& seg) const;
 
-    // Data source
+    // Data source (exactly one should be non-null)
     const ParsedGCodeFile* gcode_ = nullptr;
+    GCodeStreamingController* streaming_controller_ = nullptr;
     int current_layer_ = 0;
 
     // Canvas dimensions
@@ -403,10 +438,10 @@ class GCodeLayerRenderer {
     static constexpr int MAX_LAYERS_PER_FRAME = 100;
     static constexpr int DEFAULT_ADAPTIVE_TARGET_MS = 16; // ~60 FPS
 
-    int layers_per_frame_{DEFAULT_LAYERS_PER_FRAME};     ///< Current layers per frame (may be adaptive)
-    int config_layers_per_frame_{0};                      ///< Config value (0 = adaptive)
-    int adaptive_target_ms_{DEFAULT_ADAPTIVE_TARGET_MS};  ///< Target render time for adaptive mode
-    uint32_t last_frame_render_ms_{0};                    ///< Render time of last frame (for adaptive)
+    int layers_per_frame_{DEFAULT_LAYERS_PER_FRAME}; ///< Current layers per frame (may be adaptive)
+    int config_layers_per_frame_{0};                 ///< Config value (0 = adaptive)
+    int adaptive_target_ms_{DEFAULT_ADAPTIVE_TARGET_MS}; ///< Target render time for adaptive mode
+    uint32_t last_frame_render_ms_{0}; ///< Render time of last frame (for adaptive)
 
     /// Load config values from helixconfig.json
     void load_config();

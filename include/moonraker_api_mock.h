@@ -435,8 +435,75 @@ class MoonrakerAPIMock : public MoonrakerAPI {
     int mock_active_spool_id_ = 1;       ///< Currently active spool ID
     std::vector<SpoolInfo> mock_spools_; ///< Mock spool inventory
 
+    /// Slot-to-spool mapping (AMS slot index → Spoolman spool_id)
+    std::map<int, int> slot_spool_map_;
+
     /**
      * @brief Initialize mock spool data with realistic sample inventory
      */
     void init_mock_spools();
+
+  public:
+    // ========================================================================
+    // Slot-Spool Mapping (for realistic AMS↔Spoolman integration)
+    // ========================================================================
+
+    /**
+     * @brief Assign a Spoolman spool to an AMS slot
+     *
+     * Creates a mapping between the slot and spool. The AMS backend should
+     * call this when the user assigns a spool via the picker.
+     *
+     * @param slot_index AMS slot index (0-based)
+     * @param spool_id Spoolman spool ID to assign
+     */
+    void assign_spool_to_slot(int slot_index, int spool_id);
+
+    /**
+     * @brief Remove spool assignment from an AMS slot
+     *
+     * @param slot_index AMS slot index to unassign
+     */
+    void unassign_spool_from_slot(int slot_index);
+
+    /**
+     * @brief Get the Spoolman spool ID assigned to a slot
+     *
+     * @param slot_index AMS slot index
+     * @return Spool ID if assigned, 0 if not assigned
+     */
+    [[nodiscard]] int get_spool_for_slot(int slot_index) const;
+
+    /**
+     * @brief Get SpoolInfo for a slot (if assigned)
+     *
+     * @param slot_index AMS slot index
+     * @return SpoolInfo if assigned, std::nullopt if not
+     */
+    [[nodiscard]] std::optional<SpoolInfo> get_spool_info_for_slot(int slot_index) const;
+
+    /**
+     * @brief Simulate filament consumption during a print
+     *
+     * Decrements remaining_weight_g on the active spool by the specified amount.
+     * Also updates the spool assigned to the given slot if provided.
+     *
+     * @param grams Amount of filament consumed in grams
+     * @param slot_index Optional slot to update (-1 uses active spool only)
+     */
+    void consume_filament(float grams, int slot_index = -1);
+
+    /**
+     * @brief Get mutable reference to mock spools for testing
+     */
+    std::vector<SpoolInfo>& get_mock_spools() {
+        return mock_spools_;
+    }
+
+    /**
+     * @brief Get const reference to mock spools
+     */
+    [[nodiscard]] const std::vector<SpoolInfo>& get_mock_spools() const {
+        return mock_spools_;
+    }
 };

@@ -2,9 +2,9 @@
 
 #include "gcode_data_source.h"
 
-#include "../catch_amalgamated.hpp"
-
 #include <fstream>
+
+#include "../catch_amalgamated.hpp"
 
 using namespace helix::gcode;
 
@@ -143,7 +143,7 @@ TEST_CASE("FileDataSource move semantics", "[gcode][datasource]") {
     REQUIRE(source2.is_valid());
 
     // Original should be invalid after move
-    REQUIRE_FALSE(source1.is_valid());  // NOLINT - testing moved-from state
+    REQUIRE_FALSE(source1.is_valid()); // NOLINT - testing moved-from state
 
     // Moved-to should work
     auto data = source2.read_range(0, 10);

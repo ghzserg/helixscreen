@@ -240,7 +240,7 @@ TEST_CASE("MoonrakerAPIMock - get_spoolman_spools", "[spoolman][mock]") {
         api.get_spoolman_spools(
             [&](const std::vector<SpoolInfo>& spools) {
                 callback_called = true;
-                REQUIRE(spools.size() == 18); // Mock has 18 spools
+                REQUIRE(spools.size() == 19); // Mock has 19 spools
             },
             [](const MoonrakerError&) { FAIL("Error callback should not be called"); });
 

@@ -18,7 +18,11 @@
 #include "gcode_camera.h"
 #include "gcode_layer_renderer.h"
 #include "gcode_parser.h"
+#include "gcode_streaming_config.h"
+#include "gcode_streaming_controller.h"
 #include "memory_utils.h"
+
+#include <filesystem>
 
 #ifdef ENABLE_TINYGL_3D
 #include "gcode_tinygl_renderer.h"
@@ -208,6 +212,11 @@ class GCodeViewerState {
 
     /// 2D orthographic layer renderer (default for all platforms)
     std::unique_ptr<helix::gcode::GCodeLayerRenderer> layer_renderer_2d_;
+
+    /// Streaming controller for large files (Phase 6)
+    /// When set, renderer uses this instead of gcode_file for layer data.
+    /// Mutually exclusive with gcode_file - exactly one should hold data.
+    std::unique_ptr<helix::gcode::GCodeStreamingController> streaming_controller_;
 
     /// Print progress layer (set via ui_gcode_viewer_set_print_progress)
     /// -1 means "show all layers" (preview mode), >= 0 means "show up to this layer"
@@ -798,11 +807,143 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
     st->viewer_state = GCODE_VIEWER_STATE_LOADING;
     st->first_render = true; // Reset for new file
 
+    // Clear any existing data sources (mutually exclusive: streaming XOR full-file)
+    st->streaming_controller_.reset();
+    st->gcode_file.reset();
+    st->layer_renderer_2d_.reset(); // Will be recreated on first render
+
+    // =========================================================================
+    // PHASE 0: Streaming Mode Detection (Phase 6)
+    // Determine whether to use streaming (layer-by-layer) or full-load mode
+    // based on file size and available memory.
+    // =========================================================================
+    std::error_code ec;
+    auto file_size = std::filesystem::file_size(file_path, ec);
+    if (ec) {
+        spdlog::warn("[GCode Viewer] Cannot get file size for {}: {}", file_path, ec.message());
+        file_size = 0; // Fall through to full-load mode
+    }
+
+    bool use_streaming = helix::should_use_gcode_streaming(file_size);
+    spdlog::info("[GCode Viewer] File size: {}KB, streaming mode: {}",
+                 file_size / 1024, use_streaming ? "ON" : "OFF");
+
     // Clean up previous loading UI if it exists
     if (st->loading_container) {
         lv_obj_delete(st->loading_container);
         st->loading_container = nullptr;
     }
+
+    // =========================================================================
+    // STREAMING MODE PATH
+    // Uses GCodeStreamingController for on-demand layer loading.
+    // Ideal for large files on memory-constrained devices.
+    // =========================================================================
+    if (use_streaming) {
+        // Create loading UI
+        st->loading_container = lv_obj_create(obj);
+        lv_obj_set_size(st->loading_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_center(st->loading_container);
+        lv_obj_set_flex_flow(st->loading_container, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(st->loading_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_bg_color(st->loading_container, ui_theme_get_color("card_bg"), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(st->loading_container, 220, LV_PART_MAIN);
+        lv_obj_set_style_border_width(st->loading_container, 0, LV_PART_MAIN);
+        lv_obj_set_style_radius(st->loading_container, 8, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(st->loading_container, 24, LV_PART_MAIN);
+        lv_obj_set_style_pad_gap(st->loading_container, 12, LV_PART_MAIN);
+
+        st->loading_spinner = lv_spinner_create(st->loading_container);
+        lv_obj_set_size(st->loading_spinner, 48, 48);
+        lv_color_t primary = ui_theme_get_color("primary_color");
+        lv_obj_set_style_arc_color(st->loading_spinner, primary, LV_PART_INDICATOR);
+        lv_obj_set_style_arc_width(st->loading_spinner, 4, LV_PART_INDICATOR);
+        lv_obj_set_style_arc_opa(st->loading_spinner, LV_OPA_0, LV_PART_MAIN);
+
+        st->loading_label = lv_label_create(st->loading_container);
+        lv_label_set_text(st->loading_label, "Indexing G-code...");
+        lv_obj_set_style_text_color(st->loading_label, ui_theme_get_color("text_primary"),
+                                    LV_PART_MAIN);
+
+        // Create streaming controller
+        st->streaming_controller_ = std::make_unique<helix::gcode::GCodeStreamingController>();
+
+        // Launch async index building with completion callback
+        // The callback runs on the background thread, so we use lv_async_call to marshal to UI
+        std::string path_copy = file_path;
+        st->streaming_controller_->open_file_async(path_copy, [obj, path_copy](bool success) {
+            // Marshal completion to UI thread
+            struct StreamingResult {
+                bool success;
+                std::string path;
+            };
+            auto result = std::make_unique<StreamingResult>();
+            result->success = success;
+            result->path = path_copy;
+
+            ui_async_call_safe<StreamingResult>(std::move(result), [obj](StreamingResult* r) {
+                gcode_viewer_state_t* st = get_state(obj);
+                if (!st) {
+                    return; // Widget destroyed
+                }
+
+                // Clean up loading UI
+                if (st->loading_container) {
+                    lv_obj_delete(st->loading_container);
+                    st->loading_container = nullptr;
+                    st->loading_spinner = nullptr;
+                    st->loading_label = nullptr;
+                }
+
+                if (r->success && st->streaming_controller_ && st->streaming_controller_->is_open()) {
+                    spdlog::info("[GCode Viewer] Streaming mode: indexed {} layers",
+                                 st->streaming_controller_->get_layer_count());
+
+                    // Initialize 2D renderer with streaming controller
+                    st->layer_renderer_2d_ = std::make_unique<helix::gcode::GCodeLayerRenderer>();
+                    st->layer_renderer_2d_->set_streaming_controller(st->streaming_controller_.get());
+
+                    // Get canvas size from widget
+                    lv_area_t coords;
+                    lv_obj_get_coords(obj, &coords);
+                    int width = lv_area_get_width(&coords);
+                    int height = lv_area_get_height(&coords);
+                    st->layer_renderer_2d_->set_canvas_size(width, height);
+                    st->layer_renderer_2d_->auto_fit();
+
+                    // Note: Ghost mode is disabled in streaming mode (requires all layers)
+                    // The renderer handles this automatically in set_streaming_controller()
+
+                    st->viewer_state = GCODE_VIEWER_STATE_LOADED;
+                    st->first_render = false;
+
+                    // Trigger initial render
+                    lv_obj_invalidate(obj);
+
+                    // Invoke load callback
+                    if (st->load_callback) {
+                        st->load_callback(obj, st->load_callback_user_data, true);
+                    }
+                } else {
+                    spdlog::error("[GCode Viewer] Streaming mode: failed to index {}", r->path);
+                    st->viewer_state = GCODE_VIEWER_STATE_ERROR;
+                    st->streaming_controller_.reset();
+
+                    if (st->load_callback) {
+                        st->load_callback(obj, st->load_callback_user_data, false);
+                    }
+                }
+            });
+        });
+
+        return; // Streaming path handles everything asynchronously
+    }
+
+    // =========================================================================
+    // FULL-LOAD MODE PATH (existing implementation)
+    // Parses entire file into memory. Used for smaller files.
+    // =========================================================================
 
     // Create loading UI with dark theme styling (matching preparing_overlay pattern)
     st->loading_container = lv_obj_create(obj);
@@ -1099,6 +1240,9 @@ void ui_gcode_viewer_set_gcode_data(lv_obj_t* obj, void* gcode_data) {
     if (!st || !gcode_data)
         return;
 
+    // Clear streaming controller (mutually exclusive with gcode_file)
+    st->streaming_controller_.reset();
+
     // Take ownership of the data (caller must use new to allocate)
     st->gcode_file.reset(static_cast<helix::gcode::ParsedGCodeFile*>(gcode_data));
 
@@ -1129,7 +1273,8 @@ void ui_gcode_viewer_clear(lv_obj_t* obj) {
         return;
 
     st->gcode_file.reset();
-    st->layer_renderer_2d_.reset(); // Clear 2D renderer to avoid dangling pointer
+    st->streaming_controller_.reset(); // Clear streaming controller (Phase 6)
+    st->layer_renderer_2d_.reset();    // Clear 2D renderer to avoid dangling pointer
     st->viewer_state = GCODE_VIEWER_STATE_EMPTY;
 
     lv_obj_invalidate(obj);
@@ -1689,18 +1834,40 @@ const char* ui_gcode_viewer_pick_object(lv_obj_t* obj, int x, int y) {
 
 const char* ui_gcode_viewer_get_filename(lv_obj_t* obj) {
     gcode_viewer_state_t* st = get_state(obj);
-    if (!st || !st->gcode_file || st->gcode_file->filename.empty())
+    if (!st)
         return nullptr;
 
-    return st->gcode_file->filename.c_str();
+    // Streaming mode: get filename from controller
+    if (st->streaming_controller_ && st->streaming_controller_->is_open()) {
+        static std::string streaming_name; // Thread-safe for single-threaded LVGL
+        streaming_name = st->streaming_controller_->get_source_name();
+        return streaming_name.empty() ? nullptr : streaming_name.c_str();
+    }
+
+    // Full-file mode
+    if (st->gcode_file && !st->gcode_file->filename.empty()) {
+        return st->gcode_file->filename.c_str();
+    }
+
+    return nullptr;
 }
 
 int ui_gcode_viewer_get_layer_count(lv_obj_t* obj) {
     gcode_viewer_state_t* st = get_state(obj);
-    if (!st || !st->gcode_file)
+    if (!st)
         return 0;
 
-    return static_cast<int>(st->gcode_file->layers.size());
+    // Streaming mode: get layer count from controller
+    if (st->streaming_controller_ && st->streaming_controller_->is_open()) {
+        return static_cast<int>(st->streaming_controller_->get_layer_count());
+    }
+
+    // Full-file mode: get layer count from parsed file
+    if (st->gcode_file) {
+        return static_cast<int>(st->gcode_file->layers.size());
+    }
+
+    return 0;
 }
 
 int ui_gcode_viewer_get_segments_rendered(lv_obj_t* obj) {

@@ -5,6 +5,7 @@
 
 #include "ams_backend_afc.h"
 #include "ams_backend_toolchanger.h"
+#include "moonraker_api.h"
 #include "printer_capabilities.h"
 #include "runtime_config.h"
 
@@ -328,6 +329,13 @@ bool AmsState::is_available() const {
     return backend_ && backend_->get_type() != AmsType::NONE;
 }
 
+void AmsState::set_moonraker_api(MoonrakerAPI* api) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    api_ = api;
+    last_synced_spoolman_id_ = 0; // Reset tracking on API change
+    spdlog::debug("[AMS State] Moonraker API {} for Spoolman integration", api ? "set" : "cleared");
+}
+
 lv_subject_t* AmsState::get_slot_color_subject(int slot_index) {
     if (slot_index < 0 || slot_index >= MAX_SLOTS) {
         return nullptr;
@@ -565,6 +573,15 @@ void AmsState::sync_current_loaded_from_backend() {
     } else if (slot_index >= 0 && filament_loaded) {
         // Filament is loaded - show slot info
         SlotInfo slot_info = backend_->get_slot_info(slot_index);
+
+        // Sync Spoolman active spool when slot with spoolman_id is loaded
+        if (api_ && slot_info.spoolman_id > 0 &&
+            slot_info.spoolman_id != last_synced_spoolman_id_) {
+            last_synced_spoolman_id_ = slot_info.spoolman_id;
+            spdlog::info("[AMS State] Setting active Spoolman spool to {} (slot {})",
+                         slot_info.spoolman_id, slot_index);
+            api_->set_active_spool(slot_info.spoolman_id, []() {}, [](const MoonrakerError&) {});
+        }
 
         // Set color
         lv_subject_set_int(&current_color_, static_cast<int>(slot_info.color_rgb));

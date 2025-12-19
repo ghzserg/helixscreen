@@ -49,8 +49,8 @@ std::vector<char> GCodeDataSource::read_all() {
     uint64_t size = file_size();
     // Guard against truncation - read_range takes uint32_t
     if (size > std::numeric_limits<uint32_t>::max()) {
-        spdlog::error("[DataSource] File too large for read_all(): {} bytes (max {})",
-                      size, std::numeric_limits<uint32_t>::max());
+        spdlog::error("[DataSource] File too large for read_all(): {} bytes (max {})", size,
+                      std::numeric_limits<uint32_t>::max());
         return {};
     }
     return read_range(0, static_cast<uint32_t>(size));
@@ -151,7 +151,6 @@ bool FileDataSource::is_valid() const {
 MoonrakerDataSource::MoonrakerDataSource(const std::string& moonraker_url,
                                          const std::string& gcode_path)
     : moonraker_url_(moonraker_url), gcode_path_(gcode_path) {
-
     // Normalize URL (remove trailing slash)
     while (!moonraker_url_.empty() && moonraker_url_.back() == '/') {
         moonraker_url_.pop_back();
@@ -429,12 +428,10 @@ bool MoonrakerDataSource::is_valid() const {
 // =============================================================================
 
 MemoryDataSource::MemoryDataSource(std::string content, std::string name)
-    : data_(content.begin(), content.end()), name_(std::move(name)) {
-}
+    : data_(content.begin(), content.end()), name_(std::move(name)) {}
 
 MemoryDataSource::MemoryDataSource(std::vector<char> data, std::string name)
-    : data_(std::move(data)), name_(std::move(name)) {
-}
+    : data_(std::move(data)), name_(std::move(name)) {}
 
 std::vector<char> MemoryDataSource::read_range(uint64_t offset, uint32_t length) {
     if (offset >= data_.size()) {

@@ -879,13 +879,27 @@ static void initialize_moonraker_client(Config* config) {
     spdlog::debug("[Moonraker API] Creating instance...");
     if (get_runtime_config().should_use_test_files()) {
         spdlog::debug("[Test Mode] Creating MOCK MoonrakerAPI (local file transfers)");
-        moonraker_api = std::make_unique<MoonrakerAPIMock>(*moonraker_client, get_printer_state());
+        auto mock_api = std::make_unique<MoonrakerAPIMock>(*moonraker_client, get_printer_state());
+
+        // Check HELIX_MOCK_SPOOLMAN env var (default: enabled)
+        // Set to "0" or "off" to disable mock Spoolman
+        const char* spoolman_env = std::getenv("HELIX_MOCK_SPOOLMAN");
+        if (spoolman_env &&
+            (std::string(spoolman_env) == "0" || std::string(spoolman_env) == "off")) {
+            mock_api->set_mock_spoolman_enabled(false);
+            spdlog::info("[Test Mode] Mock Spoolman disabled via HELIX_MOCK_SPOOLMAN=0");
+        }
+
+        moonraker_api = std::move(mock_api);
     } else {
         moonraker_api = std::make_unique<MoonrakerAPI>(*moonraker_client, get_printer_state());
     }
 
     // Register with app_globals (raw pointer for access, main.cpp owns lifetime)
     set_moonraker_api(moonraker_api.get());
+
+    // Set API for AmsState Spoolman integration (auto-set active spool on load)
+    AmsState::instance().set_moonraker_api(moonraker_api.get());
 
     // Update all panels with API reference (pass raw pointer, main.cpp owns lifetime)
     // Note: These panels are initialized in initialize_subjects() before this function

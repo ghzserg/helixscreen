@@ -118,6 +118,16 @@ class AmsState {
      */
     [[nodiscard]] bool is_available() const;
 
+    /**
+     * @brief Set Moonraker API for Spoolman integration
+     *
+     * When set, AmsState will automatically call set_active_spool() when
+     * a slot with a Spoolman ID becomes loaded. Pass nullptr to disable.
+     *
+     * @param api MoonrakerAPI instance (not owned)
+     */
+    void set_moonraker_api(MoonrakerAPI* api);
+
     // ========================================================================
     // System-level Subject Accessors
     // ========================================================================
@@ -569,6 +579,10 @@ class AmsState {
     mutable std::recursive_mutex mutex_;
     std::unique_ptr<AmsBackend> backend_;
     bool initialized_ = false;
+
+    // Moonraker API for Spoolman integration
+    MoonrakerAPI* api_ = nullptr;
+    int last_synced_spoolman_id_ = 0; ///< Track to avoid duplicate set_active_spool calls
 
     // System-level subjects
     lv_subject_t ams_type_;

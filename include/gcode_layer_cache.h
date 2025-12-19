@@ -71,7 +71,7 @@ class GCodeLayerCache {
     struct CacheResult {
         const std::vector<ToolpathSegment>* segments{nullptr}; ///< Pointer to cached segments
         bool was_hit{false};                                   ///< True if found in cache
-        bool load_failed{false};                               ///< True if load attempted but failed
+        bool load_failed{false}; ///< True if load attempted but failed
     };
 
     /**
@@ -199,7 +199,8 @@ class GCodeLayerCache {
      * @param min_budget_bytes Minimum budget even under pressure
      * @param max_budget_bytes Maximum budget even when RAM is plentiful
      */
-    void set_adaptive_mode(bool enabled, int target_percent = 15, size_t min_budget_bytes = 1 * 1024 * 1024,
+    void set_adaptive_mode(bool enabled, int target_percent = 15,
+                           size_t min_budget_bytes = 1 * 1024 * 1024,
                            size_t max_budget_bytes = DEFAULT_BUDGET_NORMAL);
 
     /**
@@ -297,8 +298,8 @@ class GCodeLayerCache {
 
     // Adaptive memory management
     bool adaptive_enabled_{false};
-    int adaptive_target_percent_{15};       ///< Target % of available RAM
-    size_t adaptive_min_budget_{1024 * 1024};    ///< 1MB minimum
+    int adaptive_target_percent_{15};         ///< Target % of available RAM
+    size_t adaptive_min_budget_{1024 * 1024}; ///< 1MB minimum
     size_t adaptive_max_budget_{DEFAULT_BUDGET_NORMAL};
     std::chrono::steady_clock::time_point last_pressure_check_;
     static constexpr int64_t PRESSURE_CHECK_INTERVAL_MS = 2000; ///< Check every 2 seconds max

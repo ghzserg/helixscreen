@@ -982,3 +982,96 @@ void MoonrakerAPIMock::call_rest_post(const std::string& endpoint, const nlohman
         on_complete(resp);
     }
 }
+
+// ============================================================================
+// MoonrakerAPIMock - Slot-Spool Mapping
+// ============================================================================
+
+void MoonrakerAPIMock::assign_spool_to_slot(int slot_index, int spool_id) {
+    if (spool_id <= 0) {
+        unassign_spool_from_slot(slot_index);
+        return;
+    }
+
+    // Find the spool to verify it exists
+    SpoolInfo* spool = nullptr;
+    for (auto& s : mock_spools_) {
+        if (s.id == spool_id) {
+            spool = &s;
+            break;
+        }
+    }
+
+    if (!spool) {
+        spdlog::warn("[MoonrakerAPIMock] assign_spool_to_slot: spool {} not found", spool_id);
+        return;
+    }
+
+    slot_spool_map_[slot_index] = spool_id;
+    spdlog::info("[MoonrakerAPIMock] Assigned spool {} ({} {}) to slot {}", spool_id, spool->vendor,
+                 spool->color_name, slot_index);
+}
+
+void MoonrakerAPIMock::unassign_spool_from_slot(int slot_index) {
+    auto it = slot_spool_map_.find(slot_index);
+    if (it != slot_spool_map_.end()) {
+        spdlog::info("[MoonrakerAPIMock] Unassigned spool {} from slot {}", it->second, slot_index);
+        slot_spool_map_.erase(it);
+    }
+}
+
+int MoonrakerAPIMock::get_spool_for_slot(int slot_index) const {
+    auto it = slot_spool_map_.find(slot_index);
+    return (it != slot_spool_map_.end()) ? it->second : 0;
+}
+
+std::optional<SpoolInfo> MoonrakerAPIMock::get_spool_info_for_slot(int slot_index) const {
+    int spool_id = get_spool_for_slot(slot_index);
+    if (spool_id <= 0) {
+        return std::nullopt;
+    }
+
+    for (const auto& spool : mock_spools_) {
+        if (spool.id == spool_id) {
+            return spool;
+        }
+    }
+    return std::nullopt;
+}
+
+void MoonrakerAPIMock::consume_filament(float grams, int slot_index) {
+    // Determine which spool to update
+    int spool_id = mock_active_spool_id_;
+    if (slot_index >= 0) {
+        int slot_spool = get_spool_for_slot(slot_index);
+        if (slot_spool > 0) {
+            spool_id = slot_spool;
+        }
+    }
+
+    if (spool_id <= 0) {
+        spdlog::debug("[MoonrakerAPIMock] consume_filament: no active spool");
+        return;
+    }
+
+    // Find and update the spool
+    for (auto& spool : mock_spools_) {
+        if (spool.id == spool_id) {
+            double old_weight = spool.remaining_weight_g;
+            spool.remaining_weight_g =
+                std::max(0.0, spool.remaining_weight_g - static_cast<double>(grams));
+
+            // Update remaining length proportionally
+            if (spool.initial_weight_g > 0) {
+                float ratio = spool.remaining_weight_g / spool.initial_weight_g;
+                // Estimate ~333m per 1kg for PLA (adjust per material if needed)
+                spool.remaining_length_m = ratio * 333.0f;
+            }
+
+            spdlog::debug(
+                "[MoonrakerAPIMock] Consumed {:.1f}g from spool {} ({}): {:.1f}g -> {:.1f}g", grams,
+                spool_id, spool.color_name, old_weight, spool.remaining_weight_g);
+            return;
+        }
+    }
+}

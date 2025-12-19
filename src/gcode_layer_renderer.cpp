@@ -3,8 +3,10 @@
 
 #include "gcode_layer_renderer.h"
 
-#include "config.h"
+#include "gcode_parser.h"
 #include "ui_theme.h"
+
+#include "config.h"
 
 #include <spdlog/spdlog.h>
 
@@ -42,6 +44,7 @@ GCodeLayerRenderer::~GCodeLayerRenderer() {
 
 void GCodeLayerRenderer::set_gcode(const ParsedGCodeFile* gcode) {
     gcode_ = gcode;
+    streaming_controller_ = nullptr; // Clear streaming mode
     bounds_valid_ = false;
     current_layer_ = 0;
     invalidate_cache();
@@ -52,22 +55,38 @@ void GCodeLayerRenderer::set_gcode(const ParsedGCodeFile* gcode) {
     }
 }
 
+void GCodeLayerRenderer::set_streaming_controller(GCodeStreamingController* controller) {
+    streaming_controller_ = controller;
+    gcode_ = nullptr; // Clear full-file mode
+    bounds_valid_ = false;
+    current_layer_ = 0;
+    invalidate_cache();
+
+    if (streaming_controller_) {
+        spdlog::info("[GCodeLayerRenderer] Set streaming controller: {} layers, cache budget {:.1f}MB",
+                     streaming_controller_->get_layer_count(),
+                     static_cast<double>(streaming_controller_->get_cache_budget()) / (1024 * 1024));
+    }
+}
+
 // ============================================================================
 // Layer Selection
 // ============================================================================
 
 void GCodeLayerRenderer::set_current_layer(int layer) {
-    if (!gcode_) {
+    int max_layer = get_layer_count() - 1;
+    if (max_layer < 0) {
         current_layer_ = 0;
         return;
     }
 
-    // Clamp to valid range
-    int max_layer = static_cast<int>(gcode_->layers.size()) - 1;
-    current_layer_ = std::clamp(layer, 0, std::max(0, max_layer));
+    current_layer_ = std::clamp(layer, 0, max_layer);
 }
 
 int GCodeLayerRenderer::get_layer_count() const {
+    if (streaming_controller_) {
+        return static_cast<int>(streaming_controller_->get_layer_count());
+    }
     return gcode_ ? static_cast<int>(gcode_->layers.size()) : 0;
 }
 
@@ -122,15 +141,31 @@ void GCodeLayerRenderer::reset_colors() {
 // ============================================================================
 
 void GCodeLayerRenderer::auto_fit() {
-    if (!gcode_ || gcode_->layers.empty()) {
+    int layer_count = get_layer_count();
+    if (layer_count == 0) {
         scale_ = 1.0f;
         offset_x_ = 0.0f;
         offset_y_ = 0.0f;
         return;
     }
 
-    // Use global bounding box for consistent framing
-    const auto& bb = gcode_->global_bounding_box;
+    // Get bounding box from either full file or streaming index stats
+    AABB bb;
+    if (streaming_controller_) {
+        // In streaming mode, we use the index stats for bounding box
+        // The stats contain min_z and max_z, but not X/Y bounds
+        // For now, use a default print volume and refine when first layer loads
+        const auto& stats = streaming_controller_->get_index_stats();
+        // Assume typical 3D printer bed size (this will be refined on first render)
+        bb.min = {0.0f, 0.0f, stats.min_z};
+        bb.max = {200.0f, 200.0f, stats.max_z};
+        spdlog::debug("[GCodeLayerRenderer] Streaming auto_fit using Z range [{:.1f}, {:.1f}]",
+                      stats.min_z, stats.max_z);
+    } else if (gcode_) {
+        bb = gcode_->global_bounding_box;
+    } else {
+        return;
+    }
 
     float range_x, range_y;
     float center_x, center_y;
@@ -278,26 +313,54 @@ GCodeLayerRenderer::LayerInfo GCodeLayerRenderer::get_layer_info() const {
     LayerInfo info{};
     info.layer_number = current_layer_;
 
-    if (!gcode_ || gcode_->layers.empty()) {
+    int layer_count = get_layer_count();
+    if (layer_count == 0) {
         return info;
     }
 
-    if (current_layer_ < 0 || current_layer_ >= static_cast<int>(gcode_->layers.size())) {
+    if (current_layer_ < 0 || current_layer_ >= layer_count) {
         return info;
     }
 
-    const Layer& layer = gcode_->layers[current_layer_];
-    info.z_height = layer.z_height;
-    info.segment_count = layer.segments.size();
-    info.extrusion_count = layer.segment_count_extrusion;
-    info.travel_count = layer.segment_count_travel;
+    if (streaming_controller_) {
+        // Streaming mode: get Z height from controller, segments on demand
+        info.z_height = streaming_controller_->get_layer_z(static_cast<size_t>(current_layer_));
 
-    // Check for support segments in this layer
-    info.has_supports = false;
-    for (const auto& seg : layer.segments) {
-        if (is_support_segment(seg)) {
-            info.has_supports = true;
-            break;
+        // Get segments to compute counts (this will cache the layer)
+        const auto* segments =
+            streaming_controller_->get_layer_segments(static_cast<size_t>(current_layer_));
+        if (segments) {
+            info.segment_count = segments->size();
+            info.extrusion_count = 0;
+            info.travel_count = 0;
+            info.has_supports = false;
+
+            for (const auto& seg : *segments) {
+                if (seg.is_extrusion) {
+                    ++info.extrusion_count;
+                    if (!info.has_supports && is_support_segment(seg)) {
+                        info.has_supports = true;
+                    }
+                } else {
+                    ++info.travel_count;
+                }
+            }
+        }
+    } else if (gcode_) {
+        // Full file mode
+        const Layer& layer = gcode_->layers[current_layer_];
+        info.z_height = layer.z_height;
+        info.segment_count = layer.segments.size();
+        info.extrusion_count = layer.segment_count_extrusion;
+        info.travel_count = layer.segment_count_travel;
+
+        // Check for support segments in this layer
+        info.has_supports = false;
+        for (const auto& seg : layer.segments) {
+            if (is_support_segment(seg)) {
+                info.has_supports = true;
+                break;
+            }
         }
     }
 
@@ -307,6 +370,10 @@ GCodeLayerRenderer::LayerInfo GCodeLayerRenderer::get_layer_info() const {
 bool GCodeLayerRenderer::has_support_detection() const {
     // Support detection relies on object names from EXCLUDE_OBJECT
     // If there are named objects, we can potentially detect supports
+    // Note: Streaming mode doesn't have full object metadata, so return false
+    if (streaming_controller_) {
+        return false; // Object metadata not available in streaming mode
+    }
     return gcode_ && !gcode_->objects.empty();
 }
 
@@ -399,7 +466,11 @@ void GCodeLayerRenderer::ensure_cache(int width, int height) {
 }
 
 void GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
-    if (!cache_canvas_ || !cache_buf_ || !gcode_)
+    if (!cache_canvas_ || !cache_buf_)
+        return;
+
+    // Need either gcode file or streaming controller
+    if (!gcode_ && !streaming_controller_)
         return;
 
     // Initialize layer for drawing to the canvas (LVGL 9.4 canvas API)
@@ -412,13 +483,28 @@ void GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
     widget_offset_x_ = 0;
     widget_offset_y_ = 0;
 
+    int layer_count = get_layer_count();
     size_t segments_rendered = 0;
+
     for (int layer_idx = from_layer; layer_idx <= to_layer; ++layer_idx) {
-        if (layer_idx < 0 || layer_idx >= static_cast<int>(gcode_->layers.size()))
+        if (layer_idx < 0 || layer_idx >= layer_count)
             continue;
 
-        const Layer& layer_data = gcode_->layers[layer_idx];
-        for (const auto& seg : layer_data.segments) {
+        // Get segments from appropriate source
+        const std::vector<ToolpathSegment>* segments = nullptr;
+
+        if (streaming_controller_) {
+            // Streaming mode: get segments from controller
+            segments = streaming_controller_->get_layer_segments(static_cast<size_t>(layer_idx));
+        } else if (gcode_) {
+            // Full file mode: get segments from parsed file
+            segments = &gcode_->layers[layer_idx].segments;
+        }
+
+        if (!segments)
+            continue;
+
+        for (const auto& seg : *segments) {
             if (should_render_segment(seg)) {
                 render_segment(&cache_layer, seg);
                 ++segments_rendered;
@@ -558,14 +644,15 @@ void GCodeLayerRenderer::blit_ghost_cache(lv_layer_t* target) {
 }
 
 void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area) {
-    if (!gcode_ || gcode_->layers.empty()) {
+    int layer_count = get_layer_count();
+    if (layer_count == 0) {
         spdlog::debug("[GCodeLayerRenderer] render(): no gcode data");
         return;
     }
 
-    if (current_layer_ < 0 || current_layer_ >= static_cast<int>(gcode_->layers.size())) {
+    if (current_layer_ < 0 || current_layer_ >= layer_count) {
         spdlog::debug("[GCodeLayerRenderer] render(): layer out of range ({} / {})", current_layer_,
-                      gcode_->layers.size());
+                      layer_count);
         return;
     }
 
@@ -586,7 +673,7 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
 
     // For FRONT view, use incremental cache with progressive rendering
     if (view_mode_ == ViewMode::FRONT) {
-        int target_layer = std::min(current_layer_, static_cast<int>(gcode_->layers.size()) - 1);
+        int target_layer = std::min(current_layer_, layer_count - 1);
 
         // Ensure cache buffers exist and are correct size
         ensure_cache(canvas_width_, canvas_height_);
@@ -655,16 +742,29 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
         }
     } else {
         // TOP_DOWN or ISOMETRIC: render single layer directly (no caching needed)
-        const auto& layer_bb = gcode_->layers[current_layer_].bounding_box;
-        offset_x_ = (layer_bb.min.x + layer_bb.max.x) / 2.0f;
-        offset_y_ = (layer_bb.min.y + layer_bb.max.y) / 2.0f;
+        // Get segments from appropriate source
+        const std::vector<ToolpathSegment>* segments = nullptr;
 
-        const Layer& current = gcode_->layers[current_layer_];
-        for (const auto& seg : current.segments) {
-            if (!should_render_segment(seg))
-                continue;
-            render_segment(layer, seg);
-            ++segments_rendered;
+        if (streaming_controller_) {
+            // Streaming mode: get segments from controller
+            segments = streaming_controller_->get_layer_segments(static_cast<size_t>(current_layer_));
+            // Use default centering for streaming mode
+            // (Could be improved by computing bounds from segments if needed)
+        } else if (gcode_) {
+            // Full file mode: get segments and bounding box from parsed file
+            const auto& layer_bb = gcode_->layers[current_layer_].bounding_box;
+            offset_x_ = (layer_bb.min.x + layer_bb.max.x) / 2.0f;
+            offset_y_ = (layer_bb.min.y + layer_bb.max.y) / 2.0f;
+            segments = &gcode_->layers[current_layer_].segments;
+        }
+
+        if (segments) {
+            for (const auto& seg : *segments) {
+                if (!should_render_segment(seg))
+                    continue;
+                render_segment(layer, seg);
+                ++segments_rendered;
+            }
         }
     }
 
@@ -680,14 +780,15 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
 
     // Log performance if layer changed or slow render
     if (current_layer_ != last_rendered_layer_ || last_render_time_ms_ > 50) {
-        spdlog::debug("[GCodeLayerRenderer] Layer {}: {}ms (cached_up_to={}, lpf={})", current_layer_,
-                      last_render_time_ms_, cached_up_to_layer_, layers_per_frame_);
+        spdlog::debug("[GCodeLayerRenderer] Layer {}: {}ms (cached_up_to={}, lpf={})",
+                      current_layer_, last_render_time_ms_, cached_up_to_layer_, layers_per_frame_);
         last_rendered_layer_ = current_layer_;
     }
 }
 
 bool GCodeLayerRenderer::needs_more_frames() const {
-    if (!gcode_ || gcode_->layers.empty()) {
+    int layer_count = get_layer_count();
+    if (layer_count == 0) {
         return false;
     }
 
@@ -696,7 +797,7 @@ bool GCodeLayerRenderer::needs_more_frames() const {
         return false;
     }
 
-    int target_layer = std::min(current_layer_, static_cast<int>(gcode_->layers.size()) - 1);
+    int target_layer = std::min(current_layer_, layer_count - 1);
 
     // Solid cache incomplete?
     if (cached_up_to_layer_ < target_layer) {
@@ -917,6 +1018,12 @@ lv_color_t GCodeLayerRenderer::get_segment_color(const ToolpathSegment& seg) con
 void GCodeLayerRenderer::start_background_ghost_render() {
     // Cancel any existing render first
     cancel_background_ghost_render();
+
+    // Ghost rendering requires all layers in memory (not compatible with streaming)
+    if (streaming_controller_) {
+        spdlog::debug("[GCodeLayerRenderer] Ghost mode disabled in streaming mode");
+        return;
+    }
 
     if (!gcode_ || gcode_->layers.empty()) {
         return;
@@ -1214,7 +1321,8 @@ void GCodeLayerRenderer::load_config() {
 
     if (config_layers_per_frame_ > 0) {
         // Fixed value from config
-        layers_per_frame_ = std::clamp(config_layers_per_frame_, MIN_LAYERS_PER_FRAME, MAX_LAYERS_PER_FRAME);
+        layers_per_frame_ =
+            std::clamp(config_layers_per_frame_, MIN_LAYERS_PER_FRAME, MAX_LAYERS_PER_FRAME);
         spdlog::info("[GCodeLayerRenderer] Using fixed layers_per_frame: {}", layers_per_frame_);
     } else {
         // Adaptive mode - start with default, adjust based on render time
@@ -1224,7 +1332,8 @@ void GCodeLayerRenderer::load_config() {
     }
 
     // Load adaptive target (only used when config_layers_per_frame_ == 0)
-    adaptive_target_ms_ = config->get<int>("/gcode_viewer/adaptive_layer_target_ms", DEFAULT_ADAPTIVE_TARGET_MS);
+    adaptive_target_ms_ =
+        config->get<int>("/gcode_viewer/adaptive_layer_target_ms", DEFAULT_ADAPTIVE_TARGET_MS);
     adaptive_target_ms_ = std::clamp(adaptive_target_ms_, 1, 100); // Sensible bounds
 
     spdlog::debug("[GCodeLayerRenderer] Adaptive target: {}ms", adaptive_target_ms_);

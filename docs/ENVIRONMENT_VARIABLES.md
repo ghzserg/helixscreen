@@ -284,6 +284,21 @@ Speed multiplier for dryer simulation (for faster testing).
 HELIX_MOCK_DRYER=1 HELIX_MOCK_DRYER_SPEED=10 ./build/bin/helix-screen --test
 ```
 
+### `HELIX_MOCK_SPOOLMAN`
+
+Enable or disable mock Spoolman integration. When disabled, `get_spoolman_status()` reports as disconnected.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `0` or `off` to disable; any other value keeps enabled |
+| **Default** | Enabled (mock Spoolman always connected in test mode) |
+| **File** | `src/main.cpp` |
+
+```bash
+# Disable mock Spoolman to test "no Spoolman" scenarios
+HELIX_MOCK_SPOOLMAN=0 ./build/bin/helix-screen --test
+```
+
 ### `HELIX_MOCK_AMS_REALISTIC`
 
 Enable realistic multi-phase AMS operations (load/unload with tip forming, purging, etc.).

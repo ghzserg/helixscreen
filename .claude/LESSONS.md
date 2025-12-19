@@ -40,8 +40,8 @@
 > After adding icon to codepoints.h: add to regen_mdi_fonts.sh, run make regen-fonts, then rebuild. Forgetting any step = missing icon
 
 
-### [L010] [**+--/-----] No spdlog in destructors
-- **Uses**: 5 | **Learned**: 2025-12-14 | **Last**: 2025-12-18 | **Category**: gotcha
+### [L010] [***+-/-----] No spdlog in destructors
+- **Uses**: 7 | **Learned**: 2025-12-14 | **Last**: 2025-12-18 | **Category**: gotcha
 > Never call spdlog::info/warn/error in destructors. Logger may be destroyed before your object during static destruction, causing crash on exit
 
 
@@ -60,8 +60,8 @@
 > Register event callbacks with lv_xml_register_event_cb() BEFORE calling lv_xml_create(). XML parser needs callbacks available during creation
 
 
-### [L014] [**+--/-----] Register all XML components
-- **Uses**: 5 | **Learned**: 2025-12-14 | **Last**: 2025-12-18 | **Category**: gotcha
+### [L014] [***+-/-----] Register all XML components
+- **Uses**: 7 | **Learned**: 2025-12-14 | **Last**: 2025-12-18 | **Category**: gotcha
 > When adding new XML components, must add lv_xml_component_register_from_file() call in main.cpp. Forgetting causes silent failures
 
 

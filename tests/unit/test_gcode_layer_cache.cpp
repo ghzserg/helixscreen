@@ -2,11 +2,11 @@
 
 #include "gcode_layer_cache.h"
 
-#include "../catch_amalgamated.hpp"
-
 #include <atomic>
 #include <chrono>
 #include <thread>
+
+#include "../catch_amalgamated.hpp"
 
 using namespace helix::gcode;
 using Catch::Approx;
@@ -29,9 +29,8 @@ std::vector<ToolpathSegment> make_test_segments(size_t count) {
 
 // Loader that creates segments on demand
 auto test_loader(size_t segments_per_layer) {
-    return [segments_per_layer](size_t layer_index) {
-        return make_test_segments(segments_per_layer);
-    };
+    return
+        [segments_per_layer](size_t layer_index) { return make_test_segments(segments_per_layer); };
 }
 
 // Loader that tracks which layers were loaded
@@ -58,7 +57,7 @@ TEST_CASE("GCodeLayerCache basic operations", "[gcode][cache]") {
         auto result = cache.get_or_load(0, test_loader(10));
 
         REQUIRE(result.segments != nullptr);
-        REQUIRE(result.was_hit == false);  // First access is a miss
+        REQUIRE(result.was_hit == false); // First access is a miss
         REQUIRE(result.load_failed == false);
         REQUIRE(result.segments->size() == 10);
         REQUIRE(cache.is_cached(0));
@@ -120,9 +119,9 @@ TEST_CASE("GCodeLayerCache LRU eviction", "[gcode][cache]") {
         // Now add layer 2 - should evict 1, not 0
         cache.get_or_load(2, tracking_loader(loaded, 50));
 
-        REQUIRE(cache.is_cached(0));      // Was touched, kept
+        REQUIRE(cache.is_cached(0));       // Was touched, kept
         REQUIRE_FALSE(cache.is_cached(1)); // Oldest, evicted
-        REQUIRE(cache.is_cached(2));      // Newest
+        REQUIRE(cache.is_cached(2));       // Newest
     }
 
     SECTION("explicit eviction works") {
