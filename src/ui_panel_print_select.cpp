@@ -14,6 +14,7 @@
 #include "ui_theme.h"
 #include "ui_utils.h"
 
+#include "ams_state.h"
 #include "app_globals.h"
 #include "config.h"
 #include "filament_sensor_manager.h"
@@ -28,8 +29,10 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cmath>
 #include <ctime>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -157,6 +160,12 @@ PrintSelectPanel::~PrintSelectPanel() {
         if (filament_warning_dialog_) {
             ui_modal_hide(filament_warning_dialog_);
             filament_warning_dialog_ = nullptr;
+        }
+
+        // Clean up color mismatch warning dialog if open
+        if (color_mismatch_dialog_) {
+            ui_modal_hide(color_mismatch_dialog_);
+            color_mismatch_dialog_ = nullptr;
         }
     }
 
@@ -1430,7 +1439,16 @@ void PrintSelectPanel::start_print() {
         return;
     }
 
-    // Sensor not available or filament detected - proceed directly
+    // Check if G-code requires colors not loaded in AMS
+    auto missing_tools = check_ams_color_match();
+    if (!missing_tools.empty()) {
+        spdlog::info("[{}] G-code requires {} tool colors not found in AMS slots", get_name(),
+                     missing_tools.size());
+        show_color_mismatch_warning(missing_tools);
+        return;
+    }
+
+    // All checks passed - proceed directly
     execute_print_start();
 }
 
@@ -1675,6 +1693,208 @@ void PrintSelectPanel::on_filament_warning_cancel_static(lv_event_t* e) {
         ui_modal_hide(self->filament_warning_dialog_);
         self->filament_warning_dialog_ = nullptr;
         spdlog::debug("[PrintSelectPanel] Print cancelled by user (no filament warning)");
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+// ============================================================================
+// AMS Color Mismatch Detection
+// ============================================================================
+
+/**
+ * @brief Calculate perceptual color distance between two RGB colors
+ *
+ * Uses weighted Euclidean distance in RGB space with human perception weights.
+ * Returns a value where 0 = identical, ~100 = very different.
+ */
+static int color_distance(uint32_t color1, uint32_t color2) {
+    int r1 = (color1 >> 16) & 0xFF;
+    int g1 = (color1 >> 8) & 0xFF;
+    int b1 = color1 & 0xFF;
+
+    int r2 = (color2 >> 16) & 0xFF;
+    int g2 = (color2 >> 8) & 0xFF;
+    int b2 = color2 & 0xFF;
+
+    // Weighted distance - green is most perceptible to human eye
+    int dr = r1 - r2;
+    int dg = g1 - g2;
+    int db = b1 - b2;
+
+    // Weights: R=0.30, G=0.59, B=0.11 (standard luminance)
+    // Squared for distance calculation, then sqrt approximation
+    int dist_sq = (dr * dr * 30 + dg * dg * 59 + db * db * 11) / 100;
+    return static_cast<int>(std::sqrt(static_cast<double>(dist_sq)));
+}
+
+/**
+ * @brief Parse hex color string to RGB value
+ *
+ * Uses std::optional to distinguish invalid input from black (#000000).
+ *
+ * @param hex_str Color string like "#ED1C24" or "ED1C24"
+ * @return RGB value as 0xRRGGBB, or std::nullopt if invalid/empty
+ */
+static std::optional<uint32_t> parse_hex_color(const std::string& hex_str) {
+    if (hex_str.empty()) {
+        return std::nullopt;
+    }
+
+    std::string hex = hex_str;
+    if (hex[0] == '#') {
+        hex = hex.substr(1);
+    }
+
+    if (hex.length() != 6) {
+        return std::nullopt;
+    }
+
+    try {
+        return static_cast<uint32_t>(std::stoul(hex, nullptr, 16));
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+std::vector<int> PrintSelectPanel::check_ams_color_match() {
+    std::vector<int> missing_tools;
+
+    // Skip check if no multi-color G-code (single color or no colors)
+    if (selected_filament_colors_.size() <= 1) {
+        return missing_tools;
+    }
+
+    // Skip check if AMS not available
+    if (!AmsState::instance().is_available()) {
+        spdlog::debug("[{}] AMS not available, skipping color match check", get_name());
+        return missing_tools;
+    }
+
+    // Get slot count from AMS
+    int slot_count = lv_subject_get_int(AmsState::instance().get_slot_count_subject());
+    if (slot_count <= 0) {
+        spdlog::debug("[{}] No AMS slots available", get_name());
+        return missing_tools;
+    }
+
+    // Collect all slot colors
+    std::vector<uint32_t> slot_colors;
+    for (int i = 0; i < slot_count && i < AmsState::MAX_SLOTS; ++i) {
+        lv_subject_t* color_subject = AmsState::instance().get_slot_color_subject(i);
+        if (color_subject) {
+            uint32_t color = static_cast<uint32_t>(lv_subject_get_int(color_subject));
+            slot_colors.push_back(color);
+        }
+    }
+
+    // Color match tolerance (0-255 scale)
+    // Value of 40 allows ~15% variance per RGB channel, accounting for
+    // differences between slicer color palettes and Spoolman/AMS colors
+    constexpr int COLOR_MATCH_TOLERANCE = 40;
+
+    // Check each required tool color
+    for (size_t tool_idx = 0; tool_idx < selected_filament_colors_.size(); ++tool_idx) {
+        auto required_color = parse_hex_color(selected_filament_colors_[tool_idx]);
+        if (!required_color) {
+            continue; // Skip invalid/empty colors (but NOT black #000000!)
+        }
+
+        // Look for a matching slot
+        bool found_match = false;
+        for (uint32_t slot_color : slot_colors) {
+            if (color_distance(*required_color, slot_color) <= COLOR_MATCH_TOLERANCE) {
+                found_match = true;
+                break;
+            }
+        }
+
+        if (!found_match) {
+            missing_tools.push_back(static_cast<int>(tool_idx));
+            spdlog::debug("[{}] Tool T{} color #{:06X} not found in AMS slots", get_name(),
+                          tool_idx, *required_color);
+        }
+    }
+
+    return missing_tools;
+}
+
+void PrintSelectPanel::show_color_mismatch_warning(const std::vector<int>& missing_tools) {
+    // Close any existing dialog first
+    if (color_mismatch_dialog_) {
+        ui_modal_hide(color_mismatch_dialog_);
+        color_mismatch_dialog_ = nullptr;
+    }
+
+    // Build message listing missing tools and their colors
+    std::string message = "This print requires colors not loaded in the AMS:\n\n";
+    for (int tool_idx : missing_tools) {
+        if (tool_idx < static_cast<int>(selected_filament_colors_.size())) {
+            const std::string& color = selected_filament_colors_[tool_idx];
+            message += "  • T" + std::to_string(tool_idx) + ": " + color + "\n";
+        }
+    }
+    message += "\nLoad the required filaments or start anyway?";
+
+    ui_modal_config_t config = {.position = {.use_alignment = true, .alignment = LV_ALIGN_CENTER},
+                                .backdrop_opa = 180,
+                                .keyboard = nullptr,
+                                .persistent = false,
+                                .on_close = nullptr};
+
+    // Static buffer for message - must persist during modal lifetime.
+    // Safe because we always close any existing dialog first (line 1822-1825),
+    // preventing concurrent access to this buffer.
+    static char message_buffer[512];
+    snprintf(message_buffer, sizeof(message_buffer), "%s", message.c_str());
+
+    const char* attrs[] = {"title", "Color Mismatch", "message", message_buffer, nullptr};
+
+    ui_modal_configure(UI_MODAL_SEVERITY_WARNING, true, "Start Anyway", "Cancel");
+    color_mismatch_dialog_ = ui_modal_show("modal_dialog", &config, attrs);
+
+    if (!color_mismatch_dialog_) {
+        spdlog::error("[{}] Failed to create color mismatch warning dialog", get_name());
+        return;
+    }
+
+    // Wire up cancel button
+    lv_obj_t* cancel_btn = lv_obj_find_by_name(color_mismatch_dialog_, "btn_secondary");
+    if (cancel_btn) {
+        lv_obj_add_event_cb(cancel_btn, on_color_mismatch_cancel_static, LV_EVENT_CLICKED, this);
+    }
+
+    // Wire up proceed button
+    lv_obj_t* proceed_btn = lv_obj_find_by_name(color_mismatch_dialog_, "btn_primary");
+    if (proceed_btn) {
+        lv_obj_add_event_cb(proceed_btn, on_color_mismatch_proceed_static, LV_EVENT_CLICKED, this);
+    }
+
+    spdlog::debug("[{}] Color mismatch warning dialog shown for {} tools", get_name(),
+                  missing_tools.size());
+}
+
+void PrintSelectPanel::on_color_mismatch_proceed_static(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrintSelectPanel] on_color_mismatch_proceed_static");
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    if (self) {
+        // Hide dialog first
+        if (self->color_mismatch_dialog_) {
+            ui_modal_hide(self->color_mismatch_dialog_);
+            self->color_mismatch_dialog_ = nullptr;
+        }
+        // Execute print despite mismatch
+        self->execute_print_start();
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void PrintSelectPanel::on_color_mismatch_cancel_static(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrintSelectPanel] on_color_mismatch_cancel_static");
+    auto* self = static_cast<PrintSelectPanel*>(lv_event_get_user_data(e));
+    if (self && self->color_mismatch_dialog_) {
+        ui_modal_hide(self->color_mismatch_dialog_);
+        self->color_mismatch_dialog_ = nullptr;
+        spdlog::debug("[PrintSelectPanel] Print cancelled by user (color mismatch warning)");
     }
     LVGL_SAFE_EVENT_CB_END();
 }

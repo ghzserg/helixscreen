@@ -3,7 +3,7 @@
 **Feature Branch:** `feature/ams`
 **Repository:** `/Users/pbrown/code/helixscreen-ams`
 **Started:** 2025-12-07
-**Last Updated:** 2025-12-09 (Added hardware bypass sensor support to Phase 4.6)
+**Last Updated:** 2025-12-18 (Marked Phase 3 complete - real API was already implemented)
 
 ---
 
@@ -356,13 +356,13 @@ printer.mmu.endless_spool_groups
 
 ---
 
-### 🔄 Phase 3: Spoolman Integration (UI COMPLETE - API PENDING)
+### ✅ Phase 3: Spoolman Integration (COMPLETE)
 
 **Goal:** Full Spoolman integration with spool assignment to AMS slots
 
-**Status:** UI and mock backend complete (~85%). Only real Moonraker API implementation remaining.
+**Status:** Complete - UI, mock backend, real API, and capability detection all implemented.
 
-#### ✅ Completed
+#### UI Components
 
 **SpoolmanPanel** (`src/ui_panel_spoolman.cpp` - 378 lines):
 - [x] Full panel with loading/empty/spool list states
@@ -388,29 +388,45 @@ printer.mmu.endless_spool_groups
 - [x] SpoolInfo struct with 20+ fields (vendor, material, color, weights, temps)
 - [x] Helper methods: `remaining_percent()`, `is_low()`, `display_name()`
 
-**Mock Backend** (`src/moonraker_api_mock.cpp`):
+#### Mock Backend (`src/moonraker_api_mock.cpp`)
+
 - [x] `get_spoolman_status()` - Returns mock connected state
 - [x] `get_spoolman_spools()` - Returns 8 sample filaments
 - [x] `get_spoolman_spool()` - Single spool lookup by ID
 - [x] `update_spoolman_spool_weight()` - Update remaining weight
 - [x] `set_mock_spoolman_enabled()` / `is_mock_spoolman_enabled()`
+- [x] `assign_spool_to_slot()` - Slot-spool mapping (c9d891f)
+- [x] `get_spool_for_slot()` - Retrieve spool for slot (c9d891f)
+- [x] `consume_filament()` - Track usage (c9d891f)
 
-**Verification (Mock Mode):**
+#### Real Moonraker API (`src/moonraker_api_advanced.cpp`)
+
+- [x] `get_spoolman_status()` → `server.spoolman.status` (lines 713-737)
+- [x] `get_spoolman_spools()` → `server.spoolman.proxy` → `/v1/spool` (lines 739-766)
+- [x] `get_spoolman_spool(id)` → `server.spoolman.proxy` → `/v1/spool/{id}` (lines 768-795)
+- [x] `set_active_spool(id)` → `server.spoolman.post_spool_id` (lines 797-814)
+- [x] `update_spoolman_spool_weight()` → `server.spoolman.proxy` PATCH (lines 828-854)
+- [x] `update_spoolman_filament_color()` → `server.spoolman.proxy` PATCH (lines 856-880)
+- [x] `parse_spool_info()` helper for JSON→SpoolInfo conversion (lines 679-711)
+
+#### Capability Detection (`src/moonraker_client.cpp`)
+
+- [x] Parse "spoolman" from `server.info` components array (lines 962-964)
+- [x] Verify connection via `server.spoolman.status` (lines 970-986)
+- [x] Set `printer_has_spoolman_` subject via `PrinterState::set_spoolman_available()` (line 980)
+- [x] Thread-safe subject update using `lv_async_call` (printer_state.cpp:976-985)
+
+#### AmsState Spoolman Sync (c9d891f)
+
+- [x] Auto-call `set_active_spool()` when slot with `spoolman_id` is loaded
+- [x] `HELIX_MOCK_SPOOLMAN=0` env var to disable mock Spoolman
+- [x] 12 unit tests for slot-spool mapping
+
+**Verification:**
 - [x] Spoolman panel shows spool list in `--test` mode
 - [x] Picker modal opens from AMS context menu
-- [x] Spool assignment to slots works (mock)
-
-#### ❌ Remaining (Phase 3b - Small Effort)
-
-**Real Moonraker API** (`src/moonraker_api_advanced.cpp` - 4 methods stubbed):
-- [ ] `get_spoolman_status()` → `/server/spoolman/status`
-- [ ] `get_spoolman_spools()` → `/server/spoolman/proxy` → `/api/v1/spool`
-- [ ] `get_spoolman_spool(id)` → `/server/spoolman/proxy` → `/api/v1/spool/{id}`
-- [ ] `set_active_spool(id)` → `POST /server/spoolman/spool_id`
-
-**Capability Detection:**
-- [ ] Parse Spoolman availability from `/server/info` components
-- [ ] Set `printer_has_spoolman_` subject from real detection
+- [x] Spool assignment to slots works (mock and real)
+- [x] Capability detection works with real Moonraker servers
 
 ---
 
@@ -555,26 +571,55 @@ the AMS runs out of a color.
 
 ---
 
-### 🔲 Phase 5: Print Integration (NOT STARTED)
+### 🔄 Phase 5: Print Integration (PARTIALLY COMPLETE)
 
 **Goal:** Color preview and in-print status
 
-**Files to Create:**
-- [ ] `include/gcode_color_extractor.h`
-- [ ] `src/gcode_color_extractor.cpp`
-  - Parse M600/tool change commands
-  - Extract color requirements from G-code
-- [ ] `ui_xml/ams_print_preview_overlay.xml`
-- [ ] `ui_xml/ams_in_print_status.xml`
+**Status:** G-code color extraction and print preview done. In-print overlay remaining.
 
-**Files to Modify:**
-- [ ] `ui_xml/print_file_detail.xml` - Color swatches
-- [ ] `src/ui_panel_print_status.cpp` - AMS section
+#### ✅ Already Implemented
 
-**Verification:**
-- [ ] Print detail shows required colors
-- [ ] Warning for missing/mismatched colors
-- [ ] Minimal overlay during tool changes
+**G-Code Color Extraction** (`src/gcode_parser.cpp`):
+- [x] `parse_extruder_color_metadata()` - Parses slicer color comments
+- [x] Supports OrcaSlicer, PrusaSlicer, BambuStudio format: `"; extruder_colour = #ED1C24;#00C1AE"`
+- [x] Semicolon-separated hex color parsing
+- [x] Stores in `ParsedGCodeFile::tool_color_palette`
+- [x] Tool change command parsing (T0, T1, T2)
+
+**Print File Data Flow**:
+- [x] `PrintFileData::filament_colors` vector passes colors through system
+- [x] Moonraker metadata fetched includes slicer color info
+- [x] Colors flow from file list → detail view
+
+**Print File Detail UI** (`ui_xml/print_file_detail.xml` + `src/ui_print_select_detail_view.cpp`):
+- [x] `color_requirements_card` - Hidden by default, shown for multi-color
+- [x] `color_swatches_row` - Flex row for color chips
+- [x] `update_color_swatches()` - Creates T0, T1, T2 labeled swatches (lines 279-347)
+- [x] Contrast text calculation for readability on light/dark colors
+- [x] Card auto-hides for single-color prints
+
+**Verification (Print Preview):**
+- [x] Print detail shows required colors with tool labels
+- [x] Multi-color G-code files display color swatches
+- [x] Single-color files hide the color card
+
+#### ❌ Remaining (In-Print Features)
+
+**AMS In-Print Status Overlay:**
+- [ ] `ui_xml/ams_in_print_status.xml` - Compact overlay during printing
+- [ ] Show current/next tool color during printing
+- [ ] Integrate with `ui_panel_print_status.cpp`
+
+**Real-Time Tool Change Detection:**
+- [ ] Detect upcoming M600/tool changes during print
+- [ ] Pre-select AMS slot before tool change
+- [ ] Show "Tool change imminent" notification
+
+**Color Mismatch Warning** (`src/ui_panel_print_select.cpp`):
+- [x] `check_ams_color_match()` - Compares G-code tool colors to AMS slot colors (lines 1754-1812)
+- [x] `show_color_mismatch_warning()` - Modal dialog listing missing tools/colors (lines 1814-1865)
+- [x] Perceptual color distance matching with tolerance (40/255 threshold)
+- [x] User can proceed anyway or cancel to load correct filaments
 
 ---
 

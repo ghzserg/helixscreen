@@ -381,6 +381,7 @@ class PrintSelectPanel : public PanelBase {
     lv_obj_t* view_toggle_icon_ = nullptr;
     lv_obj_t* print_status_panel_widget_ = nullptr;
     lv_obj_t* filament_warning_dialog_ = nullptr; ///< Pre-print filament sensor warning
+    lv_obj_t* color_mismatch_dialog_ = nullptr;   ///< Pre-print AMS color mismatch warning
 
     //
     // === Subject Buffers ===
@@ -561,6 +562,28 @@ class PrintSelectPanel : public PanelBase {
     void show_filament_warning();
 
     /**
+     * @brief Check if G-code tool colors match available AMS slot colors
+     *
+     * Compares required colors from selected_filament_colors_ with colors loaded
+     * in AMS slots. Uses approximate color matching (within tolerance) since
+     * slicer colors may not exactly match Spoolman/AMS colors.
+     *
+     * @return Vector of tool indices (T0, T1, etc.) that have no matching slot color.
+     *         Empty vector if all colors match or AMS is not available.
+     */
+    std::vector<int> check_ams_color_match();
+
+    /**
+     * @brief Show color mismatch warning dialog before print
+     *
+     * Called when G-code requires colors not loaded in any AMS slot.
+     * Shows which tools are missing and allows user to proceed or cancel.
+     *
+     * @param missing_tools Tool indices without matching slot colors
+     */
+    void show_color_mismatch_warning(const std::vector<int>& missing_tools);
+
+    /**
      * @brief Execute the actual print start (after any warnings)
      *
      * Called directly when no warning needed, or after user confirms warning dialog.
@@ -576,6 +599,8 @@ class PrintSelectPanel : public PanelBase {
     static void on_file_clicked_static(lv_event_t* e);
     static void on_filament_warning_proceed_static(lv_event_t* e);
     static void on_filament_warning_cancel_static(lv_event_t* e);
+    static void on_color_mismatch_proceed_static(lv_event_t* e);
+    static void on_color_mismatch_cancel_static(lv_event_t* e);
 };
 
 // ============================================================================
