@@ -1,6 +1,6 @@
 # LVGL 9.4 XML Attributes Reference
 
-**Source:** `lvgl/src/others/xml/parsers/*.c` | **Updated:** 2025-12-01
+**Source:** `lvgl/src/others/xml/parsers/*.c` | **Updated:** 2025-12-18
 
 ---
 
@@ -45,13 +45,21 @@ All widgets inherit these.
 ### Data Binding
 
 ```xml
-<lv_label bind_text="temp '%.1f°C'"/>
+<!-- Simple bindings as attributes -->
+<lv_label bind_text="temp_subject"/>
+<lv_label bind_text="temp" bind_text-fmt="%.1f°C"/>
 <lv_slider bind_value="volume"/>
-<lv_obj bind_flag_if_eq="panel hidden 0"/>     <!-- hide if panel==0 -->
-<lv_button bind_state_if_eq="power disabled 0"/> <!-- disable if power==0 -->
+
+<!-- Conditional bindings as child elements -->
+<lv_obj>
+    <bind_flag_if_eq subject="panel" flag="hidden" ref_value="0"/>
+</lv_obj>
+<lv_button>
+    <bind_state_if_eq subject="power" state="disabled" ref_value="0"/>
+</lv_button>
 ```
 
-Comparisons: `bind_flag_if_eq`, `bind_flag_if_not_eq`, `bind_flag_if_gt`, `bind_flag_if_ge`, `bind_flag_if_lt`, `bind_flag_if_le` (same for `bind_state_*`)
+**Operators:** `bind_flag_if_eq`, `bind_flag_if_not_eq`, `bind_flag_if_gt`, `bind_flag_if_ge`, `bind_flag_if_lt`, `bind_flag_if_le` (same for `bind_state_*`)
 
 ---
 
@@ -193,7 +201,7 @@ Define in `<styles>`, apply with child `<style>`. Drop `style_` prefix.
 
 | Attr | Notes |
 |------|-------|
-| `options` | `"A\nB\nC"` |
+| `options` | `"A&#10;B&#10;C"` (use `&#10;` for newlines in XML!) |
 | `selected` | Index |
 | `bind_value` | Subject |
 
@@ -213,7 +221,7 @@ Define in `<styles>`, apply with child `<style>`. Drop `style_` prefix.
 </lv_button>
 ```
 
-Register: `lv_xml_register_event_cb("my_handler", fn)`
+Register: `lv_xml_register_event_cb(nullptr, "my_handler", fn)`
 
 **Triggers:** `clicked`, `value_changed`, `pressed`, `released`, `ready`, `cancel`
 

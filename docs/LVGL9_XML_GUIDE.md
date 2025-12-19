@@ -1,8 +1,8 @@
 # LVGL 9 XML UI System - Complete Guide
 
-This comprehensive guide covers LVGL 9's declarative XML UI system with reactive data binding, based on LVGL 9.4 documentation and practical experience building the HelixScreen UI prototype.
+Comprehensive guide to LVGL 9.4's declarative XML UI system with reactive data binding, based on practical experience building the HelixScreen UI.
 
-**Last Updated:** 2025-10-28
+**Last Updated:** 2025-12-18
 
 ---
 
@@ -13,19 +13,18 @@ This comprehensive guide covers LVGL 9's declarative XML UI system with reactive
 3. [Core Concepts](#core-concepts)
 4. [Layouts & Positioning](#layouts--positioning)
 5. [Common UI Patterns](#common-ui-patterns)
-6. [Responsive Design Patterns](#responsive-design-patterns)
+6. [Responsive Design](#responsive-design)
 7. [Styles & Theming](#styles--theming)
 8. [Event Handling](#event-handling)
 9. [Implementation Guide](#implementation-guide)
 10. [Best Practices](#best-practices)
 11. [Troubleshooting](#troubleshooting)
-12. [Resources](#resources)
 
 ---
 
 ## Overview & Architecture
 
-LVGL 9's XML system enables declarative UI development with reactive data binding through the Subject-Observer pattern. This approach separates UI layout (XML) from business logic (C++), similar to modern web frameworks like React or Vue.
+LVGL 9's XML system enables declarative UI development with reactive data binding through the Subject-Observer pattern. This separates UI layout (XML) from business logic (C++), similar to React or Vue.
 
 ### Architecture Diagram
 
@@ -50,28 +49,22 @@ LVGL 9's XML system enables declarative UI development with reactive data bindin
 
 ### Key Benefits
 
-**XML Approach:**
-- Declarative and concise
-- Separation of concerns (layout vs. logic)
-- Reactive data binding (automatic UI updates)
-- Rapid iteration (no recompile for layout changes)
-- Designer-friendly
+| XML Approach | vs. Traditional C++ |
+|-------------|---------------------|
+| Declarative and concise | Less verbose (3 lines XML vs. 15 lines C++) |
+| Separation of concerns | No manual widget management |
+| Reactive data binding | Automatic UI updates |
+| Rapid iteration (no recompile for layout) | Designer-friendly |
 
-**vs. Traditional C++ Approach:**
-- Less verbose (3 lines XML vs. 15 lines C++)
-- No manual widget management
-- Type-safe at runtime through subject system
-- Theme-able with global constants
+### Reactive Data Binding is MANDATORY
 
-### ⚠️ CRITICAL: Reactive Data Binding is Mandatory
-
-**ALL UI updates MUST use reactive data binding. Direct widget manipulation from C++ is an anti-pattern.**
+**ALL UI updates MUST use reactive data binding. Direct widget manipulation is an anti-pattern.**
 
 ```xml
 <!-- ✅ CORRECT - Reactive binding in XML -->
 <lv_label bind_text="status_message"/>
 <lv_button>
-  <lv_obj-bind_flag_if_eq subject="connection_ready" flag="clickable" ref_value="1"/>
+  <bind_flag_if_eq subject="connection_ready" flag="clickable" ref_value="1"/>
 </lv_button>
 ```
 
@@ -79,64 +72,71 @@ LVGL 9's XML system enables declarative UI development with reactive data bindin
 // ✅ CORRECT - Update subjects in C++
 lv_subject_set_string(&status_message, "Connected");
 lv_subject_set_int(&connection_ready, 1);
-// UI updates automatically - zero widget manipulation
+// UI updates automatically
 ```
 
 ```cpp
-// ❌ WRONG - Direct widget manipulation (DO NOT DO THIS)
+// ❌ WRONG - Direct widget manipulation (ANTI-PATTERN)
 lv_obj_t* label = lv_obj_find_by_name(screen, "status_label");
-lv_label_set_text(label, "Connected");  // ANTI-PATTERN
+lv_label_set_text(label, "Connected");  // DO NOT DO THIS
 ```
-
-**Why reactive bindings are mandatory:**
-- ✅ Complete separation of UI and logic
-- ✅ UI automatically stays synchronized with state
-- ✅ Testable without UI present
-- ✅ Multiple widgets can react to same data change
-- ❌ Direct manipulation breaks on XML layout changes
-- ❌ Creates tight coupling between C++ and widget names
-
-**See ARCHITECTURE.md "Reactive-First Principle" for complete guide.**
 
 ---
 
 ## Project Structure
 
-### Standard LVGL Editor Project Layout
-
-```
-project_name/
-├── project.xml          # Project config (targets, display sizes)
-├── globals.xml          # Global resources (fonts, images, subjects, consts)
-├── screens/             # Screen XML files (<screen> tag)
-├── components/          # Reusable components (<component> tag)
-├── widgets/             # Custom widget definitions
-├── ui_project_name.c    # User code (calls init_gen)
-└── ui_project_name_gen.c # Generated code (auto-created by LVGL Editor)
-```
-
-### HelixScreen Prototype Structure
+### HelixScreen Directory Layout
 
 ```
 helixscreen/
-├── ui_xml/
-│   ├── globals.xml            # Theme constants + auto-generated icons
+├── ui_xml/                    # 60+ XML component definitions
+│   ├── globals.xml            # Theme constants, responsive tokens
 │   ├── app_layout.xml         # Root: navbar + content area
-│   ├── navigation_bar.xml     # 5-button vertical navigation
-│   └── *_panel.xml            # Panel components (home, controls, etc.)
+│   ├── navigation_bar.xml     # Vertical nav buttons
+│   ├── *_panel.xml            # Main panels (home, controls, motion, etc.)
+│   ├── *_overlay.xml          # Modal overlays
+│   ├── *_modal.xml            # Dialog modals
+│   ├── icon.xml               # Icon custom widget
+│   ├── text_heading.xml       # Semantic typography
+│   ├── text_body.xml
+│   ├── text_small.xml
+│   └── spinner.xml            # Loading indicator
 ├── src/
 │   ├── main.cpp               # Entry point, initialization
+│   ├── xml_registration.cpp   # Component registration
+│   ├── ui_theme.cpp           # Responsive token registration
 │   ├── ui_nav.cpp             # Navigation system
-│   └── ui_panel_*.cpp         # Panel logic with subject management
+│   └── ui_panel_*.cpp         # Panel logic with subjects
 ├── include/
-│   ├── ui_nav.h
-│   ├── ui_panel_*.h
-│   └── ui_fonts.h             # FontAwesome icon definitions
+│   ├── ui_icon_codepoints.h   # MDI icon definitions
+│   └── ui_*.h                 # Panel headers
 ├── assets/
-│   ├── fonts/                 # Custom fonts (FontAwesome 6)
-│   └── images/                # UI images (printer, filament spool)
+│   ├── fonts/                 # MDI icon fonts, Montserrat
+│   └── images/                # UI images
 └── docs/
-    └── LVGL9_XML_GUIDE.md     # This file
+    ├── LVGL9_XML_GUIDE.md             # This file
+    └── LVGL9_XML_ATTRIBUTES_REFERENCE.md  # Quick-lookup cheatsheet
+```
+
+### Registration Flow (main.cpp + xml_registration.cpp)
+
+```cpp
+// 1. Register fonts
+lv_xml_register_font(NULL, "montserrat_16", &lv_font_montserrat_16);
+lv_xml_register_font(NULL, "montserrat_20", &lv_font_montserrat_20);
+
+// 2. Register globals FIRST (constants must be available)
+lv_xml_register_component_from_file("A:ui_xml/globals.xml");
+
+// 3. Register responsive spacing tokens
+ui_theme_register_responsive_spacing();  // Sets #space_md, #space_lg, etc.
+ui_theme_register_responsive_fonts();    // Sets #font_body, etc.
+
+// 4. Register components (order doesn't matter after globals)
+lv_xml_register_component_from_file("A:ui_xml/icon.xml");
+lv_xml_register_component_from_file("A:ui_xml/text_heading.xml");
+lv_xml_register_component_from_file("A:ui_xml/home_panel.xml");
+// ... etc
 ```
 
 ---
@@ -151,215 +151,48 @@ Components are reusable UI pieces defined with the `<component>` tag.
 
 ```xml
 <component>
-    <!-- Optional: Component API (properties passed from parent) -->
+    <!-- Optional: Component API (properties from parent) -->
     <api>
-        <!-- Simple properties -->
         <prop name="text" type="string" default="Click me"/>
         <prop name="enabled" type="bool" default="true"/>
-        <prop name="count" type="int" default="0"/>
-
-        <!-- Multi-parameter property (e.g., bind_text with format) -->
-        <prop name="temperature">
-            <param name="temperature" type="subject"/>
-            <param name="fmt" type="string" default="%.1f°C"/>
-        </prop>
-
-        <!-- Enum property (predefined values) -->
-        <enumdef name="button_size">
-            <enum name="small" value="32"/>
-            <enum name="medium" value="48"/>
-            <enum name="large" value="64"/>
-        </enumdef>
-        <prop name="size" type="button_size" default="medium"/>
     </api>
 
     <!-- Optional: Local constants -->
     <consts>
-        <int name="button_size" value="36"/>
+        <px name="button_size" value="36"/>
     </consts>
 
-    <!-- Optional: Local styles -->
-    <!-- IMPORTANT: Style properties do NOT use style_ prefix! -->
-    <!-- Use: bg_color, border_width, text_color -->
-    <!-- NOT: style_bg_color, style_border_width -->
+    <!-- Optional: Local styles (NO style_ prefix!) -->
     <styles>
         <style name="style_base" bg_color="0x333" text_color="0xfff"/>
     </styles>
 
     <!-- The actual UI definition -->
     <view extends="lv_button" width="#button_size">
-        <!-- Use API properties with $ prefix -->
+        <!-- Use API props with $ prefix -->
         <lv_label text="$text" align="center"/>
-
-        <!-- Reference local or global constants with # prefix -->
         <style name="style_base"/>
     </view>
 </component>
 ```
 
-#### Globals.xml Structure
-
-The `globals.xml` file contains all shared resources:
-
-```xml
-<component>
-    <consts>
-        <!-- Colors -->
-        <color name="bg_dark" value="0x1a1a1a"/>
-        <color name="panel_bg" value="0x111410"/>
-        <color name="text_primary" value="0xffffff"/>
-        <color name="primary_color" value="0xff4444"/>
-
-        <!-- Dimensions -->
-        <px name="nav_width" value="102"/>
-        <px name="padding_normal" value="20"/>
-        <px name="accent_bar_width" value="4"/>
-        <percent name="card_width" value="45%"/>
-
-        <!-- Icon strings (auto-generated) -->
-        <str name="icon_home" value=""/>  <!-- UTF-8 char -->
-    </consts>
-
-    <!-- Optional: Global styles -->
-    <styles>
-        <style name="style_button" bg_color="0x111" radius="8"/>
-    </styles>
-
-    <view extends="lv_obj"/>
-</component>
-```
-
-**Using Constants:**
-```xml
-<!-- Reference with # prefix -->
-<lv_obj width="#nav_width" style_bg_color="#primary_color"/>
-```
-
-### 1b. Custom Component API (Advanced)
-
-The `<api>` tag defines the interface for components, creating reusable widgets with custom properties.
-
 #### Property Types
 
-**Simple types:**
-- `string` - Text values
-- `int` - Integer numbers
-- `bool` - true/false
-- `color` - Color values (hex)
-- `subject` - Subject references
-- `float` - Floating point numbers
-
-**Complex types:**
-- Multi-parameter properties (see below)
-- Enum definitions (predefined value sets)
-- Element accessors (for widget internals)
-
-#### Multi-Parameter Properties
-
-When a property needs multiple inputs (like format strings):
-
-```xml
-<api>
-    <prop name="bind_temperature">
-        <param name="bind_temperature" type="subject"/>
-        <param name="fmt" type="string" default="%.1f"/>
-    </prop>
-</api>
-
-<view>
-    <!-- Usage: parameters become hyphenated attributes -->
-    <lv_label bind_temperature="temp_subject" bind_temperature-fmt="%.2f°C"/>
-</view>
-```
-
-**Pattern:** Property name repeated as first param; others use `property-param` notation.
-
-#### Enum Definitions
-
-Define allowed values for properties:
-
-```xml
-<api>
-    <enumdef name="align_mode">
-        <enum name="left" value="0"/>
-        <enum name="center" value="1"/>
-        <enum name="right" value="2"/>
-    </enumdef>
-    <prop name="alignment" type="align_mode" default="center"/>
-</api>
-
-<view>
-    <!-- String names map to C enum values -->
-    <lv_label alignment="left"/>  <!-- Uses value 0 -->
-</view>
-```
-
-#### Element Definitions (Widget Internals)
-
-For widgets with complex internal structure (like chart series):
-
-```xml
-<api>
-    <!-- Add-type elements (dynamic creation) -->
-    <element name="series" type="lv_chart_series_t" access="add">
-        <arg name="color" type="color"/>
-        <prop name="width" type="int" default="2"/>
-    </element>
-
-    <!-- Get-type elements (access pre-existing parts) -->
-    <element name="indicator" type="lv_obj_t" access="get">
-        <arg name="index" type="int"/>
-        <prop name="color" type="color"/>
-    </element>
-
-    <!-- Set-type elements (indexed access, like table cells) -->
-    <element name="cell" access="set">
-        <arg name="row" type="int"/>
-        <arg name="col" type="int"/>
-        <prop name="value" type="string"/>
-    </element>
-</api>
-
-<view extends="lv_chart">
-    <!-- Usage: widget-element notation -->
-    <lv_chart-series color="#ff0000" width="3"/>
-    <lv_chart-series color="#00ff00" width="2"/>
-</view>
-```
-
-**Access patterns:**
-- `add` - Create multiple dynamically (chart series, list items)
-- `get` - Access pre-existing parts (slider indicator, bar parts)
-- `set` - Indexed access (table cells, matrix elements)
-- `custom` - Map to arbitrary C function
-
-#### Component vs Widget API
-
-**Components** (simple):
-- Only `<prop>` tags (no `<param>`, `<enumdef>`, `<element>`)
-- Generate single `create()` function with all props as arguments
-- Properties forward to child widgets
-
-**Widgets** (rich):
-- Full API model with all descriptor types
-- Map to C setter functions and internal structures
-- Built-in widgets already have parsers
-
-#### API Best Practices
-
-1. **Default values** - Always provide sensible defaults
-2. **Type safety** - Use enums instead of raw integers
-3. **Clear names** - Property names should be self-documenting
-4. **Multi-param sparingly** - Use only when truly needed
-5. **Document in comments** - Add `help="..."` attribute to props
+| Type | Description | Example |
+|------|-------------|---------|
+| `string` | Text values | `default="Hello"` |
+| `int` | Integer numbers | `default="42"` |
+| `bool` | true/false | `default="true"` |
+| `color` | Hex colors | `default="0xff4444"` |
+| `subject` | Subject references | For data binding |
 
 ### 2. Subjects (Reactive Data)
 
-Subjects are observable data containers that automatically update all bound widgets when changed.
+Subjects are observable data containers that automatically update bound widgets.
 
 #### Subject Types
 
-```c
+```cpp
 lv_subject_init_string()  // String data (text labels)
 lv_subject_init_int()     // Integer data (sliders, counters)
 lv_subject_init_pointer() // Pointer data (custom objects)
@@ -368,7 +201,7 @@ lv_subject_init_color()   // Color data (dynamic theming)
 
 #### Subject Lifecycle
 
-```c
+```cpp
 // 1. Create subject in C++
 static lv_subject_t status_subject;
 static char status_buffer[128];
@@ -377,322 +210,94 @@ static char status_buffer[128];
 lv_subject_init_string(&status_subject, status_buffer, NULL,
                        sizeof(status_buffer), "Initial status");
 
-// 3. Register globally (before creating XML)
+// 3. Register globally (BEFORE creating XML)
 lv_xml_register_subject(NULL, "status_text", &status_subject);
 
 // 4. Create XML (widgets automatically bind)
-lv_obj_t* panel = lv_xml_create(parent, "home_panel", NULL);
+lv_obj_t* panel = lv_xml_create(parent, "home_panel", nullptr);
 
 // 5. Update subject (all bound widgets update automatically)
 lv_subject_copy_string(&status_subject, "New status");
 ```
 
-**⚠️ CRITICAL:** Register subjects BEFORE creating XML components that bind to them.
+**CRITICAL:** Register subjects BEFORE creating XML components that bind to them.
 
-#### Scope: Global vs. Component
-
-**Global scope** (`NULL` parameter):
-- Subjects accessible to all XML components
-- Use for shared data (status, temperature, active panel)
-
-**Component scope** (non-NULL parameter):
-- Subjects only accessible within specific component
-- Use for component-internal state
-
-### 3. Runtime Constants & Dynamic Configuration
-
-XML constants can be registered and modified from C++ **before** widget creation, enabling responsive design without XML duplication.
-
-#### Runtime Constant API
-
-**Available Functions (lv_xml.h):**
+#### Static Buffers Required
 
 ```cpp
-// Register or update a constant value
-lv_result_t lv_xml_register_const(lv_xml_component_scope_t* scope,
-                                   const char* name,
-                                   const char* value);
+// ✅ CORRECT - Static or heap-allocated
+static char status_buffer[128];
+lv_subject_init_string(&subject, status_buffer, NULL, sizeof(status_buffer), "Initial");
 
-// Retrieve a constant value
-const char* lv_xml_get_const(lv_xml_component_scope_t* scope,
-                              const char* name);
+// ❌ WRONG - Stack-allocated (will be destroyed)
+char buffer[128];  // DANGER: Goes out of scope!
+lv_subject_init_string(&subject, buffer, ...);
 ```
 
-#### How Constants Work
-
-**Storage:** Constants are stored in a linked list per component scope (global or component-specific).
-
-**Resolution Timing:** Constants are resolved **once at parse time** when `lv_xml_create()` is called, NOT at render time.
-
-**Critical Implication:** You can modify constants before widget creation, but modifying them afterward won't affect already-created widgets.
-
-#### Responsive Design Pattern
-
-Use runtime constant modification for screen-size adaptation:
-
-```cpp
-// Detect screen size at startup (BEFORE creating wizard)
-int width = lv_display_get_horizontal_resolution(lv_display_get_default());
-
-// Calculate responsive values
-const char* padding_value;
-const char* gap_value;
-const char* header_height;
-
-if (width < 600) {          // TINY (480x320)
-    padding_value = "6";
-    gap_value = "4";
-    header_height = "28";
-} else if (width < 900) {   // SMALL (800x480)
-    padding_value = "12";
-    gap_value = "8";
-    header_height = "32";
-} else {                    // LARGE (1024x600+)
-    padding_value = "20";
-    gap_value = "12";
-    header_height = "40";
-}
-
-// Get globals scope and register constants BEFORE creating widgets
-lv_xml_component_scope_t* scope = lv_xml_component_get_scope("globals");
-lv_xml_register_const(scope, "wizard_padding", padding_value);
-lv_xml_register_const(scope, "wizard_gap", gap_value);
-lv_xml_register_const(scope, "wizard_header_height", header_height);
-
-// NOW create wizard - it picks up the responsive constants
-lv_obj_t* wizard = lv_xml_create(parent, "wizard_container", NULL);
-```
-
-**XML Usage:**
-
-```xml
-<!-- globals.xml - Define defaults (overridden by C++ at runtime) -->
-<consts>
-    <px name="wizard_padding" value="12"/>      <!-- Default for SMALL -->
-    <px name="wizard_gap" value="8"/>
-    <px name="wizard_header_height" value="32"/>
-</consts>
-
-<!-- wizard_container.xml - Uses constants reactively -->
-<view name="wizard_container">
-    <lv_obj width="100%" height="100%" flex_flow="column">
-        <lv_obj name="wizard_header"
-                width="100%" height="content"
-                style_min_height="#wizard_header_height"
-                style_pad_all="#wizard_padding"
-                style_pad_gap="#wizard_gap">
-            <!-- Header content -->
-        </lv_obj>
-
-        <lv_obj name="wizard_content" flex_grow="1"
-                style_pad_all="#wizard_padding">
-            <!-- Content area -->
-        </lv_obj>
-    </lv_obj>
-</view>
-```
-
-#### Scope Hierarchy
-
-**Global scope (NULL):**
-```cpp
-lv_xml_register_const(NULL, "primary_color", "0xff4444");  // Available to all components
-```
-
-**Component scope:**
-```cpp
-lv_xml_component_scope_t* scope = lv_xml_component_get_scope("my_component");
-lv_xml_register_const(scope, "local_padding", "10");  // Only in my_component
-```
-
-**Lookup order:** Component scope first, then falls back to globals.
-
-#### Limitations
-
-❌ **Cannot modify after widget creation:** Constants are resolved once at parse time
-❌ **No arithmetic:** Cannot use `calc(#padding * 2)` expressions
-❌ **String values only:** All constants are stored as strings, converted during parsing
-
-✅ **Best for:** Screen-size adaptation, theme switching, configuration-driven UIs
-
-### 4. Data Binding
-
-XML widgets can bind to subjects using **attribute bindings** (simple) or **child element bindings** (complex/conditional).
+### 3. Data Binding
 
 #### Simple Attribute Bindings
 
-For straightforward data binding, use `bind_*` attributes:
-
 ```xml
 <!-- Bind label text to string subject -->
-<lv_label bind_text="status_text" style_text_color="#text_primary"/>
+<lv_label bind_text="status_text"/>
 
-<!-- Bind with format string (multi-parameter property) -->
+<!-- Bind with format string -->
 <lv_label bind_text="temp_value" bind_text-fmt="%.1f°C"/>
-<!-- Format syntax: C printf format strings -->
-<!-- %d=integer, %f=float, %s=string, %.1f=1 decimal place -->
 
 <!-- Bind slider value to integer subject -->
-<lv_slider bind_value="volume" min_value="0" max_value="100"/>
+<lv_slider bind_value="volume" range="0 100"/>
 
-<!-- Bind arc value -->
-<lv_arc bind_value="progress" min_value="0" max_value="100"/>
-
-<!-- Reactive color binding -->
+<!-- Bind color to subject -->
 <lv_label bind_style_text_color="icon_color" text="#icon_home"/>
-
-<!-- Bind image source (dynamic image switching) -->
-<lv_image bind_src="current_icon"/>
 ```
 
-**Naming pattern:** `bind_<property>` where `<property>` is the widget property name.
-
-#### Advanced Child Element Bindings
-
-For conditional logic and complex bindings, use child elements. LVGL 9.4 provides three types of conditional bindings: **flag**, **state**, and **style**.
-
-##### A. Conditional Flag Bindings (Show/Hide, Enable/Disable)
-
-Control widget flags based on subject values:
+#### Conditional Flag Bindings (Show/Hide)
 
 ```xml
 <lv_obj>
     <!-- Hide when current_step == 1 -->
-    <lv_obj-bind_flag_if_eq subject="current_step" flag="hidden" ref_value="1"/>
+    <bind_flag_if_eq subject="current_step" flag="hidden" ref_value="1"/>
 
     <!-- Disable when level >= 100 -->
-    <lv_obj-bind_flag_if_ge subject="level" flag="disabled" ref_value="100"/>
-
-    <!-- Make scrollable when count > 5 -->
-    <lv_obj-bind_flag_if_gt subject="item_count" flag="scrollable" ref_value="5"/>
+    <bind_flag_if_ge subject="level" flag="disabled" ref_value="100"/>
 </lv_obj>
 ```
 
-**Available Conditional Operators:**
-
-| Element | Condition | Behavior |
-|---------|-----------|----------|
-| `<lv_obj-bind_flag_if_eq>` | `subject == ref_value` | Set flag when equal, clear otherwise |
-| `<lv_obj-bind_flag_if_not_eq>` | `subject != ref_value` | Set flag when not equal, clear otherwise |
-| `<lv_obj-bind_flag_if_gt>` | `subject > ref_value` | Set flag when greater than |
-| `<lv_obj-bind_flag_if_ge>` | `subject >= ref_value` | Set flag when greater or equal |
-| `<lv_obj-bind_flag_if_lt>` | `subject < ref_value` | Set flag when less than |
-| `<lv_obj-bind_flag_if_le>` | `subject <= ref_value` | Set flag when less or equal |
-
-**Supported Flags (Common):**
-
-```xml
-<!-- Visibility -->
-<lv_obj-bind_flag_if_eq subject="visible" flag="hidden" ref_value="0"/>
-
-<!-- Interaction -->
-<lv_obj-bind_flag_if_ge subject="level" flag="clickable" ref_value="100"/>
-
-<!-- Scrolling -->
-<lv_obj-bind_flag_if_lt subject="size" flag="scrollable" ref_value="10"/>
-
-<!-- All LV_OBJ_FLAG_* flags supported: -->
-<!-- hidden, clickable, click_focusable, checkable, scrollable, -->
-<!-- scroll_elastic, scroll_momentum, scroll_one, scroll_chain_hor, -->
-<!-- scroll_chain_ver, scroll_on_focus, scroll_with_arrow, snappable, -->
-<!-- press_lock, event_bubble, gesture_bubble, adv_hittest, -->
-<!-- ignore_layout, floating, send_draw_task_events, overflow_visible, -->
-<!-- flex_in_new_track, layout_1, layout_2, widget_1, widget_2, -->
-<!-- user_1, user_2, user_3, user_4 -->
-```
-
-**Real-World Example (Wizard Back Button):**
-
-```xml
-<!-- Back button hidden on first step -->
-<lv_button name="btn_back" width="#wizard_button_width" height="#button_height">
-    <lv_label text="Back"/>
-    <event_cb trigger="clicked" callback="on_back_clicked"/>
-    <lv_obj-bind_flag_if_eq subject="current_step" flag="hidden" ref_value="1"/>
-</lv_button>
-```
-
-##### B. Conditional State Bindings (Visual States)
-
-Control widget states (pressed, checked, disabled, focused) based on subject values:
-
-```xml
-<lv_obj>
-    <!-- Disable button when WiFi is disabled -->
-    <lv_obj-bind_state_if_eq subject="wifi_enabled" state="disabled" ref_value="0"/>
-
-    <!-- Check toggle when dark mode is on -->
-    <lv_obj-bind_state_if_eq subject="dark_mode" state="checked" ref_value="1"/>
-
-    <!-- Focus input when ready -->
-    <lv_obj-bind_state_if_eq subject="input_ready" state="focused" ref_value="1"/>
-</lv_obj>
-```
-
-**Available Conditional Operators:**
+**Available Operators:**
 
 | Element | Condition |
 |---------|-----------|
-| `<lv_obj-bind_state_if_eq>` | `subject == ref_value` |
-| `<lv_obj-bind_state_if_not_eq>` | `subject != ref_value` |
-| `<lv_obj-bind_state_if_gt>` | `subject > ref_value` |
-| `<lv_obj-bind_state_if_ge>` | `subject >= ref_value` |
-| `<lv_obj-bind_state_if_lt>` | `subject < ref_value` |
-| `<lv_obj-bind_state_if_le>` | `subject <= ref_value` |
+| `<bind_flag_if_eq>` | `subject == ref_value` |
+| `<bind_flag_if_not_eq>` | `subject != ref_value` |
+| `<bind_flag_if_gt>` | `subject > ref_value` |
+| `<bind_flag_if_ge>` | `subject >= ref_value` |
+| `<bind_flag_if_lt>` | `subject < ref_value` |
+| `<bind_flag_if_le>` | `subject <= ref_value` |
 
-**Supported States:**
+**Supported Flags:** `hidden`, `clickable`, `checkable`, `scrollable`, `disabled`, `ignore_layout`, `floating`
+
+#### Conditional State Bindings
+
+Control visual states (disabled styling, checked styling):
 
 ```xml
-<!-- State values: disabled, checked, focused, pressed, edited, -->
-<!-- focus_key, scrolled, scroll_on_focus -->
-
-<!-- Example: Disable connect button when no network selected -->
 <lv_button>
-    <lv_label text="Connect"/>
-    <lv_obj-bind_state_if_eq subject="network_selected" state="disabled" ref_value="0"/>
+    <!-- Disable when WiFi is off -->
+    <bind_state_if_eq subject="wifi_enabled" state="disabled" ref_value="0"/>
 </lv_button>
+
+<lv_checkbox>
+    <!-- Check when dark mode is on -->
+    <bind_state_if_eq subject="dark_mode" state="checked" ref_value="1"/>
+</lv_checkbox>
 ```
 
-**Difference from Flag Bindings:**
+**Difference:** Flags control behavior; States control visual appearance.
 
-- **Flags** control widget behavior (hidden, clickable, scrollable)
-- **States** control visual appearance tied to LVGL's state system (disabled styling, checked styling, etc.)
+#### Conditional Style Bindings
 
-##### C. Conditional Style Bindings (Whole Style Objects)
-
-Apply entire style objects conditionally based on subject values:
-
-```xml
-<styles>
-    <style name="style_error" bg_color="0xff0000" text_color="0xffffff"/>
-    <style name="style_success" bg_color="0x00ff00" text_color="0x000000"/>
-    <style name="style_warning" bg_color="0xffaa00" text_color="0x000000"/>
-</styles>
-
-<lv_obj>
-    <!-- Apply error style when error_code == 1 -->
-    <lv_obj-bind_style name="style_error" subject="error_code" ref_value="1" selector="main"/>
-
-    <!-- Apply success style when status == 0 -->
-    <lv_obj-bind_style name="style_success" subject="status" ref_value="0" selector="main"/>
-
-    <!-- Apply warning style when temp >= 80 -->
-    <lv_obj-bind_style name="style_warning" subject="temp" ref_value="80" selector="main"/>
-</lv_obj>
-```
-
-**Attributes:**
-
-- `name` - Style name from `<styles>` section (required)
-- `subject` - Subject name (required)
-- `ref_value` - Integer value for equality check (required)
-- `selector` - Style selector: `main`, `pressed`, `checked`, etc. (optional, defaults to `main`)
-
-**⚠️ LIMITATION:** Only equality check (`==`) is supported for style bindings. No `gt`, `lt`, `ne`, etc.
-
-**Why:** Style bindings apply entire pre-defined style objects, not individual properties.
-
-**Real-World Example (Temperature Warning):**
+Apply entire style objects conditionally:
 
 ```xml
 <styles>
@@ -702,424 +307,115 @@ Apply entire style objects conditionally based on subject values:
 </styles>
 
 <lv_label bind_text="temperature">
-    <!-- Different colors for different temperature ranges -->
-    <lv_obj-bind_style name="temp_normal" subject="temp_state" ref_value="0" selector="main"/>
-    <lv_obj-bind_style name="temp_warning" subject="temp_state" ref_value="1" selector="main"/>
-    <lv_obj-bind_style name="temp_critical" subject="temp_state" ref_value="2" selector="main"/>
+    <bind_style name="temp_normal" subject="temp_state" ref_value="0"/>
+    <bind_style name="temp_warning" subject="temp_state" ref_value="1"/>
+    <bind_style name="temp_critical" subject="temp_state" ref_value="2"/>
 </lv_label>
 ```
 
-```cpp
-// C++ updates state based on temperature
-void update_temp_state(int temp) {
-    int state = (temp < 200) ? 0 : (temp < 250) ? 1 : 2;
-    lv_subject_set_int(&temp_state_subject, state);
-}
-```
-
-##### D. Reactive Style Property Bindings (LVGL 9.4+)
-
-**NEW in LVGL 9.4+:** Bind individual style properties directly to subject values for dynamic, reactive styling.
-
-Unlike conditional style bindings that apply entire style objects, style property bindings allow you to bind a single style property (like opacity, color, width) to a subject's value. The widget's style automatically updates whenever the subject changes.
-
-**XML Syntax:**
-
-```xml
-<lv_slider>
-    <!-- Bind knob opacity to subject value (0-255) -->
-    <bind_style_prop prop="bg_opa" selector="knob|pressed" subject="slider_knob_opa"/>
-
-    <!-- Bind background color to subject -->
-    <bind_style_prop prop="bg_color" selector="main" subject="theme_bg_color"/>
-
-    <!-- Bind border width to subject -->
-    <bind_style_prop prop="border_width" selector="main" subject="focus_border_width"/>
-</lv_slider>
-```
-
-**C++ API (Alternative):**
-
-```cpp
-// Bind style property to subject
-lv_obj_bind_style_prop(slider, LV_STYLE_BG_OPA, LV_PART_KNOB | LV_STATE_PRESSED, &slider_knob_opa);
-lv_obj_bind_style_prop(obj, LV_STYLE_BG_COLOR, LV_PART_MAIN, &theme_bg_color);
-
-// Update subject → widget automatically updates
-lv_subject_set_int(&slider_knob_opa, 128);  // Slider becomes semi-transparent
-lv_subject_set_color(&theme_bg_color, lv_color_hex(0xFF5733));  // Background changes
-```
-
-**Attributes:**
-
-- `prop` - Style property name (e.g., `bg_opa`, `bg_color`, `border_width`) (required)
-- `selector` - Style selector (e.g., `main`, `knob|pressed`, `indicator`) (optional, defaults to `main`)
-- `subject` - Subject name (required)
-
-**Use Cases:**
-
-1. **Dynamic opacity controls** - Bind slider opacity to user preference subject
-2. **Theme switching** - Bind colors to theme subjects (dark/light mode)
-3. **Responsive sizing** - Bind widths/heights to screen size subjects
-4. **State-driven styling** - Bind border colors/widths to connection status subjects
-5. **Data visualization** - Bind colors to value ranges (e.g., temperature → color gradient)
-
-**Example: Dynamic Slider Styling**
-
-```xml
-<component name="dynamic_slider">
-    <view extends="lv_slider">
-        <!-- Opacity controlled by subject -->
-        <bind_style_prop prop="bg_opa" selector="main" subject="slider_main_opa"/>
-        <bind_style_prop prop="bg_opa" selector="indicator" subject="slider_indicator_opa"/>
-        <bind_style_prop prop="bg_opa" selector="knob" subject="slider_knob_opa"/>
-
-        <!-- Colors controlled by subjects -->
-        <bind_style_prop prop="bg_color" selector="indicator" subject="slider_active_color"/>
-    </view>
-</component>
-```
-
-```cpp
-// Initialize subjects
-static lv_subject_t slider_knob_opa;
-static lv_subject_t slider_active_color;
-
-lv_subject_init_int(&slider_knob_opa, 255);  // Start fully opaque
-lv_subject_init_color(&slider_active_color, lv_color_hex(0x00FF00));  // Green
-
-// Change dynamically based on state
-lv_subject_set_int(&slider_knob_opa, 128);  // Make semi-transparent
-lv_subject_set_color(&slider_active_color, lv_color_hex(0xFF0000));  // Change to red
-```
-
-**Example: Dark/Light Theme Toggle**
-
-```xml
-<!-- Multiple widgets bind to same theme subjects -->
-<lv_obj>
-    <bind_style_prop prop="bg_color" selector="main" subject="theme_bg"/>
-    <bind_style_prop prop="border_color" selector="main" subject="theme_border"/>
-
-    <lv_label text="Hello World">
-        <bind_style_prop prop="text_color" selector="main" subject="theme_text"/>
-    </lv_label>
-</lv_obj>
-```
-
-```cpp
-// Toggle between light and dark themes
-void set_dark_theme(bool dark) {
-    lv_color_t bg = dark ? lv_color_hex(0x1a1a1a) : lv_color_hex(0xffffff);
-    lv_color_t text = dark ? lv_color_hex(0xe0e0e0) : lv_color_hex(0x000000);
-    lv_color_t border = dark ? lv_color_hex(0x404040) : lv_color_hex(0xcccccc);
-
-    lv_subject_set_color(&theme_bg, bg);
-    lv_subject_set_color(&theme_text, text);
-    lv_subject_set_color(&theme_border, border);
-    // All bound widgets update automatically!
-}
-```
-
-**Advantages over Conditional Style Bindings:**
-
-| Feature | Style Property Binding | Conditional Style Binding |
-|---------|------------------------|---------------------------|
-| Granularity | Single property | Entire style object |
-| Subject type | Any value (int, color, etc.) | Integer equality only |
-| Conditionals | No conditions (direct binding) | Equality check (`==`) |
-| Use case | Reactive value mapping | State-based styling |
-| Multiple properties | Need multiple bindings | One binding per style |
-
-**When to use Style Property Bindings:**
-- ✅ Direct value-to-style mapping (e.g., slider value → opacity)
-- ✅ Theme color variables (e.g., primary color subject)
-- ✅ Continuous value changes (e.g., temperature → color gradient)
-- ✅ Multiple widgets sharing same style value
-
-**When to use Conditional Style Bindings:**
-- ✅ Discrete state changes (e.g., normal/warning/error states)
-- ✅ Applying predefined style presets
-- ✅ Complex multi-property changes based on single condition
-
-##### E. Conditional Binding Limitations
+#### Binding Limitations
 
 **❌ Text Conditionals DO NOT EXIST:**
 
-There is no `bind_text_if_eq` or similar. To show different text based on conditions, use multiple labels with flag bindings:
+No `bind_text_if_eq`. Use multiple labels with flag bindings:
 
 ```xml
 <!-- Workaround: Multiple labels with conditional visibility -->
 <lv_label text="Idle">
-    <lv_obj-bind_flag_if_not_eq subject="state" flag="hidden" ref_value="0"/>
+    <bind_flag_if_not_eq subject="state" flag="hidden" ref_value="0"/>
 </lv_label>
 <lv_label text="Active">
-    <lv_obj-bind_flag_if_not_eq subject="state" flag="hidden" ref_value="1"/>
-</lv_label>
-<lv_label text="Error">
-    <lv_obj-bind_flag_if_not_eq subject="state" flag="hidden" ref_value="2"/>
+    <bind_flag_if_not_eq subject="state" flag="hidden" ref_value="1"/>
 </lv_label>
 ```
 
-**❌ CONDITIONAL Style Property Bindings DO NOT EXIST:**
+### 4. Observer Cleanup in DELETE Handlers
 
-You cannot bind individual style properties **conditionally** (like `bind_style_pad_all_if_eq`).
+**CRITICAL:** When using `lv_label_bind_text()` with subjects in heap-allocated per-widget data, you must clean up observers before freeing.
 
-**However**, you CAN bind style properties **reactively** using `<bind_style_prop>` (see section D above):
-
-```xml
-<!-- ❌ DOESN'T WORK - Conditional style property binding: -->
-<lv_obj bind_style_pad_all_if_eq="subject" value="20" ref_value="1"/>
-
-<!-- ✅ WORKS - Reactive style property binding (LVGL 9.4+): -->
-<lv_obj>
-    <bind_style_prop prop="pad_all" selector="main" subject="padding_value"/>
-    <!-- Widget padding reactively updates when padding_value subject changes -->
-</lv_obj>
-
-<!-- ✅ ALSO WORKS - Conditional whole style objects: -->
-<styles>
-    <style name="large_padding" style_pad_all="20"/>
-    <style name="small_padding" style_pad_all="5"/>
-</styles>
-
-<lv_obj>
-    <lv_obj-bind_style name="large_padding" subject="size_mode" ref_value="1" selector="main"/>
-    <lv_obj-bind_style name="small_padding" subject="size_mode" ref_value="0" selector="main"/>
-</lv_obj>
-```
-
-**Key Distinction:**
-- ❌ **Conditional + Style Property** = Not supported (no `if_eq`, `if_gt`, etc. on individual properties)
-- ✅ **Reactive Style Property** = Supported (direct binding with `<bind_style_prop>`)
-- ✅ **Conditional + Whole Style** = Supported (with `<lv_obj-bind_style>`)
-
-**❌ Subjects Cannot Be Used Directly in Attributes:**
-
-```xml
-<!-- ❌ DOESN'T WORK: -->
-<lv_obj style_pad_all="subject:padding_value"/>
-
-<!-- ✅ WORKS - Use bind_style_prop (LVGL 9.4+): -->
-<lv_obj>
-    <bind_style_prop prop="pad_all" selector="main" subject="padding_value"/>
-</lv_obj>
-
-<!-- ✅ ALSO WORKS - Use runtime constants: -->
-<lv_obj style_pad_all="#dynamic_padding"/>
-```
-
-##### E. When to Use Each Binding Type
-
-**Use attribute bindings (`bind_text`, `bind_value`):**
-- Simple direct data display
-- No conditional logic needed
-- One subject → one property
-
-**Use flag bindings (`<lv_obj-bind_flag_if_*>`):**
-- Show/hide widgets conditionally
-- Enable/disable interaction
-- Control scrolling, layout behavior
-
-**Use state bindings (`<lv_obj-bind_state_if_*>`):**
-- Visual state changes (disabled styling, checked styling)
-- State-driven UI feedback
-
-**Use style bindings (`<lv_obj-bind_style>`):**
-- Apply complex style combinations
-- Theme switching
-- Multi-property visual changes
-
-**Use C++ observers for:**
-- Individual style property updates not covered by style objects
-- Complex multi-subject logic
-- Calculations or transformations
-
-#### Defining Subjects in globals.xml (Optional)
-
-While subjects can be defined in XML, it's recommended to initialize them in C++ for better control:
-
-```xml
-<!-- In globals.xml (optional - for documentation) -->
-<subjects>
-    <int name="volume" value="10"/>
-    <string name="status" value="Ready"/>
-    <float name="temp" value="25.0"/>
-</subjects>
-```
-
-**Note:** If you define subjects in XML, they'll be registered with empty/default values before C++ initialization. Prefer C++ initialization for predictable behavior.
-
-### Observer Cleanup in DELETE Handlers
-
-**⚠️ CRITICAL:** LVGL sends DELETE events BEFORE deleting child widgets. This causes crashes when DELETE handlers free structs containing subjects that child labels are bound to.
-
-**The Problem:**
 ```cpp
-// ❌ WRONG - crashes on quit!
+// ✅ CORRECT - Track and remove observers
 struct MyWidgetData {
     lv_subject_t text_subject;
     char text_buf[32];
+    lv_observer_t* text_observer = nullptr;  // Track it!
 };
 
-// In setup:
-lv_label_bind_text(label, &data->text_subject, "%s");
-lv_obj_add_event_cb(container, on_delete, LV_EVENT_DELETE, nullptr);
-
-// DELETE handler frees data while children still have observers
-static void on_delete(lv_event_t* e) {
-    MyWidgetData* data = get_data(e);
-    delete data;  // Subject freed, but child label's observer still points here!
-}
-// When LVGL deletes children afterward → crash in lv_observer_remove()
-```
-
-**The Solution:** Save observer pointers and remove them BEFORE freeing:
-
-```cpp
-// ✅ CORRECT - track and remove observers first
-struct MyWidgetData {
-    lv_subject_t text_subject;
-    char text_buf[32];
-    lv_observer_t* text_observer = nullptr;  // Track the observer!
-};
-
-// When binding, save the observer:
+// When binding:
 data->text_observer = lv_label_bind_text(label, &data->text_subject, "%s");
 
-// In DELETE handler, remove observer BEFORE freeing:
+// In DELETE handler:
 static void on_delete(lv_event_t* e) {
     MyWidgetData* data = get_data(e);
     if (data->text_observer) {
         lv_observer_remove(data->text_observer);  // Remove first!
-        data->text_observer = nullptr;
     }
-    delete data;  // Now safe - no dangling observers
+    delete data;  // Now safe
 }
 ```
-
-**When This Applies:**
-- Using `lv_label_bind_text()` with subjects in heap-allocated per-widget data
-- Any situation where subjects are freed in a DELETE handler
-- Custom widget implementations with internal subjects
-
-**When This Does NOT Apply:**
-- Subjects as class members of panels (panel outlives its widgets)
-- Global/singleton subjects (e.g., PrinterState)
-- Subjects in statically-allocated data
-
-**Reference implementations:** `ui_temp_display.cpp`, `ui_ams_slot.cpp`
 
 ---
 
 ## Layouts & Positioning
 
-LVGL 9 provides two powerful layout systems inspired by CSS: **Flex** (flexbox) and **Grid**. Layouts automatically position children, overriding manual positioning.
-
-### Layout Control Flags
-
-These flags affect how widgets participate in layouts:
-
-```xml
-<!-- Exclude from layout calculations -->
-<lv_obj hidden="true"/>  <!-- LV_OBJ_FLAG_HIDDEN -->
-
-<!-- Remove from layout but keep manual position -->
-<lv_obj ignore_layout="true"/>  <!-- LV_OBJ_FLAG_IGNORE_LAYOUT -->
-
-<!-- Floating (like ignore_layout + excluded from content size) -->
-<lv_obj floating="true"/>  <!-- LV_OBJ_FLAG_FLOATING -->
-```
-
----
-
 ### Flex Layout (Flexbox)
 
-Flex arranges children in rows or columns with wrapping, spacing, and proportional growth. Best for **1D layouts** (single row/column or wrapping).
+Best for 1D layouts (single row/column or wrapping).
 
-#### Flex Flow Options (VERIFIED in lvgl/src/others/xml/lv_xml_base_types.c)
+#### Flex Flow Options
 
 ```xml
-<!-- Basic flow (no wrapping) -->
-<lv_obj flex_flow="row">           <!-- Horizontal left to right -->
-<lv_obj flex_flow="column">        <!-- Vertical top to bottom -->
-<lv_obj flex_flow="row_reverse">   <!-- Horizontal right to left -->
-<lv_obj flex_flow="column_reverse"><!-- Vertical bottom to top -->
-
-<!-- With wrapping (creates multiple tracks) -->
-<lv_obj flex_flow="row_wrap">              <!-- Wrap to new rows -->
-<lv_obj flex_flow="column_wrap">           <!-- Wrap to new columns -->
-<lv_obj flex_flow="row_wrap_reverse">      <!-- Wrap reversed -->
-<lv_obj flex_flow="column_wrap_reverse">   <!-- Wrap reversed -->
+<lv_obj flex_flow="row"/>           <!-- Horizontal left to right -->
+<lv_obj flex_flow="column"/>        <!-- Vertical top to bottom -->
+<lv_obj flex_flow="row_reverse"/>   <!-- Right to left -->
+<lv_obj flex_flow="column_reverse"/><!-- Bottom to top -->
+<lv_obj flex_flow="row_wrap"/>      <!-- Wrap to new rows -->
+<lv_obj flex_flow="column_wrap"/>   <!-- Wrap to new columns -->
 ```
 
-#### Flex Alignment - Three Parameters
-
-Flex uses **three alignment properties** to control positioning:
+#### Flex Alignment (Three Properties!)
 
 | Property | Controls | CSS Equivalent |
 |----------|----------|----------------|
-| `style_flex_main_place` | Item distribution along **main axis** | `justify-content` |
-| `style_flex_cross_place` | Item alignment along **cross axis** | `align-items` |
-| `style_flex_track_place` | Track distribution (multi-track wrapping) | `align-content` |
+| `style_flex_main_place` | Main axis distribution | `justify-content` |
+| `style_flex_cross_place` | Cross axis alignment | `align-items` |
+| `style_flex_track_place` | Multi-track distribution | `align-content` |
 
-**⚠️ CRITICAL:** Never use `flex_align` attribute - it doesn't exist in LVGL 9 XML!
+**CRITICAL:** `flex_align` does NOT exist in LVGL 9 XML!
 
-**✓ CORRECT XML usage:**
 ```xml
+<!-- ✅ CORRECT -->
 <lv_obj flex_flow="row"
         style_flex_main_place="center"
-        style_flex_cross_place="center"
-        style_flex_track_place="start">
-    <!-- Children -->
-</lv_obj>
+        style_flex_cross_place="center">
+
+<!-- ❌ WRONG - flex_align is silently ignored -->
+<lv_obj flex_flow="row" flex_align="center center center"/>
 ```
 
-#### Alignment Values (All Three Properties)
+#### Alignment Values
 
-| Value | Behavior | Available For |
-|-------|----------|---------------|
-| `start` | Beginning (left/top, RTL-aware) | All three |
-| `center` | Centered | All three |
-| `end` | End (right/bottom, RTL-aware) | All three |
-| `space_evenly` | Equal space around all items | `main_place`, `track_place` |
-| `space_around` | Equal space, double at edges | `main_place`, `track_place` |
-| `space_between` | No edge space, even gaps | `main_place`, `track_place` |
+| Value | Behavior |
+|-------|----------|
+| `start` | Beginning (left/top) |
+| `center` | Centered |
+| `end` | End (right/bottom) |
+| `space_evenly` | Equal space around all |
+| `space_around` | Equal space, double at edges |
+| `space_between` | No edge space, even gaps |
 
-**Note:** `space_*` values don't apply to `cross_place` (items don't "distribute" perpendicularly).
+#### Flex Grow
 
-#### Axis Direction Reference
-
-**For `flex_flow="row"` (horizontal):**
-- `style_flex_main_place` → **horizontal** distribution (left/center/right)
-- `style_flex_cross_place` → **vertical** alignment (top/center/bottom)
-
-**For `flex_flow="column"` (vertical):**
-- `style_flex_main_place` → **vertical** distribution (top/center/bottom)
-- `style_flex_cross_place` → **horizontal** alignment (left/center/right)
-
-#### Flex Grow - Proportional Expansion
-
-Children with `flex_grow` expand to fill remaining space proportionally.
-
-**How it works:**
-- Available space ÷ total grow weight = space per unit
-- Each child gets (available space × its grow value) ÷ total grow weight
-
-**Example:** 400px available, grow values (1, 1, 2):
-- First two: 100px each (400 × 1 ÷ 4)
-- Third: 200px (400 × 2 ÷ 4)
+Children with `flex_grow` expand to fill remaining space:
 
 ```xml
-<lv_obj flex_flow="row" width="400">
-    <lv_label text="Left"/>                      <!-- Fixed size -->
-    <lv_label text="Center" flex_grow="1"/>      <!-- Takes remaining space -->
-    <lv_label text="Right"/>                     <!-- Fixed size -->
+<lv_obj flex_flow="row" width="100%">
+    <lv_label text="Left"/>                  <!-- Fixed size -->
+    <lv_obj flex_grow="1"/>                  <!-- Expands -->
+    <lv_label text="Right"/>                 <!-- Fixed size -->
 </lv_obj>
-```
 
-**Equal distribution:**
-```xml
+<!-- Equal distribution -->
 <lv_obj flex_flow="row">
     <lv_obj flex_grow="1">33%</lv_obj>
     <lv_obj flex_grow="1">33%</lv_obj>
@@ -1127,750 +423,206 @@ Children with `flex_grow` expand to fill remaining space proportionally.
 </lv_obj>
 ```
 
-**Weighted distribution:**
+#### CRITICAL: Parent Height Required
+
+When using `flex_grow`, the parent MUST have explicit height:
+
 ```xml
+<!-- ❌ BROKEN - Parent has no height -->
 <lv_obj flex_flow="row">
-    <lv_obj flex_grow="1">25%</lv_obj>
-    <lv_obj flex_grow="2">50%</lv_obj>
-    <lv_obj flex_grow="1">25%</lv_obj>
+    <lv_obj flex_grow="3" height="100%">Left</lv_obj>
+    <lv_obj flex_grow="7" height="100%">Right</lv_obj>
+</lv_obj>
+
+<!-- ✅ CORRECT - Parent has explicit height -->
+<lv_obj flex_flow="row" height="100%">
+    <lv_obj flex_grow="3" height="100%">Left</lv_obj>
+    <lv_obj flex_grow="7" height="100%">Right</lv_obj>
 </lv_obj>
 ```
 
-**Disable grow:** Set `flex_grow="0"` (default)
-
-#### Forcing New Track (Line Break)
-
-Use `flex_in_new_track="true"` to force an item to start a new row/column:
-
-```xml
-<lv_obj flex_flow="row_wrap">
-    <lv_button>Item 1</lv_button>
-    <lv_button>Item 2</lv_button>
-    <lv_button flex_in_new_track="true">Item 3</lv_button>  <!-- New row -->
-    <lv_button>Item 4</lv_button>
-</lv_obj>
-```
-
-**C flag:** `LV_OBJ_FLAG_FLEX_IN_NEW_TRACK`
-
-#### Flex Gaps (Spacing)
-
-Control spacing between items using padding style properties:
+#### Flex Gaps
 
 ```xml
 <lv_obj flex_flow="row"
-        style_pad_column="10"   <!-- 10px horizontal gap -->
-        style_pad_row="5">      <!-- 5px vertical gap (if wrapping) -->
-    <!-- Children -->
-</lv_obj>
+        style_pad_column="10"   <!-- Horizontal gap -->
+        style_pad_row="5">      <!-- Vertical gap (if wrapping) -->
 ```
-
-#### 🚨 CRITICAL: Flex Layout Height Requirements
-
-**ESSENTIAL RULE:** When using `flex_grow` on children, **the parent MUST have an explicit height dimension**.
-
-Without an explicit parent height, `flex_grow` children will collapse to 0 size or cause unexpected layout behavior.
-
-**❌ BROKEN - Parent has no height:**
-```xml
-<lv_obj flex_flow="row">  <!-- No height specified -->
-    <lv_obj flex_grow="3">Left column (30%)</lv_obj>
-    <lv_obj flex_grow="7">Right column (70%)</lv_obj>
-</lv_obj>
-<!-- Result: Columns collapse or have unpredictable heights -->
-```
-
-**✓ CORRECT - Parent has explicit height:**
-```xml
-<!-- Option 1: Fixed height -->
-<lv_obj flex_flow="row" height="300">
-    <lv_obj flex_grow="3" height="100%">Left (30%)</lv_obj>
-    <lv_obj flex_grow="7" height="100%">Right (70%)</lv_obj>
-</lv_obj>
-
-<!-- Option 2: flex_grow from grandparent -->
-<lv_obj flex_flow="column" height="100%">
-    <lv_obj flex_flow="row" flex_grow="1">  <!-- Expands to fill parent -->
-        <lv_obj flex_grow="3" height="100%">Left (30%)</lv_obj>
-        <lv_obj flex_grow="7" height="100%">Right (70%)</lv_obj>
-    </lv_obj>
-</lv_obj>
-```
-
-**💡 Two-Column Layout Pattern (30/70 split):**
-
-This pattern is used extensively (wizard screens, settings pages, etc.):
-
-```xml
-<!-- CORRECT hierarchy for two-column layouts -->
-<view height="100%" flex_flow="column">
-    <!-- Top wrapper must expand to fill parent -->
-    <lv_obj width="100%" flex_grow="1" flex_flow="column">
-
-        <!-- Two-column row must expand within wrapper -->
-        <lv_obj width="100%" flex_grow="1" flex_flow="row">
-
-            <!-- LEFT COLUMN (30%) - must have height="100%" -->
-            <lv_obj flex_grow="3" height="100%"
-                    flex_flow="column"
-                    scrollable="true" scroll_dir="VER">
-                <!-- Cards with fixed heights -->
-                <lv_obj height="100">Card 1</lv_obj>
-                <lv_obj height="100">Card 2</lv_obj>
-            </lv_obj>
-
-            <!-- RIGHT COLUMN (70%) - must have height="100%" -->
-            <lv_obj flex_grow="7" height="100%"
-                    scrollable="true" scroll_dir="VER">
-                <!-- Content -->
-            </lv_obj>
-        </lv_obj>
-    </lv_obj>
-</view>
-```
-
-**⚠️ Common Pitfalls:**
-
-1. **Row height constrained by shortest column:**
-   - In `flex_flow="row"`, row height = tallest child
-   - If one column is short, it constrains the entire row
-   - **Solution:** Add `height="100%"` to ALL columns
-
-2. **SIZE_CONTENT in nested grid (not flex):**
-   - Grid layouts don't have the propagation patch that flex has
-   - Nested grid containers with SIZE_CONTENT may need `lv_obj_update_layout()`
-   - **Note:** Nested flex with SIZE_CONTENT now works thanks to our propagation patch
-   - **XML syntax:** Use `height="content"` NOT `height="LV_SIZE_CONTENT"`
-
-3. **Missing flex_grow chain:**
-   - Every level needs proper sizing: `wrapper → row → columns`
-   - Missing `flex_grow` at any level breaks the chain
-   - **Solution:** Trace from root to leaf, ensure each level expands
-
-**Diagnostic tip:** Add temporary `style_bg_color="#ff0000"` to containers to visualize their actual bounds.
-
----
-
-### Grid Layout
-
-Grid arranges children in a **2D table structure** with explicit rows and columns. Best for **structured layouts** where items align both horizontally and vertically.
-
-#### When to Use Grid vs Flex
-
-**Use Grid when:**
-- You need precise 2D alignment (rows AND columns)
-- Items should align across multiple rows
-- You have a table-like structure
-- You need cells that span multiple rows/columns
-
-**Use Flex when:**
-- Single-direction flow (row or column)
-- Wrapping is simple (no cross-alignment needed)
-- Dynamic number of items
-- You need proportional growth (flex_grow)
-
-#### Defining Grid Structure
-
-Grids use **descriptor arrays** to define column/row sizes:
-
-```xml
-<!-- Not directly supported in XML - use C++ or component API -->
-```
-
-**⚠️ IMPORTANT:** Grid definitions require C API or custom component `<api>` tags. LVGL XML doesn't have direct `style_grid_column_dsc_array` attribute support.
-
-**C API approach:**
-```cpp
-// Define grid structure in C++
-static int32_t col_dsc[] = {100, 200, LV_GRID_CONTENT, LV_GRID_TEMPLATE_LAST};
-static int32_t row_dsc[] = {50, 50, 50, LV_GRID_TEMPLATE_LAST};
-
-lv_obj_set_style_grid_column_dsc_array(container, col_dsc, 0);
-lv_obj_set_style_grid_row_dsc_array(container, row_dsc, 0);
-lv_obj_set_layout(container, LV_LAYOUT_GRID);
-```
-
-**Track sizing options:**
-- **Fixed pixels:** `100` (100px wide/tall)
-- **LV_GRID_CONTENT:** Size to fit largest child in that track
-- **LV_GRID_FR(n):** Fractional units (distribute free space proportionally)
-
-**Example:** `{100, LV_GRID_FR(1), LV_GRID_FR(2), LV_GRID_TEMPLATE_LAST}`
-- Column 1: 100px fixed
-- Column 2: 1/3 of remaining space
-- Column 3: 2/3 of remaining space
-
-#### Placing Grid Children
-
-Position children in grid cells using C API:
-
-```cpp
-lv_obj_set_grid_cell(
-    child,
-    LV_GRID_ALIGN_STRETCH,  // col_align
-    0,                       // col_pos (0-indexed)
-    2,                       // col_span (spans 2 columns)
-    LV_GRID_ALIGN_CENTER,   // row_align
-    1,                       // row_pos
-    1                        // row_span
-);
-```
-
-**Cell alignment values:**
-- `LV_GRID_ALIGN_START` - Left/top (default)
-- `LV_GRID_ALIGN_CENTER` - Centered in cell
-- `LV_GRID_ALIGN_END` - Right/bottom
-- `LV_GRID_ALIGN_STRETCH` - Fill entire cell
-
-#### Grid Track Alignment
-
-When free space exists in the grid container, control track distribution:
-
-```cpp
-lv_obj_set_grid_align(
-    container,
-    LV_GRID_ALIGN_SPACE_EVENLY,  // column alignment
-    LV_GRID_ALIGN_CENTER          // row alignment
-);
-```
-
-**Available values:** Same as flex alignment - `START`, `END`, `CENTER`, `SPACE_EVENLY`, `SPACE_AROUND`, `SPACE_BETWEEN`
-
-#### Grid Gaps (Spacing)
-
-```cpp
-lv_obj_set_style_pad_column(container, 10, 0);  // 10px column gap
-lv_obj_set_style_pad_row(container, 5, 0);      // 5px row gap
-```
-
-**XML equivalent (if grid setup done in C):**
-```xml
-<lv_obj style_pad_column="10" style_pad_row="5">
-    <!-- Grid children -->
-</lv_obj>
-```
-
-#### Sub-Grids (Inheritance)
-
-Setting grid descriptors to `NULL` makes a child inherit its parent's grid:
-
-```cpp
-lv_obj_set_grid_dsc_array(child, NULL, NULL);  // Inherit parent grid
-```
-
-**Use case:** Create wrapper objects that span multiple parent cells while their children align to the parent's grid.
-
----
 
 ### Centering Techniques
 
-Based on extensive testing with the home panel status card.
-
-#### Horizontal Centering
-
-**Text/Icons in Labels:**
+#### Horizontal Centering (Text)
 
 ```xml
-<lv_label
-    text="Content"
-    style_text_align="center"
-    width="100%"/>
-```
-
-**Key points:**
-- `style_text_align="center"` centers text within the label
-- `width="100%"` makes label span full container width
-- **Both attributes required** - `style_text_align` alone won't work
-
-**Containers with Flex:**
-
-```xml
-<lv_obj flex_flow="row" style_flex_main_place="center">
-    <lv_label text="Centered content"/>
-</lv_obj>
+<lv_label text="Centered"
+          style_text_align="center"
+          width="100%"/>
+<!-- BOTH attributes required -->
 ```
 
 #### Vertical Centering
 
-**Single-Level:**
-
 ```xml
-<lv_obj flex_flow="column"
+<lv_obj flex_flow="column" height="100%"
         style_flex_main_place="center"
         style_flex_cross_place="center">
-    <lv_label text="Vertically centered"/>
+    <lv_label text="Centered"/>
 </lv_obj>
 ```
 
-**Multi-Level Nested Centering:**
+#### Single Child - Use align, NOT flex
 
 ```xml
-<lv_obj flex_grow="1" height="100%"
-        flex_flow="column"
-        style_flex_main_place="center"
-        style_flex_cross_place="center">
-    <lv_label text="Icon" style_text_align="center" width="100%"/>
-    <lv_label text="Text" style_text_align="center" width="100%"/>
+<!-- ✅ WORKS - No flex, pure positioning -->
+<lv_obj width="100%" height="100%">
+    <lv_obj align="center">Perfectly centered</lv_obj>
+</lv_obj>
+
+<!-- ❌ BROKEN - Flex conflicts with align -->
+<lv_obj flex_flow="column" style_flex_main_place="center">
+    <lv_obj align="center">Off-center!</lv_obj>
 </lv_obj>
 ```
-
-**Key points:**
-- Container needs `height="100%"` to enable vertical centering
-- `style_flex_main_place="center"` centers along main axis (vertical for column)
-- `style_flex_cross_place="center"` centers along cross axis (horizontal for column)
-- Inner labels use `style_text_align="center"` + `width="100%"`
-
-#### Common Centering Combinations
-
-```xml
-<!-- Center children both horizontally and vertically (row layout) -->
-<lv_obj flex_flow="row"
-        style_flex_main_place="center"
-        style_flex_cross_place="center">
-    <!-- Children centered in both directions -->
-</lv_obj>
-
-<!-- Evenly distribute horizontally, center vertically (row layout) -->
-<lv_obj flex_flow="row"
-        style_flex_main_place="space_evenly"
-        style_flex_cross_place="center">
-    <!-- Children spread out horizontally, centered vertically -->
-</lv_obj>
-
-<!-- Stack vertically, center horizontally (column layout) -->
-<lv_obj flex_flow="column"
-        style_flex_main_place="center"
-        style_flex_cross_place="center">
-    <!-- Children stacked vertically, centered horizontally -->
-</lv_obj>
-```
-
-#### Widget Alignment (Alternative to Flex)
-
-For centering children within a parent without flex:
-
-```xml
-<lv_button>
-    <lv_label align="center" text="Click me"/>  <!-- Equivalent to lv_obj_center() -->
-</lv_button>
-```
-
-**Alignment options:** `center`, `top_left`, `top_mid`, `top_right`, `bottom_left`, `bottom_mid`, `bottom_right`, `left_mid`, `right_mid`
-
-#### ⚠️ CRITICAL: Flex Layout Can Conflict with `align="center"`
-
-**Problem:** When a parent has `flex_flow` set, it can interfere with child widget's `align="center"`, causing misalignment.
-
-**Symptoms:**
-- Widget with `align="center"` appears off-center (horizontally or vertically)
-- Centering works in one direction but not the other
-- Changing `style_flex_main_place` values doesn't fix the issue
-
-**Root Cause:** Flex layout positioning overrides absolute `align="center"` positioning.
-
-**Solution:** Remove `flex_flow` from parent container when you have a single child that needs true center alignment.
-
-**Example from motion_panel.xml (jog pad centering):**
-
-```xml
-<!-- ❌ DOESN'T WORK - flex conflicts with align="center" -->
-<lv_obj name="left_column" width="65%" height="100%"
-        flex_flow="column" style_flex_main_place="center">
-    <lv_obj name="jog_pad" align="center">
-        <!-- Jog pad appears off-center -->
-    </lv_obj>
-</lv_obj>
-
-<!-- ✅ WORKS - no flex, pure absolute positioning -->
-<lv_obj name="left_column" width="65%" height="100%"
-        style_bg_opa="0" style_pad_all="0">
-    <!-- NO flex_flow attribute -->
-    <lv_obj name="jog_pad" align="center">
-        <!-- Jog pad perfectly centered both H and V -->
-    </lv_obj>
-</lv_obj>
-```
-
-**When to use each approach:**
-
-**Use flex layout** when:
-- Parent has multiple children to arrange
-- You need responsive distribution (`space_between`, `space_evenly`)
-- Children need `flex_grow` behavior
-
-**Use `align="center"` without flex** when:
-- Parent has a single child
-- You need perfect center alignment in both directions
-- Simple absolute positioning is sufficient
-
-**Reference:** See `ui_xml/motion_panel.xml:50-68` for working example.
-
-### Dividers in Flex Layouts
-
-**Vertical dividers** (in row layouts):
-
-```xml
-<lv_obj flex_flow="row" style_flex_cross_place="center">
-    <lv_obj flex_grow="1">Section 1</lv_obj>
-
-    <!-- Vertical divider -->
-    <lv_obj width="1"
-            style_align_self="stretch"
-            style_bg_color="#text_secondary"
-            style_bg_opa="50%"
-            style_border_width="0"/>
-
-    <lv_obj flex_grow="1">Section 2</lv_obj>
-</lv_obj>
-```
-
-**Key points:**
-- Use `width="1"` for vertical dividers in row layouts
-- Use `style_align_self="stretch"` to extend full height
-- Dividers participate in flex layout as children
-- Set `style_border_width="0"` to avoid border rendering
 
 ---
 
 ## Common UI Patterns
 
-### Vertical Accent Bar (Leading Edge Indicator)
-
-A thin vertical colored bar positioned to the left of text, commonly used in material design to draw attention to important content.
-
-**Visual:**
-```
-| Important message here
-```
-
-**Implementation:**
-
-```xml
-<!-- Container with flex-grow to fill available space -->
-<lv_obj flex_grow="1" style_bg_opa="0%" style_border_width="0" style_pad_all="0"
-        flex_flow="row" style_flex_cross_place="center" style_pad_gap="#accent_bar_gap">
-
-    <!-- Vertical accent bar -->
-    <lv_obj width="#accent_bar_width" height="#accent_bar_height"
-            style_bg_color="#primary_color" style_bg_opa="255"
-            style_radius="2" style_border_width="0"/>
-
-    <!-- Content text (flex-grows to fill remaining width) -->
-    <lv_label flex_grow="1" bind_text="status_text"
-              style_text_color="#text_primary" style_text_font="montserrat_20"/>
-</lv_obj>
-```
-
-**Required Constants in globals.xml:**
-
-```xml
-<px name="accent_bar_width" value="4"/>      <!-- Bar thickness -->
-<px name="accent_bar_height" value="28"/>    <!-- Bar height -->
-<px name="accent_bar_gap" value="18"/>       <!-- Spacing between bar and text -->
-```
-
-**When to use:**
-- Status messages or notifications
-- Section headers that need emphasis
-- Call-to-action text
-- Important state information
-
-**Alternative: Full-height bar using `style_align_self="stretch"`:**
-
-```xml
-<!-- Bar automatically matches container height -->
-<lv_obj width="#accent_bar_width"
-        style_align_self="stretch"
-        style_bg_color="#primary_color"
-        style_bg_opa="255"/>
-```
-
 ### Icon Component
 
-**Font-based icons using Material Design Icons (MDI) with semantic sizing:**
-
-Icons are rendered as font glyphs for efficiency (~50KB total vs ~4.6MB for images).
-All 7200+ MDI icons are available by adding their codepoints to the font.
+Font-based icons using Material Design Icons (MDI):
 
 ```xml
 <!-- Basic icon -->
 <icon src="home" size="lg"/>
 
-<!-- Sized icon with color variant -->
+<!-- With color variant -->
 <icon src="heater" size="lg" variant="accent"/>
 
 <!-- Clickable icon button -->
-<lv_button width="60" height="60"
-           style_bg_opa="0"
-           style_border_width="0"
-           style_shadow_width="0">
+<lv_button width="60" height="60" style_bg_opa="0">
     <icon src="back" size="md" variant="primary"/>
     <event_cb trigger="clicked" callback="back_clicked"/>
 </lv_button>
-
-<!-- Icon with custom color (overrides variant) -->
-<icon src="alert" size="sm" color="#warning_color"/>
-<icon src="check_circle" size="lg" color="#success_color"/>
 ```
 
-**Semantic sizes:** `xs` (16px), `sm` (24px), `md` (32px), `lg` (48px), `xl` (64px)
+**Sizes:** `xs` (16px), `sm` (24px), `md` (32px), `lg` (48px), `xl` (64px)
 
-**Color variants:** `primary`, `secondary`, `accent`, `disabled`, `warning`
+**Variants:** `primary`, `secondary`, `accent`, `disabled`, `warning`
 
-**Available icons:** Defined in `include/ui_icon_codepoints.h`. Common icons include:
-- `home`, `back`, `settings`, `wifi`, `wifi_off`, `wifi_strength_1` through `wifi_strength_4`
-- `heater`, `bed`, `fan`, `thermometer`, `filament`, `printer_3d`
-- `play`, `pause`, `stop`, `check`, `close`, `alert`, `info`
-
-**Benefits:**
-- Clean, semantic API (size="md" vs explicit pixel values)
-- Automatic font size selection based on semantic size
-- Consistent color theming via variants
-- Tiny binary footprint (~50KB for all icons)
-- Easy to add new icons (just add codepoint)
-
-**C++ Setup (main.cpp):**
-```cpp
-#include "ui_icon.h"
-
-// Register the custom icon widget
-ui_icon_register_widget();
-```
-
-**Adding New Icons:**
+**Adding Icons:**
 1. Find icon at [Pictogrammers MDI](https://pictogrammers.com/library/mdi/)
-2. Add codepoint to `include/ui_icon_codepoints.h` (keep alphabetically sorted!)
-3. Add codepoint to `scripts/regen_mdi_fonts.sh`
-4. Regenerate fonts: `./scripts/regen_mdi_fonts.sh`
+2. Add codepoint to `include/ui_icon_codepoints.h`
+3. Add to `scripts/regen_mdi_fonts.sh`
+4. Run `make regen-fonts`
 
-### Reactive Counter with Buttons
+### Semantic Typography
 
-Uses subjects for automatic UI updates:
+**ALWAYS use semantic text components instead of `<lv_label>` with hardcoded fonts.**
 
 ```xml
-<!-- In globals.xml -->
-<subjects>
-    <int name="counter" value="0"/>
-</subjects>
+<!-- ✅ CORRECT - Semantic components -->
+<text_heading text="WiFi"/>
+<text_body text="Connected"/>
+<text_small text="192.168.1.150"/>
 
-<!-- In component -->
-<lv_obj flex_flow="row" style_flex_cross_place="center">
-    <lv_button>
-        <lv_label text="-"/>
-        <subject_increment_event subject="counter" step="-1" min="0"/>
-    </lv_button>
-
-    <lv_label bind_text="counter" bind_text-fmt="%d" flex_grow="1" style_text_align="center"/>
-
-    <lv_button>
-        <lv_label text="+"/>
-        <subject_increment_event subject="counter" step="1" max="100"/>
-    </lv_button>
-</lv_obj>
+<!-- ❌ WRONG - Hardcoded fonts -->
+<lv_label text="WiFi" style_text_font="montserrat_20"/>
 ```
 
-### Tabbed Navigation
+| Component | Purpose | Responsive Sizing |
+|-----------|---------|-------------------|
+| `<text_heading>` | Section titles | 20px / 26px / 28px |
+| `<text_body>` | Primary content | 14px / 18px / 20px |
+| `<text_small>` | Captions | 12px / 16px / 18px |
 
-Show/hide panels based on active tab subject:
+All support `bind_text`, `align`, `style_text_color`, etc.
 
-```xml
-<!-- Tab buttons -->
-<lv_obj flex_flow="row">
-    <lv_button flex_grow="1">
-        <lv_label text="Home"/>
-        <subject_set_int_event subject="active_tab" value="0"/>
-    </lv_button>
-    <lv_button flex_grow="1">
-        <lv_label text="Settings"/>
-        <subject_set_int_event subject="active_tab" value="1"/>
-    </lv_button>
-</lv_obj>
-
-<!-- Home tab content -->
-<lv_obj>
-    <bind_flag_if_eq subject="active_tab" flag="hidden" ref_value="1"/>
-    <!-- Home content -->
-</lv_obj>
-
-<!-- Settings tab content -->
-<lv_obj>
-    <bind_flag_if_eq subject="active_tab" flag="hidden" ref_value="0"/>
-    <!-- Settings content -->
-</lv_obj>
-```
-
-### Status Card with Icon Stacks
-
-Vertical stacking of icon and label, centered (using icon component):
+### Spinner (Loading Indicator)
 
 ```xml
-<lv_obj flex_grow="1" height="100%"
-        flex_flow="column"
-        style_flex_main_place="center"
-        style_flex_cross_place="center">
-    <!-- Icon on top (using component) -->
-    <icon src="mat_heater" size="lg" variant="secondary"/>
+<!-- Large spinner for modals -->
+<spinner size="lg"/>
 
-    <!-- Text below -->
-    <lv_label bind_text="temp_text"
-              style_text_font="montserrat_16"
-              style_text_align="center"
-              width="100%"/>
-</lv_obj>
-```
+<!-- Medium for inline loading -->
+<spinner size="md"/>
 
-**Legacy approach with lv_label:**
-```xml
-<!-- Old pattern (still works, but verbose) -->
-<lv_label text="#icon_temperature"
-          style_text_font="fa_icons_48"
-          style_text_align="center"
-          width="100%"/>
+<!-- Small for status indicators -->
+<spinner size="sm"/>
 ```
 
 ---
 
-## Responsive Design Patterns
+## Responsive Design
 
-Responsive design ensures UI layouts adapt gracefully across different screen sizes using mobile-first principles and flex layouts.
+### Design Token System
 
-### Mobile-First Approach
+HelixScreen uses a responsive spacing system with tokens registered at runtime.
 
-Design for the smallest screen first (480×320), then let flex layout scale up naturally.
+#### Screen Breakpoints
 
-**Screen Size Reference:**
-- **Tiny**: 480×320 (height: 320px) - **Design for this first**
-- **Small**: 800×480 (height: 480px)
-- **Medium**: 1024×600 (height: 600px)
-- **Large**: 1280×720 (height: 720px)
+| Breakpoint | Size | Typical Device |
+|------------|------|----------------|
+| SMALL | ≤480px max dimension | 480x320 |
+| MEDIUM | 481-800px | 800x480 |
+| LARGE | >800px | 1024x600+ |
 
-### Key Principles
+#### Spacing Tokens
 
-#### 1. Use Semantic Constants Only
-
-Never hardcode pixel values in XML. Use constants from `globals.xml`:
+Defined in `globals.xml` with `_small`, `_medium`, `_large` variants:
 
 ```xml
-<!-- globals.xml -->
-<consts>
-    <px name="padding_small" value="8"/>
-    <px name="padding_medium" value="12"/>
-    <px name="padding_large" value="20"/>
-    <px name="gap_tiny" value="4"/>
-    <px name="gap_small" value="8"/>
-    <px name="gap_normal" value="12"/>
-    <px name="gap_large" value="20"/>
-</consts>
-
-<!-- Usage in components -->
-<lv_obj style_pad_all="#padding_medium" style_pad_gap="#gap_small"/>
+<!-- In globals.xml -->
+<px name="space_md_small" value="8"/>
+<px name="space_md_medium" value="10"/>
+<px name="space_md_large" value="12"/>
 ```
 
-#### 2. Flex Layout for Responsiveness
-
-Use flex layouts that adapt to available space:
-
-```xml
-<!-- Container fills available space -->
-<lv_obj flex_grow="1" flex_flow="column">
-    <!-- Rows distribute evenly -->
-    <lv_obj flex_grow="1" flex_flow="row"
-            style_flex_main_place="space_evenly">
-        <!-- Buttons/cells expand to fill -->
-        <lv_button flex_grow="1" height="100%"/>
-        <lv_button flex_grow="1" height="100%"/>
-    </lv_obj>
-</lv_obj>
-```
-
-#### 3. Mobile-First Font Sizes
-
-Choose fonts that work on tiny screens - larger screens get the same compact fonts:
-
-```xml
-<!-- Prefer smaller, readable fonts -->
-<lv_label style_text_font="montserrat_16"/>  <!-- Good for tiny screens -->
-<lv_label style_text_font="montserrat_20"/>  <!-- Still readable on tiny -->
-
-<!-- Avoid large fonts that don't scale down -->
-<lv_label style_text_font="montserrat_28"/>  <!-- Too big for tiny screens -->
-```
-
-### C++ Component Pattern for Dynamic Responsiveness
-
-When XML constants aren't sufficient, use C++ component wrappers for dynamic responsive behavior:
+At runtime, `ui_theme_register_responsive_spacing()` registers the base token:
 
 ```cpp
-// src/ui_responsive_utils.cpp
-lv_coord_t ui_get_responsive_header_height(lv_coord_t screen_height) {
-    if (screen_height >= 600) return 60;      // Large/medium
-    else if (screen_height >= 480) return 48; // Small
-    else return 40;                           // Tiny
-}
-
-void ui_component_header_bar_setup(lv_obj_t* header, lv_obj_t* screen) {
-    lv_coord_t height = ui_get_responsive_header_height(lv_obj_get_height(screen));
-    lv_obj_set_height(header, height);
-}
+// Registers #space_md = 8, 10, or 12 depending on screen size
+lv_xml_register_const(scope, "space_md", appropriate_value);
 ```
 
-**Usage in panels:**
+#### Using Tokens in XML
+
+```xml
+<!-- ✅ CORRECT - Use design tokens -->
+<lv_obj style_pad_all="#space_md" style_pad_gap="#space_sm"/>
+
+<!-- ❌ WRONG - Hardcoded pixels -->
+<lv_obj style_pad_all="12" style_pad_gap="8"/>
+```
+
+#### Available Tokens
+
+| Token | Purpose | Small/Med/Large |
+|-------|---------|-----------------|
+| `#space_xxs` | Tiny gaps | 2/3/4 |
+| `#space_xs` | Extra small | 4/5/6 |
+| `#space_sm` | Small | 6/7/8 |
+| `#space_md` | Standard gaps | 8/10/12 |
+| `#space_lg` | Container padding | 12/16/20 |
+| `#space_xl` | Major sections | 16/20/24 |
+| `#space_2xl` | Toast offsets | 24/32/40 |
+
+#### Runtime Constant Registration
+
+Constants are resolved at parse time. Modify BEFORE creating widgets:
+
 ```cpp
-void ui_panel_motion_setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
-    lv_obj_t* header = lv_obj_find_by_name(panel, "motion_header");
-    if (header) {
-        ui_component_header_bar_setup(header, parent_screen);
-    }
-}
+// Get globals scope
+lv_xml_component_scope_t* scope = lv_xml_component_get_scope("globals");
+
+// Register responsive value
+lv_xml_register_const(scope, "wizard_padding", "12");
+
+// NOW create widget - picks up the constant
+lv_obj_t* wizard = lv_xml_create(parent, "wizard_container", NULL);
 ```
 
-### Testing Responsive Layouts
-
-Test panels at all screen sizes:
-
-```bash
-# Test specific panel at all sizes
-for size in tiny small medium large; do
-  ./build/bin/helix-screen -s $size -p panel-name
-done
-
-# Or use screenshot script for visual comparison
-for size in tiny small medium large; do
-  ./scripts/screenshot.sh helix-screen panel-$size -s $size
-done
-```
-
-### Common Responsive Patterns
-
-#### Equal Distribution Grid
-
-```xml
-<lv_obj flex_flow="row" width="100%" height="100%">
-    <lv_obj flex_grow="1" height="100%" style_pad_all="#padding_small">
-        <!-- Content adapts to available space -->
-    </lv_obj>
-    <lv_obj flex_grow="1" height="100%" style_pad_all="#padding_small">
-        <!-- Content adapts to available space -->
-    </lv_obj>
-</lv_obj>
-```
-
-#### Responsive Button Grid
-
-```xml
-<lv_obj flex_flow="column" style_pad_gap="#gap_small">
-    <lv_obj flex_grow="1" flex_flow="row" style_pad_gap="#gap_small">
-        <lv_button flex_grow="1" height="100%">1</lv_button>
-        <lv_button flex_grow="1" height="100%">2</lv_button>
-        <lv_button flex_grow="1" height="100%">3</lv_button>
-    </lv_obj>
-    <lv_obj flex_grow="1" flex_flow="row" style_pad_gap="#gap_small">
-        <lv_button flex_grow="1" height="100%">4</lv_button>
-        <lv_button flex_grow="1" height="100%">5</lv_button>
-        <lv_button flex_grow="1" height="100%">6</lv_button>
-    </lv_obj>
-</lv_obj>
-```
+**Limitation:** Cannot modify constants after widget creation.
 
 ---
 
@@ -1878,266 +630,146 @@ done
 
 ### Defining Styles
 
-**Global styles** (in globals.xml):
+**CRITICAL:** Inside `<styles>`, do NOT use `style_` prefix!
 
 ```xml
 <styles>
-    <style name="style_button"
-           bg_color="0x111"
-           text_color="0xfff"
-           radius="8"
-           pad_all="12"/>
+    <!-- ✅ CORRECT - No prefix in style definitions -->
+    <style name="style_button" bg_color="0x111" radius="8" pad_all="12"/>
 
-    <style name="style_card"
-           bg_color="0x202020"
-           radius="8"
-           border_width="0"/>
+    <!-- ❌ WRONG - style_ prefix doesn't work here -->
+    <style name="bad_style" style_bg_color="0x111"/>
 </styles>
-```
-
-**Local styles** (in component):
-
-```xml
-<component>
-    <styles>
-        <style name="style_dark" bg_color="0x333"/>
-    </styles>
-
-    <view>
-        <lv_obj>
-            <style name="style_dark"/>
-        </lv_obj>
-    </view>
-</component>
 ```
 
 ### Applying Styles
 
-**By name:**
-
 ```xml
+<!-- By name -->
 <lv_button>
     <style name="style_button"/>
 </lv_button>
-```
 
-**With selector (state-based):**
-
-```xml
+<!-- With state selector -->
 <lv_button>
     <style name="style_base"/>
     <style name="style_pressed" selector="pressed"/>
-    <style name="style_checked" selector="checked"/>
 </lv_button>
+
+<!-- Inline (USE style_ prefix) -->
+<lv_button style_bg_color="0x111" style_radius="8"/>
 ```
 
-**Inline styles:**
+### Part Selectors
+
+Many widgets have styleable parts:
 
 ```xml
-<lv_button style_bg_color="0x111" style_radius="8" style_pad_all="12"/>
-```
-
-### Part Selectors for Inline Styles
-
-Many widgets have multiple styleable parts. Use the `:part` suffix on inline style attributes to target specific parts:
-
-| Part | Description | Common Widgets |
-|------|-------------|----------------|
-| `main` | Background/container | All widgets |
-| `indicator` | Foreground element | `lv_slider`, `lv_bar`, `lv_arc`, `lv_spinner` |
-| `knob` | Draggable handle | `lv_slider`, `lv_arc` |
-| `items` | List items | `lv_dropdown`, `lv_roller` |
-| `selected` | Selected item | `lv_dropdown`, `lv_roller` |
-| `cursor` | Text cursor | `lv_textarea` |
-| `scrollbar` | Scrollbar | Scrollable containers |
-
-**Syntax:** `style_<property>:<part>="<value>"`
-
-**Examples:**
-
-```xml
-<!-- Hide the background track of a spinner (only show spinning arc) -->
-<lv_spinner width="64" height="64"
-            style_arc_color="#primary_color"
-            style_arc_opa:main="0"/>
-
-<!-- Style slider knob separately from track -->
+<!-- Style slider knob separately -->
 <lv_slider style_bg_color="#333333"
            style_bg_color:indicator="#primary_color"
            style_bg_color:knob="#ffffff"/>
 
-<!-- Style arc background vs foreground -->
-<lv_arc style_arc_width="8"
-        style_arc_color:main="#card_bg"
-        style_arc_color:indicator="#success_color"/>
+<!-- Hide spinner background track -->
+<lv_spinner style_arc_opa:main="0"/>
 ```
 
-**Note:** Without a part suffix, styles apply to the widget's default part (usually `main`, but `indicator` for arc-based widgets like `lv_spinner`).
+| Part | Widgets |
+|------|---------|
+| `main` | All (background) |
+| `indicator` | slider, bar, arc, spinner |
+| `knob` | slider, arc |
+| `items` | dropdown, roller |
+| `scrollbar` | Scrollable containers |
 
-### Conditional Style Binding
+### Theme Colors (C++ API)
 
-Dynamically apply styles based on subject value:
+```cpp
+// ✅ For theme tokens - handles light/dark mode:
+lv_color_t bg = ui_theme_get_color("card_bg");
+lv_color_t ok = ui_theme_get_color("success_color");
 
-```xml
-<lv_obj>
-    <bind_style name="style_dark" subject="dark_theme" ref_value="1"/>
-</lv_obj>
+// ✅ For literal hex strings:
+lv_color_t custom = ui_theme_parse_color("#FF4444");
+
+// ❌ WRONG - parse_color doesn't look up tokens:
+// lv_color_t bg = ui_theme_parse_color("#card_bg");  // Garbage!
 ```
-
-### Typography - Semantic Text Components
-
-**⚠️ CRITICAL: Always use semantic text components instead of `<lv_label>` with hardcoded fonts.**
-
-HelixScreen provides three semantic text components that automatically apply responsive typography:
-
-| Component | Purpose | Font Size (small/medium/large breakpoints) |
-|-----------|---------|-------------------------------------------|
-| `<text_heading>` | Section titles, headers | 20px / 26px / 28px |
-| `<text_body>` | Primary content text | 14px / 18px / 20px |
-| `<text_small>` | Secondary info, captions | 12px / 16px / 18px |
-
-**Usage:**
-
-```xml
-<!-- ✅ CORRECT - Use semantic components -->
-<text_heading text="WiFi"/>
-<text_body text="Network connected"/>
-<text_small text="192.168.1.150"/>
-
-<!-- ❌ WRONG - Hardcoded font sizes -->
-<lv_label text="WiFi" style_text_font="montserrat_20"/>
-```
-
-**All standard `lv_label` attributes work:**
-
-```xml
-<text_heading bind_text="title_subject" long_mode="dot"/>
-<text_body text="Static text" align="center"/>
-<text_small bind_text="status" style_text_color="#text_secondary"/>
-```
-
-**Exceptions (keep as `<lv_label>`):**
-- FontAwesome icons: `style_text_font="fa_icons_24"`
-- Large numeric displays: `style_text_font="montserrat_28"` (future: `<text_display>`)
-
-**Why semantic components?**
-1. **Responsive** - Font sizes adapt to screen breakpoints automatically
-2. **Consistent** - Ensures visual hierarchy (heading > body > small)
-3. **Fail-fast** - App crashes immediately if fonts aren't registered (no silent fallbacks)
-4. **Maintainable** - Change typography in one place (`globals.xml`)
-
-**Adding a new font:**
-1. Enable in `lv_conf.h`: `#define LV_FONT_MONTSERRAT_XX 1`
-2. Register in `src/main.cpp`: `lv_xml_register_font(NULL, "montserrat_XX", &lv_font_montserrat_XX);`
-3. Both steps required - fonts must be compiled AND registered!
 
 ---
 
 ## Event Handling
 
-### Custom Callback Events - Use `<lv_event-call_function>` Element
+### The Mandatory Pattern
 
-**IMPORTANT DISCREPANCY**: The LVGL online documentation references `<event_cb>`, but the actual LVGL 9 source code uses `<lv_event-call_function>` as the element name (see `lvgl/src/others/xml/lv_xml.c:113`). Use `<lv_event-call_function>` in your XML.
+Events MUST be declared in XML and registered in C++. **NEVER use `lv_obj_add_event_cb()`**.
 
-**⚠️ TODO**: Future refactor may be needed if LVGL standardizes on the `<event_cb>` name.
+**Step 1: Declare in XML**
 
-**Correct approach:**
-
-**Step 1: Register callback in C code (BEFORE loading XML):**
-```c
-// Register callback with LVGL XML system
-lv_xml_register_event_cb(NULL, "my_handler", my_handler_function);
-
-// Standard LVGL event handler signature
-static void my_handler_function(lv_event_t* e) {
-    const char* user_data = lv_event_get_user_data(e);
-    // Handle event
-    LV_LOG_USER("Button clicked!");
-}
-```
-
-**Step 2: Add event callback in XML using correct element name:**
 ```xml
 <lv_button name="my_button">
-    <lv_label text="Click me"/>
-    <!-- Use lv_event-call_function, NOT event_cb -->
-    <lv_event-call_function trigger="clicked" callback="my_handler" user_data="optional_data"/>
+    <event_cb trigger="clicked" callback="on_my_button_clicked"/>
+    <text_body text="Click Me"/>
 </lv_button>
+
+<!-- Multiple events -->
+<lv_slider name="my_slider">
+    <event_cb trigger="value_changed" callback="on_slider_changed"/>
+    <event_cb trigger="released" callback="on_slider_released"/>
+</lv_slider>
 ```
 
-**Official Documentation:** https://docs.lvgl.io/master/details/xml/ui_elements/events.html (Note: docs use `<event_cb>` but source code uses `<lv_event-call_function>`)
+**Step 2: Register in init_subjects() (BEFORE XML creation)**
 
-### XML Event Elements - Supported Types
-
-#### Event Triggers
-
-Common trigger values:
-- `"clicked"` - Button click (press + release)
-- `"pressed"` - Button pressed down
-- `"released"` - Button released
-- `"long_pressed"` - Long press detected
-- `"long_pressed_repeat"` - Held down (repeats)
-- `"all"` - Any event
-
-**Example with user data:**
-```xml
-<lv_button>
-    <lv_label text="Click"/>
-    <event_cb callback="my_handler" trigger="clicked" user_data="button_1"/>
-</lv_button>
-```
-
-**C Code Registration (MUST happen BEFORE loading XML):**
-```c
-// Register callback with LVGL XML system
-lv_xml_register_event_cb(NULL, "my_handler", my_handler_function);
-
-// Standard LVGL event handler signature
-static void my_handler_function(lv_event_t* e) {
-    const char* user_data = lv_event_get_user_data(e);
-
-    // Handle event
-    LV_LOG_USER("Button clicked: %s", user_data);
+```cpp
+void MyPanel::init_subjects() {
+    // Register callbacks BEFORE XML is created
+    lv_xml_register_event_cb(nullptr, "on_my_button_clicked", on_click_cb);
+    lv_xml_register_event_cb(nullptr, "on_slider_changed", on_slider_cb);
 }
 ```
 
-#### Subject Manipulation Events
+**Step 3: Implement callback**
 
-**Set Subject Value:**
-```xml
-<lv_button>
-    <subject_set_int_event trigger="clicked" subject="counter" value="0"/>
-</lv_button>
+```cpp
+static void on_click_cb(lv_event_t* e) {
+    spdlog::info("Button clicked!");
+}
+
+// Or use lambda
+lv_xml_register_event_cb(nullptr, "on_slider_changed", [](lv_event_t* e) {
+    lv_obj_t* slider = lv_event_get_current_target(e);
+    int value = lv_slider_get_value(slider);
+    spdlog::info("Slider: {}", value);
+});
 ```
 
-**Increment/Decrement Subject:**
-```xml
-<lv_button>
-    <lv_label text="+"/>
-    <subject_increment_event trigger="clicked" subject="volume" step="1" max="100"/>
-</lv_button>
+### Common Triggers
 
-<lv_button>
-    <lv_label text="-"/>
-    <subject_increment_event trigger="clicked" subject="volume" step="-1" min="0"/>
-</lv_button>
-```
+| Trigger | When Fired |
+|---------|------------|
+| `clicked` | Button click (press + release) |
+| `value_changed` | Slider, dropdown, switch |
+| `pressed` | Object pressed down |
+| `released` | Object released |
+| `long_pressed` | Long press detected |
+| `focused` | Object gains focus |
+| `ready` | Text area complete |
 
-#### Screen Navigation Events
+### ❌ WRONG vs ✅ RIGHT
 
-**Load Existing Screen:**
-```xml
-<lv_button>
-    <screen_load_event trigger="clicked" screen="settings_screen"
-                       anim_type="fade_in" duration="300"/>
-</lv_button>
-```
+```cpp
+// ❌ WRONG - Imperative event wiring
+void MyPanel::setup(lv_obj_t* panel) {
+    lv_obj_t* btn = lv_obj_find_by_name(panel, "my_button");
+    lv_obj_add_event_cb(btn, on_click, LV_EVENT_CLICKED, this);  // BAD!
+}
 
-**Create Screen Dynamically:**
-```xml
-<lv_button>
-    <screen_create_event trigger="clicked" screen="dialog_screen"/>
-</lv_button>
+// ✅ RIGHT - Declarative in XML + registered callback
+void MyPanel::init_subjects() {
+    lv_xml_register_event_cb(nullptr, "on_my_button_clicked", on_click_cb);
+}
+// Plus <event_cb> in XML
 ```
 
 ---
@@ -2146,879 +778,300 @@ static void my_handler_function(lv_event_t* e) {
 
 ### Step-by-Step Pattern
 
-#### Step 1: Define XML Layout
+#### 1. Create XML Layout
 
-Create component in `ui_xml/component_name.xml`:
+`ui_xml/example_panel.xml`:
 
 ```xml
 <component>
     <view extends="lv_obj" width="100%" height="100%" style_bg_color="#panel_bg">
-        <!-- Status label bound to subject -->
-        <lv_label bind_text="status_message" style_text_font="montserrat_20"/>
+        <!-- Bound to subject -->
+        <text_body bind_text="example_status"/>
 
-        <!-- Temperature label bound to subject -->
-        <lv_label bind_text="temp_value" style_text_font="montserrat_28"/>
+        <!-- Conditional visibility -->
+        <lv_obj name="loading_view">
+            <bind_flag_if_eq subject="panel_state" flag="hidden" ref_value="1"/>
+            <spinner size="lg"/>
+        </lv_obj>
+
+        <lv_obj name="content_view">
+            <bind_flag_if_not_eq subject="panel_state" flag="hidden" ref_value="1"/>
+            <lv_button>
+                <event_cb trigger="clicked" callback="on_action_clicked"/>
+                <text_body text="Action"/>
+            </lv_button>
+        </lv_obj>
     </view>
 </component>
 ```
 
-#### Step 2: Create C++ Wrapper
+#### 2. Create C++ Wrapper
 
-**Header** (`include/ui_component_name.h`):
+`include/example_panel.h`:
 
 ```cpp
 #pragma once
 #include "lvgl/lvgl.h"
 
-// Initialize subjects (call before creating XML)
-void ui_component_name_init_subjects();
-
-// Create component with reactive data binding
-lv_obj_t* ui_component_name_create(lv_obj_t* parent);
-
-// Update component state
-void ui_component_name_update(const char* status, int temp);
+class ExamplePanel {
+public:
+    static void init_subjects();
+    static lv_obj_t* create(lv_obj_t* parent);
+    static void update_status(const char* msg);
+    static void show_loading();
+    static void show_content();
+};
 ```
 
-**Implementation** (`src/ui_component_name.cpp`):
+`src/example_panel.cpp`:
 
 ```cpp
-#include "ui_component_name.h"
-#include <cstdio>
-#include <cstring>
+#include "example_panel.h"
+#include <spdlog/spdlog.h>
 
-static lv_obj_t* component = nullptr;
-
-// Subjects for reactive binding
 static lv_subject_t status_subject;
-static lv_subject_t temp_subject;
+static lv_subject_t state_subject;
 static char status_buffer[128];
-static char temp_buffer[32];
 
-void ui_component_name_init_subjects() {
-    // Initialize subjects with default values
+void ExamplePanel::init_subjects() {
+    // Initialize subjects
     lv_subject_init_string(&status_subject, status_buffer, NULL,
-                           sizeof(status_buffer), "Initial status");
-    lv_subject_init_string(&temp_subject, temp_buffer, NULL,
-                           sizeof(temp_buffer), "25 °C");
+                           sizeof(status_buffer), "Ready");
+    lv_subject_init_int(&state_subject, 0);
 
-    // Register subjects globally (NULL = global scope)
-    lv_xml_register_subject(NULL, "status_message", &status_subject);
-    lv_xml_register_subject(NULL, "temp_value", &temp_subject);
+    // Register subjects
+    lv_xml_register_subject(NULL, "example_status", &status_subject);
+    lv_xml_register_subject(NULL, "panel_state", &state_subject);
+
+    // Register event callbacks
+    lv_xml_register_event_cb(nullptr, "on_action_clicked", [](lv_event_t* e) {
+        spdlog::info("Action clicked!");
+    });
 }
 
-lv_obj_t* ui_component_name_create(lv_obj_t* parent) {
-    // Create XML component (automatically binds to registered subjects)
-    component = (lv_obj_t*)lv_xml_create(parent, "component_name", nullptr);
-    return component;
+lv_obj_t* ExamplePanel::create(lv_obj_t* parent) {
+    return lv_xml_create(parent, "example_panel", nullptr);
 }
 
-void ui_component_name_update(const char* status, int temp) {
-    // Update subjects - all bound widgets update automatically
-    if (status) {
-        lv_subject_copy_string(&status_subject, status);
-    }
+void ExamplePanel::update_status(const char* msg) {
+    lv_subject_copy_string(&status_subject, msg);
+}
 
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d °C", temp);
-    lv_subject_copy_string(&temp_subject, buf);
+void ExamplePanel::show_loading() {
+    lv_subject_set_int(&state_subject, 0);
+}
+
+void ExamplePanel::show_content() {
+    lv_subject_set_int(&state_subject, 1);
 }
 ```
 
-#### Step 3: Register and Use
+#### 3. Register and Use
 
 In `main.cpp`:
 
 ```cpp
-// 1. Register fonts, images (from ui_fonts.h, ui_images.h)
-lv_xml_register_font(NULL, "montserrat_20", &lv_font_montserrat_20);
+// 1. Register component
+lv_xml_register_component_from_file("A:ui_xml/example_panel.xml");
 
-// 2. Register XML components (globals FIRST)
-lv_xml_component_register_from_file("A:/path/to/ui_xml/globals.xml");
-lv_xml_component_register_from_file("A:/path/to/ui_xml/component_name.xml");
+// 2. Initialize subjects (BEFORE creating XML)
+ExamplePanel::init_subjects();
 
-// 3. Initialize subjects (BEFORE creating XML)
-ui_component_name_init_subjects();
+// 3. Create panel
+lv_obj_t* panel = ExamplePanel::create(screen);
 
-// 4. Create component (bindings happen automatically)
-lv_obj_t* panel = ui_component_name_create(screen);
-
-// 5. Update component state (triggers reactive updates)
-ui_component_name_update("Printing...", 210);
-```
-
-### Working Example: Home Panel
-
-**Files:**
-- `ui_xml/home_panel.xml` - Layout with cards, status text, printer image
-- `src/ui_panel_home.cpp` - Subject management and update API
-- `include/ui_panel_home.h` - Public interface
-
-**Subjects:**
-- `status_text` - Status message (string)
-- `temp_text` - Temperature display (string)
-
-**XML Bindings:**
-```xml
-<lv_label bind_text="status_text" style_text_color="#text_primary"/>
-<lv_label bind_text="temp_text" style_text_font="montserrat_16"/>
-```
-
-**Update API:**
-```cpp
-ui_panel_home_init_subjects();           // Call once during startup
-ui_panel_home_update("Ready", 25);       // Updates both labels instantly
+// 4. Update (triggers reactive updates)
+ExamplePanel::update_status("Loading...");
+ExamplePanel::show_loading();
 ```
 
 ---
 
 ## Best Practices
 
-### Development Guidelines
-
-1. **One subject per updatable value** - Don't share subjects across unrelated widgets
-2. **Initialize → Register → Create** - Follow strict ordering for subjects
-3. **Use const references** - Pass string data efficiently to update functions
-4. **Descriptive subject names** - `"printer_status"` not `"data1"`
-5. **Component-local wrappers** - Each XML component gets its own C++ wrapper
-6. **Name-based widget lookup** - Use `lv_obj_find_by_name()` instead of child indices
-7. **Global constants** - Define all dimensions, colors, and sizes in `globals.xml`
-8. **Avoid magic numbers** - Use named constants like `#padding_normal` instead of `"20"`
-
-### Widget Lookup: ALWAYS Use Names
-
-**✓ CORRECT - Name-based lookup (resilient to layout changes):**
+### Widget Lookup - Use Names
 
 ```xml
-<lv_label name="temperature_display" bind_text="temp_text"/>
+<lv_label name="temperature_display" bind_text="temp"/>
 ```
 
 ```cpp
-lv_obj_t* widget = lv_obj_find_by_name(parent, "temperature_display");
+// ✅ CORRECT - Name-based (resilient)
+lv_obj_t* w = lv_obj_find_by_name(parent, "temperature_display");
+
+// ❌ WRONG - Index-based (fragile)
+lv_obj_t* w = lv_obj_get_child(parent, 3);
 ```
 
-**✗ WRONG - Index-based lookup (fragile, breaks when layout changes):**
-
-```cpp
-lv_obj_t* widget = lv_obj_get_child(parent, 3);  // DON'T DO THIS
-```
-
-**Benefits:**
-- Layout changes (reordering, adding/removing widgets) won't break code
-- Self-documenting - widget name shows intent
-- Works seamlessly with XML `name` attributes
-
-### Component Instantiation: Always Add Explicit Names
-
-**CRITICAL:** When instantiating XML components, always add explicit `name` attributes to make them findable with `lv_obj_find_by_name()`.
-
-**✗ WRONG - Component tag without name (not findable):**
+### Component Names Required
 
 ```xml
-<!-- app_layout.xml -->
-<lv_obj>
-  <controls_panel/>  <!-- Component tag without name attribute -->
-</lv_obj>
+<!-- ❌ WRONG - Component not findable -->
+<controls_panel/>
+
+<!-- ✅ CORRECT - Explicit name -->
+<controls_panel name="controls_panel"/>
 ```
 
-```cpp
-// This will FAIL - returns NULL
-lv_obj_t* controls = lv_obj_find_by_name(parent, "controls_panel");
-```
+### Banned Patterns
 
-**✓ CORRECT - Component tag with explicit name:**
+| Pattern | Why Banned | Alternative |
+|---------|------------|-------------|
+| `lv_obj_add_event_cb()` | Tight coupling | XML `<event_cb>` |
+| `lv_label_set_text()` | Bypasses binding | `bind_text` subject |
+| `lv_obj_add_flag(HIDDEN)` | Visibility is UI | `<bind_flag_if_eq>` |
+| `lv_obj_set_style_*()` | Styling in XML | Design tokens |
 
-```xml
-<!-- app_layout.xml -->
-<lv_obj name="content_area">
-  <controls_panel name="controls_panel"/>  <!-- Explicit name attribute -->
-  <home_panel name="home_panel"/>
-  <settings_panel name="settings_panel"/>
-</lv_obj>
-```
+### Acceptable Exceptions
 
-```cpp
-// This WORKS - finds the component
-lv_obj_t* controls = lv_obj_find_by_name(parent, "controls_panel");
-if (controls) {
-    lv_obj_clear_flag(controls, LV_OBJ_FLAG_HIDDEN);
-}
-```
-
-**Why this matters:**
-- Component names defined in `<view name="...">` inside the component definition are **not** automatically applied to component instantiation tags
-- Without explicit names, components cannot be found with `lv_obj_find_by_name()` from other panels
-- This pattern enables clean panel-to-panel communication (e.g., motion panel showing controls panel when back button is pressed)
-
-**When to use:**
-- ✓ Always add names to component instantiation tags in layout files
-- ✓ Use names when components need to be shown/hidden from other panels
-- ✓ Use names when components need to be referenced in C++ code
-
-### Subject Management
-
-**String subject buffers must be persistent:**
-
-```cpp
-// ✓ CORRECT - Static or heap-allocated
-static char status_buffer[128];
-lv_subject_init_string(&subject, status_buffer, NULL, sizeof(status_buffer), "Initial");
-
-// ✗ WRONG - Stack-allocated (will be destroyed)
-char buffer[128];
-lv_subject_init_string(&subject, buffer, ...);
-```
-
-### Theme System
-
-**Centralize all UI constants:**
-
-```xml
-<!-- In globals.xml -->
-<consts>
-    <color name="primary_color" value="0xff4444"/>
-    <px name="padding_normal" value="20"/>
-    <px name="accent_bar_width" value="4"/>
-</consts>
-```
-
-**Benefits:**
-- Single source of truth for colors and dimensions
-- Easy to adjust theme project-wide
-- Consistency across all components
-
-### Auto-Generated Icon Constants
-
-FontAwesome icons are auto-generated to avoid UTF-8 encoding issues:
-
-```bash
-# Regenerate after adding icons to ui_fonts.h
-python3 scripts/generate-icon-consts.py
-```
-
-The script reads icon definitions from `include/ui_fonts.h` and writes UTF-8 byte sequences to `globals.xml`.
-
-**Usage in XML:**
-```xml
-<lv_label text="#icon_home" style_text_font="fa_icons_64"/>
-```
+1. `LV_EVENT_DELETE` cleanup
+2. Widget pool recycling (virtual scroll)
+3. Chart data points
+4. Animations
+5. One-time `setup()` widget lookup
 
 ---
 
 ## Troubleshooting
 
-### Critical XML Attribute Gotchas ⚠️
+### Critical Gotchas
 
-**IMPORTANT:** LVGL 9 XML parser has several common pitfalls that cause silent failures:
-
-#### 1. zoom Attribute Doesn't Exist
-
-**Problem:** Using `zoom="..."` on `lv_image` elements has no effect
-```xml
-<!-- ❌ WRONG - zoom doesn't exist in LVGL 9 -->
-<lv_image src="my_icon" zoom="128"/>
-```
-
-**Solution:** Use `scale_x` and `scale_y` where 256 = 100%
-```xml
-<!-- ✅ CORRECT - scale_x and scale_y (256 = 100%) -->
-<lv_image src="my_icon" scale_x="128" scale_y="128"/>  <!-- 50% size -->
-<lv_image src="my_icon" scale_x="512" scale_y="512"/>  <!-- 200% size -->
-```
-
-**Valid lv_image Attributes:**
-- `src` - image source
-- `inner_align` - alignment within widget bounds
-- `rotation` - rotation angle (0-3600, in 0.1 degree units)
-- `scale_x`, `scale_y` - scaling (256 = 100%)
-- `pivot` - rotation pivot point
-
-Source: `/lvgl/src/others/xml/parsers/lv_xml_image_parser.c:63-72`
-
-#### 2. Must Use Full Words, Not Abbreviations
-
-**Problem:** Using `style_img_recolor` instead of `style_image_recolor`
-```xml
-<!-- ❌ WRONG - 'img' abbreviation not recognized -->
-<lv_image src="icon" style_img_recolor="#ff0000" style_img_recolor_opa="255"/>
-```
-
-**Solution:** Always use full words in XML attribute names
-```xml
-<!-- ✅ CORRECT - full word 'image' required -->
-<lv_image src="icon" style_image_recolor="#ff0000" style_image_recolor_opa="255"/>
-```
-
-**Common Mistakes:**
-- `style_img_recolor` → `style_image_recolor` ✅
-- `style_txt_color` → `style_text_color` ✅
-- `style_bg_color` → `style_bg_color` ✅ (already correct)
-
-Source: `/lvgl/src/others/xml/lv_xml_style.c:240-241`
-
-#### 3. Silent Failures
-
-**Problem:** Unknown attributes are silently ignored without warnings
-
-**Solution:** When XML attributes don't work:
-1. Check parser source code in `/lvgl/src/others/xml/parsers/`
-2. Verify exact attribute names (no abbreviations)
-3. Check if attribute exists for that widget type
-4. Test with known-working examples first
-
-#### 4. Style Definitions vs Widget Attributes - NO `style_` Prefix in `<styles>`!
-
-**Problem:** Using `style_` prefix inside `<styles>` definitions silently fails
-```xml
-<!-- ❌ WRONG - style_ prefix doesn't work in <styles> section -->
-<styles>
-    <style name="my_style" style_bg_color="#ff0000" style_border_width="4"/>
-</styles>
-```
-
-**Solution:** Use bare property names inside `<styles>`, save `style_` prefix for widget attributes
-```xml
-<!-- ✅ CORRECT - no prefix in style definitions -->
-<styles>
-    <style name="my_style" bg_color="#ff0000" border_width="4"/>
-</styles>
-
-<!-- ✅ CORRECT - style_ prefix on widget inline attributes -->
-<view style_bg_color="#card_bg" style_border_width="0">
-    <style name="my_style" selector="checked"/>
-</view>
-```
-
-**Why:** Style definitions populate `lv_style_t` objects using property enums like `LV_STYLE_BG_COLOR`. Widget inline attributes call `lv_obj_set_style_*()` functions which have the "style" in their name.
-
-### Common Issues
-
-#### ⚠️ SIZE_CONTENT: XML vs C++ Syntax
-
-**CRITICAL:** In XML, use `"content"`, NOT `"LV_SIZE_CONTENT"`.
+#### 1. SIZE_CONTENT Syntax
 
 ```xml
 <!-- ✅ CORRECT -->
 <lv_obj width="content" height="content"/>
 
 <!-- ❌ WRONG - Parses as 0! -->
-<lv_obj width="LV_SIZE_CONTENT" height="LV_SIZE_CONTENT"/>
+<lv_obj width="LV_SIZE_CONTENT"/>
 ```
 
-**Why:** The XML parser recognizes the string `"content"` and converts it to the `LV_SIZE_CONTENT` constant. Using `"LV_SIZE_CONTENT"` directly in XML fails to parse correctly.
-
-**In C++ code:** Use the constant `LV_SIZE_CONTENT`:
-```cpp
-lv_obj_set_width(obj, LV_SIZE_CONTENT);  // ✅ Correct in C++
-```
-
-**When SIZE_CONTENT Works Well:**
+#### 2. No zoom Attribute
 
 ```xml
-<!-- ✅ EXCELLENT - Flex container auto-sizes to children -->
-<lv_obj flex_flow="row" width="content" height="content"
-        style_pad_all="#padding_small">
-    <lv_button>Action</lv_button>
-    <lv_button>Cancel</lv_button>
-</lv_obj>
+<!-- ❌ WRONG - zoom doesn't exist -->
+<lv_image src="icon" zoom="128"/>
 
-<!-- ✅ GOOD - Label sizes to dynamic text -->
-<lv_label text="$status_message" width="content" height="content"/>
-
-<!-- ✅ GOOD - Vertical stack sizes to content -->
-<lv_obj flex_flow="column" width="100%" height="content">
-    <!-- Dynamic children added in C++ -->
-</lv_obj>
+<!-- ✅ CORRECT - use scale (256 = 100%) -->
+<lv_image src="icon" scale_x="128" scale_y="128"/>
 ```
 
-**For complex layouts:** Call `lv_obj_update_layout()` after XML creation to ensure correct sizing:
-
-```cpp
-lv_obj_t* panel = lv_xml_create(parent, "my_panel", NULL);
-lv_obj_update_layout(panel);  // Ensures SIZE_CONTENT calculates correctly
-```
-
-See **docs/LV_SIZE_CONTENT_GUIDE.md** for complete technical details.
-
-**When to Use Explicit Dimensions:**
+#### 3. Full Words, Not Abbreviations
 
 ```xml
-<!-- ✓ Fixed-size containers (nav bar, headers) -->
-<lv_obj width="#nav_width" height="100%"/>
+<!-- ❌ WRONG -->
+<lv_image style_img_recolor="#ff0000"/>
 
-<!-- ✓ Grid layouts requiring precise cell sizing -->
-<lv_obj width="200" height="150"/>
-
-<!-- ✓ Percentage-based responsive layouts -->
-<lv_obj width="33%" height="100%"/>
+<!-- ✅ CORRECT -->
+<lv_image style_image_recolor="#ff0000"/>
 ```
 
-**Best Practices:**
-
-1. **Use `"content"` freely in XML** (NOT `"LV_SIZE_CONTENT"`) - Our application ensures layout updates at strategic points
-
-2. **For C++ dynamic creation:** ALWAYS call `lv_obj_update_layout()` after creating widgets
-   ```cpp
-   lv_obj_t* container = lv_xml_create(parent, "component", NULL);
-   lv_obj_update_layout(container);  // CRITICAL - ensures SIZE_CONTENT calculates
-   int32_t width = lv_obj_get_width(container);  // Now accurate
-   ```
-
-3. **Troubleshooting layout issues:** If you encounter sizing problems (0x0, collapsed, invisible):
-   - First check: Are you using `"content"` in XML (not `"LV_SIZE_CONTENT"`)?
-   - Verify `lv_obj_update_layout()` has been called after creation
-   - Check test_size_content.cpp for diagnostic patterns
-
-4. **Prefer semantic constants** for explicit dimensions:
-   ```xml
-   <!-- ✅ Use globals.xml constants -->
-   <lv_obj width="#nav_width" height="#button_height" style_bg_color="#panel_bg"/>
-
-   <!-- ❌ Avoid magic numbers -->
-   <lv_obj width="102" height="48" style_bg_color="0x1a1a1a"/>
-   ```
-
-5. **Strategic layout update locations** in our codebase:
-   - Main UI: main.cpp:671 (after app_layout creation)
-   - Print select: ui_panel_print_select.cpp:515, 675
-   - Print status: ui_panel_print_status.cpp:326
-   - Step progress: ui_step_progress.cpp:300, 343
-
-#### Dropdown Options: Use `&#10;` XML Entity for Newlines
-
-**CRITICAL:** In XML attributes, `\n` is NOT interpreted as a newline - it's treated as literal backslash + 'n' characters. Use the XML character entity `&#10;` instead.
+#### 4. Dropdown Newlines
 
 ```xml
-<!-- ✅ CORRECT - Options appear as separate items -->
-<lv_dropdown options="Option 1&#10;Option 2&#10;Option 3"/>
+<!-- ✅ CORRECT - XML entity -->
+<lv_dropdown options="A&#10;B&#10;C"/>
 
-<!-- ❌ WRONG - Options appear as "Option 1\nOption 2\nOption 3" on one line -->
-<lv_dropdown options="Option 1\nOption 2\nOption 3"/>
-```
-
-**Why:** XML attribute values don't process C-style escape sequences. The `\n` sequence is passed verbatim to LVGL, which displays it as literal characters. The XML character entity `&#10;` (decimal 10 = ASCII newline) is decoded by the XML parser into an actual newline character before reaching LVGL.
-
-**Common XML Character Entities:**
-| Entity | Character | Decimal |
-|--------|-----------|---------|
-| `&#10;` | Newline (LF) | 10 |
-| `&#13;` | Carriage Return (CR) | 13 |
-| `&#9;` | Tab | 9 |
-| `&amp;` | & | 38 |
-| `&lt;` | < | 60 |
-| `&gt;` | > | 62 |
-| `&quot;` | " | 34 |
-
-**In C++:** When setting options programmatically, use `\n` normally:
-```cpp
-lv_dropdown_set_options(dropdown, "Option 1\nOption 2\nOption 3");  // ✅ Works in C++
-```
-
-#### Custom-Drawn Widgets in Hidden/Lazy Panels
-
-**Problem:** TinyGL or custom-drawn widgets (bed mesh, G-code viewer) don't render on first view when the panel uses lazy initialization with `lv_xml_create()` → `setup()` → `add_flag(HIDDEN)` → `push_overlay()`.
-
-**Root Cause:** When a panel is created while hidden, LVGL doesn't calculate layout until the panel becomes visible. Custom draw callbacks that check dimensions return early on 0x0, and `lv_obj_invalidate()` on hidden widgets doesn't schedule proper redraws.
-
-**Symptom:** Widget shows "No data" or blank on first click, but renders correctly on second click (after layout has been calculated).
-
-**Solution - Deferred Render Pattern:**
-
-```cpp
-// In widget data struct
-typedef struct {
-    // ... other fields ...
-    bool had_valid_size;      // Has widget ever had non-zero dimensions
-    bool mesh_data_pending;   // Data was set before widget had valid size
-} my_widget_data_t;
-
-// In set_data function
-bool my_widget_set_data(lv_obj_t* widget, /* data params */) {
-    my_widget_data_t* data = (my_widget_data_t*)lv_obj_get_user_data(widget);
-
-    // Store data in renderer...
-
-    // Check if widget has valid dimensions yet
-    int width = lv_obj_get_width(widget);
-    int height = lv_obj_get_height(widget);
-
-    if (width <= 0 || height <= 0) {
-        // Defer rendering until SIZE_CHANGED fires with valid dimensions
-        data->mesh_data_pending = true;
-        spdlog::info("Data loaded (deferred - widget {}x{})", width, height);
-    } else {
-        data->mesh_data_pending = false;
-    }
-
-    lv_obj_invalidate(widget);  // Will succeed if valid size, otherwise deferred
-    return true;
-}
-
-// In SIZE_CHANGED callback
-static void my_widget_size_changed_cb(lv_event_t* e) {
-    lv_obj_t* obj = lv_event_get_target_obj(e);
-    my_widget_data_t* data = (my_widget_data_t*)lv_obj_get_user_data(obj);
-
-    int width = lv_obj_get_width(obj);
-    int height = lv_obj_get_height(obj);
-
-    // First time we have valid dimensions?
-    if (data && width > 0 && height > 0 && !data->had_valid_size) {
-        data->had_valid_size = true;
-
-        if (data->mesh_data_pending) {
-            data->mesh_data_pending = false;
-            spdlog::info("Triggering deferred render after gaining valid size");
-        }
-    }
-
-    lv_obj_invalidate(obj);  // Now succeeds with valid dimensions
-}
-```
-
-**Reference Implementation:** See `ui_bed_mesh.cpp` for the complete pattern.
-
-**When This Applies:**
-- Custom widgets using `LV_EVENT_DRAW_POST` with dimension checks
-- TinyGL-based 3D renderers (bed mesh, G-code viewer)
-- Any widget that skips rendering when dimensions are 0x0
-- Lazy-initialized overlay panels (Settings → sub-panels)
-
-#### "No constant was found with name X"
-
-**Cause:** Constant not defined in globals.xml or not registered before component creation.
-
-**Fix:** Ensure `globals.xml` is registered first:
-```cpp
-lv_xml_component_register_from_file(".../globals.xml");  // FIRST
-lv_xml_component_register_from_file(".../other.xml");    // Then others
-```
-
-#### Labels not updating when subject changes
-
-**Cause:** Subject not registered before XML creation, or wrong subject name.
-
-**Fix:**
-1. Check registration order (initialize → register → create XML)
-2. Verify `bind_text="subject_name"` matches registered name
-3. Add debug printf() in update function to verify calls
-
-#### Centering not working
-
-**Cause 1:** Using `flex_align` instead of `style_flex_*` properties.
-
-**Fix:**
-```xml
-<!-- ✗ DOESN'T WORK -->
-<lv_obj flex_align="center center center">
-
-<!-- ✓ WORKS -->
-<lv_obj style_flex_main_place="center" style_flex_cross_place="center">
-```
-
-**Cause 2:** Flex layout conflicts with `align="center"` attribute.
-
-**Fix:** Remove `flex_flow` from parent when centering a single child:
-```xml
-<!-- ✗ DOESN'T WORK - flex overrides align -->
-<lv_obj flex_flow="column" style_flex_main_place="center">
-    <lv_obj align="center"><!-- off-center --></lv_obj>
-</lv_obj>
-
-<!-- ✓ WORKS - no flex, pure absolute positioning -->
-<lv_obj>
-    <lv_obj align="center"><!-- perfectly centered --></lv_obj>
-</lv_obj>
-```
-
-See "Flex Layout Can Conflict with align="center"" section for details.
-
-#### Vertical centering fails
-
-**Cause:** Container missing `height="100%"`.
-
-**Fix:**
-```xml
-<lv_obj flex_flow="column" height="100%"
-        style_flex_main_place="center"
-        style_flex_cross_place="center">
-```
-
-#### Icons not centered in buttons
-
-**Cause:** Missing `align="center"` on label.
-
-**Fix:**
-```xml
-<lv_button>
-    <lv_label align="center" text="#icon_home"/>
-</lv_button>
-```
-
-#### Flex items not distributing evenly
-
-**Cause:** Not using `flex_grow` on children.
-
-**Fix:**
-```xml
-<lv_obj flex_flow="row">
-    <lv_obj flex_grow="1">Item 1</lv_obj>
-    <lv_obj flex_grow="1">Item 2</lv_obj>
-    <lv_obj flex_grow="1">Item 3</lv_obj>
-</lv_obj>
+<!-- ❌ WRONG - Literal \n doesn't work -->
+<lv_dropdown options="A\nB\nC"/>
 ```
 
 ### Debugging Checklist
 
-When layouts aren't working:
+When layouts don't work:
 
-- [ ] Does the label have `style_text_align="center"` **AND** `width="100%"`?
-- [ ] Does the parent container have `flex_flow` set correctly (row/column)?
-- [ ] Does the parent use `style_flex_main_place` and `style_flex_cross_place` (NOT `flex_align`)?
-- [ ] Are children using `flex_grow="1"` for equal space distribution?
-- [ ] Does the container have `height="100%"` (required for vertical centering)?
-- [ ] Have you added debug background colors to visualize actual container sizes?
-- [ ] Are you avoiding mixing absolute positioning with flex layouts?
-- [ ] Have you verified no `flex_align` attributes remain (they're silently ignored)?
+- [ ] Label has `style_text_align="center"` AND `width="100%"`?
+- [ ] Parent has `flex_flow` set?
+- [ ] Using `style_flex_main_place` (NOT `flex_align`)?
+- [ ] Children have `flex_grow="1"`?
+- [ ] Container has `height="100%"`?
+- [ ] No mixing absolute positioning with flex?
 
 ### Visual Debugging
 
-Unlike web browsers, there's no inspect tool. Use temporary background colors:
+Add temporary background colors:
 
 ```xml
 <lv_obj style_bg_color="#ff0000" style_bg_opa="100%">
-    <!-- Check if this container has the expected size -->
+    <!-- Check actual size -->
 </lv_obj>
 ```
 
-### What DOESN'T Work in LVGL 9 XML
-
-❌ **`flex_align` attribute** - Silently ignored, use `style_flex_*` instead
-❌ **`style_flex_grow`** - Doesn't exist, use `flex_grow` attribute instead
-❌ **Mixing explicit percentage widths with `flex_grow`** - Use one or the other
-❌ **Stack-allocated string buffers for subjects** - Must be static or heap-allocated
-❌ **Creating XML before registering subjects** - Bindings will fail silently
-
 ---
 
-## Event Callbacks (MANDATORY PATTERN)
+## Quick Reference
 
-Events MUST be declared in XML and registered in C++. **NEVER use `lv_obj_add_event_cb()`**.
+### API Functions
 
-### The Pattern
+```cpp
+// Component registration
+lv_xml_register_component_from_file("A:path/file.xml");
 
-**Step 1: Declare in XML**
+// Subject registration
+lv_xml_register_subject(NULL, "name", &subject);
+
+// Event callback registration
+lv_xml_register_event_cb(nullptr, "callback_name", function);
+
+// Font registration
+lv_xml_register_font(NULL, "font_name", &font);
+
+// Constant registration
+lv_xml_register_const(scope, "name", "value");
+
+// Create component
+lv_obj_t* obj = lv_xml_create(parent, "component_name", nullptr);
+
+// Find widget by name
+lv_obj_t* w = lv_obj_find_by_name(parent, "widget_name");
+```
+
+### Common XML Patterns
+
 ```xml
-<lv_button name="my_button">
-  <event_cb trigger="clicked" callback="on_my_button_clicked"/>
-  <text_body text="Click Me"/>
+<!-- Flex row, evenly spaced -->
+<lv_obj flex_flow="row" width="100%"
+        style_flex_main_place="space_evenly"
+        style_flex_cross_place="center"/>
+
+<!-- Flex column, grow to fill -->
+<lv_obj flex_flow="column" height="100%" flex_grow="1"/>
+
+<!-- Centered single child -->
+<lv_obj width="100%" height="100%">
+    <lv_obj align="center"/>
+</lv_obj>
+
+<!-- Conditional visibility -->
+<lv_obj>
+    <bind_flag_if_eq subject="show_it" flag="hidden" ref_value="0"/>
+</lv_obj>
+
+<!-- Button with event -->
+<lv_button>
+    <event_cb trigger="clicked" callback="on_click"/>
+    <text_body text="Click"/>
 </lv_button>
-
-<!-- Multiple events on same widget -->
-<lv_slider name="my_slider">
-  <event_cb trigger="value_changed" callback="on_slider_changed"/>
-  <event_cb trigger="released" callback="on_slider_released"/>
-</lv_slider>
-```
-
-**Step 2: Register in `init_subjects()` (BEFORE XML creation)**
-```cpp
-void MyPanel::init_subjects() {
-    // Register callbacks BEFORE XML is created
-    lv_xml_register_event_cb(nullptr, "on_my_button_clicked", on_button_clicked_cb);
-    lv_xml_register_event_cb(nullptr, "on_slider_changed", on_slider_changed_cb);
-    lv_xml_register_event_cb(nullptr, "on_slider_released", on_slider_released_cb);
-}
-```
-
-**Step 3: Implement callback (static function or lambda)**
-```cpp
-// Static function approach
-static void on_button_clicked_cb(lv_event_t* e) {
-    spdlog::info("Button clicked!");
-    // Update subjects, call APIs, etc.
-}
-
-// Lambda approach (inline in init_subjects)
-lv_xml_register_event_cb(nullptr, "on_slider_changed", [](lv_event_t* e) {
-    lv_obj_t* slider = lv_event_get_current_target(e);
-    int value = lv_slider_get_value(slider);
-    spdlog::info("Slider value: {}", value);
-});
-```
-
-### Common Triggers
-
-| Trigger | When Fired |
-|---------|------------|
-| `clicked` | Button/object clicked |
-| `value_changed` | Slider, dropdown, switch value changed |
-| `pressed` | Object pressed down |
-| `released` | Object released |
-| `focused` | Object gains focus |
-| `defocused` | Object loses focus |
-| `ready` | Text area input complete |
-
-### ❌ WRONG vs ✅ RIGHT
-
-```cpp
-// ❌ WRONG - Imperative event wiring (DO NOT DO THIS)
-void MyPanel::setup(lv_obj_t* panel, lv_obj_t* screen) {
-    lv_obj_t* btn = lv_obj_find_by_name(panel, "my_button");
-    lv_obj_add_event_cb(btn, on_click, LV_EVENT_CLICKED, this);  // BAD!
-}
-
-// ✅ RIGHT - Declarative event binding
-void MyPanel::init_subjects() {
-    lv_xml_register_event_cb(nullptr, "on_my_button_clicked", on_click_cb);
-}
-// Plus <event_cb> in XML
-```
-
-### Reference Implementation
-
-See `ui_panel_bed_mesh.cpp` for 35+ event callbacks using this pattern correctly.
-
----
-
-## Mandatory Patterns Summary
-
-This section summarizes the architectural patterns that **MUST** be followed.
-
-### DATA ↔ APPEARANCE Separation
-
-| Responsibility | C++ | XML |
-|----------------|-----|-----|
-| Business logic | ✅ | ❌ |
-| API calls | ✅ | ❌ |
-| State machines | ✅ | ❌ |
-| Subject updates | ✅ | ❌ |
-| Layout structure | ❌ | ✅ |
-| Colors/styling | ❌ | ✅ |
-| Visibility states | ❌ | ✅ |
-| Text display | ❌ | ✅ |
-
-### Banned Patterns
-
-| Pattern | Why It's Banned | Correct Alternative |
-|---------|-----------------|---------------------|
-| `lv_obj_add_event_cb()` | Creates tight coupling | XML `<event_cb>` |
-| `lv_label_set_text()` | Bypasses reactive binding | `bind_text` subject |
-| `lv_obj_add_flag(HIDDEN)` | Visibility is UI state | `<bind_flag_if_eq>` |
-| `lv_obj_set_style_*()` | Styling belongs in XML | Design tokens in XML |
-
-### Acceptable Exceptions
-
-These specific cases MAY use imperative LVGL calls:
-
-1. **`LV_EVENT_DELETE` cleanup** - Lifecycle management
-2. **Widget pool recycling** - Virtual scroll card content
-3. **Chart data points** - Dynamic data series
-4. **Animations** - Programmatic keyframes
-5. **One-time `setup()`** - Finding widgets, storing pointers
-
-### Complete Example
-
-**XML (`example_panel.xml`):**
-```xml
-<component>
-  <view extends="lv_obj" width="100%" height="100%">
-    <!-- Text bound to subject -->
-    <text_body bind_text="status_text"/>
-
-    <!-- Visibility bound to state -->
-    <lv_obj name="loading_view">
-      <bind_flag_if_eq subject="panel_state" flag="hidden" ref_value="1"/>
-      <text_body text="Loading..."/>
-    </lv_obj>
-
-    <lv_obj name="content_view">
-      <bind_flag_if_eq subject="panel_state" flag="hidden" ref_value="0"/>
-
-      <!-- Event declared in XML -->
-      <lv_button name="action_btn">
-        <event_cb trigger="clicked" callback="on_action_clicked"/>
-        <text_body text="Do Action"/>
-      </lv_button>
-    </lv_obj>
-  </view>
-</component>
-```
-
-**C++ (`example_panel.cpp`):**
-```cpp
-void ExamplePanel::init_subjects() {
-    // 1. Initialize subjects
-    UI_SUBJECT_INIT_AND_REGISTER_STRING(status_subject_, status_buffer_,
-                                        "Ready", "status_text");
-    UI_SUBJECT_INIT_AND_REGISTER_INT(state_subject_, 0, "panel_state");
-
-    // 2. Register event callbacks
-    lv_xml_register_event_cb(nullptr, "on_action_clicked", [](lv_event_t* e) {
-        spdlog::info("Action clicked!");
-        // Call APIs, update subjects, etc.
-    });
-}
-
-void ExamplePanel::show_loading() {
-    lv_subject_set_int(&state_subject_, 0);  // Shows loading_view
-}
-
-void ExamplePanel::show_content() {
-    lv_subject_set_int(&state_subject_, 1);  // Shows content_view
-}
-
-void ExamplePanel::update_status(const std::string& msg) {
-    snprintf(status_buffer_, sizeof(status_buffer_), "%s", msg.c_str());
-    lv_subject_copy_string(&status_subject_, status_buffer_);
-    // XML binding automatically updates the label
-}
 ```
 
 ---
 
 ## Resources
 
-### Official Documentation
-
 - **LVGL XML Docs:** https://docs.lvgl.io/master/details/xml/
-- **Subject-Observer:** https://docs.lvgl.io/master/details/auxiliary-modules/observer/observer.html
-- **LVGL Events:** https://docs.lvgl.io/latest/en/html/details/xml/ui_elements/events.html
-- **LVGL Editor Tutorials:** https://github.com/lvgl/lvgl_editor/tree/master/tutorials
-
-### Project Examples
-
-- **Navigation bar:** `ui_xml/navigation_bar.xml`
-- **Home panel:** `ui_xml/home_panel.xml` + `src/ui_panel_home.cpp`
-- **App layout:** `ui_xml/app_layout.xml`
-- **Global constants:** `ui_xml/globals.xml`
-
-### Related Project Documentation
-
-- **CLAUDE.md** - Claude Code context for this project
-- **README.md** - Project overview and quick start
-- **ROADMAP.md** - Planned features and milestones
+- **Subject-Observer:** https://docs.lvgl.io/master/details/auxiliary-modules/observer/
+- **Quick Reference:** `docs/LVGL9_XML_ATTRIBUTES_REFERENCE.md`
+- **Example Panels:** `ui_xml/bed_mesh_panel.xml` (gold standard)
 
 ---
 
-## Document History
+**Document History:**
 
-**2025-12-12:** Added mandatory pattern enforcement:
-- Event Callbacks section - Complete pattern for declarative event handling
-- Mandatory Patterns Summary - Banned patterns and acceptable exceptions
-- Complete example showing Subject bindings + event_cb pattern
-
-**2025-01-29:** Added verified LVGL 9.4 API patterns:
-- Section 3: Runtime Constants & Dynamic Configuration - Complete API reference with responsive design pattern
-- Section 4: Advanced Child Element Bindings - Expanded with state bindings, style bindings, and limitations
-- Conditional Binding Limitations - Documented what doesn't exist (text conditionals, style property conditionals)
-- Real-world examples for wizard containers and responsive UIs
-- Source code verified (lvgl/src/others/xml/)
-
-**2025-01-11:** Initial consolidated guide combining:
-- LVGL_XML_REFERENCE.md - XML syntax reference
-- LVGL9_CENTERING_GUIDE.md - Centering techniques and flex_align discovery
-- XML_UI_SYSTEM.md - Architecture and implementation patterns
-- Vertical Accent Bar Pattern - New UI pattern documentation
-
-**Contributors:** HelixScreen development team, based on LVGL 9.4 documentation and extensive prototype testing.
+- **2025-12-18:** Complete rewrite for accuracy
+  - Fixed `lv_xml_register_component_from_file()` API name
+  - Fixed `<event_cb>` syntax (was incorrectly documented as `<lv_event-call_function>`)
+  - Added responsive design token system documentation
+  - Updated project structure to match current 60+ XML files
+  - Added semantic typography components (`text_heading`, `text_body`, `text_small`)
+  - Added spinner and icon component documentation
+  - Streamlined to ~1000 lines from ~3000
