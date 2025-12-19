@@ -79,7 +79,20 @@ else
 endif
 
 # Compilers - auto-detect or use environment variables
-# Priority: environment variables > clang > gcc
+# Priority: environment variables > clang (if working) > gcc
+#
+# On some Linux distros (e.g., Arch with GCC 15), Clang may fail to find
+# GCC's libstdc++ headers, causing "#include_next <stdlib.h>" errors.
+# We test-compile to detect this and auto-fallback to GCC.
+
+# Helper to test if a C++ compiler can use the standard library
+# Returns "ok" on success, empty on failure
+# We test #include <cstdlib> because that's where clang+libstdc++ breaks on some systems
+HASH := \#
+define test_cxx_stdlib
+$(shell printf '$(HASH)include <cstdlib>\n' | $(1) -x c++ -std=c++17 -fsyntax-only - 2>/dev/null && echo ok)
+endef
+
 ifeq ($(origin CC),default)
     ifneq ($(shell command -v clang 2>/dev/null),)
         CC := clang
@@ -91,8 +104,20 @@ ifeq ($(origin CC),default)
 endif
 
 ifeq ($(origin CXX),default)
+    # Try clang++ first
     ifneq ($(shell command -v clang++ 2>/dev/null),)
-        CXX := clang++
+        # Test if clang++ can actually compile C++ with stdlib
+        ifeq ($(call test_cxx_stdlib,clang++),ok)
+            CXX := clang++
+        else ifneq ($(shell command -v g++ 2>/dev/null),)
+            # Clang has stdlib issues, fall back to g++
+            CXX := g++
+            CC := gcc
+            $(info Note: clang++ has stdlib issues on this system, using g++ instead)
+        else
+            # No g++ available, try clang++ anyway and let it fail with a clear error
+            CXX := clang++
+        endif
     else ifneq ($(shell command -v g++ 2>/dev/null),)
         CXX := g++
     else
