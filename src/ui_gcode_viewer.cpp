@@ -381,7 +381,8 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
         // IMPORTANT: Cannot create/delete/modify objects during draw callback!
         // Use lv_async_call() to defer all label operations to after render completes.
         if (st->layer_renderer_2d_->is_ghost_build_running()) {
-            int percent = static_cast<int>(st->layer_renderer_2d_->get_ghost_build_progress() * 100.0f);
+            int percent =
+                static_cast<int>(st->layer_renderer_2d_->get_ghost_build_progress() * 100.0f);
             // Capture needed data for deferred update
             struct GhostProgressUpdate {
                 lv_obj_t* viewer;
@@ -404,7 +405,8 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
                     if (!state->ghost_progress_label_) {
                         state->ghost_progress_label_ = lv_label_create(u->viewer);
                         lv_obj_set_style_text_color(state->ghost_progress_label_,
-                                                    ui_theme_get_color("text_secondary"), LV_PART_MAIN);
+                                                    ui_theme_get_color("text_secondary"),
+                                                    LV_PART_MAIN);
                         lv_obj_set_style_text_font(state->ghost_progress_label_, UI_FONT_SMALL,
                                                    LV_PART_MAIN);
                         lv_obj_align(state->ghost_progress_label_, LV_ALIGN_BOTTOM_LEFT, 8, -8);
