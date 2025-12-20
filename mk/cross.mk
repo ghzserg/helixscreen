@@ -472,12 +472,21 @@ pi-test: pi-docker deploy-pi-fg
 # AD5M deployment settings (can override via environment or command line)
 # Example: make deploy-ad5m AD5M_HOST=192.168.1.100
 # Note: AD5M uses BusyBox and only has scp (no rsync), so we use scp -O for compatibility
+#
+# Deploy directory is auto-detected:
+#   - KlipperMod: /root/printer_software/helixscreen (if /root/printer_software exists)
+#   - Forge-X/Stock: /opt/helixscreen
+# Override with AD5M_DEPLOY_DIR if needed.
 AD5M_HOST ?= ad5m.local
 AD5M_USER ?= root
-AD5M_DEPLOY_DIR ?= /opt/helixscreen
 
 # Build SSH target for AD5M
 AD5M_SSH_TARGET := $(AD5M_USER)@$(AD5M_HOST)
+
+# Auto-detect deploy directory (KlipperMod vs Forge-X/Stock)
+# Can be overridden: make deploy-ad5m AD5M_DEPLOY_DIR=/custom/path
+AD5M_DEPLOY_DIR ?= $(shell ssh -o ConnectTimeout=5 $(AD5M_SSH_TARGET) \
+	"if [ -d /root/printer_software ]; then echo /root/printer_software/helixscreen; else echo /opt/helixscreen; fi" 2>/dev/null || echo /opt/helixscreen)
 
 # =============================================================================
 # AD5M Deployment Targets

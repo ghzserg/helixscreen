@@ -7,6 +7,8 @@
 
 #include "runtime_config.h"
 
+#include <queue>
+
 #include "hv/json.hpp"
 
 // Forward declarations
