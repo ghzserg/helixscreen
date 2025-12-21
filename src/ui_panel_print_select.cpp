@@ -124,7 +124,7 @@ static void on_print_select_detail_backdrop(lv_event_t* e) {
     }
 }
 
-static void on_header_back_clicked(lv_event_t* e) {
+static void on_print_detail_back_clicked(lv_event_t* e) {
     (void)e;
     get_global_print_select_panel().hide_detail_view();
 }
@@ -256,7 +256,7 @@ void PrintSelectPanel::init_subjects() {
                              on_print_select_delete_button);
     lv_xml_register_event_cb(nullptr, "on_print_select_detail_backdrop",
                              on_print_select_detail_backdrop);
-    lv_xml_register_event_cb(nullptr, "on_header_back_clicked", on_header_back_clicked);
+    lv_xml_register_event_cb(nullptr, "on_print_detail_back_clicked", on_print_detail_back_clicked);
 
     subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized", get_name());

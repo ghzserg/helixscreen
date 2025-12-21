@@ -149,9 +149,6 @@ void HistoryDashboardPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     spdlog::debug("[{}] Chart containers: trend={}, filament={}", get_name(),
                   trend_chart_container_ != nullptr, filament_chart_container_ != nullptr);
 
-    // Wire up the back button in header_bar to navigate back
-    ui_panel_setup_back_button(panel_);
-
     // Create charts inside their containers
     create_trend_chart();
     create_filament_chart();

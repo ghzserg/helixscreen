@@ -134,9 +134,6 @@ void HistoryListPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         lv_obj_add_event_cb(list_content_, on_scroll_static, LV_EVENT_SCROLL_END, this);
     }
 
-    // Wire up back button to navigation system
-    ui_panel_setup_back_button(panel_);
-
     // Register connection state observer to auto-refresh when connected
     // This handles the case where the panel is opened before connection is established
     // ObserverGuard handles cleanup automatically in destructor
@@ -890,8 +887,6 @@ void HistoryListPanel::show_detail_overlay(const PrintHistoryJob& job) {
             static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "history_detail_overlay", NULL));
 
         if (detail_overlay_) {
-            // Wire up back button
-            ui_panel_setup_back_button(detail_overlay_);
             spdlog::debug("[{}] Detail overlay created", get_name());
         } else {
             spdlog::error("[{}] Failed to create detail overlay", get_name());

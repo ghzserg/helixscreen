@@ -15,6 +15,8 @@
   <!-- API Properties -->
   <api>
     <prop name="title" type="string"/>
+    <!-- Back button callback - defaults to standard navigation go_back -->
+    <prop name="back_button_callback" type="string" default="on_header_back_clicked"/>
     <prop name="action_button_text" type="string" default=""/>
     <!-- Use hide_action_button="false" to show the action button -->
     <prop name="hide_action_button" type="string" default="true"/>
@@ -27,7 +29,7 @@
         scrollable="false">
     <!-- Back button (fixed width, left-aligned) -->
     <icon name="back_button" src="back" size="lg" color="#text_primary" align="center" clickable="true">
-      <event_cb trigger="clicked" callback="on_header_back_clicked"/>
+      <event_cb trigger="clicked" callback="$back_button_callback"/>
     </icon>
     <!-- Title (flexible width, centered) -->
     <text_heading name="header_title"

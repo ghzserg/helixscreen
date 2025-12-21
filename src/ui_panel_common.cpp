@@ -63,48 +63,6 @@ lv_obj_t* ui_panel_setup_content_padding(lv_obj_t* panel, lv_obj_t* parent_scree
 }
 
 // ============================================================================
-// BACK BUTTON SETUP
-// ============================================================================
-
-void ui_panel_back_button_cb(lv_event_t* e) {
-    lv_obj_t* panel = (lv_obj_t*)lv_event_get_user_data(e);
-
-    // Use navigation history to go back to previous panel
-    if (!ui_nav_go_back()) {
-        // Fallback: If navigation history is empty, manually hide panel and show controls launcher
-        if (panel) {
-            lv_obj_add_flag(panel, LV_OBJ_FLAG_HIDDEN);
-
-            // Try to find and show controls_panel as fallback
-            lv_obj_t* parent = lv_obj_get_parent(panel);
-            if (parent) {
-                lv_obj_t* controls_launcher = lv_obj_find_by_name(parent, "controls_panel");
-                if (controls_launcher) {
-                    lv_obj_clear_flag(controls_launcher, LV_OBJ_FLAG_HIDDEN);
-                }
-            }
-        }
-    }
-}
-
-lv_obj_t* ui_panel_setup_back_button(lv_obj_t* panel, const char* button_name) {
-    if (!panel || !button_name) {
-        spdlog::warn("[PanelCommon] Invalid parameters for back button setup");
-        return nullptr;
-    }
-
-    lv_obj_t* back_btn = lv_obj_find_by_name(panel, button_name);
-    if (back_btn) {
-        lv_obj_add_event_cb(back_btn, ui_panel_back_button_cb, LV_EVENT_CLICKED, panel);
-        spdlog::debug("[PanelCommon] Back button '{}' configured", button_name);
-    } else {
-        spdlog::warn("[PanelCommon] Back button '{}' not found in panel", button_name);
-    }
-
-    return back_btn;
-}
-
-// ============================================================================
 // RESIZE CALLBACK SETUP
 // ============================================================================
 
@@ -184,43 +142,6 @@ void ui_panel_setup_resize_callback(ui_panel_resize_context_t* context) {
 }
 
 // ============================================================================
-// COMBINED SETUP
-// ============================================================================
-
-void ui_panel_setup_standard_layout(lv_obj_t* panel, lv_obj_t* parent_screen,
-                                    const char* header_name, const char* content_name,
-                                    ui_panel_resize_context_t* resize_context,
-                                    const char* back_button_name) {
-    if (!panel || !parent_screen) {
-        spdlog::error("[PanelCommon] Invalid parameters for standard layout setup");
-        return;
-    }
-
-    spdlog::debug("[PanelCommon] Setting up standard panel layout");
-
-    // 1. Setup header bar
-    ui_panel_setup_header(panel, parent_screen, header_name);
-
-    // 2. Setup content padding
-    ui_panel_setup_content_padding(panel, parent_screen, content_name);
-
-    // 3. Register resize callback
-    if (resize_context) {
-        resize_context->panel = panel;
-        resize_context->parent_screen = parent_screen;
-        resize_context->content_name = content_name;
-        ui_panel_setup_resize_callback(resize_context);
-    } else {
-        spdlog::warn("[PanelCommon] No resize context provided, skipping resize callback");
-    }
-
-    // 4. Setup back button
-    ui_panel_setup_back_button(panel, back_button_name);
-
-    spdlog::debug("[PanelCommon] Standard panel layout setup complete");
-}
-
-// ============================================================================
 // OVERLAY PANEL SETUP (For panels using overlay_panel.xml wrapper)
 // ============================================================================
 
@@ -234,13 +155,9 @@ void ui_overlay_panel_setup_standard(lv_obj_t* panel, lv_obj_t* parent_screen,
     spdlog::debug("[PanelCommon] Setting up overlay panel with header='{}', content='{}'",
                   header_name, content_name);
 
-    // 1. Setup header responsive height (if needed - usually handled by XML)
+    // Verify header exists (back button wiring handled by header_bar.xml event_cb)
     lv_obj_t* header = lv_obj_find_by_name(panel, header_name);
-    if (header) {
-        // Header height is typically set via #header_height constant in XML
-        // Just wire the back button here
-        ui_overlay_panel_wire_back_button(panel, header_name);
-    } else {
+    if (!header) {
         spdlog::warn("[PanelCommon] Header '{}' not found in overlay panel", header_name);
     }
 
@@ -256,33 +173,6 @@ void ui_overlay_panel_setup_standard(lv_obj_t* panel, lv_obj_t* parent_screen,
     }
 
     spdlog::debug("[PanelCommon] Overlay panel setup complete");
-}
-
-lv_obj_t* ui_overlay_panel_wire_back_button(lv_obj_t* panel, const char* header_name) {
-    if (!panel || !header_name) {
-        spdlog::warn("[PanelCommon] Invalid parameters for overlay back button wiring");
-        return nullptr;
-    }
-
-    // Find header_bar widget
-    lv_obj_t* header = lv_obj_find_by_name(panel, header_name);
-    if (!header) {
-        spdlog::warn("[PanelCommon] Header '{}' not found in overlay panel", header_name);
-        return nullptr;
-    }
-
-    // Find back_button within header_bar
-    lv_obj_t* back_btn = lv_obj_find_by_name(header, "back_button");
-    if (!back_btn) {
-        spdlog::warn("[PanelCommon] Back button not found in header '{}'", header_name);
-        return nullptr;
-    }
-
-    // Wire to standard back button handler (uses ui_nav_go_back)
-    lv_obj_add_event_cb(back_btn, ui_panel_back_button_cb, LV_EVENT_CLICKED, panel);
-    spdlog::debug("[PanelCommon] Back button wired in header '{}'", header_name);
-
-    return back_btn;
 }
 
 lv_obj_t* ui_overlay_panel_wire_action_button(lv_obj_t* panel, lv_event_cb_t callback,

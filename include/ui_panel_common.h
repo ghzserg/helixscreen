@@ -58,37 +58,6 @@ lv_obj_t* ui_panel_setup_content_padding(lv_obj_t* panel, lv_obj_t* parent_scree
                                          const char* content_name);
 
 // ============================================================================
-// BACK BUTTON SETUP
-// ============================================================================
-
-/**
- * @brief Standard back button event handler
- *
- * Implements the standard back button behavior used across all panels:
- * 1. Attempt to use navigation history via ui_nav_go_back()
- * 2. Fallback: Hide current panel, show controls launcher
- *
- * Usage:
- *   lv_obj_add_event_cb(back_btn, ui_panel_back_button_cb,
- *                       LV_EVENT_CLICKED, panel);
- *
- * @param e LVGL event object (user_data should be the panel object)
- */
-void ui_panel_back_button_cb(lv_event_t* e);
-
-/**
- * @brief Setup standard back button
- *
- * Finds the back button by name and attaches the standard event handler.
- * The handler uses navigation history or falls back to hiding the panel.
- *
- * @param panel Panel object containing the back button
- * @param button_name Name of the back button widget (default: "back_button")
- * @return Pointer to back button widget if found, nullptr otherwise
- */
-lv_obj_t* ui_panel_setup_back_button(lv_obj_t* panel, const char* button_name = "back_button");
-
-// ============================================================================
 // RESIZE CALLBACK SETUP
 // ============================================================================
 
@@ -120,47 +89,19 @@ struct ui_panel_resize_context_t {
 void ui_panel_setup_resize_callback(ui_panel_resize_context_t* context);
 
 // ============================================================================
-// COMBINED SETUP
-// ============================================================================
-
-/**
- * @brief Standard panel layout setup (header + content + resize + back button)
- *
- * Combines all common setup operations in a single call:
- * 1. Setup header bar with responsive height
- * 2. Setup content padding (responsive vertical, fixed horizontal)
- * 3. Register resize callback for content padding
- * 4. Setup back button with standard handler
- *
- * This is the recommended function for most panels, reducing setup from
- * 50-100 lines to a single function call.
- *
- * @param panel Panel object
- * @param parent_screen Parent screen object
- * @param header_name Name of header bar widget
- * @param content_name Name of content area widget
- * @param resize_context Pointer to static resize context (must be persistent)
- * @param back_button_name Name of back button (default: "back_button")
- */
-void ui_panel_setup_standard_layout(lv_obj_t* panel, lv_obj_t* parent_screen,
-                                    const char* header_name, const char* content_name,
-                                    ui_panel_resize_context_t* resize_context,
-                                    const char* back_button_name = "back_button");
-
-// ============================================================================
 // OVERLAY PANEL SETUP (For panels using overlay_panel.xml wrapper)
 // ============================================================================
 
 /**
  * @brief Standard setup for overlay panels using overlay_panel.xml wrapper
  *
- * Overlay panels use the new overlay_panel.xml component which provides:
- * - Integrated header_bar with back button
+ * Overlay panels use the overlay_panel.xml component which provides:
+ * - Integrated header_bar with back button (wired via XML event_cb)
  * - Right-aligned positioning
  * - Content area with responsive padding
  *
- * This function wires the header_bar back button to use ui_nav_go_back()
- * and sets up responsive padding for the content area.
+ * NOTE: Back button wiring is handled by header_bar.xml via XML event_cb.
+ * Do NOT add C++ event handlers for back buttons - it causes double navigation.
  *
  * @param panel Overlay panel root object
  * @param parent_screen Parent screen for measuring dimensions
@@ -170,20 +111,6 @@ void ui_panel_setup_standard_layout(lv_obj_t* panel, lv_obj_t* parent_screen,
 void ui_overlay_panel_setup_standard(lv_obj_t* panel, lv_obj_t* parent_screen,
                                      const char* header_name = "overlay_header",
                                      const char* content_name = "overlay_content");
-
-/**
- * @brief Wire back button in overlay panel header_bar
- *
- * Finds the back button within the header_bar and wires it to call
- * ui_nav_go_back() when clicked. This is the standard behavior for all
- * overlay panels.
- *
- * @param panel Overlay panel root object
- * @param header_name Name of header_bar widget (default: "overlay_header")
- * @return Pointer to back button if found, nullptr otherwise
- */
-lv_obj_t* ui_overlay_panel_wire_back_button(lv_obj_t* panel,
-                                            const char* header_name = "overlay_header");
 
 /**
  * @brief Wire action button in overlay panel header_bar
