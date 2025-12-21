@@ -21,6 +21,7 @@
 #include "ethernet_manager.h"
 #include "moonraker_api.h"
 #include "network_settings_overlay.h"
+#include "prerendered_images.h"
 #include "printer_detector.h"
 #include "printer_state.h"
 #include "settings_manager.h"
@@ -695,7 +696,16 @@ void HomePanel::reload_from_config() {
         std::string image_path;
 
         if (!image_filename.empty()) {
-            image_path = "A:assets/images/printers/" + image_filename;
+            // Strip .png extension to get base name for prerendered lookup
+            std::string base_name = image_filename;
+            if (base_name.size() > 4 && base_name.substr(base_name.size() - 4) == ".png") {
+                base_name = base_name.substr(0, base_name.size() - 4);
+            }
+
+            // Use prerendered .bin if available (faster on embedded), else fallback to PNG
+            lv_display_t* disp = lv_display_get_default();
+            int screen_width = disp ? lv_display_get_horizontal_resolution(disp) : 800;
+            image_path = helix::get_prerendered_printer_path(base_name, screen_width);
         } else {
             // Fall back to generic CoreXY image
             spdlog::info("[{}] No specific image for '{}' - using generic CoreXY", get_name(),
@@ -727,6 +737,49 @@ void HomePanel::reload_from_config() {
         lv_subject_copy_string(&printer_host_subject_, printer_host_buffer_);
         lv_subject_set_int(&printer_info_visible_, 1);
     }
+}
+
+void HomePanel::auto_configure_led_if_needed(const std::vector<std::string>& leds) {
+    // If LED is already configured, nothing to do
+    if (!configured_led_.empty() && configured_led_ != "None") {
+        spdlog::debug("[{}] LED already configured: {}", get_name(), configured_led_);
+        return;
+    }
+
+    // If no LEDs were discovered, nothing to do
+    if (leds.empty()) {
+        spdlog::debug("[{}] No LEDs discovered - cannot auto-configure", get_name());
+        return;
+    }
+
+    // Auto-select the first LED (or use heuristics for better selection)
+    // Priority: chamber > light > first available
+    std::string selected;
+    for (const auto& led : leds) {
+        if (led.find("chamber") != std::string::npos) {
+            selected = led;
+            break;
+        }
+        if (led.find("light") != std::string::npos && selected.empty()) {
+            selected = led;
+        }
+    }
+    if (selected.empty()) {
+        selected = leds[0];
+    }
+
+    // Configure this LED
+    configured_led_ = selected;
+    printer_state_.set_tracked_led(configured_led_);
+
+    // Subscribe to LED state changes if not already subscribed
+    if (!led_state_observer_) {
+        led_state_observer_ =
+            ObserverGuard(printer_state_.get_led_state_subject(), led_state_observer_cb, this);
+    }
+
+    spdlog::info("[{}] Auto-configured LED: {} (from {} discovered)", get_name(), configured_led_,
+                 leds.size());
 }
 
 void HomePanel::light_toggle_cb(lv_event_t* e) {

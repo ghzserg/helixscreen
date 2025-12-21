@@ -2430,3 +2430,46 @@ void PrintStatusPanel::on_runout_cancel_print_clicked(lv_event_t* e) {
             });
     }
 }
+
+void PrintStatusPanel::auto_configure_led_if_needed(const std::vector<std::string>& leds) {
+    // If LED is already configured, nothing to do
+    if (!configured_led_.empty() && configured_led_ != "None") {
+        spdlog::debug("[{}] LED already configured: {}", get_name(), configured_led_);
+        return;
+    }
+
+    // If no LEDs were discovered, nothing to do
+    if (leds.empty()) {
+        spdlog::debug("[{}] No LEDs discovered - cannot auto-configure", get_name());
+        return;
+    }
+
+    // Auto-select the first LED (or use heuristics for better selection)
+    // Priority: chamber > light > first available
+    std::string selected;
+    for (const auto& led : leds) {
+        if (led.find("chamber") != std::string::npos) {
+            selected = led;
+            break;
+        }
+        if (led.find("light") != std::string::npos && selected.empty()) {
+            selected = led;
+        }
+    }
+    if (selected.empty()) {
+        selected = leds[0];
+    }
+
+    // Configure this LED
+    configured_led_ = selected;
+    printer_state_.set_tracked_led(configured_led_);
+
+    // Subscribe to LED state changes if not already subscribed
+    if (!led_state_observer_) {
+        led_state_observer_ =
+            ObserverGuard(printer_state_.get_led_state_subject(), led_state_observer_cb, this);
+    }
+
+    spdlog::info("[{}] Auto-configured LED: {} (from {} discovered)", get_name(), configured_led_,
+                 leds.size());
+}

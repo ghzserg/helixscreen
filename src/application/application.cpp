@@ -30,6 +30,7 @@
 #include "ui_panel_gcode_test.h"
 #include "ui_panel_glyphs.h"
 #include "ui_panel_history_dashboard.h"
+#include "ui_panel_home.h"
 #include "ui_panel_input_shaper.h"
 #include "ui_panel_memory_stats.h"
 #include "ui_panel_motion.h"
@@ -845,6 +846,14 @@ bool Application::connect_moonraker() {
                 get_printer_state().init_fans(ctx->second->get_fans());
                 get_printer_state().set_klipper_version(ctx->second->get_software_version());
                 get_printer_state().set_moonraker_version(ctx->second->get_moonraker_version());
+
+                // Auto-configure LED if not explicitly set but LEDs were discovered
+                if (ctx->first.has_led()) {
+                    get_global_home_panel().auto_configure_led_if_needed(ctx->second->get_leds());
+                    get_global_print_status_panel().auto_configure_led_if_needed(
+                        ctx->second->get_leds());
+                }
+
                 delete ctx;
             },
             new std::pair<PrinterCapabilities, MoonrakerClient*>(caps, client));
