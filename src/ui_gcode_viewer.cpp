@@ -225,6 +225,9 @@ class GCodeViewerState {
     /// -1 means "show all layers" (preview mode), >= 0 means "show up to this layer"
     int print_progress_layer_{-1};
 
+    /// Content offset (stored to apply when 2D renderer is lazily created)
+    float content_offset_y_percent_{0.0f};
+
     /// Render mode setting - set by constructor based on HELIX_GCODE_MODE env var
     /// Default is 2D_LAYER (TinyGL is too slow for production use everywhere)
     gcode_viewer_render_mode_t render_mode_{GCODE_VIEWER_RENDER_2D_LAYER};
@@ -361,6 +364,11 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
                 st->layer_renderer_2d_->set_extrusion_color(color);
                 spdlog::info("[GCode Viewer] 2D renderer using filament color: {}",
                              st->gcode_file->filament_color_hex);
+            }
+
+            // Apply any stored content offset
+            if (st->content_offset_y_percent_ != 0.0f) {
+                st->layer_renderer_2d_->set_content_offset_y(st->content_offset_y_percent_);
             }
 
             spdlog::info("[GCode Viewer] Initialized 2D layer renderer ({}x{})", width, height);
@@ -1001,6 +1009,13 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                     int height = lv_area_get_height(&coords);
                     st->layer_renderer_2d_->set_canvas_size(width, height);
                     st->layer_renderer_2d_->auto_fit();
+
+                    // Apply any stored content offset (may have been set before streaming started)
+                    if (st->content_offset_y_percent_ != 0.0f) {
+                        st->layer_renderer_2d_->set_content_offset_y(st->content_offset_y_percent_);
+                        spdlog::debug("[GCode Viewer] Applied stored content offset: {}%",
+                                      st->content_offset_y_percent_ * 100);
+                    }
 
                     // Note: Ghost mode is disabled in streaming mode (requires all layers)
                     // The renderer handles this automatically in set_streaming_controller()
@@ -1815,10 +1830,17 @@ void ui_gcode_viewer_set_content_offset_y(lv_obj_t* obj, float offset_percent) {
     if (!st)
         return;
 
-    // Apply to 2D renderer (3D renderer doesn't support this yet)
+    // Store offset for later application (2D renderer may not exist yet)
+    st->content_offset_y_percent_ = offset_percent;
+
+    // Apply to 2D renderer if it exists
     if (st->layer_renderer_2d_) {
         st->layer_renderer_2d_->set_content_offset_y(offset_percent);
         lv_obj_invalidate(obj);
+        spdlog::debug("[GCode Viewer] Applied content offset: {}%", offset_percent * 100);
+    } else {
+        spdlog::debug("[GCode Viewer] Stored content offset: {}% (renderer not ready)",
+                      offset_percent * 100);
     }
 }
 
