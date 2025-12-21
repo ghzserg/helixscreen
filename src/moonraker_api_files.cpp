@@ -318,7 +318,9 @@ void MoonrakerAPI::download_file(const std::string& root, const std::string& pat
     }
 
     // Build URL: http://host:port/server/files/{root}/{path}
-    std::string url = http_base_url_ + "/server/files/" + root + "/" + path;
+    // URL-encode the path to handle spaces and special characters
+    std::string encoded_path = HUrl::escape(path, "/.-_");
+    std::string url = http_base_url_ + "/server/files/" + root + "/" + encoded_path;
 
     spdlog::debug("[Moonraker API] Downloading file: {}", url);
 
@@ -370,6 +372,53 @@ void MoonrakerAPI::download_file(const std::string& root, const std::string& pat
 
         if (on_success) {
             on_success(resp->body);
+        }
+    });
+}
+
+void MoonrakerAPI::download_file_to_path(const std::string& root, const std::string& path,
+                                         const std::string& dest_path, StringCallback on_success,
+                                         ErrorCallback on_error) {
+    if (http_base_url_.empty()) {
+        spdlog::error("[Moonraker API] HTTP base URL not set - cannot download file");
+        if (on_error) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::CONNECTION_LOST;
+            err.message = "HTTP base URL not configured";
+            err.method = "download_file_to_path";
+            on_error(err);
+        }
+        return;
+    }
+
+    // Build URL: http://host:port/server/files/{root}/{path}
+    // URL-encode the path to handle spaces and special characters
+    std::string encoded_path = HUrl::escape(path, "/.-_");
+    std::string url = http_base_url_ + "/server/files/" + root + "/" + encoded_path;
+
+    spdlog::debug("[Moonraker API] Streaming download: {} -> {}", url, dest_path);
+
+    // Run HTTP request in a tracked thread to ensure clean shutdown
+    // Use requests::downloadFile which streams directly to disk
+    launch_http_thread([url, path, dest_path, on_success, on_error]() {
+        size_t bytes_written = requests::downloadFile(url.c_str(), dest_path.c_str());
+
+        if (bytes_written == 0) {
+            spdlog::error("[Moonraker API] Streaming download failed: {} -> {}", url, dest_path);
+            if (on_error) {
+                MoonrakerError err;
+                err.type = MoonrakerErrorType::CONNECTION_LOST;
+                err.message = "Streaming download failed: " + path;
+                err.method = "download_file_to_path";
+                on_error(err);
+            }
+            return;
+        }
+
+        spdlog::info("[Moonraker API] Streamed {} bytes to {}", bytes_written, dest_path);
+
+        if (on_success) {
+            on_success(dest_path);
         }
     });
 }

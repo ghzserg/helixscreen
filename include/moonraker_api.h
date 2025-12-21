@@ -523,6 +523,28 @@ class MoonrakerAPI {
                                StringCallback on_success, ErrorCallback on_error);
 
     /**
+     * @brief Download a file directly to disk (streaming, low memory)
+     *
+     * Unlike download_file() which loads entire content into memory,
+     * this streams chunks directly to disk as they arrive. Essential
+     * for large G-code files on memory-constrained devices like AD5M.
+     *
+     * Uses libhv's streaming download which writes chunks to disk
+     * as they are received, avoiding memory spikes.
+     *
+     * Virtual to allow mocking in tests.
+     *
+     * @param root Root directory ("gcodes", "config", etc.)
+     * @param path File path relative to root
+     * @param dest_path Local filesystem path to write to
+     * @param on_success Callback with dest_path on success
+     * @param on_error Error callback
+     */
+    virtual void download_file_to_path(const std::string& root, const std::string& path,
+                                       const std::string& dest_path, StringCallback on_success,
+                                       ErrorCallback on_error);
+
+    /**
      * @brief Download a thumbnail image and cache it locally
      *
      * Downloads thumbnail from Moonraker's HTTP server and saves to a local cache file.

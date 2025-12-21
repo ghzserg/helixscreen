@@ -181,6 +181,128 @@ TEST_CASE_METHOD(MoonrakerAPIMockTestFixture, "MoonrakerAPIMock upload_file hand
 }
 
 // ============================================================================
+// download_file_to_path Tests (Streaming Download)
+// ============================================================================
+
+TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
+                 "MoonrakerAPIMock download_file_to_path creates file at destination",
+                 "[mock][api][download][streaming]") {
+    std::atomic<bool> success_called{false};
+    std::atomic<bool> error_called{false};
+    std::string received_path;
+
+    // Use a temp file for the destination
+    std::string dest_path = "/tmp/helix_test_download_" +
+                            std::to_string(std::hash<std::string>{}("3DBenchy.gcode")) + ".gcode";
+
+    // Clean up any existing file
+    std::remove(dest_path.c_str());
+
+    api_->download_file_to_path(
+        "gcodes", "3DBenchy.gcode", dest_path,
+        [&](const std::string& path) {
+            received_path = path;
+            success_called.store(true);
+        },
+        [&](const MoonrakerError&) { error_called.store(true); });
+
+    REQUIRE(success_called.load());
+    REQUIRE_FALSE(error_called.load());
+    REQUIRE(received_path == dest_path);
+
+    // Verify file exists and has content
+    REQUIRE(std::filesystem::exists(dest_path));
+    REQUIRE(std::filesystem::file_size(dest_path) > 100);
+
+    // Clean up
+    std::remove(dest_path.c_str());
+}
+
+TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
+                 "MoonrakerAPIMock download_file_to_path file content matches source",
+                 "[mock][api][download][streaming]") {
+    std::atomic<bool> success_called{false};
+    std::string dest_path = "/tmp/helix_test_download_content.gcode";
+
+    // Clean up
+    std::remove(dest_path.c_str());
+
+    // First, get content via regular download_file
+    std::string original_content;
+    api_->download_file(
+        "gcodes", "3DBenchy.gcode", [&](const std::string& content) { original_content = content; },
+        [](const MoonrakerError&) {});
+
+    REQUIRE(original_content.size() > 100);
+
+    // Now download to path
+    api_->download_file_to_path(
+        "gcodes", "3DBenchy.gcode", dest_path,
+        [&](const std::string&) { success_called.store(true); }, [](const MoonrakerError&) {});
+
+    REQUIRE(success_called.load());
+
+    // Read the downloaded file and compare
+    std::ifstream file(dest_path, std::ios::binary);
+    REQUIRE(file.good());
+    std::ostringstream content;
+    content << file.rdbuf();
+    file.close();
+
+    REQUIRE(content.str() == original_content);
+
+    // Clean up
+    std::remove(dest_path.c_str());
+}
+
+TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
+                 "MoonrakerAPIMock download_file_to_path returns FILE_NOT_FOUND for missing file",
+                 "[mock][api][download][streaming]") {
+    std::atomic<bool> success_called{false};
+    std::atomic<bool> error_called{false};
+    MoonrakerError captured_error;
+    std::string dest_path = "/tmp/helix_test_download_missing.gcode";
+
+    api_->download_file_to_path(
+        "gcodes", "nonexistent_file_xyz123.gcode", dest_path,
+        [&](const std::string&) { success_called.store(true); },
+        [&](const MoonrakerError& err) {
+            captured_error = err;
+            error_called.store(true);
+        });
+
+    REQUIRE_FALSE(success_called.load());
+    REQUIRE(error_called.load());
+    REQUIRE(captured_error.type == MoonrakerErrorType::FILE_NOT_FOUND);
+    REQUIRE(captured_error.method == "download_file_to_path");
+
+    // Verify destination file was NOT created
+    REQUIRE_FALSE(std::filesystem::exists(dest_path));
+}
+
+TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
+                 "MoonrakerAPIMock download_file_to_path strips directory from path",
+                 "[mock][api][download][streaming]") {
+    std::atomic<bool> success_called{false};
+    std::string dest_path = "/tmp/helix_test_download_nested.gcode";
+
+    // Clean up
+    std::remove(dest_path.c_str());
+
+    // Path with nested directories should still find the file
+    api_->download_file_to_path(
+        "gcodes", "some/nested/path/3DBenchy.gcode", dest_path,
+        [&](const std::string&) { success_called.store(true); }, [](const MoonrakerError&) {});
+
+    REQUIRE(success_called.load());
+    REQUIRE(std::filesystem::exists(dest_path));
+    REQUIRE(std::filesystem::file_size(dest_path) > 100);
+
+    // Clean up
+    std::remove(dest_path.c_str());
+}
+
+// ============================================================================
 // Edge Cases
 // ============================================================================
 

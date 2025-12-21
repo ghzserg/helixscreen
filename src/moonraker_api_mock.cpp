@@ -104,6 +104,77 @@ void MoonrakerAPIMock::download_file(const std::string& root, const std::string&
     }
 }
 
+void MoonrakerAPIMock::download_file_to_path(const std::string& root, const std::string& path,
+                                             const std::string& dest_path,
+                                             StringCallback on_success, ErrorCallback on_error) {
+    // Extract just the filename from the path
+    std::string filename = path;
+    size_t last_slash = path.find_last_of('/');
+    if (last_slash != std::string::npos) {
+        filename = path.substr(last_slash + 1);
+    }
+
+    spdlog::debug(
+        "[MoonrakerAPIMock] download_file_to_path: root='{}', path='{}' -> filename='{}', "
+        "dest='{}'",
+        root, path, filename, dest_path);
+
+    // Find the test file using fallback path search
+    std::string local_path = find_test_file(filename);
+
+    if (local_path.empty()) {
+        spdlog::warn("[MoonrakerAPIMock] File not found in test directories: {}", filename);
+
+        if (on_error) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::FILE_NOT_FOUND;
+            err.message = "Mock file not found: " + filename;
+            err.method = "download_file_to_path";
+            on_error(err);
+        }
+        return;
+    }
+
+    // Copy the file to destination
+    std::ifstream src(local_path, std::ios::binary);
+    if (!src) {
+        spdlog::error("[MoonrakerAPIMock] Failed to open source file: {}", local_path);
+        if (on_error) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::FILE_NOT_FOUND;
+            err.message = "Failed to read test file: " + filename;
+            err.method = "download_file_to_path";
+            on_error(err);
+        }
+        return;
+    }
+
+    std::ofstream dst(dest_path, std::ios::binary);
+    if (!dst) {
+        spdlog::error("[MoonrakerAPIMock] Failed to create destination file: {}", dest_path);
+        if (on_error) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::UNKNOWN;
+            err.message = "Failed to create destination file: " + dest_path;
+            err.method = "download_file_to_path";
+            on_error(err);
+        }
+        return;
+    }
+
+    dst << src.rdbuf();
+    src.close();
+    dst.close();
+
+    // Verify the copy worked
+    auto file_size = std::filesystem::file_size(dest_path);
+    spdlog::info("[MoonrakerAPIMock] Copied {} -> {} ({} bytes)", local_path, dest_path, file_size);
+
+    if (on_success) {
+        on_success(dest_path);
+    }
+}
+
 void MoonrakerAPIMock::upload_file(const std::string& root, const std::string& path,
                                    const std::string& content, SuccessCallback on_success,
                                    ErrorCallback on_error) {

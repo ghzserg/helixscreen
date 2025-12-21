@@ -135,6 +135,22 @@ class MoonrakerAPIMock : public MoonrakerAPI {
                        ErrorCallback on_error) override;
 
     /**
+     * @brief Mock streaming file download to disk
+     *
+     * Instead of making HTTP request, copies from assets/test_gcodes/{filename}
+     * to the specified destination path.
+     *
+     * @param root Root directory (ignored in mock - always uses test_gcodes)
+     * @param path File path (directory components stripped, only filename used)
+     * @param dest_path Local filesystem path to write to
+     * @param on_success Callback with dest_path on success
+     * @param on_error Error callback (FILE_NOT_FOUND if source doesn't exist)
+     */
+    void download_file_to_path(const std::string& root, const std::string& path,
+                               const std::string& dest_path, StringCallback on_success,
+                               ErrorCallback on_error) override;
+
+    /**
      * @brief Mock file upload (logs but doesn't write)
      *
      * Logs the upload request but doesn't actually write files.
