@@ -243,13 +243,13 @@ void Application::ensure_project_root_cwd() {
 }
 
 bool Application::parse_args(int argc, char** argv) {
-    // Auto-configure mock state based on requested panel
-    auto_configure_mock_state();
-
-    // Parse CLI args
+    // Parse CLI args first
     if (!helix::parse_cli_args(argc, argv, m_args, m_screen_width, m_screen_height)) {
         return false;
     }
+
+    // Auto-configure mock state based on requested panel (after parsing args)
+    auto_configure_mock_state();
 
     // Check HELIX_AUTO_QUIT_MS environment variable
     if (m_args.timeout_sec == 0) {

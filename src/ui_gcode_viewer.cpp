@@ -353,6 +353,16 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
             int height = lv_area_get_height(&widget_coords);
             st->layer_renderer_2d_->set_canvas_size(width, height);
             st->layer_renderer_2d_->auto_fit();
+
+            // Apply filament color from G-code metadata if available
+            if (st->use_filament_color && st->gcode_file->filament_color_hex.length() >= 2) {
+                lv_color_t color = lv_color_hex(static_cast<uint32_t>(
+                    std::strtol(st->gcode_file->filament_color_hex.c_str() + 1, nullptr, 16)));
+                st->layer_renderer_2d_->set_extrusion_color(color);
+                spdlog::info("[GCode Viewer] 2D renderer using filament color: {}",
+                             st->gcode_file->filament_color_hex);
+            }
+
             spdlog::info("[GCode Viewer] Initialized 2D layer renderer ({}x{})", width, height);
         }
 
