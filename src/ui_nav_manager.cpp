@@ -55,11 +55,19 @@ void NavigationManager::clear_overlay_stack() {
         // Reset transform and opacity for potential reuse
         lv_obj_set_style_translate_x(overlay, 0, LV_PART_MAIN);
         lv_obj_set_style_opa(overlay, LV_OPA_COVER, LV_PART_MAIN);
+
+        // Clean up dynamic backdrop for this overlay (if one was created)
+        auto backdrop_it = overlay_backdrops_.find(overlay);
+        if (backdrop_it != overlay_backdrops_.end()) {
+            lv_obj_del(backdrop_it->second);
+            overlay_backdrops_.erase(backdrop_it);
+        }
+
         panel_stack_.pop_back();
         spdlog::trace("[NavigationManager] Cleared overlay {} from stack", (void*)overlay);
     }
 
-    // Hide backdrop
+    // Hide primary backdrop
     if (overlay_backdrop_) {
         ui_status_bar_set_backdrop_visible(false);
     }
@@ -368,9 +376,10 @@ void NavigationManager::nav_button_clicked_cb(lv_event_t* event) {
             }
         }
 
-        // Invoke close callbacks for any overlays being cleared
+        // Invoke close callbacks and clean up dynamic backdrops for any overlays being cleared
         // (e.g., AMS panel needs to destroy its UI to free memory)
         for (lv_obj_t* panel : mgr.panel_stack_) {
+            // Invoke close callback if registered
             auto it = mgr.overlay_close_callbacks_.find(panel);
             if (it != mgr.overlay_close_callbacks_.end()) {
                 auto callback = std::move(it->second);
@@ -379,13 +388,20 @@ void NavigationManager::nav_button_clicked_cb(lv_event_t* event) {
                               (void*)panel);
                 callback();
             }
+
+            // Clean up dynamic backdrop for this overlay (if one was created)
+            auto backdrop_it = mgr.overlay_backdrops_.find(panel);
+            if (backdrop_it != mgr.overlay_backdrops_.end()) {
+                lv_obj_del(backdrop_it->second);
+                mgr.overlay_backdrops_.erase(backdrop_it);
+            }
         }
 
         // Clear panel stack
         mgr.panel_stack_.clear();
         spdlog::trace("[NavigationManager] Panel stack cleared (nav button clicked)");
 
-        // Hide backdrop since all overlays are being cleared
+        // Hide primary backdrop since all overlays are being cleared
         if (mgr.overlay_backdrop_) {
             ui_status_bar_set_backdrop_visible(false);
         }
@@ -585,7 +601,7 @@ void NavigationManager::set_panels(lv_obj_t** panels) {
     spdlog::debug("[NavigationManager] Panel widgets registered for show/hide management");
 }
 
-void NavigationManager::push_overlay(lv_obj_t* overlay_panel) {
+void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous) {
     if (!overlay_panel) {
         spdlog::error("[NavigationManager] Cannot push NULL overlay panel");
         return;
@@ -599,12 +615,37 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel) {
 
     bool is_first_overlay = (panel_stack_.size() == 1);
 
-    // Hide current top panel
-    if (!panel_stack_.empty()) {
+    // Optionally hide current top panel (default behavior)
+    // When hide_previous=false, the previous panel stays visible beneath the new overlay
+    if (hide_previous && !panel_stack_.empty()) {
         lv_obj_t* current_top = panel_stack_.back();
         lv_obj_add_flag(current_top, LV_OBJ_FLAG_HIDDEN);
         spdlog::debug("[NavigationManager] Hiding current top panel {} (pushing overlay)",
                       (void*)current_top);
+    }
+
+    // Create backdrop for this overlay (dims what's beneath it)
+    lv_obj_t* screen = lv_obj_get_screen(overlay_panel);
+    if (screen) {
+        if (is_first_overlay && overlay_backdrop_) {
+            // First overlay: use the shared backdrop
+            ui_status_bar_set_backdrop_visible(true);
+            lv_obj_move_foreground(overlay_backdrop_);
+            spdlog::debug("[NavigationManager] Showing primary backdrop for first overlay");
+        } else if (!is_first_overlay) {
+            // Subsequent overlays: create a dynamic backdrop
+            lv_obj_t* backdrop =
+                static_cast<lv_obj_t*>(lv_xml_create(screen, "overlay_backdrop", nullptr));
+            if (backdrop) {
+                overlay_backdrops_[overlay_panel] = backdrop;
+                lv_obj_remove_flag(backdrop, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(backdrop);
+                // Wire up click handler (same as primary backdrop)
+                lv_obj_add_event_cb(backdrop, backdrop_click_event_cb, LV_EVENT_CLICKED, nullptr);
+                spdlog::debug("[NavigationManager] Created dynamic backdrop {} for overlay {}",
+                              (void*)backdrop, (void*)overlay_panel);
+            }
+        }
     }
 
     // Show the new overlay
@@ -612,22 +653,11 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel) {
     lv_obj_move_foreground(overlay_panel);
     panel_stack_.push_back(overlay_panel);
 
-    // Show backdrop if first overlay
-    if (is_first_overlay && overlay_backdrop_) {
-        ui_status_bar_set_backdrop_visible(true);
-        lv_obj_move_foreground(overlay_backdrop_);
-        lv_obj_move_foreground(overlay_panel);
-
-        spdlog::debug(
-            "[NavigationManager] Showing overlay backdrop behind panel (stack was size 1, now {})",
-            panel_stack_.size());
-    }
-
     // Animate slide-in
     overlay_animate_slide_in(overlay_panel);
 
-    spdlog::debug("[NavigationManager] Showing overlay panel {} (stack depth: {})",
-                  (void*)overlay_panel, panel_stack_.size());
+    spdlog::debug("[NavigationManager] Showing overlay panel {} (stack depth: {}, hide_prev={})",
+                  (void*)overlay_panel, panel_stack_.size(), hide_previous);
 }
 
 void NavigationManager::register_overlay_close_callback(lv_obj_t* overlay_panel,
@@ -701,9 +731,21 @@ bool NavigationManager::go_back() {
         }
     }
 
-    // Pop current panel
+    // Pop current panel and clean up its dynamic backdrop if any
     if (!panel_stack_.empty()) {
+        lv_obj_t* popped_panel = panel_stack_.back();
         panel_stack_.pop_back();
+
+        // Clean up dynamic backdrop for this overlay (if one was created)
+        auto backdrop_it = overlay_backdrops_.find(popped_panel);
+        if (backdrop_it != overlay_backdrops_.end()) {
+            lv_obj_t* backdrop = backdrop_it->second;
+            lv_obj_del(backdrop);
+            overlay_backdrops_.erase(backdrop_it);
+            spdlog::debug("[NavigationManager] Deleted dynamic backdrop {} for overlay {}",
+                          (void*)backdrop, (void*)popped_panel);
+        }
+
         spdlog::debug("[NavigationManager] Popped panel from stack (remaining depth: {})",
                       panel_stack_.size());
     }
@@ -817,8 +859,8 @@ void ui_nav_set_panels(lv_obj_t** panels) {
     NavigationManager::instance().set_panels(panels);
 }
 
-void ui_nav_push_overlay(lv_obj_t* overlay_panel) {
-    NavigationManager::instance().push_overlay(overlay_panel);
+void ui_nav_push_overlay(lv_obj_t* overlay_panel, bool hide_previous) {
+    NavigationManager::instance().push_overlay(overlay_panel, hide_previous);
 }
 
 bool ui_nav_go_back() {

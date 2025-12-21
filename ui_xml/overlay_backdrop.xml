@@ -3,7 +3,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
   <view name="overlay_backdrop"
-        extends="lv_obj" width="100%" height="100%" align="center" style_bg_color="0x000000" style_bg_opa="153"
+        extends="lv_obj" width="100%" height="100%" align="center" style_bg_color="0x000000" style_bg_opa="100"
         style_border_width="0" style_pad_all="0" style_radius="0" clickable="true" hidden="true" scrollable="false">
     <!-- Bind visibility: show when overlay_backdrop_visible == 1 -->
     <lv_obj-bind_flag_if_eq subject="overlay_backdrop_visible" flag="hidden" ref_value="0"/>

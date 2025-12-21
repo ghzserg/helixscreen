@@ -135,8 +135,9 @@ class NavigationManager {
      * Shows the overlay panel and pushes it onto history stack.
      *
      * @param overlay_panel Overlay panel widget to show
+     * @param hide_previous If true (default), hide the previous panel. If false, keep it visible.
      */
-    void push_overlay(lv_obj_t* overlay_panel);
+    void push_overlay(lv_obj_t* overlay_panel, bool hide_previous = true);
 
     /**
      * @brief Register a callback to be called when an overlay is closed
@@ -220,8 +221,11 @@ class NavigationManager {
     // Overlay close callbacks (called when overlay is popped from stack)
     std::unordered_map<lv_obj_t*, OverlayCloseCallback> overlay_close_callbacks_;
 
-    // Shared overlay backdrop widget
+    // Shared overlay backdrop widget (for first overlay)
     lv_obj_t* overlay_backdrop_ = nullptr;
+
+    // Dynamic backdrops for nested overlays (overlay → its backdrop)
+    std::unordered_map<lv_obj_t*, lv_obj_t*> overlay_backdrops_;
 
     // Navbar widget reference (for z-order management)
     lv_obj_t* navbar_widget_ = nullptr;
@@ -294,9 +298,10 @@ void ui_nav_set_panels(lv_obj_t** panels);
 
 /**
  * @brief Push overlay panel
+ * @param hide_previous If true (default), hide the previous panel. If false, keep it visible.
  * @deprecated Use NavigationManager::instance().push_overlay() instead
  */
-void ui_nav_push_overlay(lv_obj_t* overlay_panel);
+void ui_nav_push_overlay(lv_obj_t* overlay_panel, bool hide_previous = true);
 
 /**
  * @brief Navigate back

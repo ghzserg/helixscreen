@@ -44,7 +44,6 @@ static char input_buffer[16] = "";
 static void update_display();
 static void append_digit(int digit);
 static void handle_backspace();
-static void handle_cancel();
 static void handle_confirm();
 static void wire_button_events();
 
@@ -117,8 +116,8 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
     // Update display via subject (reactive binding updates XML automatically)
     update_display();
 
-    // Show via standard overlay navigation
-    ui_nav_push_overlay(keypad_widget);
+    // Show via overlay navigation, but keep previous panel visible (transparent overlay)
+    ui_nav_push_overlay(keypad_widget, false /* hide_previous */);
 
     spdlog::info("[Keypad] Showing (initial={:.1f}, range={:.0f}-{:.0f})", config->initial_value,
                  config->min_value, config->max_value);
@@ -180,11 +179,6 @@ static void handle_backspace() {
     update_display();
 }
 
-static void handle_cancel() {
-    ui_keypad_hide();
-    spdlog::debug("[Keypad] Cancelled");
-}
-
 static void handle_confirm() {
     // Parse value (empty = 0)
     float value = (input_buffer[0] == '\0') ? 0.0f : static_cast<float>(atof(input_buffer));
@@ -242,14 +236,8 @@ static void wire_button_events() {
             LV_EVENT_CLICKED, nullptr);
     }
 
-    // Back button (in header_bar) → cancel
-    lv_obj_t* back_btn = lv_obj_find_by_name(keypad_widget, "back_button");
-    if (back_btn) {
-        lv_obj_add_event_cb(
-            back_btn,
-            [](lv_event_t*) { ui_event_safe_call("keypad_cancel", []() { handle_cancel(); }); },
-            LV_EVENT_CLICKED, nullptr);
-    }
+    // NOTE: Back button is handled by header_bar's default on_header_back_clicked callback
+    // Do NOT add a second handler here - it would cause double navigation!
 
     // Action button (OK in header_bar) → confirm
     lv_obj_t* ok_btn = lv_obj_find_by_name(keypad_widget, "action_button");
