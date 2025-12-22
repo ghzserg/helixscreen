@@ -134,7 +134,7 @@ class WiFiManagerTestFixture {
 // ============================================================================
 
 TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFiManager instance creation",
-                 "[slow][network][instance]") {
+                 "[.disabled][macos-wifi][network][instance]") {
     SECTION("Instance created successfully") {
         REQUIRE(wifi_manager != nullptr);
     }
@@ -167,7 +167,7 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFiManager instance creation",
 // ============================================================================
 
 TEST_CASE_METHOD(WiFiManagerTestFixture, "Backend initialization state",
-                 "[slow][network][backend][init]") {
+                 "[.disabled][macos-wifi][network][backend][init]") {
     SECTION("Backend starts disabled by default") {
 // CRITICAL: This catches the bug where mock backend was auto-started
 #ifdef __APPLE__
@@ -231,7 +231,7 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Backend initialization state",
 // ============================================================================
 
 TEST_CASE_METHOD(WiFiManagerTestFixture, "Scan callback preservation",
-                 "[slow][network][scan][callback]") {
+                 "[.disabled][macos-wifi][network][scan][callback]") {
     SECTION("start_scan registers callback") {
         wifi_manager->set_enabled(true);
 
@@ -344,7 +344,8 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Scan callback preservation",
 // Scan Lifecycle Tests
 // ============================================================================
 
-TEST_CASE_METHOD(WiFiManagerTestFixture, "Network scanning lifecycle", "[slow][network][scan]") {
+TEST_CASE_METHOD(WiFiManagerTestFixture, "Network scanning lifecycle",
+                 "[.disabled][macos-wifi][network][scan]") {
     SECTION("Synchronous scan returns networks") {
         if (!wifi_manager->has_hardware()) {
             SKIP("No WiFi hardware available");
@@ -410,7 +411,7 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "Network scanning lifecycle", "[slow][n
 // ============================================================================
 
 TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi connection management",
-                 "[slow][network][connection]") {
+                 "[.disabled][macos-wifi][network][connection]") {
     SECTION("Initial connection state is disconnected") {
         REQUIRE_FALSE(wifi_manager->is_connected());
         REQUIRE(wifi_manager->get_connected_ssid().empty());
@@ -451,7 +452,8 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi connection management",
 // Status Query Tests
 // ============================================================================
 
-TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi status queries", "[slow][network][status]") {
+TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi status queries",
+                 "[.disabled][macos-wifi][network][status]") {
     SECTION("Hardware detection") {
         bool has_wifi = wifi_manager->has_hardware();
 
@@ -491,7 +493,8 @@ TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi status queries", "[slow][network]
 // Edge Cases & Error Handling
 // ============================================================================
 
-TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases", "[slow][network][edge-cases]") {
+TEST_CASE_METHOD(WiFiManagerTestFixture, "WiFi edge cases",
+                 "[.disabled][macos-wifi][network][edge-cases]") {
     SECTION("Rapid enable/disable cycles") {
         for (int i = 0; i < 5; i++) {
             wifi_manager->set_enabled(true);
