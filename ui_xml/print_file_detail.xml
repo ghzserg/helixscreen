@@ -84,7 +84,7 @@
         <lv_obj name="detected_ops_row"
                 width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
                 flex_flow="row" style_pad_gap="#space_xs" style_flex_cross_place="center">
-          <icon src="file-code" size="xs" variant="secondary"/>
+          <icon src="code_tags" size="xs" variant="secondary"/>
           <text_small name="detail_ops_label" bind_text="selected_file_ops" style_text_color="#text_secondary"/>
         </lv_obj>
         <!-- Color requirements card (hidden by default, shown for multi-color prints) -->
