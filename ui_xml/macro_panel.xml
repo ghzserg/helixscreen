@@ -2,7 +2,7 @@
 <!-- Copyright 2025 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
-  <view extends="overlay_panel" name="macro_panel" title="Macros">
+  <view name="macro_panel" extends="overlay_panel" title="Macros">
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="#overlay_content_pad"

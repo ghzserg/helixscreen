@@ -11,7 +11,7 @@
     <const name="temp_graph_nozzle_dark" value="#FF6666"/>
   </consts>
   <!-- Uses shared backdrop from navigation system -->
-  <view extends="overlay_panel" name="nozzle_temp_panel" title="Nozzle Temperature">
+  <view name="nozzle_temp_panel" extends="overlay_panel" title="Nozzle Temperature">
     <!-- Content Area: Two Columns -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="#space_lg" scrollable="false"
