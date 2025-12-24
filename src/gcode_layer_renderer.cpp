@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "gcode_parser.h"
+#include "memory_utils.h"
 
 #include <spdlog/spdlog.h>
 
@@ -47,6 +48,7 @@ void GCodeLayerRenderer::set_gcode(const ParsedGCodeFile* gcode) {
     streaming_controller_ = nullptr; // Clear streaming mode
     bounds_valid_ = false;
     current_layer_ = 0;
+    warmup_frames_remaining_ = WARMUP_FRAMES; // Allow panel to render before heavy caching
     invalidate_cache();
 
     if (gcode_) {
@@ -60,6 +62,7 @@ void GCodeLayerRenderer::set_streaming_controller(GCodeStreamingController* cont
     gcode_ = nullptr; // Clear full-file mode
     bounds_valid_ = false;
     current_layer_ = 0;
+    warmup_frames_remaining_ = WARMUP_FRAMES; // Allow panel to render before heavy caching
     invalidate_cache();
 
     if (streaming_controller_) {
@@ -690,6 +693,20 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
                 start_background_ghost_render();
             }
             // else: background thread is running, wait for it
+        }
+
+        // =====================================================================
+        // WARM-UP FRAMES: Skip heavy rendering to let panel layout complete
+        // =====================================================================
+        if (warmup_frames_remaining_ > 0) {
+            warmup_frames_remaining_--;
+            // Just blit ghost cache (if available) and return - no heavy caching yet
+            if (ghost_mode_enabled_ && ghost_buf_) {
+                blit_ghost_cache(layer);
+            }
+            // Request another frame to continue after warmup
+            last_frame_render_ms_ = 1; // Minimal time so adaptation doesn't spike
+            return;
         }
 
         // =====================================================================
@@ -1340,6 +1357,19 @@ void GCodeLayerRenderer::load_config() {
     adaptive_target_ms_ = std::clamp(adaptive_target_ms_, 1, 100); // Sensible bounds
 
     spdlog::debug("[GCodeLayerRenderer] Adaptive target: {}ms", adaptive_target_ms_);
+
+    // Detect device tier and apply appropriate limits for constrained devices
+    auto mem_info = ::helix::get_system_memory_info();
+    is_constrained_device_ = mem_info.is_constrained_device();
+
+    if (is_constrained_device_) {
+        max_layers_per_frame_ = CONSTRAINED_MAX_LPF;
+        if (config_layers_per_frame_ == 0) { // Adaptive mode
+            layers_per_frame_ = CONSTRAINED_START_LPF;
+        }
+        spdlog::info("[GCodeLayerRenderer] Constrained device detected: lpf capped at {}, starting at {}",
+                     max_layers_per_frame_, layers_per_frame_);
+    }
 }
 
 void GCodeLayerRenderer::adapt_layers_per_frame() {
@@ -1362,9 +1392,10 @@ void GCodeLayerRenderer::adapt_layers_per_frame() {
 
     if (last_frame_render_ms_ < static_cast<uint32_t>(adaptive_target_ms_)) {
         // Under budget - can render more layers
-        // Scale up proportionally but cap at 2x increase per frame
+        // Scale up proportionally but cap growth (conservative on constrained devices)
         float ratio = static_cast<float>(adaptive_target_ms_) / std::max(1u, last_frame_render_ms_);
-        ratio = std::min(ratio, 2.0f); // Cap at 2x increase
+        float max_growth = is_constrained_device_ ? CONSTRAINED_GROWTH_CAP : 2.0f;
+        ratio = std::min(ratio, max_growth);
         int new_lpf = static_cast<int>(layers_per_frame_ * ratio);
         // Smooth increase (take average of current and target)
         layers_per_frame_ = (layers_per_frame_ + new_lpf) / 2;
@@ -1377,8 +1408,8 @@ void GCodeLayerRenderer::adapt_layers_per_frame() {
         layers_per_frame_ = layers_per_frame_ * 3 / 4; // 75% of current
     }
 
-    // Clamp to valid range
-    layers_per_frame_ = std::clamp(layers_per_frame_, MIN_LAYERS_PER_FRAME, MAX_LAYERS_PER_FRAME);
+    // Clamp to valid range (using device-aware max)
+    layers_per_frame_ = std::clamp(layers_per_frame_, MIN_LAYERS_PER_FRAME, max_layers_per_frame_);
 
     // Log significant changes
     if (layers_per_frame_ != old_lpf) {

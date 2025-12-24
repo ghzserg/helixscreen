@@ -517,10 +517,23 @@ class GCodeLayerRenderer {
     static constexpr int MAX_LAYERS_PER_FRAME = 100;
     static constexpr int DEFAULT_ADAPTIVE_TARGET_MS = 16; // ~60 FPS
 
+    // Constrained device limits (AD5M, low-RAM embedded < 256MB)
+    static constexpr int CONSTRAINED_START_LPF = 5;
+    static constexpr int CONSTRAINED_MAX_LPF = 15;
+    static constexpr float CONSTRAINED_GROWTH_CAP = 1.3f; // vs 2.0f normal
+
     int layers_per_frame_{DEFAULT_LAYERS_PER_FRAME}; ///< Current layers per frame (may be adaptive)
     int config_layers_per_frame_{0};                 ///< Config value (0 = adaptive)
     int adaptive_target_ms_{DEFAULT_ADAPTIVE_TARGET_MS}; ///< Target render time for adaptive mode
     uint32_t last_frame_render_ms_{0}; ///< Render time of last frame (for adaptive)
+
+    // Device-aware limits
+    bool is_constrained_device_{false};               ///< True if device has < 256MB RAM
+    int max_layers_per_frame_{MAX_LAYERS_PER_FRAME};  ///< Device-adjusted max (15 on constrained)
+
+    // Warm-up frames: skip heavy rendering for first N frames to let panel layout complete
+    static constexpr int WARMUP_FRAMES = 2;
+    int warmup_frames_remaining_{WARMUP_FRAMES};      ///< Countdown before heavy render starts
 
     /// Load config values from helixconfig.json
     void load_config();
