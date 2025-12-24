@@ -287,10 +287,36 @@ class PrinterState {
      * Returns true if the printer is in a state that allows starting a new print.
      * A print can be started when the printer is idle (STANDBY), a previous print
      * finished (COMPLETE, CANCELLED), or the printer recovered from an error (ERROR).
+     * Also checks that no print workflow is currently in progress (e.g., G-code
+     * downloading/modifying/uploading).
      *
      * @return true if start_print() can be called safely
      */
     [[nodiscard]] bool can_start_new_print() const;
+
+    /**
+     * @brief Set the print-in-progress flag (UI workflow state)
+     *
+     * Call with true when starting the print preparation workflow
+     * (downloading/modifying/uploading G-code), and false when complete.
+     * This flag is checked by can_start_new_print() to prevent:
+     * - Double-tap issues during long G-code modification workflows
+     * - UI elements from indicating "ready to print" during preparation
+     * - Race conditions from concurrent print requests
+     */
+    void set_print_in_progress(bool in_progress) {
+        print_in_progress_ = in_progress;
+    }
+
+    /**
+     * @brief Check if a print workflow is currently in progress
+     *
+     * Returns true during print preparation (G-code download/modify/upload),
+     * even though the printer's physical state may still be STANDBY.
+     */
+    [[nodiscard]] bool is_print_in_progress() const {
+        return print_in_progress_;
+    }
 
     // Layer tracking subjects (from print_stats.info.current_layer/total_layer)
     lv_subject_t* get_print_layer_current_subject() {
@@ -802,6 +828,10 @@ class PrinterState {
     lv_subject_t print_start_phase_;    // Integer: PrintStartPhase enum value
     lv_subject_t print_start_message_;  // String: human-readable phase message
     lv_subject_t print_start_progress_; // Integer: 0-100% estimated progress
+
+    // Double-tap prevention: true while print workflow is executing
+    // (G-code downloading/modifying/uploading - may take 20+ seconds for large files)
+    bool print_in_progress_ = false;
 
     // Motion subjects
     lv_subject_t position_x_;

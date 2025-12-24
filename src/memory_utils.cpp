@@ -156,9 +156,9 @@ bool is_gcode_3d_render_safe(size_t file_size_bytes) {
         return false;
     }
 
-    // Determine max file size based on whether system is memory-constrained
-    size_t max_file_size = mem.is_constrained() ? GCodeMemoryLimits::MAX_FILE_SIZE_CONSTRAINED
-                                                : GCodeMemoryLimits::MAX_FILE_SIZE_NORMAL;
+    // Determine max file size based on whether available memory is low
+    size_t max_file_size = mem.is_low_memory() ? GCodeMemoryLimits::MAX_FILE_SIZE_CONSTRAINED
+                                               : GCodeMemoryLimits::MAX_FILE_SIZE_NORMAL;
 
     if (file_size_bytes > max_file_size) {
         return false;

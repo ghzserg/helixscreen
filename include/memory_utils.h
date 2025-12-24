@@ -34,9 +34,33 @@ struct MemoryInfo {
     size_t available_kb = 0; ///< Available memory in KB (free + buffers/cache)
     size_t free_kb = 0;      ///< Strictly free memory in KB
 
-    /// Check if this is a memory-constrained device (< 64MB available)
-    bool is_constrained() const {
+    // RAM tier thresholds (total system RAM)
+    static constexpr size_t TIER_CONSTRAINED_KB = 256 * 1024; ///< < 256MB = constrained
+    static constexpr size_t TIER_NORMAL_KB = 512 * 1024;      ///< < 512MB = normal
+
+    /// Check if available memory is low (< 64MB available right now)
+    bool is_low_memory() const {
         return available_kb < 64 * 1024;
+    }
+
+    /// Device tier: constrained (< 256MB total) - AD5M, embedded
+    bool is_constrained_device() const {
+        return total_kb < TIER_CONSTRAINED_KB;
+    }
+
+    /// Device tier: normal (256-512MB total) - Pi 3, low-end Pi 4
+    bool is_normal_device() const {
+        return total_kb >= TIER_CONSTRAINED_KB && total_kb < TIER_NORMAL_KB;
+    }
+
+    /// Device tier: good (> 512MB total) - Desktop, Pi 4 2GB+
+    bool is_good_device() const {
+        return total_kb >= TIER_NORMAL_KB;
+    }
+
+    /// Get total memory in MB
+    size_t total_mb() const {
+        return total_kb / 1024;
     }
 
     /// Get available memory in MB

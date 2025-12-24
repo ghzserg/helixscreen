@@ -139,13 +139,33 @@ const LayerIndexStats GCodeStreamingController::empty_stats_{};
 
 GCodeStreamingController::GCodeStreamingController()
     : cache_(GCodeLayerCache::DEFAULT_BUDGET_NORMAL) {
-    // Enable adaptive mode by default for memory-constrained devices
+    // Select cache budget tier based on total system RAM
     auto mem = get_system_memory_info();
-    if (mem.is_constrained()) {
-        cache_.set_adaptive_mode(true, 15, MIN_CACHE_BUDGET,
-                                 GCodeLayerCache::DEFAULT_BUDGET_CONSTRAINED);
-        spdlog::info("[StreamingController] Constrained device detected, using adaptive cache");
+    size_t budget;
+    const char* tier_name;
+
+    if (mem.is_constrained_device()) {
+        budget = GCodeLayerCache::DEFAULT_BUDGET_CONSTRAINED;
+        tier_name = "constrained";
+    } else if (mem.is_normal_device()) {
+        budget = GCodeLayerCache::DEFAULT_BUDGET_NORMAL;
+        tier_name = "normal";
+    } else {
+        budget = GCodeLayerCache::DEFAULT_BUDGET_GOOD;
+        tier_name = "good";
     }
+
+    cache_.set_memory_budget(budget);
+
+    // Enable adaptive mode on constrained/normal devices (not desktop)
+    if (!mem.is_good_device()) {
+        cache_.set_adaptive_mode(true, 15, MIN_CACHE_BUDGET, budget);
+    }
+
+    spdlog::info("[StreamingController] {} device (total: {}MB, available: {}MB), "
+                 "using {}MB cache budget{}",
+                 tier_name, mem.total_mb(), mem.available_mb(), budget / (1024 * 1024),
+                 mem.is_good_device() ? "" : " with adaptive mode");
 }
 
 GCodeStreamingController::GCodeStreamingController(size_t cache_budget_bytes)
@@ -466,8 +486,8 @@ void GCodeStreamingController::set_cache_budget(size_t budget_bytes) {
 
 void GCodeStreamingController::set_adaptive_cache(bool enable) {
     if (enable) {
-        cache_.set_adaptive_mode(true, 15, MIN_CACHE_BUDGET,
-                                 GCodeLayerCache::DEFAULT_BUDGET_NORMAL);
+        // Use current budget as max (respects device tier set at construction)
+        cache_.set_adaptive_mode(true, 15, MIN_CACHE_BUDGET, cache_.memory_budget_bytes());
     } else {
         cache_.set_adaptive_mode(false);
     }

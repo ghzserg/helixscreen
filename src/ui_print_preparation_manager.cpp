@@ -516,6 +516,30 @@ void PrintPreparationManager::start_print(const std::string& filename,
         return;
     }
 
+    // Prevent double-tap: reject if a print is already being started
+    // This uses PrinterState's flag which is also checked by can_start_new_print()
+    if (printer_state_ && printer_state_->is_print_in_progress()) {
+        spdlog::warn(
+            "[PrintPreparationManager] Ignoring duplicate print request - already in progress");
+        return;
+    }
+    if (printer_state_) {
+        printer_state_->set_print_in_progress(true);
+    }
+
+    // Wrap the completion callback to always clear the in-progress flag
+    // This ensures the flag is cleared whether print succeeds or fails
+    PrinterState* state_ptr = printer_state_;
+    PrintCompletionCallback wrapped_completion =
+        [state_ptr, on_completion](bool success, const std::string& error) {
+            if (state_ptr) {
+                state_ptr->set_print_in_progress(false);
+            }
+            if (on_completion) {
+                on_completion(success, error);
+            }
+        };
+
     // Build full path for print
     std::string filename_to_print = current_path.empty() ? filename : current_path + "/" + filename;
 
@@ -581,9 +605,9 @@ void PrintPreparationManager::start_print(const std::string& filename,
 
     if (has_pre_print_ops) {
         execute_pre_print_sequence(filename_to_print, options, on_navigate_to_status, on_preparing,
-                                   on_progress, on_completion);
+                                   on_progress, wrapped_completion);
     } else {
-        start_print_directly(filename_to_print, on_navigate_to_status, on_completion);
+        start_print_directly(filename_to_print, on_navigate_to_status, wrapped_completion);
     }
 }
 
@@ -592,6 +616,10 @@ void PrintPreparationManager::cancel_preparation() {
         spdlog::info("[PrintPreparationManager] Cancelling pre-print sequence");
         pre_print_sequencer_.reset();
     }
+}
+
+bool PrintPreparationManager::is_print_in_progress() const {
+    return printer_state_ && printer_state_->is_print_in_progress();
 }
 
 // ============================================================================
@@ -715,12 +743,16 @@ void PrintPreparationManager::modify_and_print(
     NavigateToStatusCallback on_navigate_to_status) {
     if (!api_) {
         NOTIFY_ERROR("Cannot start print - not connected to printer");
+        if (printer_state_)
+            printer_state_->set_print_in_progress(false);
         return;
     }
 
     if (!cached_scan_result_.has_value()) {
         spdlog::error("[PrintPreparationManager] modify_and_print called without scan result");
         NOTIFY_ERROR("Internal error: no scan result");
+        if (printer_state_)
+            printer_state_->set_print_in_progress(false);
         return;
     }
 
@@ -771,6 +803,8 @@ void PrintPreparationManager::modify_and_print_via_plugin(
     // Validate scan_result before proceeding
     if (!scan_result.has_value()) {
         NOTIFY_ERROR("Cannot modify G-code: scan result not available");
+        if (printer_state_)
+            printer_state_->set_print_in_progress(false);
         return;
     }
 
@@ -805,6 +839,8 @@ void PrintPreparationManager::modify_and_print_via_plugin(
             std::string modified_content = modifier.apply_to_content(content);
             if (modified_content.empty()) {
                 NOTIFY_ERROR("Failed to modify G-code file");
+                if (self->printer_state_)
+                    self->printer_state_->set_print_in_progress(false);
                 return;
             }
 
@@ -812,10 +848,14 @@ void PrintPreparationManager::modify_and_print_via_plugin(
             self->api_->start_modified_print(
                 file_path, modified_content, mod_names,
                 // Success callback - runs on HTTP thread, must defer LVGL ops
-                [on_navigate_to_status, display_filename](const ModifiedPrintResult& result) {
+                [self, on_navigate_to_status, display_filename](const ModifiedPrintResult& result) {
                     spdlog::info("[PrintPreparationManager] Print started via helix_print "
                                  "plugin: {} -> {}",
                                  result.original_filename, result.print_filename);
+
+                    // Clear in-progress flag on success
+                    if (self->printer_state_)
+                        self->printer_state_->set_print_in_progress(false);
 
                     // Defer LVGL operations to main thread
                     struct PrintStartedData {
@@ -832,19 +872,23 @@ void PrintPreparationManager::modify_and_print_via_plugin(
                             }
                         });
                 },
-                [file_path](const MoonrakerError& error) {
+                [self, file_path](const MoonrakerError& error) {
                     // NOTIFY_ERROR is already thread-safe
                     NOTIFY_ERROR("Failed to start modified print: {}", error.message);
                     LOG_ERROR_INTERNAL(
                         "[PrintPreparationManager] helix_print plugin error for {}: {}", file_path,
                         error.message);
+                    if (self->printer_state_)
+                        self->printer_state_->set_print_in_progress(false);
                 });
         },
-        [file_path](const MoonrakerError& error) {
+        [self, file_path](const MoonrakerError& error) {
             // NOTIFY_ERROR is already thread-safe
             NOTIFY_ERROR("Failed to download G-code for modification: {}", error.message);
             LOG_ERROR_INTERNAL("[PrintPreparationManager] Download failed for {}: {}", file_path,
                                error.message);
+            if (self->printer_state_)
+                self->printer_state_->set_print_in_progress(false);
         });
 }
 
@@ -860,6 +904,8 @@ void PrintPreparationManager::modify_and_print_streaming(
     // Validate scan_result before proceeding (SERIOUS-3 fix)
     if (!scan_result.has_value()) {
         NOTIFY_ERROR("Cannot modify G-code: scan result not available");
+        if (printer_state_)
+            printer_state_->set_print_in_progress(false);
         return;
     }
 
@@ -867,6 +913,8 @@ void PrintPreparationManager::modify_and_print_streaming(
     std::string temp_dir = get_temp_directory();
     if (temp_dir.empty()) {
         NOTIFY_ERROR("Cannot modify G-code: no temp directory available");
+        if (printer_state_)
+            printer_state_->set_print_in_progress(false);
         return;
     }
 
@@ -926,6 +974,8 @@ void PrintPreparationManager::modify_and_print_streaming(
 
             if (!result.success) {
                 NOTIFY_ERROR("Failed to modify G-code: {}", result.error_message);
+                if (self->printer_state_)
+                    self->printer_state_->set_print_in_progress(false);
                 return;
             }
 
@@ -963,10 +1013,15 @@ void PrintPreparationManager::modify_and_print_streaming(
                     self->api_->start_print(
                         remote_temp_path,
                         // Print success - defer LVGL ops to main thread
-                        [on_navigate_to_status, display_filename]() {
+                        [self, on_navigate_to_status, display_filename]() {
                             spdlog::info("[PrintPreparationManager] Print started with "
                                          "modified G-code (streaming, original: {})",
                                          display_filename);
+
+                            // Clear in-progress flag on success
+                            if (self->printer_state_) {
+                                self->printer_state_->set_print_in_progress(false);
+                            }
 
                             // Defer LVGL operations to main thread
                             struct PrintStartedData {
@@ -991,6 +1046,11 @@ void PrintPreparationManager::modify_and_print_streaming(
                                 "[PrintPreparationManager] Print start failed for {}: {}",
                                 remote_temp_path, error.message);
 
+                            // Clear in-progress flag on error
+                            if (self->printer_state_) {
+                                self->printer_state_->set_print_in_progress(false);
+                            }
+
                             // Check if manager still valid before cleanup
                             if (!alive || !*alive) {
                                 spdlog::debug("[PrintPreparationManager] Skipping remote "
@@ -1012,7 +1072,7 @@ void PrintPreparationManager::modify_and_print_streaming(
                         });
                 },
                 // Upload error - clean up local file
-                [modified_path](const MoonrakerError& error) {
+                [self, modified_path](const MoonrakerError& error) {
                     // Clean up local file even on error (safe - filesystem op)
                     std::error_code ec;
                     std::filesystem::remove(modified_path, ec);
@@ -1020,10 +1080,12 @@ void PrintPreparationManager::modify_and_print_streaming(
                     NOTIFY_ERROR("Failed to upload modified G-code: {}", error.message);
                     LOG_ERROR_INTERNAL("[PrintPreparationManager] Upload failed: {}",
                                        error.message);
+                    if (self->printer_state_)
+                        self->printer_state_->set_print_in_progress(false);
                 });
         },
         // Download error - clean up partial download
-        [file_path, local_download_path](const MoonrakerError& error) {
+        [self, file_path, local_download_path](const MoonrakerError& error) {
             // Clean up partial download if any (safe - filesystem op)
             std::error_code ec;
             std::filesystem::remove(local_download_path, ec);
@@ -1031,6 +1093,8 @@ void PrintPreparationManager::modify_and_print_streaming(
             NOTIFY_ERROR("Failed to download G-code for modification: {}", error.message);
             LOG_ERROR_INTERNAL("[PrintPreparationManager] Download failed for {}: {}", file_path,
                                error.message);
+            if (self->printer_state_)
+                self->printer_state_->set_print_in_progress(false);
         });
 }
 

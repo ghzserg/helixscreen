@@ -1112,6 +1112,13 @@ PrintJobState PrinterState::get_print_job_state() const {
 }
 
 bool PrinterState::can_start_new_print() const {
+    // Check if a print workflow is already in progress (UI state)
+    // This prevents double-tap issues during long G-code modification workflows
+    if (print_in_progress_) {
+        return false;
+    }
+
+    // Check printer's physical state
     PrintJobState state = get_print_job_state();
     // A new print can be started when printer is idle or previous print finished
     switch (state) {

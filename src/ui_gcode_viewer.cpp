@@ -1116,10 +1116,10 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                 // NOTE: Only needed for TinyGL 3D renderer - 2D renderer uses ParsedGCodeFile
                 // directly
 
-                // Check if system is memory-constrained (< 64MB available)
-                // On constrained systems, ONLY build coarse geometry to save ~50MB
+                // Check if available memory is low (< 64MB available right now)
+                // When memory is low, ONLY build coarse geometry to save ~50MB
                 auto mem_info = helix::get_system_memory_info();
-                bool memory_constrained = mem_info.is_constrained();
+                bool memory_constrained = mem_info.is_low_memory();
                 if (memory_constrained) {
                     spdlog::info("[GCode Viewer] Memory constrained ({}MB available) - "
                                  "building coarse geometry only",

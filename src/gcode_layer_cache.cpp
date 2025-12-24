@@ -44,6 +44,9 @@ size_t GCodeLayerCache::estimate_memory(const std::vector<ToolpathSegment>& segm
 GCodeLayerCache::CacheResult
 GCodeLayerCache::get_or_load(size_t layer_index,
                              std::function<std::vector<ToolpathSegment>(size_t)> loader) {
+    // Periodically check memory pressure and adapt budget (rate-limited internally)
+    check_memory_pressure();
+
     std::lock_guard<std::mutex> lock(mutex_);
 
     // Check if already cached
@@ -428,8 +431,8 @@ size_t GCodeLayerCache::calculate_adaptive_budget(const MemoryInfo& mem) const {
     target_budget = std::max(target_budget, adaptive_min_budget_);
     target_budget = std::min(target_budget, adaptive_max_budget_);
 
-    // On constrained devices, be more aggressive
-    if (mem.is_constrained()) {
+    // When available memory is low, be more aggressive
+    if (mem.is_low_memory()) {
         // If < 64MB available, use at most 10% for cache
         target_budget = std::min(target_budget, available_bytes / 10);
         target_budget = std::max(target_budget, adaptive_min_budget_);

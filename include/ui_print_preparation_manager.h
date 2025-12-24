@@ -323,6 +323,15 @@ class PrintPreparationManager {
     }
 
     /**
+     * @brief Check if a print is currently being started
+     *
+     * Delegates to PrinterState::is_print_in_progress(). Returns true from
+     * when start_print() is called until the print actually starts or fails.
+     * Used to prevent double-tap issues.
+     */
+    [[nodiscard]] bool is_print_in_progress() const;
+
+    /**
      * @brief Cancel any running pre-print sequence
      */
     void cancel_preparation();
