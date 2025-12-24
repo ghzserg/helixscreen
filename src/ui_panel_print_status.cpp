@@ -1185,6 +1185,14 @@ void PrintStatusPanel::on_print_state_changed(PrintJobState job_state) {
         if (new_state == PrintState::Printing) {
             runout_modal_shown_for_pause_ = false;
             hide_runout_guidance_modal();
+
+            // Reset progress bar on new print start (not resume from pause).
+            // Without this, the bar animates from its old position to the new value,
+            // showing only a partial segment (e.g., 50%→75% instead of 0%→75%).
+            if (old_state != PrintState::Paused && progress_bar_) {
+                lv_bar_set_value(progress_bar_, 0, LV_ANIM_OFF);
+                spdlog::debug("[{}] Reset progress bar for new print", get_name());
+            }
         }
 
         // Show print complete overlay when entering Complete state
@@ -1221,9 +1229,21 @@ void PrintStatusPanel::on_print_filename_changed(const char* filename) {
     }
 
     if (has_filename) {
+        std::string raw_filename = filename;
+
+        // Auto-resolve temp file patterns to original filename.
+        // This handles the race condition where Moonraker reports the temp path
+        // (e.g., .helix_temp/modified_*) before set_thumbnail_source() is called.
+        // Common when Helix plugin is not installed or during direct Moonraker prints.
+        std::string resolved = resolve_gcode_filename(raw_filename);
+        if (resolved != raw_filename && thumbnail_source_filename_.empty()) {
+            spdlog::info("[{}] Auto-resolved temp filename: {} -> {}", get_name(), raw_filename,
+                         resolved);
+            set_thumbnail_source(resolved);
+        }
+
         // Compute effective filename for comparison (respects thumbnail_source override)
         // This ensures we compare apples-to-apples: the effective display name
-        std::string raw_filename = filename;
         std::string effective_filename =
             thumbnail_source_filename_.empty() ? raw_filename : thumbnail_source_filename_;
         std::string display_name = get_display_filename(effective_filename);

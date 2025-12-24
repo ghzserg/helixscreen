@@ -85,9 +85,9 @@
         </lv_obj>
         <!-- Metadata container - fixed height at bottom of flex column -->
         <lv_obj name="metadata_clip"
-                width="100%" height="120" style_bg_opa="0" style_border_width="0" style_radius="0" style_pad_all="0"
+                width="100%" height="128" style_bg_opa="0" style_border_width="0" style_radius="0" style_pad_all="0"
                 scrollable="false" style_clip_corner="true">
-          <!-- Metadata overlay - transparent background -->
+          <!-- Metadata overlay - transparent background (height must match parent to avoid scrollbars) -->
           <lv_obj name="metadata_overlay"
                   width="100%" height="128" align="bottom_mid" style_bg_opa="0" style_border_width="0" style_radius="0"
                   style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_2xl"
