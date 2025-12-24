@@ -204,6 +204,7 @@ void PrinterState::reset_for_testing() {
     lv_subject_deinit(&print_start_phase_);
     lv_subject_deinit(&print_start_message_);
     lv_subject_deinit(&print_start_progress_);
+    lv_subject_deinit(&print_in_progress_);
     lv_subject_deinit(&position_x_);
     lv_subject_deinit(&position_y_);
     lv_subject_deinit(&position_z_);
@@ -271,7 +272,7 @@ void PrinterState::init_subjects(bool register_xml) {
     lv_subject_init_string(&print_state_, print_state_buf_, nullptr, sizeof(print_state_buf_),
                            "standby");
     lv_subject_init_int(&print_state_enum_, static_cast<int>(PrintJobState::STANDBY));
-    lv_subject_init_int(&print_active_, 0); // 0 when idle, 1 when PRINTING/PAUSED
+    lv_subject_init_int(&print_active_, 0);        // 0 when idle, 1 when PRINTING/PAUSED
     lv_subject_init_int(&print_show_progress_, 0); // 1 when active AND not in start phase
     lv_subject_init_string(&print_display_filename_, print_display_filename_buf_, nullptr,
                            sizeof(print_display_filename_buf_), "");
@@ -291,6 +292,9 @@ void PrinterState::init_subjects(bool register_xml) {
     lv_subject_init_string(&print_start_message_, print_start_message_buf_, nullptr,
                            sizeof(print_start_message_buf_), "");
     lv_subject_init_int(&print_start_progress_, 0);
+
+    // Print workflow in-progress subject (1 while preparing/starting, 0 otherwise)
+    lv_subject_init_int(&print_in_progress_, 0);
 
     // Motion subjects
     lv_subject_init_int(&position_x_, 0);
@@ -1108,7 +1112,8 @@ void PrinterState::update_print_show_progress() {
     // Combined subject for home panel progress card visibility
     // Show progress card only when: print is active AND not in print start phase
     bool is_active = lv_subject_get_int(&print_active_) != 0;
-    bool is_starting = lv_subject_get_int(&print_start_phase_) != static_cast<int>(PrintStartPhase::IDLE);
+    bool is_starting =
+        lv_subject_get_int(&print_start_phase_) != static_cast<int>(PrintStartPhase::IDLE);
     int new_value = (is_active && !is_starting) ? 1 : 0;
 
     if (lv_subject_get_int(&print_show_progress_) != new_value) {
@@ -1141,7 +1146,7 @@ PrintJobState PrinterState::get_print_job_state() const {
 bool PrinterState::can_start_new_print() const {
     // Check if a print workflow is already in progress (UI state)
     // This prevents double-tap issues during long G-code modification workflows
-    if (print_in_progress_) {
+    if (is_print_in_progress()) {
         return false;
     }
 

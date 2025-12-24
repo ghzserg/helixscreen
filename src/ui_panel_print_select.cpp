@@ -536,6 +536,22 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         spdlog::debug("[{}] Registered observer on print job state for print button", get_name());
     }
 
+    // Also observe print_in_progress subject - this fires immediately when Print is tapped
+    // (before Moonraker reports state change, which can take seconds)
+    lv_subject_t* print_in_progress_subject = printer_state_.get_print_in_progress_subject();
+    if (print_in_progress_subject) {
+        print_in_progress_observer_ = ObserverGuard(
+            print_in_progress_subject,
+            [](lv_observer_t* observer, lv_subject_t* /*subject*/) {
+                auto* self = static_cast<PrintSelectPanel*>(lv_observer_get_user_data(observer));
+                if (self) {
+                    self->update_print_button_state();
+                }
+            },
+            this);
+        spdlog::debug("[{}] Registered observer on print_in_progress for print button", get_name());
+    }
+
     // Register observer on helix_plugin_installed to show install prompt when plugin not available
     // This fires after discovery completes and plugin status is known
     lv_subject_t* plugin_subject = printer_state_.get_helix_plugin_installed_subject();
@@ -1591,6 +1607,7 @@ void PrintSelectPanel::execute_print_start() {
         filename_to_print, current_path_,
         // Navigation callback - navigate to print status panel
         [self]() {
+            spdlog::info("[{}] Print started - navigating to print status panel", self->get_name());
             if (self->print_status_panel_widget_) {
                 self->hide_detail_view();
                 ui_nav_push_overlay(self->print_status_panel_widget_);

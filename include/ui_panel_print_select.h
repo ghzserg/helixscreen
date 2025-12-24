@@ -465,7 +465,9 @@ class PrintSelectPanel : public PanelBase {
     // Observers for reactive updates (ObserverGuard handles cleanup)
     ObserverGuard active_panel_observer_;
     ObserverGuard connection_observer_;
-    ObserverGuard print_state_observer_;  ///< Observes print state to enable/disable print button
+    ObserverGuard print_state_observer_; ///< Observes print state to enable/disable print button
+    ObserverGuard
+        print_in_progress_observer_;      ///< Observes workflow in-progress for immediate disable
     ObserverGuard helix_plugin_observer_; ///< Observes plugin status for install prompt
 
     // Plugin installer for helix_print Moonraker plugin

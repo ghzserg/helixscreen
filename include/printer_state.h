@@ -360,9 +360,14 @@ class PrinterState {
      * - Double-tap issues during long G-code modification workflows
      * - UI elements from indicating "ready to print" during preparation
      * - Race conditions from concurrent print requests
+     *
+     * Updates the print_in_progress_ subject so UI observers can react.
      */
     void set_print_in_progress(bool in_progress) {
-        print_in_progress_ = in_progress;
+        int new_value = in_progress ? 1 : 0;
+        if (lv_subject_get_int(&print_in_progress_) != new_value) {
+            lv_subject_set_int(&print_in_progress_, new_value);
+        }
     }
 
     /**
@@ -372,7 +377,16 @@ class PrinterState {
      * even though the printer's physical state may still be STANDBY.
      */
     [[nodiscard]] bool is_print_in_progress() const {
-        return print_in_progress_;
+        return lv_subject_get_int(const_cast<lv_subject_t*>(&print_in_progress_)) != 0;
+    }
+
+    /**
+     * @brief Get the print-in-progress subject for observing workflow state
+     *
+     * Value is 1 when print preparation is in progress, 0 otherwise.
+     */
+    lv_subject_t* get_print_in_progress_subject() {
+        return &print_in_progress_;
     }
 
     // Layer tracking subjects (from print_stats.info.current_layer/total_layer)
@@ -867,11 +881,11 @@ class PrinterState {
     lv_subject_t bed_target_;
 
     // Print progress subjects
-    lv_subject_t print_progress_;       // Integer 0-100
-    lv_subject_t print_filename_;       // String buffer
-    lv_subject_t print_state_;          // String buffer (for UI display binding)
-    lv_subject_t print_state_enum_;     // Integer: PrintJobState enum (for type-safe logic)
-    lv_subject_t print_active_;         // Integer: 1 when PRINTING/PAUSED, 0 otherwise
+    lv_subject_t print_progress_;         // Integer 0-100
+    lv_subject_t print_filename_;         // String buffer
+    lv_subject_t print_state_;            // String buffer (for UI display binding)
+    lv_subject_t print_state_enum_;       // Integer: PrintJobState enum (for type-safe logic)
+    lv_subject_t print_active_;           // Integer: 1 when PRINTING/PAUSED, 0 otherwise
     lv_subject_t print_show_progress_;    // Integer: 1 when active AND not in start phase
     lv_subject_t print_display_filename_; // String: clean filename for UI display
     lv_subject_t print_thumbnail_path_;   // String: LVGL path to current print thumbnail
@@ -889,9 +903,9 @@ class PrinterState {
     lv_subject_t print_start_message_;  // String: human-readable phase message
     lv_subject_t print_start_progress_; // Integer: 0-100% estimated progress
 
-    // Double-tap prevention: true while print workflow is executing
+    // Double-tap prevention: 1 while print workflow is executing, 0 otherwise
     // (G-code downloading/modifying/uploading - may take 20+ seconds for large files)
-    bool print_in_progress_ = false;
+    lv_subject_t print_in_progress_;
 
     // Motion subjects
     lv_subject_t position_x_;
