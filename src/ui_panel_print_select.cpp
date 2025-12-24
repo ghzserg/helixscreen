@@ -3,7 +3,6 @@
 
 #include "ui_panel_print_select.h"
 
-#include "ui_async_callback.h"
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_fonts.h"
@@ -12,6 +11,7 @@
 #include "ui_panel_print_status.h"
 #include "ui_subject_registry.h"
 #include "ui_theme.h"
+#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "ams_state.h"
@@ -352,7 +352,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         self->metadata_fetched_ = std::move(fetched);
 
         // Dispatch UI updates to main thread
-        lv_async_call(
+        ui_async_call(
             [](void* user_data) {
                 auto* panel = static_cast<PrintSelectPanel*>(user_data);
 
@@ -534,7 +534,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                                             "[PrintSelectPanel] Showing plugin install prompt");
 
                                         // Schedule modal display on main thread
-                                        lv_async_call(
+                                        ui_async_call(
                                             [](void* user_data) {
                                                 auto* panel =
                                                     static_cast<PrintSelectPanel*>(user_data);
@@ -747,7 +747,7 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
                     helix::ThumbnailTarget thumb_target; // Target size for pre-scaling
                 };
 
-                ui_async_call_safe<MetadataUpdate>(
+                ui_queue_update<MetadataUpdate>(
                     std::make_unique<MetadataUpdate>(
                         MetadataUpdate{self, i, filename, print_time_minutes, filament_grams,
                                        filament_type, print_time_str, filament_str, layer_count,
@@ -806,7 +806,7 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
                                             std::string filename;
                                             std::string lvgl_path;
                                         };
-                                        ui_async_call_safe<ThumbUpdate>(
+                                        ui_queue_update<ThumbUpdate>(
                                             std::make_unique<ThumbUpdate>(ThumbUpdate{
                                                 self, file_idx, filename_copy, lvgl_path}),
                                             [](ThumbUpdate* t) {
@@ -1137,7 +1137,7 @@ CardDimensions PrintSelectPanel::calculate_card_dimensions() {
 
 void PrintSelectPanel::schedule_view_refresh() {
     // Use lv_async_call to ensure thread-safety (this may be called from WebSocket thread)
-    lv_async_call(
+    ui_async_call(
         [](void* user_data) {
             auto* self = static_cast<PrintSelectPanel*>(user_data);
 

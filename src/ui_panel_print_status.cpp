@@ -820,19 +820,36 @@ void PrintStatusPanel::handle_cancel_button() {
     cancel_modal_.set_on_confirm([this]() {
         spdlog::info("[{}] Cancel confirmed - executing cancel_print", get_name());
 
+        // Disable cancel button immediately to prevent double-press
+        if (btn_cancel_) {
+            lv_obj_add_state(btn_cancel_, LV_STATE_DISABLED);
+            lv_obj_set_style_opa(btn_cancel_, LV_OPA_50, LV_PART_MAIN);
+        }
+
         if (api_) {
             api_->cancel_print(
                 [this]() {
                     spdlog::info("[{}] Cancel command sent successfully", get_name());
                     // State will update via PrinterState observer when Moonraker confirms
+                    // Button state managed by update_button_states() based on print state
                 },
-                [](const MoonrakerError& err) {
+                [this](const MoonrakerError& err) {
                     spdlog::error("[Print Status] Failed to cancel print: {}", err.message);
                     NOTIFY_ERROR("Failed to cancel print: {}", err.user_message());
+                    // Re-enable button on failure
+                    if (btn_cancel_) {
+                        lv_obj_remove_state(btn_cancel_, LV_STATE_DISABLED);
+                        lv_obj_set_style_opa(btn_cancel_, LV_OPA_COVER, LV_PART_MAIN);
+                    }
                 });
         } else {
             spdlog::warn("[{}] API not available - cannot cancel print", get_name());
             NOTIFY_ERROR("Cannot cancel: not connected to printer");
+            // Re-enable button since we couldn't send the command
+            if (btn_cancel_) {
+                lv_obj_remove_state(btn_cancel_, LV_STATE_DISABLED);
+                lv_obj_set_style_opa(btn_cancel_, LV_OPA_COVER, LV_PART_MAIN);
+            }
         }
     });
 

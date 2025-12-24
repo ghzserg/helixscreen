@@ -3,6 +3,8 @@
 
 #include "ui_macro_enhance_wizard.h"
 
+#include "ui_update_queue.h"
+
 #include "moonraker_api.h"
 
 #include <spdlog/spdlog.h>
@@ -476,7 +478,7 @@ void MacroEnhanceWizard::apply_enhancements() {
             }
             // Allocate context - will be freed in async handler
             auto* ctx = new AsyncProgressCtx{guard, this, step};
-            lv_async_call(
+            ui_async_call(
                 [](void* user_data) {
                     auto* ctx = static_cast<AsyncProgressCtx*>(user_data);
                     // Check guard in main thread [SERIOUS-5: Thread safety]
@@ -494,7 +496,7 @@ void MacroEnhanceWizard::apply_enhancements() {
                 return;
             }
             auto* ctx = new AsyncSuccessCtx{guard, this, approved_count, result.backup_filename};
-            lv_async_call(
+            ui_async_call(
                 [](void* user_data) {
                     auto* ctx = static_cast<AsyncSuccessCtx*>(user_data);
                     auto guard_locked = ctx->guard.lock();
@@ -514,7 +516,7 @@ void MacroEnhanceWizard::apply_enhancements() {
                 return;
             }
             auto* ctx = new AsyncErrorCtx{guard, this, err.user_message()};
-            lv_async_call(
+            ui_async_call(
                 [](void* user_data) {
                     auto* ctx = static_cast<AsyncErrorCtx*>(user_data);
                     auto guard_locked = ctx->guard.lock();

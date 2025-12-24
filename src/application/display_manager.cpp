@@ -4,6 +4,7 @@
 #include "display_manager.h"
 
 #include "ui_fatal_error.h"
+#include "ui_update_queue.h"
 
 #include "lvgl/src/libs/svg/lv_svg_decoder.h"
 
@@ -53,6 +54,10 @@ bool DisplayManager::init(const Config& config) {
         lv_deinit();
         return false;
     }
+
+    // Initialize UI update queue for thread-safe async updates
+    // Must be done AFTER display is created - registers LV_EVENT_REFR_START handler
+    ui_update_queue_init();
 
     // Create pointer input device (mouse/touch)
     m_pointer = m_backend->create_input_pointer();
@@ -129,6 +134,9 @@ void DisplayManager::shutdown() {
 
     // Release backend
     m_backend.reset();
+
+    // Shutdown UI update queue before LVGL
+    ui_update_queue_shutdown();
 
     // Deinitialize LVGL
     lv_deinit();

@@ -7,6 +7,7 @@
 #include "ui_panel_spoolman.h"
 #include "ui_timelapse_settings.h"
 #include "ui_toast.h"
+#include "ui_update_queue.h"
 
 #include "app_globals.h"
 #include "macro_analysis_manager.h"
@@ -246,7 +247,7 @@ void AdvancedPanel::handle_restart_helix_clicked() {
 
     // Schedule restart after a brief delay to let toast display
     // Uses fork/exec pattern from app_globals - works on both systemd and standalone
-    lv_async_call(
+    ui_async_call(
         [](void*) {
             spdlog::info("[Advanced Panel] Initiating restart...");
             app_request_restart();

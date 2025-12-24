@@ -3,8 +3,8 @@
 
 #include "wifi_manager.h"
 
-#include "ui_async_callback.h"
 #include "ui_error_reporting.h"
+#include "ui_update_queue.h"
 
 #include "lvgl/lvgl.h"
 #include "safe_log.h"
@@ -333,7 +333,7 @@ void WiFiManager::handle_scan_complete(const std::string& event_data) {
                       networks.size());
 
         // Use RAII-safe async callback wrapper
-        ui_async_call_safe<ScanCallbackData>(
+        ui_queue_update<ScanCallbackData>(
             std::make_unique<ScanCallbackData>(ScanCallbackData{self_, networks}),
             [](ScanCallbackData* data) {
                 spdlog::debug("[WiFiManager] async_call executing in LVGL thread with {} networks",
@@ -358,7 +358,7 @@ void WiFiManager::handle_scan_complete(const std::string& event_data) {
         LOG_WARN_INTERNAL("Failed to get scan results: {}", result.technical_msg);
 
         // Use RAII-safe async callback wrapper
-        ui_async_call_safe<ScanCallbackData>(
+        ui_queue_update<ScanCallbackData>(
             std::make_unique<ScanCallbackData>(ScanCallbackData{self_, {}}),
             [](ScanCallbackData* data) {
                 LOG_WARN_INTERNAL("async_call: calling callback with empty results");
@@ -398,7 +398,7 @@ void WiFiManager::handle_connected(const std::string& event_data) {
     }
 
     // Use RAII-safe async callback wrapper
-    ui_async_call_safe<ConnectCallbackData>(
+    ui_queue_update<ConnectCallbackData>(
         std::make_unique<ConnectCallbackData>(ConnectCallbackData{self_, true, ""}),
         [](ConnectCallbackData* d) {
             if (auto manager = d->manager.lock()) {
@@ -432,7 +432,7 @@ void WiFiManager::handle_disconnected(const std::string& event_data) {
     }
 
     // Use RAII-safe async callback wrapper
-    ui_async_call_safe<ConnectCallbackData>(
+    ui_queue_update<ConnectCallbackData>(
         std::make_unique<ConnectCallbackData>(ConnectCallbackData{self_, false, "Disconnected"}),
         [](ConnectCallbackData* d) {
             if (auto manager = d->manager.lock()) {
@@ -460,7 +460,7 @@ void WiFiManager::handle_auth_failed(const std::string& event_data) {
     }
 
     // Use RAII-safe async callback wrapper
-    ui_async_call_safe<ConnectCallbackData>(
+    ui_queue_update<ConnectCallbackData>(
         std::make_unique<ConnectCallbackData>(
             ConnectCallbackData{self_, false, "Authentication failed"}),
         [](ConnectCallbackData* d) {

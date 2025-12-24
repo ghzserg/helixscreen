@@ -7,6 +7,7 @@
 #include "ui_nav.h"
 #include "ui_step_progress.h"
 #include "ui_subject_registry.h"
+#include "ui_update_queue.h"
 
 #include "ethernet_manager.h"
 #include "network_tester.h"
@@ -844,7 +845,7 @@ void NetworkSettingsOverlay::handle_test_network_clicked() {
 
         auto* data = new CallbackData{self, state, result};
 
-        lv_async_call(
+        ui_async_call(
             [](void* ctx) {
                 auto* cb_data = static_cast<CallbackData*>(ctx);
                 if (!cb_data->overlay->cleanup_called_) {

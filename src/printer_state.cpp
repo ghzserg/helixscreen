@@ -3,6 +3,8 @@
 
 #include "printer_state.h"
 
+#include "ui_update_queue.h"
+
 #include "capability_overrides.h"
 #include "filament_sensor_manager.h"
 #include "lvgl.h"
@@ -21,7 +23,7 @@
 // CRITICAL: Subject updates trigger lv_obj_invalidate() which asserts if called
 // during LVGL rendering. WebSocket callbacks run on libhv's event loop thread,
 // not the main LVGL thread. We must defer subject updates to the main thread
-// via lv_async_call to avoid the "Invalidate area not allowed during rendering"
+// via ui_async_call to avoid the "Invalidate area not allowed during rendering"
 // assertion which causes while(1) infinite loop in LV_ASSERT_HANDLER.
 
 namespace {
@@ -423,12 +425,12 @@ void PrinterState::update_from_notification(const json& notification) {
     }
 
     // Extract printer state from params[0] and delegate to update_from_status
-    // CRITICAL: Defer to main thread via lv_async_call to avoid LVGL assertion
+    // CRITICAL: Defer to main thread via ui_async_call to avoid LVGL assertion
     // when subject updates trigger lv_obj_invalidate() during rendering
     auto params = notification["params"];
     if (params.is_array() && !params.empty()) {
         auto* ctx = new AsyncStatusUpdateContext{this, params[0]};
-        lv_async_call(async_status_update_callback, ctx);
+        ui_async_call(async_status_update_callback, ctx);
     }
 }
 
@@ -906,7 +908,7 @@ void PrinterState::set_network_status(int status) {
 void PrinterState::set_klippy_state(KlippyState state) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
     auto* ctx = new AsyncKlippyStateContext{this, state};
-    lv_async_call(async_klippy_state_callback, ctx);
+    ui_async_call(async_klippy_state_callback, ctx);
 }
 
 void PrinterState::set_klippy_state_sync(KlippyState state) {
@@ -933,7 +935,7 @@ void PrinterState::set_tracked_led(const std::string& led_name) {
 void PrinterState::set_printer_capabilities(const PrinterCapabilities& caps) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
     auto* ctx = new AsyncCapabilitiesContext{this, caps};
-    lv_async_call(async_capabilities_callback, ctx);
+    ui_async_call(async_capabilities_callback, ctx);
 }
 
 void PrinterState::set_printer_capabilities_internal(const PrinterCapabilities& caps) {
@@ -980,7 +982,7 @@ void PrinterState::set_printer_capabilities_internal(const PrinterCapabilities& 
 void PrinterState::set_klipper_version(const std::string& version) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
     auto* ctx = new AsyncStringContext{this, version};
-    lv_async_call(async_klipper_version_callback, ctx);
+    ui_async_call(async_klipper_version_callback, ctx);
 }
 
 void PrinterState::set_klipper_version_internal(const std::string& version) {
@@ -991,7 +993,7 @@ void PrinterState::set_klipper_version_internal(const std::string& version) {
 void PrinterState::set_moonraker_version(const std::string& version) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
     auto* ctx = new AsyncStringContext{this, version};
-    lv_async_call(async_moonraker_version_callback, ctx);
+    ui_async_call(async_moonraker_version_callback, ctx);
 }
 
 void PrinterState::set_moonraker_version_internal(const std::string& version) {
@@ -1013,7 +1015,7 @@ void PrinterState::set_spoolman_available(bool available) {
         spdlog::info("[PrinterState] Spoolman availability set: {}", ctx->available);
         delete ctx;
     };
-    lv_async_call(callback, new SpoolmanAvailContext{this, available});
+    ui_async_call(callback, new SpoolmanAvailContext{this, available});
 }
 
 // Context struct for async HelixPrint plugin status update
@@ -1030,7 +1032,7 @@ void PrinterState::set_helix_plugin_installed(bool installed) {
         spdlog::info("[PrinterState] HelixPrint plugin installed: {}", ctx->installed);
         delete ctx;
     };
-    lv_async_call(callback, new HelixPluginContext{this, installed});
+    ui_async_call(callback, new HelixPluginContext{this, installed});
 }
 
 void PrinterState::set_excluded_objects(const std::unordered_set<std::string>& objects) {
@@ -1129,7 +1131,7 @@ void PrinterState::set_print_start_state(PrintStartPhase phase, const char* mess
     spdlog::debug("[PrinterState] Print start: phase={}, message='{}', progress={}%",
                   static_cast<int>(phase), message ? message : "", progress);
 
-    // CRITICAL: Defer to main thread via lv_async_call to avoid LVGL assertion
+    // CRITICAL: Defer to main thread via ui_async_call to avoid LVGL assertion
     // when subject updates trigger lv_obj_invalidate() during rendering.
     // This is called from WebSocket callbacks (background thread).
     struct Ctx {
@@ -1139,7 +1141,7 @@ void PrinterState::set_print_start_state(PrintStartPhase phase, const char* mess
         int progress;
     };
     auto* ctx = new Ctx{this, phase, message ? message : "", std::clamp(progress, 0, 100)};
-    lv_async_call(
+    ui_async_call(
         [](void* user_data) {
             auto* c = static_cast<Ctx*>(user_data);
             lv_subject_set_int(&c->ps->print_start_phase_, static_cast<int>(c->phase));
@@ -1153,8 +1155,8 @@ void PrinterState::set_print_start_state(PrintStartPhase phase, const char* mess
 }
 
 void PrinterState::reset_print_start_state() {
-    // CRITICAL: Defer to main thread via lv_async_call
-    lv_async_call(
+    // CRITICAL: Defer to main thread via ui_async_call
+    ui_async_call(
         [](void* user_data) {
             auto* ps = static_cast<PrinterState*>(user_data);
             int phase = lv_subject_get_int(&ps->print_start_phase_);

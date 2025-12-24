@@ -3,6 +3,8 @@
 
 #include "application.h"
 
+#include "ui_update_queue.h"
+
 #include "asset_manager.h"
 #include "config.h"
 #include "display_manager.h"
@@ -825,7 +827,7 @@ bool Application::connect_moonraker() {
     MoonrakerAPI* api = m_moonraker->api();
 
     client->set_on_hardware_discovered([api, client](const PrinterCapabilities& caps) {
-        lv_async_call(
+        ui_async_call(
             [](void* user_data) {
                 auto* ctx = static_cast<
                     std::pair<PrinterCapabilities, std::pair<MoonrakerAPI*, MoonrakerClient*>>*>(
@@ -844,7 +846,7 @@ bool Application::connect_moonraker() {
     });
 
     client->set_on_discovery_complete([client](const PrinterCapabilities& caps) {
-        lv_async_call(
+        ui_async_call(
             [](void* user_data) {
                 auto* ctx =
                     static_cast<std::pair<PrinterCapabilities, MoonrakerClient*>*>(user_data);

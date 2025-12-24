@@ -3,12 +3,12 @@
 
 #include "ui_panel_history_list.h"
 
-#include "ui_async_callback.h"
 #include "ui_fonts.h"
 #include "ui_nav.h"
 #include "ui_notification.h"
 #include "ui_panel_common.h"
 #include "ui_panel_print_select.h"
+#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "moonraker_api.h"
@@ -923,7 +923,7 @@ void HistoryListPanel::show_detail_overlay(const PrintHistoryJob& job) {
                         uint64_t generation;
                         std::string path;
                     };
-                    ui_async_call_safe<ThumbUpdate>(
+                    ui_queue_update<ThumbUpdate>(
                         std::make_unique<ThumbUpdate>(
                             ThumbUpdate{self, this_generation, lvgl_path}),
                         [](ThumbUpdate* t) {

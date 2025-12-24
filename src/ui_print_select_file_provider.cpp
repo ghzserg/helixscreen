@@ -3,9 +3,9 @@
 
 #include "ui_print_select_file_provider.h"
 
-#include "ui_async_callback.h"
 #include "ui_panel_print_select.h" // For PrintFileData
 #include "ui_print_select_card_view.h"
+#include "ui_update_queue.h"
 #include "ui_utils.h" // For format_* helpers
 
 #include "moonraker_api.h"
@@ -108,8 +108,9 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
                         continue;
                     }
                     // File was modified - invalidate cached thumbnails and refetch
-                    spdlog::info("[FileProvider] File modified, invalidating cache: {} (old: {}, new: {})",
-                                 file.filename, it->second.modified_timestamp, new_modified);
+                    spdlog::info(
+                        "[FileProvider] File modified, invalidating cache: {} (old: {}, new: {})",
+                        file.filename, it->second.modified_timestamp, new_modified);
                     if (!it->second.original_thumbnail_url.empty()) {
                         get_thumbnail_cache().invalidate(it->second.original_thumbnail_url);
                     }
@@ -263,7 +264,7 @@ void PrintSelectFileProvider::fetch_metadata_range(std::vector<PrintFileData>& f
                 bool thumb_is_local;
             };
 
-            ui_async_call_safe<MetadataUpdate>(
+            ui_queue_update<MetadataUpdate>(
                 std::make_unique<MetadataUpdate>(MetadataUpdate{
                     self->api_, on_updated, i, filename, print_time_minutes, filament_grams,
                     filament_type, filament_colors, print_time_str, filament_str, layer_count,
@@ -313,7 +314,7 @@ void PrintSelectFileProvider::fetch_metadata_range(std::vector<PrintFileData>& f
                                         std::string local_path;
                                         MetadataUpdatedCallback on_updated;
                                     };
-                                    ui_async_call_safe<ThumbUpdate>(
+                                    ui_queue_update<ThumbUpdate>(
                                         std::make_unique<ThumbUpdate>(ThumbUpdate{
                                             file_idx, filename_copy, local_path, on_updated_copy}),
                                         [](ThumbUpdate* t) {

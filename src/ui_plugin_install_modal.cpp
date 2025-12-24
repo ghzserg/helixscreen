@@ -5,6 +5,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_theme.h"
+#include "ui_update_queue.h"
 
 #include <spdlog/spdlog.h>
 
@@ -244,7 +245,7 @@ void PluginInstallModal::on_install_clicked() {
         auto* result = new InstallResult{self, destroying_flag, success, message, callback};
 
         // Schedule UI update on main LVGL thread
-        lv_async_call(
+        ui_async_call(
             [](void* user_data) {
                 auto* r = static_cast<InstallResult*>(user_data);
 

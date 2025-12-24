@@ -1,6 +1,8 @@
 // Copyright 2025 HelixScreen
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_update_queue.h"
+
 #include "app_globals.h"
 #include "moonraker_client_mock_internal.h"
 #include "printer_state.h"
@@ -123,7 +125,7 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
         spdlog::warn("[MoonrakerClientMock] Emergency stop executed!");
 
         // Set klippy state to SHUTDOWN (must defer to main thread)
-        lv_async_call(
+        ui_async_call(
             [](void*) { get_printer_state().set_klippy_state_sync(KlippyState::SHUTDOWN); },
             nullptr);
 
@@ -141,7 +143,7 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
         spdlog::info("[MoonrakerClientMock] Firmware restart initiated");
 
         // Simulate restart: briefly go SHUTDOWN, then READY after 1 second
-        lv_async_call(
+        ui_async_call(
             [](void*) {
                 get_printer_state().set_klippy_state_sync(KlippyState::SHUTDOWN);
 
@@ -176,7 +178,7 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
         spdlog::info("[MoonrakerClientMock] Klipper restart initiated");
 
         // Simulate restart: briefly go SHUTDOWN, then READY after 500ms
-        lv_async_call(
+        ui_async_call(
             [](void*) {
                 get_printer_state().set_klippy_state_sync(KlippyState::SHUTDOWN);
 

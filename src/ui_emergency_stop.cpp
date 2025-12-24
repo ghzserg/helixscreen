@@ -5,6 +5,7 @@
 
 #include "ui_notification.h"
 #include "ui_toast.h"
+#include "ui_update_queue.h"
 
 #include <spdlog/spdlog.h>
 
@@ -133,7 +134,7 @@ void EmergencyStopOverlay::execute_emergency_stop() {
             // which may not arrive due to WebSocket timing/disconnection
             // NOTE: Must defer to main thread - this callback runs on WebSocket thread
             spdlog::debug("[EmergencyStop] Queueing proactive recovery dialog (E-stop path)");
-            lv_async_call(
+            ui_async_call(
                 [](void*) {
                     spdlog::debug("[EmergencyStop] Async callback executing (E-stop path)");
                     EmergencyStopOverlay::instance().show_recovery_dialog();
@@ -363,7 +364,7 @@ void EmergencyStopOverlay::klippy_state_observer_cb(lv_observer_t* observer,
         // NOTE: Must defer to main thread - observer may fire from WebSocket thread
         spdlog::info("[KlipperRecovery] Detected Klipper SHUTDOWN state, queueing recovery dialog");
         spdlog::debug("[KlipperRecovery] Queueing recovery dialog (observer path)");
-        lv_async_call(
+        ui_async_call(
             [](void*) {
                 spdlog::debug("[KlipperRecovery] Async callback executing (observer path)");
                 EmergencyStopOverlay::instance().show_recovery_dialog();
@@ -375,7 +376,7 @@ void EmergencyStopOverlay::klippy_state_observer_cb(lv_observer_t* observer,
 
         // Auto-dismiss recovery dialog when Klipper is back to READY
         // NOTE: Must defer to main thread - observer may fire from WebSocket thread
-        lv_async_call(
+        ui_async_call(
             [](void*) {
                 auto& inst = EmergencyStopOverlay::instance();
                 if (inst.recovery_dialog_) {

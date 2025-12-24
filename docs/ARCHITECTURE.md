@@ -608,10 +608,12 @@ The LVGL assertion `!disp->rendering_in_progress` will fire, and on embedded tar
 
 ### Safe Pattern: Defer to Main Thread
 
-**Always use `lv_async_call()` for subject updates from background threads:**
+**Always use `ui_async_call()` for subject updates from background threads:**
 
 ```cpp
-// ✅ CORRECT - defers to main thread
+#include "ui_update_queue.h"
+
+// ✅ CORRECT - defers to main thread via ui_async_call()
 struct TempUpdateContext {
     PrinterState* state;
     int temperature;
@@ -625,9 +627,11 @@ void async_temp_callback(void* user_data) {
 
 void update_from_websocket_thread(int temp) {
     auto* ctx = new TempUpdateContext{&get_printer_state(), temp};
-    lv_async_call(async_temp_callback, ctx);  // Queued for main thread
+    ui_async_call(async_temp_callback, ctx);  // Queued for main thread, runs BEFORE render
 }
 ```
+
+**Why `ui_async_call()` not `lv_async_call()`?** LVGL's native `lv_async_call()` can fire *during* the render phase, causing assertion failures. Our `ui_async_call()` uses `LV_EVENT_REFR_START` to guarantee execution *before* rendering begins.
 
 **Reference Implementation:** See `printer_state.cpp` for the `set_*_internal()` pattern used by:
 - `set_printer_capabilities()` → `set_printer_capabilities_internal()`
@@ -645,13 +649,15 @@ void handle_ui_event(lv_event_t* e) {
 }
 ```
 
-### Backend Integration Pattern: lv_async_call()
+### Backend Integration Pattern: ui_async_call()
 
 **Problem:** Backend threads (networking, file I/O, WiFi scanning) need to update UI but cannot call LVGL APIs directly.
 
-**Solution:** Use `lv_async_call()` to marshal widget updates to the main thread:
+**Solution:** Use `ui_async_call()` to marshal widget updates to the main thread:
 
 ```cpp
+#include "ui_update_queue.h"
+
 // Backend callback running in std::thread
 void WiFiManager::handle_scan_complete(const std::string& data) {
     // Parse results (safe - no LVGL calls)
@@ -664,8 +670,8 @@ void WiFiManager::handle_scan_complete(const std::string& data) {
     };
     auto* cb_data = new CallbackData{networks, scan_callback_};
 
-    // Dispatch to LVGL main thread
-    lv_async_call([](void* user_data) {
+    // Dispatch to LVGL main thread (safe - runs before render)
+    ui_async_call([](void* user_data) {
         auto* data = static_cast<CallbackData*>(user_data);
 
         // NOW safe to create/modify widgets
@@ -678,15 +684,15 @@ void WiFiManager::handle_scan_complete(const std::string& data) {
 
 **Key Points:**
 1. **Backend thread:** Parse data, prepare callback data structure
-2. **lv_async_call():** Queues lambda to execute on main thread
-3. **Main thread lambda:** Creates/modifies widgets safely
-4. **Memory management:** Heap-allocate data, delete in lambda
+2. **ui_async_call():** Queues callback to execute on main thread BEFORE rendering
+3. **Main thread callback:** Creates/modifies widgets safely
+4. **Memory management:** Heap-allocate data, delete in callback
 
 **Without this pattern:** Race conditions, segfaults, undefined behavior when backend thread creates widgets while LVGL is rendering.
 
-**Reference Implementation:** `src/wifi_manager.cpp:102-190` (all event handlers use this pattern)
+**Reference Implementation:** `src/wifi_manager.cpp` (all event handlers use this pattern)
 
-### When to Use lv_async_call()
+### When to Use ui_async_call()
 
 ✅ **ALWAYS use when on a background thread and:**
 - Need to create/modify widgets (`lv_obj_*()` functions)
@@ -700,7 +706,7 @@ void WiFiManager::handle_scan_complete(const std::string& data) {
 - Pure computation with no LVGL calls at all
 - Just logging or updating non-LVGL state
 
-**Key insight:** If you're in a callback from libhv, std::thread, or any networking library, assume you're on a background thread and use `lv_async_call()`.
+**Key insight:** If you're in a callback from libhv, std::thread, or any networking library, assume you're on a background thread and use `ui_async_call()`.
 
 ## LVGL Configuration
 
@@ -1043,7 +1049,7 @@ This is correct - `str` contains an actual hex value from XML, not a token name.
 spdlog may be destroyed during static destruction. Use `fprintf(stderr, ...)` in destructors of static/global objects.
 
 ### 8. Async Context new/delete
-`lv_async_call()` requires heap-allocated context structs for thread marshaling. The async callback must `delete` the context.
+`ui_async_call()` requires heap-allocated context structs for thread marshaling. The async callback must `delete` the context.
 
 ### 9. CLI printf
 Code in `cli_args.cpp` runs before logging infrastructure is initialized - printf is acceptable.

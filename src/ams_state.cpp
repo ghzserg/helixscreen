@@ -3,6 +3,8 @@
 
 #include "ams_state.h"
 
+#include "ui_update_queue.h"
+
 #include "ams_backend_afc.h"
 #include "ams_backend_toolchanger.h"
 #include "moonraker_api.h"
@@ -457,7 +459,7 @@ void AmsState::on_backend_event(const std::string& event, const std::string& dat
     // Helper to safely queue async call with error handling
     auto queue_sync = [](bool full_sync, int slot_index) {
         auto* sync_data = new AsyncSyncData{full_sync, slot_index};
-        lv_result_t res = lv_async_call(async_sync_callback, sync_data);
+        lv_result_t res = ui_async_call(async_sync_callback, sync_data);
         if (res != LV_RESULT_OK) {
             delete sync_data;
             spdlog::warn("[AMS State] lv_async_call failed, state update dropped");

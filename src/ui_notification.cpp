@@ -8,6 +8,7 @@
 #include "ui_observer_guard.h"
 #include "ui_status_bar.h"
 #include "ui_toast.h"
+#include "ui_update_queue.h"
 
 #include "app_globals.h"
 
@@ -216,7 +217,7 @@ void ui_notification_info(const char* message) {
         data->severity = ToastSeverity::INFO;
         data->duration_ms = 4000;
 
-        lv_async_call(async_message_callback, data);
+        ui_async_call(async_message_callback, data);
     }
 }
 
@@ -260,7 +261,7 @@ void ui_notification_success(const char* message) {
         data->severity = ToastSeverity::SUCCESS;
         data->duration_ms = 4000;
 
-        lv_async_call(async_message_callback, data);
+        ui_async_call(async_message_callback, data);
     }
 }
 
@@ -304,7 +305,7 @@ void ui_notification_warning(const char* message) {
         data->severity = ToastSeverity::WARNING;
         data->duration_ms = 5000;
 
-        lv_async_call(async_message_callback, data);
+        ui_async_call(async_message_callback, data);
     }
 }
 
@@ -364,7 +365,7 @@ static void show_titled_notification(const char* title, const char* message, Toa
         data->severity = severity;
         data->duration_ms = duration_ms;
 
-        lv_async_call(async_message_callback, data);
+        ui_async_call(async_message_callback, data);
     }
 }
 
@@ -475,7 +476,7 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
 
         data->modal = modal;
 
-        lv_async_call(async_error_callback, data);
+        ui_async_call(async_error_callback, data);
     }
 }
 

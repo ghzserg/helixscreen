@@ -9,6 +9,7 @@
 #include "ui_modal.h"
 #include "ui_subject_registry.h"
 #include "ui_theme.h"
+#include "ui_update_queue.h"
 
 #include "ethernet_manager.h"
 #include "lvgl/lvgl.h"
@@ -855,7 +856,7 @@ void WizardWifiStep::init_wifi_manager() {
                     // Use lv_async_call to update UI on main thread
                     // Store networks temporarily for the async call
                     cached_networks_ = networks;
-                    lv_async_call(
+                    ui_async_call(
                         [](void* ctx) {
                             auto* self = static_cast<WizardWifiStep*>(ctx);
                             // Double-check cleanup in async callback

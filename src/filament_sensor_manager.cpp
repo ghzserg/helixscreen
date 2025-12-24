@@ -4,6 +4,7 @@
 #include "filament_sensor_manager.h"
 
 #include "ui_error_reporting.h"
+#include "ui_update_queue.h"
 
 #include "config.h"
 #include "spdlog/spdlog.h"
@@ -13,7 +14,7 @@
 // CRITICAL: Subject updates trigger lv_obj_invalidate() which asserts if called
 // during LVGL rendering. WebSocket callbacks run on libhv's event loop thread,
 // not the main LVGL thread. We must defer subject updates to the main thread
-// via lv_async_call to avoid the "Invalidate area not allowed during rendering"
+// via ui_async_call to avoid the "Invalidate area not allowed during rendering"
 // assertion.
 
 namespace {
@@ -478,10 +479,10 @@ void FilamentSensorManager::update_from_status(const json& status) {
                 spdlog::info("[FilamentSensorManager] sync_mode: updating subjects synchronously");
                 update_subjects();
             } else {
-                // Defer subject updates to main LVGL thread via lv_async_call()
+                // Defer subject updates to main LVGL thread via ui_async_call()
                 // This avoids the "Invalidate area not allowed during rendering" assertion
-                spdlog::info("[FilamentSensorManager] async_mode: deferring via lv_async_call");
-                lv_async_call(async_update_subjects_callback, nullptr);
+                spdlog::info("[FilamentSensorManager] async_mode: deferring via ui_async_call");
+                ui_async_call(async_update_subjects_callback, nullptr);
             }
         }
     }

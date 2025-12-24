@@ -12,8 +12,8 @@
 
 #include "ui_gcode_viewer.h"
 
-#include "ui_async_callback.h"
 #include "ui_theme.h"
+#include "ui_update_queue.h"
 
 #include "gcode_camera.h"
 #include "gcode_layer_renderer.h"
@@ -394,8 +394,8 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
         if (st->layer_renderer_2d_->needs_more_frames()) {
             // IMPORTANT: Cannot call lv_obj_invalidate() during draw callback!
             // LVGL asserts if we invalidate while rendering_in_progress is true.
-            // Use lv_async_call() to schedule invalidation after render completes.
-            lv_async_call(
+            // Use ui_async_call() to schedule invalidation after render completes.
+            ui_async_call(
                 [](void* user_data) {
                     lv_obj_t* widget = static_cast<lv_obj_t*>(user_data);
                     if (lv_obj_is_valid(widget)) {
@@ -407,7 +407,7 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
 
         // Update ghost build progress label (streaming mode)
         // IMPORTANT: Cannot create/delete/modify objects during draw callback!
-        // Use lv_async_call() to defer all label operations to after render completes.
+        // Use ui_async_call() to defer all label operations to after render completes.
         if (st->layer_renderer_2d_->is_ghost_build_running()) {
             int percent =
                 static_cast<int>(st->layer_renderer_2d_->get_ghost_build_progress() * 100.0f);
@@ -417,7 +417,7 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
                 int percent;
             };
             auto* update = new GhostProgressUpdate{obj, percent};
-            lv_async_call(
+            ui_async_call(
                 [](void* user_data) {
                     auto* u = static_cast<GhostProgressUpdate*>(user_data);
                     if (!lv_obj_is_valid(u->viewer)) {
@@ -449,7 +449,7 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
             // Defer label deletion to after render
             lv_obj_t* label_to_delete = st->ghost_progress_label_;
             st->ghost_progress_label_ = nullptr; // Clear reference immediately
-            lv_async_call(
+            ui_async_call(
                 [](void* user_data) {
                     auto* label = static_cast<lv_obj_t*>(user_data);
                     if (lv_obj_is_valid(label)) {
@@ -968,7 +968,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
             result->success = success;
             result->path = path_copy;
 
-            ui_async_call_safe<StreamingResult>(std::move(result), [obj](StreamingResult* r) {
+            ui_queue_update<StreamingResult>(std::move(result), [obj](StreamingResult* r) {
                 gcode_viewer_state_t* st = get_state(obj);
                 if (!st) {
                     return; // Widget destroyed
@@ -1219,7 +1219,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
         }
 
         // PHASE 3: Marshal result back to UI thread (SAFE)
-        ui_async_call_safe<AsyncBuildResult>(std::move(result), [obj](AsyncBuildResult* r) {
+        ui_queue_update<AsyncBuildResult>(std::move(result), [obj](AsyncBuildResult* r) {
             gcode_viewer_state_t* st = get_state(obj);
             if (!st) {
                 return; // Widget was destroyed

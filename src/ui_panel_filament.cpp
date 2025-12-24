@@ -13,6 +13,7 @@
 #include "ui_subject_registry.h"
 #include "ui_temperature_utils.h"
 #include "ui_theme.h"
+#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "app_constants.h"
@@ -66,7 +67,8 @@ FilamentPanel::FilamentPanel(PrinterState& printer_state, MoonrakerAPI* api)
     // Temperature tap targets
     lv_xml_register_event_cb(nullptr, "on_filament_nozzle_temp_tap", on_nozzle_temp_tap_clicked);
     lv_xml_register_event_cb(nullptr, "on_filament_bed_temp_tap", on_bed_temp_tap_clicked);
-    lv_xml_register_event_cb(nullptr, "on_filament_nozzle_target_tap", on_nozzle_target_tap_clicked);
+    lv_xml_register_event_cb(nullptr, "on_filament_nozzle_target_tap",
+                             on_nozzle_target_tap_clicked);
     lv_xml_register_event_cb(nullptr, "on_filament_bed_target_tap", on_bed_target_tap_clicked);
 
     // Purge amount buttons
@@ -567,7 +569,7 @@ void FilamentPanel::handle_purge_button() {
         api_->execute_gcode(
             gcode,
             [this, amount = purge_amount_]() {
-                lv_async_call(
+                ui_async_call(
                     [](void* ud) {
                         auto* self = static_cast<FilamentPanel*>(ud);
                         self->set_operation_in_progress(false);
@@ -576,7 +578,7 @@ void FilamentPanel::handle_purge_button() {
                 NOTIFY_SUCCESS("Purge complete ({}mm)", amount);
             },
             [this](const MoonrakerError& error) {
-                lv_async_call(
+                ui_async_call(
                     [](void* ud) {
                         auto* self = static_cast<FilamentPanel*>(ud);
                         self->set_operation_in_progress(false);

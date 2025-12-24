@@ -3,9 +3,9 @@
 
 #include "ui_print_preparation_manager.h"
 
-#include "ui_async_callback.h"
 #include "ui_error_reporting.h"
 #include "ui_panel_print_status.h"
+#include "ui_update_queue.h"
 
 #include "app_globals.h"
 #include "memory_utils.h"
@@ -108,7 +108,7 @@ void PrintPreparationManager::analyze_print_start_macro() {
                 std::shared_ptr<bool> alive_guard;
                 helix::PrintStartAnalysis result;
             };
-            ui_async_call_safe<MacroAnalysisData>(
+            ui_queue_update<MacroAnalysisData>(
                 std::make_unique<MacroAnalysisData>(MacroAnalysisData{self, alive, analysis}),
                 [](MacroAnalysisData* d) {
                     // Check if manager was destroyed before this callback executed
@@ -135,7 +135,7 @@ void PrintPreparationManager::analyze_print_start_macro() {
                 PrintPreparationManager* mgr;
                 std::shared_ptr<bool> alive_guard;
             };
-            ui_async_call_safe<MacroErrorData>(
+            ui_queue_update<MacroErrorData>(
                 std::make_unique<MacroErrorData>(MacroErrorData{self, alive}),
                 [](MacroErrorData* d) {
                     // Check if manager was destroyed before this callback executed
@@ -292,7 +292,7 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
                 std::string filename;
                 gcode::ScanResult result;
             };
-            ui_async_call_safe<ScanUpdateData>(
+            ui_queue_update<ScanUpdateData>(
                 std::make_unique<ScanUpdateData>(
                     ScanUpdateData{self, alive, filename, scan_result}),
                 [](ScanUpdateData* d) {
@@ -320,7 +320,7 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
                 PrintPreparationManager* mgr;
                 std::shared_ptr<bool> alive_guard;
             };
-            ui_async_call_safe<ScanErrorData>(
+            ui_queue_update<ScanErrorData>(
                 std::make_unique<ScanErrorData>(ScanErrorData{self, alive}), [](ScanErrorData* d) {
                     // Check if manager was destroyed before this callback executed
                     if (!d->alive_guard || !*d->alive_guard) {
@@ -822,7 +822,7 @@ void PrintPreparationManager::modify_and_print_via_plugin(
                         std::string filename;
                         NavigateToStatusCallback navigate_cb;
                     };
-                    ui_async_call_safe<PrintStartedData>(
+                    ui_queue_update<PrintStartedData>(
                         std::make_unique<PrintStartedData>(
                             PrintStartedData{display_filename, on_navigate_to_status}),
                         [](PrintStartedData* d) {
@@ -973,7 +973,7 @@ void PrintPreparationManager::modify_and_print_streaming(
                                 std::string filename;
                                 NavigateToStatusCallback navigate_cb;
                             };
-                            ui_async_call_safe<PrintStartedData>(
+                            ui_queue_update<PrintStartedData>(
                                 std::make_unique<PrintStartedData>(
                                     PrintStartedData{display_filename, on_navigate_to_status}),
                                 [](PrintStartedData* d) {

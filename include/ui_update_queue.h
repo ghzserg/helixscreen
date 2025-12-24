@@ -1,0 +1,244 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2025 HelixScreen Contributors
+/**
+ * @file ui_update_queue.h
+ * @brief Thread-safe UI update queue for LVGL
+ *
+ * This module provides a safe mechanism for scheduling UI updates from any thread.
+ * Updates are queued and processed at the START of each lv_timer_handler cycle,
+ * BEFORE rendering begins. This guarantees that widget modifications never
+ * happen during the render phase.
+ *
+ * Architecture:
+ * 1. Any thread can queue updates via ui_queue_update()
+ * 2. Updates accumulate in a thread-safe queue
+ * 3. At the start of each frame (via LVGL timer), all pending updates are processed
+ * 4. Rendering happens AFTER all updates are applied
+ *
+ * This is similar to React's batched state updates - changes are queued and
+ * applied together at a safe point.
+ *
+ * Usage:
+ * @code
+ * // From any thread (WebSocket callback, async operation, etc.):
+ * ui_queue_update([](void*) {
+ *     lv_subject_set_int(&my_subject, new_value);
+ *     lv_label_set_text(label, "Updated!");
+ * });
+ *
+ * // With captured data:
+ * auto* data = new MyData{value, text};
+ * ui_queue_update([](void* user_data) {
+ *     auto* d = static_cast<MyData*>(user_data);
+ *     lv_subject_set_int(&my_subject, d->value);
+ *     delete d;
+ * }, data);
+ * @endcode
+ */
+
+#pragma once
+
+#include "lvgl/lvgl.h"
+
+#include <spdlog/spdlog.h>
+
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <queue>
+
+namespace helix::ui {
+
+/**
+ * @brief Callback type for queued updates
+ */
+using UpdateCallback = std::function<void()>;
+
+/**
+ * @brief Thread-safe UI update queue
+ *
+ * Singleton that manages pending UI updates. Call init() once at startup
+ * to install a display event handler that processes updates BEFORE rendering.
+ *
+ * Key insight: Using a timer doesn't work because LVGL doesn't guarantee
+ * timer order relative to display refresh. Instead, we use LV_EVENT_REFR_START
+ * which fires RIGHT BEFORE rendering begins - the perfect safe point.
+ */
+class UpdateQueue {
+  public:
+    /**
+     * @brief Get singleton instance
+     */
+    static UpdateQueue& instance() {
+        static UpdateQueue instance;
+        return instance;
+    }
+
+    /**
+     * @brief Initialize the update queue (call once at startup)
+     *
+     * Registers an event handler on the default display that processes
+     * pending updates at the START of each refresh cycle, BEFORE rendering.
+     */
+    void init() {
+        if (initialized_)
+            return;
+
+        lv_display_t* disp = lv_display_get_default();
+        if (!disp) {
+            spdlog::warn("[UpdateQueue] init - no default display!");
+            return;
+        }
+
+        // Register event handler for LV_EVENT_REFR_START
+        // This fires RIGHT BEFORE rendering begins - the perfect safe point
+        lv_display_add_event_cb(disp, refr_start_cb, LV_EVENT_REFR_START, this);
+        display_ = disp;
+        initialized_ = true;
+        spdlog::info("[UpdateQueue] Initialized - REFR_START handler registered on display {:p}",
+                     static_cast<void*>(disp));
+    }
+
+    /**
+     * @brief Queue an update for processing
+     *
+     * Thread-safe. Can be called from any thread.
+     * The callback will be executed on the main LVGL thread before rendering.
+     *
+     * @param callback Function to execute
+     */
+    void queue(UpdateCallback callback) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pending_.push(std::move(callback));
+    }
+
+    /**
+     * @brief Shutdown and cleanup
+     */
+    void shutdown() {
+        // Note: We don't remove the event callback because the display
+        // may already be destroyed during lv_deinit(). Just mark as shutdown.
+        initialized_ = false;
+        display_ = nullptr;
+    }
+
+  private:
+    UpdateQueue() = default;
+    ~UpdateQueue() {
+        shutdown();
+    }
+
+    // Non-copyable
+    UpdateQueue(const UpdateQueue&) = delete;
+    UpdateQueue& operator=(const UpdateQueue&) = delete;
+
+    /**
+     * @brief Process all pending updates before rendering starts
+     *
+     * Called by LVGL via LV_EVENT_REFR_START, guaranteed to run
+     * BEFORE rendering_in_progress is set to true.
+     */
+    static void refr_start_cb(lv_event_t* e) {
+        auto* self = static_cast<UpdateQueue*>(lv_event_get_user_data(e));
+        if (self && self->initialized_) {
+            self->process_pending();
+        }
+    }
+
+    void process_pending() {
+        // Move pending updates to local queue to minimize lock time
+        std::queue<UpdateCallback> to_process;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            std::swap(to_process, pending_);
+        }
+
+        // Execute all pending updates - safe because render hasn't started yet
+        while (!to_process.empty()) {
+            auto& callback = to_process.front();
+            callback();
+            to_process.pop();
+        }
+    }
+
+    std::mutex mutex_;
+    std::queue<UpdateCallback> pending_;
+    lv_display_t* display_ = nullptr;
+    bool initialized_ = false;
+};
+
+} // namespace helix::ui
+
+/**
+ * @brief Queue a UI update for safe execution
+ *
+ * This is the primary API for scheduling UI updates from any thread.
+ * Updates are guaranteed to execute BEFORE rendering, avoiding the
+ * "Invalidate area is not allowed during rendering" assertion.
+ *
+ * @param callback Function to execute on the main thread
+ */
+inline void ui_queue_update(helix::ui::UpdateCallback callback) {
+    helix::ui::UpdateQueue::instance().queue(std::move(callback));
+}
+
+/**
+ * @brief Queue a UI update with data
+ *
+ * Convenience wrapper for updates that need to pass data.
+ * The data is captured and passed to the callback.
+ *
+ * @tparam T Type of data to pass
+ * @param data Data to pass to callback (moved into queue)
+ * @param callback Function to execute with data
+ */
+template <typename T>
+void ui_queue_update(std::unique_ptr<T> data, std::function<void(T*)> callback) {
+    // Capture data and callback in a lambda
+    T* raw_ptr = data.release(); // Transfer ownership
+    ui_queue_update([raw_ptr, callback = std::move(callback)]() {
+        std::unique_ptr<T> owned(raw_ptr); // Reclaim ownership for RAII
+        callback(owned.get());
+    });
+}
+
+/**
+ * @brief Initialize the UI update queue
+ *
+ * Call this once during application startup, AFTER lv_init() but BEFORE
+ * creating any UI elements. This ensures the processing timer has highest
+ * priority and runs before other timers.
+ */
+inline void ui_update_queue_init() {
+    helix::ui::UpdateQueue::instance().init();
+}
+
+/**
+ * @brief Shutdown the UI update queue
+ *
+ * Call this during application shutdown, BEFORE lv_deinit().
+ */
+inline void ui_update_queue_shutdown() {
+    helix::ui::UpdateQueue::instance().shutdown();
+}
+
+/**
+ * @brief Drop-in replacement for lv_async_call
+ *
+ * Has the EXACT same signature as lv_async_call() but uses the UI update queue
+ * to ensure callbacks run BEFORE rendering, not during.
+ *
+ * Migration: Simply replace `lv_async_call(` with `ui_async_call(`
+ *
+ * @param async_xcb Callback function (same signature as lv_async_call)
+ * @param user_data User data passed to callback
+ * @return LV_RESULT_OK always (queue never fails)
+ */
+inline lv_result_t ui_async_call(lv_async_cb_t async_xcb, void* user_data) {
+    ui_queue_update([async_xcb, user_data]() {
+        if (async_xcb) {
+            async_xcb(user_data);
+        }
+    });
+    return LV_RESULT_OK;
+}

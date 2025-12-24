@@ -3,7 +3,7 @@
 
 #include "network_tester.h"
 
-#include "ui_async_callback.h"
+#include "ui_update_queue.h"
 
 #include "spdlog/spdlog.h"
 
@@ -186,7 +186,7 @@ void NetworkTester::report_state(TestState state) {
     };
 
     // Use RAII-safe async callback wrapper
-    ui_async_call_safe<CallbackData>(
+    ui_queue_update<CallbackData>(
         std::make_unique<CallbackData>(CallbackData{self_, state, result_}),
         [](CallbackData* data) {
             spdlog::debug("[NetworkTester] Async callback executing in LVGL thread");
