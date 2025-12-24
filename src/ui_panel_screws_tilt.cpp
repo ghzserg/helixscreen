@@ -477,7 +477,7 @@ lv_color_t ScrewsTiltPanel::get_adjustment_color(const ScrewTiltResult& screw,
     auto get_theme_color = [](const char* const_name) -> lv_color_t {
         const char* hex = lv_xml_get_const(nullptr, const_name);
         if (hex) {
-            return ui_theme_parse_color(hex);
+            return ui_theme_parse_hex_color(hex);
         }
         return ui_theme_get_color(const_name); // Fallback to direct token lookup
     };

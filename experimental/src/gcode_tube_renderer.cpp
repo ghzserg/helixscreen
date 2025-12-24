@@ -4,14 +4,16 @@
 // G-Code Tube Renderer Implementation
 
 #include "gcode_tube_renderer.h"
+
 #include "ui_theme.h"
 #include "ui_utils.h"
 
+#include <spdlog/spdlog.h>
+
 #include <GL/gl.h>
-#include <glm/gtc/type_ptr.hpp>
 #include <chrono>
 #include <cmath>
-#include <spdlog/spdlog.h>
+#include <glm/gtc/type_ptr.hpp>
 
 extern "C" {
 #include <zbuffer.h>
@@ -38,7 +40,7 @@ void TubeMesh::generate(float radius, float length, int radial_segments, int len
             float y = radius * sinf(angle);
 
             vertices.push_back(glm::vec3(x, y, z));
-            normals.push_back(glm::normalize(glm::vec3(x, y, 0.0f)));  // Radial normal
+            normals.push_back(glm::normalize(glm::vec3(x, y, 0.0f))); // Radial normal
         }
     }
 
@@ -62,8 +64,8 @@ void TubeMesh::generate(float radius, float length, int radial_segments, int len
         }
     }
 
-    spdlog::info("Generated tube template: {} vertices, {} triangles ({} bytes)",
-                 vertices.size(), indices.size() / 3, memory_usage());
+    spdlog::info("Generated tube template: {} vertices, {} triangles ({} bytes)", vertices.size(),
+                 indices.size() / 3, memory_usage());
 }
 
 // ============================================================================
@@ -79,7 +81,7 @@ glm::mat4 TubeInstance::get_transform() const {
         return glm::scale(glm::mat4(1.0f), glm::vec3(radius, radius, 0.0f));
     }
 
-    direction /= len;  // Normalize
+    direction /= len; // Normalize
 
     // Calculate rotation to align Z-axis (0,0,1) with direction
     glm::vec3 z_axis(0.0f, 0.0f, 1.0f);
@@ -141,12 +143,12 @@ void GCodeTubeRenderer::set_tube_radius(float radius_mm) {
 }
 
 void GCodeTubeRenderer::set_filament_color(const std::string& hex_color) {
-    lv_color_t lv_col = ui_theme_parse_color(hex_color.c_str());
+    lv_color_t lv_col = ui_theme_parse_hex_color(hex_color.c_str());
     filament_color_ = glm::vec3(lv_col.red / 255.0f, lv_col.green / 255.0f, lv_col.blue / 255.0f);
 }
 
 void GCodeTubeRenderer::render(lv_layer_t* layer, const ParsedGCodeFile& gcode,
-                                const GCodeCamera& camera) {
+                               const GCodeCamera& camera) {
     // Build instances if G-code changed
     if (current_gcode_filename_ != gcode.filename || instances_.empty()) {
         build_instances(gcode);
@@ -196,7 +198,7 @@ void GCodeTubeRenderer::build_instances(const ParsedGCodeFile& gcode) {
                     segment.feature_type.find("Bridge") != std::string::npos;
 
                 if (!is_shell_feature) {
-                    continue;  // Skip infill/support
+                    continue; // Skip infill/support
                 }
             }
 
@@ -217,8 +219,7 @@ void GCodeTubeRenderer::build_instances(const ParsedGCodeFile& gcode) {
     stats_.segment_count = instances_.size();
     stats_.vertex_count = instances_.size() * tube_template_.vertices.size();
     stats_.triangle_count = instances_.size() * (tube_template_.indices.size() / 3);
-    stats_.memory_bytes =
-        instances_.size() * sizeof(TubeInstance) + tube_template_.memory_usage();
+    stats_.memory_bytes = instances_.size() * sizeof(TubeInstance) + tube_template_.memory_usage();
     stats_.build_time_seconds = std::chrono::duration<float>(build_end - build_start).count();
 
     spdlog::info("Built {} tube instances ({:.2f} MB, {:.2f}s)", stats_.segment_count,
@@ -234,8 +235,8 @@ void GCodeTubeRenderer::init_tinygl() {
         return;
     }
 
-    zbuffer_ = zb;  // Store as void*
-    framebuffer_ = static_cast<unsigned int*>(zb->pbuf);  // Get framebuffer pointer from ZBuffer
+    zbuffer_ = zb;                                       // Store as void*
+    framebuffer_ = static_cast<unsigned int*>(zb->pbuf); // Get framebuffer pointer from ZBuffer
     glInit(zb);
 
     // OpenGL state setup
@@ -272,7 +273,7 @@ void GCodeTubeRenderer::setup_lighting() {
     glEnable(GL_LIGHT1);
 
     // Key light (bright, from upper-right-front)
-    GLfloat light0_pos[] = {1.0f, 1.0f, 2.0f, 0.0f};  // Directional
+    GLfloat light0_pos[] = {1.0f, 1.0f, 2.0f, 0.0f}; // Directional
     GLfloat light0_diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
     GLfloat light0_specular[] = {0.3f, 0.3f, 0.3f, 1.0f};
     glLightfv(GL_LIGHT0, GL_POSITION, light0_pos);
@@ -280,7 +281,7 @@ void GCodeTubeRenderer::setup_lighting() {
     glLightfv(GL_LIGHT0, GL_SPECULAR, light0_specular);
 
     // Fill light (dimmer, from left)
-    GLfloat light1_pos[] = {-1.0f, 0.5f, 1.0f, 0.0f};  // Directional
+    GLfloat light1_pos[] = {-1.0f, 0.5f, 1.0f, 0.0f}; // Directional
     GLfloat light1_diffuse[] = {0.4f, 0.4f, 0.4f, 1.0f};
     glLightfv(GL_LIGHT1, GL_POSITION, light1_pos);
     glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
@@ -334,7 +335,8 @@ void GCodeTubeRenderer::draw_to_lvgl(lv_layer_t* layer) {
 
     // Create LVGL draw buffer if needed
     if (!draw_buf_) {
-        draw_buf_ = lv_draw_buf_create(viewport_width_, viewport_height_, LV_COLOR_FORMAT_RGB888, 0);
+        draw_buf_ =
+            lv_draw_buf_create(viewport_width_, viewport_height_, LV_COLOR_FORMAT_RGB888, 0);
         if (!draw_buf_) {
             spdlog::error("Failed to create LVGL draw buffer");
             return;
@@ -351,9 +353,9 @@ void GCodeTubeRenderer::draw_to_lvgl(lv_layer_t* layer) {
             int lvgl_idx = (y * viewport_width_ + x) * 3;
 
             // Extract RGB and swap R/B channels
-            lvgl_buf[lvgl_idx + 0] = (pixel >> 0) & 0xFF;   // R (from TinyGL B channel)
-            lvgl_buf[lvgl_idx + 1] = (pixel >> 8) & 0xFF;   // G (stays the same)
-            lvgl_buf[lvgl_idx + 2] = (pixel >> 16) & 0xFF;  // B (from TinyGL R channel)
+            lvgl_buf[lvgl_idx + 0] = (pixel >> 0) & 0xFF;  // R (from TinyGL B channel)
+            lvgl_buf[lvgl_idx + 1] = (pixel >> 8) & 0xFF;  // G (stays the same)
+            lvgl_buf[lvgl_idx + 2] = (pixel >> 16) & 0xFF; // B (from TinyGL R channel)
         }
     }
 

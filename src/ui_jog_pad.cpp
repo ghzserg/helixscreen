@@ -139,18 +139,19 @@ static void load_colors(jog_pad_state_t* state, const char* component_scope_name
         lv_xml_get_const(scope, use_dark_mode ? "jog_highlight_dark" : "jog_highlight_light");
 
     // Parse colors using theme utility
-    state->jog_color_outer_ring = ui_theme_parse_color(outer_ring ? outer_ring : "#3A3A3A");
-    state->jog_color_inner_circle = ui_theme_parse_color(inner_circle ? inner_circle : "#2A2A2A");
-    state->jog_color_grid_lines = ui_theme_parse_color(grid_lines ? grid_lines : "#000000");
-    state->jog_color_home_bg = ui_theme_parse_color(home_bg ? home_bg : "#404040");
-    state->jog_color_home_border = ui_theme_parse_color(home_border ? home_border : "#606060");
-    state->jog_color_home_text = ui_theme_parse_color(home_text ? home_text : "#FFFFFF");
+    state->jog_color_outer_ring = ui_theme_parse_hex_color(outer_ring ? outer_ring : "#3A3A3A");
+    state->jog_color_inner_circle =
+        ui_theme_parse_hex_color(inner_circle ? inner_circle : "#2A2A2A");
+    state->jog_color_grid_lines = ui_theme_parse_hex_color(grid_lines ? grid_lines : "#000000");
+    state->jog_color_home_bg = ui_theme_parse_hex_color(home_bg ? home_bg : "#404040");
+    state->jog_color_home_border = ui_theme_parse_hex_color(home_border ? home_border : "#606060");
+    state->jog_color_home_text = ui_theme_parse_hex_color(home_text ? home_text : "#FFFFFF");
     state->jog_color_boundary_lines =
-        ui_theme_parse_color(boundary_lines ? boundary_lines : "#484848");
+        ui_theme_parse_hex_color(boundary_lines ? boundary_lines : "#484848");
     state->jog_color_distance_labels =
-        ui_theme_parse_color(distance_labels ? distance_labels : "#CCCCCC");
-    state->jog_color_axis_labels = ui_theme_parse_color(axis_labels ? axis_labels : "#FFFFFF");
-    state->jog_color_highlight = ui_theme_parse_color(highlight ? highlight : "#FFFFFF");
+        ui_theme_parse_hex_color(distance_labels ? distance_labels : "#CCCCCC");
+    state->jog_color_axis_labels = ui_theme_parse_hex_color(axis_labels ? axis_labels : "#FFFFFF");
+    state->jog_color_highlight = ui_theme_parse_hex_color(highlight ? highlight : "#FFFFFF");
 
     spdlog::debug("[JogPad] Colors loaded from component scope '{}' ({} mode)",
                   component_scope_name, use_dark_mode ? "dark" : "light");

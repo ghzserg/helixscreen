@@ -331,7 +331,7 @@ static void on_current_slot_changed(lv_observer_t* observer, lv_subject_t* subje
 
     if (is_active) {
         // Active slot: glowing border effect
-        lv_color_t primary = ui_theme_parse_color(lv_xml_get_const(NULL, "primary_color"));
+        lv_color_t primary = ui_theme_parse_hex_color(lv_xml_get_const(NULL, "primary_color"));
 
         // Border highlight on spool area only
         lv_obj_set_style_border_color(highlight_target, primary, LV_PART_MAIN);

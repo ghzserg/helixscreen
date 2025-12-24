@@ -179,7 +179,7 @@ static void ui_switch_xml_apply(lv_xml_parser_state_t* state, const char** attrs
     //   - Always visible in both states
     const char* primary_str = lv_xml_get_const(NULL, "primary_color");
     if (primary_str) {
-        lv_color_t primary = ui_theme_parse_color(primary_str);
+        lv_color_t primary = ui_theme_parse_hex_color(primary_str);
 
         // CHECKED state: primary color, 40% track / 100% knob opacity
         lv_obj_set_style_bg_color(obj, primary, LV_PART_INDICATOR | LV_STATE_CHECKED);

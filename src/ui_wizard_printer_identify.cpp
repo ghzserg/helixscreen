@@ -389,7 +389,7 @@ void WizardPrinterIdentifyStep::handle_printer_name_changed(lv_event_t* event) {
                       max_length);
     } else if (!is_empty) {
         const char* sec_color_str = lv_xml_get_const(NULL, "secondary_color");
-        lv_color_t valid_color = sec_color_str ? ui_theme_parse_color(sec_color_str)
+        lv_color_t valid_color = sec_color_str ? ui_theme_parse_hex_color(sec_color_str)
                                                : ui_theme_get_color("secondary_color");
         lv_obj_set_style_border_color(ta, valid_color, LV_PART_MAIN);
         lv_obj_set_style_border_width(ta, 1, LV_PART_MAIN);

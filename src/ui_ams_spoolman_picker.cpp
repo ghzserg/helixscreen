@@ -268,7 +268,7 @@ void AmsSpoolmanPicker::populate_spools() {
                 // Update color swatch
                 lv_obj_t* swatch = lv_obj_find_by_name(item, "spool_swatch");
                 if (swatch && !spool.color_hex.empty()) {
-                    lv_color_t color = ui_theme_parse_color(spool.color_hex.c_str());
+                    lv_color_t color = ui_theme_parse_hex_color(spool.color_hex.c_str());
                     lv_obj_set_style_bg_color(swatch, color, 0);
                     lv_obj_set_style_border_color(swatch, color, 0);
                 }

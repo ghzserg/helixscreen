@@ -51,15 +51,15 @@ static void init_step_progress_colors(const char* scope_name) {
         const char* lbl_inactive = lv_xml_get_const(
             scope, use_dark_mode ? "step_label_inactive_dark" : "step_label_inactive_light");
 
-        color_pending = ui_theme_parse_color(pending ? pending : "#808080");
-        color_active = ui_theme_parse_color(active ? active : "#FF4444");
-        color_completed = ui_theme_parse_color(completed ? completed : "#4CAF50");
-        color_number_pending = ui_theme_parse_color(
+        color_pending = ui_theme_parse_hex_color(pending ? pending : "#808080");
+        color_active = ui_theme_parse_hex_color(active ? active : "#FF4444");
+        color_completed = ui_theme_parse_hex_color(completed ? completed : "#4CAF50");
+        color_number_pending = ui_theme_parse_hex_color(
             num_pending ? num_pending : (use_dark_mode ? "#000000" : "#FFFFFF"));
-        color_number_active = ui_theme_parse_color(num_active ? num_active : "#FFFFFF");
-        color_label_active =
-            ui_theme_parse_color(lbl_active ? lbl_active : (use_dark_mode ? "#FFFFFF" : "#000000"));
-        color_label_inactive = ui_theme_parse_color(
+        color_number_active = ui_theme_parse_hex_color(num_active ? num_active : "#FFFFFF");
+        color_label_active = ui_theme_parse_hex_color(
+            lbl_active ? lbl_active : (use_dark_mode ? "#FFFFFF" : "#000000"));
+        color_label_inactive = ui_theme_parse_hex_color(
             lbl_inactive ? lbl_inactive : (use_dark_mode ? "#CCCCCC" : "#666666"));
 
         spdlog::debug("[StepProgress] Colors loaded from scope '{}' for {} mode", scope_name,

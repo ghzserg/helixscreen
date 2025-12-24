@@ -739,7 +739,7 @@ void TempControlPanel::setup_nozzle_panel(lv_obj_t* panel, lv_obj_t* parent_scre
         const char* color_str = lv_xml_get_const(scope, use_dark_mode ? "temp_graph_nozzle_dark"
                                                                       : "temp_graph_nozzle_light");
         if (color_str) {
-            nozzle_config_.color = ui_theme_parse_color(color_str);
+            nozzle_config_.color = ui_theme_parse_hex_color(color_str);
             spdlog::debug("[TempPanel] Nozzle graph color: {} ({})", color_str,
                           use_dark_mode ? "dark" : "light");
         }
@@ -831,7 +831,7 @@ void TempControlPanel::setup_bed_panel(lv_obj_t* panel, lv_obj_t* parent_screen)
         const char* color_str =
             lv_xml_get_const(scope, use_dark_mode ? "temp_graph_bed_dark" : "temp_graph_bed_light");
         if (color_str) {
-            bed_config_.color = ui_theme_parse_color(color_str);
+            bed_config_.color = ui_theme_parse_hex_color(color_str);
             spdlog::debug("[TempPanel] Bed graph color: {} ({})", color_str,
                           use_dark_mode ? "dark" : "light");
         }

@@ -144,7 +144,7 @@ bool ui_theme_is_dark_mode();
  * @param hex_str Hex color string (e.g., "#FF0000" or "FF0000")
  * @return LVGL color object
  */
-lv_color_t ui_theme_parse_color(const char* hex_str);
+lv_color_t ui_theme_parse_hex_color(const char* hex_str);
 
 /**
  * @brief Get themed color by base name

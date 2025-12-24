@@ -162,5 +162,5 @@ void ui_severity_card_finalize(lv_obj_t* obj) {
 
 lv_color_t ui_severity_get_color(const char* severity) {
     const char* color_const = severity_to_color_const(severity);
-    return ui_theme_parse_color(lv_xml_get_const(NULL, color_const));
+    return ui_theme_parse_hex_color(lv_xml_get_const(NULL, color_const));
 }

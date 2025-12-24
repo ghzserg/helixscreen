@@ -37,7 +37,7 @@ extern "C" {
  *
  * Example usage:
  * @code
- *   lv_color_t primary = ui_theme_parse_color("#FF4444");
+ *   lv_color_t primary = ui_theme_parse_hex_color("#FF4444");
  *   lv_color_t screen_bg = ui_theme_get_color("app_bg_color");
  *   int32_t border_radius = atoi(lv_xml_get_const(NULL, "border_radius"));
  *   lv_theme_t* theme = helix_theme_init(

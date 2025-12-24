@@ -25,7 +25,7 @@ static bool use_dark_mode = true;
 static lv_display_t* theme_display = nullptr;
 
 // Parse hex color string "#FF4444" -> lv_color_hex(0xFF4444)
-lv_color_t ui_theme_parse_color(const char* hex_str) {
+lv_color_t ui_theme_parse_hex_color(const char* hex_str) {
     if (!hex_str || hex_str[0] != '#') {
         spdlog::error("[Theme] Invalid hex color string: {}", hex_str ? hex_str : "NULL");
         return lv_color_hex(0x000000);
@@ -355,8 +355,8 @@ void ui_theme_init(lv_display_t* display, bool use_dark_mode_param) {
         return;
     }
 
-    lv_color_t primary_color = ui_theme_parse_color(primary_str);
-    lv_color_t secondary_color = ui_theme_parse_color(secondary_str);
+    lv_color_t primary_color = ui_theme_parse_hex_color(primary_str);
+    lv_color_t secondary_color = ui_theme_parse_hex_color(secondary_str);
 
     // Read responsive font based on current breakpoint
     // NOTE: We read the variant directly because base constants are removed to enable
@@ -386,10 +386,10 @@ void ui_theme_init(lv_display_t* display, bool use_dark_mode_param) {
         return;
     }
 
-    lv_color_t screen_bg = ui_theme_parse_color(screen_bg_str);
-    lv_color_t card_bg = ui_theme_parse_color(card_bg_str);
-    lv_color_t theme_grey = ui_theme_parse_color(theme_grey_str);
-    lv_color_t text_primary_color = ui_theme_parse_color(text_primary_str);
+    lv_color_t screen_bg = ui_theme_parse_hex_color(screen_bg_str);
+    lv_color_t card_bg = ui_theme_parse_hex_color(card_bg_str);
+    lv_color_t theme_grey = ui_theme_parse_hex_color(theme_grey_str);
+    lv_color_t text_primary_color = ui_theme_parse_hex_color(text_primary_str);
 
     // Read border radius from globals.xml
     const char* border_radius_str = lv_xml_get_const(nullptr, "border_radius");
@@ -473,10 +473,10 @@ void ui_theme_toggle_dark_mode() {
         return;
     }
 
-    lv_color_t screen_bg = ui_theme_parse_color(screen_bg_str);
-    lv_color_t card_bg = ui_theme_parse_color(card_bg_str);
-    lv_color_t theme_grey = ui_theme_parse_color(theme_grey_str);
-    lv_color_t text_primary_color = ui_theme_parse_color(text_primary_str);
+    lv_color_t screen_bg = ui_theme_parse_hex_color(screen_bg_str);
+    lv_color_t card_bg = ui_theme_parse_hex_color(card_bg_str);
+    lv_color_t theme_grey = ui_theme_parse_hex_color(theme_grey_str);
+    lv_color_t text_primary_color = ui_theme_parse_hex_color(text_primary_str);
 
     spdlog::debug("[Theme] New colors: screen={}, card={}, grey={}, text={}", screen_bg_str,
                   card_bg_str, theme_grey_str, text_primary_str);
@@ -536,7 +536,7 @@ lv_color_t ui_theme_get_color(const char* base_name) {
         // Fallback: try the base name directly (for static colors like warning_color, error_color)
         const char* base_str = lv_xml_get_const(nullptr, base_name);
         if (base_str) {
-            return ui_theme_parse_color(base_str);
+            return ui_theme_parse_hex_color(base_str);
         }
 
         spdlog::error("[Theme] Color not found: {} (no _light/_dark variants, no static fallback)",
@@ -546,7 +546,7 @@ lv_color_t ui_theme_get_color(const char* base_name) {
 
     // Select appropriate variant based on theme mode
     const char* selected_str = use_dark_mode ? dark_str : light_str;
-    return ui_theme_parse_color(selected_str);
+    return ui_theme_parse_hex_color(selected_str);
 }
 
 /**

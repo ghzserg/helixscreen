@@ -305,7 +305,7 @@ void PrintSelectDetailView::update_color_swatches(const std::vector<std::string>
 
         // Parse and set background color
         if (!hex_color.empty()) {
-            lv_color_t color = ui_theme_parse_color(hex_color.c_str());
+            lv_color_t color = ui_theme_parse_hex_color(hex_color.c_str());
             lv_obj_set_style_bg_color(swatch, color, 0);
             lv_obj_set_style_bg_opa(swatch, LV_OPA_COVER, 0);
         } else {

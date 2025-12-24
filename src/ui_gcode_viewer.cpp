@@ -1059,7 +1059,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                           LV_FLEX_ALIGN_CENTER);
 
     // Style container: semi-transparent dark background, no border, padding for content
-    // Use ui_theme_get_color() for token lookup (not ui_theme_parse_color which expects hex)
+    // Use ui_theme_get_color() for token lookup (not ui_theme_parse_hex_color which expects hex)
     lv_obj_set_style_bg_color(st->loading_container, ui_theme_get_color("card_bg"), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(st->loading_container, 220, LV_PART_MAIN);
     lv_obj_set_style_border_width(st->loading_container, 0, LV_PART_MAIN);
