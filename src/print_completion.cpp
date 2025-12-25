@@ -49,9 +49,7 @@ static void cleanup_helix_temp_file(const std::string& filename) {
 
     api->delete_file(
         full_path,
-        [filename]() {
-            spdlog::info("[PrintComplete] Deleted temp file: {}", filename);
-        },
+        [filename]() { spdlog::info("[PrintComplete] Deleted temp file: {}", filename); },
         [filename](const MoonrakerError& err) {
             // Log but don't show error to user - cleanup is best-effort
             spdlog::warn("[PrintComplete] Failed to delete temp file {}: {}", filename,

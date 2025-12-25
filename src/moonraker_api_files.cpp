@@ -6,6 +6,7 @@
 
 #include "hv/hurl.h"
 #include "hv/requests.h"
+#include "memory_monitor.h"
 #include "moonraker_api.h"
 #include "moonraker_api_internal.h"
 #include "spdlog/spdlog.h"
@@ -412,6 +413,7 @@ void MoonrakerAPI::download_file(const std::string& root, const std::string& pat
         }
 
         spdlog::debug("[Moonraker API] Downloaded {} bytes from {}", resp->body.size(), path);
+        helix::MemoryMonitor::log_now("moonraker_download_done");
 
         if (on_success) {
             on_success(resp->body);
@@ -567,6 +569,7 @@ void MoonrakerAPI::download_thumbnail(const std::string& thumbnail_path,
 
         spdlog::trace("[Moonraker API] Cached thumbnail {} bytes -> {}", resp->body.size(),
                       cache_path);
+        helix::MemoryMonitor::log_now("moonraker_thumb_downloaded");
 
         if (on_success) {
             on_success(cache_path);
@@ -642,6 +645,7 @@ void MoonrakerAPI::upload_file_with_name(const std::string& root, const std::str
         file_data.content = content;
         file_data.filename = filename;
         req->form["file"] = file_data;
+        helix::MemoryMonitor::log_now("moonraker_upload_start");
 
         // Send request
         auto resp = requests::request(req);
@@ -717,6 +721,7 @@ void MoonrakerAPI::upload_file_from_path(const std::string& root, const std::str
     buffer << file.rdbuf();
     std::string content = buffer.str();
     file.close();
+    helix::MemoryMonitor::log_now("moonraker_upload_buffered");
 
     spdlog::debug("[Moonraker API] Read {} bytes from local file {}", content.size(), local_path);
 

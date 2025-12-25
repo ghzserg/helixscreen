@@ -6,6 +6,7 @@
 #include "bed_mesh_coordinate_transform.h"
 #include "bed_mesh_gradient.h"
 #include "bed_mesh_internal.h"
+#include "memory_monitor.h"
 
 #include <spdlog/spdlog.h>
 
@@ -25,6 +26,7 @@ void generate_mesh_quads(bed_mesh_renderer_t* renderer) {
     // Number of quads = (rows-1) × (cols-1)
     int expected_quads = (renderer->rows - 1) * (renderer->cols - 1);
     renderer->quads.reserve(static_cast<size_t>(expected_quads));
+    helix::MemoryMonitor::log_now("bed_mesh_quads_reserved");
 
     // Use cached z_center (computed once in compute_mesh_bounds)
 

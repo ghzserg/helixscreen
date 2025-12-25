@@ -97,8 +97,7 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
             // Convert FileInfo to PrintFileData, preserving existing data where available
             for (const auto& file : files) {
                 // Skip .helix_temp directory (internal temp files for modified prints)
-                if (file.filename == ".helix_temp" ||
-                    file.filename.find(".helix_temp/") == 0) {
+                if (file.filename == ".helix_temp" || file.filename.find(".helix_temp/") == 0) {
                     continue;
                 }
 

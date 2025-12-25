@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "gcode_parser.h"
+#include "memory_monitor.h"
 #include "memory_utils.h"
 
 #include <spdlog/spdlog.h>
@@ -444,6 +445,7 @@ void GCodeLayerRenderer::ensure_cache(int width, int height) {
         cached_up_to_layer_ = -1;
 
         spdlog::debug("[GCodeLayerRenderer] Created cache buffer: {}x{}", width, height);
+        helix::MemoryMonitor::log_now("gcode_cache_buffer_created");
     }
 }
 
@@ -569,6 +571,7 @@ void GCodeLayerRenderer::ensure_ghost_cache(int width, int height) {
 
         ghost_cache_valid_ = false;
         spdlog::debug("[GCodeLayerRenderer] Created ghost cache buffer: {}x{}", width, height);
+        helix::MemoryMonitor::log_now("gcode_ghost_buffer_created");
     }
 }
 
@@ -623,6 +626,7 @@ void GCodeLayerRenderer::render_ghost_layers(int from_layer, int to_layer) {
 
     spdlog::debug("[GCodeLayerRenderer] Rendered ghost layers {}-{}: {} segments", from_layer,
                   to_layer, segments_rendered);
+    helix::MemoryMonitor::log_now("gcode_ghost_render_done");
 }
 
 void GCodeLayerRenderer::blit_ghost_cache(lv_layer_t* target) {

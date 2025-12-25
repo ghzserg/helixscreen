@@ -6,6 +6,7 @@
 #ifdef ENABLE_TINYGL_3D
 
 #include "config.h"
+#include "memory_monitor.h"
 #include "runtime_config.h"
 
 #include <spdlog/spdlog.h>
@@ -190,6 +191,7 @@ void GCodeTinyGLRenderer::init_tinygl() {
     }
 
     zbuffer_ = zb; // Store as void*
+    helix::MemoryMonitor::log_now("tinygl_zbuffer_init");
 
     // Get framebuffer pointer from ZBuffer
     framebuffer_ = (unsigned int*)zb->pbuf;

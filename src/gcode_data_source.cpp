@@ -3,6 +3,7 @@
 #include "gcode_data_source.h"
 
 #include "app_globals.h"
+#include "memory_monitor.h"
 
 #include <spdlog/spdlog.h>
 
@@ -55,7 +56,9 @@ std::vector<char> GCodeDataSource::read_all() {
                       std::numeric_limits<uint32_t>::max());
         return {};
     }
-    return read_range(0, static_cast<uint32_t>(size));
+    auto result = read_range(0, static_cast<uint32_t>(size));
+    helix::MemoryMonitor::log_now("gcode_read_all");
+    return result;
 }
 
 // =============================================================================

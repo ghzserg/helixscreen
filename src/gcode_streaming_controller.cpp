@@ -2,6 +2,7 @@
 
 #include "gcode_streaming_controller.h"
 
+#include "memory_monitor.h"
 #include "memory_utils.h"
 
 #include <spdlog/spdlog.h>
@@ -205,11 +206,13 @@ bool GCodeStreamingController::open_file(const std::string& filepath) {
     data_source_ = std::move(source);
 
     // Build index synchronously
+    helix::MemoryMonitor::log_now("gcode_indexing_start");
     if (!build_index()) {
         spdlog::error("[StreamingController] Failed to build index for: {}", filepath);
         data_source_.reset();
         return false;
     }
+    helix::MemoryMonitor::log_now("gcode_indexing_done");
 
     is_open_.store(true);
     spdlog::info("[StreamingController] Opened {} with {} layers", filepath,

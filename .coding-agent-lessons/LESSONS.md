@@ -10,7 +10,7 @@
 
 
 ### [L001] [*****/*****] Conventional commits format
-- **Uses**: 43 | **Learned**: 2025-12-21 | **Last**: 2025-12-24 | **Category**: pattern
+- **Uses**: 48 | **Learned**: 2025-12-21 | **Last**: 2025-12-24 | **Category**: pattern
 > Use type(scope): description format for commit messages. Types: feat, fix, refactor, docs, test, chore, style, perf, build. Examples: fix(home): auto-configure LED, feat(thumbnails): add dynamic sizing.
 
 ### [L002] [****+/-----] Verbose flags required
@@ -98,12 +98,12 @@
 > When set_X() updates a member, also update child objects that cached the old value (e.g., file_provider_->set_api() in PrintSelectPanel::set_api)
 
 ### [L023] [*****/*****] Stage files explicitly
-- **Uses**: 50 | **Learned**: 2025-12-19 | **Last**: 2025-12-24 | **Category**: correction
+- **Uses**: 56 | **Learned**: 2025-12-19 | **Last**: 2025-12-24 | **Category**: correction
 > When committing, stage only files you actually modified (`git add <file>`) rather than `git add -A`. But ALSO verify completeness - check `git status` to ensure no critical feature files are missed. Atomic commits need both precision AND completeness.
 
 
 ### [L024] [*****/*****] WIP file safety
-- **Uses**: 34 | **Learned**: 2025-12-21 | **Last**: 2025-12-24 | **Category**: correction
+- **Uses**: 40 | **Learned**: 2025-12-21 | **Last**: 2025-12-24 | **Category**: correction
 > Never modify, stash, restore, or commit files that are part of uncommitted WIP changes without explicit user permission. Focus only on the specific files/changes requested.
 
 ### [L025] [*----/-----] Button content centering

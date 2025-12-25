@@ -7,6 +7,8 @@
 
 #include "thumbnail_processor.h"
 
+#include "memory_monitor.h"
+
 #include <hv/hthreadpool.h>
 #include <spdlog/spdlog.h>
 
@@ -311,6 +313,8 @@ ProcessResult ThumbnailProcessor::do_process(const std::vector<uint8_t>& png_dat
     // ========================================================================
     int src_width = 0, src_height = 0, src_channels = 0;
 
+    helix::MemoryMonitor::log_now("thumbnail_decode_start");
+
     // stbi_load_from_memory returns RGBA data (4 channels) when we request it
     unsigned char* src_pixels = stbi_load_from_memory(
         png_data.data(), static_cast<int>(png_data.size()), &src_width, &src_height, &src_channels,
@@ -391,6 +395,8 @@ ProcessResult ThumbnailProcessor::do_process(const std::vector<uint8_t>& png_dat
         // Swap R and B channels: RGBA -> BGRA
         std::swap(resized_pixels[i], resized_pixels[i + 2]);
     }
+
+    helix::MemoryMonitor::log_now("thumbnail_resize_done");
 
     // ========================================================================
     // Step 5: Write LVGL binary file

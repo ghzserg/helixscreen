@@ -12,6 +12,7 @@
 #include "bed_mesh_overlays.h"
 #include "bed_mesh_projection.h"
 #include "bed_mesh_rasterizer.h"
+#include "memory_monitor.h"
 
 #include <spdlog/spdlog.h>
 
@@ -184,6 +185,7 @@ bool bed_mesh_renderer_set_mesh_data(bed_mesh_renderer_t* renderer, const float*
     renderer->rows = rows;
     renderer->cols = cols;
     renderer->has_mesh_data = true;
+    helix::MemoryMonitor::log_now("bed_mesh_data_set");
 
     // Compute bounds
     compute_mesh_bounds(renderer);
@@ -222,6 +224,7 @@ bool bed_mesh_renderer_set_mesh_data(bed_mesh_renderer_t* renderer, const float*
     helix::mesh::generate_mesh_quads(renderer);
     spdlog::debug("[Bed Mesh Renderer] Pre-generated {} quads from mesh data",
                   renderer->quads.size());
+    helix::MemoryMonitor::log_now("bed_mesh_quads_done");
 
     // State transition: UNINITIALIZED or READY_TO_RENDER → MESH_LOADED
     renderer->state = RendererState::MESH_LOADED;
