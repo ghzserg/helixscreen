@@ -93,8 +93,15 @@ class UsbBackendLinux : public UsbBackend {
     std::thread monitor_thread_;
 
     // Polling fallback (when inotify unavailable)
+    // Note: We compare actual content rather than mtime because /proc/mounts
+    // is often a symlink to /proc/self/mounts, and symlink mtime never changes.
     bool use_polling_{false};
-    time_t last_mounts_mtime_{0};
+    std::string last_mounts_content_;
+
+    /**
+     * @brief Read contents of /proc/mounts for polling comparison
+     */
+    std::string read_mounts_content();
 };
 
 #endif // __linux__

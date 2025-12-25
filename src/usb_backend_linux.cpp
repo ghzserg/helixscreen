@@ -45,11 +45,10 @@ UsbError UsbBackendLinux::start() {
                          strerror(errno));
             use_polling_ = true;
 
-            // Get initial mtime of /proc/mounts
-            struct stat st;
-            if (stat("/proc/mounts", &st) == 0) {
-                last_mounts_mtime_ = st.st_mtime;
-            }
+            // Read initial content of /proc/mounts for comparison
+            // Note: We compare content rather than mtime because /proc/mounts is often
+            // a symlink to /proc/self/mounts, and symlink mtime never changes.
+            last_mounts_content_ = read_mounts_content();
         } else {
             spdlog::error("[UsbBackendLinux] Failed to init inotify: {}", strerror(errno));
             return UsbError(UsbResult::BACKEND_ERROR,
@@ -343,7 +342,9 @@ void UsbBackendLinux::monitor_thread_func() {
         bool mounts_changed = false;
 
         if (use_polling_) {
-            // Polling mode: check /proc/mounts mtime periodically
+            // Polling mode: compare /proc/mounts content periodically
+            // Note: We compare content rather than mtime because /proc/mounts is often
+            // a symlink to /proc/self/mounts, and symlink mtime never changes.
             // Sleep first to avoid tight loop
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -351,13 +352,11 @@ void UsbBackendLinux::monitor_thread_func() {
                 break;
             }
 
-            struct stat st;
-            if (stat("/proc/mounts", &st) == 0) {
-                if (st.st_mtime != last_mounts_mtime_) {
-                    spdlog::debug("[UsbBackendLinux] /proc/mounts mtime changed");
-                    last_mounts_mtime_ = st.st_mtime;
-                    mounts_changed = true;
-                }
+            std::string current_content = read_mounts_content();
+            if (current_content != last_mounts_content_) {
+                spdlog::debug("[UsbBackendLinux] /proc/mounts content changed");
+                last_mounts_content_ = current_content;
+                mounts_changed = true;
             }
         } else {
             // inotify mode: event-driven (preferred)
@@ -505,6 +504,17 @@ void UsbBackendLinux::scan_directory(const std::string& path, std::vector<UsbGco
     }
 
     closedir(dir);
+}
+
+std::string UsbBackendLinux::read_mounts_content() {
+    std::ifstream mounts("/proc/mounts");
+    if (!mounts.is_open()) {
+        return "";
+    }
+
+    std::stringstream buffer;
+    buffer << mounts.rdbuf();
+    return buffer.str();
 }
 
 #endif // __linux__
