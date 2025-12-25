@@ -7,7 +7,7 @@ A Moonraker component that handles modified G-code files while preserving origin
 **One-liner install** - run this on your printer:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/pbrownco/helixscreen/main/moonraker-plugin/remote-install.sh | bash
+curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/remote-install.sh | bash
 ```
 
 This automatically:
@@ -57,7 +57,7 @@ To enable automatic updates via Moonraker's update manager, add to `moonraker.co
 ```ini
 [update_manager helix_print]
 type: git_repo
-origin: https://github.com/pbrownco/helixscreen.git
+origin: https://github.com/prestonbrown/helixscreen.git
 path: ~/helix_print
 primary_branch: main
 managed_services: moonraker
@@ -240,4 +240,4 @@ GPL-3.0-or-later
 ## Contributing
 
 This plugin is part of the HelixScreen project. Issues and PRs welcome at:
-https://github.com/pbrownco/helixscreen
+https://github.com/prestonbrown/helixscreen

@@ -199,7 +199,7 @@ class HelixPluginInstaller {
 
     // Remote install URL
     static constexpr const char* REMOTE_INSTALL_URL =
-        "https://raw.githubusercontent.com/pbrownco/helixscreen/main/moonraker-plugin/"
+        "https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/"
         "remote-install.sh";
 };
 

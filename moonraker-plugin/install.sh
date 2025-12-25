@@ -11,7 +11,7 @@
 #   ./install.sh --uninstall  # Remove the plugin
 #
 # Remote install (from GitHub):
-#   curl -sSL https://raw.githubusercontent.com/pbrownco/helixscreen/main/moonraker-plugin/remote-install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/remote-install.sh | bash
 
 set -e
 

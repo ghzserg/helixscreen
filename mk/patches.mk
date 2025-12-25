@@ -11,7 +11,8 @@ LVGL_PATCHED_FILES := \
 	src/xml/parsers/lv_xml_image_parser.c \
 	src/xml/lv_xml_style.c \
 	src/xml/lv_xml.c \
-	src/drivers/display/fb/lv_linux_fbdev.c
+	src/drivers/display/fb/lv_linux_fbdev.c \
+	src/core/lv_refr.c
 
 # Reset all patched files in LVGL submodule to upstream state
 reset-patches:

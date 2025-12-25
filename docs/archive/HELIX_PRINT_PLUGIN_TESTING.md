@@ -7,7 +7,7 @@ This document outlines the testing plan for the `helix_print` Moonraker plugin o
 **One-liner install** - SSH into your printer and run:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/pbrownco/helixscreen/main/moonraker-plugin/remote-install.sh | bash
+curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/remote-install.sh | bash
 ```
 
 This automatically:

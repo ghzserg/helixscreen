@@ -4,7 +4,7 @@
 # HelixPrint Moonraker Plugin - Remote Installer
 #
 # One-liner install:
-#   curl -sSL https://raw.githubusercontent.com/pbrownco/helixscreen/main/moonraker-plugin/remote-install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/moonraker-plugin/remote-install.sh | bash
 #
 # This script:
 #   1. Clones/updates the helixscreen repo (just the moonraker-plugin folder)
@@ -26,7 +26,7 @@ warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 step()  { echo -e "${CYAN}[→]${NC} $1"; }
 
-REPO_URL="https://github.com/pbrownco/helixscreen.git"
+REPO_URL="https://github.com/prestonbrown/helixscreen.git"
 INSTALL_DIR="$HOME/helix_print"
 BRANCH="main"
 
