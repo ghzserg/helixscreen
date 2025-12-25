@@ -7,6 +7,7 @@
 #include "ui_theme.h"
 
 #include "app_globals.h"
+#include "moonraker_client.h"
 #include "printer_state.h"
 #include "settings_manager.h"
 
@@ -352,29 +353,26 @@ void StatusBarManager::animate_notification_badge() {
 }
 
 void StatusBarManager::update_printer_icon_combined() {
-    // ConnectionState: 0=DISCONNECTED, 1=CONNECTING, 2=CONNECTED, 3=RECONNECTING, 4=FAILED
-    // KlippyState: 0=READY, 1=STARTUP, 2=SHUTDOWN, 3=ERROR
-
     int32_t new_state;
 
-    if (cached_connection_state_ == 2) { // CONNECTED to Moonraker
+    if (cached_connection_state_ == static_cast<int>(ConnectionState::CONNECTED)) {
         switch (cached_klippy_state_) {
-        case 1: // STARTUP (restarting)
+        case static_cast<int>(KlippyState::STARTUP):
             new_state = PRINTER_STATE_WARNING;
             spdlog::debug("[StatusBarManager] Klippy STARTUP -> printer state WARNING");
             break;
-        case 2: // SHUTDOWN
-        case 3: // ERROR
+        case static_cast<int>(KlippyState::SHUTDOWN):
+        case static_cast<int>(KlippyState::ERROR):
             new_state = PRINTER_STATE_ERROR;
             spdlog::debug("[StatusBarManager] Klippy SHUTDOWN/ERROR -> printer state ERROR");
             break;
-        case 0: // READY
+        case static_cast<int>(KlippyState::READY):
         default:
             new_state = PRINTER_STATE_READY;
             spdlog::debug("[StatusBarManager] Klippy READY -> printer state READY");
             break;
         }
-    } else if (cached_connection_state_ == 4) { // FAILED
+    } else if (cached_connection_state_ == static_cast<int>(ConnectionState::FAILED)) {
         new_state = PRINTER_STATE_ERROR;
         spdlog::debug("[StatusBarManager] Connection FAILED -> printer state ERROR");
     } else { // DISCONNECTED, CONNECTING, RECONNECTING

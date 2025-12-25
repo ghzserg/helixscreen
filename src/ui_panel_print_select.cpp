@@ -20,6 +20,7 @@
 #include "filament_sensor_manager.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "moonraker_api.h"
+#include "moonraker_client.h" // For ConnectionState enum
 #include "print_start_analyzer.h"
 #include "printer_state.h"
 #include "runtime_config.h"
@@ -507,8 +508,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
             [](lv_observer_t* observer, lv_subject_t* subject) {
                 auto* self = static_cast<PrintSelectPanel*>(lv_observer_get_user_data(observer));
                 int32_t state = lv_subject_get_int(subject);
-                // PrinterStatus::CONNECTED = 2
-                if (state == 2 && self) {
+                if (state == static_cast<int>(ConnectionState::CONNECTED) && self) {
                     // Refresh files if empty (and on Printer source, not USB)
                     bool is_printer_source =
                         !self->usb_source_ || !self->usb_source_->is_usb_active();

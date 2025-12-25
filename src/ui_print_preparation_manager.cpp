@@ -61,9 +61,8 @@ void PrintPreparationManager::on_connection_state_changed(lv_observer_t* observe
         return;
     }
 
-    // Check if we're connected (state == 2 == CONNECTED)
     int state = lv_subject_get_int(subject);
-    if (state == 2) { // ConnectionState::CONNECTED
+    if (state == static_cast<int>(ConnectionState::CONNECTED)) {
         self->analyze_print_start_macro();
     }
 }

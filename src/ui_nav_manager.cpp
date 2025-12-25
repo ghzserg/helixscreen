@@ -9,6 +9,8 @@
 #include "ui_theme.h"
 
 #include "app_globals.h"
+#include "moonraker_client.h" // For ConnectionState enum
+#include "printer_state.h"    // For KlippyState enum
 #include "settings_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -235,8 +237,9 @@ void NavigationManager::connection_state_observer_cb([[maybe_unused]] lv_observe
                                                      lv_subject_t* subject) {
     auto& mgr = NavigationManager::instance();
     int state = lv_subject_get_int(subject);
-    bool was_connected = (mgr.previous_connection_state_ == 2);
-    bool is_connected = (state == 2);
+    bool was_connected =
+        (mgr.previous_connection_state_ == static_cast<int>(ConnectionState::CONNECTED));
+    bool is_connected = (state == static_cast<int>(ConnectionState::CONNECTED));
 
     // Only redirect if we were previously connected and are now disconnected
     if (was_connected && !is_connected && panel_requires_connection(mgr.active_panel_)) {
@@ -254,12 +257,14 @@ void NavigationManager::klippy_state_observer_cb([[maybe_unused]] lv_observer_t*
                                                  lv_subject_t* subject) {
     auto& mgr = NavigationManager::instance();
     int state = lv_subject_get_int(subject);
-    bool was_ready = (mgr.previous_klippy_state_ == 0); // KlippyState::READY
-    bool is_ready = (state == 0);
+    bool was_ready = (mgr.previous_klippy_state_ == static_cast<int>(KlippyState::READY));
+    bool is_ready = (state == static_cast<int>(KlippyState::READY));
 
     // Redirect to home if klippy enters non-READY state (SHUTDOWN/ERROR) while on restricted panel
     if (was_ready && !is_ready && panel_requires_connection(mgr.active_panel_)) {
-        const char* state_name = (state == 2) ? "SHUTDOWN" : (state == 3) ? "ERROR" : "non-READY";
+        const char* state_name = (state == static_cast<int>(KlippyState::SHUTDOWN)) ? "SHUTDOWN"
+                                 : (state == static_cast<int>(KlippyState::ERROR))  ? "ERROR"
+                                                                                    : "non-READY";
         spdlog::info("[NavigationManager] Klippy {} on panel {} - navigating to home", state_name,
                      static_cast<int>(mgr.active_panel_));
 

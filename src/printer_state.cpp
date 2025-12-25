@@ -10,6 +10,7 @@
 #include "lvgl.h"
 #include "lvgl/src/display/lv_display_private.h" // For rendering_in_progress check
 #include "lvgl_debug_invalidate.h"
+#include "moonraker_client.h" // For ConnectionState enum
 #include "printer_capabilities.h"
 #include "runtime_config.h"
 
@@ -939,8 +940,8 @@ void PrinterState::set_printer_connection_state_internal(int state, const char* 
     // Called from main thread via ui_async_call
     spdlog::info("[PrinterState] Printer connection state changed: {} - {}", state, message);
 
-    // Track if we've ever successfully connected (state 2 = CONNECTED)
-    if (state == 2 && !was_ever_connected_) {
+    // Track if we've ever successfully connected
+    if (state == static_cast<int>(ConnectionState::CONNECTED) && !was_ever_connected_) {
         was_ever_connected_ = true;
         spdlog::debug("[PrinterState] First successful connection - was_ever_connected_ = true");
     }

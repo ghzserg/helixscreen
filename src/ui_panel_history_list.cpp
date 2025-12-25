@@ -146,8 +146,8 @@ void HistoryListPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
             auto* self = static_cast<HistoryListPanel*>(lv_observer_get_user_data(observer));
             int32_t state = lv_subject_get_int(subject);
 
-            // state 2 = CONNECTED
-            if (state == 2 && self->is_active_ && !self->jobs_received_) {
+            if (state == static_cast<int>(ConnectionState::CONNECTED) && self->is_active_ &&
+                !self->jobs_received_) {
                 spdlog::debug("[{}] Connection established - refreshing data", self->get_name());
                 self->refresh_from_api();
             }
