@@ -483,7 +483,7 @@ help-build:
 	echo "  $${G}setup-hooks$${X}         - Enable git pre-commit hooks (clang-format)"; \
 	echo ""; \
 	echo "$${C}Patches:$${X}"; \
-	echo "  $${G}apply-patches$${X}       - Apply LVGL patches (idempotent)"; \
+	echo "  $${G}apply-patches$${X}       - Apply LVGL/libhv patches (idempotent)"; \
 	echo "  $${G}reset-patches$${X}       - Reset patched files to upstream"; \
 	echo "  $${G}reapply-patches$${X}     - Force reapply all patches"; \
 	echo ""; \

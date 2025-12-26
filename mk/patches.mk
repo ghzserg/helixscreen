@@ -14,6 +14,10 @@ LVGL_PATCHED_FILES := \
 	src/drivers/display/fb/lv_linux_fbdev.c \
 	src/core/lv_refr.c
 
+# Files modified by libhv patches
+LIBHV_PATCHED_FILES := \
+	http/client/requests.h
+
 # Reset all patched files in LVGL submodule to upstream state
 reset-patches:
 	$(ECHO) "$(YELLOW)Resetting LVGL patches to upstream state...$(RESET)"
@@ -99,4 +103,16 @@ apply-patches:
 		fi \
 	else \
 		echo "$(GREEN)✓ LVGL XML prop const resolution patch already applied$(RESET)"; \
+	fi
+	$(ECHO) "$(CYAN)Checking libhv patches...$(RESET)"
+	$(Q)if git -C $(LIBHV_DIR) diff --quiet http/client/requests.h 2>/dev/null; then \
+		echo "$(YELLOW)→ Applying libhv streaming upload patch...$(RESET)"; \
+		if git -C $(LIBHV_DIR) apply --check ../../patches/libhv-streaming-upload.patch 2>/dev/null; then \
+			git -C $(LIBHV_DIR) apply ../../patches/libhv-streaming-upload.patch && \
+			echo "$(GREEN)✓ libhv streaming upload patch applied$(RESET)"; \
+		else \
+			echo "$(YELLOW)⚠ Cannot apply patch (already applied or conflicts)$(RESET)"; \
+		fi \
+	else \
+		echo "$(GREEN)✓ libhv streaming upload patch already applied$(RESET)"; \
 	fi
