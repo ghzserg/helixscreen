@@ -81,7 +81,8 @@ FilamentPanel::FilamentPanel(PrinterState& printer_state, MoonrakerAPI* api)
     lv_xml_register_event_cb(nullptr, "on_filament_purge_25mm", on_purge_25mm_clicked);
 
     // Subscribe to PrinterState temperatures to show actual printer state
-    // NOTE: Observers must defer UI updates via ui_async_call to avoid render-phase assertions [L029]
+    // NOTE: Observers must defer UI updates via ui_async_call to avoid render-phase assertions
+    // [L029]
     extruder_temp_observer_ = ObserverGuard(
         printer_state_.get_extruder_temp_subject(),
         [](lv_observer_t* observer, lv_subject_t* subject) {
