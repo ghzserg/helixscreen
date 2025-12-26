@@ -170,11 +170,12 @@
         <!-- Network Test Button (at bottom of left column) -->
         <!-- ============================================================== -->
         <lv_button name="test_network_btn"
-                   width="100%" height="#space_2xl" style_radius="#border_radius" style_border_width="0">
+                   width="100%" height="content" style_radius="#border_radius" style_border_width="0"
+                   style_pad_ver="#space_sm">
           <!-- Disable when no network connected -->
           <lv_obj-bind_state_if_eq subject="any_network_connected" state="disabled" ref_value="0"/>
           <lv_obj width="100%"
-                  height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
                   style_pad_gap="#space_sm" clickable="false">
             <icon src="lan_check" size="sm" variant="primary"/>
@@ -250,9 +251,10 @@
         </lv_obj>
         <!-- Add Hidden Network Button -->
         <lv_button name="add_other_btn"
-                   width="100%" height="#space_2xl" style_radius="#border_radius" style_border_width="0">
+                   width="100%" height="content" style_radius="#border_radius" style_border_width="0"
+                   style_pad_ver="#space_sm">
           <lv_obj width="100%"
-                  height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
                   style_pad_gap="#space_sm" clickable="false">
             <icon src="wifi" size="sm" variant="primary"/>
