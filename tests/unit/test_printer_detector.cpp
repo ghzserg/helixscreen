@@ -2027,3 +2027,84 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         REQUIRE(result.confidence <= 35);
     }
 }
+
+// ============================================================================
+// Print Start Capabilities Database Tests
+// ============================================================================
+
+TEST_CASE("PrinterDetector: Print start capabilities lookup", "[printer][capabilities]") {
+    SECTION("AD5M Pro returns expected capabilities") {
+        auto caps = PrinterDetector::get_print_start_capabilities("FlashForge Adventurer 5M Pro");
+
+        REQUIRE_FALSE(caps.empty());
+        REQUIRE(caps.macro_name == "START_PRINT");
+        REQUIRE(caps.has_capability("bed_leveling"));
+        REQUIRE(caps.has_capability("priming"));
+        REQUIRE(caps.has_capability("skew_correct"));
+
+        // Check bed_leveling param details
+        auto* bed_level = caps.get_capability("bed_leveling");
+        REQUIRE(bed_level != nullptr);
+        REQUIRE(bed_level->param == "FORCE_LEVELING");
+        REQUIRE(bed_level->skip_value == "false");
+        REQUIRE(bed_level->enable_value == "true");
+    }
+
+    SECTION("Case-insensitive printer name lookup") {
+        auto caps1 = PrinterDetector::get_print_start_capabilities("flashforge adventurer 5m pro");
+        auto caps2 = PrinterDetector::get_print_start_capabilities("FLASHFORGE ADVENTURER 5M PRO");
+
+        REQUIRE_FALSE(caps1.empty());
+        REQUIRE_FALSE(caps2.empty());
+        REQUIRE(caps1.macro_name == caps2.macro_name);
+        REQUIRE(caps1.params.size() == caps2.params.size());
+    }
+
+    SECTION("Unknown printer returns empty capabilities") {
+        auto caps = PrinterDetector::get_print_start_capabilities("Nonexistent Printer Model XYZ");
+
+        REQUIRE(caps.empty());
+        REQUIRE(caps.macro_name.empty());
+        REQUIRE(caps.params.empty());
+    }
+
+    SECTION("Printer without capabilities section returns empty") {
+        // Voron 2.4 exists in database but likely has no print_start_capabilities
+        auto caps = PrinterDetector::get_print_start_capabilities("Voron 2.4");
+
+        // This should return empty since Voron macros are user-customized
+        REQUIRE(caps.empty());
+    }
+}
+
+TEST_CASE("PrintStartCapabilities: Helper methods work correctly", "[printer][capabilities]") {
+    SECTION("empty() reflects capability state") {
+        PrintStartCapabilities empty_caps;
+        REQUIRE(empty_caps.empty());
+
+        PrintStartCapabilities filled_caps;
+        filled_caps.macro_name = "PRINT_START";
+        filled_caps.params["bed_leveling"] = PrintStartParamCapability{.param = "SKIP_BED_MESH"};
+        REQUIRE_FALSE(filled_caps.empty());
+    }
+
+    SECTION("has_capability() and get_capability() work together") {
+        PrintStartCapabilities caps;
+        caps.params["bed_leveling"] =
+            PrintStartParamCapability{.param = "SKIP_BED_MESH", .skip_value = "1"};
+        caps.params["priming"] =
+            PrintStartParamCapability{.param = "DISABLE_PRIMING", .skip_value = "true"};
+
+        REQUIRE(caps.has_capability("bed_leveling"));
+        REQUIRE(caps.has_capability("priming"));
+        REQUIRE_FALSE(caps.has_capability("qgl"));
+        REQUIRE_FALSE(caps.has_capability("unknown_key"));
+
+        auto* bed_cap = caps.get_capability("bed_leveling");
+        REQUIRE(bed_cap != nullptr);
+        REQUIRE(bed_cap->param == "SKIP_BED_MESH");
+
+        auto* missing = caps.get_capability("qgl");
+        REQUIRE(missing == nullptr);
+    }
+}

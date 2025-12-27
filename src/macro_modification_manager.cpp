@@ -32,30 +32,19 @@ static constexpr const char* CONFIG_PATH_MACRO_HASH = "/print_start_wizard/macro
 /**
  * @brief Map PrintStartOpCategory to capability database key
  *
- * Maps the operation categories detected by PrintStartAnalyzer to the
- * capability keys used in printer_database.json's print_start_capabilities.
+ * Uses category_to_string() as the single source of truth, with special
+ * handling for categories that cannot be skipped (HOMING, UNKNOWN).
  *
  * @param category The operation category
  * @return Capability key string, or empty string if no mapping exists
  */
 static std::string category_to_capability_key(PrintStartOpCategory category) {
-    switch (category) {
-    case PrintStartOpCategory::BED_LEVELING:
-        return "bed_leveling";
-    case PrintStartOpCategory::QGL:
-        return "qgl";
-    case PrintStartOpCategory::Z_TILT:
-        return "z_tilt";
-    case PrintStartOpCategory::NOZZLE_CLEAN:
-        return "priming"; // AD5M calls this DISABLE_PRIMING
-    case PrintStartOpCategory::CHAMBER_SOAK:
-        return "chamber_soak";
-    case PrintStartOpCategory::HOMING:
-        return ""; // Homing cannot be skipped - no capability key
-    case PrintStartOpCategory::UNKNOWN:
+    // These categories cannot be skipped - no capability key
+    if (category == PrintStartOpCategory::HOMING || category == PrintStartOpCategory::UNKNOWN) {
         return "";
     }
-    return "";
+    // All other categories use category_to_string() as the single source of truth
+    return category_to_string(category);
 }
 
 // ============================================================================
@@ -171,8 +160,9 @@ void MacroModificationManager::check_and_notify() {
             if (should_show_notification(analysis, wizard_config)) {
                 show_configure_toast();
             } else {
-                spdlog::debug("[MacroModificationManager] No notification needed (already configured "
-                              "or no uncontrollable ops)");
+                spdlog::debug(
+                    "[MacroModificationManager] No notification needed (already configured "
+                    "or no uncontrollable ops)");
             }
         },
         [this, weak_guard](const MoonrakerError& error) {
@@ -288,7 +278,7 @@ bool MacroModificationManager::should_show_notification(
     // Check if printer has native capabilities in database that cover these operations
     Config* config = Config::get_instance();
     if (config) {
-        std::string printer_type = config->get<std::string>(wizard::PRINTER_TYPE, "");
+        std::string printer_type = config->get<std::string>(helix::wizard::PRINTER_TYPE, "");
         if (!printer_type.empty()) {
             PrintStartCapabilities caps =
                 PrinterDetector::get_print_start_capabilities(printer_type);
@@ -305,13 +295,15 @@ bool MacroModificationManager::should_show_notification(
 
                 if (covered_by_native == uncontrollable) {
                     // All uncontrollable operations have native params - no wizard needed!
-                    spdlog::info("[MacroModificationManager] Suppressing wizard toast: {} ops covered "
-                                 "by native {} capabilities for '{}'",
-                                 uncontrollable, caps.macro_name, printer_type);
+                    spdlog::info(
+                        "[MacroModificationManager] Suppressing wizard toast: {} ops covered "
+                        "by native {} capabilities for '{}'",
+                        uncontrollable, caps.macro_name, printer_type);
                     return false;
                 } else if (covered_by_native > 0) {
-                    spdlog::debug("[MacroModificationManager] {}/{} ops covered by native capabilities",
-                                  covered_by_native, uncontrollable);
+                    spdlog::debug(
+                        "[MacroModificationManager] {}/{} ops covered by native capabilities",
+                        covered_by_native, uncontrollable);
                 }
             }
         }

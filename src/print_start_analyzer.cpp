@@ -24,8 +24,6 @@ namespace {
 
 /**
  * @brief Map shared OperationCategory to PrintStartOpCategory
- *
- * Note: PURGE_LINE maps to NOZZLE_CLEAN for backward compatibility
  */
 PrintStartOpCategory to_print_start_category(OperationCategory cat) {
     switch (cat) {
@@ -36,8 +34,11 @@ PrintStartOpCategory to_print_start_category(OperationCategory cat) {
     case OperationCategory::Z_TILT:
         return PrintStartOpCategory::Z_TILT;
     case OperationCategory::NOZZLE_CLEAN:
-    case OperationCategory::PURGE_LINE: // Map purge to nozzle_clean for compat
         return PrintStartOpCategory::NOZZLE_CLEAN;
+    case OperationCategory::PURGE_LINE:
+        return PrintStartOpCategory::PRIMING;
+    case OperationCategory::SKEW_CORRECT:
+        return PrintStartOpCategory::SKEW_CORRECT;
     case OperationCategory::HOMING:
         return PrintStartOpCategory::HOMING;
     case OperationCategory::CHAMBER_SOAK:
@@ -60,6 +61,10 @@ OperationCategory to_operation_category(PrintStartOpCategory cat) {
         return OperationCategory::Z_TILT;
     case PrintStartOpCategory::NOZZLE_CLEAN:
         return OperationCategory::NOZZLE_CLEAN;
+    case PrintStartOpCategory::PRIMING:
+        return OperationCategory::PURGE_LINE;
+    case PrintStartOpCategory::SKEW_CORRECT:
+        return OperationCategory::SKEW_CORRECT;
     case PrintStartOpCategory::HOMING:
         return OperationCategory::HOMING;
     case PrintStartOpCategory::CHAMBER_SOAK:
@@ -85,6 +90,10 @@ const char* category_to_string(PrintStartOpCategory category) {
         return "z_tilt";
     case PrintStartOpCategory::NOZZLE_CLEAN:
         return "nozzle_clean";
+    case PrintStartOpCategory::PRIMING:
+        return "priming";
+    case PrintStartOpCategory::SKEW_CORRECT:
+        return "skew_correct";
     case PrintStartOpCategory::HOMING:
         return "homing";
     case PrintStartOpCategory::CHAMBER_SOAK:

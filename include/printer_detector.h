@@ -65,6 +65,11 @@ struct PrintStartCapabilities {
     bool has_capability(const std::string& name) const {
         return params.find(name) != params.end();
     }
+
+    const PrintStartParamCapability* get_capability(const std::string& name) const {
+        auto it = params.find(name);
+        return (it != params.end()) ? &it->second : nullptr;
+    }
 };
 
 /**

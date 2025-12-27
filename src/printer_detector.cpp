@@ -5,11 +5,14 @@
 
 #include "ui_error_reporting.h"
 
+#include "print_start_analyzer.h"
+
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <unordered_set>
 
 #include "hv/json.hpp"
 
@@ -590,6 +593,36 @@ int PrinterDetector::get_unknown_index() {
 // Print Start Capabilities Lookup
 // ============================================================================
 
+namespace {
+
+/**
+ * @brief Get set of valid capability keys from PrintStartOpCategory enum
+ *
+ * These keys must match what category_to_string() returns.
+ */
+const std::unordered_set<std::string>& get_valid_capability_keys() {
+    static const std::unordered_set<std::string> keys = {
+        helix::category_to_string(helix::PrintStartOpCategory::BED_LEVELING),
+        helix::category_to_string(helix::PrintStartOpCategory::QGL),
+        helix::category_to_string(helix::PrintStartOpCategory::Z_TILT),
+        helix::category_to_string(helix::PrintStartOpCategory::NOZZLE_CLEAN),
+        helix::category_to_string(helix::PrintStartOpCategory::PRIMING),
+        helix::category_to_string(helix::PrintStartOpCategory::SKEW_CORRECT),
+        helix::category_to_string(helix::PrintStartOpCategory::CHAMBER_SOAK),
+        // HOMING and UNKNOWN intentionally excluded - they shouldn't have capabilities
+    };
+    return keys;
+}
+
+/**
+ * @brief Check if a capability key is recognized
+ */
+bool is_valid_capability_key(const std::string& key) {
+    return get_valid_capability_keys().count(key) > 0;
+}
+
+} // namespace
+
 PrintStartCapabilities
 PrinterDetector::get_print_start_capabilities(const std::string& printer_name) {
     PrintStartCapabilities result;
@@ -628,12 +661,27 @@ PrinterDetector::get_print_start_capabilities(const std::string& printer_name) {
 
             if (caps.contains("params") && caps["params"].is_object()) {
                 for (const auto& [key, value] : caps["params"].items()) {
+                    // Validate capability key
+                    if (!is_valid_capability_key(key)) {
+                        spdlog::warn("[PrinterDetector] Unknown capability key '{}' for printer "
+                                     "'{}' - will be ignored during matching",
+                                     key, printer_name);
+                    }
+
                     PrintStartParamCapability param;
                     param.param = value.value("param", "");
                     param.skip_value = value.value("skip_value", "");
                     param.enable_value = value.value("enable_value", "");
                     param.default_value = value.value("default_value", "");
                     param.description = value.value("description", "");
+
+                    // Validate required fields
+                    if (param.param.empty()) {
+                        spdlog::warn("[PrinterDetector] Capability '{}' for printer '{}' has empty "
+                                     "'param' field - entry will be skipped",
+                                     key, printer_name);
+                        continue;
+                    }
 
                     result.params[key] = param;
                 }

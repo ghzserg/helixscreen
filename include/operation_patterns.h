@@ -34,6 +34,7 @@ enum class OperationCategory {
     PURGE_LINE,   ///< Purge/prime line (PURGE_LINE, PRIME_LINE)
     HOMING,       ///< Homing axes (G28)
     CHAMBER_SOAK, ///< Chamber heat soak (HEAT_SOAK)
+    SKEW_CORRECT, ///< Skew correction (SKEW_PROFILE, SET_SKEW)
     START_PRINT,  ///< The print start macro itself (PRINT_START, START_PRINT)
     UNKNOWN,      ///< Unrecognized operation
 };
@@ -93,6 +94,11 @@ inline const OperationKeyword OPERATION_KEYWORDS[] = {
     {"HEAT_SOAK",            OperationCategory::CHAMBER_SOAK, "SKIP_SOAK",         false},
     {"CHAMBER_SOAK",         OperationCategory::CHAMBER_SOAK, "SKIP_SOAK",         false},
     {"SET_HEATER_TEMPERATURE HEATER=chamber", OperationCategory::CHAMBER_SOAK, "SKIP_SOAK", false},
+
+    // === Skew Correction ===
+    {"SKEW_PROFILE",         OperationCategory::SKEW_CORRECT, "SKIP_SKEW",         false},
+    {"SET_SKEW",             OperationCategory::SKEW_CORRECT, "SKIP_SKEW",         false},
+    {"SKEW",                 OperationCategory::SKEW_CORRECT, "SKIP_SKEW",         false},
 };
 // clang-format on
 
@@ -116,11 +122,13 @@ inline const std::vector<std::string> SKIP_PARAM_VARIATIONS[] = {
     // Index 3: NOZZLE_CLEAN
     {"SKIP_NOZZLE_CLEAN", "SKIP_CLEAN", "NO_CLEAN"},
     // Index 4: PURGE_LINE
-    {"SKIP_PURGE", "SKIP_PRIME", "NO_PURGE", "NO_PRIME"},
+    {"SKIP_PURGE", "SKIP_PRIME", "NO_PURGE", "NO_PRIME", "DISABLE_PRIMING"},
     // Index 5: HOMING
     {"SKIP_HOMING", "SKIP_HOME", "NO_HOME"},
     // Index 6: CHAMBER_SOAK
     {"SKIP_SOAK", "SKIP_HEAT_SOAK", "NO_SOAK", "SKIP_CHAMBER"},
+    // Index 7: SKEW_CORRECT
+    {"SKIP_SKEW", "NO_SKEW", "DISABLE_SKEW", "DISABLE_SKEW_CORRECT"},
 };
 // clang-format on
 
@@ -143,6 +151,8 @@ inline const char* category_name(OperationCategory cat) {
         return "Homing";
     case OperationCategory::CHAMBER_SOAK:
         return "Chamber heat soak";
+    case OperationCategory::SKEW_CORRECT:
+        return "Skew correction";
     case OperationCategory::START_PRINT:
         return "Start print";
     case OperationCategory::UNKNOWN:
@@ -170,6 +180,8 @@ inline const char* category_key(OperationCategory cat) {
         return "homing";
     case OperationCategory::CHAMBER_SOAK:
         return "chamber_soak";
+    case OperationCategory::SKEW_CORRECT:
+        return "skew_correct";
     case OperationCategory::START_PRINT:
         return "start_print";
     case OperationCategory::UNKNOWN:
