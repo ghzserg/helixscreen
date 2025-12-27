@@ -538,6 +538,6 @@ class SettingsManager {
     // Display sleep/dim state
     bool display_sleeping_ = false;
     bool display_dimmed_ = false;
-    int dim_timeout_sec_ = 60;      ///< Configurable: seconds before dimming (0 = no dim)
+    int dim_timeout_sec_ = 300;     ///< Configurable: seconds before dimming (0 = no dim)
     int dim_brightness_percent_ = 30; ///< Configurable: brightness when dimmed (1-100)
 };
