@@ -364,7 +364,9 @@ class PrintStatusPanel : public PanelBase {
     lv_subject_t speed_subject_;
     lv_subject_t flow_subject_;
     lv_subject_t pause_button_subject_;
+    lv_subject_t pause_label_subject_;      ///< Pause button label ("Pause"/"Resume")
     lv_subject_t timelapse_button_subject_; ///< Timelapse icon (video/video-off)
+    lv_subject_t timelapse_label_subject_;  ///< Timelapse button label ("On"/"Off")
 
     // Preparing state subjects
     lv_subject_t preparing_visible_subject_;   // int: 1 if preparing, 0 otherwise
@@ -389,7 +391,9 @@ class PrintStatusPanel : public PanelBase {
     char speed_buf_[32] = "100%";
     char flow_buf_[32] = "100%";
     char pause_button_buf_[32] = "\xF3\xB0\x8F\xA4"; // MDI pause icon (F03E4)
+    char pause_label_buf_[16] = "Pause";            ///< Pause button label
     char timelapse_button_buf_[8] = "";              ///< MDI icon codepoint for timelapse state
+    char timelapse_label_buf_[16] = "Off";           ///< Timelapse button label
 
     //
     // === Instance State ===
@@ -535,6 +539,9 @@ class PrintStatusPanel : public PanelBase {
     static void excluded_objects_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
     static void print_duration_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
     static void print_time_left_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
+    static void print_start_phase_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
+    static void print_start_message_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
+    static void print_start_progress_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
 
     //
     // === Observer Instance Methods ===
@@ -552,6 +559,9 @@ class PrintStatusPanel : public PanelBase {
     void on_excluded_objects_changed();
     void on_print_duration_changed(int seconds);
     void on_print_time_left_changed(int seconds);
+    void on_print_start_phase_changed(int phase);
+    void on_print_start_message_changed(const char* message);
+    void on_print_start_progress_changed(int progress);
 
     // PrinterState observers (ObserverGuard handles cleanup)
     ObserverGuard extruder_temp_observer_;
@@ -569,6 +579,9 @@ class PrintStatusPanel : public PanelBase {
     ObserverGuard excluded_objects_observer_;
     ObserverGuard print_duration_observer_;
     ObserverGuard print_time_left_observer_;
+    ObserverGuard print_start_phase_observer_;
+    ObserverGuard print_start_message_observer_;
+    ObserverGuard print_start_progress_observer_;
 
     bool led_on_ = false;
     std::string configured_led_;

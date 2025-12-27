@@ -99,6 +99,14 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, MoonrakerAPI* ap
     print_time_left_observer_ = ObserverGuard(printer_state_.get_print_time_left_subject(),
                                               print_time_left_observer_cb, this);
 
+    // Subscribe to print start preparation phase subjects
+    print_start_phase_observer_ = ObserverGuard(printer_state_.get_print_start_phase_subject(),
+                                                print_start_phase_observer_cb, this);
+    print_start_message_observer_ = ObserverGuard(printer_state_.get_print_start_message_subject(),
+                                                  print_start_message_observer_cb, this);
+    print_start_progress_observer_ = ObserverGuard(
+        printer_state_.get_print_start_progress_subject(), print_start_progress_observer_cb, this);
+
     spdlog::debug("[{}] Subscribed to PrinterState subjects", get_name());
 
     // Load configured LED from wizard settings
@@ -176,12 +184,16 @@ void PrintStatusPanel::init_subjects() {
     // UTF-8: pause=F3 B0 8F A4, play=F3 B0 90 8A
     UI_SUBJECT_INIT_AND_REGISTER_STRING(pause_button_subject_, pause_button_buf_,
                                         "\xF3\xB0\x8F\xA4", "pause_button_icon");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(pause_label_subject_, pause_label_buf_, "Pause",
+                                        "pause_button_label");
 
     // Timelapse button icon (F0567=video, F0568=video-off)
     // MDI icons in Plane 15 (U+F0xxx) use 4-byte UTF-8 encoding
     // Default to video-off (timelapse disabled): U+F0568 = \xF3\xB0\x95\xA8
     UI_SUBJECT_INIT_AND_REGISTER_STRING(timelapse_button_subject_, timelapse_button_buf_,
                                         "\xF3\xB0\x95\xA8", "timelapse_button_icon");
+    UI_SUBJECT_INIT_AND_REGISTER_STRING(timelapse_label_subject_, timelapse_label_buf_, "Off",
+                                        "timelapse_button_label");
 
     // Preparing state subjects
     UI_SUBJECT_INIT_AND_REGISTER_INT(preparing_visible_subject_, 0, "preparing_visible");
@@ -224,6 +236,20 @@ void PrintStatusPanel::init_subjects() {
     lv_xml_register_event_cb(nullptr, "on_print_status_bed_clicked", on_bed_card_clicked);
 
     subjects_initialized_ = true;
+
+    // Sync initial preparation state from PrinterState (in case panel opens mid-preparation)
+    int initial_phase = lv_subject_get_int(printer_state_.get_print_start_phase_subject());
+    if (initial_phase != 0) {
+        on_print_start_phase_changed(initial_phase);
+        auto* msg = static_cast<const char*>(
+            lv_subject_get_pointer(printer_state_.get_print_start_message_subject()));
+        on_print_start_message_changed(msg);
+        int prog = lv_subject_get_int(printer_state_.get_print_start_progress_subject());
+        on_print_start_progress_changed(prog);
+        spdlog::debug("[{}] Synced initial preparation state: phase={}, progress={}%", get_name(),
+                      initial_phase, prog);
+    }
+
     spdlog::debug("[{}] Subjects initialized (17 subjects)", get_name());
 }
 
@@ -1033,6 +1059,31 @@ void PrintStatusPanel::print_time_left_observer_cb(lv_observer_t* observer, lv_s
     }
 }
 
+void PrintStatusPanel::print_start_phase_observer_cb(lv_observer_t* observer,
+                                                     lv_subject_t* subject) {
+    auto* self = static_cast<PrintStatusPanel*>(lv_observer_get_user_data(observer));
+    if (self) {
+        self->on_print_start_phase_changed(lv_subject_get_int(subject));
+    }
+}
+
+void PrintStatusPanel::print_start_message_observer_cb(lv_observer_t* observer,
+                                                       lv_subject_t* subject) {
+    auto* self = static_cast<PrintStatusPanel*>(lv_observer_get_user_data(observer));
+    if (self) {
+        auto* msg = static_cast<const char*>(lv_subject_get_pointer(subject));
+        self->on_print_start_message_changed(msg);
+    }
+}
+
+void PrintStatusPanel::print_start_progress_observer_cb(lv_observer_t* observer,
+                                                        lv_subject_t* subject) {
+    auto* self = static_cast<PrintStatusPanel*>(lv_observer_get_user_data(observer));
+    if (self) {
+        self->on_print_start_progress_changed(lv_subject_get_int(subject));
+    }
+}
+
 // ============================================================================
 // OBSERVER INSTANCE METHODS
 // ============================================================================
@@ -1385,6 +1436,54 @@ void PrintStatusPanel::on_print_time_left_changed(int seconds) {
     format_time(remaining_seconds_, remaining_buf_, sizeof(remaining_buf_));
     lv_subject_copy_string(&remaining_subject_, remaining_buf_);
     spdlog::trace("[{}] Time remaining updated: {}s", get_name(), seconds);
+}
+
+void PrintStatusPanel::on_print_start_phase_changed(int phase) {
+    // Phase 0 = IDLE (not preparing), non-zero = preparing
+    bool preparing = (phase != 0);
+
+    // Guard: subjects may not be initialized if called from constructor's observer setup
+    if (!subjects_initialized_) {
+        return;
+    }
+
+    lv_subject_set_int(&preparing_visible_subject_, preparing ? 1 : 0);
+
+    if (preparing) {
+        current_state_ = PrintState::Preparing;
+    }
+    spdlog::debug("[{}] Print start phase changed: {} (visible={})", get_name(), phase, preparing);
+}
+
+void PrintStatusPanel::on_print_start_message_changed(const char* message) {
+    // Guard: subjects may not be initialized if called from constructor's observer setup
+    if (!subjects_initialized_) {
+        return;
+    }
+
+    if (message) {
+        strncpy(preparing_operation_buf_, message, sizeof(preparing_operation_buf_) - 1);
+        preparing_operation_buf_[sizeof(preparing_operation_buf_) - 1] = '\0';
+        lv_subject_set_pointer(&preparing_operation_subject_, preparing_operation_buf_);
+        spdlog::trace("[{}] Print start message: {}", get_name(), message);
+    }
+}
+
+void PrintStatusPanel::on_print_start_progress_changed(int progress) {
+    // Guard: subjects may not be initialized if called from constructor's observer setup
+    if (!subjects_initialized_) {
+        return;
+    }
+
+    lv_subject_set_int(&preparing_progress_subject_, progress);
+
+    // Animate bar for smooth visual feedback
+    if (preparing_progress_bar_) {
+        lv_anim_enable_t anim_enable =
+            SettingsManager::instance().get_animations_enabled() ? LV_ANIM_ON : LV_ANIM_OFF;
+        lv_bar_set_value(preparing_progress_bar_, progress, anim_enable);
+    }
+    spdlog::trace("[{}] Print start progress: {}%", get_name(), progress);
 }
 
 // ============================================================================
