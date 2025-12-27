@@ -4,6 +4,7 @@
 #include "ui_panel_console.h"
 
 #include "ui_error_reporting.h"
+#include "ui_update_queue.h"
 #include "ui_event_safety.h"
 #include "ui_keyboard_manager.h"
 #include "ui_nav.h"
@@ -370,7 +371,20 @@ void ConsolePanel::on_gcode_response(const nlohmann::json& msg) {
     entry.type = GcodeEntry::Type::RESPONSE;
     entry.is_error = is_error_message(line);
 
-    add_entry(entry);
+    // CRITICAL: Defer LVGL operations to main thread via ui_async_call [L012]
+    // WebSocket callbacks run on libhv thread - direct LVGL calls cause crashes
+    struct Ctx {
+        ConsolePanel* panel;
+        GcodeEntry entry;
+    };
+    auto* ctx = new Ctx{this, std::move(entry)};
+    ui_async_call(
+        [](void* user_data) {
+            auto* c = static_cast<Ctx*>(user_data);
+            c->panel->add_entry(c->entry);
+            delete c;
+        },
+        ctx);
 }
 
 void ConsolePanel::add_entry(const GcodeEntry& entry) {
