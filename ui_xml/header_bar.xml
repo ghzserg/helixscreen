@@ -23,10 +23,16 @@
     <prop name="action_button_icon" type="string" default=""/>
     <!-- Hide the icon in action button (for text-only buttons) -->
     <prop name="hide_action_button_icon" type="string" default="false"/>
+    <!-- Hide the text label in action button (for icon-only circular buttons) -->
+    <prop name="hide_action_button_text" type="string" default="false"/>
     <prop name="action_button_icon_color" type="string" default="#text_primary"/>
     <!-- Styling props for custom action buttons (e.g., E-stop) -->
     <prop name="action_button_bg_color" type="string" default="#primary_color"/>
     <prop name="action_button_radius" type="string" default="#border_radius"/>
+    <!-- Button dimensions - use same value for width/height + radius=9999 for circular buttons -->
+    <prop name="action_button_width" type="string" default="content"/>
+    <prop name="action_button_height" type="string" default="content"/>
+    <prop name="action_button_pad" type="string" default="#space_sm"/>
     <!-- Use hide_action_button="false" to show the action button -->
     <prop name="hide_action_button" type="string" default="true"/>
     <prop name="action_button_callback" type="string" default=""/>
@@ -48,13 +54,18 @@
     <!-- Supports both text (action_button_text) and icon (action_button_icon) modes -->
     <!-- For icon-only buttons like E-stop, use circular radius and custom bg_color -->
     <lv_button name="action_button"
-               width="content" height="#header_action_button_height" style_min_width="#header_action_button_height"
+               width="$action_button_width" height="$action_button_height"
                style_radius="$action_button_radius" style_bg_color="$action_button_bg_color" style_border_width="0"
-               style_shadow_width="0" style_pad_left="#space_md" style_pad_right="#space_md" flex_flow="row"
-               style_flex_cross_place="center" style_pad_gap="#space_xs" scrollable="false" hidden="$hide_action_button">
-      <icon name="action_button_icon_widget"
-            src="$action_button_icon" size="sm" color="$action_button_icon_color" hidden="$hide_action_button_icon"/>
-      <text_body name="action_button_label" text="$action_button_text"/>
+               style_shadow_width="0" style_pad_all="$action_button_pad" flex_flow="row"
+               style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs"
+               scrollable="false" hidden="$hide_action_button">
+      <lv_obj width="100%" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+              flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
+              style_flex_track_place="center" hidden="$hide_action_button_icon" scrollable="false">
+        <icon name="action_button_icon_widget"
+              src="$action_button_icon" size="sm" color="$action_button_icon_color"/>
+      </lv_obj>
+      <text_body name="action_button_label" text="$action_button_text" hidden="$hide_action_button_text"/>
       <event_cb trigger="clicked" callback="$action_button_callback"/>
     </lv_button>
   </view>

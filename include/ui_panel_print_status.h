@@ -449,6 +449,9 @@ class PrintStatusPanel : public PanelBase {
     // Print completion celebration badge (animated on print complete)
     lv_obj_t* success_badge_ = nullptr;
 
+    // Header bar (for e-stop visibility control)
+    lv_obj_t* overlay_header_ = nullptr;
+
     //
     // === Temperature & Tuning Overlays ===
     //

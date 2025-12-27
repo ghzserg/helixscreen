@@ -4,6 +4,7 @@
 #include "ui_panel_print_status.h"
 
 #include "ui_ams_current_tool.h"
+#include "ui_component_header_bar.h"
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_gcode_viewer.h"
@@ -280,6 +281,9 @@ void PrintStatusPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Panel width is set via XML using #overlay_panel_width_large (same as print_file_detail)
     // Use standard overlay panel setup for header/content/back button
     ui_overlay_panel_setup_standard(panel_, parent_screen_, "overlay_header", "overlay_content");
+
+    // Store header reference for e-stop visibility control
+    overlay_header_ = lv_obj_find_by_name(panel_, "overlay_header");
 
     lv_obj_t* overlay_content = lv_obj_find_by_name(panel_, "overlay_content");
     if (!overlay_content) {
@@ -1315,6 +1319,21 @@ void PrintStatusPanel::on_print_state_changed(PrintJobState job_state) {
 
             spdlog::info("[{}] Print complete! Final progress: {}%, elapsed: {}s", get_name(),
                          current_progress_, elapsed_seconds_);
+        }
+
+        // Update e-stop button visibility: show only during active print
+        // (Preparing/Printing/Paused), hide when idle or finished
+        if (overlay_header_) {
+            bool show_estop =
+                (new_state == PrintState::Preparing || new_state == PrintState::Printing ||
+                 new_state == PrintState::Paused);
+            if (show_estop) {
+                ui_header_bar_show_action_button(overlay_header_);
+            } else {
+                ui_header_bar_hide_action_button(overlay_header_);
+            }
+            spdlog::debug("[{}] E-stop button {} (state={})", get_name(),
+                          show_estop ? "shown" : "hidden", static_cast<int>(new_state));
         }
     }
 }
