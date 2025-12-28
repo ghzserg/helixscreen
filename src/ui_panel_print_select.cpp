@@ -346,9 +346,11 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         // USB source refresh is handled by usb_source_ internally via on_files_ready callback
     });
     usb_source_->set_on_files_ready([self](std::vector<PrintFileData>&& files) {
+        // USB files have no Moonraker metadata - mark all as "fetched" to skip metadata requests
+        for (auto& file : files) {
+            file.metadata_fetched = true;
+        }
         self->file_list_ = std::move(files);
-        self->metadata_fetched_.clear();
-        self->metadata_fetched_.resize(self->file_list_.size(), true); // USB files have no metadata
 
         self->apply_sort();
         if (self->current_view_mode_ == PrintSelectViewMode::CARD) {
@@ -362,16 +364,14 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Initialize file data provider for Moonraker files
     file_provider_ = std::make_unique<helix::ui::PrintSelectFileProvider>();
     file_provider_->set_api(api_);
-    file_provider_->set_on_files_ready([self](std::vector<PrintFileData>&& files,
-                                              std::vector<bool>&& fetched) {
+    file_provider_->set_on_files_ready([self](std::vector<PrintFileData>&& files) {
         // CRITICAL: Defer ALL work to main thread [L012]
         // This callback runs on WebSocket thread - LVGL operations must be on main thread
         struct FilesReadyContext {
             PrintSelectPanel* panel;
             std::vector<PrintFileData> files;
-            std::vector<bool> fetched;
         };
-        auto* ctx = new FilesReadyContext{self, std::move(files), std::move(fetched)};
+        auto* ctx = new FilesReadyContext{self, std::move(files)};
 
         ui_async_call(
             [](void* user_data) {
@@ -380,7 +380,6 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
 
                 // Move data into panel (now safe - on main thread)
                 panel->file_list_ = std::move(c->files);
-                panel->metadata_fetched_ = std::move(c->fetched);
 
                 panel->apply_sort();
                 panel->update_sort_indicators();
@@ -725,7 +724,7 @@ void PrintSelectPanel::refresh_files() {
     }
 
     // Delegate to file provider - callbacks set in setup() will handle the results
-    file_provider_->refresh_files(current_path_, file_list_, metadata_fetched_);
+    file_provider_->refresh_files(current_path_, file_list_);
 }
 
 void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
@@ -741,11 +740,6 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
         return;
     }
 
-    // Ensure tracking vector is properly sized
-    if (metadata_fetched_.size() != file_list_.size()) {
-        metadata_fetched_.resize(file_list_.size(), false);
-    }
-
     auto* self = this;
     size_t fetch_count = 0;
 
@@ -754,11 +748,11 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
         if (file_list_[i].is_dir)
             continue; // Skip directories
 
-        if (metadata_fetched_[i])
+        if (file_list_[i].metadata_fetched)
             continue; // Already fetched or in flight
 
         // Mark as fetched immediately to prevent duplicate requests
-        metadata_fetched_[i] = true;
+        file_list_[i].metadata_fetched = true;
         fetch_count++;
 
         const std::string filename = file_list_[i].filename;

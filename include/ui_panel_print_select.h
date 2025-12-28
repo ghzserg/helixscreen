@@ -97,6 +97,9 @@ struct PrintFileData {
     std::string filament_str;
     std::string layer_count_str;  ///< Formatted layer count string
     std::string print_height_str; ///< Formatted print height string
+
+    // Metadata loading state (travels with file during sorting)
+    bool metadata_fetched = false; ///< True if metadata has been loaded
 };
 
 /**
@@ -436,7 +439,6 @@ class PrintSelectPanel : public PanelBase {
     //
 
     std::vector<PrintFileData> file_list_;
-    std::vector<bool> metadata_fetched_; ///< Tracks which files have had metadata requested
     std::string current_path_;           ///< Current directory path (empty = root gcodes dir)
     std::string selected_filament_type_; ///< Filament type of selected file (for dropdown default)
     std::vector<std::string> selected_filament_colors_; ///< Tool colors of selected file

@@ -31,24 +31,19 @@ namespace helix::ui {
  * @code
  * PrintSelectFileProvider provider;
  * provider.set_api(api);
- * provider.set_on_files_ready([](auto files, auto fetched) { ... });
+ * provider.set_on_files_ready([](auto files) { ... });
  * provider.set_on_metadata_updated([](size_t idx, const PrintFileData& file) { ... });
  *
- * // Fetch file list:
- * provider.refresh_files("/subdir");
- *
- * // Lazy load metadata for visible range:
- * provider.fetch_metadata_range(files, fetched, 0, 20);
+ * // Fetch file list (existing files preserved if unchanged):
+ * provider.refresh_files("/subdir", existing_file_list);
  * @endcode
  */
 
 /**
  * @brief Callback when file list is ready
- * @param files Vector of PrintFileData from Moonraker
- * @param metadata_fetched Vector tracking which files have metadata
+ * @param files Vector of PrintFileData from Moonraker (each file has metadata_fetched field)
  */
-using FilesReadyCallback =
-    std::function<void(std::vector<PrintFileData>&& files, std::vector<bool>&& metadata_fetched)>;
+using FilesReadyCallback = std::function<void(std::vector<PrintFileData>&& files)>;
 
 /**
  * @brief Callback when a file's metadata is updated
@@ -116,28 +111,13 @@ class PrintSelectFileProvider {
      *
      * Fetches files from specified directory (non-recursive).
      * Results delivered via on_files_ready callback.
+     * Existing files are preserved if unchanged (by modified timestamp).
      *
      * @param current_path Directory path relative to gcodes root (empty = root)
-     * @param existing_files Existing file list to preserve metadata from
-     * @param existing_fetched Existing metadata_fetched state to preserve
+     * @param existing_files Existing file list to preserve metadata/thumbnails from
      */
     void refresh_files(const std::string& current_path,
-                       const std::vector<PrintFileData>& existing_files = {},
-                       const std::vector<bool>& existing_fetched = {});
-
-    /**
-     * @brief Fetch metadata for a range of files
-     *
-     * Only fetches for files that haven't been fetched yet.
-     * Updates delivered via on_metadata_updated callback.
-     *
-     * @param files Reference to file list (for reading filenames)
-     * @param metadata_fetched Reference to tracking vector (modified to mark fetched)
-     * @param start Start index (inclusive)
-     * @param end End index (exclusive)
-     */
-    void fetch_metadata_range(std::vector<PrintFileData>& files,
-                              std::vector<bool>& metadata_fetched, size_t start, size_t end);
+                       const std::vector<PrintFileData>& existing_files = {});
 
     /**
      * @brief Check if API is connected and ready
