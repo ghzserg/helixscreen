@@ -296,6 +296,7 @@ CompletionCondition CommandSequencer::get_completion_condition(OperationType typ
     case OperationType::NOZZLE_CLEAN:
     case OperationType::PURGE_LINE:
     case OperationType::CHAMBER_SOAK:
+    case OperationType::SKEW_CORRECT:
         // These complete when idle_timeout returns to "Ready"
         cond.object_name = "idle_timeout";
         cond.field_path = "state";
@@ -512,6 +513,16 @@ std::string CommandSequencer::generate_gcode(const QueuedOperation& op) const {
         }
         if (op.params.duration_minutes > 0) {
             gcode << " DURATION=" << op.params.duration_minutes;
+        }
+        break;
+
+    case OperationType::SKEW_CORRECT:
+        if (op.params.extra.count("macro")) {
+            gcode << op.params.extra.at("macro");
+        } else if (op.params.extra.count("profile")) {
+            gcode << "SKEW_PROFILE LOAD=" << op.params.extra.at("profile");
+        } else {
+            gcode << "SKEW_PROFILE";
         }
         break;
 

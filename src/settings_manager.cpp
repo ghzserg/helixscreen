@@ -584,7 +584,7 @@ void SettingsManager::wake_display() {
     }
 
     bool was_sleeping = display_sleeping_;
-    bool was_dimmed = display_dimmed_;
+    (void)was_sleeping; // Currently unused but retained for potential debugging
     display_sleeping_ = false;
     display_dimmed_ = false;
 

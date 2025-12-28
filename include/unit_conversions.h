@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <nlohmann/json.hpp>
+#include <json.hpp> // nlohmann/json from libhv
 
 namespace helix::units {
 
