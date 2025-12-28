@@ -895,29 +895,15 @@ void FilamentPanel::show_load_warning() {
         load_warning_dialog_ = nullptr;
     }
 
-    const char* attrs[] = {"title", "Filament Detected", "message",
-                           "The toolhead sensor indicates filament is already loaded. "
-                           "Proceed with load anyway?",
-                           nullptr};
-
-    ui_modal_configure(ModalSeverity::Warning, true, "Proceed", "Cancel");
-    load_warning_dialog_ = ui_modal_show("modal_dialog", attrs);
+    load_warning_dialog_ = ui_modal_show_confirmation(
+        "Filament Detected",
+        "The toolhead sensor indicates filament is already loaded. "
+        "Proceed with load anyway?",
+        ModalSeverity::Warning, "Proceed", on_load_warning_proceed, on_load_warning_cancel, this);
 
     if (!load_warning_dialog_) {
         spdlog::error("[{}] Failed to create load warning dialog", get_name());
         return;
-    }
-
-    // Wire up cancel button
-    lv_obj_t* cancel_btn = lv_obj_find_by_name(load_warning_dialog_, "btn_secondary");
-    if (cancel_btn) {
-        lv_obj_add_event_cb(cancel_btn, on_load_warning_cancel, LV_EVENT_CLICKED, this);
-    }
-
-    // Wire up proceed button
-    lv_obj_t* proceed_btn = lv_obj_find_by_name(load_warning_dialog_, "btn_primary");
-    if (proceed_btn) {
-        lv_obj_add_event_cb(proceed_btn, on_load_warning_proceed, LV_EVENT_CLICKED, this);
     }
 
     spdlog::debug("[{}] Load warning dialog shown", get_name());
@@ -930,29 +916,16 @@ void FilamentPanel::show_unload_warning() {
         unload_warning_dialog_ = nullptr;
     }
 
-    const char* attrs[] = {"title", "No Filament Detected", "message",
-                           "The toolhead sensor indicates no filament is present. "
-                           "Proceed with unload anyway?",
-                           nullptr};
-
-    ui_modal_configure(ModalSeverity::Warning, true, "Proceed", "Cancel");
-    unload_warning_dialog_ = ui_modal_show("modal_dialog", attrs);
+    unload_warning_dialog_ =
+        ui_modal_show_confirmation("No Filament Detected",
+                                   "The toolhead sensor indicates no filament is present. "
+                                   "Proceed with unload anyway?",
+                                   ModalSeverity::Warning, "Proceed", on_unload_warning_proceed,
+                                   on_unload_warning_cancel, this);
 
     if (!unload_warning_dialog_) {
         spdlog::error("[{}] Failed to create unload warning dialog", get_name());
         return;
-    }
-
-    // Wire up cancel button
-    lv_obj_t* cancel_btn = lv_obj_find_by_name(unload_warning_dialog_, "btn_secondary");
-    if (cancel_btn) {
-        lv_obj_add_event_cb(cancel_btn, on_unload_warning_cancel, LV_EVENT_CLICKED, this);
-    }
-
-    // Wire up proceed button
-    lv_obj_t* proceed_btn = lv_obj_find_by_name(unload_warning_dialog_, "btn_primary");
-    if (proceed_btn) {
-        lv_obj_add_event_cb(proceed_btn, on_unload_warning_proceed, LV_EVENT_CLICKED, this);
     }
 
     spdlog::debug("[{}] Unload warning dialog shown", get_name());

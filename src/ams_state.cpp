@@ -7,6 +7,7 @@
 
 #include "ams_backend_afc.h"
 #include "ams_backend_toolchanger.h"
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "printer_capabilities.h"
 #include "runtime_config.h"
@@ -536,14 +537,9 @@ void AmsState::sync_dryer_from_backend() {
 
         // Format time remaining text
         if (dryer.active && dryer.remaining_min > 0) {
-            int hours = dryer.remaining_min / 60;
-            int mins = dryer.remaining_min % 60;
-            if (hours > 0) {
-                snprintf(dryer_time_text_buf_, sizeof(dryer_time_text_buf_), "%d:%02d left", hours,
-                         mins);
-            } else {
-                snprintf(dryer_time_text_buf_, sizeof(dryer_time_text_buf_), "%d min left", mins);
-            }
+            std::string time_str = helix::fmt::duration_remaining(dryer.remaining_min * 60);
+            std::strncpy(dryer_time_text_buf_, time_str.c_str(), sizeof(dryer_time_text_buf_) - 1);
+            dryer_time_text_buf_[sizeof(dryer_time_text_buf_) - 1] = '\0';
         } else {
             dryer_time_text_buf_[0] = '\0';
         }
@@ -695,6 +691,7 @@ void AmsState::update_modal_text_subjects() {
     lv_subject_copy_string(&dryer_modal_temp_text_, dryer_modal_temp_text_buf_);
 
     // Format duration (e.g., "4h" or "4h 30m")
+    // Note: Uses compact format ("%dm") different from duration_from_minutes ("%d min")
     int hours = modal_duration_min_ / 60;
     int mins = modal_duration_min_ % 60;
     if (mins == 0) {

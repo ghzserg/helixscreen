@@ -6,11 +6,10 @@
 #include "ui_panel_print_select.h" // For PrintFileData
 #include "ui_print_select_card_view.h"
 
+#include "print_file_data.h"
 #include "usb_manager.h"
 
 #include <spdlog/spdlog.h>
-
-#include <ctime>
 
 namespace helix::ui {
 
@@ -222,40 +221,9 @@ std::vector<PrintFileData> PrintSelectUsbSource::convert_to_print_file_data() co
     std::vector<PrintFileData> result;
     result.reserve(usb_files_.size());
 
+    const std::string default_thumbnail = PrintSelectCardView::get_default_thumbnail();
     for (const auto& usb_file : usb_files_) {
-        PrintFileData file_data;
-        file_data.filename = usb_file.filename;
-        file_data.file_size_bytes = usb_file.size_bytes;
-        file_data.modified_timestamp = static_cast<time_t>(usb_file.modified_time);
-        file_data.print_time_minutes = 0; // USB files don't have Moonraker metadata
-        file_data.filament_grams = 0.0f;
-        file_data.thumbnail_path = PrintSelectCardView::get_default_thumbnail();
-        file_data.is_dir = false;
-
-        // Format size string
-        if (file_data.file_size_bytes < 1024) {
-            file_data.size_str = std::to_string(file_data.file_size_bytes) + " B";
-        } else if (file_data.file_size_bytes < 1024 * 1024) {
-            file_data.size_str = std::to_string(file_data.file_size_bytes / 1024) + " KB";
-        } else {
-            file_data.size_str = std::to_string(file_data.file_size_bytes / (1024 * 1024)) + " MB";
-        }
-
-        // Format modified date
-        std::tm* tm_info = std::localtime(&file_data.modified_timestamp);
-        if (tm_info) {
-            char buffer[32];
-            std::strftime(buffer, sizeof(buffer), "%b %d, %H:%M", tm_info);
-            file_data.modified_str = buffer;
-        } else {
-            file_data.modified_str = "Unknown";
-        }
-
-        file_data.print_time_str = "--";
-        file_data.filament_str = "--";
-        file_data.layer_count_str = "--";
-
-        result.push_back(std::move(file_data));
+        result.push_back(PrintFileData::from_usb_file(usb_file, default_thumbnail));
     }
 
     return result;

@@ -17,17 +17,8 @@ using namespace moonraker_internal;
 void MoonrakerAPI::start_print(const std::string& filename, SuccessCallback on_success,
                                ErrorCallback on_error) {
     // Validate filename path
-    if (!is_safe_path(filename)) {
-        NOTIFY_ERROR("Cannot start print. File '{}' has invalid path.", filename);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid filename contains directory traversal or illegal characters";
-            err.method = "start_print";
-            on_error(err);
-        }
+    if (reject_invalid_path(filename, "start_print", on_error))
         return;
-    }
 
     json params = {{"filename", filename}};
 
@@ -167,29 +158,10 @@ void MoonrakerAPI::start_modified_print(const std::string& original_filename,
                                         const std::vector<std::string>& modifications,
                                         ModifiedPrintCallback on_success, ErrorCallback on_error) {
     // Validate filename paths
-    if (!is_safe_path(original_filename)) {
-        NOTIFY_ERROR("Cannot start modified print. File '{}' has invalid path.", original_filename);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid filename contains directory traversal or illegal characters";
-            err.method = "start_modified_print";
-            on_error(err);
-        }
+    if (reject_invalid_path(original_filename, "start_modified_print", on_error))
         return;
-    }
-
-    if (!is_safe_path(temp_file_path)) {
-        NOTIFY_ERROR("Cannot start modified print. Temp path '{}' is invalid.", temp_file_path);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid temp path contains directory traversal or illegal characters";
-            err.method = "start_modified_print";
-            on_error(err);
-        }
+    if (reject_invalid_path(temp_file_path, "start_modified_print", on_error))
         return;
-    }
 
     // Build modifications array
     json mods_array = json::array();

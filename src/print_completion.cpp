@@ -10,6 +10,7 @@
 #include "ui_utils.h"
 
 #include "app_globals.h"
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "moonraker_manager.h"
 #include "printer_state.h"
@@ -58,17 +59,6 @@ static void cleanup_helix_temp_file(const std::string& filename) {
             spdlog::warn("[PrintComplete] Failed to delete temp file {}: {}", filename,
                          err.message);
         });
-}
-
-// Helper to format duration as "Xh YYm" or "Ym"
-static void format_duration(int seconds, char* buf, size_t buf_size) {
-    int hours = seconds / 3600;
-    int minutes = (seconds % 3600) / 60;
-    if (hours > 0) {
-        snprintf(buf, buf_size, "%dh %02dm", hours, minutes);
-    } else {
-        snprintf(buf, buf_size, "%dm", minutes);
-    }
 }
 
 // Helper to show the rich print completion modal
@@ -137,9 +127,8 @@ static void show_rich_completion_modal(PrintJobState state, const char* filename
     // Update duration
     lv_obj_t* duration_label = lv_obj_find_by_name(dialog, "duration_label");
     if (duration_label) {
-        char duration_buf[32];
-        format_duration(duration_secs, duration_buf, sizeof(duration_buf));
-        lv_label_set_text(duration_label, duration_buf);
+        std::string duration_str = fmt::duration_padded(duration_secs);
+        lv_label_set_text(duration_label, duration_str.c_str());
     }
 
     // Update layers

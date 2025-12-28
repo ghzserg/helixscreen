@@ -27,32 +27,12 @@ using namespace moonraker_internal;
 void MoonrakerAPI::list_files(const std::string& root, const std::string& path, bool recursive,
                               FileListCallback on_success, ErrorCallback on_error) {
     // Validate root parameter
-    if (!is_safe_identifier(root)) {
-        NOTIFY_ERROR("File path error: '{}' is not a valid location. Please check the root name.",
-                     root);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid root name contains illegal characters";
-            err.method = "list_files";
-            on_error(err);
-        }
+    if (reject_invalid_identifier(root, "list_files", on_error))
         return;
-    }
 
     // Validate path if provided
-    if (!path.empty() && !is_safe_path(path)) {
-        NOTIFY_ERROR("Invalid file path '{}'. Path contains unsafe characters or references.",
-                     path);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid path contains directory traversal or illegal characters";
-            err.method = "list_files";
-            on_error(err);
-        }
+    if (!path.empty() && reject_invalid_path(path, "list_files", on_error))
         return;
-    }
 
     json params = {{"root", root}};
 
@@ -84,19 +64,8 @@ void MoonrakerAPI::list_files(const std::string& root, const std::string& path, 
 void MoonrakerAPI::get_file_metadata(const std::string& filename, FileMetadataCallback on_success,
                                      ErrorCallback on_error, bool silent) {
     // Validate filename path
-    if (!is_safe_path(filename)) {
-        if (!silent) {
-            NOTIFY_ERROR("Invalid filename '{}'. Check the file path format.", filename);
-        }
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid filename contains directory traversal or illegal characters";
-            err.method = "get_file_metadata";
-            on_error(err);
-        }
+    if (reject_invalid_path(filename, "get_file_metadata", on_error, silent))
         return;
-    }
 
     json params = {{"filename", filename}};
 
@@ -123,16 +92,8 @@ void MoonrakerAPI::get_file_metadata(const std::string& filename, FileMetadataCa
 void MoonrakerAPI::metascan_file(const std::string& filename, FileMetadataCallback on_success,
                                  ErrorCallback on_error, bool silent) {
     // Validate filename path
-    if (!is_safe_path(filename)) {
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid filename contains directory traversal or illegal characters";
-            err.method = "metascan_file";
-            on_error(err);
-        }
+    if (reject_invalid_path(filename, "metascan_file", on_error, silent))
         return;
-    }
 
     json params = {{"filename", filename}};
 
@@ -160,17 +121,8 @@ void MoonrakerAPI::metascan_file(const std::string& filename, FileMetadataCallba
 void MoonrakerAPI::delete_file(const std::string& filename, SuccessCallback on_success,
                                ErrorCallback on_error) {
     // Validate filename path
-    if (!is_safe_path(filename)) {
-        NOTIFY_ERROR("Cannot delete '{}'. Invalid file path.", filename);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid filename contains directory traversal or illegal characters";
-            err.method = "delete_file";
-            on_error(err);
-        }
+    if (reject_invalid_path(filename, "delete_file", on_error))
         return;
-    }
 
     json params = {{"path", filename}};
 
@@ -188,31 +140,12 @@ void MoonrakerAPI::delete_file(const std::string& filename, SuccessCallback on_s
 void MoonrakerAPI::move_file(const std::string& source, const std::string& dest,
                              SuccessCallback on_success, ErrorCallback on_error) {
     // Validate source path
-    if (!is_safe_path(source)) {
-        NOTIFY_ERROR("Cannot move file. Source path '{}' is invalid.", source);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid source path contains directory traversal or illegal characters";
-            err.method = "move_file";
-            on_error(err);
-        }
+    if (reject_invalid_path(source, "move_file", on_error))
         return;
-    }
 
     // Validate destination path
-    if (!is_safe_path(dest)) {
-        NOTIFY_ERROR("Cannot move file. Destination path '{}' is invalid.", dest);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message =
-                "Invalid destination path contains directory traversal or illegal characters";
-            err.method = "move_file";
-            on_error(err);
-        }
+    if (reject_invalid_path(dest, "move_file", on_error))
         return;
-    }
 
     spdlog::info("[Moonraker API] Moving file from {} to {}", source, dest);
 
@@ -230,31 +163,12 @@ void MoonrakerAPI::move_file(const std::string& source, const std::string& dest,
 void MoonrakerAPI::copy_file(const std::string& source, const std::string& dest,
                              SuccessCallback on_success, ErrorCallback on_error) {
     // Validate source path
-    if (!is_safe_path(source)) {
-        NOTIFY_ERROR("Cannot copy file. Source path '{}' is invalid.", source);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid source path contains directory traversal or illegal characters";
-            err.method = "copy_file";
-            on_error(err);
-        }
+    if (reject_invalid_path(source, "copy_file", on_error))
         return;
-    }
 
     // Validate destination path
-    if (!is_safe_path(dest)) {
-        NOTIFY_ERROR("Cannot copy file. Destination path '{}' is invalid.", dest);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message =
-                "Invalid destination path contains directory traversal or illegal characters";
-            err.method = "copy_file";
-            on_error(err);
-        }
+    if (reject_invalid_path(dest, "copy_file", on_error))
         return;
-    }
 
     spdlog::info("[Moonraker API] Copying file from {} to {}", source, dest);
 
@@ -272,18 +186,8 @@ void MoonrakerAPI::copy_file(const std::string& source, const std::string& dest,
 void MoonrakerAPI::create_directory(const std::string& path, SuccessCallback on_success,
                                     ErrorCallback on_error) {
     // Validate path
-    if (!is_safe_path(path)) {
-        NOTIFY_ERROR("Cannot create directory '{}'. Invalid path.", path);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message =
-                "Invalid directory path contains directory traversal or illegal characters";
-            err.method = "create_directory";
-            on_error(err);
-        }
+    if (reject_invalid_path(path, "create_directory", on_error))
         return;
-    }
 
     spdlog::info("[Moonraker API] Creating directory: {}", path);
 
@@ -301,18 +205,8 @@ void MoonrakerAPI::create_directory(const std::string& path, SuccessCallback on_
 void MoonrakerAPI::delete_directory(const std::string& path, bool force, SuccessCallback on_success,
                                     ErrorCallback on_error) {
     // Validate path
-    if (!is_safe_path(path)) {
-        NOTIFY_ERROR("Cannot delete directory '{}'. Invalid path.", path);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message =
-                "Invalid directory path contains directory traversal or illegal characters";
-            err.method = "delete_directory";
-            on_error(err);
-        }
+    if (reject_invalid_path(path, "delete_directory", on_error))
         return;
-    }
 
     spdlog::info("[Moonraker API] Deleting directory: {} (force: {})", path, force);
 
@@ -338,17 +232,8 @@ void MoonrakerAPI::delete_directory(const std::string& path, bool force, Success
 void MoonrakerAPI::download_file(const std::string& root, const std::string& path,
                                  StringCallback on_success, ErrorCallback on_error) {
     // Validate inputs
-    if (!is_safe_path(path)) {
-        spdlog::error("[Moonraker API] Invalid file path for download: {}", path);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid file path contains unsafe characters";
-            err.method = "download_file";
-            on_error(err);
-        }
+    if (reject_invalid_path(path, "download_file", on_error))
         return;
-    }
 
     if (http_base_url_.empty()) {
         spdlog::error(
@@ -427,17 +312,8 @@ void MoonrakerAPI::download_file_partial(const std::string& root, const std::str
                                          size_t max_bytes, StringCallback on_success,
                                          ErrorCallback on_error) {
     // Validate inputs
-    if (!is_safe_path(path)) {
-        spdlog::error("[Moonraker API] Invalid file path for partial download: {}", path);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid file path contains unsafe characters";
-            err.method = "download_file_partial";
-            on_error(err);
-        }
+    if (reject_invalid_path(path, "download_file_partial", on_error))
         return;
-    }
 
     if (http_base_url_.empty()) {
         spdlog::error(
@@ -690,17 +566,8 @@ void MoonrakerAPI::upload_file_with_name(const std::string& root, const std::str
                                          const std::string& filename, const std::string& content,
                                          SuccessCallback on_success, ErrorCallback on_error) {
     // Validate inputs
-    if (!is_safe_path(path)) {
-        spdlog::error("[Moonraker API] Invalid file path for upload: {}", path);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid file path contains unsafe characters";
-            err.method = "upload_file";
-            on_error(err);
-        }
+    if (reject_invalid_path(path, "upload_file", on_error))
         return;
-    }
 
     if (http_base_url_.empty()) {
         spdlog::error(
@@ -793,17 +660,8 @@ void MoonrakerAPI::upload_file_from_path(const std::string& root, const std::str
                                          const std::string& local_path, SuccessCallback on_success,
                                          ErrorCallback on_error, ProgressCallback on_progress) {
     // Validate inputs
-    if (!is_safe_path(dest_path)) {
-        spdlog::error("[Moonraker API] Invalid destination path for upload: {}", dest_path);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid destination path contains unsafe characters";
-            err.method = "upload_file_from_path";
-            on_error(err);
-        }
+    if (reject_invalid_path(dest_path, "upload_file_from_path", on_error))
         return;
-    }
 
     if (http_base_url_.empty()) {
         spdlog::error(

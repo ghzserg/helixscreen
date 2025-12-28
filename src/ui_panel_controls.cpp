@@ -756,32 +756,14 @@ void ControlsPanel::handle_fan_slider_changed(int value) {
 void ControlsPanel::handle_motors_clicked() {
     spdlog::debug("[{}] Motors Disable card clicked - showing confirmation", get_name());
 
-    // Create attributes for title and message
-    const char* attrs[] = {"title", "Disable Motors?", "message",
-                           "Release all stepper motors. Position will be lost.", nullptr};
-
-    // Configure modal_dialog: WARNING severity, confirm/cancel buttons
-    ui_modal_configure(ModalSeverity::Warning, true, "Disable", "Cancel");
-
-    // Show modal using unified modal_dialog component
-    motors_confirmation_dialog_ = ui_modal_show("modal_dialog", attrs);
+    motors_confirmation_dialog_ = ui_modal_show_confirmation(
+        "Disable Motors?", "Release all stepper motors. Position will be lost.",
+        ModalSeverity::Warning, "Disable", on_motors_confirm, on_motors_cancel, this);
 
     if (!motors_confirmation_dialog_) {
         LOG_ERROR_INTERNAL("Failed to create motors confirmation dialog");
         NOTIFY_ERROR("Failed to show confirmation dialog");
         return;
-    }
-
-    // Wire up cancel button (btn_secondary in modal_dialog)
-    lv_obj_t* cancel_btn = lv_obj_find_by_name(motors_confirmation_dialog_, "btn_secondary");
-    if (cancel_btn) {
-        lv_obj_add_event_cb(cancel_btn, on_motors_cancel, LV_EVENT_CLICKED, this);
-    }
-
-    // Wire up confirm button (btn_primary in modal_dialog)
-    lv_obj_t* confirm_btn = lv_obj_find_by_name(motors_confirmation_dialog_, "btn_primary");
-    if (confirm_btn) {
-        lv_obj_add_event_cb(confirm_btn, on_motors_confirm, LV_EVENT_CLICKED, this);
     }
 
     spdlog::info("[{}] Motors confirmation dialog shown", get_name());

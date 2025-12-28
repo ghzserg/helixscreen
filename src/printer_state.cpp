@@ -5,6 +5,7 @@
 
 #include "ui_update_queue.h"
 
+#include "async_helpers.h"
 #include "capability_overrides.h"
 #include "filament_sensor_manager.h"
 #include "lvgl.h"
@@ -13,110 +14,11 @@
 #include "moonraker_client.h" // For ConnectionState enum
 #include "printer_capabilities.h"
 #include "runtime_config.h"
+#include "unit_conversions.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cstring>
-
-// ============================================================================
-// Thread-safe async update context
-// ============================================================================
-// CRITICAL: Subject updates trigger lv_obj_invalidate() which asserts if called
-// during LVGL rendering. WebSocket callbacks run on libhv's event loop thread,
-// not the main LVGL thread. We must defer subject updates to the main thread
-// via ui_async_call to avoid the "Invalidate area not allowed during rendering"
-// assertion which causes while(1) infinite loop in LV_ASSERT_HANDLER.
-
-namespace {
-
-struct AsyncStatusUpdateContext {
-    PrinterState* printer_state;
-    nlohmann::json state; // Copy of the status JSON
-};
-
-void async_status_update_callback(void* user_data) {
-    auto* ctx = static_cast<AsyncStatusUpdateContext*>(user_data);
-    if (ctx && ctx->printer_state) {
-        // Debug check: log if we're somehow in render phase (should never happen)
-        if (lvgl_is_rendering()) {
-            spdlog::error(
-                "[PrinterState] async_status_update_callback running during render phase!");
-            spdlog::error(
-                "[PrinterState] This should not happen - lv_async_call should run between frames");
-        }
-        ctx->printer_state->update_from_status(ctx->state);
-    }
-    delete ctx;
-}
-
-} // anonymous namespace
-
-// ============================================================================
-// Thread-safe async callbacks for PrinterState methods
-// ============================================================================
-// These callbacks are declared as friends in PrinterState to access _internal methods.
-// They must be outside the anonymous namespace for friend declarations to work.
-
-struct AsyncCapabilitiesContext {
-    PrinterState* printer_state;
-    PrinterCapabilities caps;
-};
-
-void async_capabilities_callback(void* user_data) {
-    auto* ctx = static_cast<AsyncCapabilitiesContext*>(user_data);
-    if (ctx && ctx->printer_state) {
-        ctx->printer_state->set_printer_capabilities_internal(ctx->caps);
-    }
-    delete ctx;
-}
-
-struct AsyncStringContext {
-    PrinterState* printer_state;
-    std::string value;
-};
-
-void async_klipper_version_callback(void* user_data) {
-    auto* ctx = static_cast<AsyncStringContext*>(user_data);
-    if (ctx && ctx->printer_state) {
-        ctx->printer_state->set_klipper_version_internal(ctx->value);
-    }
-    delete ctx;
-}
-
-void async_moonraker_version_callback(void* user_data) {
-    auto* ctx = static_cast<AsyncStringContext*>(user_data);
-    if (ctx && ctx->printer_state) {
-        ctx->printer_state->set_moonraker_version_internal(ctx->value);
-    }
-    delete ctx;
-}
-
-struct AsyncKlippyStateContext {
-    PrinterState* printer_state;
-    KlippyState state;
-};
-
-void async_klippy_state_callback(void* user_data) {
-    auto* ctx = static_cast<AsyncKlippyStateContext*>(user_data);
-    if (ctx && ctx->printer_state) {
-        ctx->printer_state->set_klippy_state_internal(ctx->state);
-    }
-    delete ctx;
-}
-
-struct AsyncConnectionStateContext {
-    PrinterState* printer_state;
-    int state;
-    std::string message;
-};
-
-void async_connection_state_callback(void* user_data) {
-    auto* ctx = static_cast<AsyncConnectionStateContext*>(user_data);
-    if (ctx && ctx->printer_state) {
-        ctx->printer_state->set_printer_connection_state_internal(ctx->state, ctx->message.c_str());
-    }
-    delete ctx;
-}
 
 // ============================================================================
 // PrintJobState Free Functions
@@ -475,12 +377,19 @@ void PrinterState::update_from_notification(const json& notification) {
     }
 
     // Extract printer state from params[0] and delegate to update_from_status
-    // CRITICAL: Defer to main thread via ui_async_call to avoid LVGL assertion
+    // CRITICAL: Defer to main thread via helix::async::invoke to avoid LVGL assertion
     // when subject updates trigger lv_obj_invalidate() during rendering
     auto params = notification["params"];
     if (params.is_array() && !params.empty()) {
-        auto* ctx = new AsyncStatusUpdateContext{this, params[0]};
-        ui_async_call(async_status_update_callback, ctx);
+        helix::async::invoke([this, state_json = params[0]]() {
+            // Debug check: log if we're somehow in render phase (should never happen)
+            if (lvgl_is_rendering()) {
+                spdlog::error("[PrinterState] async status update running during render phase!");
+                spdlog::error("[PrinterState] This should not happen - lv_async_call should run "
+                              "between frames");
+            }
+            update_from_status(state_json);
+        });
     }
 }
 
@@ -495,14 +404,14 @@ void PrinterState::update_from_status(const json& state) {
         const auto& extruder = state["extruder"];
 
         if (extruder.contains("temperature") && extruder["temperature"].is_number()) {
-            int temp_centi = static_cast<int>(extruder["temperature"].get<double>() * 10.0);
+            int temp_centi = helix::units::json_to_centidegrees(extruder, "temperature");
             lv_subject_set_int(&extruder_temp_, temp_centi);
             // Always notify for temp graphing even when value unchanged
             lv_subject_notify(&extruder_temp_);
         }
 
         if (extruder.contains("target") && extruder["target"].is_number()) {
-            int target_centi = static_cast<int>(extruder["target"].get<double>() * 10.0);
+            int target_centi = helix::units::json_to_centidegrees(extruder, "target");
             lv_subject_set_int(&extruder_target_, target_centi);
         }
     }
@@ -512,7 +421,7 @@ void PrinterState::update_from_status(const json& state) {
         const auto& bed = state["heater_bed"];
 
         if (bed.contains("temperature") && bed["temperature"].is_number()) {
-            int temp_centi = static_cast<int>(bed["temperature"].get<double>() * 10.0);
+            int temp_centi = helix::units::json_to_centidegrees(bed, "temperature");
             lv_subject_set_int(&bed_temp_, temp_centi);
             // Always notify for temp graphing even when value unchanged
             lv_subject_notify(&bed_temp_);
@@ -520,7 +429,7 @@ void PrinterState::update_from_status(const json& state) {
         }
 
         if (bed.contains("target") && bed["target"].is_number()) {
-            int target_centi = static_cast<int>(bed["target"].get<double>() * 10.0);
+            int target_centi = helix::units::json_to_centidegrees(bed, "target");
             lv_subject_set_int(&bed_target_, target_centi);
             spdlog::trace("[PrinterState] Bed target: {}.{}°C", target_centi / 10,
                           target_centi % 10);
@@ -532,8 +441,7 @@ void PrinterState::update_from_status(const json& state) {
         const auto& sdcard = state["virtual_sdcard"];
 
         if (sdcard.contains("progress") && sdcard["progress"].is_number()) {
-            double progress = sdcard["progress"].get<double>();
-            int progress_pct = static_cast<int>(progress * 100.0);
+            int progress_pct = helix::units::json_to_percent(sdcard, "progress");
 
             // Guard: Don't reset progress to 0 in terminal print states (Complete/Cancelled/Error)
             // This preserves the 100% display when a print finishes successfully
@@ -677,14 +585,12 @@ void PrinterState::update_from_status(const json& state) {
         const auto& gcode_move = state["gcode_move"];
 
         if (gcode_move.contains("speed_factor") && gcode_move["speed_factor"].is_number()) {
-            double factor = gcode_move["speed_factor"].get<double>();
-            int factor_pct = static_cast<int>(factor * 100.0);
+            int factor_pct = helix::units::json_to_percent(gcode_move, "speed_factor");
             lv_subject_set_int(&speed_factor_, factor_pct);
         }
 
         if (gcode_move.contains("extrude_factor") && gcode_move["extrude_factor"].is_number()) {
-            double factor = gcode_move["extrude_factor"].get<double>();
-            int factor_pct = static_cast<int>(factor * 100.0);
+            int factor_pct = helix::units::json_to_percent(gcode_move, "extrude_factor");
             lv_subject_set_int(&flow_factor_, factor_pct);
         }
 
@@ -704,11 +610,11 @@ void PrinterState::update_from_status(const json& state) {
         const auto& fan = state["fan"];
 
         if (fan.contains("speed") && fan["speed"].is_number()) {
-            double speed = fan["speed"].get<double>();
-            int speed_pct = static_cast<int>(speed * 100.0);
+            int speed_pct = helix::units::json_to_percent(fan, "speed");
             lv_subject_set_int(&fan_speed_, speed_pct);
 
             // Also update multi-fan tracking
+            double speed = fan["speed"].get<double>();
             update_fan_speed("fan", speed);
         }
     }
@@ -832,10 +738,10 @@ void PrinterState::update_from_status(const json& state) {
 
         if (fr.contains("retract_length") && fr["retract_length"].is_number()) {
             // Store as centimillimeters (x100) to preserve 0.01mm precision
-            double mm = fr["retract_length"].get<double>();
-            int centimm = static_cast<int>(mm * 100.0);
+            int centimm = helix::units::json_to_centimm(fr, "retract_length");
             lv_subject_set_int(&retract_length_, centimm);
-            spdlog::trace("[PrinterState] Retract length: {:.2f}mm", mm);
+            spdlog::trace("[PrinterState] Retract length: {:.2f}mm",
+                          helix::units::from_centimm(centimm));
         }
 
         if (fr.contains("retract_speed") && fr["retract_speed"].is_number()) {
@@ -845,10 +751,10 @@ void PrinterState::update_from_status(const json& state) {
         }
 
         if (fr.contains("unretract_extra_length") && fr["unretract_extra_length"].is_number()) {
-            double mm = fr["unretract_extra_length"].get<double>();
-            int centimm = static_cast<int>(mm * 100.0);
+            int centimm = helix::units::json_to_centimm(fr, "unretract_extra_length");
             lv_subject_set_int(&unretract_extra_length_, centimm);
-            spdlog::trace("[PrinterState] Unretract extra: {:.2f}mm", mm);
+            spdlog::trace("[PrinterState] Unretract extra: {:.2f}mm",
+                          helix::units::from_centimm(centimm));
         }
 
         if (fr.contains("unretract_speed") && fr["unretract_speed"].is_number()) {
@@ -969,7 +875,7 @@ void PrinterState::init_fans(const std::vector<std::string>& fan_objects) {
 }
 
 void PrinterState::update_fan_speed(const std::string& object_name, double speed) {
-    int speed_pct = static_cast<int>(speed * 100.0);
+    int speed_pct = helix::units::to_percent(speed);
 
     for (auto& fan : fans_) {
         if (fan.object_name == object_name) {
@@ -987,8 +893,9 @@ void PrinterState::update_fan_speed(const std::string& object_name, double speed
 
 void PrinterState::set_printer_connection_state(int state, const char* message) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
-    auto* ctx = new AsyncConnectionStateContext{this, state, message ? message : ""};
-    ui_async_call(async_connection_state_callback, ctx);
+    std::string msg = message ? message : "";
+    helix::async::invoke(
+        [this, state, msg]() { set_printer_connection_state_internal(state, msg.c_str()); });
 }
 
 void PrinterState::set_printer_connection_state_internal(int state, const char* message) {
@@ -1018,8 +925,7 @@ void PrinterState::set_network_status(int status) {
 
 void PrinterState::set_klippy_state(KlippyState state) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
-    auto* ctx = new AsyncKlippyStateContext{this, state};
-    ui_async_call(async_klippy_state_callback, ctx);
+    helix::async::call_method(this, &PrinterState::set_klippy_state_internal, state);
 }
 
 void PrinterState::set_klippy_state_sync(KlippyState state) {
@@ -1045,8 +951,7 @@ void PrinterState::set_tracked_led(const std::string& led_name) {
 
 void PrinterState::set_printer_capabilities(const PrinterCapabilities& caps) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
-    auto* ctx = new AsyncCapabilitiesContext{this, caps};
-    ui_async_call(async_capabilities_callback, ctx);
+    helix::async::call_method_ref(this, &PrinterState::set_printer_capabilities_internal, caps);
 }
 
 void PrinterState::set_printer_capabilities_internal(const PrinterCapabilities& caps) {
@@ -1096,8 +1001,7 @@ void PrinterState::set_printer_capabilities_internal(const PrinterCapabilities& 
 
 void PrinterState::set_klipper_version(const std::string& version) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
-    auto* ctx = new AsyncStringContext{this, version};
-    ui_async_call(async_klipper_version_callback, ctx);
+    helix::async::call_method_ref(this, &PrinterState::set_klipper_version_internal, version);
 }
 
 void PrinterState::set_klipper_version_internal(const std::string& version) {
@@ -1107,8 +1011,7 @@ void PrinterState::set_klipper_version_internal(const std::string& version) {
 
 void PrinterState::set_moonraker_version(const std::string& version) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
-    auto* ctx = new AsyncStringContext{this, version};
-    ui_async_call(async_moonraker_version_callback, ctx);
+    helix::async::call_method_ref(this, &PrinterState::set_moonraker_version_internal, version);
 }
 
 void PrinterState::set_moonraker_version_internal(const std::string& version) {
@@ -1116,42 +1019,23 @@ void PrinterState::set_moonraker_version_internal(const std::string& version) {
     spdlog::debug("[PrinterState] Moonraker version set: {}", version);
 }
 
-// Context struct for async Spoolman availability update
-struct SpoolmanAvailContext {
-    PrinterState* state;
-    bool available;
-};
-
 void PrinterState::set_spoolman_available(bool available) {
-    // Thread-safe: Use lv_async_call to update LVGL subject from any thread
-    auto callback = [](void* user_data) {
-        auto* ctx = static_cast<SpoolmanAvailContext*>(user_data);
-        lv_subject_set_int(&ctx->state->printer_has_spoolman_, ctx->available ? 1 : 0);
-        spdlog::info("[PrinterState] Spoolman availability set: {}", ctx->available);
-        delete ctx;
-    };
-    ui_async_call(callback, new SpoolmanAvailContext{this, available});
+    // Thread-safe: Use helix::async::invoke to update LVGL subject from any thread
+    helix::async::invoke([this, available]() {
+        lv_subject_set_int(&printer_has_spoolman_, available ? 1 : 0);
+        spdlog::info("[PrinterState] Spoolman availability set: {}", available);
+    });
 }
 
-// Context struct for async HelixPrint plugin status update
-struct HelixPluginContext {
-    PrinterState* state;
-    bool installed;
-};
-
 void PrinterState::set_helix_plugin_installed(bool installed) {
-    // Thread-safe: Use lv_async_call to update LVGL subject from any thread
-    auto callback = [](void* user_data) {
-        auto* ctx = static_cast<HelixPluginContext*>(user_data);
-        lv_subject_set_int(&ctx->state->helix_plugin_installed_, ctx->installed ? 1 : 0);
-        spdlog::info("[PrinterState] HelixPrint plugin installed: {}", ctx->installed);
+    // Thread-safe: Use helix::async::invoke to update LVGL subject from any thread
+    helix::async::invoke([this, installed]() {
+        lv_subject_set_int(&helix_plugin_installed_, installed ? 1 : 0);
+        spdlog::info("[PrinterState] HelixPrint plugin installed: {}", installed);
 
         // Update composite subjects for G-code modification options
-        ctx->state->update_gcode_modification_visibility();
-
-        delete ctx;
-    };
-    ui_async_call(callback, new HelixPluginContext{this, installed});
+        update_gcode_modification_visibility();
+    });
 }
 
 bool PrinterState::service_has_helix_plugin() const {
@@ -1160,21 +1044,12 @@ bool PrinterState::service_has_helix_plugin() const {
     return lv_subject_get_int(const_cast<lv_subject_t*>(&helix_plugin_installed_)) == 1;
 }
 
-// Context struct for async phase tracking status update
-struct PhaseTrackingContext {
-    PrinterState* state;
-    bool enabled;
-};
-
 void PrinterState::set_phase_tracking_enabled(bool enabled) {
-    // Thread-safe: Use lv_async_call to update LVGL subject from any thread
-    auto callback = [](void* user_data) {
-        auto* ctx = static_cast<PhaseTrackingContext*>(user_data);
-        lv_subject_set_int(&ctx->state->phase_tracking_enabled_, ctx->enabled ? 1 : 0);
-        spdlog::info("[PrinterState] Phase tracking enabled: {}", ctx->enabled);
-        delete ctx;
-    };
-    ui_async_call(callback, new PhaseTrackingContext{this, enabled});
+    // Thread-safe: Use helix::async::invoke to update LVGL subject from any thread
+    helix::async::invoke([this, enabled]() {
+        lv_subject_set_int(&phase_tracking_enabled_, enabled ? 1 : 0);
+        spdlog::info("[PrinterState] Phase tracking enabled: {}", enabled);
+    });
 }
 
 bool PrinterState::is_phase_tracking_enabled() const {
@@ -1328,46 +1203,33 @@ void PrinterState::set_print_start_state(PrintStartPhase phase, const char* mess
     spdlog::debug("[PrinterState] Print start: phase={}, message='{}', progress={}%",
                   static_cast<int>(phase), message ? message : "", progress);
 
-    // CRITICAL: Defer to main thread via ui_async_call to avoid LVGL assertion
+    // CRITICAL: Defer to main thread via helix::async::invoke to avoid LVGL assertion
     // when subject updates trigger lv_obj_invalidate() during rendering.
     // This is called from WebSocket callbacks (background thread).
-    struct Ctx {
-        PrinterState* ps;
-        PrintStartPhase phase;
-        std::string message;
-        int progress;
-    };
-    auto* ctx = new Ctx{this, phase, message ? message : "", std::clamp(progress, 0, 100)};
-    ui_async_call(
-        [](void* user_data) {
-            auto* c = static_cast<Ctx*>(user_data);
-            lv_subject_set_int(&c->ps->print_start_phase_, static_cast<int>(c->phase));
-            if (!c->message.empty()) {
-                lv_subject_copy_string(&c->ps->print_start_message_, c->message.c_str());
-            }
-            lv_subject_set_int(&c->ps->print_start_progress_, c->progress);
-            c->ps->update_print_show_progress();
-            delete c;
-        },
-        ctx);
+    std::string msg = message ? message : "";
+    int clamped_progress = std::clamp(progress, 0, 100);
+    helix::async::invoke([this, phase, msg, clamped_progress]() {
+        lv_subject_set_int(&print_start_phase_, static_cast<int>(phase));
+        if (!msg.empty()) {
+            lv_subject_copy_string(&print_start_message_, msg.c_str());
+        }
+        lv_subject_set_int(&print_start_progress_, clamped_progress);
+        update_print_show_progress();
+    });
 }
 
 void PrinterState::reset_print_start_state() {
-    // CRITICAL: Defer to main thread via ui_async_call
-    ui_async_call(
-        [](void* user_data) {
-            auto* ps = static_cast<PrinterState*>(user_data);
-            int phase = lv_subject_get_int(&ps->print_start_phase_);
-            if (phase != static_cast<int>(PrintStartPhase::IDLE)) {
-                spdlog::info("[PrinterState] Resetting print start state to IDLE");
-                lv_subject_set_int(&ps->print_start_phase_,
-                                   static_cast<int>(PrintStartPhase::IDLE));
-                lv_subject_copy_string(&ps->print_start_message_, "");
-                lv_subject_set_int(&ps->print_start_progress_, 0);
-                ps->update_print_show_progress();
-            }
-        },
-        this);
+    // CRITICAL: Defer to main thread via helix::async::invoke
+    helix::async::invoke([this]() {
+        int phase = lv_subject_get_int(&print_start_phase_);
+        if (phase != static_cast<int>(PrintStartPhase::IDLE)) {
+            spdlog::info("[PrinterState] Resetting print start state to IDLE");
+            lv_subject_set_int(&print_start_phase_, static_cast<int>(PrintStartPhase::IDLE));
+            lv_subject_copy_string(&print_start_message_, "");
+            lv_subject_set_int(&print_start_progress_, 0);
+            update_print_show_progress();
+        }
+    });
 }
 
 void PrinterState::set_print_thumbnail_path(const std::string& path) {

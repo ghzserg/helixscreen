@@ -1886,30 +1886,16 @@ void PrintSelectPanel::show_filament_warning() {
         filament_warning_dialog_ = nullptr;
     }
 
-    const char* attrs[] = {"title", "No Filament Detected", "message",
-                           "The runout sensor indicates no filament is loaded. "
-                           "Start print anyway?",
-                           nullptr};
-
-    ui_modal_configure(ModalSeverity::Warning, true, "Start Print", "Cancel");
-    filament_warning_dialog_ = ui_modal_show("modal_dialog", attrs);
+    filament_warning_dialog_ = ui_modal_show_confirmation(
+        "No Filament Detected",
+        "The runout sensor indicates no filament is loaded. "
+        "Start print anyway?",
+        ModalSeverity::Warning, "Start Print", on_filament_warning_proceed_static,
+        on_filament_warning_cancel_static, this);
 
     if (!filament_warning_dialog_) {
         spdlog::error("[{}] Failed to create filament warning dialog", get_name());
         return;
-    }
-
-    // Wire up cancel button
-    lv_obj_t* cancel_btn = lv_obj_find_by_name(filament_warning_dialog_, "btn_secondary");
-    if (cancel_btn) {
-        lv_obj_add_event_cb(cancel_btn, on_filament_warning_cancel_static, LV_EVENT_CLICKED, this);
-    }
-
-    // Wire up proceed button
-    lv_obj_t* proceed_btn = lv_obj_find_by_name(filament_warning_dialog_, "btn_primary");
-    if (proceed_btn) {
-        lv_obj_add_event_cb(proceed_btn, on_filament_warning_proceed_static, LV_EVENT_CLICKED,
-                            this);
     }
 
     spdlog::debug("[{}] Pre-print filament warning dialog shown", get_name());
@@ -1920,10 +1906,19 @@ void PrintSelectPanel::delete_file() {
     auto* self = this;
 
     if (api_) {
-        spdlog::info("[{}] Deleting file: {}", get_name(), filename_to_delete);
+        // Construct full path: gcodes/<current_path>/<filename>
+        // Moonraker's delete_file requires the full path including root
+        std::string full_path;
+        if (current_path_.empty()) {
+            full_path = "gcodes/" + filename_to_delete;
+        } else {
+            full_path = "gcodes/" + current_path_ + "/" + filename_to_delete;
+        }
+
+        spdlog::info("[{}] Deleting file: {}", get_name(), full_path);
 
         api_->delete_file(
-            filename_to_delete,
+            full_path,
             // Success callback - dispatch to main thread for LVGL safety
             [self]() {
                 spdlog::info("[{}] File deleted successfully", self->get_name());
@@ -2149,31 +2144,18 @@ void PrintSelectPanel::show_color_mismatch_warning(const std::vector<int>& missi
     message += "\nLoad the required filaments or start anyway?";
 
     // Static buffer for message - must persist during modal lifetime.
-    // Safe because we always close any existing dialog first (line 1822-1825),
+    // Safe because we always close any existing dialog first above,
     // preventing concurrent access to this buffer.
     static char message_buffer[512];
     snprintf(message_buffer, sizeof(message_buffer), "%s", message.c_str());
 
-    const char* attrs[] = {"title", "Color Mismatch", "message", message_buffer, nullptr};
-
-    ui_modal_configure(ModalSeverity::Warning, true, "Start Anyway", "Cancel");
-    color_mismatch_dialog_ = ui_modal_show("modal_dialog", attrs);
+    color_mismatch_dialog_ = ui_modal_show_confirmation(
+        "Color Mismatch", message_buffer, ModalSeverity::Warning, "Start Anyway",
+        on_color_mismatch_proceed_static, on_color_mismatch_cancel_static, this);
 
     if (!color_mismatch_dialog_) {
         spdlog::error("[{}] Failed to create color mismatch warning dialog", get_name());
         return;
-    }
-
-    // Wire up cancel button
-    lv_obj_t* cancel_btn = lv_obj_find_by_name(color_mismatch_dialog_, "btn_secondary");
-    if (cancel_btn) {
-        lv_obj_add_event_cb(cancel_btn, on_color_mismatch_cancel_static, LV_EVENT_CLICKED, this);
-    }
-
-    // Wire up proceed button
-    lv_obj_t* proceed_btn = lv_obj_find_by_name(color_mismatch_dialog_, "btn_primary");
-    if (proceed_btn) {
-        lv_obj_add_event_cb(proceed_btn, on_color_mismatch_proceed_static, LV_EVENT_CLICKED, this);
     }
 
     spdlog::debug("[{}] Color mismatch warning dialog shown for {} tools", get_name(),

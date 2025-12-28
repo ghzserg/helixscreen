@@ -64,6 +64,10 @@ BedMeshPanel::BedMeshPanel(PrinterState& printer_state, MoonrakerAPI* api)
 }
 
 BedMeshPanel::~BedMeshPanel() {
+    // Signal to async callbacks that this panel is being destroyed [L012]
+    // Must happen BEFORE any cleanup that callbacks might reference
+    alive_->store(false);
+
     // CRITICAL: Check if LVGL is still initialized before calling LVGL functions.
     // During static destruction, LVGL may already be torn down.
     if (lv_is_initialized()) {
@@ -386,7 +390,14 @@ void BedMeshPanel::setup_moonraker_subscription() {
     }
 
     MoonrakerAPI* api = api_;
-    api_->get_client().register_notify_update([this, api](nlohmann::json notification) {
+    auto alive = alive_; // Capture shared_ptr by value for destruction detection [L012]
+
+    api_->get_client().register_notify_update([this, api, alive](nlohmann::json notification) {
+        // Check destruction flag FIRST - panel may have been deleted
+        if (!alive->load()) {
+            return;
+        }
+
         // Check if this notification contains bed_mesh data BEFORE deferring to main thread
         // This avoids unnecessary context switches for unrelated notifications
         if (!notification.contains("params") || !notification["params"].is_array() ||
@@ -403,11 +414,17 @@ void BedMeshPanel::setup_moonraker_subscription() {
         struct Ctx {
             BedMeshPanel* panel;
             MoonrakerAPI* api;
+            std::shared_ptr<std::atomic<bool>> alive;
         };
-        auto* ctx = new Ctx{this, api};
+        auto* ctx = new Ctx{this, api, alive};
         ui_async_call(
             [](void* user_data) {
                 auto* c = static_cast<Ctx*>(user_data);
+                // Check again on main thread - panel could be destroyed between queue and exec
+                if (!c->alive->load()) {
+                    delete c;
+                    return;
+                }
                 const BedMeshProfile* mesh = c->api->get_active_bed_mesh();
                 if (mesh) {
                     c->panel->on_mesh_update_internal(*mesh);
@@ -595,26 +612,14 @@ void BedMeshPanel::show_delete_confirm_modal(const std::string& profile_name) {
     snprintf(msg_buf, sizeof(msg_buf), "Delete profile '%s'? This action cannot be undone.",
              profile_name.c_str());
 
-    const char* attrs[] = {"title", "Delete Profile?", "message", msg_buf, NULL};
-
-    ui_modal_configure(ModalSeverity::Warning, true, "Delete", "Cancel");
-    delete_modal_widget_ = ui_modal_show("modal_dialog", attrs);
+    delete_modal_widget_ =
+        ui_modal_show_confirmation("Delete Profile?", msg_buf, ModalSeverity::Warning, "Delete",
+                                   on_delete_confirm_cb, on_delete_cancel_cb,
+                                   nullptr); // Uses global panel reference
 
     if (!delete_modal_widget_) {
         spdlog::error("[{}] Failed to create delete confirmation modal", get_name());
         return;
-    }
-
-    // Wire up cancel button
-    lv_obj_t* cancel_btn = lv_obj_find_by_name(delete_modal_widget_, "btn_secondary");
-    if (cancel_btn) {
-        lv_obj_add_event_cb(cancel_btn, on_delete_cancel_cb, LV_EVENT_CLICKED, nullptr);
-    }
-
-    // Wire up confirm button
-    lv_obj_t* confirm_btn = lv_obj_find_by_name(delete_modal_widget_, "btn_primary");
-    if (confirm_btn) {
-        lv_obj_add_event_cb(confirm_btn, on_delete_confirm_cb, LV_EVENT_CLICKED, nullptr);
     }
 
     spdlog::debug("[{}] Showing delete confirm modal for: {}", get_name(), profile_name);

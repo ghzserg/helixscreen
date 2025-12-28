@@ -9,6 +9,7 @@
 #include "ui_theme.h"
 #include "ui_toast.h"
 
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 #include "printer_state.h"
@@ -350,23 +351,7 @@ void HistoryDashboardPanel::update_statistics(const std::vector<PrintHistoryJob>
 // ============================================================================
 
 std::string HistoryDashboardPanel::format_duration(double seconds) {
-    if (seconds < 60) {
-        return std::to_string(static_cast<int>(seconds)) + "s";
-    }
-
-    int total_minutes = static_cast<int>(seconds / 60);
-    int hours = total_minutes / 60;
-    int minutes = total_minutes % 60;
-
-    if (hours == 0) {
-        return std::to_string(minutes) + "m";
-    }
-
-    if (minutes == 0) {
-        return std::to_string(hours) + "h";
-    }
-
-    return std::to_string(hours) + "h " + std::to_string(minutes) + "m";
+    return helix::fmt::duration(static_cast<int>(seconds));
 }
 
 std::string HistoryDashboardPanel::format_filament(double mm) {

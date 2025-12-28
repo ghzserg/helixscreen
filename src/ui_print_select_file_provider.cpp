@@ -6,9 +6,9 @@
 #include "ui_panel_print_select.h" // For PrintFileData
 #include "ui_print_select_card_view.h"
 #include "ui_update_queue.h"
-#include "ui_utils.h" // For format_* helpers
 
 #include "moonraker_api.h"
+#include "print_file_data.h"
 #include "thumbnail_cache.h"
 
 #include <spdlog/spdlog.h>
@@ -72,16 +72,8 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
 
             // Add ".." parent directory entry if not at root
             if (!path_copy.empty()) {
-                PrintFileData parent_dir;
-                parent_dir.filename = "..";
-                parent_dir.is_dir = true;
-                parent_dir.thumbnail_path = self->FOLDER_UP_ICON;
-                parent_dir.size_str = "Go up";
-                parent_dir.print_time_str = "";
-                parent_dir.filament_str = "";
-                parent_dir.modified_str = "";
-                parent_dir.metadata_fetched = true; // Parent dir doesn't need metadata
-                file_list.push_back(std::move(parent_dir));
+                file_list.push_back(
+                    PrintFileData::make_directory("..", self->FOLDER_UP_ICON, true));
             }
 
             // Convert FileInfo to PrintFileData, preserving existing data where available
@@ -128,22 +120,11 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
                     // Fall through to create fresh PrintFileData
                 }
 
-                // New file or modified file - create with placeholder data
-                PrintFileData data;
-                data.filename = file.filename;
-                data.is_dir = file.is_dir;
-                data.file_size_bytes = file.size;
-                data.modified_timestamp = static_cast<time_t>(file.modified);
-
+                // New file or modified file - create with factory methods
                 if (file.is_dir) {
                     // Directory - use folder icon
-                    data.thumbnail_path = PrintSelectCardView::FOLDER_ICON;
-                    data.print_time_minutes = 0;
-                    data.filament_grams = 0.0f;
-                    data.size_str = "Folder";
-                    data.print_time_str = "";
-                    data.filament_str = "";
-                    data.metadata_fetched = true; // Directories don't need metadata
+                    file_list.push_back(PrintFileData::make_directory(
+                        file.filename, PrintSelectCardView::FOLDER_ICON, false));
                 } else {
                     // Only process .gcode files
                     if (file.filename.find(".gcode") == std::string::npos &&
@@ -151,17 +132,9 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
                         continue;
                     }
 
-                    data.thumbnail_path = PrintSelectCardView::get_default_thumbnail();
-                    data.print_time_minutes = 0;
-                    data.filament_grams = 0.0f;
-                    data.size_str = format_file_size(data.file_size_bytes);
-                    data.print_time_str = format_print_time(data.print_time_minutes);
-                    data.filament_str = format_filament_weight(data.filament_grams);
-                    data.metadata_fetched = false; // Needs metadata fetch
+                    file_list.push_back(PrintFileData::from_moonraker_file(
+                        file, PrintSelectCardView::get_default_thumbnail()));
                 }
-
-                data.modified_str = format_modified_date(data.modified_timestamp);
-                file_list.push_back(std::move(data));
             }
 
             // Count files vs directories for logging

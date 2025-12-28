@@ -5,6 +5,7 @@
 #include "ui_notification.h"
 #include "ui_utils.h"
 
+#include "format_utils.h"
 #include "hv/requests.h"
 #include "moonraker_api.h"
 #include "moonraker_api_internal.h"
@@ -25,24 +26,7 @@ namespace {
  * @return Formatted string like "2h 15m" or "45m" or "30s"
  */
 std::string format_history_duration(double seconds) {
-    char buf[32];
-    int total_seconds = static_cast<int>(seconds);
-
-    if (total_seconds < 60) {
-        snprintf(buf, sizeof(buf), "%ds", total_seconds);
-    } else if (total_seconds < 3600) {
-        int mins = total_seconds / 60;
-        snprintf(buf, sizeof(buf), "%dm", mins);
-    } else {
-        int hours = total_seconds / 3600;
-        int mins = (total_seconds % 3600) / 60;
-        if (mins == 0) {
-            snprintf(buf, sizeof(buf), "%dh", hours);
-        } else {
-            snprintf(buf, sizeof(buf), "%dh %dm", hours, mins);
-        }
-    }
-    return std::string(buf);
+    return helix::fmt::duration(static_cast<int>(seconds));
 }
 
 /**

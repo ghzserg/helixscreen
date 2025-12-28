@@ -234,26 +234,13 @@ void PrintSelectDetailView::show_delete_confirmation(const std::string& filename
              "Are you sure you want to delete '%s'? This action cannot be undone.",
              filename.c_str());
 
-    const char* attrs[] = {"title", "Delete File?", "message", msg_buf, NULL};
-
-    ui_modal_configure(ModalSeverity::Warning, true, "Delete", "Cancel");
-    confirmation_dialog_widget_ = ui_modal_show("modal_dialog", attrs);
+    confirmation_dialog_widget_ =
+        ui_modal_show_confirmation("Delete File?", msg_buf, ModalSeverity::Warning, "Delete",
+                                   on_confirm_delete_static, on_cancel_delete_static, this);
 
     if (!confirmation_dialog_widget_) {
         spdlog::error("[DetailView] Failed to create confirmation dialog");
         return;
-    }
-
-    // Wire up cancel button
-    lv_obj_t* cancel_btn = lv_obj_find_by_name(confirmation_dialog_widget_, "btn_secondary");
-    if (cancel_btn) {
-        lv_obj_add_event_cb(cancel_btn, on_cancel_delete_static, LV_EVENT_CLICKED, this);
-    }
-
-    // Wire up confirm button
-    lv_obj_t* confirm_btn = lv_obj_find_by_name(confirmation_dialog_widget_, "btn_primary");
-    if (confirm_btn) {
-        lv_obj_add_event_cb(confirm_btn, on_confirm_delete_static, LV_EVENT_CLICKED, this);
     }
 
     spdlog::info("[DetailView] Delete confirmation dialog shown for: {}", filename);
