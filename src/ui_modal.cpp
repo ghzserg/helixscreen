@@ -823,6 +823,8 @@ lv_obj_t* ui_modal_show_confirmation(const char* title, const char* message, Mod
         lv_obj_t* cancel_btn = lv_obj_find_by_name(dialog, "btn_secondary");
         if (cancel_btn) {
             lv_obj_add_event_cb(cancel_btn, on_cancel, LV_EVENT_CLICKED, user_data);
+        } else {
+            spdlog::warn("[Modal] btn_secondary not found - cancel callback not wired");
         }
     }
 
@@ -831,6 +833,8 @@ lv_obj_t* ui_modal_show_confirmation(const char* title, const char* message, Mod
         lv_obj_t* confirm_btn = lv_obj_find_by_name(dialog, "btn_primary");
         if (confirm_btn) {
             lv_obj_add_event_cb(confirm_btn, on_confirm, LV_EVENT_CLICKED, user_data);
+        } else {
+            spdlog::warn("[Modal] btn_primary not found - confirm callback not wired");
         }
     }
 
@@ -863,6 +867,8 @@ lv_obj_t* ui_modal_show_alert(const char* title, const char* message, ModalSever
         lv_obj_t* ok_btn = lv_obj_find_by_name(dialog, "btn_primary");
         if (ok_btn) {
             lv_obj_add_event_cb(ok_btn, on_ok, LV_EVENT_CLICKED, user_data);
+        } else {
+            spdlog::warn("[Modal] btn_primary not found - OK callback not wired");
         }
     }
 

@@ -5,6 +5,8 @@
 
 #include "ui_update_queue.h"
 
+#include "spdlog/spdlog.h"
+
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -90,7 +92,13 @@ template <typename Callable> void invoke(Callable&& callable) {
         [](void* data) {
             auto* func = static_cast<std::function<void()>*>(data);
             if (func) {
-                (*func)();
+                try {
+                    (*func)();
+                } catch (const std::exception& e) {
+                    spdlog::error("[async::invoke] Exception in callback: {}", e.what());
+                } catch (...) {
+                    spdlog::error("[async::invoke] Unknown exception in callback");
+                }
             }
             delete func;
         },
