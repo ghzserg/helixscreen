@@ -37,8 +37,12 @@ inline double from_centidegrees(int centidegrees) {
  * @param key Key name for the temperature value
  * @param default_value Value to return if key is missing or not a number
  * @return Temperature in centidegrees
+ *
+ * @note Returns default_value if obj is not a JSON object (e.g., array, primitive, null)
  */
 inline int json_to_centidegrees(const nlohmann::json& obj, const char* key, int default_value = 0) {
+    if (!obj.is_object())
+        return default_value;
     if (obj.contains(key) && obj[key].is_number()) {
         return to_centidegrees(obj[key].get<double>());
     }
@@ -75,8 +79,12 @@ inline double from_percent(int percent) {
  * @param key Key name for the ratio value
  * @param default_value Value to return if key is missing or not a number
  * @return Percent as integer
+ *
+ * @note Returns default_value if obj is not a JSON object (e.g., array, primitive, null)
  */
 inline int json_to_percent(const nlohmann::json& obj, const char* key, int default_value = 0) {
+    if (!obj.is_object())
+        return default_value;
     if (obj.contains(key) && obj[key].is_number()) {
         return to_percent(obj[key].get<double>());
     }
@@ -113,8 +121,12 @@ inline double from_centimm(int centimm) {
  * @param key Key name for the length value (in mm)
  * @param default_value Value to return if key is missing or not a number
  * @return Length in centimillimeters
+ *
+ * @note Returns default_value if obj is not a JSON object (e.g., array, primitive, null)
  */
 inline int json_to_centimm(const nlohmann::json& obj, const char* key, int default_value = 0) {
+    if (!obj.is_object())
+        return default_value;
     if (obj.contains(key) && obj[key].is_number()) {
         return to_centimm(obj[key].get<double>());
     }

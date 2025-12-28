@@ -63,6 +63,18 @@ TEST_CASE("json_to_centidegrees extracts correctly", "[unit_conversions][tempera
         json obj = {{"temperature", nullptr}};
         REQUIRE(json_to_centidegrees(obj, "temperature") == 0);
     }
+
+    SECTION("non-object JSON returns default") {
+        json arr = json::array({1, 2, 3});
+        json num = 42;
+        json null_json = nullptr;
+        json str = "hello";
+        REQUIRE(json_to_centidegrees(arr, "temp") == 0);
+        REQUIRE(json_to_centidegrees(num, "temp") == 0);
+        REQUIRE(json_to_centidegrees(null_json, "temp") == 0);
+        REQUIRE(json_to_centidegrees(str, "temp") == 0);
+        REQUIRE(json_to_centidegrees(arr, "temp", -999) == -999);
+    }
 }
 
 // ============================================================================
@@ -106,6 +118,12 @@ TEST_CASE("json_to_percent extracts correctly", "[unit_conversions][percent]") {
         REQUIRE(json_to_percent(obj, "progress") == 0);
         REQUIRE(json_to_percent(obj, "progress", 50) == 50);
     }
+
+    SECTION("non-object JSON returns default") {
+        json arr = json::array({0.5, 0.75});
+        REQUIRE(json_to_percent(arr, "progress") == 0);
+        REQUIRE(json_to_percent(arr, "progress", 100) == 100);
+    }
 }
 
 // ============================================================================
@@ -138,12 +156,22 @@ TEST_CASE("from_centimm converts correctly", "[unit_conversions][length]") {
 }
 
 TEST_CASE("json_to_centimm extracts correctly", "[unit_conversions][length]") {
-    json obj = {{"retract_length", 1.25}};
-    REQUIRE(json_to_centimm(obj, "retract_length") == 125);
+    SECTION("valid length") {
+        json obj = {{"retract_length", 1.25}};
+        REQUIRE(json_to_centimm(obj, "retract_length") == 125);
+    }
 
-    json empty = {};
-    REQUIRE(json_to_centimm(empty, "retract_length") == 0);
-    REQUIRE(json_to_centimm(empty, "retract_length", -1) == -1);
+    SECTION("missing key returns default") {
+        json empty = {};
+        REQUIRE(json_to_centimm(empty, "retract_length") == 0);
+        REQUIRE(json_to_centimm(empty, "retract_length", -1) == -1);
+    }
+
+    SECTION("non-object JSON returns default") {
+        json arr = json::array({1.0, 2.0});
+        REQUIRE(json_to_centimm(arr, "length") == 0);
+        REQUIRE(json_to_centimm(arr, "length", 999) == 999);
+    }
 }
 
 // ============================================================================

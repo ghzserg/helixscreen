@@ -84,6 +84,21 @@ TEST_CASE("duration() formats hours correctly", "[format_utils][duration]") {
     }
 }
 
+TEST_CASE("duration() handles extreme values", "[format_utils][duration][edge]") {
+    SECTION("INT_MAX seconds (~68 years)") {
+        // 2147483647 seconds = 596523h 14m 7s
+        std::string result = duration(2147483647);
+        // Should format as hours + minutes (dropping seconds for >1hr)
+        REQUIRE(result.find("596523h") != std::string::npos);
+        REQUIRE(result.length() < 32); // Ensure no buffer overflow
+    }
+
+    SECTION("one year in seconds") {
+        // 365 * 24 * 3600 = 31536000 seconds = 8760h
+        REQUIRE(duration(31536000) == "8760h");
+    }
+}
+
 // ============================================================================
 // duration_remaining() tests
 // ============================================================================
