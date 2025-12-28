@@ -355,3 +355,65 @@ inline lv_subject_t* ui_modal_get_cancel_text_subject() {
  * @param textarea The textarea widget to register
  */
 void ui_modal_register_keyboard(lv_obj_t* modal, lv_obj_t* textarea);
+
+// ============================================================================
+// CONFIRMATION DIALOG HELPER
+// ============================================================================
+
+/**
+ * @brief Show a confirmation dialog with callbacks
+ *
+ * Consolidates the common pattern of:
+ * 1. Configure modal severity and button text
+ * 2. Show modal_dialog with title/message
+ * 3. Wire up confirm/cancel button callbacks
+ *
+ * @param title Dialog title text
+ * @param message Dialog message text
+ * @param severity Visual severity (Info, Warning, Error)
+ * @param confirm_text Primary button text (e.g., "Delete", "Proceed")
+ * @param on_confirm Callback for confirm button (receives user_data)
+ * @param on_cancel Callback for cancel button (receives user_data), or nullptr for no callback
+ * @param user_data User data passed to callbacks
+ * @param out_dialog Optional output pointer to store dialog handle for cleanup
+ * @return The created dialog widget, or nullptr on failure
+ *
+ * @code
+ * // Before (18+ lines):
+ * const char* attrs[] = {"title", "Delete?", "message", "This cannot be undone.", nullptr};
+ * ui_modal_configure(ModalSeverity::Warning, true, "Delete", "Cancel");
+ * dialog_ = ui_modal_show("modal_dialog", attrs);
+ * if (!dialog_) { handle_error(); return; }
+ * lv_obj_t* cancel = lv_obj_find_by_name(dialog_, "btn_secondary");
+ * if (cancel) lv_obj_add_event_cb(cancel, on_cancel, LV_EVENT_CLICKED, this);
+ * lv_obj_t* confirm = lv_obj_find_by_name(dialog_, "btn_primary");
+ * if (confirm) lv_obj_add_event_cb(confirm, on_confirm, LV_EVENT_CLICKED, this);
+ *
+ * // After (single call):
+ * dialog_ = ui_modal_show_confirmation(
+ *     "Delete?", "This cannot be undone.",
+ *     ModalSeverity::Warning, "Delete",
+ *     on_confirm, on_cancel, this);
+ * @endcode
+ */
+lv_obj_t* ui_modal_show_confirmation(const char* title, const char* message, ModalSeverity severity,
+                                     const char* confirm_text, lv_event_cb_t on_confirm,
+                                     lv_event_cb_t on_cancel, void* user_data);
+
+/**
+ * @brief Show an info/alert dialog with single "OK" button
+ *
+ * Simplified version for informational dialogs with no cancel button.
+ *
+ * @param title Dialog title text
+ * @param message Dialog message text
+ * @param severity Visual severity (default: Info)
+ * @param ok_text Button text (default: "OK")
+ * @param on_ok Callback for OK button (receives user_data), or nullptr
+ * @param user_data User data passed to callback
+ * @return The created dialog widget, or nullptr on failure
+ */
+lv_obj_t* ui_modal_show_alert(const char* title, const char* message,
+                              ModalSeverity severity = ModalSeverity::Info,
+                              const char* ok_text = "OK", lv_event_cb_t on_ok = nullptr,
+                              void* user_data = nullptr);

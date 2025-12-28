@@ -792,3 +792,86 @@ void ui_modal_register_keyboard(lv_obj_t* modal, lv_obj_t* textarea) {
         spdlog::debug("[Modal] Registered textarea with keyboard");
     }
 }
+
+// ============================================================================
+// CONFIRMATION DIALOG HELPERS
+// ============================================================================
+
+lv_obj_t* ui_modal_show_confirmation(const char* title, const char* message, ModalSeverity severity,
+                                     const char* confirm_text, lv_event_cb_t on_confirm,
+                                     lv_event_cb_t on_cancel, void* user_data) {
+    if (!title || !message) {
+        spdlog::error("[Modal] show_confirmation: title and message are required");
+        return nullptr;
+    }
+
+    // Build attributes array for modal_dialog
+    const char* attrs[] = {"title", title, "message", message, nullptr};
+
+    // Configure modal with severity and button text
+    modal_configure(severity, true, confirm_text ? confirm_text : "OK", "Cancel");
+
+    // Show the modal
+    lv_obj_t* dialog = Modal::show("modal_dialog", attrs);
+    if (!dialog) {
+        spdlog::error("[Modal] Failed to create confirmation dialog: '{}'", title);
+        return nullptr;
+    }
+
+    // Wire up cancel button (btn_secondary in modal_dialog)
+    if (on_cancel) {
+        lv_obj_t* cancel_btn = lv_obj_find_by_name(dialog, "btn_secondary");
+        if (cancel_btn) {
+            lv_obj_add_event_cb(cancel_btn, on_cancel, LV_EVENT_CLICKED, user_data);
+        } else {
+            spdlog::warn("[Modal] btn_secondary not found - cancel callback not wired");
+        }
+    }
+
+    // Wire up confirm button (btn_primary in modal_dialog)
+    if (on_confirm) {
+        lv_obj_t* confirm_btn = lv_obj_find_by_name(dialog, "btn_primary");
+        if (confirm_btn) {
+            lv_obj_add_event_cb(confirm_btn, on_confirm, LV_EVENT_CLICKED, user_data);
+        } else {
+            spdlog::warn("[Modal] btn_primary not found - confirm callback not wired");
+        }
+    }
+
+    spdlog::debug("[Modal] Confirmation dialog shown: '{}'", title);
+    return dialog;
+}
+
+lv_obj_t* ui_modal_show_alert(const char* title, const char* message, ModalSeverity severity,
+                              const char* ok_text, lv_event_cb_t on_ok, void* user_data) {
+    if (!title || !message) {
+        spdlog::error("[Modal] show_alert: title and message are required");
+        return nullptr;
+    }
+
+    // Build attributes array for modal_dialog
+    const char* attrs[] = {"title", title, "message", message, nullptr};
+
+    // Configure modal: no cancel button
+    modal_configure(severity, false, ok_text ? ok_text : "OK", nullptr);
+
+    // Show the modal
+    lv_obj_t* dialog = Modal::show("modal_dialog", attrs);
+    if (!dialog) {
+        spdlog::error("[Modal] Failed to create alert dialog: '{}'", title);
+        return nullptr;
+    }
+
+    // Wire up OK button if callback provided
+    if (on_ok) {
+        lv_obj_t* ok_btn = lv_obj_find_by_name(dialog, "btn_primary");
+        if (ok_btn) {
+            lv_obj_add_event_cb(ok_btn, on_ok, LV_EVENT_CLICKED, user_data);
+        } else {
+            spdlog::warn("[Modal] btn_primary not found - OK callback not wired");
+        }
+    }
+
+    spdlog::debug("[Modal] Alert dialog shown: '{}'", title);
+    return dialog;
+}
