@@ -278,12 +278,13 @@ class GCodeStreamingController {
      * Thread-safe but blocks if loading is needed.
      *
      * @param layer_index Zero-based layer index
-     * @return Pointer to segment vector, or nullptr if layer doesn't exist.
-     *         Pointer valid until next cache-modifying operation.
+     * @return Shared pointer to segment vector, or nullptr if layer doesn't exist.
+     *         Data stays valid as long as the shared_ptr is held, even if the
+     *         cache entry is evicted. This is critical for thread safety.
      *
      * @note For background loading, use request_layer() + is_layer_ready()
      */
-    const std::vector<ToolpathSegment>* get_layer_segments(size_t layer_index);
+    std::shared_ptr<const std::vector<ToolpathSegment>> get_layer_segments(size_t layer_index);
 
     /**
      * @brief Request a layer to be loaded (non-blocking)

@@ -7,6 +7,8 @@
 
 #include "thumbnail_processor.h"
 
+#include "ui_update_queue.h"
+
 #include "memory_monitor.h"
 
 #include <hv/hthreadpool.h>
@@ -123,13 +125,39 @@ void ThumbnailProcessor::process_async(const std::vector<uint8_t>& png_data,
                 spdlog::debug("[ThumbnailProcessor] Processed {} -> {} ({}x{})", source_copy,
                               result.output_path, result.output_width, result.output_height);
                 if (on_success) {
-                    on_success(result.output_path);
+                    // CRITICAL: Defer callback to main UI thread to avoid LVGL threading issues.
+                    // Without this, callbacks can trigger widget operations from worker thread,
+                    // causing "lv_inv_area() rendering_in_progress" assertion on slow devices.
+                    struct SuccessCtx {
+                        ProcessSuccessCallback callback;
+                        std::string path;
+                    };
+                    auto* ctx = new SuccessCtx{on_success, result.output_path};
+                    ui_async_call(
+                        [](void* user_data) {
+                            auto* c = static_cast<SuccessCtx*>(user_data);
+                            c->callback(c->path);
+                            delete c;
+                        },
+                        ctx);
                 }
             } else {
                 spdlog::warn("[ThumbnailProcessor] Failed to process {}: {}", source_copy,
                              result.error);
                 if (on_error) {
-                    on_error(result.error);
+                    // CRITICAL: Defer callback to main UI thread (same reason as on_success)
+                    struct ErrorCtx {
+                        ProcessErrorCallback callback;
+                        std::string error;
+                    };
+                    auto* ctx = new ErrorCtx{on_error, result.error};
+                    ui_async_call(
+                        [](void* user_data) {
+                            auto* c = static_cast<ErrorCtx*>(user_data);
+                            c->callback(c->error);
+                            delete c;
+                        },
+                        ctx);
                 }
             }
         });

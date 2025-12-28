@@ -54,7 +54,7 @@
       <!-- BED MESH RENDER MODE -->
       <!-- ================================================================== -->
       <setting_dropdown_row name="row_bed_mesh_mode"
-                            label="Bed Mesh Render" icon="grid"
+                            label="Bed Mesh Render" icon="grid_large"
                             description="Choose rendering mode for bed mesh visualization"
                             callback="on_bed_mesh_mode_changed"/>
       <!-- ================================================================== -->

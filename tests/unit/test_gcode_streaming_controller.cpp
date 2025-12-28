@@ -120,7 +120,7 @@ TEST_CASE("GCodeStreamingController layer access", "[slow][gcode][streaming]") {
     REQUIRE(controller.open_file(temp_file.path()));
 
     SECTION("get_layer_segments returns data") {
-        auto* segments = controller.get_layer_segments(0);
+        auto segments = controller.get_layer_segments(0);
         REQUIRE(segments != nullptr);
         REQUIRE(segments->size() > 0);
 
@@ -141,12 +141,12 @@ TEST_CASE("GCodeStreamingController layer access", "[slow][gcode][streaming]") {
         REQUIRE(controller.is_layer_cached(1));
 
         // Second access should be cached
-        auto* segments = controller.get_layer_segments(1);
+        auto segments = controller.get_layer_segments(1);
         REQUIRE(segments != nullptr);
     }
 
     SECTION("returns nullptr for out of range layer") {
-        auto* segments = controller.get_layer_segments(999);
+        auto segments = controller.get_layer_segments(999);
         REQUIRE(segments == nullptr);
     }
 

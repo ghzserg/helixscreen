@@ -55,8 +55,9 @@ GCodeLayerCache::get_or_load(size_t layer_index,
         hit_count_++;
         touch(layer_index);
         spdlog::trace("[LayerCache] Hit layer {} ({} segments)", layer_index,
-                      it->second.segments.size());
-        return CacheResult{&it->second.segments, true, false};
+                      it->second.segments->size());
+        // Return shared_ptr - data stays alive even if entry is evicted
+        return CacheResult{it->second.segments, true, false};
     }
 
     // Cache miss - need to load
@@ -93,9 +94,9 @@ GCodeLayerCache::get_or_load(size_t layer_index,
     // Make room if needed
     evict_for_space(needed);
 
-    // Insert into cache
+    // Insert into cache - use shared_ptr for thread-safe lifetime management
     CacheEntry entry;
-    entry.segments = std::move(segments);
+    entry.segments = std::make_shared<std::vector<ToolpathSegment>>(std::move(segments));
     entry.memory_bytes = needed;
 
     auto [inserted_it, success] = cache_.emplace(layer_index, std::move(entry));
@@ -110,10 +111,11 @@ GCodeLayerCache::get_or_load(size_t layer_index,
     current_memory_ += needed;
 
     spdlog::debug("[LayerCache] Cached layer {} ({} segments, {} bytes, total {:.1f}MB)",
-                  layer_index, inserted_it->second.segments.size(), needed,
+                  layer_index, inserted_it->second.segments->size(), needed,
                   static_cast<double>(current_memory_) / (1024 * 1024));
 
-    return CacheResult{&inserted_it->second.segments, false, false};
+    // Return shared_ptr - data stays alive even if entry is evicted
+    return CacheResult{inserted_it->second.segments, false, false};
 }
 
 bool GCodeLayerCache::is_cached(size_t layer_index) const {
@@ -158,9 +160,9 @@ bool GCodeLayerCache::insert(size_t layer_index, std::vector<ToolpathSegment>&& 
     // Make room
     evict_for_space(needed);
 
-    // Insert
+    // Insert - use shared_ptr for thread-safe lifetime management
     CacheEntry entry;
-    entry.segments = std::move(segments);
+    entry.segments = std::make_shared<std::vector<ToolpathSegment>>(std::move(segments));
     entry.memory_bytes = needed;
 
     cache_.emplace(layer_index, std::move(entry));

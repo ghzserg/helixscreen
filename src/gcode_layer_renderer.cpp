@@ -337,7 +337,8 @@ GCodeLayerRenderer::LayerInfo GCodeLayerRenderer::get_layer_info() const {
         info.z_height = streaming_controller_->get_layer_z(static_cast<size_t>(current_layer_));
 
         // Get segments to compute counts (this will cache the layer)
-        const auto* segments =
+        // Use shared_ptr to keep data alive during iteration
+        auto segments =
             streaming_controller_->get_layer_segments(static_cast<size_t>(current_layer_));
         if (segments) {
             info.segment_count = segments->size();
@@ -476,11 +477,15 @@ void GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
             continue;
 
         // Get segments from appropriate source
+        // For streaming mode, hold shared_ptr to keep data alive during iteration
+        std::shared_ptr<const std::vector<ToolpathSegment>> segments_holder;
         const std::vector<ToolpathSegment>* segments = nullptr;
 
         if (streaming_controller_) {
-            // Streaming mode: get segments from controller
-            segments = streaming_controller_->get_layer_segments(static_cast<size_t>(layer_idx));
+            // Streaming mode: get segments from controller (returns shared_ptr)
+            segments_holder =
+                streaming_controller_->get_layer_segments(static_cast<size_t>(layer_idx));
+            segments = segments_holder.get();
         } else if (gcode_) {
             // Full file mode: get segments from parsed file
             segments = &gcode_->layers[layer_idx].segments;
@@ -543,10 +548,8 @@ void GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
 
     spdlog::debug("[GCodeLayerRenderer] Rendered layers {}-{}: {} segments to cache (direct), "
                   "color=#{:02X}{:02X}{:02X}, buf={}x{} stride={}",
-                  from_layer, to_layer, segments_rendered,
-                  base_r, base_g, base_b,
-                  cached_width_, cached_height_,
-                  cache_buf_ ? cache_buf_->header.stride : 0);
+                  from_layer, to_layer, segments_rendered, base_r, base_g, base_b, cached_width_,
+                  cached_height_, cache_buf_ ? cache_buf_->header.stride : 0);
 }
 
 void GCodeLayerRenderer::blit_cache(lv_layer_t* target) {
@@ -785,12 +788,15 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
     } else {
         // TOP_DOWN or ISOMETRIC: render single layer directly (no caching needed)
         // Get segments from appropriate source
+        // For streaming mode, hold shared_ptr to keep data alive during iteration
+        std::shared_ptr<const std::vector<ToolpathSegment>> segments_holder;
         const std::vector<ToolpathSegment>* segments = nullptr;
 
         if (streaming_controller_) {
-            // Streaming mode: get segments from controller
-            segments =
+            // Streaming mode: get segments from controller (returns shared_ptr)
+            segments_holder =
                 streaming_controller_->get_layer_segments(static_cast<size_t>(current_layer_));
+            segments = segments_holder.get();
             // Use default centering for streaming mode
             // (Could be improved by computing bounds from segments if needed)
         } else if (gcode_) {
@@ -1221,9 +1227,16 @@ void GCodeLayerRenderer::background_ghost_render_thread() {
         }
 
         // Get segments from appropriate source
+        // CRITICAL: For streaming mode, hold shared_ptr to keep data alive during iteration.
+        // This prevents use-after-free if cache evicts the layer while we're iterating.
+        std::shared_ptr<const std::vector<ToolpathSegment>> segments_holder;
         const std::vector<ToolpathSegment>* segments = nullptr;
+
         if (streaming_controller_) {
-            segments = streaming_controller_->get_layer_segments(static_cast<size_t>(layer_idx));
+            // Streaming mode: get segments from controller (returns shared_ptr)
+            segments_holder =
+                streaming_controller_->get_layer_segments(static_cast<size_t>(layer_idx));
+            segments = segments_holder.get();
         } else if (gcode_) {
             segments = &gcode_->layers[layer_idx].segments;
         }

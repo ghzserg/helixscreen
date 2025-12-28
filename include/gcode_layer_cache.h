@@ -70,10 +70,16 @@ class GCodeLayerCache {
 
     /**
      * @brief Result of a cache lookup
+     *
+     * Uses shared_ptr to ensure the segment data stays valid even if the cache
+     * entry is evicted while the caller is still using the data. This is critical
+     * for thread safety when the background ghost render thread iterates over
+     * segments while other threads may trigger cache eviction.
      */
     struct CacheResult {
-        const std::vector<ToolpathSegment>* segments{nullptr}; ///< Pointer to cached segments
-        bool was_hit{false};                                   ///< True if found in cache
+        std::shared_ptr<const std::vector<ToolpathSegment>>
+            segments;            ///< Shared pointer to segments (thread-safe lifetime)
+        bool was_hit{false};     ///< True if found in cache
         bool load_failed{false}; ///< True if load attempted but failed
     };
 
@@ -251,9 +257,13 @@ class GCodeLayerCache {
   private:
     /**
      * @brief Entry in the cache
+     *
+     * Uses shared_ptr for segments to allow safe concurrent access. When a caller
+     * gets segments via get_or_load(), they receive a shared_ptr that keeps the
+     * data alive even if this entry is evicted from the cache.
      */
     struct CacheEntry {
-        std::vector<ToolpathSegment> segments;
+        std::shared_ptr<std::vector<ToolpathSegment>> segments;
         size_t memory_bytes{0}; ///< Estimated memory usage
     };
 

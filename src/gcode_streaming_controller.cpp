@@ -108,8 +108,8 @@ void BackgroundGhostBuilder::worker_thread() {
             break;
         }
 
-        // Load layer segments
-        const auto* segments = controller_->get_layer_segments(i);
+        // Load layer segments - hold shared_ptr to keep data alive during callback
+        auto segments = controller_->get_layer_segments(i);
         if (segments && render_callback_) {
             render_callback_(i, *segments);
         }
@@ -394,7 +394,7 @@ std::string GCodeStreamingController::get_source_name() const {
 // Layer Access
 // =============================================================================
 
-const std::vector<ToolpathSegment>*
+std::shared_ptr<const std::vector<ToolpathSegment>>
 GCodeStreamingController::get_layer_segments(size_t layer_index) {
     if (!is_open() || layer_index >= index_.get_layer_count()) {
         return nullptr;
@@ -411,6 +411,7 @@ GCodeStreamingController::get_layer_segments(size_t layer_index) {
     // Trigger prefetch for nearby layers
     prefetch_around(layer_index, prefetch_radius_);
 
+    // Return shared_ptr - data stays valid as long as caller holds the pointer
     return result.segments;
 }
 

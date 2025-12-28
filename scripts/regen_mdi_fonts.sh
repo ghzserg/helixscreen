@@ -238,6 +238,7 @@ MDI_ICONS+=",0xF0927"    # wifi-strength-3-lock
 MDI_ICONS+=",0xF0928"    # wifi-strength-4
 MDI_ICONS+=",0xF092A"    # wifi-strength-4-lock
 MDI_ICONS+=",0xF095B"    # sine-wave (input shaper)
+MDI_ICONS+=",0xF0996"    # progress-clock (phase tracking)
 MDI_ICONS+=",0xF022F"    # film (filament - film reel icon)
 MDI_ICONS+=",0xF0A46"    # engine-off (motor-off)
 MDI_ICONS+=",0xF0A66"    # puzzle-outline (plugin)
@@ -307,10 +308,6 @@ done
 echo ""
 echo "Done! Generated fonts for sizes: $SIZES"
 echo ""
-echo "Next steps:"
-echo "  1. Update include/ui_fonts.h - replace FA ICON_* macros with MDI codepoints"
-echo "  2. Update src/main.cpp - register mdi_icons_* instead of fa_icons_*"
-echo "  3. Update ui_xml/globals.xml - change icon values to MDI codepoints"
-echo "  4. Update ui_xml/*.xml - change fa_icons_* to mdi_icons_*"
-echo "  5. Update Makefile - change FONT_SRCS from fa_icons to mdi_icons"
-echo "  6. Delete old fa_icons_*.c and fa-solid-900.ttf"
+echo "Fonts are ready. If you added new icons, remember to:"
+echo "  1. Add mapping to include/ui_icon_codepoints.h"
+echo "  2. Rebuild the project: make -j"
