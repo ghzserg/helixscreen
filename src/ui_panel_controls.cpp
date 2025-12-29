@@ -231,6 +231,16 @@ void ControlsPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     spdlog::info("[{}] Setup complete", get_name());
 }
 
+void ControlsPanel::on_activate() {
+    // Refresh secondary fans list when panel becomes visible
+    // This handles edge cases where:
+    // 1. Fan discovery completed after initial setup
+    // 2. User switched from one printer connection to another
+    // 3. Observer callback was missed due to timing
+    populate_secondary_fans();
+    spdlog::debug("[{}] Panel activated, refreshed secondary fans", get_name());
+}
+
 // ============================================================================
 // PRIVATE HELPERS
 // ============================================================================
@@ -282,6 +292,22 @@ void ControlsPanel::register_observers() {
     if (auto* pending_delta = printer_state_.get_pending_z_offset_delta_subject()) {
         pending_z_offset_observer_ =
             ObserverGuard(pending_delta, on_pending_z_offset_changed, this);
+    }
+
+    // Subscribe to active panel changes to trigger on_activate() when panel becomes visible
+    // This is needed because ui_nav doesn't automatically call lifecycle hooks on C++ panel classes
+    lv_subject_t* active_panel_subject = lv_xml_get_subject(NULL, "active_panel");
+    if (active_panel_subject) {
+        active_panel_observer_ = ObserverGuard(
+            active_panel_subject,
+            [](lv_observer_t* obs, lv_subject_t* subject) {
+                auto* self = static_cast<ControlsPanel*>(lv_observer_get_user_data(obs));
+                int32_t panel_id = lv_subject_get_int(subject);
+                if (panel_id == UI_PANEL_CONTROLS && self) {
+                    self->on_activate();
+                }
+            },
+            this);
     }
 
     spdlog::debug("[{}] Observers registered for dashboard live data", get_name());

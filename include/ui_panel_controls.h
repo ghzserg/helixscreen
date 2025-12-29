@@ -86,6 +86,14 @@ class ControlsPanel : public PanelBase {
         return "controls_panel";
     }
 
+    /**
+     * @brief Called when panel becomes visible
+     *
+     * Refreshes the secondary fans list to handle cases where fan discovery
+     * completed after initial setup or when switching between connections.
+     */
+    void on_activate() override;
+
   private:
     //
     // === Dependencies ===
@@ -177,6 +185,7 @@ class ControlsPanel : public PanelBase {
     lv_subject_t z_offset_delta_display_subject_{}; // Formatted delta string (e.g., "+0.05mm")
     char z_offset_delta_display_buf_[32] = {};
     ObserverGuard pending_z_offset_observer_; // Observer to update display when delta changes
+    ObserverGuard active_panel_observer_;     // Triggers on_activate() when panel becomes visible
 
     //
     // === Private Helpers ===
