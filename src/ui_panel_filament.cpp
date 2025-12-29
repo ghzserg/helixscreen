@@ -227,6 +227,24 @@ void FilamentPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         return;
     }
 
+    // Load configurable filament macros from config
+    if (Config* config = Config::get_instance()) {
+        MacroConfig load_cfg = config->get_macro("load_filament", {"Load", "LOAD_FILAMENT"});
+        MacroConfig unload_cfg =
+            config->get_macro("unload_filament", {"Unload", "UNLOAD_FILAMENT"});
+
+        load_filament_gcode_ = load_cfg.gcode;
+        unload_filament_gcode_ = unload_cfg.gcode;
+
+        spdlog::debug("[{}] Filament macros configured: load='{}', unload='{}'", get_name(),
+                      load_filament_gcode_, unload_filament_gcode_);
+    } else {
+        // Fallback if config not available
+        load_filament_gcode_ = "LOAD_FILAMENT";
+        unload_filament_gcode_ = "UNLOAD_FILAMENT";
+        spdlog::warn("[{}] Config not available, using default filament macros", get_name());
+    }
+
     spdlog::debug("[{}] Setting up (events handled declaratively via XML)", get_name());
 
     // Find preset buttons (for visual state updates)
@@ -865,11 +883,11 @@ void FilamentPanel::set_limits(int min_temp, int max_temp, int min_extrude_temp)
 // ============================================================================
 
 void FilamentPanel::execute_load() {
-    spdlog::info("[{}] Loading filament", get_name());
+    spdlog::info("[{}] Loading filament, executing: {}", get_name(), load_filament_gcode_);
 
-    if (api_) {
+    if (api_ && !load_filament_gcode_.empty()) {
         api_->execute_gcode(
-            "LOAD_FILAMENT", []() { NOTIFY_SUCCESS("Filament load started"); },
+            load_filament_gcode_, []() { NOTIFY_SUCCESS("Filament load started"); },
             [](const MoonrakerError& error) {
                 NOTIFY_ERROR("Filament load failed: {}", error.user_message());
             });
@@ -877,11 +895,11 @@ void FilamentPanel::execute_load() {
 }
 
 void FilamentPanel::execute_unload() {
-    spdlog::info("[{}] Unloading filament", get_name());
+    spdlog::info("[{}] Unloading filament, executing: {}", get_name(), unload_filament_gcode_);
 
-    if (api_) {
+    if (api_ && !unload_filament_gcode_.empty()) {
         api_->execute_gcode(
-            "UNLOAD_FILAMENT", []() { NOTIFY_SUCCESS("Filament unload started"); },
+            unload_filament_gcode_, []() { NOTIFY_SUCCESS("Filament unload started"); },
             [](const MoonrakerError& error) {
                 NOTIFY_ERROR("Filament unload failed: {}", error.user_message());
             });

@@ -184,6 +184,32 @@ void ControlsPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         return;
     }
 
+    // Load configurable macro buttons from config
+    if (Config* config = Config::get_instance()) {
+        MacroConfig macro1 = config->get_macro("macro_1", {"Clean Nozzle", "HELIX_CLEAN_NOZZLE"});
+        MacroConfig macro2 =
+            config->get_macro("macro_2", {"Bed Level", "HELIX_BED_LEVEL_IF_NEEDED"});
+
+        macro_1_gcode_ = macro1.gcode;
+        macro_2_gcode_ = macro2.gcode;
+
+        // Update button labels from config
+        if (lv_obj_t* label1 = lv_obj_find_by_name(panel_, "macro_1_label")) {
+            lv_label_set_text(label1, macro1.label.c_str());
+        }
+        if (lv_obj_t* label2 = lv_obj_find_by_name(panel_, "macro_2_label")) {
+            lv_label_set_text(label2, macro2.label.c_str());
+        }
+
+        spdlog::debug("[{}] Macro buttons configured: '{}' → {}, '{}' → {}", get_name(),
+                      macro1.label, macro1.gcode, macro2.label, macro2.gcode);
+    } else {
+        // Fallback if config not available
+        macro_1_gcode_ = "HELIX_CLEAN_NOZZLE";
+        macro_2_gcode_ = "HELIX_BED_LEVEL_IF_NEEDED";
+        spdlog::warn("[{}] Config not available, using default macros", get_name());
+    }
+
     // Cache dynamic container for secondary fans
     secondary_fans_list_ = lv_obj_find_by_name(panel_, "secondary_fans_list");
     if (!secondary_fans_list_) {
@@ -576,11 +602,10 @@ void ControlsPanel::handle_home_z() {
 }
 
 void ControlsPanel::handle_macro_1() {
-    spdlog::debug("[{}] Macro 1 clicked", get_name());
-    // TODO: Read from config - for now use HELIX_CLEAN_NOZZLE
-    if (api_) {
+    spdlog::debug("[{}] Macro 1 clicked, executing: {}", get_name(), macro_1_gcode_);
+    if (api_ && !macro_1_gcode_.empty()) {
         api_->execute_gcode(
-            "HELIX_CLEAN_NOZZLE", []() { NOTIFY_SUCCESS("Macro started"); },
+            macro_1_gcode_, []() { NOTIFY_SUCCESS("Macro started"); },
             [](const MoonrakerError& err) {
                 NOTIFY_ERROR("Macro failed: {}", err.user_message());
             });
@@ -588,11 +613,10 @@ void ControlsPanel::handle_macro_1() {
 }
 
 void ControlsPanel::handle_macro_2() {
-    spdlog::debug("[{}] Macro 2 clicked", get_name());
-    // TODO: Read from config - for now use HELIX_BED_LEVEL_IF_NEEDED
-    if (api_) {
+    spdlog::debug("[{}] Macro 2 clicked, executing: {}", get_name(), macro_2_gcode_);
+    if (api_ && !macro_2_gcode_.empty()) {
         api_->execute_gcode(
-            "HELIX_BED_LEVEL_IF_NEEDED", []() { NOTIFY_SUCCESS("Macro started"); },
+            macro_2_gcode_, []() { NOTIFY_SUCCESS("Macro started"); },
             [](const MoonrakerError& err) {
                 NOTIFY_ERROR("Macro failed: {}", err.user_message());
             });

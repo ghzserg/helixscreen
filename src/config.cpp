@@ -42,9 +42,12 @@ void Config::init(const std::string& config_path) {
                           {"color", "purple"}}};
 
     // Default macro configuration
+    // Supports both string format (backward compat) and object format {label, gcode}
     json default_macros_conf = {
-        {"load_filament", "LOAD_FILAMENT"},
-        {"unload_filament", "UNLOAD_FILAMENT"},
+        {"load_filament", {{"label", "Load"}, {"gcode", "LOAD_FILAMENT"}}},
+        {"unload_filament", {{"label", "Unload"}, {"gcode", "UNLOAD_FILAMENT"}}},
+        {"macro_1", {{"label", "Clean Nozzle"}, {"gcode", "HELIX_CLEAN_NOZZLE"}}},
+        {"macro_2", {{"label", "Bed Level"}, {"gcode", "HELIX_BED_LEVEL_IF_NEEDED"}}},
         {"cooldown", "SET_HEATER_TEMPERATURE HEATER=extruder TARGET=0\nSET_HEATER_TEMPERATURE "
                      "HEATER=heater_bed TARGET=0"}};
 
@@ -188,9 +191,12 @@ void Config::reset_to_defaults() {
     spdlog::info("[Config] Resetting configuration to factory defaults");
 
     // Default macro configuration (same as init())
+    // Supports both string format (backward compat) and object format {label, gcode}
     json default_macros_conf = {
-        {"load_filament", "LOAD_FILAMENT"},
-        {"unload_filament", "UNLOAD_FILAMENT"},
+        {"load_filament", {{"label", "Load"}, {"gcode", "LOAD_FILAMENT"}}},
+        {"unload_filament", {{"label", "Unload"}, {"gcode", "UNLOAD_FILAMENT"}}},
+        {"macro_1", {{"label", "Clean Nozzle"}, {"gcode", "HELIX_CLEAN_NOZZLE"}}},
+        {"macro_2", {{"label", "Bed Level"}, {"gcode", "HELIX_BED_LEVEL_IF_NEEDED"}}},
         {"cooldown", "SET_HEATER_TEMPERATURE HEATER=extruder TARGET=0\nSET_HEATER_TEMPERATURE "
                      "HEATER=heater_bed TARGET=0"}};
 
@@ -224,4 +230,42 @@ void Config::reset_to_defaults() {
     default_printer = "/printers/default_printer/";
 
     spdlog::info("[Config] Configuration reset to defaults. Wizard will run on next startup.");
+}
+
+MacroConfig Config::get_macro(const std::string& key, const MacroConfig& default_val) {
+    try {
+        std::string path = df() + "default_macros/" + key;
+        json::json_pointer ptr(path);
+
+        if (!data.contains(ptr)) {
+            spdlog::trace("[Config] Macro '{}' not found, using default", key);
+            return default_val;
+        }
+
+        const auto& val = data[ptr];
+
+        // Handle string format (backward compatibility): use as both label and gcode
+        if (val.is_string()) {
+            std::string macro = val.get<std::string>();
+            spdlog::trace("[Config] Macro '{}' is string format: '{}'", key, macro);
+            return {macro, macro};
+        }
+
+        // Handle object format: {label, gcode}
+        if (val.is_object()) {
+            MacroConfig result;
+            result.label = val.value("label", default_val.label);
+            result.gcode = val.value("gcode", default_val.gcode);
+            spdlog::trace("[Config] Macro '{}': label='{}', gcode='{}'", key, result.label,
+                          result.gcode);
+            return result;
+        }
+
+        spdlog::warn("[Config] Macro '{}' has unexpected type, using default", key);
+        return default_val;
+
+    } catch (const std::exception& e) {
+        spdlog::warn("[Config] Error reading macro '{}': {}", key, e.what());
+        return default_val;
+    }
 }

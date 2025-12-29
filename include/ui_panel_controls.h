@@ -6,6 +6,8 @@
 #include "ui_observer_guard.h"
 #include "ui_panel_base.h"
 
+#include "config.h"
+
 // Forward declaration
 class TempControlPanel;
 
@@ -90,6 +92,13 @@ class ControlsPanel : public PanelBase {
     //
 
     TempControlPanel* temp_control_panel_ = nullptr;
+
+    //
+    // === Configurable Macro Buttons ===
+    //
+
+    std::string macro_1_gcode_; ///< G-code command for macro button 1
+    std::string macro_2_gcode_; ///< G-code command for macro button 2
 
     //
     // === V2 Dashboard Subjects (for XML bind_text/bind_value) ===

@@ -6,6 +6,8 @@
 #include "ui_observer_guard.h"
 #include "ui_panel_base.h"
 
+#include "config.h"
+
 // Forward declarations
 class TempControlPanel;
 
@@ -204,6 +206,10 @@ class FilamentPanel : public PanelBase {
     int nozzle_max_temp_ = 500;
     int bed_max_temp_ = 150;
     int min_extrude_temp_ = 170; ///< Klipper's min_extrude_temp (default 170°C)
+
+    // Configurable macro commands (loaded from config)
+    std::string load_filament_gcode_;   ///< G-code for load operation
+    std::string unload_filament_gcode_; ///< G-code for unload operation
 
     // Child widgets (for imperative state management)
     lv_obj_t* btn_load_ = nullptr;

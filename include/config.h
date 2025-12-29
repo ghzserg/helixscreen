@@ -22,6 +22,18 @@
 using json = nlohmann::json;
 
 /**
+ * @brief Configuration for a user-customizable macro button
+ *
+ * Stores both the display label (shown on button) and the G-code
+ * command to execute. Supports backward compatibility with string-only
+ * config entries where the string is used as both label and gcode.
+ */
+struct MacroConfig {
+    std::string label; ///< Human-readable button label
+    std::string gcode; ///< G-code macro command to execute
+};
+
+/**
  * @brief Application configuration manager (singleton)
  *
  * Loads and manages application configuration from JSON file.
@@ -133,6 +145,20 @@ class Config {
      * @return Reference to JSON object at path
      */
     json& get_json(const std::string& json_path);
+
+    /**
+     * @brief Get macro configuration with label and G-code command
+     *
+     * Retrieves a macro definition from the default_macros config section.
+     * Handles two formats for backward compatibility:
+     * - String: "MACRO_NAME" → used as both label and gcode
+     * - Object: {"label": "Display Name", "gcode": "MACRO_NAME"}
+     *
+     * @param key Macro key name (e.g., "macro_1", "load_filament")
+     * @param default_val Fallback if key not found or parse error
+     * @return MacroConfig with label and gcode fields populated
+     */
+    MacroConfig get_macro(const std::string& key, const MacroConfig& default_val);
 
     /**
      * @brief Save current configuration to file
