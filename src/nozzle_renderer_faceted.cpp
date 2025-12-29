@@ -1,150 +1,387 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /// @file nozzle_renderer_faceted.cpp
-/// @brief Faceted red toolhead renderer implementation
+/// @brief Voron Stealthburner toolhead renderer implementation
+///
+/// Ported from toolhead_icon_scaled.c - a traced SVG of the Stealthburner
+/// using LVGL polygon primitives for vector rendering.
 
 #include "nozzle_renderer_faceted.h"
-
-#include "ui_theme.h"
 
 #include "nozzle_renderer_common.h"
 
 #include <cmath>
 
 // ============================================================================
-// Facet Geometry Data (normalized coordinates 0.0-1.0)
+// Polygon Data (1000x1000 design space, centered at 500,500)
+// Traced from Voron Stealthburner SVG
 // ============================================================================
 
-// Precise measurements from image analysis:
-// - Aspect ratio: 1.92:1 (height:width)
-// - Body max width: 0.52 relative to height
-// - Light source: top-left (315°)
-
-struct Facet {
-    float x[4];       // Normalized X coords (0.0-1.0, center at 0.5)
-    float y[4];       // Normalized Y coords (0.0-1.0)
-    int count;        // 3 for triangle, 4 for quad
-    float brightness; // -1.0 (shadow) to +1.0 (highlight)
+static const lv_point_t pts_housing[] = {
+    {583, 928}, {560, 920}, {554, 914}, {538, 872}, {530, 877}, {529, 896}, {504, 900}, {497, 908},
+    {492, 910}, {484, 900}, {459, 896}, {456, 892}, {458, 877}, {446, 870}, {430, 916}, {408, 928},
+    {380, 926}, {296, 892}, {274, 832}, {290, 774}, {287, 770}, {280, 769}, {278, 738}, {298, 736},
+    {302, 726}, {302, 679}, {308, 672}, {316, 575}, {316, 466}, {290, 328}, {290, 296}, {292, 233},
+    {304, 203}, {318, 191}, {308, 180}, {286, 169}, {286, 156}, {292, 152}, {335, 160}, {359, 158},
+    {389, 134}, {402, 126}, {436, 114}, {463, 112}, {478, 97},  {478, 84},  {483, 78},  {488, 81},
+    {484, 90},  {490, 96},  {497, 96},  {502, 91},  {500, 80},  {504, 78},  {508, 85},  {508, 97},
+    {524, 112}, {546, 112}, {590, 128}, {682, 204}, {694, 234}, {698, 286}, {698, 333}, {668, 528},
+    {668, 577}, {682, 719}, {710, 833}, {694, 885}, {688, 892}, {618, 920}, {583, 928},
 };
+static constexpr int pts_housing_cnt = sizeof(pts_housing) / sizeof(pts_housing[0]);
 
-// Body facets - creating the angular/faceted appearance
-// X: 0.0 = left edge, 0.5 = center, 1.0 = right edge of body_width
-// Y: 0.0 = top, 1.0 = bottom of body_height
-// "COKE BOTTLE" silhouette: wider bottom, narrow waist, medium top
-// Front face is MUCH DARKER than angled side bevels
-static const Facet BODY_FACETS[] = {
-    // TOP SECTION (Y: 0.00 → 0.12) - medium width, hexagonal shoulders
-    // T1: Left angled shoulder - VERY BRIGHT
-    {{0.18f, 0.32f, 0.22f, 0.12f}, {0.00f, 0.00f, 0.08f, 0.12f}, 4, 0.50f},
-    // T2: Top center flat - DARK front face
-    {{0.32f, 0.68f, 0.78f, 0.22f}, {0.00f, 0.00f, 0.12f, 0.12f}, 4, -0.30f},
-    // T3: Right angled shoulder - VERY DARK
-    {{0.68f, 0.82f, 0.88f, 0.78f}, {0.00f, 0.00f, 0.08f, 0.12f}, 4, -0.50f},
-
-    // UPPER BODY (Y: 0.12 → 0.32) - NARROW "waist" area
-    // U1: Left bevel - VERY BRIGHT
-    {{0.12f, 0.22f, 0.18f, 0.08f}, {0.12f, 0.12f, 0.32f, 0.32f}, 4, 0.50f},
-    // U2: Front upper face - DARK
-    {{0.22f, 0.78f, 0.82f, 0.18f}, {0.12f, 0.12f, 0.32f, 0.32f}, 4, -0.35f},
-    // U3: Right bevel - VERY DARK
-    {{0.78f, 0.88f, 0.92f, 0.82f}, {0.12f, 0.12f, 0.32f, 0.32f}, 4, -0.50f},
-
-    // MIDDLE BODY (Y: 0.32 → 0.75) - WIDEST section (around fan)
-    // M1: Left bevel - VERY BRIGHT
-    {{0.08f, 0.18f, 0.15f, 0.02f}, {0.32f, 0.32f, 0.75f, 0.75f}, 4, 0.50f},
-    // M2: Front main face - DARK (contains fan)
-    {{0.18f, 0.82f, 0.85f, 0.15f}, {0.32f, 0.32f, 0.75f, 0.75f}, 4, -0.35f},
-    // M3: Right bevel - VERY DARK
-    {{0.82f, 0.92f, 0.98f, 0.85f}, {0.32f, 0.32f, 0.75f, 0.75f}, 4, -0.50f},
-
-    // BOTTOM TAPER (Y: 0.75 → 0.88) - tapers from wide to nozzle
-    // B1: Left taper bevel - BRIGHT
-    {{0.02f, 0.15f, 0.30f, 0.30f}, {0.75f, 0.75f, 0.88f, 0.88f}, 4, 0.30f},
-    // B2: Front taper face - DARK
-    {{0.15f, 0.85f, 0.70f, 0.30f}, {0.75f, 0.75f, 0.88f, 0.88f}, 4, -0.40f},
-    // B3: Right taper bevel - VERY DARK
-    {{0.85f, 0.98f, 0.70f, 0.70f}, {0.75f, 0.75f, 0.88f, 0.88f}, 4, -0.50f},
+static const lv_point_t pts_plate[] = {
+    {580, 926}, {561, 920}, {554, 914}, {538, 864}, {521, 848}, {499, 840}, {485, 840}, {463, 848},
+    {444, 867}, {438, 895}, {430, 914}, {408, 926}, {384, 924}, {317, 898}, {312, 894}, {314, 888},
+    {290, 796}, {318, 726}, {326, 629}, {316, 604}, {316, 587}, {318, 459}, {306, 348}, {310, 270},
+    {322, 217}, {332, 203}, {403, 144}, {426, 132}, {558, 132}, {568, 136}, {641, 194}, {658, 211},
+    {674, 266}, {676, 355}, {668, 443}, {668, 591}, {668, 604}, {656, 632}, {660, 638}, {666, 725},
+    {694, 791}, {694, 799}, {670, 894}, {603, 924}, {580, 926},
 };
+static constexpr int pts_plate_cnt = sizeof(pts_plate) / sizeof(pts_plate[0]);
 
-static constexpr int NUM_BODY_FACETS = sizeof(BODY_FACETS) / sizeof(BODY_FACETS[0]);
+static const lv_point_t pts_top_circle[] = {
+    {507, 398}, {476, 398}, {444, 392}, {422, 367}, {400, 327}, {396, 304},
+    {408, 272}, {432, 238}, {451, 224}, {496, 218}, {537, 226}, {564, 256},
+    {586, 302}, {578, 338}, {556, 373}, {540, 390}, {507, 398},
+};
+static constexpr int pts_top_circle_cnt = sizeof(pts_top_circle) / sizeof(pts_top_circle[0]);
+
+// Bottom fan is now drawn as a simple circle (see draw_circle in draw_nozzle_faceted)
+// The original complex polygon with fan blade details caused triangulation artifacts
+
+static const lv_point_t pts_logo_1[] = {
+    {457, 498}, {472, 472}, {474, 470}, {485, 470}, {469, 499},
+};
+static constexpr int pts_logo_1_cnt = sizeof(pts_logo_1) / sizeof(pts_logo_1[0]);
+
+static const lv_point_t pts_logo_2[] = {
+    {468, 530}, {502, 471}, {515, 470}, {481, 529}, {479, 531},
+};
+static constexpr int pts_logo_2_cnt = sizeof(pts_logo_2) / sizeof(pts_logo_2[0]);
+
+static const lv_point_t pts_logo_3[] = {
+    {497, 530},
+    {513, 502},
+    {525, 502},
+    {509, 531},
+};
+static constexpr int pts_logo_3_cnt = sizeof(pts_logo_3) / sizeof(pts_logo_3[0]);
+
+// Facet polygons for 3D shading effect
+static const lv_point_t pts_facet_1[] = {
+    {663, 898}, {640, 869}, {658, 787}, {648, 758}, {640, 628}, {592, 445}, {600, 423}, {610, 418},
+    {606, 409}, {612, 406}, {624, 372}, {630, 369}, {628, 362}, {642, 334}, {640, 299}, {588, 206},
+    {580, 200}, {584, 202}, {584, 195}, {578, 198}, {578, 189}, {574, 188}, {601, 180}, {605, 184},
+    {606, 178}, {611, 186}, {614, 174}, {612, 188}, {605, 186}, {604, 194}, {601, 192}, {595, 200},
+    {588, 196}, {586, 201}, {598, 204}, {601, 196}, {608, 192}, {612, 194}, {616, 188}, {618, 192},
+    {609, 202}, {627, 200}, {627, 192}, {632, 198}, {636, 192}, {643, 196}, {660, 215}, {674, 269},
+    {676, 355}, {666, 445}, {666, 605}, {656, 632}, {666, 725}, {694, 799}, {672, 888}, {663, 898},
+};
+static constexpr int pts_facet_1_cnt = sizeof(pts_facet_1) / sizeof(pts_facet_1[0]);
+
+static const lv_point_t pts_facet_2[] = {
+    {587, 892}, {584, 884}, {582, 890}, {570, 888}, {574, 879}, {562, 877}, {562, 865}, {552, 854},
+    {558, 849}, {544, 839}, {550, 836}, {555, 842}, {556, 831}, {541, 838}, {512, 822}, {516, 832},
+    {512, 836}, {508, 822}, {520, 818}, {508, 804}, {520, 806}, {519, 796}, {525, 804}, {526, 795},
+    {542, 788}, {550, 794}, {550, 787}, {596, 747}, {606, 722}, {617, 736}, {634, 732}, {636, 746},
+    {636, 732}, {643, 730}, {648, 772}, {642, 779}, {650, 782}, {644, 785}, {648, 794}, {656, 795},
+    {648, 825}, {638, 834}, {644, 837}, {638, 846}, {642, 848}, {638, 864}, {622, 876}, {614, 866},
+    {616, 876}, {609, 882}, {592, 876}, {590, 884}, {602, 881}, {587, 892},
+};
+static constexpr int pts_facet_2_cnt = sizeof(pts_facet_2) / sizeof(pts_facet_2[0]);
+
+static const lv_point_t pts_facet_3[] = {
+    {498, 790}, {481, 784}, {468, 770}, {464, 750}, {470, 738}, {442, 718}, {436, 718}, {442, 710},
+    {432, 691}, {432, 674}, {440, 648}, {456, 630}, {484, 618}, {520, 624}, {526, 612}, {534, 616},
+    {543, 610}, {546, 590}, {534, 574}, {546, 583}, {552, 596}, {546, 620}, {528, 633}, {544, 653},
+    {550, 667}, {548, 705}, {540, 720}, {554, 732}, {582, 742}, {566, 750}, {550, 750}, {527, 730},
+    {503, 740}, {472, 738}, {472, 765}, {486, 780}, {495, 780}, {498, 790},
+};
+static constexpr int pts_facet_3_cnt = sizeof(pts_facet_3) / sizeof(pts_facet_3[0]);
+
+static const lv_point_t pts_facet_4[] = {
+    {343, 626}, {318, 554}, {320, 461}, {316, 445}, {320, 442}, {314, 438}, {312, 420}, {338, 348},
+    {336, 344}, {340, 343}, {340, 334}, {364, 384}, {362, 389}, {368, 395}, {390, 443}, {343, 626},
+};
+static constexpr int pts_facet_4_cnt = sizeof(pts_facet_4) / sizeof(pts_facet_4[0]);
+
+static const lv_point_t pts_facet_5[] = {
+    {391, 206}, {374, 204}, {373, 198}, {367, 202}, {344, 196}, {425, 134},
+    {559, 134}, {576, 145}, {576, 150}, {550, 178}, {428, 176}, {391, 206},
+};
+static constexpr int pts_facet_5_cnt = sizeof(pts_facet_5) / sizeof(pts_facet_5[0]);
+
+static const lv_point_t pts_facet_6[] = {
+    {431, 452}, {420, 449}, {424, 430}, {404, 410}, {392, 388}, {387, 384}, {384, 388}, {380, 385},
+    {388, 379}, {378, 374}, {384, 371}, {376, 368}, {378, 362}, {364, 343}, {366, 340}, {361, 334},
+    {358, 340}, {354, 337}, {362, 321}, {356, 316}, {376, 274}, {372, 266}, {376, 260}, {382, 262},
+    {386, 256}, {378, 248}, {384, 244}, {392, 248}, {406, 224}, {406, 211}, {411, 208}, {413, 216},
+    {418, 210}, {424, 213}, {416, 233}, {416, 246}, {408, 249}, {408, 255}, {402, 263}, {404, 273},
+    {398, 279}, {400, 289}, {396, 296}, {394, 320}, {410, 354}, {436, 390}, {436, 408}, {432, 418},
+    {426, 420}, {434, 427}, {426, 428}, {426, 434}, {434, 439}, {428, 443}, {434, 449}, {431, 452},
+};
+static constexpr int pts_facet_6_cnt = sizeof(pts_facet_6) / sizeof(pts_facet_6[0]);
+
+static const lv_point_t pts_facet_7[] = {
+    {406, 272}, {404, 265}, {410, 263}, {407, 258}, {402, 261}, {408, 255}, {408, 249}, {416, 246},
+    {418, 228}, {426, 211}, {422, 207}, {428, 202}, {514, 196}, {547, 200}, {556, 207}, {552, 212},
+    {552, 234}, {535, 224}, {510, 218}, {445, 224}, {420, 249}, {406, 272},
+};
+static constexpr int pts_facet_7_cnt = sizeof(pts_facet_7) / sizeof(pts_facet_7[0]);
+
+static const lv_point_t pts_facet_8[] = {
+    {490, 436}, {484, 430}, {482, 436}, {479, 430}, {475, 434}, {464, 428}, {453, 436},
+    {450, 434}, {451, 428}, {436, 430}, {430, 423}, {433, 416}, {436, 418}, {434, 403},
+    {440, 396}, {436, 389}, {454, 396}, {486, 400}, {539, 396}, {545, 426}, {536, 424},
+    {537, 432}, {527, 428}, {521, 436}, {518, 426}, {513, 432}, {506, 428}, {490, 436},
+};
+static constexpr int pts_facet_8_cnt = sizeof(pts_facet_8) / sizeof(pts_facet_8[0]);
+
+static const lv_point_t pts_facet_9[] = {
+    {596, 306}, {588, 304}, {576, 269}, {558, 246}, {560, 238}, {554, 234}, {557, 190}, {572, 195},
+    {560, 201}, {570, 204}, {562, 209}, {576, 208}, {584, 217}, {576, 227}, {580, 232}, {586, 225},
+    {586, 243}, {594, 238}, {586, 237}, {595, 224}, {600, 232}, {594, 237}, {602, 236}, {602, 247},
+    {614, 255}, {592, 245}, {588, 253}, {599, 264}, {601, 254}, {606, 263}, {596, 268}, {596, 277},
+    {609, 276}, {611, 270}, {603, 274}, {602, 270}, {618, 262}, {624, 285}, {630, 284}, {628, 290},
+    {636, 294}, {624, 292}, {624, 302}, {616, 296}, {610, 276}, {602, 282}, {604, 304}, {596, 306},
+};
+static constexpr int pts_facet_9_cnt = sizeof(pts_facet_9) / sizeof(pts_facet_9[0]);
+
+static const lv_point_t pts_facet_10[] = {
+    {323, 898}, {314, 889}, {318, 885}, {312, 884}, {312, 870}, {302, 841}, {308, 838}, {300, 837},
+    {290, 796}, {291, 792}, {293, 796}, {307, 788}, {324, 791}, {344, 867}, {323, 898},
+};
+static constexpr int pts_facet_10_cnt = sizeof(pts_facet_10) / sizeof(pts_facet_10[0]);
+
+// Maximum polygon size (pts_housing has 71 points)
+static constexpr int MAX_POLYGON_POINTS = 80;
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-/// @brief Calculate facet color from base color and brightness
-static lv_color_t facet_color(lv_color_t base, float brightness) {
-    if (brightness > 0) {
-        return nr_lighten(base, (uint8_t)(brightness * 80)); // Max lighten by 80
-    } else {
-        return nr_darken(base, (uint8_t)(-brightness * 80)); // Max darken by 80
+/// @brief Draw a filled circle using triangle fan (clean, simple rendering)
+/// @param layer LVGL draw layer
+/// @param cx Center X in screen coordinates
+/// @param cy Center Y in screen coordinates
+/// @param radius Circle radius in pixels
+/// @param color Fill color
+/// @param segments Number of segments (more = smoother, 24 is good)
+static void draw_circle(lv_layer_t* layer, int32_t cx, int32_t cy, int32_t radius, lv_color_t color,
+                        int segments = 24) {
+    lv_draw_triangle_dsc_t tri_dsc;
+    lv_draw_triangle_dsc_init(&tri_dsc);
+    tri_dsc.color = color;
+    tri_dsc.opa = LV_OPA_COVER;
+
+    for (int i = 0; i < segments; i++) {
+        float angle1 = (float)i * 2.0f * 3.14159265f / (float)segments;
+        float angle2 = (float)(i + 1) * 2.0f * 3.14159265f / (float)segments;
+
+        tri_dsc.p[0].x = cx;
+        tri_dsc.p[0].y = cy;
+        tri_dsc.p[1].x = cx + (int32_t)(radius * cosf(angle1));
+        tri_dsc.p[1].y = cy + (int32_t)(radius * sinf(angle1));
+        tri_dsc.p[2].x = cx + (int32_t)(radius * cosf(angle2));
+        tri_dsc.p[2].y = cy + (int32_t)(radius * sinf(angle2));
+        lv_draw_triangle(layer, &tri_dsc);
     }
 }
 
-/// @brief Draw a filled quad (4-vertex polygon) as two triangles
-static void draw_quad(lv_layer_t* layer, int32_t x[4], int32_t y[4], lv_color_t color) {
-    // Triangle 1: vertices 0, 1, 2
+/// @brief Scale and translate a polygon from 1000x1000 design space to screen coordinates
+/// @param pts_in Source points in design space
+/// @param cnt Number of points
+/// @param pts_out Output buffer for scaled points (must be at least cnt elements)
+/// @param cx Center X in screen coordinates
+/// @param cy Center Y in screen coordinates
+/// @param scale Scale factor (design_space / screen_size)
+static void scale_polygon(const lv_point_t* pts_in, int cnt, lv_point_t* pts_out, int32_t cx,
+                          int32_t cy, float scale) {
+    for (int i = 0; i < cnt; i++) {
+        // 500 is center of 1000x1000 design space
+        pts_out[i].x = cx + (int32_t)((pts_in[i].x - 500) * scale);
+        pts_out[i].y = cy + (int32_t)((pts_in[i].y - 500) * scale);
+    }
+}
+
+// ============================================================================
+// Ear-Clipping Triangulation for Concave Polygons
+// ============================================================================
+
+/// @brief Compute cross product sign for three points (used to determine winding/convexity)
+/// @return Positive if CCW turn, negative if CW turn, zero if collinear
+static int64_t cross_product_sign(const lv_point_t& a, const lv_point_t& b, const lv_point_t& c) {
+    return (int64_t)(b.x - a.x) * (c.y - a.y) - (int64_t)(b.y - a.y) * (c.x - a.x);
+}
+
+/// @brief Check if point P is inside triangle ABC using barycentric coordinates
+static bool point_in_triangle(const lv_point_t& p, const lv_point_t& a, const lv_point_t& b,
+                              const lv_point_t& c) {
+    int64_t d1 = cross_product_sign(p, a, b);
+    int64_t d2 = cross_product_sign(p, b, c);
+    int64_t d3 = cross_product_sign(p, c, a);
+
+    bool has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    bool has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+
+    return !(has_neg && has_pos);
+}
+
+/// @brief Check if vertex at index i is convex (interior angle < 180°)
+/// @param indices Working list of remaining vertex indices
+/// @param idx_cnt Number of vertices remaining
+/// @param i Position in indices array to check
+/// @param pts Original polygon points
+/// @param ccw True if polygon has counter-clockwise winding
+static bool is_convex_vertex(const int* indices, int idx_cnt, int i, const lv_point_t* pts,
+                             bool ccw) {
+    int prev_i = (i - 1 + idx_cnt) % idx_cnt;
+    int next_i = (i + 1) % idx_cnt;
+
+    const lv_point_t& prev = pts[indices[prev_i]];
+    const lv_point_t& curr = pts[indices[i]];
+    const lv_point_t& next = pts[indices[next_i]];
+
+    int64_t cross = cross_product_sign(prev, curr, next);
+    return ccw ? (cross > 0) : (cross < 0);
+}
+
+/// @brief Check if vertex at index i is an "ear" (can be clipped)
+static bool is_ear(const int* indices, int idx_cnt, int i, const lv_point_t* pts, bool ccw) {
+    if (!is_convex_vertex(indices, idx_cnt, i, pts, ccw)) {
+        return false;
+    }
+
+    int prev_i = (i - 1 + idx_cnt) % idx_cnt;
+    int next_i = (i + 1) % idx_cnt;
+
+    const lv_point_t& a = pts[indices[prev_i]];
+    const lv_point_t& b = pts[indices[i]];
+    const lv_point_t& c = pts[indices[next_i]];
+
+    // Check that no other vertices are inside this triangle
+    for (int j = 0; j < idx_cnt; j++) {
+        if (j == prev_i || j == i || j == next_i)
+            continue;
+        if (point_in_triangle(pts[indices[j]], a, b, c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/// @brief Draw a filled polygon using ear-clipping triangulation
+/// Correctly handles both convex and concave simple polygons
+static void draw_polygon(lv_layer_t* layer, const lv_point_t* pts, int cnt, lv_color_t color) {
+    if (cnt < 3)
+        return;
+    if (cnt > MAX_POLYGON_POINTS) {
+        // Safety: prevent buffer overflow - truncate to max
+        cnt = MAX_POLYGON_POINTS;
+    }
+
+    // For very simple polygons, just draw directly
+    if (cnt == 3) {
+        lv_draw_triangle_dsc_t tri_dsc;
+        lv_draw_triangle_dsc_init(&tri_dsc);
+        tri_dsc.color = color;
+        tri_dsc.opa = LV_OPA_COVER;
+        tri_dsc.p[0].x = pts[0].x;
+        tri_dsc.p[0].y = pts[0].y;
+        tri_dsc.p[1].x = pts[1].x;
+        tri_dsc.p[1].y = pts[1].y;
+        tri_dsc.p[2].x = pts[2].x;
+        tri_dsc.p[2].y = pts[2].y;
+        lv_draw_triangle(layer, &tri_dsc);
+        return;
+    }
+
+    // Determine polygon winding direction (CCW or CW)
+    // Sum of (x2-x1)*(y2+y1) - positive = CW, negative = CCW
+    int64_t winding_sum = 0;
+    for (int i = 0; i < cnt; i++) {
+        int next = (i + 1) % cnt;
+        winding_sum += (int64_t)(pts[next].x - pts[i].x) * (pts[next].y + pts[i].y);
+    }
+    bool ccw = (winding_sum < 0);
+
+    // Working list of vertex indices (we'll remove ears as we go)
+    int indices[MAX_POLYGON_POINTS];
+    for (int i = 0; i < cnt; i++) {
+        indices[i] = i;
+    }
+    int idx_cnt = cnt;
+
     lv_draw_triangle_dsc_t tri_dsc;
     lv_draw_triangle_dsc_init(&tri_dsc);
-    tri_dsc.p[0].x = x[0];
-    tri_dsc.p[0].y = y[0];
-    tri_dsc.p[1].x = x[1];
-    tri_dsc.p[1].y = y[1];
-    tri_dsc.p[2].x = x[2];
-    tri_dsc.p[2].y = y[2];
     tri_dsc.color = color;
     tri_dsc.opa = LV_OPA_COVER;
-    lv_draw_triangle(layer, &tri_dsc);
 
-    // Triangle 2: vertices 0, 2, 3
-    tri_dsc.p[1].x = x[2];
-    tri_dsc.p[1].y = y[2];
-    tri_dsc.p[2].x = x[3];
-    tri_dsc.p[2].y = y[3];
-    lv_draw_triangle(layer, &tri_dsc);
-}
+    // Ear clipping loop
+    int safety_counter = cnt * cnt; // Prevent infinite loops
+    while (idx_cnt > 3 && safety_counter-- > 0) {
+        bool ear_found = false;
 
-/// @brief Draw a filled triangle
-static void draw_triangle(lv_layer_t* layer, int32_t x[3], int32_t y[3], lv_color_t color) {
-    lv_draw_triangle_dsc_t tri_dsc;
-    lv_draw_triangle_dsc_init(&tri_dsc);
-    tri_dsc.p[0].x = x[0];
-    tri_dsc.p[0].y = y[0];
-    tri_dsc.p[1].x = x[1];
-    tri_dsc.p[1].y = y[1];
-    tri_dsc.p[2].x = x[2];
-    tri_dsc.p[2].y = y[2];
-    tri_dsc.color = color;
-    tri_dsc.opa = LV_OPA_COVER;
-    lv_draw_triangle(layer, &tri_dsc);
-}
+        for (int i = 0; i < idx_cnt; i++) {
+            if (is_ear(indices, idx_cnt, i, pts, ccw)) {
+                // Found an ear - draw the triangle
+                int prev_i = (i - 1 + idx_cnt) % idx_cnt;
+                int next_i = (i + 1) % idx_cnt;
 
-/// @brief Draw a filled circle
-static void draw_filled_circle(lv_layer_t* layer, int32_t cx, int32_t cy, int32_t radius,
-                               lv_color_t color) {
-    lv_draw_fill_dsc_t fill_dsc;
-    lv_draw_fill_dsc_init(&fill_dsc);
-    fill_dsc.color = color;
-    fill_dsc.opa = LV_OPA_COVER;
-    fill_dsc.radius = radius;
+                tri_dsc.p[0].x = pts[indices[prev_i]].x;
+                tri_dsc.p[0].y = pts[indices[prev_i]].y;
+                tri_dsc.p[1].x = pts[indices[i]].x;
+                tri_dsc.p[1].y = pts[indices[i]].y;
+                tri_dsc.p[2].x = pts[indices[next_i]].x;
+                tri_dsc.p[2].y = pts[indices[next_i]].y;
+                lv_draw_triangle(layer, &tri_dsc);
 
-    lv_area_t area = {cx - radius, cy - radius, cx + radius, cy + radius};
-    lv_draw_fill(layer, &fill_dsc, &area);
-}
+                // Remove the ear vertex from working list
+                for (int j = i; j < idx_cnt - 1; j++) {
+                    indices[j] = indices[j + 1];
+                }
+                idx_cnt--;
+                ear_found = true;
+                break;
+            }
+        }
 
-/// @brief Draw a circle outline (ring)
-static void draw_circle_ring(lv_layer_t* layer, int32_t cx, int32_t cy, int32_t radius,
-                             int32_t width, lv_color_t color) {
-    lv_draw_arc_dsc_t arc_dsc;
-    lv_draw_arc_dsc_init(&arc_dsc);
-    arc_dsc.center.x = cx;
-    arc_dsc.center.y = cy;
-    arc_dsc.radius = radius;
-    arc_dsc.start_angle = 0;
-    arc_dsc.end_angle = 360;
-    arc_dsc.width = width;
-    arc_dsc.color = color;
-    arc_dsc.opa = LV_OPA_COVER;
-    lv_draw_arc(layer, &arc_dsc);
+        if (!ear_found) {
+            // Fallback: use centroid-based fan for remaining vertices
+            // Calculate centroid
+            int64_t cx = 0, cy = 0;
+            for (int j = 0; j < idx_cnt; j++) {
+                cx += pts[indices[j]].x;
+                cy += pts[indices[j]].y;
+            }
+            cx /= idx_cnt;
+            cy /= idx_cnt;
+
+            // Draw triangles from centroid to each edge
+            for (int j = 0; j < idx_cnt; j++) {
+                int next_j = (j + 1) % idx_cnt;
+                tri_dsc.p[0].x = (int32_t)cx;
+                tri_dsc.p[0].y = (int32_t)cy;
+                tri_dsc.p[1].x = pts[indices[j]].x;
+                tri_dsc.p[1].y = pts[indices[j]].y;
+                tri_dsc.p[2].x = pts[indices[next_j]].x;
+                tri_dsc.p[2].y = pts[indices[next_j]].y;
+                lv_draw_triangle(layer, &tri_dsc);
+            }
+            return;
+        }
+    }
+
+    // Draw final triangle
+    if (idx_cnt == 3) {
+        tri_dsc.p[0].x = pts[indices[0]].x;
+        tri_dsc.p[0].y = pts[indices[0]].y;
+        tri_dsc.p[1].x = pts[indices[1]].x;
+        tri_dsc.p[1].y = pts[indices[1]].y;
+        tri_dsc.p[2].x = pts[indices[2]].x;
+        tri_dsc.p[2].y = pts[indices[2]].y;
+        lv_draw_triangle(layer, &tri_dsc);
+    }
 }
 
 // ============================================================================
@@ -153,227 +390,95 @@ static void draw_circle_ring(lv_layer_t* layer, int32_t cx, int32_t cy, int32_t 
 
 void draw_nozzle_faceted(lv_layer_t* layer, int32_t cx, int32_t cy, lv_color_t filament_color,
                          int32_t scale_unit) {
-    // ========================================
-    // Calculate dimensions (from reference image analysis)
-    // ========================================
-    // Reference has ~2:1 aspect ratio (height:width)
-    // Body width is approximately 52% of height
-    int32_t body_height = scale_unit * 5;          // 50px at scale 10
-    int32_t body_width = (body_height * 52) / 100; // ~26px at scale 10
+    // The design space is 1000x1000, but the actual toolhead spans about
+    // 440 units wide (280-720) and 850 units tall (78-928)
+    // Stealthburner is larger than Bambu toolhead, so render at 2x
+    int32_t render_size = scale_unit * 10;
+    float scale = (float)render_size / 1000.0f;
 
-    // Position: cy is center of the print head
-    int32_t top_y = cy - body_height / 2;
-    int32_t bot_y = cy + body_height / 2;
-
-    // ========================================
-    // Get base color from theme (single token)
-    // ========================================
-    lv_color_t base_color = ui_theme_get_color("toolhead_body");
-
-    // Derived colors
-    lv_color_t frame_color = lv_color_hex(0x2D2D2D);   // Dark charcoal frame
-    lv_color_t recess_color = lv_color_hex(0x1A1A1A);  // Pure black recess
-    lv_color_t fan_hub_color = lv_color_hex(0x404040); // Neutral gray hub
-    lv_color_t nozzle_brass = lv_color_hex(0xC4A000);  // Brass nozzle
-
-    // STEP 1: No background frame - we draw facets directly on transparent background
-
-    // ========================================
-    // STEP 2: Draw faceted red body
-    // ========================================
-    for (int i = 0; i < NUM_BODY_FACETS; i++) {
-        const Facet& f = BODY_FACETS[i];
-
-        // Convert normalized coords to pixel coords
-        int32_t px[4], py[4];
-        for (int j = 0; j < f.count; j++) {
-            // X: 0.0-1.0 maps to (cx - half_width) to (cx + half_width)
-            // Center is at 0.5, so: px = cx + (f.x - 0.5) * body_width
-            px[j] = cx + (int32_t)((f.x[j] - 0.5f) * body_width);
-            // Y: 0.0-1.0 maps to top_y to bot_y
-            py[j] = top_y + (int32_t)(f.y[j] * body_height);
-        }
-
-        lv_color_t color = facet_color(base_color, f.brightness);
-
-        if (f.count == 4) {
-            draw_quad(layer, px, py, color);
-        } else {
-            draw_triangle(layer, px, py, color);
-        }
+    // Determine primary color - use filament color if loaded, else Voron red
+    lv_color_t primary = filament_color;
+    lv_color_t default_gray = lv_color_hex(0x808080);
+    if (lv_color_eq(primary, default_gray) || lv_color_eq(primary, lv_color_black())) {
+        primary = lv_color_hex(0xD11D1D); // Voron red
     }
 
-    // ========================================
-    // STEP 2b: Draw dark edge outlines for "coke bottle" silhouette
-    // ========================================
-    {
-        lv_draw_line_dsc_t line_dsc;
-        lv_draw_line_dsc_init(&line_dsc);
-        line_dsc.color = frame_color;
-        line_dsc.width = 1;
-        line_dsc.opa = LV_OPA_COVER;
+    // Temporary buffer for scaled points
+    lv_point_t tmp[MAX_POLYGON_POINTS];
 
-        // Left edge: top shoulder → narrow waist → wide bottom
-        // Top to waist (narrowing)
-        line_dsc.p1.x = cx + (int32_t)((0.12f - 0.5f) * body_width);
-        line_dsc.p1.y = top_y + (body_height * 12) / 100;
-        line_dsc.p2.x = cx + (int32_t)((0.08f - 0.5f) * body_width);
-        line_dsc.p2.y = top_y + (body_height * 32) / 100;
-        lv_draw_line(layer, &line_dsc);
-        // Waist to wide (widening)
-        line_dsc.p1.x = cx + (int32_t)((0.08f - 0.5f) * body_width);
-        line_dsc.p1.y = top_y + (body_height * 32) / 100;
-        line_dsc.p2.x = cx + (int32_t)((0.02f - 0.5f) * body_width);
-        line_dsc.p2.y = top_y + (body_height * 75) / 100;
-        lv_draw_line(layer, &line_dsc);
+    // Housing (dark frame outline)
+    scale_polygon(pts_housing, pts_housing_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_housing_cnt, lv_color_hex(0x121212));
 
-        // Right edge: mirror of left
-        line_dsc.p1.x = cx + (int32_t)((0.88f - 0.5f) * body_width);
-        line_dsc.p1.y = top_y + (body_height * 12) / 100;
-        line_dsc.p2.x = cx + (int32_t)((0.92f - 0.5f) * body_width);
-        line_dsc.p2.y = top_y + (body_height * 32) / 100;
-        lv_draw_line(layer, &line_dsc);
-        line_dsc.p1.x = cx + (int32_t)((0.92f - 0.5f) * body_width);
-        line_dsc.p1.y = top_y + (body_height * 32) / 100;
-        line_dsc.p2.x = cx + (int32_t)((0.98f - 0.5f) * body_width);
-        line_dsc.p2.y = top_y + (body_height * 75) / 100;
-        lv_draw_line(layer, &line_dsc);
+    // Main plate (themed primary color)
+    scale_polygon(pts_plate, pts_plate_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_plate_cnt, primary);
 
-        // Top hexagonal edge
-        line_dsc.p1.x = cx + (int32_t)((0.18f - 0.5f) * body_width);
-        line_dsc.p1.y = top_y;
-        line_dsc.p2.x = cx + (int32_t)((0.82f - 0.5f) * body_width);
-        line_dsc.p2.y = top_y;
-        lv_draw_line(layer, &line_dsc);
+    // Facet shading colors using nr_lighten/nr_darken for consistent 3D effect
+    // Original SVG colors: highlights=#f55c5b, shadows=#c31615/#bd0f10, deep=#4b1514
+    lv_color_t highlight = nr_lighten(primary, 60);  // Bright highlight facets
+    lv_color_t mid_shadow = nr_darken(primary, 30);  // Slight shadow
+    lv_color_t shadow = nr_darken(primary, 50);      // Medium shadow
+    lv_color_t deep_shadow = nr_darken(primary, 80); // Deep shadow (was 120, too black)
 
-        // Left shoulder angle
-        line_dsc.p1.x = cx + (int32_t)((0.18f - 0.5f) * body_width);
-        line_dsc.p1.y = top_y;
-        line_dsc.p2.x = cx + (int32_t)((0.12f - 0.5f) * body_width);
-        line_dsc.p2.y = top_y + (body_height * 12) / 100;
-        lv_draw_line(layer, &line_dsc);
+    // Facet 1 - highlight (right side, lit by top-left light)
+    scale_polygon(pts_facet_1, pts_facet_1_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_1_cnt, highlight);
 
-        // Right shoulder angle
-        line_dsc.p1.x = cx + (int32_t)((0.82f - 0.5f) * body_width);
-        line_dsc.p1.y = top_y;
-        line_dsc.p2.x = cx + (int32_t)((0.88f - 0.5f) * body_width);
-        line_dsc.p2.y = top_y + (body_height * 12) / 100;
-        lv_draw_line(layer, &line_dsc);
-    }
+    // Facet 2 - shadow (bottom area)
+    scale_polygon(pts_facet_2, pts_facet_2_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_2_cnt, mid_shadow);
 
-    // ========================================
-    // STEP 3: Draw top circular recess (extruder motor)
-    // ========================================
-    {
-        // Center at Y = 0.22 (in upper body section 0.12-0.32)
-        int32_t recess_cy = top_y + (body_height * 22) / 100;
-        // Diameter = 0.35 * body_width (larger to fill space)
-        int32_t recess_r = (body_width * 17) / 100;
+    // Facet 3 - deep shadow (fan area shadow)
+    scale_polygon(pts_facet_3, pts_facet_3_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_3_cnt, deep_shadow);
 
-        // Outer ring (subtle bezel)
-        draw_circle_ring(layer, cx, recess_cy, recess_r + 1, 2, nr_darken(base_color, 40));
+    // Facet 4 - highlight (left side)
+    scale_polygon(pts_facet_4, pts_facet_4_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_4_cnt, highlight);
 
-        // Inner dark recess
-        draw_filled_circle(layer, cx, recess_cy, recess_r, recess_color);
-    }
+    // Facet 5 - slight highlight (top area)
+    scale_polygon(pts_facet_5, pts_facet_5_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_5_cnt, nr_lighten(primary, 20));
 
-    // ========================================
-    // STEP 4: Draw fan circle
-    // ========================================
-    {
-        // Center at Y = 0.54 (in middle body section 0.32-0.75)
-        int32_t fan_cy = top_y + (body_height * 54) / 100;
-        // Outer diameter = 0.50 * body_width (larger fan, ~1.5x top recess)
-        int32_t fan_outer_r = (body_width * 25) / 100;
-        // Hub diameter = 0.12 * body_width → radius = 0.06
-        int32_t hub_r = (body_width * 8) / 100;
+    // Facet 6 - shadow (left bevel)
+    scale_polygon(pts_facet_6, pts_facet_6_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_6_cnt, shadow);
 
-        // Outer bezel ring
-        draw_circle_ring(layer, cx, fan_cy, fan_outer_r + 1, 2, nr_darken(base_color, 30));
+    // Facet 7 - deep shadow (motor recess area)
+    scale_polygon(pts_facet_7, pts_facet_7_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_7_cnt, deep_shadow);
 
-        // Dark blade area
-        draw_filled_circle(layer, cx, fan_cy, fan_outer_r, recess_color);
+    // Facet 8 - deep shadow (top center recess)
+    scale_polygon(pts_facet_8, pts_facet_8_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_8_cnt, deep_shadow);
 
-        // Lighter hub center
-        draw_filled_circle(layer, cx, fan_cy, hub_r, fan_hub_color);
+    // Facet 9 - shadow (right bevel)
+    scale_polygon(pts_facet_9, pts_facet_9_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_9_cnt, shadow);
 
-        // Highlight arc on top-left (light reflection)
-        lv_draw_arc_dsc_t arc_dsc;
-        lv_draw_arc_dsc_init(&arc_dsc);
-        arc_dsc.center.x = cx;
-        arc_dsc.center.y = fan_cy;
-        arc_dsc.radius = fan_outer_r;
-        arc_dsc.start_angle = 200;
-        arc_dsc.end_angle = 280;
-        arc_dsc.width = 1;
-        arc_dsc.color = nr_lighten(base_color, 40);
-        arc_dsc.opa = LV_OPA_60;
-        lv_draw_arc(layer, &arc_dsc);
-    }
+    // Facet 10 - highlight (bottom left)
+    scale_polygon(pts_facet_10, pts_facet_10_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_facet_10_cnt, highlight);
 
-    // (Screws removed - too much visual noise at small sizes)
+    // Top circle (extruder motor recess)
+    scale_polygon(pts_top_circle, pts_top_circle_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_top_circle_cnt, lv_color_hex(0x100C0B));
 
-    // ========================================
-    // STEP 5: Draw logo (3 diagonal stripes)
-    // ========================================
-    {
-        // Logo center at Y = 0.38 (between top recess at 22% and fan at 54%)
-        int32_t logo_cy = top_y + (body_height * 38) / 100;
-        int32_t stripe_len = (body_width * 8) / 100;
-        int32_t stripe_gap = (body_width * 2) / 100;
+    // Bottom circle (fan) - simple filled circle instead of complex polygon
+    // Fan center is at (490, 690) in design space with radius ~115
+    int32_t fan_cx = cx + (int32_t)((490 - 500) * scale);
+    int32_t fan_cy = cy + (int32_t)((690 - 500) * scale);
+    int32_t fan_radius = (int32_t)(115 * scale);
+    draw_circle(layer, fan_cx, fan_cy, fan_radius, lv_color_hex(0x100C0B), 32);
 
-        lv_draw_line_dsc_t line_dsc;
-        lv_draw_line_dsc_init(&line_dsc);
-        line_dsc.color = nr_darken(base_color, 50);
-        line_dsc.width = 1;
+    // Logo stripes (Voron logo)
+    scale_polygon(pts_logo_1, pts_logo_1_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_logo_1_cnt, lv_color_black());
 
-        // 3 stripes, angled at ~-60°
-        for (int i = -1; i <= 1; i++) {
-            int32_t offset_x = i * stripe_gap;
-            // Diagonal from upper-left to lower-right
-            line_dsc.p1.x = cx + offset_x - stripe_len / 3;
-            line_dsc.p1.y = logo_cy - stripe_len / 2;
-            line_dsc.p2.x = cx + offset_x + stripe_len / 3;
-            line_dsc.p2.y = logo_cy + stripe_len / 2;
-            lv_draw_line(layer, &line_dsc);
-        }
-    }
+    scale_polygon(pts_logo_2, pts_logo_2_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_logo_2_cnt, lv_color_black());
 
-    // ========================================
-    // STEP 7: Draw nozzle tip (brass, tapered)
-    // ========================================
-    {
-        // Nozzle from Y = 0.88 to Y = 1.0 (starts where flat taper ends)
-        int32_t noz_top_y = top_y + (body_height * 88) / 100;
-        int32_t noz_bot_y = bot_y;
-        int32_t noz_height = noz_bot_y - noz_top_y;
-
-        // Width tapers from flat bottom (0.30-0.70 = 0.40 width) to nozzle tip
-        int32_t noz_top_half = (body_width * 20) / 100; // Matches flat bottom width
-        int32_t noz_bot_half = (body_width * 5) / 100;
-
-        // Calculate nozzle colors (brass base, tinted with filament if loaded)
-        lv_color_t noz_left = nr_lighten(nozzle_brass, 20);
-        lv_color_t noz_right = nr_darken(nozzle_brass, 20);
-
-        // Tint with filament color if not default
-        lv_color_t default_nozzle = ui_theme_get_color("filament_nozzle_dark");
-        if (!lv_color_eq(filament_color, default_nozzle) &&
-            !lv_color_eq(filament_color, lv_color_hex(0x808080))) {
-            noz_left = nr_blend(noz_left, filament_color, 0.4f);
-            noz_right = nr_blend(noz_right, filament_color, 0.4f);
-        }
-
-        // Draw tapered nozzle
-        nr_draw_nozzle_tip(layer, cx, noz_top_y, noz_top_half * 2, noz_bot_half * 2, noz_height,
-                           noz_left, noz_right);
-
-        // Bright glint at tip
-        lv_draw_fill_dsc_t fill_dsc;
-        lv_draw_fill_dsc_init(&fill_dsc);
-        fill_dsc.color = lv_color_hex(0xFFFFFF);
-        fill_dsc.opa = LV_OPA_70;
-        lv_area_t glint = {cx - 1, noz_bot_y - 1, cx + 1, noz_bot_y};
-        lv_draw_fill(layer, &fill_dsc, &glint);
-    }
+    scale_polygon(pts_logo_3, pts_logo_3_cnt, tmp, cx, cy, scale);
+    draw_polygon(layer, tmp, pts_logo_3_cnt, lv_color_black());
 }

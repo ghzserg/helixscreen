@@ -21,9 +21,11 @@
 #include "ams_types.h"
 #include "app_globals.h"
 #include "color_utils.h"
+#include "config.h"
 #include "filament_database.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
+#include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
 
@@ -95,6 +97,34 @@ static const char* get_ams_logo_path(const std::string& name) {
         return it->second;
     }
     return nullptr;
+}
+
+/**
+ * @brief Check if configured printer is a Voron
+ *
+ * Reads the printer type from helixconfig.json and checks if it contains "Voron".
+ * Used to select Stealthburner toolhead rendering in the filament path canvas.
+ *
+ * @return true if printer type contains "Voron" (case-insensitive)
+ */
+static bool is_voron_printer() {
+    Config* config = Config::get_instance();
+    if (!config) {
+        return false;
+    }
+
+    std::string printer_type = config->get<std::string>(helix::wizard::PRINTER_TYPE, "");
+    if (printer_type.empty()) {
+        return false;
+    }
+
+    // Case-insensitive search for "voron"
+    std::string lower_type = printer_type;
+    for (auto& c : lower_type) {
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+
+    return lower_type.find("voron") != std::string::npos;
 }
 
 // Lazy registration flag - widgets and XML registered on first use
@@ -628,6 +658,12 @@ void AmsPanel::setup_path_canvas() {
     if (!path_canvas_) {
         spdlog::warn("[{}] path_canvas not found in XML", get_name());
         return;
+    }
+
+    // Use Stealthburner toolhead for Voron printers
+    if (is_voron_printer()) {
+        ui_filament_path_canvas_set_faceted_toolhead(path_canvas_, true);
+        spdlog::info("[{}] Using Stealthburner toolhead for Voron printer", get_name());
     }
 
     // Set slot click callback to trigger filament load
