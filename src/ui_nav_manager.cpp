@@ -744,6 +744,15 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
     // which can be triggered from various contexts (events, observers, etc.)
     ui_queue_update([overlay_panel, hide_previous]() {
         auto& mgr = NavigationManager::instance();
+
+        // Check for duplicate push
+        if (std::find(mgr.panel_stack_.begin(), mgr.panel_stack_.end(), overlay_panel) !=
+            mgr.panel_stack_.end()) {
+            spdlog::warn("[NavigationManager] Overlay {} already in stack, ignoring duplicate push",
+                         (void*)overlay_panel);
+            return;
+        }
+
         bool is_first_overlay = (mgr.panel_stack_.size() == 1);
 
         // Lifecycle: Deactivate what's currently visible before showing new overlay
@@ -798,7 +807,10 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
 
         // Lifecycle: Activate new overlay
         auto it = mgr.overlay_instances_.find(overlay_panel);
-        if (it != mgr.overlay_instances_.end() && it->second) {
+        if (it == mgr.overlay_instances_.end()) {
+            spdlog::warn("[NavigationManager] Overlay {} pushed without lifecycle registration",
+                         (void*)overlay_panel);
+        } else if (it->second) {
             spdlog::trace("[NavigationManager] Activating overlay {}", it->second->get_name());
             it->second->on_activate();
         }

@@ -2,15 +2,20 @@
 
 #include "overlay_base.h"
 
+#include "ui_nav_manager.h"
+
 #include <spdlog/spdlog.h>
 
 OverlayBase::~OverlayBase() {
-    // Note: cleanup() should be called before destruction if there are
-    // pending async operations. The destructor doesn't call cleanup()
-    // automatically because derived classes may need to handle cleanup
-    // in a specific order.
+    // Fallback unregister in case cleanup() wasn't called
+    if (overlay_root_) {
+        NavigationManager::instance().unregister_overlay_instance(overlay_root_);
+    }
+
     if (!cleanup_called_) {
-        spdlog::trace("[OverlayBase] Destructor called without prior cleanup()");
+        // Cannot call get_name() here as derived class is already destroyed
+        spdlog::warn("[OverlayBase] Overlay destroyed without cleanup() - may cause issues with "
+                     "async callbacks");
     }
 }
 
