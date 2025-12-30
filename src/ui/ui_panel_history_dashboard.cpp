@@ -760,24 +760,26 @@ void HistoryDashboardPanel::on_view_history_clicked(lv_event_t* e) {
     const auto& dashboard = get_global_history_dashboard_panel();
     list_panel.set_jobs(dashboard.get_cached_jobs());
 
-    // Create the list panel widget
-    lv_obj_t* screen = lv_screen_active();
-    lv_obj_t* list_widget =
-        static_cast<lv_obj_t*>(lv_xml_create(screen, "history_list_panel", NULL));
+    // Ensure subjects and callbacks are initialized
+    list_panel.init_subjects();
+    list_panel.register_callbacks();
 
-    if (!list_widget) {
-        spdlog::error("[History Dashboard] Failed to create history list panel widget");
-        ui_toast_show(ToastSeverity::ERROR, "Failed to open history list", 2000);
-        return;
+    // Create the overlay if not already created
+    lv_obj_t* screen = lv_screen_active();
+    lv_obj_t* overlay_root = list_panel.get_root();
+    if (!overlay_root) {
+        overlay_root = list_panel.create(screen);
+        if (!overlay_root) {
+            spdlog::error("[History Dashboard] Failed to create history list panel");
+            ui_toast_show(ToastSeverity::ERROR, "Failed to open history list", 2000);
+            return;
+        }
     }
 
-    // Setup the panel with the widget
-    list_panel.setup(list_widget, screen);
-
     // Push as overlay (slides in from right)
-    ui_nav_push_overlay(list_widget);
+    ui_nav_push_overlay(overlay_root);
 
-    // Manually trigger activation since ui_nav_push_overlay doesn't know about PanelBase
+    // Manually trigger activation since ui_nav_push_overlay doesn't know about OverlayBase
     list_panel.on_activate();
 
     spdlog::debug("[History Dashboard] History list panel opened");

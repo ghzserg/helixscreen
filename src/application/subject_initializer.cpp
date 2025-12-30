@@ -118,7 +118,7 @@ void SubjectInitializer::inject_api(MoonrakerAPI* api) {
     get_global_advanced_panel().set_api(api);
     // SpoolmanPanel uses get_moonraker_api() global directly
     get_global_history_dashboard_panel().set_api(api);
-    get_global_history_list_panel().set_api(api);
+    // HistoryListPanel uses get_moonraker_api() global directly (OverlayBase pattern)
     get_global_timelapse_settings().set_api(api);
 
     // ActivePrintMediaManager needs API for thumbnail loading
@@ -172,8 +172,7 @@ void SubjectInitializer::init_panel_subjects() {
     init_global_history_dashboard_panel(get_printer_state(), nullptr, get_print_history_manager());
     get_global_history_dashboard_panel().init_subjects();
 
-    init_global_history_list_panel(get_printer_state(), nullptr, get_print_history_manager());
-    get_global_history_list_panel().init_subjects();
+    // HistoryListPanel is now lazy-initialized by HistoryDashboardPanel (OverlayBase pattern)
 
     // Settings overlays
     init_global_timelapse_settings(get_printer_state(), nullptr);

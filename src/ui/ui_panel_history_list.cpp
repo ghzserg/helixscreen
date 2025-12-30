@@ -11,8 +11,11 @@
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
+#include "app_globals.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
+#include "print_history_manager.h"
+#include "printer_state.h"
 #include "settings_manager.h"
 #include "thumbnail_cache.h"
 
@@ -26,49 +29,25 @@
 // MDI chevron-down symbol for dropdown arrows (replaces FontAwesome LV_SYMBOL_DOWN)
 static const char* MDI_CHEVRON_DOWN = "\xF3\xB0\x85\x80"; // F0140
 
-// Global instance (singleton pattern)
+// ============================================================================
+// Global Instance
+// ============================================================================
+
 static std::unique_ptr<HistoryListPanel> g_history_list_panel;
 
 HistoryListPanel& get_global_history_list_panel() {
     if (!g_history_list_panel) {
-        spdlog::error(
-            "[History List] get_global_history_list_panel() called before initialization!");
-        throw std::runtime_error("HistoryListPanel not initialized");
+        g_history_list_panel = std::make_unique<HistoryListPanel>();
     }
     return *g_history_list_panel;
-}
-
-void init_global_history_list_panel(PrinterState& printer_state, MoonrakerAPI* api,
-                                    PrintHistoryManager* history_manager) {
-    g_history_list_panel = std::make_unique<HistoryListPanel>(printer_state, api, history_manager);
-
-    // Register XML event callbacks (must be done BEFORE XML is created)
-    lv_xml_register_event_cb(nullptr, "history_search_changed",
-                             HistoryListPanel::on_search_changed_static);
-    lv_xml_register_event_cb(nullptr, "history_filter_status_changed",
-                             HistoryListPanel::on_status_filter_changed_static);
-    lv_xml_register_event_cb(nullptr, "history_sort_changed",
-                             HistoryListPanel::on_sort_changed_static);
-
-    // Register detail overlay button callbacks
-    lv_xml_register_event_cb(nullptr, "history_detail_reprint",
-                             HistoryListPanel::on_detail_reprint_static);
-    lv_xml_register_event_cb(nullptr, "history_detail_delete",
-                             HistoryListPanel::on_detail_delete_static);
-    lv_xml_register_event_cb(nullptr, "history_detail_view_timelapse",
-                             HistoryListPanel::on_detail_view_timelapse_static);
-
-    spdlog::debug("[History List] Global instance and event callbacks initialized");
 }
 
 // ============================================================================
 // Constructor
 // ============================================================================
 
-HistoryListPanel::HistoryListPanel(PrinterState& printer_state, MoonrakerAPI* api,
-                                   PrintHistoryManager* history_manager)
-    : PanelBase(printer_state, api), history_manager_(history_manager) {
-    spdlog::debug("[{}] Constructed", get_name());
+HistoryListPanel::HistoryListPanel() : history_manager_(get_print_history_manager()) {
+    spdlog::trace("[{}] Constructor", get_name());
 }
 
 // Destructor - remove observer from history manager
@@ -80,10 +59,17 @@ HistoryListPanel::~HistoryListPanel() {
 }
 
 // ============================================================================
-// PanelBase Implementation
+// Subject Initialization
 // ============================================================================
 
 void HistoryListPanel::init_subjects() {
+    if (subjects_initialized_) {
+        spdlog::debug("[{}] Subjects already initialized", get_name());
+        return;
+    }
+
+    spdlog::debug("[{}] Initializing subjects", get_name());
+
     // Initialize subject for panel state binding (0=LOADING, 1=EMPTY, 2=HAS_JOBS)
     lv_subject_init_int(&subject_panel_state_, 0);
     lv_xml_register_subject(nullptr, "history_list_panel_state", &subject_panel_state_);
@@ -101,22 +87,90 @@ void HistoryListPanel::init_subjects() {
     // Initialize detail overlay subjects
     init_detail_subjects();
 
+    subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized", get_name());
 }
 
-void HistoryListPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
-    panel_ = panel;
-    parent_screen_ = parent_screen;
+// ============================================================================
+// Callback Registration
+// ============================================================================
+
+void HistoryListPanel::register_callbacks() {
+    if (callbacks_registered_) {
+        spdlog::debug("[{}] Callbacks already registered", get_name());
+        return;
+    }
+
+    spdlog::debug("[{}] Registering event callbacks", get_name());
+
+    // Register XML event callbacks for search, filter, and sort
+    lv_xml_register_event_cb(nullptr, "history_search_changed", [](lv_event_t* /*e*/) {
+        get_global_history_list_panel().on_search_changed();
+    });
+    lv_xml_register_event_cb(nullptr, "history_filter_status_changed", [](lv_event_t* e) {
+        lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_target(e));
+        if (dropdown) {
+            int index = lv_dropdown_get_selected(dropdown);
+            get_global_history_list_panel().on_status_filter_changed(index);
+        }
+    });
+    lv_xml_register_event_cb(nullptr, "history_sort_changed", [](lv_event_t* e) {
+        lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_target(e));
+        if (dropdown) {
+            int index = lv_dropdown_get_selected(dropdown);
+            get_global_history_list_panel().on_sort_changed(index);
+        }
+    });
+
+    // Register detail overlay button callbacks
+    lv_xml_register_event_cb(nullptr, "history_detail_reprint", [](lv_event_t* /*e*/) {
+        get_global_history_list_panel().handle_reprint();
+    });
+    lv_xml_register_event_cb(nullptr, "history_detail_delete", [](lv_event_t* /*e*/) {
+        get_global_history_list_panel().handle_delete();
+    });
+    lv_xml_register_event_cb(nullptr, "history_detail_view_timelapse", [](lv_event_t* /*e*/) {
+        get_global_history_list_panel().handle_view_timelapse();
+    });
+
+    callbacks_registered_ = true;
+    spdlog::debug("[{}] Event callbacks registered", get_name());
+}
+
+// ============================================================================
+// Create
+// ============================================================================
+
+lv_obj_t* HistoryListPanel::create(lv_obj_t* parent) {
+    if (!parent) {
+        spdlog::error("[{}] Cannot create: null parent", get_name());
+        return nullptr;
+    }
+
+    spdlog::debug("[{}] Creating overlay from XML", get_name());
+
+    parent_screen_ = parent;
+
+    // Reset cleanup flag when (re)creating
+    cleanup_called_ = false;
+
+    // Create overlay from XML
+    overlay_root_ = static_cast<lv_obj_t*>(lv_xml_create(parent, "history_list_panel", nullptr));
+
+    if (!overlay_root_) {
+        spdlog::error("[{}] Failed to create from XML", get_name());
+        return nullptr;
+    }
 
     // Get widget references - list containers
-    list_content_ = lv_obj_find_by_name(panel_, "list_content");
-    list_rows_ = lv_obj_find_by_name(panel_, "list_rows");
-    empty_state_ = lv_obj_find_by_name(panel_, "empty_state");
+    list_content_ = lv_obj_find_by_name(overlay_root_, "list_content");
+    list_rows_ = lv_obj_find_by_name(overlay_root_, "list_rows");
+    empty_state_ = lv_obj_find_by_name(overlay_root_, "empty_state");
 
     // Get widget references - filter controls
-    search_box_ = lv_obj_find_by_name(panel_, "search_box");
-    filter_status_ = lv_obj_find_by_name(panel_, "filter_status");
-    sort_dropdown_ = lv_obj_find_by_name(panel_, "sort_dropdown");
+    search_box_ = lv_obj_find_by_name(overlay_root_, "search_box");
+    filter_status_ = lv_obj_find_by_name(overlay_root_, "filter_status");
+    sort_dropdown_ = lv_obj_find_by_name(overlay_root_, "sort_dropdown");
 
     spdlog::debug("[{}] Widget refs - content: {}, rows: {}, empty: {}", get_name(),
                   list_content_ != nullptr, list_rows_ != nullptr, empty_state_ != nullptr);
@@ -138,9 +192,6 @@ void HistoryListPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         lv_obj_set_style_text_font(sort_dropdown_, icon_font, LV_PART_INDICATOR);
     }
 
-    // Note: XML event callbacks are registered in init_global_history_list_panel()
-    // BEFORE the XML is created - that's when lv_xml_register_event_cb must be called
-
     // Attach scroll event handler for infinite scroll
     if (list_content_) {
         lv_obj_add_event_cb(list_content_, on_scroll_static, LV_EVENT_SCROLL_END, this);
@@ -149,7 +200,7 @@ void HistoryListPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Register connection state observer to auto-refresh when connected
     // This handles the case where the panel is opened before connection is established
     // ObserverGuard handles cleanup automatically in destructor
-    lv_subject_t* conn_subject = printer_state_.get_printer_connection_state_subject();
+    lv_subject_t* conn_subject = get_printer_state().get_printer_connection_state_subject();
     connection_observer_ = ObserverGuard(
         conn_subject,
         [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -164,7 +215,11 @@ void HistoryListPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         },
         this);
 
-    spdlog::info("[{}] Setup complete", get_name());
+    // Initially hidden
+    lv_obj_add_flag(overlay_root_, LV_OBJ_FLAG_HIDDEN);
+
+    spdlog::info("[{}] Overlay created successfully", get_name());
+    return overlay_root_;
 }
 
 // ============================================================================
@@ -172,6 +227,9 @@ void HistoryListPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
 // ============================================================================
 
 void HistoryListPanel::on_activate() {
+    // Call base class first
+    OverlayBase::on_activate();
+
     is_active_ = true;
     spdlog::debug("[{}] Activated - jobs_received: {}, job_count: {}", get_name(), jobs_received_,
                   jobs_.size());
@@ -217,8 +275,9 @@ void HistoryListPanel::on_activate() {
 }
 
 void HistoryListPanel::on_deactivate() {
+    spdlog::debug("[{}] on_deactivate()", get_name());
+
     is_active_ = false;
-    spdlog::debug("[{}] Deactivated", get_name());
 
     // Remove history manager observer
     if (history_manager_ && history_observer_) {
@@ -256,6 +315,9 @@ void HistoryListPanel::on_deactivate() {
     total_job_count_ = 0;
     is_loading_more_ = false;
     has_more_data_ = true;
+
+    // Call base class
+    OverlayBase::on_deactivate();
 }
 
 // ============================================================================
@@ -269,14 +331,15 @@ void HistoryListPanel::set_jobs(const std::vector<PrintHistoryJob>& jobs) {
 }
 
 void HistoryListPanel::refresh_from_api() {
-    if (!api_) {
+    MoonrakerAPI* api = get_moonraker_api();
+    if (!api) {
         spdlog::warn("[{}] Cannot refresh: API not set", get_name());
         return;
     }
 
     // Check if WebSocket is actually connected before attempting to send requests
     // This prevents the race condition where the panel is opened before connection is established
-    ConnectionState state = api_->get_client().get_connection_state();
+    ConnectionState state = api->get_client().get_connection_state();
     if (state != ConnectionState::CONNECTED) {
         spdlog::debug("[{}] Cannot fetch history: not connected (state={})", get_name(),
                       static_cast<int>(state));
@@ -291,7 +354,7 @@ void HistoryListPanel::refresh_from_api() {
 
     spdlog::debug("[{}] Fetching first page of history (limit={})", get_name(), PAGE_SIZE);
 
-    api_->get_history_list(
+    api->get_history_list(
         PAGE_SIZE, // limit - use page size
         0,         // start - first page
         0.0,       // since (no filter)
@@ -315,12 +378,13 @@ void HistoryListPanel::refresh_from_api() {
 }
 
 void HistoryListPanel::load_more() {
-    if (!api_ || is_loading_more_ || !has_more_data_) {
+    MoonrakerAPI* api = get_moonraker_api();
+    if (!api || is_loading_more_ || !has_more_data_) {
         return;
     }
 
     // Check if WebSocket is connected
-    ConnectionState state = api_->get_client().get_connection_state();
+    ConnectionState state = api->get_client().get_connection_state();
     if (state != ConnectionState::CONNECTED) {
         spdlog::debug("[{}] Cannot load more: not connected", get_name());
         return;
@@ -332,7 +396,7 @@ void HistoryListPanel::load_more() {
     spdlog::debug("[{}] Loading more jobs (start={}, limit={})", get_name(), start_offset,
                   PAGE_SIZE);
 
-    api_->get_history_list(
+    api->get_history_list(
         PAGE_SIZE,    // limit
         start_offset, // start - continue from where we left off
         0.0,          // since (no filter)
@@ -369,13 +433,14 @@ void HistoryListPanel::load_more() {
 }
 
 void HistoryListPanel::fetch_timelapse_files() {
-    if (!api_) {
+    MoonrakerAPI* api = get_moonraker_api();
+    if (!api) {
         apply_filters_and_sort();
         return;
     }
 
     // List files in the timelapse directory
-    api_->list_files(
+    api->list_files(
         "timelapse", // root
         "",          // path (root)
         false,       // non-recursive
@@ -747,21 +812,6 @@ void HistoryListPanel::apply_sort(std::vector<PrintHistoryJob>& jobs) {
 // Filter/Sort Event Handlers
 // ============================================================================
 
-void HistoryListPanel::on_search_changed_static(lv_event_t* e) {
-    // Get the textarea that fired the event
-    lv_obj_t* textarea = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    if (!textarea)
-        return;
-
-    // Find the panel instance (singleton pattern)
-    try {
-        auto& panel = get_global_history_list_panel();
-        panel.on_search_changed();
-    } catch (const std::exception& ex) {
-        spdlog::error("[History List] Search callback error: {}", ex.what());
-    }
-}
-
 void HistoryListPanel::on_search_changed() {
     // Cancel existing timer if any
     if (search_timer_) {
@@ -795,40 +845,10 @@ void HistoryListPanel::do_debounced_search() {
     apply_filters_and_sort();
 }
 
-void HistoryListPanel::on_status_filter_changed_static(lv_event_t* e) {
-    lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    if (!dropdown)
-        return;
-
-    int index = lv_dropdown_get_selected(dropdown);
-
-    try {
-        auto& panel = get_global_history_list_panel();
-        panel.on_status_filter_changed(index);
-    } catch (const std::exception& ex) {
-        spdlog::error("[History List] Status filter callback error: {}", ex.what());
-    }
-}
-
 void HistoryListPanel::on_status_filter_changed(int index) {
     status_filter_ = static_cast<HistoryStatusFilter>(index);
     spdlog::debug("[{}] Status filter changed to: {}", get_name(), index);
     apply_filters_and_sort();
-}
-
-void HistoryListPanel::on_sort_changed_static(lv_event_t* e) {
-    lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    if (!dropdown)
-        return;
-
-    int index = lv_dropdown_get_selected(dropdown);
-
-    try {
-        auto& panel = get_global_history_list_panel();
-        panel.on_sort_changed(index);
-    } catch (const std::exception& ex) {
-        spdlog::error("[History List] Sort callback error: {}", ex.what());
-    }
 }
 
 void HistoryListPanel::on_sort_changed(int index) {
@@ -955,10 +975,11 @@ void HistoryListPanel::show_detail_overlay(const PrintHistoryJob& job) {
             lv_obj_add_flag(thumbnail_image, LV_OBJ_FLAG_HIDDEN);
             lv_obj_remove_flag(thumbnail_fallback, LV_OBJ_FLAG_HIDDEN);
 
+            MoonrakerAPI* api = get_moonraker_api();
             // Use ThumbnailCache to fetch/download thumbnail
             auto* self = this;
             get_thumbnail_cache().fetch(
-                api_, job.thumbnail_path,
+                api, job.thumbnail_path,
                 // Success callback - may be called from background thread
                 // Capture generation counter, NOT widget pointers (avoids use-after-free)
                 [self, this_generation](const std::string& lvgl_path) {
@@ -1144,7 +1165,8 @@ void HistoryListPanel::handle_reprint() {
     ui_nav_set_active(UI_PANEL_PRINT_SELECT);
 
     // Step 3: Get PrintSelectPanel and navigate to file details
-    PrintSelectPanel* print_panel = get_print_select_panel(printer_state_, api_);
+    PrintSelectPanel* print_panel =
+        get_print_select_panel(get_printer_state(), get_moonraker_api());
     if (print_panel) {
         // select_file_by_name searches the file list and shows detail view if found
         if (print_panel->select_file_by_name(job.filename)) {
@@ -1186,8 +1208,9 @@ void HistoryListPanel::confirm_delete() {
 
     spdlog::info("[{}] Confirming delete for job_id: {}", get_name(), job_id);
 
-    if (api_) {
-        api_->delete_history_job(
+    MoonrakerAPI* api = get_moonraker_api();
+    if (api) {
+        api->delete_history_job(
             job_id,
             [this, job_id, filename]() {
                 spdlog::info("[{}] Job deleted: {} ({})", get_name(), filename, job_id);
@@ -1209,37 +1232,6 @@ void HistoryListPanel::confirm_delete() {
                               error.message);
                 ui_notification_error("Delete Failed", error.message.c_str(), false);
             });
-    }
-}
-
-// Static callbacks for detail overlay buttons
-void HistoryListPanel::on_detail_reprint_static(lv_event_t* e) {
-    (void)e; // Unused
-    try {
-        auto& panel = get_global_history_list_panel();
-        panel.handle_reprint();
-    } catch (const std::exception& ex) {
-        spdlog::error("[History List] Reprint callback error: {}", ex.what());
-    }
-}
-
-void HistoryListPanel::on_detail_delete_static(lv_event_t* e) {
-    (void)e; // Unused
-    try {
-        auto& panel = get_global_history_list_panel();
-        panel.handle_delete();
-    } catch (const std::exception& ex) {
-        spdlog::error("[History List] Delete callback error: {}", ex.what());
-    }
-}
-
-void HistoryListPanel::on_detail_view_timelapse_static(lv_event_t* e) {
-    (void)e; // Unused
-    try {
-        auto& panel = get_global_history_list_panel();
-        panel.handle_view_timelapse();
-    } catch (const std::exception& ex) {
-        spdlog::error("[History List] View timelapse callback error: {}", ex.what());
     }
 }
 

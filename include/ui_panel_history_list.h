@@ -4,15 +4,15 @@
 #pragma once
 
 #include "ui_observer_guard.h"
-#include "ui_panel_base.h"
 
+#include "overlay_base.h"
 #include "print_history_data.h"
 #include "print_history_manager.h"
 
 #include <string>
 #include <vector>
 
-// Forward declaration
+// Forward declarations
 struct FileInfo;
 
 /**
@@ -45,7 +45,7 @@ struct FileInfo;
  * 4. Caches job data for row click handling (indexes into filtered_jobs_)
  *
  * @see print_history_data.h for PrintHistoryJob struct
- * @see PanelBase for base class documentation
+ * @see OverlayBase for base class documentation
  */
 
 /**
@@ -74,22 +74,23 @@ enum class HistoryStatusFilter {
     FAILED = 2,    ///< Only failed/error jobs
     CANCELLED = 3  ///< Only cancelled jobs
 };
-class HistoryListPanel : public PanelBase {
+
+class HistoryListPanel : public OverlayBase {
   public:
     /**
-     * @brief Construct HistoryListPanel with injected dependencies
+     * @brief Default constructor
      *
-     * @param printer_state Reference to PrinterState
-     * @param api Pointer to MoonrakerAPI
-     * @param history_manager Pointer to PrintHistoryManager (shared cache)
+     * Dependencies are obtained from global accessors:
+     * - get_printer_state()
+     * - get_moonraker_api()
+     * - get_print_history_manager()
      */
-    HistoryListPanel(PrinterState& printer_state, MoonrakerAPI* api,
-                     PrintHistoryManager* history_manager);
+    HistoryListPanel();
 
     ~HistoryListPanel() override;
 
     //
-    // === PanelBase Implementation ===
+    // === OverlayBase Implementation ===
     //
 
     /**
@@ -101,18 +102,20 @@ class HistoryListPanel : public PanelBase {
     void init_subjects() override;
 
     /**
-     * @brief Setup the list panel with widget references and event handlers
-     *
-     * @param panel Root panel object from lv_xml_create()
-     * @param parent_screen Parent screen for overlay creation
+     * @brief Register XML event callbacks
      */
-    void setup(lv_obj_t* panel, lv_obj_t* parent_screen) override;
+    void register_callbacks() override;
 
-    const char* get_name() const override {
+    /**
+     * @brief Create the list panel from XML
+     *
+     * @param parent Parent widget (screen)
+     * @return Root widget of the overlay
+     */
+    lv_obj_t* create(lv_obj_t* parent) override;
+
+    [[nodiscard]] const char* get_name() const override {
         return "History List";
-    }
-    const char* get_xml_component_name() const override {
-        return "history_list_panel";
     }
 
     //
@@ -175,42 +178,6 @@ class HistoryListPanel : public PanelBase {
      */
     void associate_timelapse_files(const std::vector<FileInfo>& timelapse_files);
 
-    //
-    // === Static Event Callbacks (public for XML registration) ===
-    //
-
-    /**
-     * @brief Static callback for search text changes
-     * @note Registered with lv_xml_register_event_cb() in init_global_history_list_panel()
-     */
-    static void on_search_changed_static(lv_event_t* e);
-
-    /**
-     * @brief Static callback for status filter dropdown changes
-     */
-    static void on_status_filter_changed_static(lv_event_t* e);
-
-    /**
-     * @brief Static callback for sort dropdown changes
-     */
-    static void on_sort_changed_static(lv_event_t* e);
-
-    /**
-     * @brief Static callback for detail overlay reprint button
-     * @note Registered with lv_xml_register_event_cb() in init_global_history_list_panel()
-     */
-    static void on_detail_reprint_static(lv_event_t* e);
-
-    /**
-     * @brief Static callback for detail overlay delete button
-     */
-    static void on_detail_delete_static(lv_event_t* e);
-
-    /**
-     * @brief Static callback for detail overlay view timelapse button
-     */
-    static void on_detail_view_timelapse_static(lv_event_t* e);
-
   private:
     //
     // === Widget References ===
@@ -243,6 +210,12 @@ class HistoryListPanel : public PanelBase {
 
     /// Observer callback for history manager changes
     HistoryChangedCallback history_observer_;
+
+    // Parent screen reference
+    lv_obj_t* parent_screen_ = nullptr;
+
+    // Callback registration tracking
+    bool callbacks_registered_ = false;
 
     // Pagination state for infinite scroll
     static constexpr int PAGE_SIZE = 100; ///< Jobs per API request
@@ -510,20 +483,8 @@ class HistoryListPanel : public PanelBase {
 };
 
 /**
- * @brief Global instance accessor
+ * @brief Get global HistoryListPanel instance
  *
- * Returns reference to singleton HistoryListPanel used by main.cpp.
+ * Creates instance on first call. Used by static callbacks.
  */
 HistoryListPanel& get_global_history_list_panel();
-
-/**
- * @brief Initialize the global HistoryListPanel instance
- *
- * Must be called by main.cpp before accessing get_global_history_list_panel().
- *
- * @param printer_state Reference to PrinterState
- * @param api Pointer to MoonrakerAPI
- * @param history_manager Pointer to PrintHistoryManager (shared cache)
- */
-void init_global_history_list_panel(PrinterState& printer_state, MoonrakerAPI* api,
-                                    PrintHistoryManager* history_manager);
