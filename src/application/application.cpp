@@ -36,6 +36,7 @@
 #include "ui_icon_loader.h"
 #include "ui_keyboard.h"
 #include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_ams.h"
 #include "ui_panel_bed_mesh.h"
 #include "ui_panel_calibration_pid.h"
@@ -709,9 +710,19 @@ void Application::create_overlays() {
 
     // Create requested overlay panels
     if (m_args.overlays.motion) {
-        if (auto* p = create_overlay_panel(m_screen, "motion_panel", "motion")) {
+        auto& motion = get_global_motion_panel();
+
+        // Initialize subjects and callbacks if not already done
+        if (!motion.are_subjects_initialized()) {
+            motion.init_subjects();
+        }
+        motion.register_callbacks();
+
+        // Create overlay UI
+        auto* p = motion.create(m_screen);
+        if (p) {
             m_overlay_panels.motion = p;
-            get_global_motion_panel().setup(p, m_screen);
+            NavigationManager::instance().register_overlay_instance(p, &motion);
             ui_nav_push_overlay(p);
         }
     }

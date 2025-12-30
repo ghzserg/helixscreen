@@ -7,6 +7,7 @@
 #include "ui_event_safety.h"
 #include "ui_jog_pad.h"
 #include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_subject_registry.h"
 #include "ui_theme.h"
@@ -28,20 +29,44 @@ static void on_motion_z_up_1(lv_event_t* e);
 static void on_motion_z_down_1(lv_event_t* e);
 static void on_motion_z_down_10(lv_event_t* e);
 
-MotionPanel::MotionPanel(PrinterState& printer_state, MoonrakerAPI* api)
-    : PanelBase(printer_state, api) {
+// ============================================================================
+// Global Instance
+// ============================================================================
+
+static std::unique_ptr<MotionPanel> g_motion_panel;
+
+MotionPanel& get_global_motion_panel() {
+    if (!g_motion_panel) {
+        g_motion_panel = std::make_unique<MotionPanel>();
+    }
+    return *g_motion_panel;
+}
+
+// ============================================================================
+// Constructor
+// ============================================================================
+
+MotionPanel::MotionPanel() {
     // Initialize buffer contents
     std::strcpy(pos_x_buf_, "X:    --  mm");
     std::strcpy(pos_y_buf_, "Y:    --  mm");
     std::strcpy(pos_z_buf_, "Z:    --  mm");
     std::strcpy(z_axis_label_buf_, "Z Axis"); // Default before kinematics detected
+
+    spdlog::debug("[MotionPanel] Instance created");
 }
+
+// ============================================================================
+// Subject Initialization
+// ============================================================================
 
 void MotionPanel::init_subjects() {
     if (subjects_initialized_) {
-        spdlog::warn("[{}] init_subjects() called twice - ignoring", get_name());
+        spdlog::debug("[{}] Subjects already initialized", get_name());
         return;
     }
+
+    spdlog::debug("[{}] Initializing subjects", get_name());
 
     // Initialize position subjects with default placeholder values
     UI_SUBJECT_INIT_AND_REGISTER_STRING(pos_x_subject_, pos_x_buf_, "X:    --  mm", "motion_pos_x");
@@ -52,45 +77,119 @@ void MotionPanel::init_subjects() {
     UI_SUBJECT_INIT_AND_REGISTER_STRING(z_axis_label_subject_, z_axis_label_buf_, "Z Axis",
                                         "motion_z_axis_label");
 
+    // Register PrinterState observers (RAII - auto-removed on destruction)
+    register_position_observers();
+
+    subjects_initialized_ = true;
+    spdlog::debug("[{}] Subjects initialized: X/Y/Z position + Z-axis label + observers",
+                  get_name());
+}
+
+// ============================================================================
+// Callback Registration
+// ============================================================================
+
+void MotionPanel::register_callbacks() {
+    if (callbacks_registered_) {
+        spdlog::debug("[{}] Callbacks already registered", get_name());
+        return;
+    }
+
+    spdlog::debug("[{}] Registering event callbacks", get_name());
+
     // Register Z-axis button event callbacks for XML event_cb
     lv_xml_register_event_cb(nullptr, "on_motion_z_up_10", on_motion_z_up_10);
     lv_xml_register_event_cb(nullptr, "on_motion_z_up_1", on_motion_z_up_1);
     lv_xml_register_event_cb(nullptr, "on_motion_z_down_1", on_motion_z_down_1);
     lv_xml_register_event_cb(nullptr, "on_motion_z_down_10", on_motion_z_down_10);
 
-    // Register PrinterState observers (RAII - auto-removed on destruction)
-    register_position_observers();
-
-    subjects_initialized_ = true;
-    spdlog::debug(
-        "[{}] Subjects initialized: X/Y/Z position + Z-axis label + observers + Z callbacks",
-        get_name());
+    callbacks_registered_ = true;
+    spdlog::debug("[{}] Event callbacks registered", get_name());
 }
 
-void MotionPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
-    // Call base class to store panel_ and parent_screen_
-    PanelBase::setup(panel, parent_screen);
+// ============================================================================
+// Create
+// ============================================================================
 
-    if (!panel_) {
-        spdlog::error("[{}] NULL panel", get_name());
-        return;
+lv_obj_t* MotionPanel::create(lv_obj_t* parent) {
+    if (!parent) {
+        spdlog::error("[{}] Cannot create: null parent", get_name());
+        return nullptr;
     }
 
-    spdlog::debug("[{}] Setting up event handlers...", get_name());
+    spdlog::debug("[{}] Creating overlay from XML", get_name());
+
+    parent_screen_ = parent;
+
+    // Reset cleanup flag when (re)creating
+    cleanup_called_ = false;
+
+    // Create overlay from XML
+    overlay_root_ = static_cast<lv_obj_t*>(lv_xml_create(parent, "motion_panel", nullptr));
+
+    if (!overlay_root_) {
+        spdlog::error("[{}] Failed to create from XML", get_name());
+        return nullptr;
+    }
 
     // Use standard overlay panel setup (wires header, back button, handles responsive padding)
-    ui_overlay_panel_setup_standard(panel_, parent_screen_, "overlay_header", "overlay_content");
+    ui_overlay_panel_setup_standard(overlay_root_, parent_screen_, "overlay_header",
+                                    "overlay_content");
+
+    // Wire up header bar back button imperatively (exception for overlays)
+    lv_obj_t* header = lv_obj_find_by_name(overlay_root_, "overlay_header");
+    if (header) {
+        lv_obj_t* back_btn = lv_obj_find_by_name(header, "back_button");
+        if (back_btn) {
+            lv_obj_add_event_cb(
+                back_btn,
+                [](lv_event_t*) {
+                    spdlog::debug("[MotionPanel] Back button clicked");
+                    ui_nav_go_back();
+                },
+                LV_EVENT_CLICKED, nullptr);
+            spdlog::debug("[{}] Back button wired", get_name());
+        }
+    }
 
     // Setup jog pad and Z-axis controls
     setup_jog_pad();
     setup_z_buttons();
 
-    spdlog::debug("[{}] Setup complete!", get_name());
+    // Initially hidden
+    lv_obj_add_flag(overlay_root_, LV_OBJ_FLAG_HIDDEN);
+
+    spdlog::info("[{}] Overlay created successfully", get_name());
+    return overlay_root_;
 }
+
+// ============================================================================
+// Lifecycle Hooks
+// ============================================================================
+
+void MotionPanel::on_activate() {
+    // Call base class first
+    OverlayBase::on_activate();
+
+    spdlog::debug("[{}] on_activate()", get_name());
+
+    // Nothing special needed for motion panel on activation
+}
+
+void MotionPanel::on_deactivate() {
+    spdlog::debug("[{}] on_deactivate()", get_name());
+
+    // Call base class
+    OverlayBase::on_deactivate();
+}
+
+// ============================================================================
+// Jog Pad Setup
+// ============================================================================
 
 void MotionPanel::setup_jog_pad() {
     // Find overlay_content to access motion panel widgets
-    lv_obj_t* overlay_content = lv_obj_find_by_name(panel_, "overlay_content");
+    lv_obj_t* overlay_content = lv_obj_find_by_name(overlay_root_, "overlay_content");
     if (!overlay_content) {
         spdlog::error("[{}] overlay_content not found!", get_name());
         return;
@@ -111,7 +210,7 @@ void MotionPanel::setup_jog_pad() {
     lv_coord_t screen_height = lv_display_get_vertical_resolution(disp);
 
     // Get header height (varies by screen size: 50-70px)
-    lv_obj_t* header = lv_obj_find_by_name(panel_, "overlay_header");
+    lv_obj_t* header = lv_obj_find_by_name(overlay_root_, "overlay_header");
     lv_coord_t header_height = header ? lv_obj_get_height(header) : 60;
 
     // Available height = screen height - header - padding (40px top+bottom)
@@ -145,27 +244,30 @@ void MotionPanel::setup_jog_pad() {
 }
 
 void MotionPanel::setup_z_buttons() {
-    // Z buttons use declarative XML event_cb - callbacks registered in init_subjects()
-    // No imperative lv_obj_add_event_cb() needed
+    // Z buttons use declarative XML event_cb - callbacks registered in register_callbacks()
     spdlog::debug("[{}] Z-axis controls (declarative XML event_cb)", get_name());
 }
+
+// ============================================================================
+// Position Observers
+// ============================================================================
 
 void MotionPanel::register_position_observers() {
     // Subscribe to PrinterState position updates so UI reflects real printer position
     // Using ObserverGuard for RAII - observers automatically removed on destruction
 
     position_x_observer_ =
-        ObserverGuard(printer_state_.get_position_x_subject(), on_position_x_changed, this);
+        ObserverGuard(get_printer_state().get_position_x_subject(), on_position_x_changed, this);
 
     position_y_observer_ =
-        ObserverGuard(printer_state_.get_position_y_subject(), on_position_y_changed, this);
+        ObserverGuard(get_printer_state().get_position_y_subject(), on_position_y_changed, this);
 
     position_z_observer_ =
-        ObserverGuard(printer_state_.get_position_z_subject(), on_position_z_changed, this);
+        ObserverGuard(get_printer_state().get_position_z_subject(), on_position_z_changed, this);
 
     // Watch for kinematics changes to update Z-axis label ("Bed" vs "Print Head")
-    bed_moves_observer_ =
-        ObserverGuard(printer_state_.get_printer_bed_moves_subject(), on_bed_moves_changed, this);
+    bed_moves_observer_ = ObserverGuard(get_printer_state().get_printer_bed_moves_subject(),
+                                        on_bed_moves_changed, this);
 
     spdlog::debug("[{}] Position + kinematics observers registered (RAII ObserverGuard)",
                   get_name());
@@ -222,6 +324,10 @@ void MotionPanel::update_z_axis_label(bool bed_moves) {
     spdlog::debug("[{}] Z-axis label updated: {} (bed_moves={})", get_name(), label, bed_moves);
 }
 
+// ============================================================================
+// Z Button Handler
+// ============================================================================
+
 void MotionPanel::handle_z_button(const char* name) {
     spdlog::debug("[{}] Z button callback fired! Button name: '{}'", get_name(),
                   name ? name : "(null)");
@@ -257,17 +363,22 @@ void MotionPanel::handle_z_button(const char* name) {
 
     spdlog::debug("[{}] Z jog: {:+.0f}mm (bed_moves={})", get_name(), distance, bed_moves_);
 
-    if (api_) {
+    MoonrakerAPI* api = get_moonraker_api();
+    if (api) {
         // Z feedrate: 600 mm/min (10 mm/s) - slower for safety
         constexpr double Z_FEEDRATE = 600.0;
 
-        api_->move_axis(
+        api->move_axis(
             'Z', distance, Z_FEEDRATE, []() { spdlog::debug("[MotionPanel] Z jog complete"); },
             [](const MoonrakerError& err) {
                 NOTIFY_ERROR("Z jog failed: {}", err.user_message());
             });
     }
 }
+
+// ============================================================================
+// Jog Pad Callbacks
+// ============================================================================
 
 void MotionPanel::jog_pad_jog_cb(jog_direction_t direction, float distance_mm, void* user_data) {
     auto* self = static_cast<MotionPanel*>(user_data);
@@ -282,6 +393,10 @@ void MotionPanel::jog_pad_home_cb(void* user_data) {
         self->home('A'); // Home XY
     }
 }
+
+// ============================================================================
+// Public API
+// ============================================================================
 
 void MotionPanel::set_position(float x, float y, float z) {
     current_x_ = x;
@@ -342,12 +457,13 @@ void MotionPanel::jog(jog_direction_t direction, float distance_mm) {
     }
 
     // Send jog commands via Moonraker API
-    if (api_) {
+    MoonrakerAPI* api = get_moonraker_api();
+    if (api) {
         // Default feedrate: 6000 mm/min (100 mm/s) for XY jog moves
         constexpr double JOG_FEEDRATE = 6000.0;
 
         if (dx != 0.0f) {
-            api_->move_axis(
+            api->move_axis(
                 'X', static_cast<double>(dx), JOG_FEEDRATE,
                 []() { spdlog::debug("[MotionPanel] X jog complete"); },
                 [](const MoonrakerError& err) {
@@ -355,7 +471,7 @@ void MotionPanel::jog(jog_direction_t direction, float distance_mm) {
                 });
         }
         if (dy != 0.0f) {
-            api_->move_axis(
+            api->move_axis(
                 'Y', static_cast<double>(dy), JOG_FEEDRATE,
                 []() { spdlog::debug("[MotionPanel] Y jog complete"); },
                 [](const MoonrakerError& err) {
@@ -368,7 +484,8 @@ void MotionPanel::jog(jog_direction_t direction, float distance_mm) {
 void MotionPanel::home(char axis) {
     spdlog::debug("[{}] Home command: {} axis", get_name(), axis);
 
-    if (api_) {
+    MoonrakerAPI* api = get_moonraker_api();
+    if (api) {
         // Convert axis char to string for API ("" for all, "X", "Y", "Z", or "XY")
         std::string axes_str;
         if (axis == 'A') {
@@ -377,7 +494,7 @@ void MotionPanel::home(char axis) {
             axes_str = std::string(1, axis);
         }
 
-        api_->home_axes(
+        api->home_axes(
             axes_str,
             [axis]() {
                 if (axis == 'A') {
@@ -392,7 +509,10 @@ void MotionPanel::home(char axis) {
     }
 }
 
-// Static callbacks for XML event_cb (Z-axis buttons)
+// ============================================================================
+// Static Callbacks for XML event_cb (Z-axis buttons)
+// ============================================================================
+
 static void on_motion_z_up_10(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[MotionPanel] on_motion_z_up_10");
     (void)e;
@@ -419,13 +539,4 @@ static void on_motion_z_down_10(lv_event_t* e) {
     (void)e;
     get_global_motion_panel().handle_z_button("z_down_10");
     LVGL_SAFE_EVENT_CB_END();
-}
-
-static std::unique_ptr<MotionPanel> g_motion_panel;
-
-MotionPanel& get_global_motion_panel() {
-    if (!g_motion_panel) {
-        g_motion_panel = std::make_unique<MotionPanel>(get_printer_state(), nullptr);
-    }
-    return *g_motion_panel;
 }

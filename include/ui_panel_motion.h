@@ -4,11 +4,15 @@
 #pragma once
 
 #include "ui_observer_guard.h"
-#include "ui_panel_base.h"
+
+#include "overlay_base.h"
 
 /**
  * @file ui_panel_motion.h
  * @brief Motion panel - XYZ movement and homing control
+ *
+ * Overlay panel for jogging the printer head in X/Y/Z directions and homing axes.
+ * Uses OverlayBase pattern with lifecycle hooks.
  */
 
 // Jog distance options
@@ -31,22 +35,26 @@ typedef enum {
     JOG_DIR_SW  // -X-Y
 } jog_direction_t;
 
-class MotionPanel : public PanelBase {
+class MotionPanel : public OverlayBase {
   public:
-    MotionPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    MotionPanel();
     ~MotionPanel() override = default;
 
+    // === OverlayBase interface ===
     void init_subjects() override;
-    void setup(lv_obj_t* panel, lv_obj_t* parent_screen) override;
+    void register_callbacks() override;
+    lv_obj_t* create(lv_obj_t* parent) override;
     const char* get_name() const override {
         return "Motion Panel";
     }
-    const char* get_xml_component_name() const override {
-        return "motion_panel";
-    }
 
+    // === Lifecycle hooks ===
+    void on_activate() override;
+    void on_deactivate() override;
+
+    // === Public API ===
     lv_obj_t* get_panel() const {
-        return panel_;
+        return overlay_root_;
     }
     void set_position(float x, float y, float z);
     jog_distance_t get_distance() const {
@@ -73,6 +81,8 @@ class MotionPanel : public PanelBase {
     float current_z_ = 0.0f;
 
     lv_obj_t* jog_pad_ = nullptr;
+    lv_obj_t* parent_screen_ = nullptr;
+    bool callbacks_registered_ = false;
 
     ObserverGuard position_x_observer_;
     ObserverGuard position_y_observer_;

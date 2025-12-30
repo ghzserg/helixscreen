@@ -8,6 +8,7 @@
 #include "ui_fonts.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_notification.h"
 #include "ui_panel_extrusion.h"
 #include "ui_panel_fan.h"
@@ -559,15 +560,23 @@ void ControlsPanel::handle_quick_actions_clicked() {
 
     // Create motion panel on first access (lazy initialization)
     if (!motion_panel_ && parent_screen_) {
-        motion_panel_ =
-            static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "motion_panel", nullptr));
-        if (motion_panel_) {
-            get_global_motion_panel().setup(motion_panel_, parent_screen_);
-            // Panel starts hidden via XML hidden="true" attribute
-        } else {
+        auto& motion = get_global_motion_panel();
+
+        // Initialize subjects and callbacks if not already done
+        if (!motion.are_subjects_initialized()) {
+            motion.init_subjects();
+        }
+        motion.register_callbacks();
+
+        // Create overlay UI
+        motion_panel_ = motion.create(parent_screen_);
+        if (!motion_panel_) {
             NOTIFY_ERROR("Failed to load motion panel");
             return;
         }
+
+        // Register with NavigationManager for lifecycle callbacks
+        NavigationManager::instance().register_overlay_instance(motion_panel_, &motion);
     }
 
     if (motion_panel_) {

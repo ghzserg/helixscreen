@@ -100,9 +100,7 @@ void SubjectInitializer::inject_api(MoonrakerAPI* api) {
     if (m_print_status_panel) {
         m_print_status_panel->set_api(api);
     }
-    if (m_motion_panel) {
-        m_motion_panel->set_api(api);
-    }
+    // MotionPanel now uses get_moonraker_api() global - no set_api() needed
     if (m_extrusion_panel) {
         m_extrusion_panel->set_api(api);
     }

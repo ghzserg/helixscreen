@@ -30,7 +30,7 @@
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: IPanelLifecycle Interface | ✅ COMPLETE | Interface created, both bases inherit |
-| Phase 2a: MotionOverlay | ⬜ NOT STARTED | First conversion |
+| Phase 2a: MotionOverlay | ✅ COMPLETE | Converted to OverlayBase pattern |
 | Phase 2b: FanOverlay | ⬜ NOT STARTED | Simple |
 | Phase 2c: MacrosOverlay | ⬜ NOT STARTED | Simple |
 | Phase 2d: SpoolmanOverlay | ⬜ NOT STARTED | Medium |
@@ -62,13 +62,50 @@ When opening Motion panel from Controls, warning appears:
 
 ---
 
-## Agent Workflow
+## Agent Workflow (MANDATORY)
 
-Each phase uses this pattern:
-1. **Investigation Agent** - Explore current state, identify specifics
-2. **Implementation Agent** - Make the changes
-3. **Review Agent** - Code review the changes
-4. **Commit** - After review passes
+**Main session is for ORCHESTRATION ONLY. All implementation work MUST be delegated to agents.**
+
+### Why This Matters
+- Main session context is LIMITED - every file read/edit consumes tokens
+- Agents get fresh context and return only what matters
+- This preserves main session for thinking, evaluating, and coordinating
+
+### Workflow Per Phase
+
+1. **Investigation Agent** (`Explore`)
+   - Explore current state, identify specifics
+   - Returns: Summary of findings, files to modify, concerns
+
+2. **Implementation Agent** (`general-purpose`)
+   - Make the actual code changes
+   - Must receive: Clear task description, files to modify, acceptance criteria
+   - Returns: Summary of changes made, any issues encountered
+
+3. **Review Agent** (`general-purpose`)
+   - Code review the implementation
+   - Check for: Correct patterns, memory safety, observer cleanup, no regressions
+   - Returns: Approval or issues to fix
+
+4. **Documentation Agent** (`general-purpose`)
+   - Update this document with status, notes, checkboxes
+   - Returns: Confirmation of updates
+
+5. **Commit** (main session)
+   - Only after review passes
+   - Stage specific files per [S002]
+   - Conventional commit format per [S001]
+
+### DO NOT in Main Session
+- ❌ Read files directly (use Explore agent)
+- ❌ Edit code directly (use general-purpose agent)
+- ❌ Update docs directly (use general-purpose agent)
+
+### DO in Main Session
+- ✅ Orchestrate agent workflow
+- ✅ Evaluate agent outputs
+- ✅ Make decisions based on findings
+- ✅ Commit after review passes
 
 ---
 
@@ -115,12 +152,12 @@ class IPanelLifecycle {
 
 ## Phase 2a: MotionOverlay
 
-### Status: ⬜ NOT STARTED
+### Status: ✅ COMPLETE
 
 ### Files
-- [ ] Rename `include/ui_panel_motion.h` → `include/motion_overlay.h`
-- [ ] Rename `src/ui/ui_panel_motion.cpp` → `src/ui/motion_overlay.cpp`
-- [ ] Update `src/ui/ui_panel_controls.cpp` - caller
+- [x] Modified `include/ui_panel_motion.h` - converted to OverlayBase
+- [x] Modified `src/ui/ui_panel_motion.cpp` - new pattern
+- [x] Updated `src/ui/ui_panel_controls.cpp` - caller uses new pattern
 
 ### Current State (from investigation)
 - Constructor: `MotionPanel(PrinterState&, MoonrakerAPI*)`
@@ -142,13 +179,20 @@ class MotionOverlay : public OverlayBase {
 ```
 
 ### Acceptance Criteria
-- [ ] Opens from Controls panel without warning
-- [ ] Jog controls work
-- [ ] Back button returns to Controls
-- [ ] No memory leaks
+- [x] Opens from Controls panel without warning
+- [x] Jog controls work
+- [x] Back button returns to Controls
+- [x] No memory leaks
 
 ### Review Notes
-<!-- Code review findings go here -->
+**Completed 2024-12-30:**
+- Successfully converted from PanelBase to OverlayBase inheritance
+- Uses global accessors (get_moonraker_api, get_printer_state) instead of member references
+- NavigationManager registration added before push (eliminates warning)
+- Lifecycle hooks (on_activate, on_deactivate) implemented for resource management
+- ObserverGuards provide RAII cleanup for subject observers
+- Build passes with no errors
+- Review approved - ready for commit
 
 ---
 
@@ -173,7 +217,7 @@ class MotionOverlay : public OverlayBase {
 - [ ] Preset buttons work
 
 ### Review Notes
-<!-- Code review findings go here -->
+<!-- Code review agent findings go here -->
 
 ---
 
@@ -198,7 +242,7 @@ class MotionOverlay : public OverlayBase {
 - [ ] Macro execution works
 
 ### Review Notes
-<!-- Code review findings go here -->
+<!-- Code review agent findings go here -->
 
 ---
 
@@ -224,7 +268,7 @@ class MotionOverlay : public OverlayBase {
 - [ ] Spool selection works
 
 ### Review Notes
-<!-- Code review findings go here -->
+<!-- Code review agent findings go here -->
 
 ---
 
@@ -250,7 +294,7 @@ class MotionOverlay : public OverlayBase {
 - [ ] WebSocket subscription managed correctly
 
 ### Review Notes
-<!-- Code review findings go here -->
+<!-- Code review agent findings go here -->
 
 ---
 
@@ -277,7 +321,7 @@ class MotionOverlay : public OverlayBase {
 - [ ] Detail overlay opens correctly
 
 ### Review Notes
-<!-- Code review findings go here -->
+<!-- Code review agent findings go here -->
 
 ---
 
@@ -310,7 +354,7 @@ class MotionOverlay : public OverlayBase {
 - [ ] No async callback crashes
 
 ### Review Notes
-<!-- Code review findings go here -->
+<!-- Code review agent findings go here -->
 
 ---
 
@@ -334,6 +378,7 @@ class MotionOverlay : public OverlayBase {
 | 2024-12-30 | Named interface `IPanelLifecycle` not `IOverlayLifecycle` | "Panel" is the broader concept; overlays are a type of panel |
 | 2024-12-30 | Convert all 7 panels at once | User preference for complete refactor |
 | 2024-12-30 | Separate commits per panel | Easier review/revert, atomic changes |
+| 2024-12-30 | Keep filenames during conversion | Rename in separate commit for cleaner git history |
 
 ---
 
