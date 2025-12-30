@@ -941,14 +941,15 @@ class PrinterState {
     lv_subject_t bed_target_;
 
     // Print progress subjects
-    lv_subject_t print_progress_;         // Integer 0-100
-    lv_subject_t print_filename_;         // String buffer
-    lv_subject_t print_state_;            // String buffer (for UI display binding)
-    lv_subject_t print_state_enum_;       // Integer: PrintJobState enum (for type-safe logic)
-    lv_subject_t print_active_;           // Integer: 1 when PRINTING/PAUSED, 0 otherwise
-    lv_subject_t print_show_progress_;    // Integer: 1 when active AND not in start phase
-    lv_subject_t print_display_filename_; // String: clean filename for UI display
-    lv_subject_t print_thumbnail_path_;   // String: LVGL path to current print thumbnail
+    lv_subject_t print_progress_;          // Integer 0-100
+    lv_subject_t print_filename_;          // String buffer
+    lv_subject_t print_state_;             // String buffer (for UI display binding)
+    lv_subject_t print_state_enum_;        // Integer: PrintJobState enum (for type-safe logic)
+    bool complete_standby_logged_ = false; // Log spam guard for COMPLETE->STANDBY
+    lv_subject_t print_active_;            // Integer: 1 when PRINTING/PAUSED, 0 otherwise
+    lv_subject_t print_show_progress_;     // Integer: 1 when active AND not in start phase
+    lv_subject_t print_display_filename_;  // String: clean filename for UI display
+    lv_subject_t print_thumbnail_path_;    // String: LVGL path to current print thumbnail
 
     // Layer tracking subjects (from Moonraker print_stats.info)
     lv_subject_t print_layer_current_; // Current layer (0-based)

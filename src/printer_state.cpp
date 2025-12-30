@@ -497,10 +497,14 @@ void PrinterState::update_from_status(const json& state) {
             // We want to keep showing "Print Complete!" until a NEW print starts.
             // Only a transition to PRINTING should clear the complete state.
             if (current_state == PrintJobState::COMPLETE && new_state == PrintJobState::STANDBY) {
-                spdlog::debug("[PrinterState] Ignoring COMPLETE -> STANDBY transition "
-                              "(preserving complete state for UI)");
+                if (!complete_standby_logged_) {
+                    spdlog::debug("[PrinterState] Ignoring COMPLETE -> STANDBY transition "
+                                  "(preserving complete state for UI)");
+                    complete_standby_logged_ = true;
+                }
                 // Still update print_active to 0 below, but keep print_state_enum at COMPLETE
             } else {
+                complete_standby_logged_ = false; // Reset on any actual state change
                 if (new_state != current_state) {
                     spdlog::info("[PrinterState] print_stats.state: '{}' -> enum {} (was {})",
                                  state_str, static_cast<int>(new_state),
