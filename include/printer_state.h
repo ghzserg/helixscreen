@@ -498,6 +498,7 @@ class PrinterState {
     lv_subject_t* get_homed_axes_subject() {
         return &homed_axes_;
     } // "xyz", "xy", etc.
+    // Note: Derived subjects (xy_homed, z_homed, all_homed) are panel-local in ControlsPanel
 
     // Speed/Flow subjects (percentages, 0-100)
     lv_subject_t* get_speed_factor_subject() {
@@ -972,7 +973,7 @@ class PrinterState {
     lv_subject_t position_x_;
     lv_subject_t position_y_;
     lv_subject_t position_z_;
-    lv_subject_t homed_axes_; // String buffer
+    lv_subject_t homed_axes_; // String buffer (derived subjects are panel-local)
 
     // Speed/Flow/Z-offset subjects (from gcode_move status)
     lv_subject_t speed_factor_;

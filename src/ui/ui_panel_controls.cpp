@@ -77,11 +77,6 @@ ControlsPanel::~ControlsPanel() {
         lv_obj_del(fan_panel_);
         fan_panel_ = nullptr;
     }
-    // Modal dialogs: use ui_modal_hide() - NOT lv_obj_del()!
-    if (calibration_modal_) {
-        ui_modal_hide(calibration_modal_);
-        calibration_modal_ = nullptr;
-    }
     if (bed_mesh_panel_) {
         lv_obj_del(bed_mesh_panel_);
         bed_mesh_panel_ = nullptr;
@@ -152,10 +147,17 @@ void ControlsPanel::init_subjects() {
     UI_SUBJECT_INIT_AND_REGISTER_STRING(z_offset_delta_display_subject_,
                                         z_offset_delta_display_buf_, "", "z_offset_delta_display");
 
-    // Note: Calibration modal uses ui_modal_show() pattern, no visibility subject needed
+    // Homing status subjects for bind_style visual feedback
+    UI_SUBJECT_INIT_AND_REGISTER_INT(xy_homed_, 0, "xy_homed");
+    UI_SUBJECT_INIT_AND_REGISTER_INT(z_homed_, 0, "z_homed");
+    UI_SUBJECT_INIT_AND_REGISTER_INT(all_homed_, 0, "all_homed");
 
-    // Register calibration modal event callbacks (XML event_cb references)
-    lv_xml_register_event_cb(nullptr, "on_calibration_modal_close", on_calibration_modal_close);
+    // Observe homed_axes from PrinterState to update homing subjects
+    if (auto* homed = printer_state_.get_homed_axes_subject()) {
+        homed_axes_observer_ = ObserverGuard(homed, on_homed_axes_changed, this);
+    }
+
+    // Register calibration button event callbacks (direct buttons in card, no modal)
     lv_xml_register_event_cb(nullptr, "on_calibration_bed_mesh", on_calibration_bed_mesh);
     lv_xml_register_event_cb(nullptr, "on_calibration_zoffset", on_calibration_zoffset);
     lv_xml_register_event_cb(nullptr, "on_calibration_screws", on_calibration_screws);
@@ -183,7 +185,6 @@ void ControlsPanel::init_subjects() {
     lv_xml_register_event_cb(nullptr, "on_nozzle_temp_clicked", on_nozzle_temp_clicked);
     lv_xml_register_event_cb(nullptr, "on_bed_temp_clicked", on_bed_temp_clicked);
     lv_xml_register_event_cb(nullptr, "on_controls_cooling", on_cooling_clicked);
-    lv_xml_register_event_cb(nullptr, "on_controls_calibration", on_calibration_clicked);
 
     subjects_initialized_ = true;
     spdlog::debug("[{}] Dashboard subjects initialized", get_name());
@@ -831,34 +832,8 @@ void ControlsPanel::handle_motors_cancel() {
     }
 }
 
-void ControlsPanel::handle_calibration_clicked() {
-    spdlog::debug("[{}] Calibration & Tools card clicked - showing modal", get_name());
-
-    // Show calibration modal via Modal system (creates backdrop programmatically)
-    calibration_modal_ = ui_modal_show("calibration_modal");
-
-    if (!calibration_modal_) {
-        LOG_ERROR_INTERNAL("Failed to create calibration modal from XML");
-        NOTIFY_ERROR("Failed to load calibration menu");
-        return;
-    }
-
-    spdlog::debug("[{}] Calibration modal shown", get_name());
-}
-
-void ControlsPanel::handle_calibration_modal_close() {
-    spdlog::debug("[{}] Calibration modal close clicked", get_name());
-
-    // Hide modal via Modal system
-    if (calibration_modal_) {
-        ui_modal_hide(calibration_modal_);
-        calibration_modal_ = nullptr;
-    }
-}
-
 void ControlsPanel::handle_calibration_bed_mesh() {
     spdlog::debug("[{}] Bed Mesh button clicked", get_name());
-    handle_calibration_modal_close();
 
     if (!bed_mesh_panel_ && parent_screen_) {
         auto& overlay = get_global_bed_mesh_panel();
@@ -881,7 +856,6 @@ void ControlsPanel::handle_calibration_bed_mesh() {
 
 void ControlsPanel::handle_calibration_zoffset() {
     spdlog::debug("[{}] Z-Offset Calibration button clicked", get_name());
-    handle_calibration_modal_close();
 
     if (!zoffset_panel_ && parent_screen_) {
         auto& overlay = get_global_zoffset_cal_panel();
@@ -904,7 +878,6 @@ void ControlsPanel::handle_calibration_zoffset() {
 
 void ControlsPanel::handle_calibration_screws() {
     spdlog::debug("[{}] Bed Screws button clicked", get_name());
-    handle_calibration_modal_close();
 
     if (!screws_panel_ && parent_screen_) {
         auto& overlay = get_global_screws_tilt_panel();
@@ -926,12 +899,7 @@ void ControlsPanel::handle_calibration_screws() {
 }
 
 void ControlsPanel::handle_calibration_motors() {
-    spdlog::debug("[{}] Disable Motors button clicked from calibration modal", get_name());
-
-    // Hide modal first
-    handle_calibration_modal_close();
-
-    // Reuse the existing motors confirmation dialog
+    spdlog::debug("[{}] Disable Motors button clicked", get_name());
     handle_motors_clicked();
 }
 
@@ -974,13 +942,6 @@ void ControlsPanel::on_cooling_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-void ControlsPanel::on_calibration_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[ControlsPanel] on_calibration_clicked");
-    (void)e;
-    get_global_controls_panel().handle_calibration_clicked();
-    LVGL_SAFE_EVENT_CB_END();
-}
-
 void ControlsPanel::on_motors_confirm(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[ControlsPanel] on_motors_confirm");
     auto* self = static_cast<ControlsPanel*>(lv_event_get_user_data(e));
@@ -1000,15 +961,8 @@ void ControlsPanel::on_motors_cancel(lv_event_t* e) {
 }
 
 // ============================================================================
-// CALIBRATION MODAL TRAMPOLINES (XML event_cb - use global accessor)
+// CALIBRATION BUTTON TRAMPOLINES (XML event_cb - use global accessor)
 // ============================================================================
-
-void ControlsPanel::on_calibration_modal_close(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[ControlsPanel] on_calibration_modal_close");
-    (void)e; // XML event_cb doesn't pass user_data through
-    get_global_controls_panel().handle_calibration_modal_close();
-    LVGL_SAFE_EVENT_CB_END();
-}
 
 void ControlsPanel::on_calibration_bed_mesh(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[ControlsPanel] on_calibration_bed_mesh");
@@ -1149,6 +1103,38 @@ void ControlsPanel::on_pending_z_offset_changed(lv_observer_t* obs, lv_subject_t
         int delta_microns = lv_subject_get_int(subject);
         self->update_z_offset_delta_display(delta_microns);
     }
+}
+
+void ControlsPanel::on_homed_axes_changed(lv_observer_t* obs, lv_subject_t* subject) {
+    auto* self = static_cast<ControlsPanel*>(lv_observer_get_user_data(obs));
+    if (!self)
+        return;
+
+    const char* axes = lv_subject_get_string(subject);
+    if (!axes)
+        axes = "";
+
+    bool has_x = strchr(axes, 'x') != nullptr;
+    bool has_y = strchr(axes, 'y') != nullptr;
+    bool has_z = strchr(axes, 'z') != nullptr;
+
+    int xy = (has_x && has_y) ? 1 : 0;
+    int z = has_z ? 1 : 0;
+    int all = (has_x && has_y && has_z) ? 1 : 0;
+
+    // Only update if changed (avoid unnecessary redraws)
+    if (lv_subject_get_int(&self->xy_homed_) != xy) {
+        lv_subject_set_int(&self->xy_homed_, xy);
+    }
+    if (lv_subject_get_int(&self->z_homed_) != z) {
+        lv_subject_set_int(&self->z_homed_, z);
+    }
+    if (lv_subject_get_int(&self->all_homed_) != all) {
+        lv_subject_set_int(&self->all_homed_, all);
+    }
+
+    spdlog::debug("[Controls Panel] Homing status: xy={}, z={}, all={} (axes='{}')", xy, z, all,
+                  axes);
 }
 
 // ============================================================================

@@ -150,8 +150,6 @@ class ControlsPanel : public PanelBase {
     char macro_1_name_buf_[64] = {};
     char macro_2_name_buf_[64] = {};
 
-    // Note: Calibration modal uses ui_modal_show pattern (pointer is calibration_modal_ below)
-
     //
     // === Cached Values (for display update efficiency) ===
     //
@@ -180,7 +178,6 @@ class ControlsPanel : public PanelBase {
     lv_obj_t* nozzle_temp_panel_ = nullptr;
     lv_obj_t* bed_temp_panel_ = nullptr;
     lv_obj_t* fan_panel_ = nullptr;
-    lv_obj_t* calibration_modal_ = nullptr;
     lv_obj_t* bed_mesh_panel_ = nullptr;
     lv_obj_t* zoffset_panel_ = nullptr;
     lv_obj_t* screws_panel_ = nullptr;
@@ -204,6 +201,15 @@ class ControlsPanel : public PanelBase {
     lv_subject_t z_offset_delta_display_subject_{}; // Formatted delta string (e.g., "+0.05mm")
     char z_offset_delta_display_buf_[32] = {};
     ObserverGuard pending_z_offset_observer_; // Observer to update display when delta changes
+
+    //
+    // === Homing Status Subjects (for bind_style visual feedback) ===
+    //
+
+    lv_subject_t xy_homed_{};           // 1 if X and Y are homed
+    lv_subject_t z_homed_{};            // 1 if Z is homed
+    lv_subject_t all_homed_{};          // 1 if all axes are homed
+    ObserverGuard homed_axes_observer_; // Observer for PrinterState::homed_axes_
 
     //
     // === Private Helpers ===
@@ -231,7 +237,6 @@ class ControlsPanel : public PanelBase {
     void handle_nozzle_temp_clicked();
     void handle_bed_temp_clicked();
     void handle_cooling_clicked();
-    void handle_calibration_clicked();
 
     //
     // === Quick Action Button Handlers ===
@@ -256,7 +261,6 @@ class ControlsPanel : public PanelBase {
     void handle_motors_clicked();
     void handle_motors_confirm();
     void handle_motors_cancel();
-    void handle_calibration_modal_close();
     void handle_calibration_bed_mesh();
     void handle_calibration_zoffset();
     void handle_calibration_screws();
@@ -271,15 +275,13 @@ class ControlsPanel : public PanelBase {
     static void on_nozzle_temp_clicked(lv_event_t* e);
     static void on_bed_temp_clicked(lv_event_t* e);
     static void on_cooling_clicked(lv_event_t* e);
-    static void on_calibration_clicked(lv_event_t* e);
     static void on_motors_confirm(lv_event_t* e);
     static void on_motors_cancel(lv_event_t* e);
 
     //
-    // === Calibration Modal Trampolines (XML event_cb - global accessor) ===
+    // === Calibration Button Trampolines (XML event_cb - global accessor) ===
     //
 
-    static void on_calibration_modal_close(lv_event_t* e);
     static void on_calibration_bed_mesh(lv_event_t* e);
     static void on_calibration_zoffset(lv_event_t* e);
     static void on_calibration_screws(lv_event_t* e);
@@ -308,6 +310,7 @@ class ControlsPanel : public PanelBase {
     static void on_fan_changed(lv_observer_t* obs, lv_subject_t* subject);
     static void on_fans_version_changed(lv_observer_t* obs, lv_subject_t* subject);
     static void on_pending_z_offset_changed(lv_observer_t* obs, lv_subject_t* subject);
+    static void on_homed_axes_changed(lv_observer_t* obs, lv_subject_t* subject);
 };
 
 // Global instance accessor (needed by main.cpp and XML event_cb trampolines)

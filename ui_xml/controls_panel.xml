@@ -3,6 +3,10 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Controls Panel Dashboard V2 - 5 smart cards with live data -->
 <component>
+  <styles>
+    <style name="home_btn_homed" bg_color="#success_color" text_color="#text_primary"/>
+    <style name="home_btn_unhomed" bg_color="#card_bg"/>
+  </styles>
   <!-- Main container: 3+2 layout (3 cards top, 2 cards bottom) -->
   <!-- NOTE: Using explicit heights (50%) instead of flex-grow to work around LVGL bug
        where hidden objects affect flex-grow space calculation -->
@@ -50,20 +54,26 @@
                 height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
                 flex_flow="row" flex_main_place="center" style_pad_gap="#space_xs" style_pad_top="#space_sm">
           <lv_button name="btn_home_all"
-                     height="#button_height_small" flex_grow="1" style_radius="#border_radius" style_bg_color="#card_bg"
+                     height="#button_height_small" flex_grow="1" style_radius="#border_radius"
                      style_border_width="1" style_border_color="#text_secondary" style_border_opa="60">
+            <bind_style name="home_btn_homed" subject="all_homed" ref_value="1"/>
+            <bind_style name="home_btn_unhomed" subject="all_homed" ref_value="0"/>
             <event_cb trigger="clicked" callback="on_controls_home_all"/>
             <text_small text="All" align="center"/>
           </lv_button>
           <lv_button name="btn_home_xy"
-                     height="#button_height_small" flex_grow="1" style_radius="#border_radius" style_bg_color="#card_bg"
+                     height="#button_height_small" flex_grow="1" style_radius="#border_radius"
                      style_border_width="1" style_border_color="#text_secondary" style_border_opa="60">
+            <bind_style name="home_btn_homed" subject="xy_homed" ref_value="1"/>
+            <bind_style name="home_btn_unhomed" subject="xy_homed" ref_value="0"/>
             <event_cb trigger="clicked" callback="on_controls_home_xy"/>
             <text_small text="XY" align="center"/>
           </lv_button>
           <lv_button name="btn_home_z"
-                     height="#button_height_small" flex_grow="1" style_radius="#border_radius" style_bg_color="#card_bg"
+                     height="#button_height_small" flex_grow="1" style_radius="#border_radius"
                      style_border_width="1" style_border_color="#text_secondary" style_border_opa="60">
+            <bind_style name="home_btn_homed" subject="z_homed" ref_value="1"/>
+            <bind_style name="home_btn_unhomed" subject="z_homed" ref_value="0"/>
             <event_cb trigger="clicked" callback="on_controls_home_z"/>
             <text_small text="Z" align="center"/>
           </lv_button>
@@ -168,21 +178,66 @@
     <lv_obj width="100%"
             flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
             style_pad_gap="#space_md" style_flex_main_place="center" scrollable="false">
-      <!-- Card 4: Calibration & Tools -->
+      <!-- Card 4: Calibration & Tools (2x2 grid) -->
       <ui_card name="card_calibration"
-               height="100%" flex_grow="1" flex_flow="column" flex_main_place="center" flex_cross_place="center"
-               style_radius="#border_radius_large" style_border_width="0" style_pad_all="#space_sm" scrollable="false"
-               clickable="true">
-        <event_cb trigger="clicked" callback="on_controls_calibration"/>
-        <lv_obj width="content"
-                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                flex_flow="row" flex_cross_place="center" style_pad_column="#space_sm">
-          <icon src="grid_large" size="sm" variant="accent"/>
-          <icon src="z_closer" size="sm" variant="accent"/>
+               height="100%" flex_grow="1" flex_flow="column" style_flex_main_place="start"
+               style_radius="#border_radius_large" style_border_width="0"
+               style_pad_all="#space_sm" style_pad_gap="#space_xs" scrollable="false">
+        <!-- Header Row -->
+        <lv_obj width="100%" height="content" style_bg_opa="0" style_border_width="0"
+                style_pad_all="0" scrollable="false" flex_flow="row"
+                style_flex_cross_place="center" style_pad_gap="#space_sm">
           <icon src="wrench" size="sm" variant="accent"/>
+          <text_small text="Calibration &amp; Tools" style_text_color="#text_secondary"/>
         </lv_obj>
-        <text_body text="Calibration &amp; Tools" style_pad_top="#space_xs"/>
-        <text_small text="Mesh | Z-Offset | Screw Adj" style_text_color="#text_secondary"/>
+        <!-- 2x2 Grid Container -->
+        <lv_obj width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0"
+                style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
+          <!-- Row 1: Bed Mesh | Z-Offset -->
+          <lv_obj width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0"
+                  style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs" scrollable="false">
+            <!-- Bed Mesh Button -->
+            <lv_button name="btn_bed_mesh" flex_grow="1" height="100%"
+                       style_radius="#border_radius" style_border_width="0" style_shadow_width="0"
+                       style_bg_color="#card_bg" flex_flow="column" style_flex_main_place="center"
+                       style_flex_cross_place="center" style_pad_all="#space_xs">
+              <event_cb trigger="clicked" callback="on_calibration_bed_mesh"/>
+              <icon src="grid_large" size="md" variant="accent"/>
+              <text_small text="Bed Mesh" style_pad_top="#space_xxs"/>
+            </lv_button>
+            <!-- Z-Offset Button -->
+            <lv_button name="btn_zoffset" flex_grow="1" height="100%"
+                       style_radius="#border_radius" style_border_width="0" style_shadow_width="0"
+                       style_bg_color="#card_bg" flex_flow="column" style_flex_main_place="center"
+                       style_flex_cross_place="center" style_pad_all="#space_xs">
+              <event_cb trigger="clicked" callback="on_calibration_zoffset"/>
+              <icon src="z_closer" size="md" variant="accent"/>
+              <text_small text="Z-Offset" style_pad_top="#space_xxs"/>
+            </lv_button>
+          </lv_obj>
+          <!-- Row 2: Bed Screws | Motors Off -->
+          <lv_obj width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0"
+                  style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs" scrollable="false">
+            <!-- Bed Screws Button -->
+            <lv_button name="btn_screws" flex_grow="1" height="100%"
+                       style_radius="#border_radius" style_border_width="0" style_shadow_width="0"
+                       style_bg_color="#card_bg" flex_flow="column" style_flex_main_place="center"
+                       style_flex_cross_place="center" style_pad_all="#space_xs">
+              <event_cb trigger="clicked" callback="on_calibration_screws"/>
+              <icon src="wrench" size="md" variant="accent"/>
+              <text_small text="Bed Screws" style_pad_top="#space_xxs"/>
+            </lv_button>
+            <!-- Motors Off Button (warning style) -->
+            <lv_button name="btn_motors" flex_grow="1" height="100%"
+                       style_radius="#border_radius" style_border_width="0" style_shadow_width="0"
+                       style_bg_color="#card_bg" flex_flow="column" style_flex_main_place="center"
+                       style_flex_cross_place="center" style_pad_all="#space_xs">
+              <event_cb trigger="clicked" callback="on_calibration_motors"/>
+              <icon src="engine_off" size="md" variant="warning"/>
+              <text_small text="Motors Off" style_pad_top="#space_xxs"/>
+            </lv_button>
+          </lv_obj>
+        </lv_obj>
       </ui_card>
     </lv_obj>
     <!-- Emergency Stop Row (ONLY visible when printing) -->

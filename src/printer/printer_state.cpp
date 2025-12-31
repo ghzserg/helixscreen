@@ -594,6 +594,8 @@ void PrinterState::update_from_status(const json& state) {
         if (toolhead.contains("homed_axes") && toolhead["homed_axes"].is_string()) {
             std::string axes = toolhead["homed_axes"].get<std::string>();
             lv_subject_copy_string(&homed_axes_, axes.c_str());
+            // Note: Derived homing subjects (xy_homed, z_homed, all_homed) are now
+            // panel-local in ControlsPanel, which observes this homed_axes string.
         }
 
         // Extract kinematics type (determines if bed moves on Z or gantry moves)
