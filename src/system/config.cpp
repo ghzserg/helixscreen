@@ -210,12 +210,18 @@ bool Config::save() {
 
 bool Config::is_wizard_required() {
     // Check explicit wizard completion flag
-    auto& wizard_completed = data[json::json_pointer("/wizard_completed")];
+    // IMPORTANT: Use contains() first to avoid creating null entries via operator[]
+    json::json_pointer ptr("/wizard_completed");
 
-    if (!wizard_completed.is_null() && wizard_completed.is_boolean()) {
-        bool is_completed = wizard_completed.get<bool>();
-        spdlog::trace("[Config] Wizard completed flag = {}", is_completed);
-        return !is_completed; // Wizard required if flag is false
+    if (data.contains(ptr)) {
+        auto& wizard_completed = data[ptr];
+        if (wizard_completed.is_boolean()) {
+            bool is_completed = wizard_completed.get<bool>();
+            spdlog::trace("[Config] Wizard completed flag = {}", is_completed);
+            return !is_completed; // Wizard required if flag is false
+        }
+        // Key exists but wrong type - treat as not set
+        spdlog::warn("[Config] wizard_completed has invalid type, treating as unset");
     }
 
     // No flag set - wizard has never been run
