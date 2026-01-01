@@ -2,7 +2,7 @@
 <!-- Copyright 2025 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Advanced Panel - Hub for advanced printer tools and emergency controls -->
-<!-- Organized in sections: Emergency, Calibration, Motion, Filament, Automation, Diagnostics -->
+<!-- Organized in sections: Emergency, Calibration, Filament, Automation, Diagnostics -->
 <!-- Features are conditionally shown based on printer capabilities -->
 <component>
   <view name="advanced_panel"
@@ -76,14 +76,10 @@
         <event_cb trigger="clicked" callback="on_zoffset_row_clicked"/>
       </setting_action_row>
     </lv_obj>
-    <!-- ================================================================== -->
-    <!-- MOTION SECTION -->
-    <!-- ================================================================== -->
-    <setting_section_header title="MOTION" icon="speed"/>
-    <!-- Machine Limits -->
-    <setting_action_row name="row_machine_limits"
-                        label="Machine Limits" icon="dashboard" description="Velocity and acceleration limits">
-      <event_cb trigger="clicked" callback="on_advanced_machine_limits"/>
+    <!-- PID Tuning (always shown - extruder is always available) -->
+    <setting_action_row name="row_pid_tuning"
+                        label="PID Tuning" icon="heater" description="Tune heater PID parameters">
+      <event_cb trigger="clicked" callback="on_pid_tuning_clicked"/>
     </setting_action_row>
     <!-- ================================================================== -->
     <!-- FILAMENT SECTION -->
@@ -113,9 +109,10 @@
       <event_cb trigger="clicked" callback="on_advanced_macros"/>
     </setting_action_row>
     <!-- HelixPrint Plugin (NOT installed - show Install row) -->
+    <!-- Shows ONLY when value == 0 (not installed), hidden otherwise (-1 or 1) -->
     <lv_obj name="container_helix_plugin_install"
             width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
-      <lv_obj-bind_flag_if_eq subject="helix_plugin_installed" flag="hidden" ref_value="1"/>
+      <lv_obj-bind_flag_if_not_eq subject="helix_plugin_installed" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_helix_plugin_install"
                           label="Install HelixPrint Plugin" icon="puzzle_outline"
                           description="Control optional print start features">
@@ -123,9 +120,10 @@
       </setting_action_row>
     </lv_obj>
     <!-- HelixPrint Plugin (INSTALLED - show Uninstall row) -->
+    <!-- Shows ONLY when value == 1 (installed), hidden otherwise (-1 or 0) -->
     <lv_obj name="container_helix_plugin_uninstall"
             width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
-      <lv_obj-bind_flag_if_eq subject="helix_plugin_installed" flag="hidden" ref_value="0"/>
+      <lv_obj-bind_flag_if_not_eq subject="helix_plugin_installed" flag="hidden" ref_value="1"/>
       <setting_action_row name="row_helix_plugin_uninstall"
                           label="Uninstall HelixPrint Plugin" icon="puzzle_outline"
                           description="Remove plugin from printer">
@@ -133,10 +131,12 @@
       </setting_action_row>
     </lv_obj>
     <!-- HelixPrint Plugin Help Text -->
-    <lv_obj width="100%"
-            height="content" style_bg_opa="0" style_border_width="0" style_pad_left="#space_lg"
-            style_pad_right="#space_lg" style_pad_top="0" style_pad_bottom="#space_md" scrollable="false">
-      <text_small width="100%"
+    <lv_obj width="100%" height="content" style_bg_opa="0" style_border_width="0"
+            style_pad_left="#space_xl" style_pad_right="#space_lg"
+            style_pad_top="0" style_pad_bottom="#space_md" scrollable="false"
+            flex_flow="row" style_flex_cross_place="start" style_pad_gap="#space_sm">
+      <icon src="info" size="xs" variant="secondary"/>
+      <text_small flex_grow="1"
                   text="This plugin lets HelixScreen control print start options like bed mesh and QGL. Once installed, use Configure PRINT_START below to enable optional steps."
                   long_mode="wrap" style_text_color="#text_secondary"/>
     </lv_obj>
@@ -146,9 +146,10 @@
       <event_cb trigger="clicked" callback="on_configure_print_start"/>
     </setting_action_row>
     <!-- Phase Tracking Toggle (visible when plugin installed) -->
+    <!-- Shows ONLY when value == 1 (installed), hidden otherwise (-1 or 0) -->
     <lv_obj name="container_phase_tracking"
             width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
-      <lv_obj-bind_flag_if_eq subject="helix_plugin_installed" flag="hidden" ref_value="0"/>
+      <lv_obj-bind_flag_if_not_eq subject="helix_plugin_installed" flag="hidden" ref_value="1"/>
       <setting_toggle_row name="row_phase_tracking"
                           label="Phase Tracking" icon="progress_clock"
                           description="Show detailed print preparation status" subject="phase_tracking_enabled"

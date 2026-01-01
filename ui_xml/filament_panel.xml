@@ -24,10 +24,12 @@
                  style_pad_gap="#space_md">
           <!-- Header -->
           <text_body text="Temperature" align="left_mid"/>
-          <!-- Nozzle Row: Current / Target (target tappable) -->
+          <!-- Nozzle Row: Current / Target (entire row tappable) -->
           <lv_obj width="100%"
                   height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                  flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
+                  flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
+                  clickable="true">
+            <event_cb trigger="clicked" callback="on_filament_nozzle_target_tap"/>
             <text_small text="Nozzle"/>
             <lv_obj width="content"
                     height="content" flex_flow="row" style_bg_opa="0" style_border_width="0" style_pad_all="0"
@@ -35,19 +37,20 @@
               <text_body name="nozzle_current_temp" bind_text="filament_nozzle_current"/>
               <text_body text="/"/>
               <lv_obj name="nozzle_target_tap"
-                      width="content" height="content" clickable="true" style_bg_opa="0" style_border_width="0"
+                      width="content" height="content" style_bg_opa="0" style_border_width="0"
                       style_pad_all="#space_xs" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                       style_pad_gap="#space_xs">
-                <event_cb trigger="clicked" callback="on_filament_nozzle_target_tap"/>
                 <text_body name="nozzle_target_temp" bind_text="filament_nozzle_target"/>
                 <icon src="pencil" size="xs" variant="secondary"/>
               </lv_obj>
             </lv_obj>
           </lv_obj>
-          <!-- Bed Row: Current / Target (target tappable) -->
+          <!-- Bed Row: Current / Target (entire row tappable) -->
           <lv_obj width="100%"
                   height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                  flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
+                  flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
+                  clickable="true">
+            <event_cb trigger="clicked" callback="on_filament_bed_target_tap"/>
             <text_small text="Bed"/>
             <lv_obj width="content"
                     height="content" flex_flow="row" style_bg_opa="0" style_border_width="0" style_pad_all="0"
@@ -55,10 +58,9 @@
               <text_body name="bed_current_temp" bind_text="filament_bed_current"/>
               <text_body text="/"/>
               <lv_obj name="bed_target_tap"
-                      width="content" height="content" clickable="true" style_bg_opa="0" style_border_width="0"
+                      width="content" height="content" style_bg_opa="0" style_border_width="0"
                       style_pad_all="#space_xs" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                       style_pad_gap="#space_xs">
-                <event_cb trigger="clicked" callback="on_filament_bed_target_tap"/>
                 <text_body name="bed_target_temp" bind_text="filament_bed_target"/>
                 <icon src="pencil" size="xs" variant="secondary"/>
               </lv_obj>
@@ -122,62 +124,47 @@
                 style_pad_gap="#space_sm">
           <!-- Row 1: PLA, PETG -->
           <lv_obj width="100%"
-                  height="#button_height" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_gap="#space_md">
             <lv_button name="preset_pla"
-                       height="#button_height" flex_grow="1" style_radius="#border_radius" style_border_width="0">
+                       height="content" flex_grow="1" style_radius="#border_radius" style_border_width="0"
+                       flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
+                       style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_pla"/>
-              <text_body text="PLA" align="center"/>
+              <text_body text="PLA"/>
+              <text_small text="210C / 60C" style_text_color="#text_secondary"/>
             </lv_button>
             <lv_button name="preset_petg"
-                       height="#button_height" flex_grow="1" style_radius="#border_radius" style_border_width="0">
+                       height="content" flex_grow="1" style_radius="#border_radius" style_border_width="0"
+                       flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
+                       style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_petg"/>
-              <text_body text="PETG" align="center"/>
+              <text_body text="PETG"/>
+              <text_small text="240C / 80C" style_text_color="#text_secondary"/>
             </lv_button>
           </lv_obj>
           <!-- Row 2: ABS, TPU -->
           <lv_obj width="100%"
-                  height="#button_height" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_gap="#space_md">
             <lv_button name="preset_abs"
-                       height="#button_height" flex_grow="1" style_radius="#border_radius" style_border_width="0">
+                       height="content" flex_grow="1" style_radius="#border_radius" style_border_width="0"
+                       flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
+                       style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_abs"/>
-              <text_body text="ABS" align="center"/>
+              <text_body text="ABS"/>
+              <text_small text="250C / 100C" style_text_color="#text_secondary"/>
             </lv_button>
             <lv_button name="preset_tpu"
-                       height="#button_height" flex_grow="1" style_radius="#border_radius" style_border_width="0">
+                       height="content" flex_grow="1" style_radius="#border_radius" style_border_width="0"
+                       flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
+                       style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_tpu"/>
-              <text_body text="TPU" align="center"/>
+              <text_body text="TPU"/>
+              <text_small text="230C / 50C" style_text_color="#text_secondary"/>
             </lv_button>
-          </lv_obj>
-        </lv_obj>
-        <!-- Selected Material Info (Nozzle/Bed target temps) - tappable for custom input -->
-        <lv_obj width="100%"
-                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
-                flex_flow="row" style_pad_gap="#space_xl">
-          <!-- Nozzle target (tappable) -->
-          <lv_obj name="nozzle_temp_tap"
-                  flex_flow="row" style_bg_opa="0" style_border_width="0" style_pad_all="#space_xs"
-                  style_flex_cross_place="center" style_pad_gap="#space_xs" clickable="true" scrollable="false">
-            <event_cb trigger="clicked" callback="on_filament_nozzle_temp_tap"/>
-            <lv_obj flex_flow="column" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
-              <text_small text="Nozzle Target"/>
-              <text_body name="material_nozzle_temp" bind_text="filament_material_nozzle_temp"/>
-            </lv_obj>
-            <icon src="pencil" size="xs" variant="secondary"/>
-          </lv_obj>
-          <!-- Bed target (tappable) -->
-          <lv_obj name="bed_temp_tap"
-                  flex_flow="row" style_bg_opa="0" style_border_width="0" style_pad_all="#space_xs"
-                  style_flex_cross_place="center" style_pad_gap="#space_xs" clickable="true" scrollable="false">
-            <event_cb trigger="clicked" callback="on_filament_bed_temp_tap"/>
-            <lv_obj flex_flow="column" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false">
-              <text_small text="Bed Target"/>
-              <text_body name="material_bed_temp" bind_text="filament_material_bed_temp"/>
-            </lv_obj>
-            <icon src="pencil" size="xs" variant="secondary"/>
           </lv_obj>
         </lv_obj>
       </lv_obj>
@@ -194,20 +181,20 @@
                 style_pad_gap="#space_sm">
           <text_small text="Length:"/>
           <lv_button name="purge_5mm"
-                     width="content" height="#button_height_small" style_radius="#border_radius"
-                     style_pad_left="#space_sm" style_pad_right="#space_sm" style_border_width="0">
+                     flex_grow="1" height="#button_height_small" style_radius="#border_radius"
+                     style_border_width="0">
             <event_cb trigger="clicked" callback="on_filament_purge_5mm"/>
             <text_small text="5mm" align="center"/>
           </lv_button>
           <lv_button name="purge_10mm"
-                     width="content" height="#button_height_small" style_radius="#border_radius"
-                     style_pad_left="#space_sm" style_pad_right="#space_sm" style_border_width="0">
+                     flex_grow="1" height="#button_height_small" style_radius="#border_radius"
+                     style_border_width="0">
             <event_cb trigger="clicked" callback="on_filament_purge_10mm"/>
             <text_small text="10mm" align="center"/>
           </lv_button>
           <lv_button name="purge_25mm"
-                     width="content" height="#button_height_small" style_radius="#border_radius"
-                     style_pad_left="#space_sm" style_pad_right="#space_sm" style_border_width="0">
+                     flex_grow="1" height="#button_height_small" style_radius="#border_radius"
+                     style_border_width="0">
             <event_cb trigger="clicked" callback="on_filament_purge_25mm"/>
             <text_small text="25mm" align="center"/>
           </lv_button>

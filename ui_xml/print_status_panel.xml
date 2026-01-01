@@ -19,10 +19,10 @@
             style_pad_right="#space_lg" style_pad_top="0" style_pad_bottom="#space_md" flex_flow="row"
             style_pad_gap="#space_md" scrollable="false">
       <!-- ================================================================== -->
-      <!-- LEFT SECTION: G-code Viewer / Thumbnail (4/9 width via flex_grow) -->
+      <!-- LEFT SECTION: G-code Viewer / Thumbnail (5/9 width via flex_grow) -->
       <!-- ================================================================== -->
       <ui_card name="thumbnail_section"
-               height="100%" flex_grow="4" style_pad_all="0" style_radius="#border_radius" style_clip_corner="true">
+               height="100%" flex_grow="5" style_pad_all="0" style_radius="#border_radius" style_clip_corner="true">
         <!-- All children overlap as direct children of the card (matching print_file_detail pattern) -->
         <!-- Pre-rendered gradient background (shown in thumbnail[0] and 2D[2] modes, hidden in 3D[1]) -->
         <lv_image name="gradient_background"
@@ -120,10 +120,10 @@
         </lv_obj>
       </ui_card>
       <!-- ================================================================== -->
-      <!-- RIGHT SECTION: Controls (5/9 width via flex_grow) -->
+      <!-- RIGHT SECTION: Controls (4/9 width via flex_grow) -->
       <!-- ================================================================== -->
       <lv_obj name="controls_section"
-              height="100%" flex_grow="5" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              height="100%" flex_grow="4" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
               flex_flow="column" style_pad_gap="#space_lg">
         <!-- Nozzle Temperature Card -->
         <ui_card name="nozzle_temp_card"
@@ -178,7 +178,7 @@
                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
                   style_pad_gap="#space_sm">
             <lv_button name="btn_light"
-                       height="#button_height" flex_grow="1" style_border_width="0" flex_flow="row"
+                       height="#button_height_large" flex_grow="1" style_border_width="0" flex_flow="row"
                        style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
                        style_pad_gap="#space_xs">
               <event_cb trigger="clicked" callback="on_print_status_light"/>
@@ -187,7 +187,7 @@
             </lv_button>
             <!-- Timelapse button: only visible when Moonraker-Timelapse plugin installed -->
             <lv_button name="btn_timelapse"
-                       height="#button_height" flex_grow="1" style_border_width="0" flex_flow="row"
+                       height="#button_height_large" flex_grow="1" style_border_width="0" flex_flow="row"
                        style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
                        style_pad_gap="#space_xs">
               <event_cb trigger="clicked" callback="on_print_status_timelapse"/>
@@ -197,7 +197,7 @@
               <text_body name="timelapse_label" bind_text="timelapse_button_label"/>
             </lv_button>
             <lv_button name="btn_pause"
-                       height="#button_height" flex_grow="1" style_border_width="0" flex_flow="row"
+                       height="#button_height_large" flex_grow="1" style_border_width="0" flex_flow="row"
                        style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
                        style_pad_gap="#space_xs">
               <event_cb trigger="clicked" callback="on_print_status_pause"/>
@@ -211,7 +211,7 @@
                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
                   style_pad_gap="#space_sm">
             <lv_button name="btn_tune"
-                       height="#button_height" flex_grow="1" style_border_width="0" flex_flow="row"
+                       height="#button_height_large" flex_grow="1" style_border_width="0" flex_flow="row"
                        style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
                        style_pad_gap="#space_xs">
               <event_cb trigger="clicked" callback="on_print_status_tune"/>
@@ -219,7 +219,7 @@
               <text_body text="Tune"/>
             </lv_button>
             <lv_button name="btn_cancel"
-                       height="#button_height" flex_grow="1" style_border_width="0" style_bg_color="#error_color"
+                       height="#button_height_large" flex_grow="1" style_border_width="0" style_bg_color="#error_color"
                        flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
                        style_flex_track_place="center" style_pad_gap="#space_xs">
               <event_cb trigger="clicked" callback="on_print_status_cancel"/>
