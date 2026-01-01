@@ -105,6 +105,10 @@
     <setting_action_row name="row_factory_reset"
                         label="Factory Reset" icon="refresh" description="Reset all settings and restart wizard"
                         callback="on_factory_reset_clicked"/>
+    <!-- Plugins -->
+    <setting_action_row name="row_plugins"
+                        label="Plugins" icon="puzzle_outline" description="View installed plugins and status"
+                        callback="on_plugins_clicked"/>
     <!-- ================================================================== -->
     <!-- ABOUT SECTION -->
     <!-- ================================================================== -->
