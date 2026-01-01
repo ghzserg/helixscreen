@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "injection_point_manager.h"
 #include "plugin_events.h"
 
 #include <functional>
@@ -301,6 +302,50 @@ class PluginAPI {
      * @param message Log message
      */
     void log_debug(const std::string& message) const;
+
+    // ========================================================================
+    // UI Injection
+    // ========================================================================
+
+    /**
+     * @brief Inject a widget into a named injection point
+     *
+     * Creates an instance of the XML component and adds it to the injection
+     * point container. The widget is tracked and will be automatically removed
+     * when the plugin unloads.
+     *
+     * @param point_id Injection point identifier (e.g., "home_widget_area")
+     * @param xml_component Name of registered XML component to instantiate
+     * @param callbacks Optional lifecycle callbacks for widget creation/destruction
+     * @return true if injection succeeded, false if point not found or creation failed
+     *
+     * @note The injection point must be registered by a panel before injection can occur.
+     *       If the panel hasn't loaded yet, injection will fail.
+     */
+    bool inject_widget(const std::string& point_id, const std::string& xml_component,
+                       const WidgetCallbacks& callbacks = {});
+
+    /**
+     * @brief Register an XML component from the plugin's directory
+     *
+     * Registers an XML component file so it can be used with inject_widget().
+     * The file is loaded from the plugin's directory.
+     *
+     * @param filename XML file name (e.g., "my_widget.xml")
+     * @return true if registration succeeded
+     *
+     * @note The plugin directory is passed to helix_plugin_init() and should
+     *       be stored by the plugin for use with this method.
+     */
+    bool register_xml_component(const std::string& plugin_dir, const std::string& filename);
+
+    /**
+     * @brief Check if an injection point is available
+     *
+     * @param point_id Injection point identifier
+     * @return true if the point is registered and ready for injection
+     */
+    bool has_injection_point(const std::string& point_id) const;
 
     // ========================================================================
     // Internal (called by PluginManager)

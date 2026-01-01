@@ -3,6 +3,7 @@
 
 #include "plugin_api.h"
 
+#include "lvgl.h"
 #include "moonraker_client.h"
 #include "plugin_registry.h"
 #include "printer_state.h"
@@ -205,6 +206,61 @@ void PluginAPI::log_error(const std::string& message) const {
 
 void PluginAPI::log_debug(const std::string& message) const {
     spdlog::debug("[plugin:{}] {}", plugin_id_, message);
+}
+
+// ============================================================================
+// UI Injection
+// ============================================================================
+
+bool PluginAPI::inject_widget(const std::string& point_id, const std::string& xml_component,
+                              const WidgetCallbacks& callbacks) {
+    // Delegate to InjectionPointManager with our plugin ID
+    bool success = InjectionPointManager::instance().inject_widget(plugin_id_, point_id,
+                                                                   xml_component, callbacks);
+
+    if (success) {
+        spdlog::info("[plugin:{}] Injected widget '{}' into '{}'", plugin_id_, xml_component,
+                     point_id);
+    } else {
+        spdlog::error("[plugin:{}] Failed to inject widget '{}' into '{}'", plugin_id_,
+                      xml_component, point_id);
+    }
+
+    return success;
+}
+
+bool PluginAPI::register_xml_component(const std::string& plugin_dir, const std::string& filename) {
+    // Build full path to the XML file
+    std::string full_path = plugin_dir;
+    if (!full_path.empty() && full_path.back() != '/') {
+        full_path += '/';
+    }
+    full_path += filename;
+
+    // Derive component name from filename (strip .xml extension)
+    std::string component_name = filename;
+    size_t ext_pos = component_name.rfind(".xml");
+    if (ext_pos != std::string::npos) {
+        component_name = component_name.substr(0, ext_pos);
+    }
+
+    // Register with LVGL XML system
+    // Note: lv_xml_register_component_from_file expects the file path
+    bool success = lv_xml_register_component_from_file(full_path.c_str());
+
+    if (success) {
+        spdlog::info("[plugin:{}] Registered XML component '{}' from '{}'", plugin_id_,
+                     component_name, full_path);
+    } else {
+        spdlog::error("[plugin:{}] Failed to register XML component from '{}'", plugin_id_,
+                      full_path);
+    }
+
+    return success;
+}
+
+bool PluginAPI::has_injection_point(const std::string& point_id) const {
+    return InjectionPointManager::instance().has_point(point_id);
 }
 
 // ============================================================================

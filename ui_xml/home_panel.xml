@@ -367,6 +367,11 @@
             </text_tiny>
           </lv_obj>
         </lv_obj>
+        <!-- Plugin injection point: widgets from plugins appear here -->
+        <!-- Plugins can inject status widgets, indicators, or custom controls -->
+        <lv_obj name="home_widget_area" width="100%" height="content"
+                style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                flex_flow="column" style_pad_gap="#space_sm"/>
       </ui_card>
     </lv_obj>
   </view>

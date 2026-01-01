@@ -23,6 +23,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "ethernet_manager.h"
+#include "injection_point_manager.h"
 #include "moonraker_api.h"
 #include "prerendered_images.h"
 #include "printer_detector.h"
@@ -297,6 +298,14 @@ void HomePanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
             // Already printing - load thumbnail and update label
             on_print_state_changed(state);
         }
+    }
+
+    // Register plugin injection point for home panel widgets
+    lv_obj_t* widget_area = lv_obj_find_by_name(panel_, "home_widget_area");
+    if (widget_area) {
+        helix::plugin::InjectionPointManager::instance().register_point("home_widget_area",
+                                                                        widget_area);
+        spdlog::debug("[{}] Registered injection point: home_widget_area", get_name());
     }
 
     spdlog::info("[{}] Setup complete!", get_name());

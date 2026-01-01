@@ -3,6 +3,7 @@
 
 #include "plugin_manager.h"
 
+#include "injection_point_manager.h"
 #include "spdlog/spdlog.h"
 
 #include <algorithm>
@@ -300,6 +301,9 @@ bool PluginManager::unload_plugin(const std::string& plugin_id) {
     LoadedPlugin& loaded = it->second;
 
     spdlog::info("[plugin] Unloading: {}", plugin_id);
+
+    // Remove all UI widgets injected by this plugin
+    InjectionPointManager::instance().remove_plugin_widgets(plugin_id);
 
     // Call deinit
     if (loaded.deinit_func != nullptr) {
