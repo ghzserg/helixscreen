@@ -156,7 +156,7 @@
                  height="100%" flex_grow="1" style_radius="0" style_border_width="0" style_shadow_width="0"
                  style_bg_color="#secondary_color">
         <event_cb trigger="clicked" callback="on_macro_enhance_approve"/>
-        <text_body text="Make Optional" align="center" style_text_color="#text_on_accent"/>
+        <text_body text="Make Optional" align="center" style_text_color="#text_primary"/>
       </lv_button>
     </lv_obj>
     <!-- ============================================================ -->
@@ -181,7 +181,7 @@
                  height="100%" flex_grow="1" style_radius="0" style_border_width="0" style_shadow_width="0"
                  style_bg_color="#success_color">
         <event_cb trigger="clicked" callback="on_macro_enhance_apply"/>
-        <text_body text="Apply Changes" align="center" style_text_color="#text_on_accent"/>
+        <text_body text="Apply Changes" align="center" style_text_color="#text_primary"/>
       </lv_button>
     </lv_obj>
     <!-- ============================================================ -->

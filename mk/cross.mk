@@ -28,7 +28,8 @@ ifeq ($(PLATFORM_TARGET),pi)
     # - /usr/aarch64-linux-gnu/include: arm64 sysroot headers
     # - /usr/include/libdrm: drm.h (needed by xf86drmMode.h)
     # -Wno-error=conversion: LVGL headers have int32_t->float conversions that GCC 12 flags
-    TARGET_CFLAGS := -march=armv8-a -I/usr/aarch64-linux-gnu/include -I/usr/include/libdrm -Wno-error=conversion -Wno-error=sign-conversion
+    # -DHELIX_RELEASE_BUILD: Disables debug features like LV_USE_ASSERT_STYLE
+    TARGET_CFLAGS := -march=armv8-a -I/usr/aarch64-linux-gnu/include -I/usr/include/libdrm -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD
     DISPLAY_BACKEND := drm
     ENABLE_SDL := no
     ENABLE_TINYGL_3D := yes
@@ -54,10 +55,11 @@ else ifeq ($(PLATFORM_TARGET),ad5m)
     # -flto: Link-Time Optimization for dead code elimination
     # -ffunction-sections/-fdata-sections: Allow linker to remove unused sections
     # -Wno-error=conversion: LVGL headers have int32_t->float conversions that GCC flags
+    # -DHELIX_RELEASE_BUILD: Disables debug features like LV_USE_ASSERT_STYLE
     # NOTE: AD5M framebuffer is 32bpp (ARGB8888), as is lv_conf.h (LV_COLOR_DEPTH=32)
     TARGET_CFLAGS := -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -mtune=cortex-a7 \
         -Os -flto -ffunction-sections -fdata-sections \
-        -Wno-error=conversion -Wno-error=sign-conversion
+        -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD
     # -Wl,--gc-sections: Remove unused sections during linking (works with -ffunction-sections)
     # -flto: Must match compiler flag for LTO to work
     # -static: Fully static binary - no runtime dependencies on system libs

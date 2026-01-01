@@ -43,7 +43,7 @@
                style_pad_right="#space_lg" hidden="true" clickable="true">
       <lv_obj-bind_flag_if_eq subject="toast_action_visible" flag="hidden" ref_value="0"/>
       <text_body name="toast_action_label"
-                 align="center" style_text_color="#text_on_accent" bind_text="toast_action_text"/>
+                 align="center" style_text_color="#text_primary" bind_text="toast_action_text"/>
     </lv_button>
     <!-- Close button -->
     <lv_button name="toast_close_btn"
