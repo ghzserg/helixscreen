@@ -217,7 +217,10 @@ ScrewsTiltPanel::~ScrewsTiltPanel() {
     // Deinitialize subjects to disconnect observers before we're destroyed
     deinit_subjects();
 
-    spdlog::debug("[ScrewsTilt] Destroyed");
+    // Guard against static destruction order fiasco (spdlog may be gone)
+    if (!StaticPanelRegistry::is_destroyed()) {
+        spdlog::debug("[ScrewsTilt] Destroyed");
+    }
 }
 
 // ============================================================================

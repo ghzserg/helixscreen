@@ -83,7 +83,10 @@ PowerPanel::PowerPanel(PrinterState& printer_state, MoonrakerAPI* api)
 
 PowerPanel::~PowerPanel() {
     deinit_subjects();
-    spdlog::debug("[PowerPanel] Destroyed");
+    // Guard against static destruction order fiasco (spdlog may be gone)
+    if (!StaticPanelRegistry::is_destroyed()) {
+        spdlog::debug("[PowerPanel] Destroyed");
+    }
 }
 
 void PowerPanel::init_subjects() {

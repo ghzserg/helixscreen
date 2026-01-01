@@ -59,7 +59,10 @@ HistoryListPanel::~HistoryListPanel() {
     if (history_manager_ && history_observer_) {
         history_manager_->remove_observer(&history_observer_);
     }
-    spdlog::debug("[HistoryListPanel] Destroyed");
+    // Guard against static destruction order fiasco (spdlog may be gone)
+    if (!StaticPanelRegistry::is_destroyed()) {
+        spdlog::debug("[HistoryListPanel] Destroyed");
+    }
 }
 
 // ============================================================================

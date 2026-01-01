@@ -59,7 +59,10 @@ ZOffsetCalibrationPanel::~ZOffsetCalibrationPanel() {
     final_offset_label_ = nullptr;
     error_message_ = nullptr;
 
-    spdlog::debug("[ZOffsetCal] Destroyed");
+    // Guard against static destruction order fiasco (spdlog may be gone)
+    if (!StaticPanelRegistry::is_destroyed()) {
+        spdlog::debug("[ZOffsetCal] Destroyed");
+    }
 }
 
 // ============================================================================

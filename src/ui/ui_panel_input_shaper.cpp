@@ -64,7 +64,10 @@ InputShaperPanel::~InputShaperPanel() {
     error_message_ = nullptr;
     recommendation_label_ = nullptr;
 
-    spdlog::debug("[InputShaper] Destroyed");
+    // Guard against static destruction order fiasco (spdlog may be gone)
+    if (!StaticPanelRegistry::is_destroyed()) {
+        spdlog::debug("[InputShaper] Destroyed");
+    }
 }
 
 void init_input_shaper_row_handler() {

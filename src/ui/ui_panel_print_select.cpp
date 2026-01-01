@@ -220,7 +220,10 @@ PrintSelectPanel::~PrintSelectPanel() {
     view_toggle_icon_ = nullptr;
     print_status_panel_widget_ = nullptr;
 
-    spdlog::debug("[PrintSelectPanel] Destroyed");
+    // Guard against static destruction order fiasco (spdlog may be gone)
+    if (!StaticPanelRegistry::is_destroyed()) {
+        spdlog::debug("[PrintSelectPanel] Destroyed");
+    }
 }
 
 // ============================================================================

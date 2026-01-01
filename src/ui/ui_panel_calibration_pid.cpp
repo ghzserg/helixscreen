@@ -58,7 +58,10 @@ PIDCalibrationPanel::~PIDCalibrationPanel() {
     btn_heater_extruder_ = nullptr;
     btn_heater_bed_ = nullptr;
 
-    spdlog::debug("[PIDCal] Destroyed");
+    // Guard against static destruction order fiasco (spdlog may be gone)
+    if (!StaticPanelRegistry::is_destroyed()) {
+        spdlog::debug("[PIDCal] Destroyed");
+    }
 }
 
 // ============================================================================
