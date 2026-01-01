@@ -10,19 +10,19 @@
     <prop name="speed_percent" type="number" default="0"/>
   </api>
   <view name="fan_status_card_root"
-        extends="lv_obj" width="175" height="225" flex_flow="column"
+        extends="lv_obj" width="175" height="190" flex_flow="column"
         style_flex_main_place="start" style_flex_cross_place="center"
         style_bg_color="#card_bg" style_bg_opa="255" style_radius="#border_radius_large"
-        style_pad_all="#space_md" style_pad_gap="#space_xs" scrollable="false">
+        style_pad_all="#space_sm" style_pad_gap="#space_xs" scrollable="false">
     <!-- Fan name label at top -->
     <text_small name="name_label" text="$fan_name" style_text_color="#text_primary"/>
     <!-- Arc display container (matches fan_dial layout) -->
     <lv_obj name="dial_container"
-            width="125" height="125" style_bg_opa="0" style_border_width="0"
+            width="110" height="110" style_bg_opa="0" style_border_width="0"
             style_pad_all="0" scrollable="false">
-      <!-- 270-degree arc display (read-only, muted gray colors) -->
+      <!-- 270-degree arc display (read-only, muted gray colors, no knob) -->
       <lv_arc name="dial_arc"
-              width="125" height="125" align="center"
+              width="110" height="110" align="center"
               bg_start_angle="135" bg_end_angle="45"
               start_angle="135" end_angle="135"
               min_value="0" max_value="100" value="$speed_percent"
@@ -31,13 +31,14 @@
               style_arc_width:indicator="10" style_arc_color:indicator="#text_secondary"
               style_arc_rounded="true" style_arc_rounded:indicator="true"
               style_bg_opa="0" style_border_width="0"
+              style_bg_opa:knob="0"
               clickable="false"/>
       <!-- Centered percentage label -->
       <text_heading name="speed_label" text="$speed_percent" align="center" style_text_color="#text_secondary"/>
     </lv_obj>
     <!-- Auto indicator row (matches button row height) -->
     <lv_obj name="auto_row"
-            width="100%" height="40" style_bg_opa="0" style_border_width="0"
+            width="100%" height="32" style_bg_opa="0" style_border_width="0"
             style_pad_all="0" scrollable="false" flex_flow="row"
             style_flex_main_place="center" style_flex_cross_place="center">
       <icon name="auto_icon" src="robot" size="sm" variant="secondary"/>

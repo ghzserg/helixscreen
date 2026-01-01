@@ -9,11 +9,11 @@
   </api>
   <view name="fan_control_overlay"
         extends="overlay_panel" width="#overlay_panel_width_full" title="$title" bg_color="#app_bg_color">
-    <!-- Main Content Area - reduced top padding -->
+    <!-- Main Content Area - minimal padding for maximum card space -->
     <lv_obj name="content_area"
-            width="100%" flex_grow="1" style_bg_opa="0" style_pad_left="#space_lg" style_pad_right="#space_lg"
-            style_pad_top="#space_sm" style_pad_bottom="#space_md" scrollable="false" style_border_width="0"
-            flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center">
+            width="100%" flex_grow="1" style_bg_opa="0" style_pad_left="#space_md" style_pad_right="#space_md"
+            style_pad_top="0" style_pad_bottom="#space_sm" scrollable="false" style_border_width="0" flex_flow="column"
+            style_flex_main_place="start" style_flex_cross_place="center">
       <!-- ================================================================== -->
       <!-- Single flex-wrap row for all fans (controllable first, then auto) -->
       <!-- ================================================================== -->
