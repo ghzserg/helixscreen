@@ -21,16 +21,20 @@ make venv-setup     # Set up Python venv with pypng and lz4 for icon conversion
 
 **Debian/Ubuntu (apt):**
 ```bash
-sudo apt install cmake bear imagemagick python3 python3-venv clang make npm
+sudo apt install cmake bear imagemagick python3 python3-venv clang make npm \
+    libnl-3-dev libnl-genl-3-dev libssl-dev
 # Optional (auto-built from submodules if not installed):
 #   sudo apt install libsdl2-dev spdlog libhv-dev
 npm install         # Install lv_font_conv and lv_img_conv
 make venv-setup     # Set up Python venv with pypng and lz4 for icon conversion
 ```
 
+**Note:** `libnl-3-dev` and `libnl-genl-3-dev` are required for wpa_supplicant WiFi backend on Linux.
+
 **Fedora/RHEL/CentOS (dnf):**
 ```bash
-sudo dnf install cmake bear ImageMagick python3 clang make npm
+sudo dnf install cmake bear ImageMagick python3 clang make npm \
+    libnl3-devel openssl-devel
 # Optional (auto-built from submodules if not installed):
 #   sudo dnf install SDL2-devel spdlog-devel libhv-devel
 npm install         # Install lv_font_conv and lv_img_conv

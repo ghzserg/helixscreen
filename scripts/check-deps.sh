@@ -224,6 +224,16 @@ check_libraries() {
     else
         info "libhv: Will be built from submodule"
     fi
+
+    # libnl (Linux only - required for wpa_supplicant WiFi backend)
+    if [ "$(uname -s)" != "Darwin" ]; then
+        if check_pkg libnl-3.0; then
+            :  # ok already printed
+        else
+            fail "libnl-3.0 not found (required for WiFi backend)" "libnl"
+            hint "libnl" "" "libnl-3-dev libnl-genl-3-dev" "libnl3-devel"
+        fi
+    fi
 }
 
 check_desktop_tools() {

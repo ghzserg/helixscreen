@@ -457,7 +457,8 @@ else ifeq ($(UNAME_S),Darwin)
 else
     # Linux native build - Include libwpa_client.a for WiFi control
     NPROC := $(shell nproc 2>/dev/null || echo 4)
-    LDFLAGS := $(LDFLAGS_COMMON) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -lssl -lcrypto -ldl
+    # Note: -lstdc++fs needed for std::experimental::filesystem on GCC < 9
+    LDFLAGS := $(LDFLAGS_COMMON) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -lssl -lcrypto -ldl -lstdc++fs
     PLATFORM := Linux
     WPA_DEPS := $(WPA_CLIENT_LIB)
 endif
