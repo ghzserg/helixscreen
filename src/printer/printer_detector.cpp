@@ -37,7 +37,7 @@ namespace {
  *
  * Loads printer definitions from:
  * 1. Bundled database: config/printer_database.json
- * 2. User extensions: config/printers.d/*.json (higher priority)
+ * 2. User extensions: config/printer_database.d/*.json (higher priority)
  *
  * User definitions can:
  * - Add new printers (unique ID)
@@ -75,7 +75,7 @@ struct PrinterDatabase {
             return false;
         }
 
-        // Phase 2: Merge user extensions from config/printers.d/
+        // Phase 2: Merge user extensions from config/printer_database.d/
         merge_user_extensions();
 
         loaded = true;
@@ -94,7 +94,7 @@ struct PrinterDatabase {
 
   private:
     void merge_user_extensions() {
-        const std::string extensions_dir = "config/printers.d";
+        const std::string extensions_dir = "config/printer_database.d";
 
         // Check if extensions directory exists
         if (!fs::exists(extensions_dir) || !fs::is_directory(extensions_dir)) {

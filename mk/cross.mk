@@ -706,7 +706,7 @@ release-ad5m: | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
 	@cp build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash $(RELEASE_DIR)/helixscreen/
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Copy AD5M Pro default config as config/helixconfig.json (skips wizard on first run)
-	@cp config/printers/adventurer-5m-pro.json $(RELEASE_DIR)/helixscreen/config/helixconfig.json
+	@cp config/presets/adventurer-5m-pro.json $(RELEASE_DIR)/helixscreen/config/helixconfig.json
 	@echo "  $(DIM)Included pre-configured config/helixconfig.json for AD5M Pro$(RESET)"
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/

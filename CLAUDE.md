@@ -269,7 +269,7 @@ helixscreen/
 ├── lib/              # External libs (lvgl, libhv, spdlog, sdl2, tinygl, etc.)
 ├── ui_xml/           # XML component definitions
 ├── assets/           # Fonts, images, icons
-├── config/           # Config templates (helixconfig.json.template, printer_database.json)
+├── config/           # Config (presets/, printer_database.d/, printer_database.json)
 ├── scripts/          # Build/screenshot automation
 ├── docker/           # Cross-compilation Dockerfiles (pi, ad5m)
 ├── mk/               # Makefile modules (cross.mk, deps.mk, rules.mk, etc.)
