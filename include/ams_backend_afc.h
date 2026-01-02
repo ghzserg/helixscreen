@@ -117,7 +117,7 @@ class AmsBackendAfc : public AmsBackend {
      * @param hub_names Hub names from PrinterCapabilities::get_afc_hub_names()
      */
     void set_discovered_lanes(const std::vector<std::string>& lane_names,
-                              const std::vector<std::string>& hub_names);
+                              const std::vector<std::string>& hub_names) override;
 
   protected:
     // Allow test helper access to private members

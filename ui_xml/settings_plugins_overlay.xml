@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<!-- Copyright 2025 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Settings Plugins Overlay - Shows all discovered plugins with their status -->
+<!-- Displays plugins in sections: Loaded, Disabled, Failed -->
+<component>
+  <view name="settings_plugins_overlay"
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Plugins" bg_color="#app_bg_color">
+    <!-- Content Area -->
+    <lv_obj name="overlay_content"
+            width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="#space_lg" scrollable="true" scroll_dir="ver"
+            style_border_width="0" flex_flow="column" style_pad_gap="#space_md">
+      <!-- ================================================================== -->
+      <!-- STATUS CARD - Shows overall plugin status -->
+      <!-- ================================================================== -->
+      <lv_obj name="status_card"
+              width="100%" height="content" style_bg_color="#card_bg" style_bg_opa="255"
+              style_radius="#border_radius" style_border_width="0" style_pad_all="#space_lg" scrollable="false"
+              flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_md">
+        <!-- Status icon - shows plugin icon -->
+        <lv_obj name="status_icon_container" width="48" height="48"
+                style_bg_color="#primary_color" style_bg_opa="255" style_radius="24"
+                style_border_width="0" scrollable="false"
+                style_pad_all="0" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center">
+          <icon name="status_icon" src="puzzle_outline" size="md" color="#ffffff"/>
+        </lv_obj>
+        <!-- Status text -->
+        <lv_obj width="content" height="content" style_bg_opa="0" style_border_width="0"
+                style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xs" flex_grow="1">
+          <text_heading name="status_title" bind_text="plugins_status_title"/>
+          <text_small name="status_detail" bind_text="plugins_status_detail" style_text_color="#text_secondary"/>
+        </lv_obj>
+      </lv_obj>
+      <!-- ================================================================== -->
+      <!-- LOADED PLUGINS SECTION (green) - Successfully loaded plugins -->
+      <!-- ================================================================== -->
+      <lv_obj name="loaded_section" width="100%" height="content"
+              style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              flex_flow="column" style_pad_gap="#space_sm">
+        <lv_obj-bind_flag_if_eq subject="plugins_loaded_count" flag="hidden" ref_value="0"/>
+        <setting_section_header title="LOADED" icon="check_circle"/>
+        <lv_obj name="loaded_plugins_list" width="100%" height="content"
+                style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                flex_flow="column" style_pad_gap="#space_sm">
+          <!-- plugin_card components added dynamically by C++ -->
+        </lv_obj>
+      </lv_obj>
+      <!-- ================================================================== -->
+      <!-- DISABLED PLUGINS SECTION (yellow) - Discovered but disabled -->
+      <!-- ================================================================== -->
+      <lv_obj name="disabled_section" width="100%" height="content"
+              style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              flex_flow="column" style_pad_gap="#space_sm">
+        <lv_obj-bind_flag_if_eq subject="plugins_disabled_count" flag="hidden" ref_value="0"/>
+        <setting_section_header title="DISABLED" icon="pause"/>
+        <lv_obj name="disabled_plugins_list" width="100%" height="content"
+                style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                flex_flow="column" style_pad_gap="#space_sm">
+          <!-- plugin_card components added dynamically by C++ -->
+        </lv_obj>
+      </lv_obj>
+      <!-- ================================================================== -->
+      <!-- FAILED PLUGINS SECTION (red) - Plugins that failed to load -->
+      <!-- ================================================================== -->
+      <lv_obj name="failed_section" width="100%" height="content"
+              style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              flex_flow="column" style_pad_gap="#space_sm">
+        <lv_obj-bind_flag_if_eq subject="plugins_failed_count" flag="hidden" ref_value="0"/>
+        <setting_section_header title="FAILED" icon="alert_octagon"/>
+        <lv_obj name="failed_plugins_list" width="100%" height="content"
+                style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                flex_flow="column" style_pad_gap="#space_sm">
+          <!-- plugin_card components added dynamically by C++ -->
+        </lv_obj>
+      </lv_obj>
+      <!-- ================================================================== -->
+      <!-- NO PLUGINS MESSAGE (shown when no plugins discovered) -->
+      <!-- ================================================================== -->
+      <lv_obj name="no_plugins_message" width="100%" height="content"
+              style_bg_opa="0" style_border_width="0" style_pad_all="#space_xl" scrollable="false"
+              flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
+              style_pad_gap="#space_md">
+        <lv_obj-bind_flag_if_not_eq subject="plugins_total_count" flag="hidden" ref_value="0"/>
+        <icon src="puzzle_outline" size="lg" variant="secondary"/>
+        <text_body text="No plugins found" style_text_color="#text_secondary"/>
+        <text_small text="Place plugins in the plugins directory to extend HelixScreen"
+                    style_text_color="#text_secondary" style_text_align="center"/>
+      </lv_obj>
+      <!-- ================================================================== -->
+      <!-- INFO NOTE -->
+      <!-- ================================================================== -->
+      <lv_obj width="100%" height="content" style_bg_opa="0" style_border_width="0" scrollable="false"
+              style_pad_left="0" style_pad_right="0" style_pad_top="#space_md" style_pad_bottom="#space_lg"
+              flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <icon src="info" size="xs" variant="secondary"/>
+        <text_small text="Plugins are discovered on application startup" style_text_color="#text_secondary"/>
+      </lv_obj>
+    </lv_obj>
+  </view>
+</component>

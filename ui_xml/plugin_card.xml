@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!-- Copyright 2025 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Plugin Card Component - Displays a single plugin's information -->
+<!-- Shows: icon, name, version, author, description, and status indicator -->
+<component>
+  <api>
+    <prop name="plugin_name" type="string" default="Plugin Name"/>
+    <prop name="plugin_version" type="string" default="1.0.0"/>
+    <prop name="plugin_author" type="string" default="Unknown"/>
+    <prop name="plugin_description" type="string" default=""/>
+    <prop name="plugin_status" type="string" default="loaded"/>
+    <prop name="error_message" type="string" default=""/>
+  </api>
+  <view name="plugin_card"
+        extends="lv_obj" width="100%" height="content" style_bg_color="#card_bg" style_bg_opa="255"
+        style_radius="#border_radius" style_border_width="0" style_pad_all="#space_md" scrollable="false"
+        flex_flow="column" style_pad_gap="#space_sm">
+    <!-- Header row: Icon + Name + Version + Status -->
+    <lv_obj width="100%" height="content"
+            style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+            flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_md">
+      <!-- Plugin icon -->
+      <lv_obj width="40" height="40"
+              style_bg_color="#app_bg_color" style_bg_opa="255" style_radius="20"
+              style_border_width="0" scrollable="false"
+              style_pad_all="0" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center">
+        <icon name="plugin_icon" src="puzzle_outline" size="sm" variant="primary"/>
+      </lv_obj>
+      <!-- Name + Author column -->
+      <lv_obj width="content" height="content"
+              style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              flex_flow="column" style_pad_gap="#space_xxs" flex_grow="1">
+        <text_body name="name_label" text="$plugin_name" style_text_color="#text_primary"/>
+        <text_small name="author_label" text="$plugin_author" style_text_color="#text_secondary"/>
+      </lv_obj>
+      <!-- Version badge -->
+      <lv_obj width="content" height="content"
+              style_bg_color="#app_bg_color" style_bg_opa="255" style_radius="#border_radius_small"
+              style_border_width="0" style_pad_left="#space_sm" style_pad_right="#space_sm"
+              style_pad_top="#space_xs" style_pad_bottom="#space_xs" scrollable="false">
+        <text_small name="version_label" text="$plugin_version" style_text_color="#text_secondary"/>
+      </lv_obj>
+    </lv_obj>
+    <!-- Description row (if present) -->
+    <lv_obj name="description_container" width="100%" height="content"
+            style_bg_opa="0" style_border_width="0" style_pad_all="0"
+            style_pad_left="56" scrollable="false" flex_flow="column">
+      <text_small name="description_label" text="$plugin_description"
+                  style_text_color="#text_secondary" long_mode="wrap" width="100%"/>
+    </lv_obj>
+    <!-- Error row (shown only for failed plugins) -->
+    <lv_obj name="error_container" width="100%" height="content"
+            style_bg_color="#error_color" style_bg_opa="30" style_radius="#border_radius_small"
+            style_border_width="0" style_pad_all="#space_sm"
+            style_pad_left="56" style_margin_top="#space_xs" scrollable="false"
+            flex_flow="row" style_flex_cross_place="start" style_pad_gap="#space_sm" hidden="true">
+      <icon src="alert" size="xs" color="#error_color"/>
+      <text_small name="error_label" text="$error_message"
+                  style_text_color="#error_color" long_mode="wrap" flex_grow="1"/>
+    </lv_obj>
+  </view>
+</component>

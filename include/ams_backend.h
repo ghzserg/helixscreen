@@ -443,6 +443,37 @@ class AmsBackend {
     }
 
     // ========================================================================
+    // Discovery Configuration (Optional - default implementations are no-ops)
+    // ========================================================================
+
+    /**
+     * @brief Set discovered lane and hub names from PrinterCapabilities
+     *
+     * Called before start() to provide lane names discovered from printer.objects.list.
+     * Only AFC backend uses this - other backends ignore it.
+     *
+     * @param lane_names Lane names from PrinterCapabilities::get_afc_lane_names()
+     * @param hub_names Hub names from PrinterCapabilities::get_afc_hub_names()
+     */
+    virtual void set_discovered_lanes(const std::vector<std::string>& lane_names,
+                                      const std::vector<std::string>& hub_names) {
+        (void)lane_names;
+        (void)hub_names;
+    }
+
+    /**
+     * @brief Set discovered tool names from PrinterCapabilities
+     *
+     * Called before start() to provide tool names discovered from printer.objects.list.
+     * Only tool changer backend uses this - other backends ignore it.
+     *
+     * @param tool_names Tool names from PrinterCapabilities::get_tool_names()
+     */
+    virtual void set_discovered_tools(std::vector<std::string> tool_names) {
+        (void)tool_names;
+    }
+
+    // ========================================================================
     // Factory Method
     // ========================================================================
 

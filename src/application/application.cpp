@@ -82,6 +82,7 @@
 #include "memory_utils.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
+#include "plugin_manager.h"
 #include "printer_state.h"
 #include "settings_manager.h"
 #include "splash_screen.h"
@@ -100,6 +101,7 @@
 #include <cstring>
 #include <ctime>
 #include <signal.h>
+#include <tuple>
 #include <unistd.h>
 
 #ifdef __APPLE__
@@ -210,20 +212,26 @@ int Application::run(int argc, char** argv) {
         create_overlays();
     }
 
-    // Phase 14: Connect to printer
+    // Phase 14: Initialize and load plugins
+    // Must be after UI panels exist (injection points are registered by panels)
+    if (!init_plugins()) {
+        spdlog::warn("[Application] Plugin initialization had errors (non-fatal)");
+    }
+
+    // Phase 15: Connect to printer
     if (!connect_moonraker()) {
         // Non-fatal - app can still run without connection
         spdlog::warn("[Application] Running without printer connection");
     }
 
-    // Phase 15: Start memory monitoring (logs at TRACE level, -vvv)
+    // Phase 16: Start memory monitoring (logs at TRACE level, -vvv)
     helix::MemoryMonitor::instance().start(5000);
 
-    // Phase 16: Main loop
+    // Phase 17: Main loop
     helix::MemoryMonitor::log_now("before_main_loop");
     int result = main_loop();
 
-    // Phase 16: Shutdown
+    // Phase 18: Shutdown
     shutdown();
 
     return result;
@@ -687,6 +695,49 @@ bool Application::init_moonraker() {
     return true;
 }
 
+bool Application::init_plugins() {
+    spdlog::info("[Application] Initializing plugin system");
+
+    m_plugin_manager = std::make_unique<helix::plugin::PluginManager>();
+
+    // Set core services - API and client may be nullptr if mock mode
+    m_plugin_manager->set_core_services(m_moonraker->api(), m_moonraker->client(),
+                                        get_printer_state(), m_config);
+
+    // Discover plugins in the plugins directory
+    if (!m_plugin_manager->discover_plugins("plugins")) {
+        spdlog::error("[Application] Plugin discovery failed");
+        return false;
+    }
+
+    // Load all enabled plugins
+    bool all_loaded = m_plugin_manager->load_all();
+
+    // Log any errors and show toast notification
+    auto errors = m_plugin_manager->get_load_errors();
+    if (!errors.empty()) {
+        spdlog::warn("[Application] {} plugin(s) failed to load", errors.size());
+        for (const auto& err : errors) {
+            spdlog::warn("[Application]   - {}: {}", err.plugin_id, err.message);
+        }
+
+        // Show toast notification for failed plugins
+        char toast_msg[64];
+        if (errors.size() == 1) {
+            snprintf(toast_msg, sizeof(toast_msg), "1 plugin failed to load");
+        } else {
+            snprintf(toast_msg, sizeof(toast_msg), "%zu plugin(s) failed to load", errors.size());
+        }
+        ToastManager::instance().show(ToastSeverity::WARNING, toast_msg, 5000);
+    }
+
+    auto loaded = m_plugin_manager->get_loaded_plugins();
+    spdlog::info("[Application] {} plugin(s) loaded successfully", loaded.size());
+
+    helix::MemoryMonitor::log_now("after_plugins_loaded");
+    return all_loaded;
+}
+
 bool Application::run_wizard() {
     bool wizard_required = (m_args.force_wizard || m_config->is_wizard_required()) &&
                            !m_args.overlays.step_test && !m_args.overlays.test_panel &&
@@ -987,22 +1038,34 @@ bool Application::connect_moonraker() {
                 caps, {api, client}));
     });
 
-    client->set_on_discovery_complete([api, client](const PrinterCapabilities& caps) {
+    // Capture Application pointer for callback - used to check shutdown state and access plugin
+    // manager
+    Application* app = this;
+
+    client->set_on_discovery_complete([api, client, app](const PrinterCapabilities& caps) {
         ui_async_call(
             [](void* user_data) {
                 auto* ctx = static_cast<
-                    std::pair<PrinterCapabilities, std::pair<MoonrakerAPI*, MoonrakerClient*>>*>(
-                    user_data);
-                auto* api_ptr = ctx->second.first;
-                auto* client_ptr = ctx->second.second;
+                    std::tuple<PrinterCapabilities, std::pair<MoonrakerAPI*, MoonrakerClient*>,
+                               Application*>*>(user_data);
+                auto* api_ptr = std::get<1>(*ctx).first;
+                auto* client_ptr = std::get<1>(*ctx).second;
+                auto* app_ptr = std::get<2>(*ctx);
 
-                get_printer_state().set_printer_capabilities(ctx->first);
+                // Safety check: if Application is shutting down, skip all processing
+                // This prevents use-after-free if shutdown races with callback delivery
+                if (app_ptr->m_shutdown_complete) {
+                    delete ctx;
+                    return;
+                }
+
+                get_printer_state().set_printer_capabilities(std::get<0>(*ctx));
                 get_printer_state().init_fans(client_ptr->get_fans());
                 get_printer_state().set_klipper_version(client_ptr->get_software_version());
                 get_printer_state().set_moonraker_version(client_ptr->get_moonraker_version());
 
                 // Auto-configure LED if not explicitly set but LEDs were discovered
-                if (ctx->first.has_led()) {
+                if (std::get<0>(*ctx).has_led()) {
                     get_global_home_panel().auto_configure_led_if_needed(client_ptr->get_leds());
                     get_global_print_status_panel().auto_configure_led_if_needed(
                         client_ptr->get_leds());
@@ -1011,7 +1074,7 @@ bool Application::connect_moonraker() {
                 // Hardware validation: check config expectations vs discovered hardware
                 HardwareValidator validator;
                 auto validation_result =
-                    validator.validate(Config::get_instance(), client_ptr, ctx->first);
+                    validator.validate(Config::get_instance(), client_ptr, std::get<0>(*ctx));
                 get_printer_state().set_hardware_validation_result(validation_result);
 
                 if (validation_result.has_issues()) {
@@ -1032,10 +1095,15 @@ bool Application::connect_moonraker() {
                         get_printer_state().set_helix_plugin_installed(false);
                     });
 
+                // Notify plugins that Moonraker is connected
+                if (app_ptr->m_plugin_manager) {
+                    app_ptr->m_plugin_manager->on_moonraker_connected();
+                }
+
                 delete ctx;
             },
-            new std::pair<PrinterCapabilities, std::pair<MoonrakerAPI*, MoonrakerClient*>>(
-                caps, {api, client}));
+            new std::tuple<PrinterCapabilities, std::pair<MoonrakerAPI*, MoonrakerClient*>,
+                           Application*>(caps, {api, client}, app));
     });
 
     // Set HTTP base URL for API
@@ -1220,6 +1288,12 @@ void Application::shutdown() {
 
     // Deactivate UI and clear navigation registries
     NavigationManager::instance().shutdown();
+
+    // Unload plugins before destroying managers they depend on
+    if (m_plugin_manager) {
+        m_plugin_manager->unload_all();
+        m_plugin_manager.reset();
+    }
 
     // Reset managers in reverse order (MoonrakerManager handles print_start_collector cleanup)
     // History manager MUST be reset before moonraker (uses client for unregistration)

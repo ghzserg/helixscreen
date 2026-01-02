@@ -15,8 +15,6 @@
 
 #include "ui_update_queue.h"
 
-#include "ams_backend_afc.h"
-#include "ams_backend_toolchanger.h"
 #include "format_utils.h"
 #include "moonraker_api.h"
 #include "printer_capabilities.h"
@@ -323,24 +321,12 @@ void AmsState::init_backend_from_capabilities(const PrinterCapabilities& caps, M
 
     auto backend = AmsBackend::create(detected_type, api, client);
     if (backend) {
-        // For AFC backend, pass discovered lane/hub names from capabilities
-        // This works for ALL AFC versions (lane_data database requires v1.0.32+)
-        if (detected_type == AmsType::AFC) {
-            auto* afc_backend = dynamic_cast<AmsBackendAfc*>(backend.get());
-            if (afc_backend) {
-                afc_backend->set_discovered_lanes(caps.get_afc_lane_names(),
-                                                  caps.get_afc_hub_names());
-            }
-        }
-
-        // For Tool Changer backend, pass discovered tool names from capabilities
-        // Tool names are extracted from "tool T0", "tool T1", etc. in printer.objects.list
-        if (detected_type == AmsType::TOOL_CHANGER) {
-            auto* tc_backend = dynamic_cast<AmsBackendToolChanger*>(backend.get());
-            if (tc_backend) {
-                tc_backend->set_discovered_tools(caps.get_tool_names());
-            }
-        }
+        // Pass discovered configuration to backend through base class interface.
+        // Each backend type implements only what it needs (no-op default for others):
+        // - AFC: uses lane/hub names from printer.objects.list
+        // - Tool Changer: uses tool names from printer.objects.list
+        backend->set_discovered_lanes(caps.get_afc_lane_names(), caps.get_afc_hub_names());
+        backend->set_discovered_tools(caps.get_tool_names());
 
         // Set backend (registers event callback)
         set_backend(std::move(backend));

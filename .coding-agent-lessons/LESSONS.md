@@ -144,8 +144,8 @@
 > XML layout changes (ui_xml/*.xml) don't require recompilation - just restart the app. Only C++ changes need make.
 
 
-### [L032] [*****|-----] Re-stage after pre-commit format
-- **Uses**: 44 | **Velocity**: 0.13 | **Learned**: 2025-12-27 | **Last**: 2026-01-01 | **Category**: correction
+### [L032] [*****|+----] Re-stage after pre-commit format
+- **Uses**: 46 | **Velocity**: 1.26 | **Learned**: 2025-12-27 | **Last**: 2026-01-01 | **Category**: correction
 > When pre-commit hook auto-formats files, they are NOT automatically re-staged. Always check git status after a commit and amend if the hook formatted files. Look for 'Auto-formatted: <file>' messages and run 'git add -u && git commit --amend --no-edit'.
 
 

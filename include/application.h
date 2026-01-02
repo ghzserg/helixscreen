@@ -12,6 +12,9 @@
 
 // Forward declarations
 class Config;
+namespace helix::plugin {
+class PluginManager;
+}
 class DisplayManager;
 class SubjectInitializer;
 class MoonrakerManager;
@@ -71,6 +74,7 @@ class Application {
     bool connect_moonraker();
     void create_overlays();
     bool run_wizard();
+    bool init_plugins();
 
     // Main loop
     int main_loop();
@@ -95,6 +99,7 @@ class Application {
     std::unique_ptr<PrintHistoryManager> m_history_manager;
     std::unique_ptr<TemperatureHistoryManager> m_temp_history_manager;
     std::unique_ptr<PanelFactory> m_panels;
+    std::unique_ptr<helix::plugin::PluginManager> m_plugin_manager;
 
     // Configuration
     Config* m_config = nullptr; // Singleton, not owned

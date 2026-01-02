@@ -1,0 +1,14 @@
+{
+  "id": "led-effects",
+  "name": "LED Effects",
+  "version": "1.0.0",
+  "helix_version": ">=2.0.0",
+  "author": "HelixScreen Team",
+  "description": "Control and animate Klipper LED strips",
+  "entry_point": "helix_plugin_init",
+  "ui": {
+    "settings_page": false,
+    "navbar_panel": false,
+    "injection_points": ["home_widget_area"]
+  }
+}

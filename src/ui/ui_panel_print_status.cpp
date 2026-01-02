@@ -21,6 +21,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "filament_sensor_manager.h"
+#include "injection_point_manager.h"
 #include "memory_utils.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
@@ -486,6 +487,14 @@ lv_obj_t* PrintStatusPanel::create(lv_obj_t* parent) {
     if (print_thumbnail_ && !cached_thumbnail_path_.empty()) {
         lv_image_set_src(print_thumbnail_, cached_thumbnail_path_.c_str());
         spdlog::info("[{}] Restored cached thumbnail: {}", get_name(), cached_thumbnail_path_);
+    }
+
+    // Register plugin injection point for print status widgets
+    lv_obj_t* extras_container = lv_obj_find_by_name(overlay_root_, "print_status_extras");
+    if (extras_container) {
+        helix::plugin::InjectionPointManager::instance().register_point("print_status_extras",
+                                                                        extras_container);
+        spdlog::debug("[{}] Registered injection point: print_status_extras", get_name());
     }
 
     // Hide initially - NavigationManager will show when pushed

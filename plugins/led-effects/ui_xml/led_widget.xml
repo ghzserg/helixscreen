@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2025 HelixScreen -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- LED Widget - Plugin widget for LED control -->
+<!-- Injected into home_widget_area by LED Effects plugin -->
+<component>
+  <api>
+    <consts/>
+  </api>
+  <view name="led_widget"
+        extends="lv_obj" width="100%" height="content"
+        style_bg_color="#card_bg" style_bg_opa="255"
+        style_radius="#border_radius" style_border_width="0"
+        style_pad_all="#space_md" scrollable="false"
+        flex_flow="row" style_flex_main_place="space-between" style_flex_cross_place="center">
+
+    <!-- LED icon and label container -->
+    <lv_obj width="content" height="content"
+            style_bg_opa="0" style_border_width="0" style_pad_all="0"
+            scrollable="false" clickable="false"
+            flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+      <icon name="led_icon" src="light" size="sm" variant="primary"/>
+      <text_body text="LED Control" style_text_color="#text_primary"/>
+    </lv_obj>
+
+    <!-- Toggle button -->
+    <lv_button name="led_toggle_btn"
+               style_bg_color="#primary_color" style_bg_opa="255"
+               style_radius="#border_radius_small" style_border_width="0"
+               style_shadow_width="0"
+               style_pad_left="#space_md" style_pad_right="#space_md"
+               style_pad_top="#space_sm" style_pad_bottom="#space_sm">
+      <text_small text="Toggle" style_text_color="#button_text_color"/>
+      <event_cb trigger="clicked" callback="led_toggle_cb"/>
+    </lv_button>
+
+  </view>
+</component>

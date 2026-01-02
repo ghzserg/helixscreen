@@ -73,7 +73,7 @@ class AmsBackendToolChanger : public AmsBackend {
      *
      * @param tool_names Vector of tool names
      */
-    void set_discovered_tools(std::vector<std::string> tool_names);
+    void set_discovered_tools(std::vector<std::string> tool_names) override;
 
     // Lifecycle
     AmsError start() override;
