@@ -58,13 +58,6 @@
 namespace helix {
 
 /**
- * @brief Version of the HelixScreen macro package
- *
- * Used to detect if installed macros are outdated and need updating.
- */
-constexpr const char* HELIX_MACROS_VERSION = "1.0.0";
-
-/**
  * @brief Filename for the HelixScreen macros config file
  */
 constexpr const char* HELIX_MACROS_FILENAME = "helix_macros.cfg";
@@ -148,9 +141,9 @@ class MacroManager {
     /**
      * @brief Check if an update is available
      *
-     * Compares installed version against HELIX_MACROS_VERSION.
+     * Compares installed version against the local file version.
      *
-     * @return true if installed version is older than current
+     * @return true if installed version is older than local file
      */
     [[nodiscard]] bool update_available() const;
 
@@ -200,15 +193,20 @@ class MacroManager {
     /**
      * @brief Get the macro configuration file content
      *
-     * Returns the complete helix_macros.cfg content with:
-     * - Version header comment
-     * - HELIX_BED_LEVEL_IF_NEEDED macro
-     * - HELIX_CLEAN_NOZZLE macro
-     * - HELIX_START_PRINT macro
+     * Reads and returns the complete helix_macros.cfg content from disk.
      *
-     * @return String containing complete cfg file content
+     * @return String containing complete cfg file content, or empty if not found
      */
     [[nodiscard]] static std::string get_macro_content();
+
+    /**
+     * @brief Get the version from the local macro file
+     *
+     * Parses the version from the file header (e.g., "# helix_macros v2.0.0").
+     *
+     * @return Version string (e.g., "2.0.0"), or empty if not found
+     */
+    [[nodiscard]] static std::string get_version();
 
     /**
      * @brief Get list of macro names that will be installed

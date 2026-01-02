@@ -25,10 +25,11 @@ class MacroManagerTestFixture {
     MacroManagerTestFixture() : state_(), api_(client_, state_), manager_(api_, capabilities_) {}
 
     void set_helix_macros_installed() {
-        // Simulate printer with Helix macros
+        // Simulate printer with Helix macros (v2.0+)
         json objects = json::array(
-            {"gcode_macro HELIX_START_PRINT", "gcode_macro HELIX_CLEAN_NOZZLE",
-             "gcode_macro HELIX_BED_LEVEL_IF_NEEDED", "gcode_macro HELIX_VERSION", "bed_mesh"});
+            {"gcode_macro HELIX_READY", "gcode_macro HELIX_ENDED", "gcode_macro HELIX_RESET",
+             "gcode_macro HELIX_START_PRINT", "gcode_macro HELIX_CLEAN_NOZZLE",
+             "gcode_macro HELIX_BED_LEVEL_IF_NEEDED", "gcode_macro _HELIX_STATE", "bed_mesh"});
         capabilities_.parse_objects(objects);
     }
 
@@ -40,7 +41,7 @@ class MacroManagerTestFixture {
     }
 
     void set_partial_helix_macros() {
-        // Simulate printer with only some Helix macros (outdated install)
+        // Simulate printer with legacy v1.x macros (no HELIX_READY)
         json objects = json::array({"gcode_macro HELIX_START_PRINT", "bed_mesh"});
         capabilities_.parse_objects(objects);
     }
@@ -95,14 +96,22 @@ TEST_CASE_METHOD(MacroManagerTestFixture,
 TEST_CASE("MacroManager - get_macro_content returns valid Klipper config", "[config][content]") {
     std::string content = MacroManager::get_macro_content();
 
-    // Should contain version header
-    REQUIRE(content.find("Version: 1.0.0") != std::string::npos);
+    // Should contain version header (v2.0+ format)
+    REQUIRE(content.find("# helix_macros v") != std::string::npos);
 
-    // Should contain all required macros
+    // Should contain core signal macros
+    REQUIRE(content.find("[gcode_macro HELIX_READY]") != std::string::npos);
+    REQUIRE(content.find("[gcode_macro HELIX_ENDED]") != std::string::npos);
+    REQUIRE(content.find("[gcode_macro HELIX_RESET]") != std::string::npos);
+
+    // Should contain pre-print helper macros
     REQUIRE(content.find("[gcode_macro HELIX_START_PRINT]") != std::string::npos);
     REQUIRE(content.find("[gcode_macro HELIX_CLEAN_NOZZLE]") != std::string::npos);
     REQUIRE(content.find("[gcode_macro HELIX_BED_LEVEL_IF_NEEDED]") != std::string::npos);
-    REQUIRE(content.find("[gcode_macro HELIX_VERSION]") != std::string::npos);
+
+    // Should contain phase tracking macros
+    REQUIRE(content.find("[gcode_macro HELIX_PHASE_HOMING]") != std::string::npos);
+    REQUIRE(content.find("[gcode_macro HELIX_PHASE_HEATING_BED]") != std::string::npos);
 
     // Should contain proper gcode: sections
     REQUIRE(content.find("gcode:") != std::string::npos);
@@ -144,11 +153,22 @@ TEST_CASE("MacroManager - get_macro_content includes conditional operations", "[
 TEST_CASE("MacroManager - get_macro_names returns expected macros", "[slow][config][content]") {
     auto names = MacroManager::get_macro_names();
 
-    REQUIRE(names.size() == 4);
+    // v2.0 has 15 public macros (excluding _HELIX_STATE which starts with _)
+    REQUIRE(names.size() == 15);
+
+    // Core signals
+    REQUIRE(std::find(names.begin(), names.end(), "HELIX_READY") != names.end());
+    REQUIRE(std::find(names.begin(), names.end(), "HELIX_ENDED") != names.end());
+    REQUIRE(std::find(names.begin(), names.end(), "HELIX_RESET") != names.end());
+
+    // Pre-print helpers
     REQUIRE(std::find(names.begin(), names.end(), "HELIX_START_PRINT") != names.end());
     REQUIRE(std::find(names.begin(), names.end(), "HELIX_CLEAN_NOZZLE") != names.end());
     REQUIRE(std::find(names.begin(), names.end(), "HELIX_BED_LEVEL_IF_NEEDED") != names.end());
-    REQUIRE(std::find(names.begin(), names.end(), "HELIX_VERSION") != names.end());
+
+    // Phase tracking (spot check a few)
+    REQUIRE(std::find(names.begin(), names.end(), "HELIX_PHASE_HOMING") != names.end());
+    REQUIRE(std::find(names.begin(), names.end(), "HELIX_PHASE_BED_MESH") != names.end());
 }
 
 // ============================================================================
@@ -184,17 +204,20 @@ TEST_CASE("MacroManager - HELIX_BED_LEVEL_IF_NEEDED has age-based logic", "[conf
 }
 
 // ============================================================================
-// Version Constants Tests
+// Version Tests
 // ============================================================================
 
-TEST_CASE("MacroManager - version constant is valid semver", "[slow][config][version]") {
-    std::string version = HELIX_MACROS_VERSION;
+TEST_CASE("MacroManager - get_version returns valid semver", "[slow][config][version]") {
+    std::string version = MacroManager::get_version();
+
+    // Should not be empty
+    REQUIRE_FALSE(version.empty());
 
     // Should match semver pattern (major.minor.patch)
     REQUIRE(version.find('.') != std::string::npos);
 
-    // Should be at least 1.0.0
-    REQUIRE(version >= "1.0.0");
+    // Should be at least 2.0.0 (v2.0 format)
+    REQUIRE(version >= "2.0.0");
 }
 
 TEST_CASE("MacroManager - filename constant is valid", "[slow][config][constants]") {

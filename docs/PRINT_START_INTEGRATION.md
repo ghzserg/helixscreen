@@ -10,8 +10,8 @@ HelixScreen uses a multi-signal detection system with the following priority:
 
 | Priority | Signal | How It Works |
 |----------|--------|--------------|
-| 1 | **Macro Variables** | Watches `gcode_macro _START_PRINT.print_started`, `gcode_macro START_PRINT.preparation_done`, or `gcode_macro _HELIX_STATE.print_started` |
-| 2 | **G-code Console** | Parses console output for `LAYER: 1`, `SET_PRINT_STATS_INFO CURRENT_LAYER=`, or `HELIX:PRINT_STARTED` |
+| 1 | **Macro Variables** | Watches `gcode_macro _HELIX_STATE.active` or `gcode_macro _START_PRINT.print_started` |
+| 2 | **G-code Console** | Parses console output for `HELIX:READY`, `LAYER: 1`, or `SET_PRINT_STATS_INFO CURRENT_LAYER=` |
 | 3 | **Layer Count** | Monitors `print_stats.info.current_layer` becoming ≥1 |
 | 4 | **Progress + Temps** | Print progress ≥2% AND temps within 5°C of target |
 | 5 | **Timeout** | 45 seconds in PRINTING state with temps ≥90% of target |
@@ -20,13 +20,27 @@ HelixScreen uses a multi-signal detection system with the following priority:
 
 ### Option 1: Install HelixScreen Macros (Recommended)
 
-Copy `config/helix_macros.cfg` to your Klipper config directory and add to your `printer.cfg`:
+The HelixScreen macro file provides:
+- **Instant detection**: `HELIX_READY` signal at the end of your PRINT_START
+- **Phase tracking**: Optional `HELIX_PHASE_*` macros for detailed progress display
+- **Pre-print helpers**: `HELIX_BED_LEVEL_IF_NEEDED`, `HELIX_CLEAN_NOZZLE`, `HELIX_START_PRINT`
+
+**Installation via Settings UI:**
+
+1. Go to Settings → Advanced → HelixScreen Macros
+2. Click "Install Macros"
+3. Restart Klipper when prompted
+
+**Manual Installation:**
+
+1. Copy `config/helix_macros.cfg` to your Klipper config directory
+2. Add to your `printer.cfg`:
 
 ```ini
 [include helix_macros.cfg]
 ```
 
-Then add `HELIX_NOTIFY_PRINT_STARTED` at the end of your PRINT_START macro:
+3. Add `HELIX_READY` at the end of your PRINT_START macro:
 
 ```gcode
 [gcode_macro PRINT_START]
@@ -40,9 +54,35 @@ gcode:
     BED_MESH_CALIBRATE
 
     # Signal HelixScreen that prep is done
-    HELIX_NOTIFY_PRINT_STARTED
+    HELIX_READY
 
     # Purge line or first layer starts here
+```
+
+### Option 1b: With Phase Tracking
+
+For detailed progress display during preparation, add phase signals:
+
+```gcode
+[gcode_macro PRINT_START]
+gcode:
+    HELIX_PHASE_HOMING
+    G28
+
+    HELIX_PHASE_HEATING_BED
+    M190 S{BED_TEMP}
+
+    HELIX_PHASE_BED_MESH
+    BED_MESH_CALIBRATE
+
+    HELIX_PHASE_HEATING_NOZZLE
+    M109 S{EXTRUDER_TEMP}
+
+    HELIX_PHASE_PURGING
+    # Your purge line code here
+
+    # Signal preparation complete
+    HELIX_READY
 ```
 
 ### Option 2: Add Variables to Existing Macro
@@ -71,6 +111,39 @@ If your slicer supports it, enable layer info in your G-code:
 - Use a post-processing script to add layer comments
 - HelixScreen looks for `LAYER:N` or `LAYER: N` patterns
 
+## Available Macros
+
+When `helix_macros.cfg` is installed, these macros are available:
+
+### Core Signals
+
+| Macro | Purpose |
+|-------|---------|
+| `HELIX_READY` | Signal that print preparation is complete |
+| `HELIX_ENDED` | Signal that print has ended (called in PRINT_END) |
+| `HELIX_RESET` | Reset state (for cancel/error recovery) |
+
+### Phase Tracking (Optional)
+
+| Macro | Phase Displayed |
+|-------|-----------------|
+| `HELIX_PHASE_HOMING` | "Homing..." |
+| `HELIX_PHASE_HEATING_BED` | "Heating bed..." |
+| `HELIX_PHASE_HEATING_NOZZLE` | "Heating nozzle..." |
+| `HELIX_PHASE_BED_MESH` | "Bed leveling..." |
+| `HELIX_PHASE_QGL` | "Quad gantry level..." |
+| `HELIX_PHASE_Z_TILT` | "Z-tilt adjust..." |
+| `HELIX_PHASE_CLEANING` | "Cleaning nozzle..." |
+| `HELIX_PHASE_PURGING` | "Purging..." |
+
+### Pre-Print Helpers
+
+| Macro | Purpose |
+|-------|---------|
+| `HELIX_BED_LEVEL_IF_NEEDED` | Run bed mesh only if stale (configurable max age) |
+| `HELIX_CLEAN_NOZZLE` | Nozzle cleaning sequence (configure brush position) |
+| `HELIX_START_PRINT` | Complete start print sequence with all options |
+
 ## Troubleshooting
 
 ### "Preparing" Stuck Forever
@@ -78,16 +151,16 @@ If your slicer supports it, enable layer info in your G-code:
 If the home panel stays on "Preparing Print" indefinitely:
 
 1. **Check console output**: Run your print and look at the Klipper console. Do you see any layer markers?
-2. **Verify macro variables**: Query `gcode_macro _START_PRINT` via Moonraker to see if `print_started` is being set
+2. **Verify macro variables**: Query `gcode_macro _HELIX_STATE` via Moonraker to see if `active` is being set
 3. **Enable fallbacks**: The timeout fallback should trigger after 45 seconds if temps are near target
 
 ### Quick Detection Not Working
 
 If detection takes the full 45-second timeout:
 
-1. **Add HELIX_NOTIFY_PRINT_STARTED**: The most reliable option
+1. **Add HELIX_READY**: The most reliable option
 2. **Check if your slicer sets layer info**: Look for `SET_PRINT_STATS_INFO` in your G-code
-3. **Verify macro object subscriptions**: HelixScreen subscribes to `gcode_macro _START_PRINT`, `gcode_macro START_PRINT`, and `gcode_macro _HELIX_STATE`
+3. **Verify macro object subscriptions**: HelixScreen subscribes to `gcode_macro _HELIX_STATE`, `gcode_macro _START_PRINT`, and `gcode_macro START_PRINT`
 
 ## Technical Details
 
@@ -96,9 +169,9 @@ If detection takes the full 45-second timeout:
 **Macro Variables (Priority 1)**
 
 HelixScreen subscribes to these Moonraker objects:
+- `gcode_macro _HELIX_STATE` → watches `active` variable
 - `gcode_macro _START_PRINT` → watches `print_started` variable
 - `gcode_macro START_PRINT` → watches `preparation_done` variable
-- `gcode_macro _HELIX_STATE` → watches `print_started` variable
 
 When any of these become `True`, detection is instant.
 
@@ -106,7 +179,7 @@ When any of these become `True`, detection is instant.
 
 HelixScreen watches `notify_gcode_response` for patterns:
 ```regex
-SET_PRINT_STATS_INFO\s+CURRENT_LAYER=|LAYER:?\s*1\b|;LAYER:1|First layer|HELIX:PRINT_STARTED
+SET_PRINT_STATS_INFO\s+CURRENT_LAYER=|LAYER:?\s*1\b|;LAYER:1|First layer|HELIX:READY
 ```
 
 **Layer Count (Priority 3)**
@@ -130,6 +203,7 @@ Last resort after 45 seconds in PRINTING state:
 
 | File | Purpose |
 |------|---------|
-| `src/print_start_collector.cpp` | Detection logic and fallback implementation |
-| `config/helix_macros.cfg` | Optional Klipper macros for best detection |
+| `src/print/print_start_collector.cpp` | Detection logic and fallback implementation |
+| `config/helix_macros.cfg` | Klipper macros for detection and phase tracking |
+| `src/printer/macro_manager.cpp` | Macro installation management |
 | `src/moonraker_client.cpp` | Object subscription setup |

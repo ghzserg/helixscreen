@@ -65,9 +65,9 @@ const std::regex
                                               std::regex::icase);
 
 // Pattern to detect print start completion (first layer indicator)
-// Includes HELIX:PRINT_STARTED for our custom macro integration
+// Includes HELIX:READY for our custom macro integration
 const std::regex PrintStartCollector::completion_pattern_(
-    R"(SET_PRINT_STATS_INFO\s+CURRENT_LAYER=|LAYER:?\s*1\b|;LAYER:1|First layer|HELIX:PRINT_STARTED)",
+    R"(SET_PRINT_STATS_INFO\s+CURRENT_LAYER=|LAYER:?\s*1\b|;LAYER:1|First layer|HELIX:READY)",
     std::regex::icase);
 
 // ============================================================================

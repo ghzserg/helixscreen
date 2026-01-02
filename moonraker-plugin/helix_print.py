@@ -887,19 +887,20 @@ class HelixPrint:
     # =========================================================================
 
     # Markers used to identify injected tracking code
-    TRACKING_MARKER_BEGIN = "# <<< HELIX_TRACKING v1 >>>"
+    # v2 uses HELIX_PHASE_* macros from helix_macros.cfg
+    TRACKING_MARKER_BEGIN = "# <<< HELIX_TRACKING v2 >>>"
     TRACKING_MARKER_END = "# <<< /HELIX_TRACKING >>>"
 
-    # Operations to detect and their phase names
+    # Operations to detect and their corresponding HELIX_PHASE_* macro names
     PHASE_PATTERNS = [
-        (r"\bG28\b", "HOMING"),
-        (r"\bQUAD_GANTRY_LEVEL\b", "QGL"),
-        (r"\bZ_TILT_ADJUST\b", "Z_TILT"),
-        (r"\bBED_MESH_CALIBRATE\b", "BED_MESH"),
-        (r"\b(CLEAN|WIPE)_NOZZLE\b", "CLEANING"),
-        (r"\b\w*PURGE\w*\b", "PURGING"),
-        (r"\bM109\b", "HEATING_NOZZLE"),
-        (r"\bM190\b", "HEATING_BED"),
+        (r"\bG28\b", "HELIX_PHASE_HOMING"),
+        (r"\bQUAD_GANTRY_LEVEL\b", "HELIX_PHASE_QGL"),
+        (r"\bZ_TILT_ADJUST\b", "HELIX_PHASE_Z_TILT"),
+        (r"\bBED_MESH_CALIBRATE\b", "HELIX_PHASE_BED_MESH"),
+        (r"\b(CLEAN|WIPE)_NOZZLE\b", "HELIX_PHASE_CLEANING"),
+        (r"\b\w*PURGE\w*\b", "HELIX_PHASE_PURGING"),
+        (r"\bM109\b", "HELIX_PHASE_HEATING_NOZZLE"),
+        (r"\bM190\b", "HELIX_PHASE_HEATING_BED"),
     ]
 
     async def _handle_phase_tracking_enable(
@@ -1029,7 +1030,7 @@ class HelixPrint:
                 "enabled": instrumented,
                 "instrumented": instrumented,
                 "macro_name": macro_name,
-                "version": "v1" if instrumented else None,
+                "version": "v2" if instrumented else None,
             }
 
         except Exception as e:
@@ -1140,18 +1141,20 @@ class HelixPrint:
         return None
 
     def _instrument_gcode(self, gcode: str) -> str:
-        """Inject phase tracking code into gcode."""
+        """
+        Inject phase tracking code into gcode.
+
+        Uses HELIX_PHASE_* macros from helix_macros.cfg which emit
+        RESPOND messages that HelixScreen can parse.
+
+        Requires helix_macros.cfg to be installed on the printer.
+        """
         import re
 
         lines = gcode.split("\n")
         result = []
 
-        # Add STARTING marker at the beginning
-        result.append(self.TRACKING_MARKER_BEGIN)
-        result.append(
-            'SET_GCODE_VARIABLE MACRO=_HELIX_PHASE_STATE VARIABLE=phase VALUE=\'"STARTING"\''
-        )
-        result.append(self.TRACKING_MARKER_END)
+        # Note: No "STARTING" marker needed - phases are detected as they occur
 
         for line in lines:
             result.append(line)
@@ -1161,20 +1164,16 @@ class HelixPrint:
             if not line_upper or line_upper.startswith("#"):
                 continue
 
-            for pattern, phase in self.PHASE_PATTERNS:
+            for pattern, macro_name in self.PHASE_PATTERNS:
                 if re.search(pattern, line_upper, re.IGNORECASE):
                     result.append(self.TRACKING_MARKER_BEGIN)
-                    result.append(
-                        f'SET_GCODE_VARIABLE MACRO=_HELIX_PHASE_STATE VARIABLE=phase VALUE=\'"{phase}"\''
-                    )
+                    result.append(macro_name)
                     result.append(self.TRACKING_MARKER_END)
                     break  # Only one marker per line
 
-        # Add COMPLETE marker at the end
+        # Add HELIX_READY at the end to signal preparation complete
         result.append(self.TRACKING_MARKER_BEGIN)
-        result.append(
-            'SET_GCODE_VARIABLE MACRO=_HELIX_PHASE_STATE VARIABLE=phase VALUE=\'"COMPLETE"\''
-        )
+        result.append("HELIX_READY")
         result.append(self.TRACKING_MARKER_END)
 
         return "\n".join(result)

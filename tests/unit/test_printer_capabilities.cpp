@@ -279,21 +279,24 @@ TEST_CASE("PrinterCapabilities - Helix macro detection", "[slow][printer][config
         REQUIRE(caps.helix_macros().empty());
     }
 
-    SECTION("Detects complete Helix macro set") {
-        // All four macros from helix_macros.cfg
-        json objects = {"gcode_macro HELIX_START_PRINT", "gcode_macro HELIX_CLEAN_NOZZLE",
-                        "gcode_macro HELIX_BED_LEVEL_IF_NEEDED", "gcode_macro HELIX_VERSION"};
+    SECTION("Detects complete Helix macro set (v2.0+)") {
+        // Core macros from helix_macros.cfg v2.0+
+        json objects = {"gcode_macro HELIX_READY",
+                        "gcode_macro HELIX_ENDED",
+                        "gcode_macro HELIX_START_PRINT",
+                        "gcode_macro HELIX_CLEAN_NOZZLE",
+                        "gcode_macro HELIX_BED_LEVEL_IF_NEEDED",
+                        "gcode_macro _HELIX_STATE"};
         caps.parse_objects(objects);
 
         REQUIRE(caps.has_helix_macros());
-        REQUIRE(caps.helix_macros().size() == 4);
+        REQUIRE(caps.helix_macros().size() == 5); // _HELIX_STATE is internal, not counted
+        REQUIRE(caps.has_helix_macro("HELIX_READY"));
+        REQUIRE(caps.has_helix_macro("HELIX_ENDED"));
         REQUIRE(caps.has_helix_macro("HELIX_START_PRINT"));
-        REQUIRE(caps.has_helix_macro("HELIX_CLEAN_NOZZLE"));
-        REQUIRE(caps.has_helix_macro("HELIX_BED_LEVEL_IF_NEEDED"));
-        REQUIRE(caps.has_helix_macro("HELIX_VERSION"));
     }
 
-    SECTION("Detects partial Helix macro install") {
+    SECTION("Detects partial Helix macro install (legacy v1.x)") {
         // Only some Helix macros - older version or partial install
         json objects = {"gcode_macro HELIX_START_PRINT", "gcode_macro START_PRINT"};
         caps.parse_objects(objects);
@@ -301,16 +304,16 @@ TEST_CASE("PrinterCapabilities - Helix macro detection", "[slow][printer][config
         REQUIRE(caps.has_helix_macros());
         REQUIRE(caps.helix_macros().size() == 1);
         REQUIRE(caps.has_helix_macro("HELIX_START_PRINT"));
-        REQUIRE_FALSE(caps.has_helix_macro("HELIX_VERSION"));
+        REQUIRE_FALSE(caps.has_helix_macro("HELIX_READY"));
     }
 
     SECTION("Helix macro lookup is case-insensitive") {
-        json objects = {"gcode_macro HELIX_VERSION"};
+        json objects = {"gcode_macro HELIX_READY"};
         caps.parse_objects(objects);
 
-        REQUIRE(caps.has_helix_macro("HELIX_VERSION"));
-        REQUIRE(caps.has_helix_macro("helix_version"));
-        REQUIRE(caps.has_helix_macro("Helix_Version"));
+        REQUIRE(caps.has_helix_macro("HELIX_READY"));
+        REQUIRE(caps.has_helix_macro("helix_ready"));
+        REQUIRE(caps.has_helix_macro("Helix_Ready"));
     }
 
     SECTION("Distinguishes HELIX_ prefix from similar names") {
