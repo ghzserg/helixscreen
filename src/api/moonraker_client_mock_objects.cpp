@@ -81,6 +81,18 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                       {"heater_bed", {{"min_temp", 0.0}, {"max_temp", 120.0}}}}}};
             }
 
+            // toolhead (for get_machine_limits)
+            if (objects.contains("toolhead")) {
+                status_obj["toolhead"] = {{"max_velocity", 500.0},
+                                          {"max_accel", 10000.0},
+                                          {"max_accel_to_decel", 5000.0},
+                                          {"square_corner_velocity", 5.0},
+                                          {"max_z_velocity", 40.0},
+                                          {"max_z_accel", 1000.0},
+                                          {"position", {0.0, 0.0, 0.0, 0.0}},
+                                          {"homed_axes", "xyz"}};
+            }
+
             // idle_timeout (for motors_enabled state)
             if (objects.contains("idle_timeout")) {
                 // Derive state from print phase and motor state:

@@ -8,6 +8,7 @@
 #include "moonraker_api_internal.h"
 #include "spdlog/spdlog.h"
 
+#include <iomanip>
 #include <memory>
 #include <regex>
 #include <set>
@@ -879,26 +880,109 @@ void MoonrakerAPI::update_spoolman_filament_color(int filament_id, const std::st
         on_error);
 }
 
-void MoonrakerAPI::get_machine_limits(MachineLimitsCallback /*on_success*/,
-                                      ErrorCallback on_error) {
-    spdlog::warn("[Moonraker API] get_machine_limits() not yet implemented");
-    if (on_error) {
-        MoonrakerError err;
-        err.type = MoonrakerErrorType::UNKNOWN;
-        err.message = "Machine limits query not yet implemented";
-        on_error(err);
-    }
+void MoonrakerAPI::get_machine_limits(MachineLimitsCallback on_success, ErrorCallback on_error) {
+    spdlog::debug("[Moonraker API] Querying machine limits from toolhead");
+
+    // Query toolhead object for current velocity/acceleration limits
+    json params = {{"objects", {{"toolhead", nullptr}}}};
+
+    client_.send_jsonrpc(
+        "printer.objects.query", params,
+        [on_success, on_error](json response) {
+            try {
+                if (!response.contains("result") || !response["result"].contains("status") ||
+                    !response["result"]["status"].contains("toolhead")) {
+                    spdlog::warn("[Moonraker API] Toolhead object not available in response");
+                    if (on_error) {
+                        MoonrakerError err;
+                        err.type = MoonrakerErrorType::UNKNOWN;
+                        err.message = "Toolhead object not available";
+                        on_error(err);
+                    }
+                    return;
+                }
+
+                const auto& toolhead = response["result"]["status"]["toolhead"];
+                MachineLimits limits;
+
+                // Extract limits with safe defaults
+                limits.max_velocity = toolhead.value("max_velocity", 0.0);
+                limits.max_accel = toolhead.value("max_accel", 0.0);
+                limits.max_accel_to_decel = toolhead.value("max_accel_to_decel", 0.0);
+                limits.square_corner_velocity = toolhead.value("square_corner_velocity", 0.0);
+                limits.max_z_velocity = toolhead.value("max_z_velocity", 0.0);
+                limits.max_z_accel = toolhead.value("max_z_accel", 0.0);
+
+                spdlog::info("[Moonraker API] Machine limits: vel={:.0f} accel={:.0f} "
+                             "accel_to_decel={:.0f} scv={:.1f} z_vel={:.0f} z_accel={:.0f}",
+                             limits.max_velocity, limits.max_accel, limits.max_accel_to_decel,
+                             limits.square_corner_velocity, limits.max_z_velocity,
+                             limits.max_z_accel);
+
+                if (on_success) {
+                    on_success(limits);
+                }
+            } catch (const std::exception& e) {
+                spdlog::error("[Moonraker API] Failed to parse machine limits: {}", e.what());
+                if (on_error) {
+                    MoonrakerError err;
+                    err.type = MoonrakerErrorType::UNKNOWN;
+                    err.message = std::string("Failed to parse machine limits: ") + e.what();
+                    on_error(err);
+                }
+            }
+        },
+        on_error);
 }
 
-void MoonrakerAPI::set_machine_limits(const MachineLimits& /*limits*/,
-                                      SuccessCallback /*on_success*/, ErrorCallback on_error) {
-    spdlog::warn("[Moonraker API] set_machine_limits() not yet implemented");
-    if (on_error) {
-        MoonrakerError err;
-        err.type = MoonrakerErrorType::UNKNOWN;
-        err.message = "Machine limits configuration not yet implemented";
-        on_error(err);
+void MoonrakerAPI::set_machine_limits(const MachineLimits& limits, SuccessCallback on_success,
+                                      ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Setting machine limits");
+
+    // Warn about Z limits that cannot be set at runtime
+    if (limits.max_z_velocity > 0 || limits.max_z_accel > 0) {
+        spdlog::warn("[Moonraker API] max_z_velocity and max_z_accel cannot be set "
+                     "via SET_VELOCITY_LIMIT - they require config changes");
     }
+
+    // Build SET_VELOCITY_LIMIT command with only non-zero parameters
+    // Use fixed precision to avoid floating point representation issues
+    std::ostringstream cmd;
+    cmd << std::fixed << std::setprecision(1);
+    cmd << "SET_VELOCITY_LIMIT";
+
+    bool has_params = false;
+
+    if (limits.max_velocity > 0) {
+        cmd << " VELOCITY=" << limits.max_velocity;
+        has_params = true;
+    }
+    if (limits.max_accel > 0) {
+        cmd << " ACCEL=" << limits.max_accel;
+        has_params = true;
+    }
+    if (limits.max_accel_to_decel > 0) {
+        cmd << " ACCEL_TO_DECEL=" << limits.max_accel_to_decel;
+        has_params = true;
+    }
+    if (limits.square_corner_velocity > 0) {
+        cmd << " SQUARE_CORNER_VELOCITY=" << limits.square_corner_velocity;
+        has_params = true;
+    }
+
+    if (!has_params) {
+        spdlog::warn("[Moonraker API] set_machine_limits called with no valid parameters");
+        if (on_error) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "No valid machine limit parameters provided";
+            on_error(err);
+        }
+        return;
+    }
+
+    spdlog::debug("[Moonraker API] Executing: {}", cmd.str());
+    execute_gcode(cmd.str(), on_success, on_error);
 }
 
 void MoonrakerAPI::save_config(SuccessCallback /*on_success*/, ErrorCallback on_error) {

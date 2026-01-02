@@ -1,0 +1,246 @@
+<?xml version="1.0"?>
+<!-- Copyright 2025 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Machine Limits Overlay Panel -->
+<!-- Configures runtime velocity and acceleration limits -->
+<!-- Max Z values are read-only (config-defined, not runtime adjustable) -->
+<component>
+  <view name="machine_limits_overlay"
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Machine Limits" bg_color="#app_bg_color">
+    <!-- Content Area -->
+    <lv_obj name="overlay_content"
+            width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="0" scrollable="true" scroll_dir="ver"
+            style_border_width="0" flex_flow="column">
+      <!-- ================================================================== -->
+      <!-- INFO BANNER - Changes are temporary -->
+      <!-- ================================================================== -->
+      <lv_obj width="100%"
+              height="content" style_bg_color="#info_color" style_bg_opa="25" style_border_width="0" scrollable="false"
+              style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md"
+              style_pad_bottom="#space_md" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <icon src="info" size="sm" variant="info"/>
+        <text_small text="Changes are temporary and reset on printer reboot" style_text_color="#info_color"/>
+      </lv_obj>
+      <!-- ================================================================== -->
+      <!-- MAX VELOCITY -->
+      <!-- ================================================================== -->
+      <lv_obj name="max_velocity_section"
+              width="100%" height="content" style_bg_opa="0" style_border_width="0" scrollable="false"
+              style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md"
+              style_pad_bottom="#space_md" flex_flow="column" style_pad_gap="#space_sm">
+        <!-- Section Label -->
+        <lv_obj width="100%"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
+          <lv_obj width="content"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                  flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+            <icon src="speed" size="sm" variant="secondary"/>
+            <lv_obj width="content"
+                    height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                    flex_flow="column" style_pad_gap="#space_xxs">
+              <text_body text="Max Velocity" style_text_color="#text_primary"/>
+              <text_small text="Maximum toolhead speed (mm/s)" style_text_color="#text_secondary"/>
+            </lv_obj>
+          </lv_obj>
+          <!-- Current value display -->
+          <text_body name="max_velocity_label" bind_text="max_velocity_display" style_text_color="#text_secondary"/>
+        </lv_obj>
+        <!-- Slider -->
+        <lv_obj width="100%"
+                height="50" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md"
+                style_pad_right="#space_md" style_pad_top="#space_md" style_pad_bottom="#space_md" scrollable="false"
+                flex_flow="row" style_flex_cross_place="center">
+          <text_small width="40" text="50" style_text_color="#text_secondary"/>
+          <lv_slider name="max_velocity_slider"
+                     flex_grow="1" min_value="50" max_value="1000" value="300" style_margin_left="#space_sm"
+                     style_margin_right="#space_sm">
+            <event_cb trigger="value_changed" callback="on_max_velocity_changed"/>
+          </lv_slider>
+          <text_small width="50" text="1000" style_text_color="#text_secondary"/>
+        </lv_obj>
+      </lv_obj>
+      <!-- Divider -->
+      <lv_obj width="100%"
+              height="1" style_bg_color="#theme_grey" style_bg_opa="100" style_border_width="0" scrollable="false"/>
+      <!-- ================================================================== -->
+      <!-- MAX ACCELERATION -->
+      <!-- ================================================================== -->
+      <lv_obj name="max_accel_section"
+              width="100%" height="content" style_bg_opa="0" style_border_width="0" scrollable="false"
+              style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md"
+              style_pad_bottom="#space_md" flex_flow="column" style_pad_gap="#space_sm">
+        <!-- Section Label -->
+        <lv_obj width="100%"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
+          <lv_obj width="content"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                  flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+            <icon src="speed_up" size="sm" variant="secondary"/>
+            <lv_obj width="content"
+                    height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                    flex_flow="column" style_pad_gap="#space_xxs">
+              <text_body text="Max Acceleration" style_text_color="#text_primary"/>
+              <text_small text="Maximum acceleration (mm/s²)" style_text_color="#text_secondary"/>
+            </lv_obj>
+          </lv_obj>
+          <!-- Current value display -->
+          <text_body name="max_accel_label" bind_text="max_accel_display" style_text_color="#text_secondary"/>
+        </lv_obj>
+        <!-- Slider -->
+        <lv_obj width="100%"
+                height="50" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md"
+                style_pad_right="#space_md" style_pad_top="#space_md" style_pad_bottom="#space_md" scrollable="false"
+                flex_flow="row" style_flex_cross_place="center">
+          <text_small width="40" text="500" style_text_color="#text_secondary"/>
+          <lv_slider name="max_accel_slider"
+                     flex_grow="1" min_value="500" max_value="50000" value="3000" style_margin_left="#space_sm"
+                     style_margin_right="#space_sm">
+            <event_cb trigger="value_changed" callback="on_max_accel_changed"/>
+          </lv_slider>
+          <text_small width="55" text="50000" style_text_color="#text_secondary"/>
+        </lv_obj>
+      </lv_obj>
+      <!-- Divider -->
+      <lv_obj width="100%"
+              height="1" style_bg_color="#theme_grey" style_bg_opa="100" style_border_width="0" scrollable="false"/>
+      <!-- ================================================================== -->
+      <!-- ACCEL TO DECEL -->
+      <!-- ================================================================== -->
+      <lv_obj name="accel_to_decel_section"
+              width="100%" height="content" style_bg_opa="0" style_border_width="0" scrollable="false"
+              style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md"
+              style_pad_bottom="#space_md" flex_flow="column" style_pad_gap="#space_sm">
+        <!-- Section Label -->
+        <lv_obj width="100%"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
+          <lv_obj width="content"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                  flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+            <icon src="speed_down" size="sm" variant="secondary"/>
+            <lv_obj width="content"
+                    height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                    flex_flow="column" style_pad_gap="#space_xxs">
+              <text_body text="Accel to Decel" style_text_color="#text_primary"/>
+              <text_small text="Acceleration to deceleration limit (mm/s²)" style_text_color="#text_secondary"/>
+            </lv_obj>
+          </lv_obj>
+          <!-- Current value display -->
+          <text_body name="accel_to_decel_label" bind_text="accel_to_decel_display" style_text_color="#text_secondary"/>
+        </lv_obj>
+        <!-- Slider -->
+        <lv_obj width="100%"
+                height="50" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md"
+                style_pad_right="#space_md" style_pad_top="#space_md" style_pad_bottom="#space_md" scrollable="false"
+                flex_flow="row" style_flex_cross_place="center">
+          <text_small width="40" text="500" style_text_color="#text_secondary"/>
+          <lv_slider name="accel_to_decel_slider"
+                     flex_grow="1" min_value="500" max_value="50000" value="1500" style_margin_left="#space_sm"
+                     style_margin_right="#space_sm">
+            <event_cb trigger="value_changed" callback="on_accel_to_decel_changed"/>
+          </lv_slider>
+          <text_small width="55" text="50000" style_text_color="#text_secondary"/>
+        </lv_obj>
+      </lv_obj>
+      <!-- Divider -->
+      <lv_obj width="100%"
+              height="1" style_bg_color="#theme_grey" style_bg_opa="100" style_border_width="0" scrollable="false"/>
+      <!-- ================================================================== -->
+      <!-- SQUARE CORNER VELOCITY -->
+      <!-- ================================================================== -->
+      <lv_obj name="square_corner_velocity_section"
+              width="100%" height="content" style_bg_opa="0" style_border_width="0" scrollable="false"
+              style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md"
+              style_pad_bottom="#space_md" flex_flow="column" style_pad_gap="#space_sm">
+        <!-- Section Label -->
+        <lv_obj width="100%"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
+          <lv_obj width="content"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                  flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+            <icon src="cube" size="sm" variant="secondary"/>
+            <lv_obj width="content"
+                    height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+                    flex_flow="column" style_pad_gap="#space_xxs">
+              <text_body text="Square Corner Velocity" style_text_color="#text_primary"/>
+              <text_small text="Max speed through corners (mm/s)" style_text_color="#text_secondary"/>
+            </lv_obj>
+          </lv_obj>
+          <!-- Current value display -->
+          <text_body name="square_corner_velocity_label" bind_text="square_corner_velocity_display" style_text_color="#text_secondary"/>
+        </lv_obj>
+        <!-- Slider -->
+        <lv_obj width="100%"
+                height="50" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md"
+                style_pad_right="#space_md" style_pad_top="#space_md" style_pad_bottom="#space_md" scrollable="false"
+                flex_flow="row" style_flex_cross_place="center">
+          <text_small width="30" text="1" style_text_color="#text_secondary"/>
+          <lv_slider name="square_corner_velocity_slider"
+                     flex_grow="1" min_value="1" max_value="20" value="5" style_margin_left="#space_sm"
+                     style_margin_right="#space_sm">
+            <event_cb trigger="value_changed" callback="on_square_corner_velocity_changed"/>
+          </lv_slider>
+          <text_small width="30" text="20" style_text_color="#text_secondary"/>
+        </lv_obj>
+      </lv_obj>
+      <!-- Divider -->
+      <lv_obj width="100%"
+              height="1" style_bg_color="#theme_grey" style_bg_opa="100" style_border_width="0" scrollable="false"/>
+      <!-- ================================================================== -->
+      <!-- READ-ONLY SECTION HEADER -->
+      <!-- ================================================================== -->
+      <lv_obj width="100%"
+              height="content" style_bg_opa="0" style_border_width="0" scrollable="false"
+              style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md"
+              style_pad_bottom="#space_xs" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <icon src="lock" size="xs" variant="secondary"/>
+        <text_small text="Config-defined (read-only)" style_text_color="#text_secondary"/>
+      </lv_obj>
+      <!-- ================================================================== -->
+      <!-- MAX Z VELOCITY (read-only) -->
+      <!-- ================================================================== -->
+      <setting_info_row name="row_max_z_velocity"
+                        label="Max Z Velocity" icon="axis_z_arrow" value="--"/>
+      <!-- ================================================================== -->
+      <!-- MAX Z ACCEL (read-only) -->
+      <!-- ================================================================== -->
+      <setting_info_row name="row_max_z_accel"
+                        label="Max Z Accel" icon="axis_z_arrow" value="--"/>
+      <!-- Spacer to push buttons to bottom -->
+      <lv_obj width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0" scrollable="false"/>
+    </lv_obj>
+    <!-- ================================================================== -->
+    <!-- ACTION BUTTONS -->
+    <!-- ================================================================== -->
+    <!-- Horizontal divider above buttons -->
+    <lv_obj width="100%"
+            height="1" style_bg_color="#theme_grey" style_bg_opa="100" style_border_width="0" style_pad_all="0"
+            scrollable="false"/>
+    <!-- Action buttons row -->
+    <lv_obj width="100%"
+            height="#button_height" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
+            scrollable="false">
+      <!-- Reset button -->
+      <lv_button name="btn_reset"
+                 height="100%" flex_grow="1" style_radius="0" style_bg_color="#card_bg" style_border_width="0"
+                 style_shadow_width="0" clickable="true">
+        <text_body text="Reset" align="center" style_text_color="#text_secondary"/>
+        <event_cb trigger="clicked" callback="on_limits_reset"/>
+      </lv_button>
+      <!-- Vertical divider -->
+      <lv_obj width="1"
+              height="100%" style_bg_color="#theme_grey" style_bg_opa="100" style_border_width="0" style_pad_all="0"
+              scrollable="false"/>
+      <!-- Apply button -->
+      <lv_button name="btn_apply"
+                 height="100%" flex_grow="1" style_radius="0" style_bg_color="#primary_color" style_border_width="0"
+                 style_shadow_width="0" clickable="true">
+        <text_body text="Apply" align="center" style_text_color="#FFFFFF"/>
+        <event_cb trigger="clicked" callback="on_limits_apply"/>
+      </lv_button>
+    </lv_obj>
+  </view>
+</component>

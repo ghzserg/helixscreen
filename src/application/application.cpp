@@ -1074,7 +1074,7 @@ bool Application::connect_moonraker() {
                 // Hardware validation: check config expectations vs discovered hardware
                 HardwareValidator validator;
                 auto validation_result =
-                    validator.validate(Config::get_instance(), client_ptr, ctx->first);
+                    validator.validate(Config::get_instance(), client_ptr, std::get<0>(*ctx));
                 get_printer_state().set_hardware_validation_result(validation_result);
 
                 if (validation_result.has_issues()) {
