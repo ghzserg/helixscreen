@@ -395,9 +395,6 @@ bool ui_toast_is_visible() {
     return false;
 }
 
-// Note: FanPanel is provided by ui_panel_fan.o which is linked in TEST_PANEL_DEPS
-// The get_global_fan_panel() function is defined in ui_panel_fan.cpp
-
 // Stub implementations for EmergencyStopOverlay (tests don't use the overlay)
 #include "ui_emergency_stop.h"
 

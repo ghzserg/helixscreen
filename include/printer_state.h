@@ -8,8 +8,10 @@
 #include "lvgl/lvgl.h"
 #include "spdlog/spdlog.h"
 
+#include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "hv/json.hpp" // libhv's nlohmann json (via cpputil/)
@@ -568,6 +570,17 @@ class PrinterState {
     }
 
     /**
+     * @brief Get speed subject for a specific fan
+     *
+     * Returns the per-fan speed subject for reactive UI updates.
+     * Each fan discovered via init_fans() has its own subject.
+     *
+     * @param object_name Moonraker object name (e.g., "fan", "heater_fan hotend_fan")
+     * @return Pointer to subject, or nullptr if fan not found
+     */
+    lv_subject_t* get_fan_speed_subject(const std::string& object_name);
+
+    /**
      * @brief Initialize fan list from discovered fan objects
      * @param fan_objects List of Moonraker fan object names
      */
@@ -1121,6 +1134,8 @@ class PrinterState {
     // Multi-fan tracking
     std::vector<FanInfo> fans_;   ///< All tracked fans (from discovery)
     lv_subject_t fans_version_{}; ///< Incremented on fan list/speed changes
+    /// Per-fan speed subjects (unique_ptr prevents invalidation on map rehash)
+    std::unordered_map<std::string, std::unique_ptr<lv_subject_t>> fan_speed_subjects_;
 
     // Printer connection state subjects (Moonraker WebSocket)
     lv_subject_t printer_connection_state_;   // Integer: uses PrinterStatus enum values

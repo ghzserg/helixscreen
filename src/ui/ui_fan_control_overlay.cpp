@@ -112,10 +112,13 @@ void FanControlOverlay::register_callbacks() {
 void FanControlOverlay::on_activate() {
     OverlayBase::on_activate();
 
-    // Subscribe to fans_version subject for updates
+    // Subscribe to fans_version subject for structural changes (fan discovery)
     if (auto* fans_ver = printer_state_.get_fans_version_subject()) {
         fans_observer_ = ObserverGuard(fans_ver, on_fans_version_changed, this);
     }
+
+    // Subscribe to per-fan speed subjects for reactive updates
+    subscribe_to_fan_speeds();
 
     // Refresh fan speeds from current state
     update_fan_speeds();
@@ -126,15 +129,21 @@ void FanControlOverlay::on_activate() {
 void FanControlOverlay::on_deactivate() {
     OverlayBase::on_deactivate();
 
-    // Unsubscribe from observer
+    // Unsubscribe from all observers
     fans_observer_.reset();
+    unsubscribe_from_fan_speeds();
 
     spdlog::debug("[{}] Deactivated", get_name());
 }
 
 void FanControlOverlay::cleanup() {
     spdlog::debug("[{}] Cleanup", get_name());
+    // Clear observers first (they reference this object)
     fans_observer_.reset();
+    unsubscribe_from_fan_speeds();
+    // Clear widget tracking vectors (widgets will be destroyed by OverlayBase::cleanup)
+    fan_dials_.clear();
+    auto_fan_cards_.clear();
     OverlayBase::cleanup();
 }
 
@@ -284,6 +293,36 @@ void FanControlOverlay::send_fan_speed(const std::string& object_name, int speed
 void FanControlOverlay::on_fans_version_changed(lv_observer_t* obs, lv_subject_t* /* subject */) {
     auto* self = static_cast<FanControlOverlay*>(lv_observer_get_user_data(obs));
     if (self && self->is_visible()) {
+        // Structural change - rebuild fan list and resubscribe
+        self->populate_fans();
+        self->unsubscribe_from_fan_speeds();
+        self->subscribe_to_fan_speeds();
+    }
+}
+
+void FanControlOverlay::on_fan_speed_changed(lv_observer_t* obs, lv_subject_t* /* subject */) {
+    auto* self = static_cast<FanControlOverlay*>(lv_observer_get_user_data(obs));
+    if (self && self->is_visible()) {
         self->update_fan_speeds();
     }
+}
+
+void FanControlOverlay::subscribe_to_fan_speeds() {
+    const auto& fans = printer_state_.get_fans();
+    fan_speed_observers_.reserve(fans.size());
+
+    for (const auto& fan : fans) {
+        if (auto* subject = printer_state_.get_fan_speed_subject(fan.object_name)) {
+            fan_speed_observers_.emplace_back(subject, on_fan_speed_changed, this);
+            spdlog::trace("[{}] Subscribed to speed subject for '{}'", get_name(), fan.object_name);
+        }
+    }
+
+    spdlog::debug("[{}] Subscribed to {} per-fan speed subjects", get_name(),
+                  fan_speed_observers_.size());
+}
+
+void FanControlOverlay::unsubscribe_from_fan_speeds() {
+    fan_speed_observers_.clear();
+    spdlog::trace("[{}] Unsubscribed from per-fan speed subjects", get_name());
 }

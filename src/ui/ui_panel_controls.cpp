@@ -15,7 +15,6 @@
 #include "ui_panel_bed_mesh.h"
 #include "ui_panel_calibration_zoffset.h"
 #include "ui_panel_extrusion.h"
-#include "ui_panel_fan.h"
 #include "ui_panel_motion.h"
 #include "ui_panel_screws_tilt.h"
 #include "ui_panel_temp_control.h"
@@ -41,8 +40,6 @@ class MotionPanel;
 MotionPanel& get_global_motion_panel();
 class ExtrusionPanel;
 ExtrusionPanel& get_global_extrusion_panel();
-class FanPanel;
-FanPanel& get_global_fan_panel();
 
 using helix::ui::temperature::centi_to_degrees_f;
 
@@ -77,10 +74,6 @@ ControlsPanel::~ControlsPanel() {
     if (bed_temp_panel_) {
         lv_obj_del(bed_temp_panel_);
         bed_temp_panel_ = nullptr;
-    }
-    if (fan_panel_) {
-        lv_obj_del(fan_panel_);
-        fan_panel_ = nullptr;
     }
     if (fan_control_panel_) {
         lv_obj_del(fan_control_panel_);
@@ -599,7 +592,12 @@ void ControlsPanel::populate_secondary_fans() {
         return;
     }
 
-    // Clear existing fan rows
+    // IMPORTANT: Cleanup order matters to avoid dangling pointers:
+    // 1. Clear observers first (they hold 'this' as user_data and reference subjects)
+    // 2. Clear row tracking (contains widget pointers that will become invalid)
+    // 3. Clean widgets last (invalidates the pointers we just cleared)
+    secondary_fan_observers_.clear();
+    secondary_fan_rows_.clear();
     lv_obj_clean(secondary_fans_list_);
 
     const auto& fans = printer_state_.get_fans();
@@ -658,6 +656,9 @@ void ControlsPanel::populate_secondary_fans() {
         lv_obj_set_style_text_color(speed_label, ui_theme_get_color("text_secondary"), 0);
         lv_obj_set_style_text_font(speed_label, UI_FONT_SMALL, 0);
 
+        // Track this row for reactive speed updates
+        secondary_fan_rows_.push_back({fan.object_name, speed_label});
+
         // Indicator icon: robot for auto-controlled, › for controllable
         // Uses MDI icon font for proper glyph rendering
         lv_obj_t* indicator = lv_label_create(right_container);
@@ -677,6 +678,9 @@ void ControlsPanel::populate_secondary_fans() {
             break;
         }
     }
+
+    // Subscribe to per-fan speed subjects for reactive updates
+    subscribe_to_secondary_fan_speeds();
 
     spdlog::debug("[{}] Populated {} secondary fans", get_name(), secondary_count);
 }
@@ -833,32 +837,9 @@ void ControlsPanel::handle_bed_temp_clicked() {
 }
 
 void ControlsPanel::handle_cooling_clicked() {
-    spdlog::debug("[{}] Cooling card clicked - opening Fan panel", get_name());
-
-    // Create fan panel on first access (lazy initialization)
-    if (!fan_panel_ && parent_screen_) {
-        auto& fan = get_global_fan_panel();
-
-        // Initialize subjects and callbacks if not already done
-        if (!fan.are_subjects_initialized()) {
-            fan.init_subjects();
-        }
-        fan.register_callbacks();
-
-        // Create overlay UI
-        fan_panel_ = fan.create(parent_screen_);
-        if (!fan_panel_) {
-            NOTIFY_ERROR("Failed to load fan panel");
-            return;
-        }
-
-        // Register with NavigationManager for lifecycle callbacks
-        NavigationManager::instance().register_overlay_instance(fan_panel_, &fan);
-    }
-
-    if (fan_panel_) {
-        ui_nav_push_overlay(fan_panel_);
-    }
+    // Redirect to FanControlOverlay which handles all fans (part cooling + secondary)
+    spdlog::debug("[{}] Cooling card clicked - opening Fan Control overlay", get_name());
+    handle_secondary_fans_clicked();
 }
 
 void ControlsPanel::handle_secondary_fans_clicked() {
@@ -1501,8 +1482,55 @@ void ControlsPanel::on_fan_changed(lv_observer_t* obs, lv_subject_t* /* subject 
 void ControlsPanel::on_fans_version_changed(lv_observer_t* obs, lv_subject_t* /* subject */) {
     auto* self = static_cast<ControlsPanel*>(lv_observer_get_user_data(obs));
     if (self) {
-        // Rebuild the secondary fans list when fan discovery completes or speeds update
+        // Structural change - rebuild the secondary fans list (includes resubscribing)
         self->populate_secondary_fans();
+    }
+}
+
+void ControlsPanel::on_secondary_fan_speed_changed(lv_observer_t* obs, lv_subject_t* subject) {
+    auto* self = static_cast<ControlsPanel*>(lv_observer_get_user_data(obs));
+    if (self) {
+        int speed_pct = lv_subject_get_int(subject);
+        // Find which fan this subject belongs to and update its label
+        for (const auto& row : self->secondary_fan_rows_) {
+            auto* fan_subject = self->printer_state_.get_fan_speed_subject(row.object_name);
+            if (fan_subject == subject) {
+                self->update_secondary_fan_speed(row.object_name, speed_pct);
+                break;
+            }
+        }
+    }
+}
+
+void ControlsPanel::subscribe_to_secondary_fan_speeds() {
+    secondary_fan_observers_.reserve(secondary_fan_rows_.size());
+
+    for (const auto& row : secondary_fan_rows_) {
+        if (auto* subject = printer_state_.get_fan_speed_subject(row.object_name)) {
+            secondary_fan_observers_.emplace_back(subject, on_secondary_fan_speed_changed, this);
+            spdlog::trace("[{}] Subscribed to speed subject for secondary fan '{}'", get_name(),
+                          row.object_name);
+        }
+    }
+
+    spdlog::debug("[{}] Subscribed to {} secondary fan speed subjects", get_name(),
+                  secondary_fan_observers_.size());
+}
+
+void ControlsPanel::update_secondary_fan_speed(const std::string& object_name, int speed_pct) {
+    for (const auto& row : secondary_fan_rows_) {
+        if (row.object_name == object_name && row.speed_label) {
+            char speed_buf[16];
+            if (speed_pct > 0) {
+                std::snprintf(speed_buf, sizeof(speed_buf), "%d%%", speed_pct);
+            } else {
+                std::snprintf(speed_buf, sizeof(speed_buf), "Off");
+            }
+            lv_label_set_text(row.speed_label, speed_buf);
+            spdlog::trace("[{}] Updated secondary fan '{}' speed to {}", get_name(), object_name,
+                          speed_buf);
+            break;
+        }
     }
 }
 

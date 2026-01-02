@@ -122,9 +122,24 @@ class FanControlOverlay : public OverlayBase {
     void send_fan_speed(const std::string& object_name, int speed_percent);
 
     /**
-     * @brief Observer callback for fans_version changes
+     * @brief Observer callback for fans_version changes (structural)
      */
     static void on_fans_version_changed(lv_observer_t* obs, lv_subject_t* subject);
+
+    /**
+     * @brief Observer callback for per-fan speed changes
+     */
+    static void on_fan_speed_changed(lv_observer_t* obs, lv_subject_t* subject);
+
+    /**
+     * @brief Subscribe to all per-fan speed subjects
+     */
+    void subscribe_to_fan_speeds();
+
+    /**
+     * @brief Unsubscribe from all per-fan speed subjects
+     */
+    void unsubscribe_from_fan_speeds();
 
     //
     // === Injected Dependencies ===
@@ -158,10 +173,11 @@ class FanControlOverlay : public OverlayBase {
     std::vector<AutoFanCard> auto_fan_cards_;
 
     //
-    // === Observer Guard ===
+    // === Observer Guards ===
     //
 
-    ObserverGuard fans_observer_;
+    ObserverGuard fans_observer_;                    ///< Structural changes (fan discovery)
+    std::vector<ObserverGuard> fan_speed_observers_; ///< Per-fan speed changes
 };
 
 /**

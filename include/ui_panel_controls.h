@@ -185,7 +185,6 @@ class ControlsPanel : public PanelBase {
     lv_obj_t* motion_panel_ = nullptr;
     lv_obj_t* nozzle_temp_panel_ = nullptr;
     lv_obj_t* bed_temp_panel_ = nullptr;
-    lv_obj_t* fan_panel_ = nullptr;
     lv_obj_t* fan_control_panel_ = nullptr;
     lv_obj_t* bed_mesh_panel_ = nullptr;
     lv_obj_t* zoffset_panel_ = nullptr;
@@ -202,6 +201,14 @@ class ControlsPanel : public PanelBase {
     //
 
     lv_obj_t* secondary_fans_list_ = nullptr; // Container for dynamic fan rows
+
+    /// @brief Info for a secondary fan row for reactive speed updates
+    struct SecondaryFanRow {
+        std::string object_name;
+        lv_obj_t* speed_label = nullptr;
+    };
+    std::vector<SecondaryFanRow> secondary_fan_rows_;    ///< Tracked for reactive updates
+    std::vector<ObserverGuard> secondary_fan_observers_; ///< Per-fan speed observers
 
     //
     // === Z-Offset Banner (reactive binding - no widget caching needed) ===
@@ -379,6 +386,9 @@ class ControlsPanel : public PanelBase {
     static void on_bed_target_changed(lv_observer_t* obs, lv_subject_t* subject);
     static void on_fan_changed(lv_observer_t* obs, lv_subject_t* subject);
     static void on_fans_version_changed(lv_observer_t* obs, lv_subject_t* subject);
+    static void on_secondary_fan_speed_changed(lv_observer_t* obs, lv_subject_t* subject);
+    void subscribe_to_secondary_fan_speeds();
+    void update_secondary_fan_speed(const std::string& object_name, int speed_pct);
     static void on_pending_z_offset_changed(lv_observer_t* obs, lv_subject_t* subject);
     static void on_homed_axes_changed(lv_observer_t* obs, lv_subject_t* subject);
     static void on_position_x_changed(lv_observer_t* obs, lv_subject_t* subject);

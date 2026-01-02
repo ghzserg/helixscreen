@@ -143,9 +143,11 @@ void PrinterState::reset_for_testing() {
     lv_subject_deinit(&pending_z_offset_delta_);
     lv_subject_deinit(&fan_speed_);
     lv_subject_deinit(&fans_version_);
-    // Deinit per-fan speed subjects
-    for (auto& [name, subject] : fan_speed_subjects_) {
-        lv_subject_deinit(&subject);
+    // Deinit per-fan speed subjects (unique_ptr handles memory, we just need to deinit)
+    for (auto& [name, subject_ptr] : fan_speed_subjects_) {
+        if (subject_ptr) {
+            lv_subject_deinit(subject_ptr.get());
+        }
     }
     fan_speed_subjects_.clear();
     lv_subject_deinit(&printer_connection_state_);
@@ -981,14 +983,20 @@ bool is_fan_controllable(FanType type) {
 } // namespace
 
 void PrinterState::init_fans(const std::vector<std::string>& fan_objects) {
-    // Deinit existing per-fan subjects before clearing
-    for (auto& [name, subject] : fan_speed_subjects_) {
-        lv_subject_deinit(&subject);
+    // Deinit existing per-fan subjects before clearing (unique_ptr handles memory)
+    for (auto& [name, subject_ptr] : fan_speed_subjects_) {
+        if (subject_ptr) {
+            lv_subject_deinit(subject_ptr.get());
+        }
     }
     fan_speed_subjects_.clear();
 
     fans_.clear();
     fans_.reserve(fan_objects.size());
+
+    // Reserve map capacity to prevent rehashing during insertion
+    // (unique_ptr makes this less critical, but still good practice)
+    fan_speed_subjects_.reserve(fan_objects.size());
 
     for (const auto& obj_name : fan_objects) {
         FanInfo info;
@@ -1003,12 +1011,11 @@ void PrinterState::init_fans(const std::vector<std::string>& fan_objects) {
                       info.is_controllable);
         fans_.push_back(std::move(info));
 
-        // Create per-fan speed subject for reactive UI updates
-        auto [it, inserted] = fan_speed_subjects_.emplace(obj_name, lv_subject_t{});
-        if (inserted) {
-            lv_subject_init_int(&it->second, 0);
-            spdlog::debug("[PrinterState] Created speed subject for fan: {}", obj_name);
-        }
+        // Create per-fan speed subject for reactive UI updates (heap-allocated to survive rehash)
+        auto subject_ptr = std::make_unique<lv_subject_t>();
+        lv_subject_init_int(subject_ptr.get(), 0);
+        fan_speed_subjects_.emplace(obj_name, std::move(subject_ptr));
+        spdlog::debug("[PrinterState] Created speed subject for fan: {}", obj_name);
     }
 
     // Initialize and bump version to notify UI
@@ -1027,8 +1034,8 @@ void PrinterState::update_fan_speed(const std::string& object_name, double speed
 
                 // Fire per-fan subject for reactive UI updates
                 auto it = fan_speed_subjects_.find(object_name);
-                if (it != fan_speed_subjects_.end()) {
-                    lv_subject_set_int(&it->second, speed_pct);
+                if (it != fan_speed_subjects_.end() && it->second) {
+                    lv_subject_set_int(it->second.get(), speed_pct);
                     spdlog::trace("[PrinterState] Fan {} speed updated to {}%", object_name,
                                   speed_pct);
                 }
@@ -1041,8 +1048,8 @@ void PrinterState::update_fan_speed(const std::string& object_name, double speed
 
 lv_subject_t* PrinterState::get_fan_speed_subject(const std::string& object_name) {
     auto it = fan_speed_subjects_.find(object_name);
-    if (it != fan_speed_subjects_.end()) {
-        return &it->second;
+    if (it != fan_speed_subjects_.end() && it->second) {
+        return it->second.get();
     }
     return nullptr;
 }

@@ -149,7 +149,6 @@ void register_xml_components() {
     register_fan_dial_callbacks(); // Register FanDial event callbacks
     lv_xml_register_component_from_file("A:ui_xml/fan_status_card.xml");
     lv_xml_register_component_from_file("A:ui_xml/fan_control_overlay.xml");
-    lv_xml_register_component_from_file("A:ui_xml/fan_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/ams_current_tool.xml");
     lv_xml_register_component_from_file("A:ui_xml/print_status_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/print_tune_panel.xml");
