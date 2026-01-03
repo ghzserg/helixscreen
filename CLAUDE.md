@@ -1,32 +1,13 @@
 # CLAUDE.md
 
-## 🚨 VERBOSITY FLAGS - READ THIS FIRST! 🚨
+## Verbosity Flags (ALWAYS USE!)
 
-**ALWAYS use `-v` or `-vv` when running the app to see logs!**
-
-| Flag | Level | When to Use |
-|------|-------|-------------|
-| (none) | WARN only | NEVER use for debugging - you'll miss all logs! |
-| `-v` | INFO | Basic logging - use for most testing |
-| `-vv` | DEBUG | Detailed logging - use when debugging issues |
-| `-vvv` | TRACE | Extremely verbose - use for deep investigation |
-
-**Example:** `./build/bin/helix-screen --test -p settings -vv`
-
-⚠️ **I KEEP FORGETTING THIS AND WASTING TIME!** ⚠️
+**NEVER debug without flags!** Example: `./build/bin/helix-screen --test -p settings -vv`
+Use `-v` (INFO), `-vv` (DEBUG), or `-vvv` (TRACE). Without flags = WARN only = you miss everything.
 
 ---
 
-## 📂 File Access Permissions
-
-**ALWAYS allow reading from:**
-- `/tmp`
-- `~/Code/Printing/helixscreen` and all subdirectories
-- Any git worktrees created from this repo and their subdirectories
-
----
-
-## 📚 Lazy Documentation Loading
+## Lazy Documentation Loading
 
 **Load ONLY when actively working on the topic:**
 | Doc | When |
@@ -41,28 +22,7 @@
 
 ---
 
-## 🤖 Agent Delegation
-
-**See global CLAUDE.md for full policy. TL;DR: Always delegate unless trivially simple.**
-
-| Situation | Agent |
-|-----------|-------|
-| Finding code, understanding patterns | `Explore` (quick/medium/thorough) |
-| Implementation, fixes, refactoring | `general-purpose` |
-| Code review after changes | `general-purpose` |
-
-**Work directly ONLY if**: single file, exact location known, <10 lines, no searching needed.
-
-### Multi-Phase Work (Implementation Plans, Refactors)
-**When working through a planning document with phases:**
-- **EVERY phase** = delegate to agent (investigation, implementation, review, docs)
-- Main session: read plan → spawn agent → evaluate result → commit
-- NEVER implement phases directly - that defeats the entire purpose of planning
-- If you catch yourself reading code or editing files during a multi-phase task, STOP and delegate
-
----
-
-## ⚠️ CRITICAL RULES
+## CRITICAL RULES
 
 **These are frequently violated. Check before coding.**
 
@@ -121,24 +81,13 @@ lv_font_t* font = UI_FONT_SMALL;           // Responsive small font
 
 ---
 
-## 🎯 Declarative UI Pattern (MANDATORY)
+## Declarative UI Pattern
 
-**DATA lives in C++. APPEARANCE lives in XML. Subjects connect them.**
-
-| ❌ BANNED | ✅ USE INSTEAD |
-|-----------|----------------|
-| `lv_obj_add_event_cb()` | XML `<event_cb>` + `lv_xml_register_event_cb()` |
-| `lv_label_set_text()` | `bind_text` subject |
-| `lv_obj_add_flag(HIDDEN)` | `<bind_flag_if_eq>` |
-| `lv_obj_set_style_*()` | XML design tokens |
-
-**Exceptions**: DELETE cleanup, widget pool recycling, chart data points, animations.
-
-**Reference**: `ui_panel_bed_mesh.cpp` (gold standard), `docs/LVGL9_XML_GUIDE.md` (full examples)
+**DATA in C++, APPEARANCE in XML, Subjects connect them.** See Rules 12-16. Exceptions: DELETE cleanup, widget pool recycling, chart data, animations. Reference: `ui_panel_bed_mesh.cpp`.
 
 ---
 
-## 🐛 Debugging Principles
+## Debugging Principles
 
 **Trust the debug output.** When logs show impossible values (e.g., a 26px font reporting 16px line height), the bug is UPSTREAM of where you're looking. Don't re-check the same fix - look for a second failure point.
 
@@ -151,17 +100,9 @@ lv_font_t* font = UI_FONT_SMALL;           // Responsive small font
 
 ---
 
-## Project Overview
-
-**HelixScreen** - A best-in-class Klipper touchscreen UI designed for a variety of 3D printers. Built with LVGL 9.4 using declarative XML layouts and reactive Subject-Observer data binding. Runs on SDL2 for development, targets framebuffer displays on embedded hardware.
-
-**Core pattern:** XML (layout) → Subjects (reactive data) → C++ (logic). No hardcoded colors - use `globals.xml` with `*_light`/`*_dark` variants.
-
-**Pluggable backends:** Manager → Abstract Interface → Platform implementations (macOS/Linux/Mock). Factory pattern at runtime.
-
----
-
 ## Quick Start
+
+**HelixScreen**: LVGL 9.4 touchscreen UI for Klipper 3D printers. Pattern: XML → Subjects → C++.
 
 ```bash
 make -j                              # Incremental build (native/SDL)
@@ -196,21 +137,56 @@ make test-serial                     # Run tests sequentially (for debugging)
 
 ---
 
-## LVGL 9.4 API Changes (from 9.3)
+## Plan Execution Protocol
 
-```cpp
-// Registration renamed:
-lv_xml_register_component_from_file()  // was: lv_xml_component_register_from_file
-lv_xml_register_widget()               // was: lv_xml_widget_register
-```
+### Work Classification
 
-```xml
-<!-- Event syntax: -->
-<event_cb trigger="clicked" callback="my_callback"/>  <!-- was: lv_event-call_function -->
+| If ANY of these apply... | Classification |
+|--------------------------|----------------|
+| User approves a plan | **MAJOR** |
+| New feature (not a tweak) | **MAJOR** |
+| Refactor touching 4+ files | **MAJOR** |
+| Architectural/design change | **MAJOR** |
+| Touches critical paths* | **MAJOR** |
+| Otherwise | **MINOR** |
 
-<!-- Valid align values (NOT just "left"): -->
-<!-- left_mid, right_mid, top_left, top_mid, top_right, bottom_left, bottom_mid, bottom_right, center -->
-```
+*Critical: PrinterState, WebSocket/threading, shutdown, DisplayManager, XML processing
+
+### MAJOR Work Protocol
+
+**Setup:**
+1. Create worktree: `git worktree add ../helixscreen-<feature> origin/main`
+2. Main session = orchestration only (spawn agents, evaluate, commit)
+
+**Per Phase:**
+1. Write failing tests FIRST (real tests that fail if feature removed)
+2. Run NEW tests only: `./build/bin/helix-test "[new-tag]"` — full suite deferred to completion
+3. Delegate implementation to agent
+4. Agent implements until tests pass
+5. Code review (spawn review agent)
+6. Commit: `[phase-N] description`
+
+**Completion:**
+- Full test suite: `make test-run`
+- Final code review (full scope)
+- All phases marked complete in IMPLEMENTATION_PLAN.md
+- Worktree mergeable to main
+
+### MINOR Work Protocol
+
+- No worktree required
+- Tests optional (required if behavior changes)
+- Agent delegation preferred but not mandatory
+- Single commit when done
+
+### Stop Criteria (Both)
+
+**STOP after 3 failed attempts.** Provide: what you tried (with errors), why each failed, current hypothesis, what would unblock you.
+
+### What Makes Tests "Real"
+
+❌ `REQUIRE(true)`, unchecked `.has_value()`, mocking the thing under test, happy-path only
+✅ Tests that FAIL if feature removed, edge cases, error conditions, boundary values
 
 ---
 
@@ -240,48 +216,4 @@ lv_xml_register_widget()               // was: lv_xml_widget_register
 7. **Deferred dependency propagation** - When `set_X()` updates a member, also update child objects that cached the old value. Example: `PrintSelectPanel::set_api()` must call `file_provider_->set_api()` because `file_provider_` was created with nullptr.
 8. **LVGL shutdown order** - NEVER call `lv_display_delete()`, `lv_group_delete()`, or `lv_indev_delete()` manually. `lv_deinit()` handles all cleanup internally. Manual calls cause double-free crashes. See `display_manager.cpp` comments.
 9. **Application shutdown guard** - `Application::shutdown()` must guard against double-calls with `m_shutdown_complete` flag. Without it, the destructor calls shutdown again after `spdlog::shutdown()`, causing SIGABRT in `fmt::detail::throw_format_error`.
-
----
-
-## Documentation
-
-**Core docs:**
-- `README.md` - Project overview
-- `docs/DEVELOPMENT.md` - Build system, daily workflow
-- `docs/ARCHITECTURE.md` - System design, patterns
-- `docs/CONTRIBUTING.md` - Code standards, git workflow
-- `docs/ROADMAP.md` - Future features
-
-**Reference (load when needed):**
-- `docs/LVGL9_XML_GUIDE.md` - Complete XML reference
-- `docs/QUICK_REFERENCE.md` - Common code patterns
-- `docs/BUILD_SYSTEM.md` - Makefile, patches
-- `docs/TESTING.md` - Catch2, test infrastructure
-- `docs/COPYRIGHT_HEADERS.md` - SPDX headers
-
----
-
-## File Organization
-
-```
-helixscreen/
-├── src/              # C++ business logic
-├── include/          # Headers
-├── lib/              # External libs (lvgl, libhv, spdlog, sdl2, tinygl, etc.)
-├── ui_xml/           # XML component definitions
-├── assets/           # Fonts, images, icons
-├── config/           # Config (presets/, printer_database.d/, printer_database.json)
-├── scripts/          # Build/screenshot automation
-├── docker/           # Cross-compilation Dockerfiles (pi, ad5m)
-├── mk/               # Makefile modules (cross.mk, deps.mk, rules.mk, etc.)
-├── docs/             # Documentation
-└── Makefile          # Build system entry point
-```
-
----
-
-## Development Workflow
-
-**Session startup:** Check `git log --oneline -10` and `git status` to understand recent work.
-
-**Daily cycle:** Edit XML (no recompile) or C++ → `make -j` → test → screenshot
+10. **LVGL 9.4 API renames** - `lv_xml_register_component_from_file()` (was `lv_xml_component_register_from_file`), `lv_xml_register_widget()` (was `lv_xml_widget_register`), `<event_cb trigger="clicked">` (was `lv_event-call_function`). Valid align values: `left_mid`, `right_mid`, `top_left`, `top_mid`, `top_right`, `bottom_left`, `bottom_mid`, `bottom_right`, `center`.
