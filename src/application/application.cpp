@@ -123,6 +123,10 @@ int Application::run(int argc, char** argv) {
     // Initialize minimal logging first so early log calls don't crash
     helix::logging::init_early();
 
+    // Set libhv log level to WARN immediately - before ANY libhv usage
+    // libhv's DEFAULT_LOG_LEVEL is INFO, which causes unwanted output on first start
+    hlog_set_level(LOG_LEVEL_WARN);
+
     spdlog::info("[Application] Starting HelixScreen...");
 
     // Store argv early for restart capability
@@ -1092,13 +1096,6 @@ bool Application::connect_moonraker() {
                 get_printer_state().init_fans(client_ptr->get_fans());
                 get_printer_state().set_klipper_version(client_ptr->get_software_version());
                 get_printer_state().set_moonraker_version(client_ptr->get_moonraker_version());
-
-                // Auto-configure LED if not explicitly set but LEDs were discovered
-                if (std::get<0>(*ctx).has_led()) {
-                    get_global_home_panel().auto_configure_led_if_needed(client_ptr->get_leds());
-                    get_global_print_status_panel().auto_configure_led_if_needed(
-                        client_ptr->get_leds());
-                }
 
                 // Hardware validation: check config expectations vs discovered hardware
                 HardwareValidator validator;

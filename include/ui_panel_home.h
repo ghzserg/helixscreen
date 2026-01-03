@@ -78,16 +78,6 @@ class HomePanel : public PanelBase {
     void reload_from_config();
 
     /**
-     * @brief Auto-configure LED if not explicitly set in config
-     *
-     * Called after hardware discovery completes. If no LED is configured
-     * but LEDs were detected, automatically selects the first one.
-     *
-     * @param leds Vector of discovered LED names (e.g., "neopixel chamber_light")
-     */
-    void auto_configure_led_if_needed(const std::vector<std::string>& leds);
-
-    /**
      * @brief Set reference to TempControlPanel for temperature overlay
      *
      * Must be called before temp icon click handler can work.

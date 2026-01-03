@@ -464,16 +464,6 @@ class PrintStatusPanel : public OverlayBase {
      */
     void set_temp_control_panel(TempControlPanel* temp_panel);
 
-    /**
-     * @brief Auto-configure LED if not explicitly set in config
-     *
-     * Called after hardware discovery completes. If no LED is configured
-     * but LEDs were detected, automatically selects the first one.
-     *
-     * @param leds Vector of discovered LED names (e.g., "neopixel chamber_light")
-     */
-    void auto_configure_led_if_needed(const std::vector<std::string>& leds);
-
     //
     // === Tune Panel Handlers (called by XML event callbacks) ===
     //

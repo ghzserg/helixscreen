@@ -18,6 +18,7 @@
 
 #include "app_globals.h"
 #include "config.h"
+#include "hardware_validator.h"
 #include "lvgl/lvgl.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "moonraker_api.h"
@@ -586,6 +587,25 @@ void ui_wizard_complete() {
     if (config) {
         spdlog::debug("[Wizard] Setting wizard_completed flag");
         config->set<bool>("/wizard_completed", true);
+
+        // 1b. Populate expected_hardware from wizard selections
+        // This prevents "new hardware detected" warnings on subsequent runs
+        std::vector<std::string> hardware_paths = {
+            helix::wizard::BED_HEATER,    // "/printer/heaters/bed"
+            helix::wizard::HOTEND_HEATER, // "/printer/heaters/hotend"
+            helix::wizard::PART_FAN,      // "/printer/fans/part"
+            helix::wizard::HOTEND_FAN,    // "/printer/fans/hotend"
+            helix::wizard::LED_STRIP      // "/printer/leds/strip"
+        };
+
+        for (const auto& path : hardware_paths) {
+            std::string hw_name = config->get<std::string>(path, "");
+            if (!hw_name.empty() && hw_name != "None") {
+                HardwareValidator::add_expected_hardware(config, hw_name);
+                spdlog::debug("[Wizard] Added '{}' to expected_hardware", hw_name);
+            }
+        }
+
         if (!config->save()) {
             NOTIFY_ERROR("Failed to save setup completion");
         }

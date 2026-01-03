@@ -132,9 +132,6 @@ void Config::init(const std::string& config_path) {
         data = get_default_config("127.0.0.1", false);
     }
 
-    // Store config path in data for reference
-    data["config_path"] = config_path;
-
     // Ensure printer section exists with required fields
     auto& printer = data["/printer"_json_pointer];
     if (printer.is_null()) {
@@ -283,7 +280,6 @@ void Config::reset_to_defaults() {
     // Reset to default configuration with empty moonraker_host (requires reconfiguration)
     // and include user preferences (brightness, sounds, etc.) with wizard_completed=false
     data = get_default_config("", true);
-    data["config_path"] = path;
 
     spdlog::info("[Config] Configuration reset to defaults. Wizard will run on next startup.");
 }
