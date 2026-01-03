@@ -41,7 +41,10 @@ json get_default_printer_config(const std::string& moonraker_host) {
             {"fans", {{"part", "fan"}, {"hotend", "heater_fan hotend_fan"}}},
             {"leds", {{"strip", "neopixel chamber_light"}}},
             {"extra_sensors", json::object()},
-            {"hardware", {{"optional", json::array()}, {"expected", json::array()}, {"last_snapshot", json::object()}}},
+            {"hardware",
+             {{"optional", json::array()},
+              {"expected", json::array()},
+              {"last_snapshot", json::object()}}},
             {"default_macros", get_default_macros()}};
 }
 
@@ -140,19 +143,22 @@ void Config::init(const std::string& config_path) {
         // Ensure heaters exists with defaults
         auto& heaters = data[json::json_pointer(df() + "heaters")];
         if (heaters.is_null()) {
-            data[json::json_pointer(df() + "heaters")] = {{"bed", "heater_bed"}, {"hotend", "extruder"}};
+            data[json::json_pointer(df() + "heaters")] = {{"bed", "heater_bed"},
+                                                          {"hotend", "extruder"}};
         }
 
         // Ensure temp_sensors exists with defaults
         auto& temp_sensors = data[json::json_pointer(df() + "temp_sensors")];
         if (temp_sensors.is_null()) {
-            data[json::json_pointer(df() + "temp_sensors")] = {{"bed", "heater_bed"}, {"hotend", "extruder"}};
+            data[json::json_pointer(df() + "temp_sensors")] = {{"bed", "heater_bed"},
+                                                               {"hotend", "extruder"}};
         }
 
         // Ensure fans exists with defaults
         auto& fans = data[json::json_pointer(df() + "fans")];
         if (fans.is_null()) {
-            data[json::json_pointer(df() + "fans")] = {{"part", "fan"}, {"hotend", "heater_fan hotend_fan"}};
+            data[json::json_pointer(df() + "fans")] = {{"part", "fan"},
+                                                       {"hotend", "heater_fan hotend_fan"}};
         }
 
         // Ensure leds exists with defaults
@@ -170,7 +176,9 @@ void Config::init(const std::string& config_path) {
         // Ensure hardware section exists
         auto& hardware = data[json::json_pointer(df() + "hardware")];
         if (hardware.is_null()) {
-            data[json::json_pointer(df() + "hardware")] = {{"optional", json::array()}, {"expected", json::array()}, {"last_snapshot", json::object()}};
+            data[json::json_pointer(df() + "hardware")] = {{"optional", json::array()},
+                                                           {"expected", json::array()},
+                                                           {"last_snapshot", json::object()}};
         }
 
         // Ensure default_macros exists

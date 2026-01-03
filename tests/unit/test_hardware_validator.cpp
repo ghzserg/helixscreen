@@ -471,12 +471,10 @@ class HardwareValidatorConfigFixture {
 
     void setup_hardware_with_snapshot() {
         // NEW structure: includes last_snapshot for session change detection
-        json snapshot = {{"timestamp", "2025-01-01T12:00:00Z"},
-                         {"heaters", {"extruder", "heater_bed"}},
-                         {"sensors", {"temperature_sensor chamber"}},
-                         {"fans", {"fan", "heater_fan hotend_fan"}},
-                         {"leds", {"neopixel chamber_light"}},
-                         {"filament_sensors", json::array()}};
+        json snapshot = {
+            {"timestamp", "2025-01-01T12:00:00Z"},       {"heaters", {"extruder", "heater_bed"}},
+            {"sensors", {"temperature_sensor chamber"}}, {"fans", {"fan", "heater_fan hotend_fan"}},
+            {"leds", {"neopixel chamber_light"}},        {"filament_sensors", json::array()}};
 
         config.data = {{"printer",
                         {{"moonraker_host", "127.0.0.1"},

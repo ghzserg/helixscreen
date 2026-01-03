@@ -379,12 +379,11 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: get() with default handles empty co
 // They SHOULD FAIL until the implementation is updated.
 // ============================================================================
 
-TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: heaters path uses plural form /printer/heaters/",
+TEST_CASE_METHOD(ConfigTestFixture, "Config: heaters path uses plural form /printer/heaters/",
                  "[config][paths][plural]") {
     // Set up config with the NEW plural path structure
-    set_data_for_plural_test({{"printer",
-                               {{"heaters", {{"bed", "heater_bed"}, {"hotend", "extruder"}}}}}});
+    set_data_for_plural_test(
+        {{"printer", {{"heaters", {{"bed", "heater_bed"}, {"hotend", "extruder"}}}}}});
 
     // Verify we can read from the plural path
     std::string bed_heater = config.get<std::string>("/printer/heaters/bed");
@@ -409,8 +408,7 @@ TEST_CASE_METHOD(ConfigTestFixture,
     REQUIRE(hotend_sensor == "extruder");
 }
 
-TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: fans path uses plural form /printer/fans/",
+TEST_CASE_METHOD(ConfigTestFixture, "Config: fans path uses plural form /printer/fans/",
                  "[config][paths][plural]") {
     // Set up config with the NEW plural path structure
     set_data_for_plural_test(
@@ -424,8 +422,7 @@ TEST_CASE_METHOD(ConfigTestFixture,
     REQUIRE(hotend_fan == "heater_fan hotend_fan");
 }
 
-TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: leds path uses plural form /printer/leds/",
+TEST_CASE_METHOD(ConfigTestFixture, "Config: leds path uses plural form /printer/leds/",
                  "[config][paths][plural]") {
     // Set up config with the NEW plural path structure
     set_data_for_plural_test({{"printer", {{"leds", {{"strip", "neopixel chamber_light"}}}}}});
@@ -441,8 +438,7 @@ TEST_CASE_METHOD(ConfigTestFixture,
 // They SHOULD FAIL until the implementation is updated.
 // ============================================================================
 
-TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: default structure has extra_sensors as empty object",
+TEST_CASE_METHOD(ConfigTestFixture, "Config: default structure has extra_sensors as empty object",
                  "[config][defaults][plural]") {
     // After refactoring, monitored_sensors should become extra_sensors
     // and should be an empty object {}, not an array []
@@ -484,8 +480,7 @@ TEST_CASE_METHOD(ConfigTestFixture,
     REQUIRE(temp_sensors.contains("hotend"));
 }
 
-TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: hardware section is under /printer/hardware/",
+TEST_CASE_METHOD(ConfigTestFixture, "Config: hardware section is under /printer/hardware/",
                  "[config][defaults][plural]") {
     // Hardware config should be under /printer/hardware/ not /hardware/
     set_data_for_plural_test({{"printer",
