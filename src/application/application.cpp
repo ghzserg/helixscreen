@@ -70,6 +70,7 @@
 #include "ui_toast.h"
 #include "ui_utils.h"
 #include "ui_wizard.h"
+#include "ui_wizard_ams_identify.h"
 #include "ui_wizard_wifi.h"
 
 #include "settings_manager.h"
@@ -810,7 +811,8 @@ bool Application::run_wizard() {
     bool wizard_required = (m_args.force_wizard || m_config->is_wizard_required()) &&
                            !m_args.overlays.step_test && !m_args.overlays.test_panel &&
                            !m_args.overlays.keypad && !m_args.overlays.keyboard &&
-                           !m_args.overlays.gcode_test && !m_args.panel_requested;
+                           !m_args.overlays.gcode_test && !m_args.overlays.wizard_ams_identify &&
+                           !m_args.panel_requested;
 
     if (!wizard_required) {
         return false;
@@ -1033,6 +1035,15 @@ void Application::create_overlays() {
         lv_obj_t* panel_obj = spoolman.create(m_screen);
         if (panel_obj) {
             NavigationManager::instance().register_overlay_instance(panel_obj, &spoolman);
+            ui_nav_push_overlay(panel_obj);
+        }
+    }
+
+    if (m_args.overlays.wizard_ams_identify) {
+        auto* step = get_wizard_ams_identify_step();
+        step->init_subjects();
+        lv_obj_t* panel_obj = step->create(m_screen);
+        if (panel_obj) {
             ui_nav_push_overlay(panel_obj);
         }
     }

@@ -229,6 +229,9 @@ static bool parse_panel_arg(const char* panel_arg, CliArgs& args) {
         args.overlays.ams = true;
     } else if (strcmp(panel_arg, "spoolman") == 0) {
         args.overlays.spoolman = true;
+    } else if (strcmp(panel_arg, "wizard-ams-identify") == 0 ||
+               strcmp(panel_arg, "wizard_ams_identify") == 0) {
+        args.overlays.wizard_ams_identify = true;
     } else {
         // Try base panel lookup
         auto panel_id = panel_name_to_id(panel_arg);
@@ -239,7 +242,8 @@ static bool parse_panel_arg(const char* panel_arg, CliArgs& args) {
             printf("Available panels: home, controls, motion, nozzle-temp, bed-temp, "
                    "bed-mesh, zoffset, pid, screws, input-shaper, extrusion, fan, ams, "
                    "spoolman, print-status, filament, settings, advanced, print-history, "
-                   "print-select, step-test, test, gcode-test, glyphs, gradient-test\n");
+                   "print-select, step-test, test, gcode-test, glyphs, gradient-test, "
+                   "wizard-ams-identify\n");
             return false;
         }
     }

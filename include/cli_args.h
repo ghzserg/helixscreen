@@ -48,6 +48,7 @@ struct OverlayFlags {
     bool history_dashboard = false;
     bool ams = false;
     bool spoolman = false;
+    bool wizard_ams_identify = false;
 
     /** @brief Check if any overlay requiring Moonraker data is requested */
     bool needs_moonraker() const {
