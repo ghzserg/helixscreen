@@ -144,8 +144,8 @@
 > XML layout changes (ui_xml/*.xml) don't require recompilation - just restart the app. Only C++ changes need make.
 
 
-### [L032] [*****|+----] Re-stage after pre-commit format
-- **Uses**: 50 | **Velocity**: 0.64 | **Learned**: 2025-12-27 | **Last**: 2026-01-04 | **Category**: correction
+### [L032] [*****|-----] Re-stage after pre-commit format
+- **Uses**: 50 | **Velocity**: 0.32 | **Learned**: 2025-12-27 | **Last**: 2026-01-04 | **Category**: correction
 > When pre-commit hook auto-formats files, they are NOT automatically re-staged. Always check git status after a commit and amend if the hook formatted files. Look for 'Auto-formatted: <file>' messages and run 'git add -u && git commit --amend --no-edit'.
 
 
@@ -200,5 +200,5 @@
 
 
 ### [L044] [**---|+----] Targeted tests during development
-- **Uses**: 3 | **Velocity**: 1.0 | **Learned**: 2026-01-04 | **Last**: 2026-01-04 | **Category**: preference
+- **Uses**: 3 | **Velocity**: 0.5 | **Learned**: 2026-01-04 | **Last**: 2026-01-04 | **Category**: preference
 > Run targeted tests with specific tags during implementation (e.g., ./build/bin/helix-tests "[tag]"). Only run full test suite (make test-run) at the end of a feature or phase. Full suite is SLOW - save it for final verification.
