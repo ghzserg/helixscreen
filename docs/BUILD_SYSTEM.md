@@ -269,20 +269,16 @@ Git worktrees share `.git/config` and `.gitmodules` but **NOT** submodule conten
 3. **SDL2 handling** - On macOS, uses system SDL2 via Homebrew
 4. **Pre-built libraries** - Optionally copies `libhv.a` to save build time
 
-### Active Worktrees
+### Managing Worktrees
 
-List existing worktrees:
 ```bash
+# List existing worktrees
 git worktree list
-```
 
-Common worktrees:
-| Path | Branch | Purpose |
-|------|--------|---------|
-| `helixscreen` | `main` | Main development |
-| `helixscreen-feature-parity` | `feature/feature-parity` | Feature parity initiative |
-| `helixscreen-print-history` | `feature/print-history` | Print history feature |
-| `helixscreen-ams-feature` | `feature/ams-support` | AMS/multi-material |
+# Example output:
+# /Users/you/code/helixscreen        abc1234 [main]
+# /Users/you/code/helixscreen-myfeature  def5678 [feature/my-feature]
+```
 
 ### Cleanup
 
@@ -299,7 +295,7 @@ git worktree remove --force ../helixscreen-my-feature
 ## Build System Overview
 
 The project uses **GNU Make** with a modular architecture:
-- **Modular design**: 1463 lines split across 6 files for maintainability
+- **Modular design**: ~4,300 lines split across 14 files for maintainability
 - **Color-coded output** for easy visual parsing
 - **Verbosity control** to show/hide full compiler commands
 - **Automatic dependency checking** before builds with smart canvas detection
@@ -313,14 +309,22 @@ The project uses **GNU Make** with a modular architecture:
 
 The build system is organized into focused modules:
 
-- **`Makefile`** (~350 lines) - Configuration, variables, platform detection, module includes
-- **`mk/cross.mk`** (~200 lines) - Cross-compilation targets, toolchain setup, display backends
-- **`mk/deps.mk`** (~350 lines) - Dependency checking, installation, libhv/wpa_supplicant building
-- **`mk/tests.mk`** (~270 lines) - All test targets (unit, integration, specialized)
-- **`mk/format.mk`** (~100 lines) - Code and XML formatting (clang-format, xmllint)
-- **`mk/fonts.mk`** (~110 lines) - Font/icon generation, Material icons, LVGL patches
-- **`mk/patches.mk`** (~30 lines) - LVGL patch application
-- **`mk/rules.mk`** (~270 lines) - Compilation rules, linking, main build targets
+| File | Lines | Purpose |
+|------|-------|---------|
+| `Makefile` | ~630 | Configuration, variables, platform detection, module includes |
+| `mk/tests.mk` | ~880 | All test targets (unit, integration, by-feature) |
+| `mk/cross.mk` | ~750 | Cross-compilation, toolchain setup, display backends |
+| `mk/deps.mk` | ~500 | Dependency checking, installation, libhv/wpa_supplicant |
+| `mk/rules.mk` | ~340 | Compilation rules, linking, main build targets |
+| `mk/remote.mk` | ~280 | Remote deployment (Pi, AD5M) |
+| `mk/images.mk` | ~200 | Image conversion (PNG, SVG) |
+| `mk/patches.mk` | ~130 | LVGL patch application |
+| `mk/fonts.mk` | ~120 | Font/icon generation, Material icons |
+| `mk/watchdog.mk` | ~120 | Hardware watchdog support |
+| `mk/format.mk` | ~110 | Code and XML formatting |
+| `mk/splash.mk` | ~110 | Splash screen generation |
+| `mk/tools.mk` | ~110 | Development tool targets |
+| `mk/display-lib.mk` | ~60 | Display library configuration |
 
 Each module is self-contained with GPL-3 copyright headers and clear separation of concerns.
 
@@ -945,9 +949,14 @@ sudo dnf install librsvg2-tools
 
 ### Test Targets
 
-- **`test`** - Run unit tests
-- **`test-cards`** - Test dynamic card instantiation
-- **`test-print-select`** - Test print select panel with mock data
+The build system includes 30+ test targets organized by feature area. For the complete list with tag taxonomy and usage examples, see **[TESTING.md](TESTING.md)**.
+
+**Quick reference:**
+```bash
+make test-run              # Run all tests in parallel (recommended)
+make test-quick            # Fast subset for rapid iteration
+./build/bin/helix-tests "[tag]"  # Run tests by tag (e.g., [printing], [ams])
+```
 
 ### Demo Target
 
