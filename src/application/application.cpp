@@ -123,6 +123,27 @@
 extern std::string g_log_dest_cli;
 extern std::string g_log_file_cli;
 
+namespace {
+
+/**
+ * @brief Recursively invalidate all widgets in the tree
+ *
+ * With LV_DISPLAY_RENDER_MODE_PARTIAL, lv_obj_invalidate() on a parent may not
+ * propagate to all descendants. This ensures every widget's area is explicitly
+ * marked dirty for the initial framebuffer paint.
+ */
+void invalidate_all_recursive(lv_obj_t* obj) {
+    if (!obj)
+        return;
+    lv_obj_invalidate(obj);
+    uint32_t child_cnt = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < child_cnt; i++) {
+        invalidate_all_recursive(lv_obj_get_child(obj, i));
+    }
+}
+
+} // namespace
+
 Application::Application() = default;
 
 Application::~Application() {
@@ -259,10 +280,25 @@ int Application::run(int argc, char** argv) {
     helix::MemoryMonitor::instance().start(5000);
 
     // Phase 16b: Force full screen refresh
-    // Ensures complete initial paint on framebuffer displays (AD5M) where
-    // incremental rendering during init can leave visual artifacts
-    lv_obj_invalidate(lv_screen_active());
+    // On framebuffer displays with PARTIAL render mode, some widgets may not paint
+    // on the first frame. Schedule a deferred refresh after the first few frames
+    // to ensure all widgets are fully rendered.
+    lv_obj_update_layout(m_screen);
+    invalidate_all_recursive(m_screen);
     lv_refr_now(nullptr);
+
+    // Deferred refresh: Some widgets (nav icons, printer image) may not have their
+    // content fully set until after the first frame. Schedule a second refresh.
+    static auto deferred_refresh_cb = [](lv_timer_t* timer) {
+        lv_obj_t* screen = static_cast<lv_obj_t*>(lv_timer_get_user_data(timer));
+        if (screen) {
+            lv_obj_update_layout(screen);
+            invalidate_all_recursive(screen);
+            lv_refr_now(nullptr);
+        }
+        lv_timer_delete(timer);
+    };
+    lv_timer_create(deferred_refresh_cb, 100, m_screen); // 100ms delay
 
     // Phase 17: Main loop
     helix::MemoryMonitor::log_now("before_main_loop");
