@@ -202,10 +202,12 @@ class HistoryListPanel : public OverlayBase {
     // === State ===
     //
 
-    std::vector<PrintHistoryJob> jobs_;          ///< Source of truth - all jobs
-    std::vector<PrintHistoryJob> filtered_jobs_; ///< Filtered/sorted for display
-    bool jobs_received_ = false;                 ///< True if jobs were set externally
-    bool is_active_ = false;                     ///< True if panel is currently visible
+    std::vector<PrintHistoryJob> jobs_;              ///< Source of truth - all jobs
+    std::vector<PrintHistoryJob> filtered_jobs_;     ///< Filtered/sorted for display
+    bool jobs_received_ = false;                     ///< True if jobs were set externally
+    bool is_active_ = false;                         ///< True if panel is currently visible
+    bool detail_overlay_open_ = false;               ///< True while detail overlay is showing
+    bool history_changed_while_detail_open_ = false; ///< True if history changed while detail open
 
     // Connection state observer to auto-refresh when connected (ObserverGuard handles cleanup)
     ObserverGuard connection_observer_;

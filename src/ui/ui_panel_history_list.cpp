@@ -272,8 +272,24 @@ void HistoryListPanel::on_activate() {
     OverlayBase::on_activate();
 
     is_active_ = true;
-    spdlog::debug("[{}] Activated - jobs_received: {}, job_count: {}", get_name(), jobs_received_,
-                  jobs_.size());
+    spdlog::debug("[{}] Activated - jobs_received: {}, job_count: {}, detail_was_open: {}, "
+                  "history_changed: {}",
+                  get_name(), jobs_received_, jobs_.size(), detail_overlay_open_,
+                  history_changed_while_detail_open_);
+
+    // Skip refresh when returning from detail overlay if no history changed
+    // This preserves scroll position by avoiding unnecessary repopulate
+    if (detail_overlay_open_ && !history_changed_while_detail_open_) {
+        spdlog::debug("[{}] Returning from detail overlay, no history changes - skipping refresh",
+                      get_name());
+        detail_overlay_open_ = false;
+        history_changed_while_detail_open_ = false;
+        return;
+    }
+
+    // Clear flags after checking
+    detail_overlay_open_ = false;
+    history_changed_while_detail_open_ = false;
 
     // Register as history manager observer if manager available
     if (history_manager_ && !history_observer_) {
@@ -281,6 +297,15 @@ void HistoryListPanel::on_activate() {
             if (!is_active_) {
                 return;
             }
+
+            // If detail overlay is open, just mark that history changed - will refresh on return
+            if (detail_overlay_open_) {
+                history_changed_while_detail_open_ = true;
+                spdlog::debug("[{}] History changed while detail open, deferring refresh",
+                              get_name());
+                return;
+            }
+
             spdlog::debug("[{}] History manager notified - refreshing", get_name());
             // Get fresh data from manager and re-apply filters
             if (history_manager_->is_loaded()) {
@@ -986,6 +1011,10 @@ void HistoryListPanel::init_detail_subjects() {
 }
 
 void HistoryListPanel::show_detail_overlay(const PrintHistoryJob& job) {
+    // Track that detail overlay is open (for smart refresh skip on return)
+    detail_overlay_open_ = true;
+    history_changed_while_detail_open_ = false;
+
     // Update subjects with job data first
     update_detail_subjects(job);
 
