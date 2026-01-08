@@ -97,6 +97,22 @@ struct RuntimeConfig {
     bool show_memory_overlay = false; ///< Show memory stats overlay (--show-memory, M key toggle)
 
     /**
+     * @brief Check if verbose subject debugging is enabled
+     *
+     * When enabled, subject type mismatch warnings include stack traces.
+     * Can be enabled via --debug-subjects flag or HELIX_DEBUG_SUBJECTS=1 env var.
+     *
+     * @return true if subject debugging is enabled
+     */
+    static bool debug_subjects();
+
+    /**
+     * @brief Enable or disable verbose subject debugging
+     * @param value true to enable stack traces on subject type mismatches
+     */
+    static void set_debug_subjects(bool value);
+
+    /**
      * @brief Check if WiFi should use mock implementation
      * @return true if test mode is enabled and real WiFi is not requested
      */

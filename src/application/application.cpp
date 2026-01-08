@@ -79,6 +79,7 @@
 #include "wifi_manager.h"
 
 // Backend headers
+#include "abort_manager.h"
 #include "action_prompt_manager.h"
 #include "action_prompt_modal.h"
 #include "app_globals.h"
@@ -88,6 +89,7 @@
 #include "hv/hlog.h" // libhv logging - sync level with spdlog
 #include "logging_init.h"
 #include "lvgl/src/xml/lv_xml.h"
+#include "lvgl_log_handler.h"
 #include "memory_monitor.h"
 #include "memory_profiling.h"
 #include "memory_utils.h"
@@ -580,6 +582,10 @@ bool Application::init_display() {
         return false;
     }
 
+    // Register LVGL log handler AFTER lv_init() (called inside display->init())
+    // Must be after lv_init() because it resets global state and clears callbacks
+    helix::logging::register_lvgl_log_handler();
+
     // Apply custom DPI if specified
     if (m_args.dpi > 0) {
         lv_display_set_dpi(m_display->display(), m_args.dpi);
@@ -701,6 +707,10 @@ bool Application::init_panel_subjects() {
     EmergencyStopOverlay::instance().create();
     EmergencyStopOverlay::instance().set_require_confirmation(
         SettingsManager::instance().get_estop_require_confirmation());
+
+    // Initialize AbortManager for smart print cancellation
+    // Must happen after both API and AbortManager::init_subjects()
+    helix::AbortManager::instance().init(m_moonraker->api(), &get_printer_state());
 
     // Register status bar callbacks
     ui_status_bar_register_callbacks();

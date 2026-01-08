@@ -64,6 +64,7 @@
 #pragma once
 
 #include "lvgl/lvgl.h"
+#include "subject_debug_registry.h"
 
 #include <spdlog/spdlog.h>
 
@@ -209,6 +210,8 @@ class SubjectManager {
         lv_subject_init_int(&(subject), (initial_value));                                          \
         lv_xml_register_subject(nullptr, (xml_name), &(subject));                                  \
         (manager).register_subject(&(subject));                                                    \
+        SubjectDebugRegistry::instance().register_subject(                                         \
+            &(subject), (xml_name), LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);                      \
     } while (0)
 
 /**
@@ -227,4 +230,6 @@ class SubjectManager {
         lv_subject_init_string(&(subject), (buffer), nullptr, sizeof(buffer), (initial_value));    \
         lv_xml_register_subject(nullptr, (xml_name), &(subject));                                  \
         (manager).register_subject(&(subject));                                                    \
+        SubjectDebugRegistry::instance().register_subject(                                         \
+            &(subject), (xml_name), LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);                   \
     } while (0)

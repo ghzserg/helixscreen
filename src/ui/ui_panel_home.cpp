@@ -167,15 +167,19 @@ void HomePanel::init_subjects() {
     lv_xml_register_event_cb(nullptr, "network_clicked_cb", network_clicked_cb);
     lv_xml_register_event_cb(nullptr, "ams_clicked_cb", ams_clicked_cb);
 
-    // Subscribe to AmsState slot_count to show/hide AMS indicator
-    // AmsState::init_subjects() is called in main.cpp before us
-    ams_slot_count_observer_ = ObserverGuard(AmsState::instance().get_slot_count_subject(),
-                                             ams_slot_count_observer_cb, this);
-
     // Computed subject for filament status visibility:
     // Show when sensors exist AND (no AMS OR bypass active)
+    // NOTE: Must be initialized BEFORE creating observers that call
+    // update_filament_status_visibility()
     lv_subject_init_int(&show_filament_status_, 0);
     lv_xml_register_subject(nullptr, "show_filament_status", &show_filament_status_);
+
+    // Subscribe to AmsState slot_count to show/hide AMS indicator
+    // AmsState::init_subjects() is called in main.cpp before us
+    // NOTE: Observer callback may fire immediately - show_filament_status_ must be initialized
+    // first
+    ams_slot_count_observer_ = ObserverGuard(AmsState::instance().get_slot_count_subject(),
+                                             ams_slot_count_observer_cb, this);
 
     // Observe inputs that affect filament status visibility
     ams_bypass_observer_ = ObserverGuard(AmsState::instance().get_bypass_active_subject(),
@@ -184,7 +188,8 @@ void HomePanel::init_subjects() {
         ObserverGuard(helix::FilamentSensorManager::instance().get_sensor_count_subject(),
                       filament_sensor_count_observer_cb, this);
 
-    // Compute initial visibility
+    // Compute initial visibility (observers may have already fired, but this ensures correct
+    // initial state)
     update_filament_status_visibility();
 
     subjects_initialized_ = true;

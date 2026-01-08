@@ -57,6 +57,8 @@
 
 #pragma once
 
+#include "subject_debug_registry.h"
+
 #include <cstdio>
 #include <cstring>
 #include <lvgl.h>
@@ -84,6 +86,8 @@
         snprintf((buffer), sizeof(buffer), "%s", (initial_value));                                 \
         lv_subject_init_string(&(subject), (buffer), nullptr, sizeof(buffer), (buffer));           \
         lv_xml_register_subject(NULL, (name), &(subject));                                         \
+        SubjectDebugRegistry::instance().register_subject(                                         \
+            &(subject), (name), LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);                       \
     } while (0)
 
 /**
@@ -111,6 +115,8 @@
         snprintf((buffer), (size), "%s", (initial_value));                                         \
         lv_subject_init_string(&(subject), (buffer), nullptr, (size), (buffer));                   \
         lv_xml_register_subject(NULL, (name), &(subject));                                         \
+        SubjectDebugRegistry::instance().register_subject(                                         \
+            &(subject), (name), LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);                       \
     } while (0)
 
 /**
@@ -132,6 +138,8 @@
     do {                                                                                           \
         lv_subject_init_int(&(subject), (initial_value));                                          \
         lv_xml_register_subject(NULL, (name), &(subject));                                         \
+        SubjectDebugRegistry::instance().register_subject(&(subject), (name), LV_SUBJECT_TYPE_INT, \
+                                                          __FILE__, __LINE__);                     \
     } while (0)
 
 /**
@@ -153,6 +161,8 @@
     do {                                                                                           \
         lv_subject_init_pointer(&(subject), (initial_value));                                      \
         lv_xml_register_subject(NULL, (name), &(subject));                                         \
+        SubjectDebugRegistry::instance().register_subject(                                         \
+            &(subject), (name), LV_SUBJECT_TYPE_POINTER, __FILE__, __LINE__);                      \
     } while (0)
 
 /**
@@ -174,4 +184,6 @@
     do {                                                                                           \
         lv_subject_init_color(&(subject), (initial_value));                                        \
         lv_xml_register_subject(NULL, (name), &(subject));                                         \
+        SubjectDebugRegistry::instance().register_subject(                                         \
+            &(subject), (name), LV_SUBJECT_TYPE_COLOR, __FILE__, __LINE__);                        \
     } while (0)

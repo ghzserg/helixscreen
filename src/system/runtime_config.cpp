@@ -13,8 +13,27 @@
 // Global runtime configuration instance
 static RuntimeConfig g_runtime_config;
 
+// Debug subjects flag (separate from RuntimeConfig instance for static access)
+static bool g_debug_subjects = false;
+
 RuntimeConfig* get_runtime_config() {
     return &g_runtime_config;
+}
+
+bool RuntimeConfig::debug_subjects() {
+    // Check environment variable as fallback if not explicitly set
+    static bool env_checked = false;
+    if (!env_checked) {
+        env_checked = true;
+        if (std::getenv("HELIX_DEBUG_SUBJECTS") != nullptr) {
+            g_debug_subjects = true;
+        }
+    }
+    return g_debug_subjects;
+}
+
+void RuntimeConfig::set_debug_subjects(bool value) {
+    g_debug_subjects = value;
 }
 
 bool RuntimeConfig::should_show_runout_modal() const {

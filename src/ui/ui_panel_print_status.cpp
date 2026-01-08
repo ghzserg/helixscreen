@@ -18,6 +18,7 @@
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
+#include "abort_manager.h"
 #include "app_globals.h"
 #include "config.h"
 #include "filament_sensor_manager.h"
@@ -1018,56 +1019,19 @@ void PrintStatusPanel::handle_tune_button() {
 void PrintStatusPanel::handle_cancel_button() {
     spdlog::info("[{}] Cancel button clicked - showing confirmation dialog", get_name());
 
-    // Check if cancel slot is available before showing dialog
-    const auto& cancel_info = StandardMacros::instance().get(StandardMacroSlot::Cancel);
-    if (cancel_info.is_empty()) {
-        spdlog::warn("[{}] Cancel macro slot is empty", get_name());
-        NOTIFY_WARNING("Cancel macro not configured");
+    // Check if AbortManager is idle (not already aborting)
+    if (helix::AbortManager::instance().is_aborting()) {
+        spdlog::warn("[{}] Abort already in progress", get_name());
+        NOTIFY_WARNING("Abort already in progress");
         return;
     }
 
-    // Set up the confirm callback to execute the actual cancel
-    cancel_modal_.set_on_confirm([this]() {
-        spdlog::info("[{}] Cancel confirmed - executing cancel_print", get_name());
+    // Set up the confirm callback to start the abort process
+    cancel_modal_.set_on_confirm([]() {
+        spdlog::info("[PrintStatusPanel] Cancel confirmed - starting AbortManager");
 
-        // Disable cancel button immediately to prevent double-press
-        if (btn_cancel_) {
-            lv_obj_add_state(btn_cancel_, LV_STATE_DISABLED);
-            lv_obj_set_style_opa(btn_cancel_, LV_OPA_50, LV_PART_MAIN);
-        }
-
-        const auto& info = StandardMacros::instance().get(StandardMacroSlot::Cancel);
-        if (api_) {
-            spdlog::info("[{}] Using StandardMacros cancel: {}", get_name(), info.get_macro());
-            // Capture m_alive to guard against use-after-free in async callback [L012]
-            auto alive = m_alive;
-            StandardMacros::instance().execute(
-                StandardMacroSlot::Cancel, api_,
-                []() {
-                    spdlog::info("[Print Status] Cancel command sent successfully");
-                    // State will update via PrinterState observer when Moonraker confirms
-                    // Button state managed by update_button_states() based on print state
-                },
-                [this, alive](const MoonrakerError& err) {
-                    spdlog::error("[Print Status] Failed to cancel print: {}", err.message);
-                    NOTIFY_ERROR("Failed to cancel print: {}", err.user_message());
-                    // Re-enable button on failure (with lifetime guard)
-                    if (!alive->load())
-                        return; // Panel destroyed, skip UI update
-                    if (btn_cancel_) {
-                        lv_obj_remove_state(btn_cancel_, LV_STATE_DISABLED);
-                        lv_obj_set_style_opa(btn_cancel_, LV_OPA_COVER, LV_PART_MAIN);
-                    }
-                });
-        } else {
-            spdlog::warn("[{}] API not available - cannot cancel print", get_name());
-            NOTIFY_ERROR("Cannot cancel: not connected to printer");
-            // Re-enable button since we couldn't send the command
-            if (btn_cancel_) {
-                lv_obj_remove_state(btn_cancel_, LV_STATE_DISABLED);
-                lv_obj_set_style_opa(btn_cancel_, LV_OPA_COVER, LV_PART_MAIN);
-            }
-        }
+        // AbortManager handles its own UI state (progress modal, button states)
+        helix::AbortManager::instance().start_abort();
     });
 
     // Show the modal (RAII handles cleanup)
@@ -1592,6 +1556,11 @@ void PrintStatusPanel::on_gcode_z_offset_changed(int microns) {
 
 void PrintStatusPanel::on_led_state_changed(int state) {
     led_on_ = (state != 0);
+
+    // Guard: subjects may not be initialized if called from constructor's observer setup
+    if (!subjects_initialized_) {
+        return;
+    }
 
     // Update light button icon: lightbulb_on (F06E8) or lightbulb_outline (F0336)
     if (led_on_) {

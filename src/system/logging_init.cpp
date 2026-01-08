@@ -3,6 +3,7 @@
 #include "logging_init.h"
 
 #include "lvgl_assert_handler.h"
+#include "lvgl_log_handler.h"
 
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -215,6 +216,10 @@ void init(const LogConfig& config) {
     // Register C++ callback for LVGL assert handler
     // This provides spdlog integration and LVGL state context
     g_helix_assert_cpp_callback = lvgl_assert_spdlog_callback;
+
+    // NOTE: LVGL log handler is registered separately AFTER lv_init()
+    // because lv_init() resets the global state and clears any callbacks.
+    // See Application::init_display() which calls register_lvgl_log_handler().
 
     // Log what we configured (at debug level so it's not noisy)
     spdlog::debug("[Logging] Initialized: target={}, console={}, backtrace=32 messages",

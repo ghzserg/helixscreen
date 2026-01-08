@@ -13,7 +13,8 @@ LVGL_PATCHED_FILES := \
 	src/xml/lv_xml.c \
 	src/xml/lv_xml.h \
 	src/drivers/display/fb/lv_linux_fbdev.c \
-	src/core/lv_refr.c
+	src/core/lv_refr.c \
+	src/core/lv_observer.c
 
 # Files modified by libhv patches
 LIBHV_PATCHED_FILES := \
@@ -104,6 +105,17 @@ apply-patches:
 		fi \
 	else \
 		echo "$(GREEN)✓ LVGL XML silent const lookup patch already applied$(RESET)"; \
+	fi
+	$(Q)if git -C $(LVGL_DIR) diff --quiet src/core/lv_observer.c 2>/dev/null; then \
+		echo "$(YELLOW)→ Applying LVGL observer debug info patch...$(RESET)"; \
+		if git -C $(LVGL_DIR) apply --check ../../patches/lvgl_observer_debug.patch 2>/dev/null; then \
+			git -C $(LVGL_DIR) apply ../../patches/lvgl_observer_debug.patch && \
+			echo "$(GREEN)✓ Observer debug info patch applied$(RESET)"; \
+		else \
+			echo "$(YELLOW)⚠ Cannot apply patch (already applied or conflicts)$(RESET)"; \
+		fi \
+	else \
+		echo "$(GREEN)✓ LVGL observer debug info patch already applied$(RESET)"; \
 	fi
 	$(ECHO) "$(CYAN)Checking libhv patches...$(RESET)"
 	$(Q)if git -C $(LIBHV_DIR) diff --quiet http/client/requests.h 2>/dev/null; then \
