@@ -63,7 +63,7 @@
                         style_text_color="#overlay_text" style_text_align="center"/>
           <lv_bar name="preparing_progress_bar"
                   width="80%" height="#space_md" bind_value="preparing_progress" style_bg_opa="255"
-                  style_radius="#space_xs" style_border_width="0"/>
+                  style_bg_color="#overlay_bg" style_radius="#space_xs" style_border_width="0"/>
         </lv_obj>
         <!-- PRINT COMPLETE OVERLAY: Shown when print finishes successfully -->
         <!-- Hidden by default. Binding removes hidden ONLY when outcome == COMPLETE (1) -->

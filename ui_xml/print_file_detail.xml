@@ -49,20 +49,22 @@
             <!-- Metadata 2x2 grid - minimal gap from filename -->
             <lv_obj name="detail_metadata_grid"
                     width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-                    flex_flow="column" style_pad_gap="#space_xxs">
+                    flex_flow="column" style_pad_gap="#space_xxs" scrollable="false">
               <!-- Row 1: Print time + Filament weight -->
               <lv_obj name="metadata_row_1"
                       width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-                      flex_flow="row" style_pad_gap="#space_xs">
+                      flex_flow="row" style_pad_gap="#space_xs" scrollable="false">
                 <lv_obj height="content"
                         style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
-                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center">
+                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center"
+                        scrollable="false">
                   <icon src="clock" size="xs" variant="accent"/>
                   <text_small name="detail_time_label" bind_text="selected_print_time" style_translate_y="2"/>
                 </lv_obj>
                 <lv_obj height="content"
                         style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
-                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center">
+                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center"
+                        scrollable="false">
                   <icon src="weight" size="xs" variant="accent"/>
                   <text_small name="detail_filament_label" bind_text="selected_filament_weight" style_translate_y="2"/>
                 </lv_obj>
@@ -70,16 +72,18 @@
               <!-- Row 2: Print height + Layer count -->
               <lv_obj name="metadata_row_2"
                       width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-                      flex_flow="row" style_pad_gap="#space_xs">
+                      flex_flow="row" style_pad_gap="#space_xs" scrollable="false">
                 <lv_obj height="content"
                         style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
-                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center">
+                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center"
+                        scrollable="false">
                   <icon src="ruler" size="xs" variant="accent"/>
                   <text_small name="detail_height_label" bind_text="selected_print_height" style_translate_y="2"/>
                 </lv_obj>
                 <lv_obj height="content"
                         style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
-                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center">
+                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center"
+                        scrollable="false">
                   <icon src="layers" size="xs" variant="accent"/>
                   <text_small name="detail_layers_label" bind_text="selected_layer_count" style_translate_y="2"/>
                 </lv_obj>
@@ -87,16 +91,18 @@
               <!-- Row 3: Layer height + Filament type -->
               <lv_obj name="metadata_row_3"
                       width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-                      flex_flow="row" style_pad_gap="#space_xs">
+                      flex_flow="row" style_pad_gap="#space_xs" scrollable="false">
                 <lv_obj height="content"
                         style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
-                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center">
+                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center"
+                        scrollable="false">
                   <icon src="cube" size="xs" variant="accent"/>
                   <text_small name="detail_layer_height_label" bind_text="selected_layer_height" style_translate_y="2"/>
                 </lv_obj>
                 <lv_obj height="content"
                         flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
-                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center">
+                        style_pad_gap="#space_xxs" style_flex_cross_place="center" style_flex_track_place="center"
+                        scrollable="false">
                   <icon src="filament" size="xs" variant="accent"/>
                   <text_small name="detail_filament_type_label"
                               flex_grow="1" long_mode="dots" bind_text="selected_filament_type" style_translate_y="2"/>
