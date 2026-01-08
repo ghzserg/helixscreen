@@ -1,6 +1,8 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_update_queue.h"
+
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "moonraker_client.h"
@@ -32,6 +34,7 @@ TEST_CASE("PrinterState: Singleton persists modifications", "[core][state][singl
 
     // Modify a value through one reference
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
 
     // Read it back through another reference
     PrinterState& state2 = get_printer_state();
@@ -87,12 +90,14 @@ TEST_CASE("PrinterState: Observer fires when printer connection state changes",
     // Change state - should trigger observer again
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTING),
                                        "Connecting...");
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
 
     REQUIRE(user_data[0] == 2); // Callback fired again with new value
     REQUIRE(user_data[1] == static_cast<int>(ConnectionState::CONNECTING));
 
     // Change again
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
 
     REQUIRE(user_data[0] == 3); // Callback fired three times total (initial + 2 changes)
     REQUIRE(user_data[1] == static_cast<int>(ConnectionState::CONNECTED));
@@ -153,6 +158,7 @@ TEST_CASE("PrinterState: Multiple observers on same subject all fire", "[state][
 
     // Single state change should fire all three again
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
 
     REQUIRE(count1 == 2); // All observers fired again
     REQUIRE(count2 == 2);
@@ -590,6 +596,7 @@ TEST_CASE("PrinterState: Set printer connection state", "[state][connection]") {
     state.init_subjects();
 
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
 
     REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
             static_cast<int>(ConnectionState::CONNECTED));
@@ -608,6 +615,7 @@ TEST_CASE("PrinterState: Connection state transitions", "[state][connection]") {
                                            "Disconnected");
         state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTING),
                                            "Connecting...");
+        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
         REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
                 static_cast<int>(ConnectionState::CONNECTING));
     }
@@ -616,6 +624,7 @@ TEST_CASE("PrinterState: Connection state transitions", "[state][connection]") {
         state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTING),
                                            "Connecting...");
         state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Ready");
+        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
         REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
                 static_cast<int>(ConnectionState::CONNECTED));
     }
@@ -624,6 +633,7 @@ TEST_CASE("PrinterState: Connection state transitions", "[state][connection]") {
         state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Ready");
         state.set_printer_connection_state(static_cast<int>(ConnectionState::RECONNECTING),
                                            "Reconnecting...");
+        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
         REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
                 static_cast<int>(ConnectionState::RECONNECTING));
     }
@@ -631,6 +641,7 @@ TEST_CASE("PrinterState: Connection state transitions", "[state][connection]") {
     SECTION("Failed connection") {
         state.set_printer_connection_state(static_cast<int>(ConnectionState::FAILED),
                                            "Connection failed");
+        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
         REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
                 static_cast<int>(ConnectionState::FAILED));
     }
@@ -699,6 +710,7 @@ TEST_CASE("PrinterState: Printer and network status are independent", "[state][i
     // Set printer connected but network disconnected
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
     state.set_network_status(static_cast<int>(NetworkStatus::DISCONNECTED));
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
 
     REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
             static_cast<int>(ConnectionState::CONNECTED));
@@ -709,6 +721,7 @@ TEST_CASE("PrinterState: Printer and network status are independent", "[state][i
     state.set_printer_connection_state(static_cast<int>(ConnectionState::DISCONNECTED),
                                        "Disconnected");
     state.set_network_status(static_cast<int>(NetworkStatus::CONNECTED));
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
 
     REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
             static_cast<int>(ConnectionState::DISCONNECTED));

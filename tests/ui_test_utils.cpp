@@ -3,6 +3,8 @@
 
 #include "ui_test_utils.h"
 
+#include "ui_update_queue.h"
+
 #include "spdlog/spdlog.h"
 
 #include <chrono>
@@ -17,6 +19,10 @@ void lv_init_safe() {
     if (!lv_is_initialized()) {
         lv_init();
     }
+    // Initialize UI update queue for async operations in tests
+    // This must be called inside lv_init_safe() because drain_queue_for_testing()
+    // depends on the queue being initialized
+    ui_update_queue_init();
 }
 
 namespace UITest {
