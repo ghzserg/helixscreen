@@ -9,6 +9,7 @@
 #include "gcode_ops_detector.h"
 #include "moonraker_api.h"
 #include "print_start_analyzer.h"
+#include "printer_detector.h"
 #include "printer_state.h"
 
 #include <functional>
@@ -360,6 +361,18 @@ class PrintPreparationManager {
     std::optional<gcode::ScanResult> cached_scan_result_;
     std::string cached_scan_filename_;
     std::optional<size_t> cached_file_size_; ///< File size from Moonraker metadata
+
+    // === Capability Cache ===
+    mutable std::optional<PrintStartCapabilities> cached_capabilities_;
+    mutable std::string cached_capabilities_printer_type_;
+
+    /**
+     * @brief Get cached printer capabilities, fetching if needed
+     *
+     * Caches PrinterDetector lookup to avoid repeated database parsing.
+     * Cache is invalidated when printer type changes.
+     */
+    [[nodiscard]] const PrintStartCapabilities& get_cached_capabilities() const;
 
     // === Callbacks ===
     ScanCompleteCallback on_scan_complete_;
