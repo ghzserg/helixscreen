@@ -132,7 +132,7 @@ The core functionality works correctly after recent fixes. The system uses a pri
 | ~~Low~~ | ~~Mutable cache pattern lacks thread-safety documentation~~ | ~~`ui_print_preparation_manager.h`~~ | ✅ DONE |
 | ~~Medium~~ | ~~No retry for macro analysis on network failure~~ | ~~`analyze_print_start_macro()`~~ | ✅ DONE |
 | ~~Low~~ | ~~Silent macro analysis failure (no user notification)~~ | ~~`analyze_print_start_macro()`~~ | ✅ DONE |
-| Medium | No priming checkbox in UI | `print_detail_panel.xml` | 1h |
+| ~~Medium~~ | ~~No priming checkbox in UI~~ | ~~`print_detail_panel.xml`~~ | ✅ DONE |
 | Low | Redundant detection in both analyzers | `GCodeOpsDetector` + `PrintStartAnalyzer` | 4h |
 | ~~Low~~ | ~~PrinterState vs PrinterDetector capability divergence~~ | ~~Two independent capability sources~~ | ✅ DONE (LT1) |
 | ~~Low~~ | ~~Checkbox semantic ambiguity~~ | ~~`PrePrintOptions` struct~~ | ✅ DONE (LT2) |
