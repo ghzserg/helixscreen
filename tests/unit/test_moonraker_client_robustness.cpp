@@ -249,7 +249,7 @@ TEST_CASE_METHOD(MoonrakerRobustnessFixture,
 
 TEST_CASE_METHOD(MoonrakerRobustnessFixture,
                  "MoonrakerClient handles concurrent callback registration",
-                 "[connection][edge][concurrent][priority1]") {
+                 "[.slow][connection][edge][concurrent][priority1]") {
     SECTION("Multiple threads registering notify callbacks") {
         constexpr int NUM_THREADS = 10;
         std::atomic<int> registered{0};

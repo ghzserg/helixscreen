@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <unistd.h>
 
 #include "../catch_amalgamated.hpp"
 
@@ -23,7 +24,9 @@ class ThemeConstantsFixture : public LVGLTestFixture {
     fs::path temp_dir;
 
     void setup_temp_xml_dir() {
-        temp_dir = fs::temp_directory_path() / "test_ui_theme_constants";
+        // Use PID in path to avoid race conditions when running parallel test shards
+        temp_dir =
+            fs::temp_directory_path() / ("test_ui_theme_constants_" + std::to_string(getpid()));
         fs::remove_all(temp_dir);
         fs::create_directories(temp_dir);
     }
