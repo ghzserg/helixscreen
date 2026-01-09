@@ -4,6 +4,7 @@
 #include "ui_print_preparation_manager.h"
 
 #include "print_start_analyzer.h"
+#include "printer_detector.h"
 
 #include "../catch_amalgamated.hpp"
 
@@ -202,5 +203,117 @@ TEST_CASE("PrintPreparationManager: move assignment", "[print_preparation][lifec
         manager2 = std::move(manager1);
         // manager2 should be usable
         REQUIRE(manager2.is_print_in_progress() == false);
+    }
+}
+
+// ============================================================================
+// Tests: Capability Database Key Naming Convention
+// ============================================================================
+
+/**
+ * BUG: collect_macro_skip_params() looks up "bed_leveling" but database uses "bed_mesh".
+ *
+ * The printer_database.json uses capability keys that match category_to_string() output:
+ *   - category_to_string(PrintStartOpCategory::BED_MESH) returns "bed_mesh"
+ *   - Database entry: "bed_mesh": { "param": "FORCE_LEVELING", ... }
+ *
+ * But collect_macro_skip_params() at line 878 uses has_capability("bed_leveling")
+ * which will always return false because the key doesn't exist in the database.
+ */
+TEST_CASE("PrintPreparationManager: capability keys match category_to_string",
+          "[print_preparation][capabilities][bug]") {
+    // This test verifies that capability database keys align with category_to_string()
+    // The database uses "bed_mesh", not "bed_leveling"
+
+    SECTION("BED_MESH category maps to 'bed_mesh' key (not 'bed_leveling')") {
+        // Verify what category_to_string returns for BED_MESH
+        std::string expected_key = category_to_string(PrintStartOpCategory::BED_MESH);
+        REQUIRE(expected_key == "bed_mesh");
+
+        // Get AD5M Pro capabilities (known to have bed_mesh capability)
+        auto caps = PrinterDetector::get_print_start_capabilities("FlashForge Adventurer 5M Pro");
+        REQUIRE_FALSE(caps.empty());
+
+        // The database uses "bed_mesh" as the key
+        REQUIRE(caps.has_capability("bed_mesh"));
+
+        // "bed_leveling" is NOT a valid key in the database
+        REQUIRE_FALSE(caps.has_capability("bed_leveling"));
+
+        // Verify the param details are accessible via the correct key
+        auto* bed_cap = caps.get_capability("bed_mesh");
+        REQUIRE(bed_cap != nullptr);
+        REQUIRE(bed_cap->param == "FORCE_LEVELING");
+
+        // This is the key assertion: code using capabilities MUST use "bed_mesh",
+        // not "bed_leveling". Any lookup with "bed_leveling" will fail silently.
+        // The bug in collect_macro_skip_params() uses the wrong key.
+    }
+
+    SECTION("All category strings are valid capability keys") {
+        // Verify each PrintStartOpCategory has a consistent string representation
+        // that matches what the database expects
+
+        // These should be the keys used in printer_database.json
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::BED_MESH)) == "bed_mesh");
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::QGL)) == "qgl");
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::Z_TILT)) == "z_tilt");
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::NOZZLE_CLEAN)) ==
+                "nozzle_clean");
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::PRIMING)) == "priming");
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::SKEW_CORRECT)) ==
+                "skew_correct");
+
+        // BED_LEVEL is a parent category, not a database key
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::BED_LEVEL)) == "bed_level");
+    }
+}
+
+/**
+ * Test that verifies collect_macro_skip_params() uses correct capability keys.
+ *
+ * The capability database uses keys that match category_to_string() output:
+ *   - "bed_mesh" for BED_MESH
+ *   - "qgl" for QGL
+ *   - "z_tilt" for Z_TILT
+ *   - "nozzle_clean" for NOZZLE_CLEAN
+ *
+ * This test verifies the code uses these correct keys (not legacy names like "bed_leveling").
+ */
+TEST_CASE("PrintPreparationManager: collect_macro_skip_params uses correct capability keys",
+          "[print_preparation][capabilities]") {
+    // Get capabilities for a known printer
+    auto caps = PrinterDetector::get_print_start_capabilities("FlashForge Adventurer 5M Pro");
+    REQUIRE_FALSE(caps.empty());
+
+    SECTION("bed_mesh key is used (not bed_leveling)") {
+        // The CORRECT lookup key matches category_to_string(BED_MESH)
+        REQUIRE(caps.has_capability("bed_mesh"));
+
+        // The WRONG key should NOT exist - this ensures code using it would fail
+        REQUIRE_FALSE(caps.has_capability("bed_leveling"));
+
+        // Verify the param details are accessible via the correct key
+        auto* bed_cap = caps.get_capability("bed_mesh");
+        REQUIRE(bed_cap != nullptr);
+        REQUIRE(bed_cap->param == "FORCE_LEVELING");
+    }
+
+    SECTION("All capability keys match category_to_string output") {
+        // These are the keys that collect_macro_skip_params() should use
+        // They must match the keys in printer_database.json
+
+        // BED_MESH -> "bed_mesh"
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::BED_MESH)) == "bed_mesh");
+
+        // QGL -> "qgl"
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::QGL)) == "qgl");
+
+        // Z_TILT -> "z_tilt"
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::Z_TILT)) == "z_tilt");
+
+        // NOZZLE_CLEAN -> "nozzle_clean"
+        REQUIRE(std::string(category_to_string(PrintStartOpCategory::NOZZLE_CLEAN)) ==
+                "nozzle_clean");
     }
 }

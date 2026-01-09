@@ -875,11 +875,36 @@ PrintPreparationManager::collect_macro_skip_params() const {
                              printer_type, caps.params.size());
 
                 // Bed mesh - use database param if available
-                if (caps.has_capability("bed_leveling") && is_option_disabled(bed_mesh_checkbox_)) {
-                    const auto& cap = caps.params.at("bed_leveling");
-                    skip_params.emplace_back(cap.param, cap.skip_value);
+                // Use get_capability() for safe access without exception risk
+                if (auto* cap = caps.get_capability("bed_mesh");
+                    cap && is_option_disabled(bed_mesh_checkbox_)) {
+                    skip_params.emplace_back(cap->param, cap->skip_value);
                     spdlog::debug("[PrintPreparationManager] Using database param: {}={}",
-                                  cap.param, cap.skip_value);
+                                  cap->param, cap->skip_value);
+                }
+
+                // QGL - use database param if available
+                if (auto* cap = caps.get_capability("qgl");
+                    cap && is_option_disabled(qgl_checkbox_)) {
+                    skip_params.emplace_back(cap->param, cap->skip_value);
+                    spdlog::debug("[PrintPreparationManager] Using database param: {}={}",
+                                  cap->param, cap->skip_value);
+                }
+
+                // Z Tilt - use database param if available
+                if (auto* cap = caps.get_capability("z_tilt");
+                    cap && is_option_disabled(z_tilt_checkbox_)) {
+                    skip_params.emplace_back(cap->param, cap->skip_value);
+                    spdlog::debug("[PrintPreparationManager] Using database param: {}={}",
+                                  cap->param, cap->skip_value);
+                }
+
+                // Nozzle clean - use database param if available
+                if (auto* cap = caps.get_capability("nozzle_clean");
+                    cap && is_option_disabled(nozzle_clean_checkbox_)) {
+                    skip_params.emplace_back(cap->param, cap->skip_value);
+                    spdlog::debug("[PrintPreparationManager] Using database param: {}={}",
+                                  cap->param, cap->skip_value);
                 }
 
                 // Priming - use database param if available
