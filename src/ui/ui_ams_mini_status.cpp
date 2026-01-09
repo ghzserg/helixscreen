@@ -12,6 +12,7 @@
 #include "ams_backend.h"
 #include "ams_state.h"
 #include "lvgl/src/xml/lv_xml.h"
+#include "observer_factory.h"
 
 #include <spdlog/spdlog.h>
 
@@ -86,8 +87,6 @@ static AmsMiniStatusData* get_data(lv_obj_t* obj) {
 // Forward declarations for internal functions
 static void rebuild_bars(AmsMiniStatusData* data);
 static void sync_from_ams_state(AmsMiniStatusData* data);
-static void on_ams_slot_count_changed(lv_observer_t* observer, lv_subject_t* subject);
-static void on_ams_slots_version_changed(lv_observer_t* observer, lv_subject_t* subject);
 
 // ============================================================================
 // Internal helpers
@@ -369,10 +368,14 @@ lv_obj_t* ui_ams_mini_status_create(lv_obj_t* parent, int32_t height) {
 
     // Auto-bind to AmsState: observe slot_count and slots_version changes
     // This makes the widget self-updating - no external wiring needed
+    // Using observer factory for type-safe lambda observers
+    using helix::ui::observe_int_sync;
+
     lv_subject_t* slot_count_subject = AmsState::instance().get_slot_count_subject();
     if (slot_count_subject) {
-        data->slot_count_observer =
-            ObserverGuard(slot_count_subject, on_ams_slot_count_changed, container);
+        data->slot_count_observer = observe_int_sync<AmsMiniStatusData>(
+            slot_count_subject, data,
+            [](AmsMiniStatusData* d, int /* count */) { sync_from_ams_state(d); });
         spdlog::debug("[AmsMiniStatus] Auto-bound to AmsState slot_count subject");
 
         // Sync initial state if AMS already has data
@@ -385,8 +388,9 @@ lv_obj_t* ui_ams_mini_status_create(lv_obj_t* parent, int32_t height) {
     // Also observe slots_version for status/color changes (not just count changes)
     lv_subject_t* slots_version_subject = AmsState::instance().get_slots_version_subject();
     if (slots_version_subject) {
-        data->slots_version_observer =
-            ObserverGuard(slots_version_subject, on_ams_slots_version_changed, container);
+        data->slots_version_observer = observe_int_sync<AmsMiniStatusData>(
+            slots_version_subject, data,
+            [](AmsMiniStatusData* d, int /* version */) { sync_from_ams_state(d); });
         spdlog::debug("[AmsMiniStatus] Auto-bound to AmsState slots_version subject");
     }
 
@@ -530,39 +534,4 @@ static void sync_from_ams_state(AmsMiniStatusData* data) {
     spdlog::debug("[AmsMiniStatus] Synced from AmsState: {} slots", slot_count);
 }
 
-/**
- * @brief Observer callback for AmsState slot_count changes
- *
- * Automatically updates the widget when AMS backend reports slot count changes.
- */
-static void on_ams_slot_count_changed(lv_observer_t* observer, lv_subject_t* subject) {
-    (void)subject;
-    lv_obj_t* container = static_cast<lv_obj_t*>(lv_observer_get_user_data(observer));
-    if (!container)
-        return;
-
-    auto* data = get_data(container);
-    if (!data)
-        return;
-
-    sync_from_ams_state(data);
-}
-
-/**
- * @brief Observer callback for AmsState slots_version changes
- *
- * Automatically updates the widget when slot status or color changes.
- * This is separate from slot_count because status changes don't change the count.
- */
-static void on_ams_slots_version_changed(lv_observer_t* observer, lv_subject_t* subject) {
-    (void)subject;
-    lv_obj_t* container = static_cast<lv_obj_t*>(lv_observer_get_user_data(observer));
-    if (!container)
-        return;
-
-    auto* data = get_data(container);
-    if (!data)
-        return;
-
-    sync_from_ams_state(data);
-}
+// Observer callbacks migrated to lambda observers in ui_ams_mini_status_create()
