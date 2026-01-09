@@ -622,6 +622,17 @@ class MoonrakerClientMock : public MoonrakerClient {
     void dispatch_gcode_response(const std::string& line);
 
     /**
+     * @brief Dispatch SHAPER_CALIBRATE response sequence
+     *
+     * Simulates the G-code response output from Klipper's SHAPER_CALIBRATE
+     * command, including fitted shaper results and recommendation.
+     * Used to enable input shaper calibration tests.
+     *
+     * @param axis Axis being calibrated ('X' or 'Y')
+     */
+    void dispatch_shaper_calibrate_response(char axis);
+
+    /**
      * @brief Advance PRINT_START simulation based on temperature progress
      *
      * Called during PREHEAT phase to dispatch simulated G-code responses

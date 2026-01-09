@@ -1096,9 +1096,24 @@ int MoonrakerClientMock::gcode_script(const std::string& gcode) {
         }
     }
 
-    // Input shaping (NOT IMPLEMENTED)
+    // Input shaper calibration - SHAPER_CALIBRATE AXIS=X or AXIS=Y
+    if (gcode.find("SHAPER_CALIBRATE") != std::string::npos) {
+        char axis = 'X'; // Default to X
+        if (gcode.find("AXIS=Y") != std::string::npos ||
+            gcode.find("AXIS=y") != std::string::npos) {
+            axis = 'Y';
+        } else if (gcode.find("AXIS=X") != std::string::npos ||
+                   gcode.find("AXIS=x") != std::string::npos) {
+            axis = 'X';
+        }
+        spdlog::info("[MoonrakerClientMock] SHAPER_CALIBRATE AXIS={}", axis);
+        dispatch_shaper_calibrate_response(axis);
+    }
+
+    // SET_INPUT_SHAPER - Apply shaper settings (command handled via execute_gcode success callback)
     if (gcode.find("SET_INPUT_SHAPER") != std::string::npos) {
-        spdlog::warn("[MoonrakerClientMock] STUB: SET_INPUT_SHAPER NOT IMPLEMENTED");
+        spdlog::info("[MoonrakerClientMock] SET_INPUT_SHAPER: {}", gcode);
+        // No additional action needed - execute_gcode path already invokes success callback
     }
 
     // Pressure advance (NOT IMPLEMENTED)
@@ -2431,6 +2446,24 @@ void MoonrakerClientMock::dispatch_gcode_response(const std::string& line) {
     }
 
     spdlog::trace("[MoonrakerClientMock] Dispatched G-code response: {}", line);
+}
+
+void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
+    // Dispatch realistic calibration response sequence matching Klipper output format
+    // These lines simulate what Klipper's SHAPER_CALIBRATE command outputs
+
+    // Fitted shaper results (matching real Klipper format)
+    dispatch_gcode_response(
+        "Fitted shaper 'zv' frequency = 35.8 Hz (vibrations = 22.7%, smoothing ~= 0.100)");
+    dispatch_gcode_response(
+        "Fitted shaper 'mzv' frequency = 36.7 Hz (vibrations = 7.2%, smoothing ~= 0.140)");
+    dispatch_gcode_response(
+        "Fitted shaper 'ei' frequency = 47.6 Hz (vibrations = 5.9%, smoothing ~= 0.096)");
+
+    // Recommendation line
+    dispatch_gcode_response("Recommended shaper is mzv @ 36.7 Hz");
+
+    spdlog::info("[MoonrakerClientMock] Dispatched SHAPER_CALIBRATE response for axis {}", axis);
 }
 
 void MoonrakerClientMock::advance_print_start_simulation() {
