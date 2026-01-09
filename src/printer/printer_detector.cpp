@@ -784,7 +784,7 @@ const std::unordered_set<std::string>& get_valid_capability_keys() {
         helix::category_to_string(helix::PrintStartOpCategory::QGL),
         helix::category_to_string(helix::PrintStartOpCategory::Z_TILT),
         helix::category_to_string(helix::PrintStartOpCategory::NOZZLE_CLEAN),
-        helix::category_to_string(helix::PrintStartOpCategory::PRIMING),
+        helix::category_to_string(helix::PrintStartOpCategory::PURGE_LINE),
         helix::category_to_string(helix::PrintStartOpCategory::SKEW_CORRECT),
         helix::category_to_string(helix::PrintStartOpCategory::CHAMBER_SOAK),
         // HOMING and UNKNOWN intentionally excluded - they shouldn't have capabilities

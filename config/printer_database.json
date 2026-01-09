@@ -81,7 +81,7 @@
             "default_value": "false",
             "description": "Skip bed mesh if already loaded"
           },
-          "priming": {
+          "purge_line": {
             "param": "DISABLE_PRIMING",
             "skip_value": "true",
             "enable_value": "false",
@@ -178,7 +178,7 @@
             "default_value": "false",
             "description": "Skip bed mesh if already loaded"
           },
-          "priming": {
+          "purge_line": {
             "param": "DISABLE_PRIMING",
             "skip_value": "true",
             "enable_value": "false",

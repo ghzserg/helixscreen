@@ -2021,7 +2021,7 @@ TEST_CASE("PrinterDetector: Print start capabilities lookup", "[printer][capabil
         REQUIRE_FALSE(caps.empty());
         REQUIRE(caps.macro_name == "START_PRINT");
         REQUIRE(caps.has_capability("bed_mesh"));
-        REQUIRE(caps.has_capability("priming"));
+        REQUIRE(caps.has_capability("purge_line"));
         REQUIRE(caps.has_capability("skew_correct"));
 
         // Check bed_mesh param details
@@ -2074,11 +2074,11 @@ TEST_CASE("PrintStartCapabilities: Helper methods work correctly", "[printer][ca
         PrintStartCapabilities caps;
         caps.params["bed_mesh"] =
             PrintStartParamCapability{.param = "SKIP_BED_MESH", .skip_value = "1"};
-        caps.params["priming"] =
+        caps.params["purge_line"] =
             PrintStartParamCapability{.param = "DISABLE_PRIMING", .skip_value = "true"};
 
         REQUIRE(caps.has_capability("bed_mesh"));
-        REQUIRE(caps.has_capability("priming"));
+        REQUIRE(caps.has_capability("purge_line"));
         REQUIRE_FALSE(caps.has_capability("qgl"));
         REQUIRE_FALSE(caps.has_capability("unknown_key"));
 
