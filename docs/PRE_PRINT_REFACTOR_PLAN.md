@@ -92,7 +92,7 @@ The core functionality works correctly after recent fixes. The system uses a pri
 | **Enum Consolidation** | ✅ Complete | Single `OperationCategory` source of truth |
 | **CapabilityMatrix** | ✅ Complete | Unified capability source management (MT2) |
 | **Retry Logic** | ✅ Complete | Exponential backoff for macro analysis (MT3) |
-| **Technical Debt** | 🟡 Reduced | Checkbox ambiguity remains |
+| **Technical Debt** | 🟡 Reduced | Checkbox ambiguity addressed by LT2, LT3 remains |
 
 ---
 
@@ -100,6 +100,8 @@ The core functionality works correctly after recent fixes. The system uses a pri
 
 | Commit | Date | Description |
 |--------|------|-------------|
+| `4a589648` | 2026-01-09 | Wire up printer type from config to PrinterState (LT1 Phase 6) |
+| `7ef347eb` | 2026-01-09 | Move printer capability cache to PrinterState (LT1 Phase 5) |
 | `ca308c8f` | 2026-01-09 | Added retry logic for macro analysis with exponential backoff (MT3) |
 | `6765aa3b` | 2026-01-09 | Added CapabilityMatrix for unified capability sources (MT2) |
 | `2d4c98b0` | 2026-01-08 | Consolidated operation enums into single source of truth (MT1) |
@@ -132,8 +134,8 @@ The core functionality works correctly after recent fixes. The system uses a pri
 | ~~Low~~ | ~~Silent macro analysis failure (no user notification)~~ | ~~`analyze_print_start_macro()`~~ | ✅ DONE |
 | Medium | No priming checkbox in UI | `print_detail_panel.xml` | 1h |
 | Low | Redundant detection in both analyzers | `GCodeOpsDetector` + `PrintStartAnalyzer` | 4h |
-| Low | PrinterState vs PrinterDetector capability divergence | Two independent capability sources | 6h |
-| Low | Checkbox semantic ambiguity | `PrePrintOptions` struct | 1h |
+| ~~Low~~ | ~~PrinterState vs PrinterDetector capability divergence~~ | ~~Two independent capability sources~~ | ✅ DONE (LT1) |
+| ~~Low~~ | ~~Checkbox semantic ambiguity~~ | ~~`PrePrintOptions` struct~~ | ✅ DONE (LT2) |
 
 ---
 
@@ -248,20 +250,32 @@ Capabilities refresh automatically when printer type changes via wizard or confi
 
 ---
 
-### LT2: Observer Pattern for Checkbox State
+### ✅ LT2: Observer Pattern for Checkbox State (COMPLETED 2026-01-09)
 
-**Current State:**
-`read_options_from_checkboxes()` reads LVGL widget state synchronously at print time. This requires the checkbox widgets to exist and be in correct state.
+**What was done:**
+- Added `event_cb` callbacks to XML switches (`on_preprint_*_toggled`)
+- Added static callback handlers in PrintSelectDetailView that update subjects when toggles change
+- Added subject getters to PrintSelectDetailView (`get_preprint_*_subject()`)
+- Added visibility subject getters to PrinterState (`get_can_show_*_subject()`)
+- Added `set_preprint_subjects()` and `set_preprint_visibility_subjects()` to PrintPreparationManager
+- Implemented `read_options_from_subjects()` - reads checkbox state from subjects with visibility checking
+- Wired up subjects in `PrintSelectDetailView::set_dependencies()`
+- Added 46 test assertions across 4 test cases
 
-**Target Architecture:**
-- Add `current_selections_` subject that updates when any checkbox changes
-- Bind checkboxes to update subject on change (XML `event_cb`)
-- `start_print()` reads from subject instead of widgets
-- Subject persists across view transitions
+**Key Implementation:**
+```cpp
+// Read from subjects instead of widgets - fully declarative
+auto is_visible_and_checked = [](lv_subject_t* visibility, lv_subject_t* checked) -> bool {
+    if (visibility && lv_subject_get_int(visibility) == 0) return false;  // Hidden
+    return checked && lv_subject_get_int(checked) == 1;  // Checked
+};
+```
 
-**Benefit:** No async widget reads, state always consistent, easier testing.
-
-**Effort:** 4 hours
+**Result:**
+Checkbox state now flows through subjects:
+1. User toggles switch → `event_cb` fires → subject updated
+2. `read_options_from_subjects()` reads subject values (no widget tree traversal)
+3. Easier testing, better separation of concerns
 
 ---
 

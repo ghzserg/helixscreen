@@ -17,10 +17,36 @@
 namespace helix::ui {
 
 // ============================================================================
+// Static instance pointer for callback access
+// ============================================================================
+
+// Static instance pointer for XML event callbacks to access the PrintSelectDetailView
+// Only one detail view exists at a time, set during init_subjects() / cleared in destructor
+static PrintSelectDetailView* s_detail_view_instance = nullptr;
+
+// Static flag to track if callbacks have been registered (idempotent registration)
+static bool s_callbacks_registered = false;
+
+// ============================================================================
+// Static callback declarations
+// ============================================================================
+
+static void on_preprint_bed_mesh_toggled(lv_event_t* e);
+static void on_preprint_qgl_toggled(lv_event_t* e);
+static void on_preprint_z_tilt_toggled(lv_event_t* e);
+static void on_preprint_nozzle_clean_toggled(lv_event_t* e);
+static void on_preprint_timelapse_toggled(lv_event_t* e);
+
+// ============================================================================
 // Lifecycle
 // ============================================================================
 
 PrintSelectDetailView::~PrintSelectDetailView() {
+    // Clear static instance pointer
+    if (s_detail_view_instance == this) {
+        s_detail_view_instance = nullptr;
+    }
+
     // Signal async callbacks to bail out [L012]
     alive_->store(false);
 
@@ -70,6 +96,24 @@ void PrintSelectDetailView::init_subjects() {
     if (subjects_initialized_) {
         spdlog::debug("[DetailView] Subjects already initialized, skipping");
         return;
+    }
+
+    // Set static instance pointer for callbacks (must be before callback registration)
+    s_detail_view_instance = this;
+
+    // Register XML event callbacks BEFORE subjects (per [L013])
+    // Callbacks must be registered before XML is created
+    if (!s_callbacks_registered) {
+        lv_xml_register_event_cb(nullptr, "on_preprint_bed_mesh_toggled",
+                                 on_preprint_bed_mesh_toggled);
+        lv_xml_register_event_cb(nullptr, "on_preprint_qgl_toggled", on_preprint_qgl_toggled);
+        lv_xml_register_event_cb(nullptr, "on_preprint_z_tilt_toggled", on_preprint_z_tilt_toggled);
+        lv_xml_register_event_cb(nullptr, "on_preprint_nozzle_clean_toggled",
+                                 on_preprint_nozzle_clean_toggled);
+        lv_xml_register_event_cb(nullptr, "on_preprint_timelapse_toggled",
+                                 on_preprint_timelapse_toggled);
+        s_callbacks_registered = true;
+        spdlog::debug("[DetailView] Registered pre-print toggle callbacks");
     }
 
     // Enable switches default ON (1) - "perform this operation"
@@ -161,6 +205,22 @@ void PrintSelectDetailView::set_dependencies(MoonrakerAPI* api, PrinterState* pr
         prep_manager_->set_dependencies(api_, printer_state_);
         prep_manager_->set_checkboxes(bed_mesh_checkbox_, qgl_checkbox_, z_tilt_checkbox_,
                                       nozzle_clean_checkbox_, timelapse_checkbox_);
+
+        // LT2: Wire up subjects for declarative state reading
+        prep_manager_->set_preprint_subjects(
+            get_preprint_bed_mesh_subject(), get_preprint_qgl_subject(),
+            get_preprint_z_tilt_subject(), get_preprint_nozzle_clean_subject(),
+            get_preprint_timelapse_subject());
+
+        // Wire up visibility subjects from PrinterState
+        if (printer_state_) {
+            prep_manager_->set_preprint_visibility_subjects(
+                printer_state_->get_can_show_bed_mesh_subject(),
+                printer_state_->get_can_show_qgl_subject(),
+                printer_state_->get_can_show_z_tilt_subject(),
+                printer_state_->get_can_show_nozzle_clean_subject(),
+                printer_state_->get_printer_has_timelapse_subject());
+        }
     }
 }
 
@@ -459,6 +519,61 @@ void PrintSelectDetailView::update_history_status(FileHistoryStatus status, int 
         lv_label_set_text(history_status_label_, "Last print failed");
         break;
     }
+}
+
+// ============================================================================
+// Static Callbacks for Pre-print Switch Toggles (LT2 Phase 4)
+// ============================================================================
+
+static void on_preprint_bed_mesh_toggled(lv_event_t* e) {
+    if (!s_detail_view_instance) {
+        return;
+    }
+    auto* sw = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    bool checked = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    lv_subject_set_int(s_detail_view_instance->get_preprint_bed_mesh_subject(), checked ? 1 : 0);
+    spdlog::debug("[DetailView] Bed mesh toggled: {}", checked);
+}
+
+static void on_preprint_qgl_toggled(lv_event_t* e) {
+    if (!s_detail_view_instance) {
+        return;
+    }
+    auto* sw = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    bool checked = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    lv_subject_set_int(s_detail_view_instance->get_preprint_qgl_subject(), checked ? 1 : 0);
+    spdlog::debug("[DetailView] QGL toggled: {}", checked);
+}
+
+static void on_preprint_z_tilt_toggled(lv_event_t* e) {
+    if (!s_detail_view_instance) {
+        return;
+    }
+    auto* sw = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    bool checked = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    lv_subject_set_int(s_detail_view_instance->get_preprint_z_tilt_subject(), checked ? 1 : 0);
+    spdlog::debug("[DetailView] Z-tilt toggled: {}", checked);
+}
+
+static void on_preprint_nozzle_clean_toggled(lv_event_t* e) {
+    if (!s_detail_view_instance) {
+        return;
+    }
+    auto* sw = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    bool checked = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    lv_subject_set_int(s_detail_view_instance->get_preprint_nozzle_clean_subject(),
+                       checked ? 1 : 0);
+    spdlog::debug("[DetailView] Nozzle clean toggled: {}", checked);
+}
+
+static void on_preprint_timelapse_toggled(lv_event_t* e) {
+    if (!s_detail_view_instance) {
+        return;
+    }
+    auto* sw = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    bool checked = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    lv_subject_set_int(s_detail_view_instance->get_preprint_timelapse_subject(), checked ? 1 : 0);
+    spdlog::debug("[DetailView] Timelapse toggled: {}", checked);
 }
 
 } // namespace helix::ui

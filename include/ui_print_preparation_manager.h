@@ -134,9 +134,43 @@ class PrintPreparationManager {
      * @param z_tilt Z-tilt checkbox (may be nullptr)
      * @param nozzle_clean Nozzle clean checkbox (may be nullptr)
      * @param timelapse Timelapse checkbox (may be nullptr)
+     *
+     * @deprecated Use set_preprint_subjects() instead for subject-based state reading
      */
     void set_checkboxes(lv_obj_t* bed_mesh, lv_obj_t* qgl, lv_obj_t* z_tilt, lv_obj_t* nozzle_clean,
                         lv_obj_t* timelapse);
+
+    /**
+     * @brief Set pre-print checkbox state subjects (LT2)
+     *
+     * These subjects are updated by switch toggle callbacks and represent
+     * the user's checkbox selections (1=checked, 0=unchecked).
+     *
+     * @param bed_mesh Subject for bed mesh checkbox state
+     * @param qgl Subject for QGL checkbox state
+     * @param z_tilt Subject for Z-tilt checkbox state
+     * @param nozzle_clean Subject for nozzle clean checkbox state
+     * @param timelapse Subject for timelapse checkbox state
+     */
+    void set_preprint_subjects(lv_subject_t* bed_mesh, lv_subject_t* qgl, lv_subject_t* z_tilt,
+                               lv_subject_t* nozzle_clean, lv_subject_t* timelapse);
+
+    /**
+     * @brief Set pre-print option visibility subjects (LT2)
+     *
+     * These subjects come from PrinterState and control whether each
+     * option row is visible in the UI (1=visible, 0=hidden).
+     *
+     * @param can_show_bed_mesh Subject for bed mesh row visibility
+     * @param can_show_qgl Subject for QGL row visibility
+     * @param can_show_z_tilt Subject for Z-tilt row visibility
+     * @param can_show_nozzle_clean Subject for nozzle clean row visibility
+     * @param can_show_timelapse Subject for timelapse row visibility
+     */
+    void set_preprint_visibility_subjects(lv_subject_t* can_show_bed_mesh,
+                                          lv_subject_t* can_show_qgl, lv_subject_t* can_show_z_tilt,
+                                          lv_subject_t* can_show_nozzle_clean,
+                                          lv_subject_t* can_show_timelapse);
 
     /**
      * @brief Set callback for when G-code scan completes
@@ -312,8 +346,25 @@ class PrintPreparationManager {
 
     /**
      * @brief Read pre-print options from checkbox states
+     *
+     * @deprecated Use read_options_from_subjects() instead
      */
     [[nodiscard]] PrePrintOptions read_options_from_checkboxes() const;
+
+    /**
+     * @brief Read pre-print options from subject states (LT2)
+     *
+     * Reads the current state of pre-print options from subjects instead
+     * of directly querying widget states. This decouples the state from
+     * the UI widgets and enables subject-based reactive patterns.
+     *
+     * Logic for each option:
+     * 1. If visibility subject is set and value is 0, treat as hidden (return false)
+     * 2. Otherwise, check the state subject - return true if value is 1
+     *
+     * @return PrePrintOptions with current selections
+     */
+    [[nodiscard]] PrePrintOptions read_options_from_subjects() const;
 
     /**
      * @brief Start print with optional pre-print operations
@@ -350,12 +401,30 @@ class PrintPreparationManager {
     MoonrakerAPI* api_ = nullptr;
     PrinterState* printer_state_ = nullptr;
 
-    // === Checkbox References ===
+    // === Checkbox References (deprecated - use subjects instead) ===
     lv_obj_t* bed_mesh_checkbox_ = nullptr;
     lv_obj_t* qgl_checkbox_ = nullptr;
     lv_obj_t* z_tilt_checkbox_ = nullptr;
     lv_obj_t* nozzle_clean_checkbox_ = nullptr;
     lv_obj_t* timelapse_checkbox_ = nullptr;
+
+    // === Checkbox State Subjects (LT2 - from PrintSelectDetailView) ===
+    // These subjects track the checked state of each pre-print option switch
+    // Value: 1 = checked/enabled, 0 = unchecked/disabled
+    lv_subject_t* preprint_bed_mesh_subject_ = nullptr;
+    lv_subject_t* preprint_qgl_subject_ = nullptr;
+    lv_subject_t* preprint_z_tilt_subject_ = nullptr;
+    lv_subject_t* preprint_nozzle_clean_subject_ = nullptr;
+    lv_subject_t* preprint_timelapse_subject_ = nullptr;
+
+    // === Visibility Subjects (LT2 - from PrinterState) ===
+    // These subjects control whether each option row is shown in the UI
+    // Value: 1 = visible, 0 = hidden (based on printer capabilities)
+    lv_subject_t* can_show_bed_mesh_subject_ = nullptr;
+    lv_subject_t* can_show_qgl_subject_ = nullptr;
+    lv_subject_t* can_show_z_tilt_subject_ = nullptr;
+    lv_subject_t* can_show_nozzle_clean_subject_ = nullptr;
+    lv_subject_t* can_show_timelapse_subject_ = nullptr;
 
     // === Scan Cache ===
     std::optional<gcode::ScanResult> cached_scan_result_;

@@ -15,6 +15,7 @@
             width="100%" flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_left="#space_lg"
             style_pad_right="#space_lg" style_pad_top="0" style_pad_bottom="#space_lg" flex_flow="row"
             style_pad_gap="#space_md" scrollable="false">
+      
       <!-- ================================================================== -->
       <!-- LEFT SECTION: File card with reactive bindings (5/9 width)        -->
       <!-- NOTE: Can't reuse print_file_card here because it uses props ($) -->
@@ -112,6 +113,7 @@
           </lv_obj>
         </lv_obj>
       </ui_card>
+
       <!-- ================================================================== -->
       <!-- RIGHT SECTION: Options and buttons (4/9 width)                    -->
       <!-- ================================================================== -->
@@ -144,6 +146,7 @@
             <!-- Color swatches added dynamically in C++ -->
           </lv_obj>
         </ui_card>
+
         <!-- Options card - flex_grow ensures it expands to fit all checkboxes -->
         <ui_card name="options_card" width="100%" flex_grow="1" style_radius="#border_radius" flex_flow="column">
           <!-- Pre-print G-code modification options -->
@@ -157,6 +160,7 @@
             <text_body text="Auto Bed Mesh"/>
             <lv_switch name="bed_mesh_checkbox" width="50" height="28">
               <bind_state_if_eq subject="preprint_bed_mesh" state="checked" ref_value="1"/>
+              <event_cb trigger="value_changed" callback="on_preprint_bed_mesh_toggled"/>
             </lv_switch>
           </lv_obj>
           <lv_obj name="qgl_row"
@@ -167,6 +171,7 @@
             <text_body text="Quad Gantry Level"/>
             <lv_switch name="qgl_checkbox" width="50" height="28">
               <bind_state_if_eq subject="preprint_qgl" state="checked" ref_value="1"/>
+              <event_cb trigger="value_changed" callback="on_preprint_qgl_toggled"/>
             </lv_switch>
           </lv_obj>
           <lv_obj name="z_tilt_row"
@@ -177,6 +182,7 @@
             <text_body text="Z-Tilt Adjust"/>
             <lv_switch name="z_tilt_checkbox" width="50" height="28">
               <bind_state_if_eq subject="preprint_z_tilt" state="checked" ref_value="1"/>
+              <event_cb trigger="value_changed" callback="on_preprint_z_tilt_toggled"/>
             </lv_switch>
           </lv_obj>
           <lv_obj name="nozzle_clean_row"
@@ -187,6 +193,7 @@
             <text_body text="Clean Nozzle"/>
             <lv_switch name="nozzle_clean_checkbox" width="50" height="28">
               <bind_state_if_eq subject="preprint_nozzle_clean" state="checked" ref_value="1"/>
+              <event_cb trigger="value_changed" callback="on_preprint_nozzle_clean_toggled"/>
             </lv_switch>
           </lv_obj>
           <!-- Recording options (visibility controlled by plugin availability) -->
@@ -198,20 +205,22 @@
             <text_body text="Record Timelapse"/>
             <lv_switch name="timelapse_checkbox" width="50" height="28">
               <bind_state_if_eq subject="preprint_timelapse" state="checked" ref_value="1"/>
+              <event_cb trigger="value_changed" callback="on_preprint_timelapse_toggled"/>
             </lv_switch>
           </lv_obj>
         </ui_card>
-        <!-- Button row - fixed height, not flex_grow since buttons don't expand -->
+
+        <!-- Button row -->
         <lv_obj name="button_row"
-                width="100%" height="#button_height" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
                 style_pad_gap="#button_padding" flex_flow="row">
           <!-- Delete button -->
-          <lv_button name="delete_button" height="#button_height" flex_grow="1">
+          <lv_button name="delete_button" height="#button_height_lg" flex_grow="1">
             <event_cb trigger="clicked" callback="on_print_select_delete_button"/>
             <text_body text="Delete" align="center"/>
           </lv_button>
           <!-- Print button - primary action styling (disabled when print in progress) -->
-          <lv_button name="print_button" height="#button_height" flex_grow="1" style_bg_color="#primary_color">
+          <lv_button name="print_button" height="#button_height_lg" flex_grow="1" style_bg_color="#primary_color">
             <event_cb trigger="clicked" callback="on_print_select_print_button"/>
             <text_body text="Print" align="center" style_text_color="#FFFFFF"/>
             <lv_obj-bind_state_if_eq subject="print_select_can_print" state="disabled" ref_value="0"/>

@@ -939,6 +939,49 @@ class PrinterState {
         return &helix_plugin_installed_;
     }
 
+    // === Visibility Subject Getters (LT2: for pre-print option row visibility) ===
+
+    /**
+     * @brief Get visibility subject for bed mesh row
+     *
+     * Returns 1 when bed mesh option should be visible (helix_plugin_installed AND
+     * printer_has_bed_mesh), 0 otherwise.
+     */
+    lv_subject_t* get_can_show_bed_mesh_subject() {
+        return &can_show_bed_mesh_;
+    }
+
+    /**
+     * @brief Get visibility subject for QGL row
+     */
+    lv_subject_t* get_can_show_qgl_subject() {
+        return &can_show_qgl_;
+    }
+
+    /**
+     * @brief Get visibility subject for Z-tilt row
+     */
+    lv_subject_t* get_can_show_z_tilt_subject() {
+        return &can_show_z_tilt_;
+    }
+
+    /**
+     * @brief Get visibility subject for nozzle clean row
+     */
+    lv_subject_t* get_can_show_nozzle_clean_subject() {
+        return &can_show_nozzle_clean_;
+    }
+
+    /**
+     * @brief Get visibility subject for timelapse row
+     *
+     * Returns 1 when printer has timelapse plugin installed, 0 otherwise.
+     * Note: Unlike other can_show_* subjects, timelapse doesn't require helix_print plugin.
+     */
+    lv_subject_t* get_printer_has_timelapse_subject() {
+        return &printer_has_timelapse_;
+    }
+
     /**
      * @brief Set printer kinematics type and update bed_moves subject
      *

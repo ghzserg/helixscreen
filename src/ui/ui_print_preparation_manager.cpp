@@ -89,6 +89,31 @@ void PrintPreparationManager::set_checkboxes(lv_obj_t* bed_mesh, lv_obj_t* qgl, 
     timelapse_checkbox_ = timelapse;
 }
 
+void PrintPreparationManager::set_preprint_subjects(lv_subject_t* bed_mesh, lv_subject_t* qgl,
+                                                    lv_subject_t* z_tilt,
+                                                    lv_subject_t* nozzle_clean,
+                                                    lv_subject_t* timelapse) {
+    preprint_bed_mesh_subject_ = bed_mesh;
+    preprint_qgl_subject_ = qgl;
+    preprint_z_tilt_subject_ = z_tilt;
+    preprint_nozzle_clean_subject_ = nozzle_clean;
+    preprint_timelapse_subject_ = timelapse;
+    spdlog::debug("[PrintPreparationManager] Pre-print subjects set");
+}
+
+void PrintPreparationManager::set_preprint_visibility_subjects(lv_subject_t* can_show_bed_mesh,
+                                                               lv_subject_t* can_show_qgl,
+                                                               lv_subject_t* can_show_z_tilt,
+                                                               lv_subject_t* can_show_nozzle_clean,
+                                                               lv_subject_t* can_show_timelapse) {
+    can_show_bed_mesh_subject_ = can_show_bed_mesh;
+    can_show_qgl_subject_ = can_show_qgl;
+    can_show_z_tilt_subject_ = can_show_z_tilt;
+    can_show_nozzle_clean_subject_ = can_show_nozzle_clean;
+    can_show_timelapse_subject_ = can_show_timelapse;
+    spdlog::debug("[PrintPreparationManager] Visibility subjects set");
+}
+
 // ============================================================================
 // PRINT_START Macro Analysis
 // ============================================================================
@@ -717,6 +742,35 @@ PrePrintOptions PrintPreparationManager::read_options_from_checkboxes() const {
     options.z_tilt = is_checked(z_tilt_checkbox_);
     options.nozzle_clean = is_checked(nozzle_clean_checkbox_);
     options.timelapse = is_checked(timelapse_checkbox_);
+
+    return options;
+}
+
+PrePrintOptions PrintPreparationManager::read_options_from_subjects() const {
+    PrePrintOptions options;
+
+    // Helper to check if an option is visible and checked via subjects
+    // Returns true only if:
+    // 1. Visibility subject is nullptr OR visibility value is 1 (visible)
+    // 2. Checked subject is not nullptr AND checked value is 1 (checked)
+    auto is_visible_and_checked = [](lv_subject_t* visibility_subject,
+                                     lv_subject_t* checked_subject) -> bool {
+        // If visibility subject is set and value is 0, treat as hidden
+        if (visibility_subject && lv_subject_get_int(visibility_subject) == 0) {
+            return false;
+        }
+        // Check the actual checked state
+        return checked_subject && lv_subject_get_int(checked_subject) == 1;
+    };
+
+    options.bed_mesh =
+        is_visible_and_checked(can_show_bed_mesh_subject_, preprint_bed_mesh_subject_);
+    options.qgl = is_visible_and_checked(can_show_qgl_subject_, preprint_qgl_subject_);
+    options.z_tilt = is_visible_and_checked(can_show_z_tilt_subject_, preprint_z_tilt_subject_);
+    options.nozzle_clean =
+        is_visible_and_checked(can_show_nozzle_clean_subject_, preprint_nozzle_clean_subject_);
+    options.timelapse =
+        is_visible_and_checked(can_show_timelapse_subject_, preprint_timelapse_subject_);
 
     return options;
 }

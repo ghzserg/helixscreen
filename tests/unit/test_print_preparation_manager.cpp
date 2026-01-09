@@ -178,6 +178,362 @@ TEST_CASE("PrintPreparationManager: read_options_from_checkboxes", "[print_prepa
 }
 
 // ============================================================================
+// Tests: Subject-Based Options Reading (LT2)
+// ============================================================================
+
+/**
+ * LT2 Refactor: Observer Pattern for Checkbox State
+ *
+ * These tests verify the new read_options_from_subjects() method which reads
+ * pre-print options from lv_subject_t pointers instead of LVGL widget state.
+ *
+ * Benefits of subject-based approach:
+ * - No direct LVGL widget dependency (easier testing, better separation)
+ * - Consistent with LVGL 9.x observer pattern used elsewhere
+ * - Enables reactive updates when options change
+ *
+ * These tests are designed to FAIL initially because:
+ * - read_options_from_subjects() doesn't exist yet
+ * - set_preprint_subjects() doesn't exist yet
+ *
+ * After implementation, they should PASS.
+ */
+
+/**
+ * @brief Test fixture for subject-based option reading
+ *
+ * Manages LVGL subject lifecycle and provides helper methods for
+ * configuring checkbox and visibility subjects.
+ */
+struct PreprintSubjectsFixture {
+    // Checkbox state subjects (1 = checked, 0 = unchecked)
+    lv_subject_t preprint_bed_mesh{};
+    lv_subject_t preprint_qgl{};
+    lv_subject_t preprint_z_tilt{};
+    lv_subject_t preprint_nozzle_clean{};
+    lv_subject_t preprint_timelapse{};
+
+    // Visibility subjects (1 = visible/enabled, 0 = hidden/disabled)
+    lv_subject_t can_show_bed_mesh{};
+    lv_subject_t can_show_qgl{};
+    lv_subject_t can_show_z_tilt{};
+    lv_subject_t can_show_nozzle_clean{};
+    lv_subject_t can_show_timelapse{};
+
+    bool initialized = false;
+
+    void init_all_subjects() {
+        if (initialized) {
+            return;
+        }
+
+        // Initialize checkbox subjects (default unchecked)
+        lv_subject_init_int(&preprint_bed_mesh, 0);
+        lv_subject_init_int(&preprint_qgl, 0);
+        lv_subject_init_int(&preprint_z_tilt, 0);
+        lv_subject_init_int(&preprint_nozzle_clean, 0);
+        lv_subject_init_int(&preprint_timelapse, 0);
+
+        // Initialize visibility subjects (default visible)
+        lv_subject_init_int(&can_show_bed_mesh, 1);
+        lv_subject_init_int(&can_show_qgl, 1);
+        lv_subject_init_int(&can_show_z_tilt, 1);
+        lv_subject_init_int(&can_show_nozzle_clean, 1);
+        lv_subject_init_int(&can_show_timelapse, 1);
+
+        initialized = true;
+    }
+
+    void deinit_all_subjects() {
+        if (!initialized) {
+            return;
+        }
+
+        // Deinitialize in reverse order
+        lv_subject_deinit(&can_show_timelapse);
+        lv_subject_deinit(&can_show_nozzle_clean);
+        lv_subject_deinit(&can_show_z_tilt);
+        lv_subject_deinit(&can_show_qgl);
+        lv_subject_deinit(&can_show_bed_mesh);
+
+        lv_subject_deinit(&preprint_timelapse);
+        lv_subject_deinit(&preprint_nozzle_clean);
+        lv_subject_deinit(&preprint_z_tilt);
+        lv_subject_deinit(&preprint_qgl);
+        lv_subject_deinit(&preprint_bed_mesh);
+
+        initialized = false;
+    }
+
+    ~PreprintSubjectsFixture() {
+        deinit_all_subjects();
+    }
+};
+
+TEST_CASE("PrintPreparationManager: read_options_from_subjects with initialized subjects",
+          "[print_preparation][options][lt2]") {
+    lv_init_safe();
+    PrintPreparationManager manager;
+    PreprintSubjectsFixture subjects;
+    subjects.init_all_subjects();
+
+    SECTION("Returns options matching subject values - all checked") {
+        // Set all checkboxes to checked
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1);
+        lv_subject_set_int(&subjects.preprint_qgl, 1);
+        lv_subject_set_int(&subjects.preprint_z_tilt, 1);
+        lv_subject_set_int(&subjects.preprint_nozzle_clean, 1);
+        lv_subject_set_int(&subjects.preprint_timelapse, 1);
+
+        // Set subjects on manager (this method doesn't exist yet - will cause compile failure)
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_timelapse);
+
+        // Read options from subjects (this method doesn't exist yet - will cause compile failure)
+        auto options = manager.read_options_from_subjects();
+
+        REQUIRE(options.bed_mesh == true);
+        REQUIRE(options.qgl == true);
+        REQUIRE(options.z_tilt == true);
+        REQUIRE(options.nozzle_clean == true);
+        REQUIRE(options.timelapse == true);
+    }
+
+    SECTION("Returns options matching subject values - mixed states") {
+        // Set mixed checkbox states
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1);     // checked
+        lv_subject_set_int(&subjects.preprint_qgl, 0);          // unchecked
+        lv_subject_set_int(&subjects.preprint_z_tilt, 1);       // checked
+        lv_subject_set_int(&subjects.preprint_nozzle_clean, 0); // unchecked
+        lv_subject_set_int(&subjects.preprint_timelapse, 1);    // checked
+
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_timelapse);
+
+        auto options = manager.read_options_from_subjects();
+
+        REQUIRE(options.bed_mesh == true);
+        REQUIRE(options.qgl == false);
+        REQUIRE(options.z_tilt == true);
+        REQUIRE(options.nozzle_clean == false);
+        REQUIRE(options.timelapse == true);
+    }
+
+    SECTION("Returns options matching subject values - all unchecked") {
+        // All checkboxes unchecked (default state from fixture init)
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_timelapse);
+
+        auto options = manager.read_options_from_subjects();
+
+        REQUIRE(options.bed_mesh == false);
+        REQUIRE(options.qgl == false);
+        REQUIRE(options.z_tilt == false);
+        REQUIRE(options.nozzle_clean == false);
+        REQUIRE(options.timelapse == false);
+    }
+}
+
+TEST_CASE("PrintPreparationManager: read_options_from_subjects respects visibility",
+          "[print_preparation][options][lt2]") {
+    lv_init_safe();
+    PrintPreparationManager manager;
+    PreprintSubjectsFixture subjects;
+    subjects.init_all_subjects();
+
+    SECTION("Hidden checkbox returns false even when subject says checked") {
+        // Set checkbox to checked
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1);
+
+        // But hide it (visibility = 0)
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 0);
+
+        // Set both checkbox and visibility subjects
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_timelapse);
+        manager.set_preprint_visibility_subjects(
+            &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+            &subjects.can_show_nozzle_clean, &subjects.can_show_timelapse);
+
+        auto options = manager.read_options_from_subjects();
+
+        // bed_mesh should be false because it's hidden (visibility subject = 0)
+        REQUIRE(options.bed_mesh == false);
+    }
+
+    SECTION("Multiple hidden checkboxes all return false") {
+        // Set all checkboxes to checked
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1);
+        lv_subject_set_int(&subjects.preprint_qgl, 1);
+        lv_subject_set_int(&subjects.preprint_z_tilt, 1);
+        lv_subject_set_int(&subjects.preprint_nozzle_clean, 1);
+        lv_subject_set_int(&subjects.preprint_timelapse, 1);
+
+        // Hide some checkboxes
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 0);     // hidden
+        lv_subject_set_int(&subjects.can_show_qgl, 1);          // visible
+        lv_subject_set_int(&subjects.can_show_z_tilt, 0);       // hidden
+        lv_subject_set_int(&subjects.can_show_nozzle_clean, 1); // visible
+        lv_subject_set_int(&subjects.can_show_timelapse, 0);    // hidden
+
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_timelapse);
+        manager.set_preprint_visibility_subjects(
+            &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+            &subjects.can_show_nozzle_clean, &subjects.can_show_timelapse);
+
+        auto options = manager.read_options_from_subjects();
+
+        // Hidden checkboxes should return false
+        REQUIRE(options.bed_mesh == false);    // hidden
+        REQUIRE(options.qgl == true);          // visible + checked
+        REQUIRE(options.z_tilt == false);      // hidden
+        REQUIRE(options.nozzle_clean == true); // visible + checked
+        REQUIRE(options.timelapse == false);   // hidden
+    }
+
+    SECTION("Visible but unchecked returns false") {
+        // Set checkbox to unchecked
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 0);
+
+        // Keep it visible
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 1);
+
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_timelapse);
+        manager.set_preprint_visibility_subjects(
+            &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+            &subjects.can_show_nozzle_clean, &subjects.can_show_timelapse);
+
+        auto options = manager.read_options_from_subjects();
+
+        // Visible but unchecked = false
+        REQUIRE(options.bed_mesh == false);
+    }
+}
+
+TEST_CASE("PrintPreparationManager: read_options_from_subjects with null subjects",
+          "[print_preparation][options][lt2]") {
+    lv_init_safe();
+    PrintPreparationManager manager;
+
+    SECTION("Returns all false when no subjects set") {
+        // Don't call set_preprint_subjects - subjects should be nullptr
+        auto options = manager.read_options_from_subjects();
+
+        REQUIRE(options.bed_mesh == false);
+        REQUIRE(options.qgl == false);
+        REQUIRE(options.z_tilt == false);
+        REQUIRE(options.nozzle_clean == false);
+        REQUIRE(options.timelapse == false);
+    }
+
+    SECTION("Returns all false when subjects explicitly set to nullptr") {
+        manager.set_preprint_subjects(nullptr, nullptr, nullptr, nullptr, nullptr);
+
+        auto options = manager.read_options_from_subjects();
+
+        REQUIRE(options.bed_mesh == false);
+        REQUIRE(options.qgl == false);
+        REQUIRE(options.z_tilt == false);
+        REQUIRE(options.nozzle_clean == false);
+        REQUIRE(options.timelapse == false);
+    }
+
+    SECTION("Handles partial null subjects gracefully") {
+        PreprintSubjectsFixture subjects;
+        subjects.init_all_subjects();
+
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1);
+        lv_subject_set_int(&subjects.preprint_timelapse, 1);
+
+        // Set only some subjects, others are nullptr
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, nullptr, nullptr, nullptr,
+                                      &subjects.preprint_timelapse);
+
+        auto options = manager.read_options_from_subjects();
+
+        REQUIRE(options.bed_mesh == true);
+        REQUIRE(options.qgl == false);          // nullptr subject = false
+        REQUIRE(options.z_tilt == false);       // nullptr subject = false
+        REQUIRE(options.nozzle_clean == false); // nullptr subject = false
+        REQUIRE(options.timelapse == true);
+    }
+}
+
+TEST_CASE("PrintPreparationManager: subject state changes are reflected immediately",
+          "[print_preparation][options][lt2]") {
+    lv_init_safe();
+    PrintPreparationManager manager;
+    PreprintSubjectsFixture subjects;
+    subjects.init_all_subjects();
+
+    SECTION("Changes to subject values are reflected in subsequent reads") {
+        // Initial state: unchecked
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_timelapse);
+
+        auto options1 = manager.read_options_from_subjects();
+        REQUIRE(options1.bed_mesh == false);
+        REQUIRE(options1.qgl == false);
+
+        // Change subject values
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1);
+        lv_subject_set_int(&subjects.preprint_qgl, 1);
+
+        // Read again - should reflect new values
+        auto options2 = manager.read_options_from_subjects();
+        REQUIRE(options2.bed_mesh == true);
+        REQUIRE(options2.qgl == true);
+
+        // Change back
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 0);
+
+        // Read again - should reflect latest values
+        auto options3 = manager.read_options_from_subjects();
+        REQUIRE(options3.bed_mesh == false);
+        REQUIRE(options3.qgl == true);
+    }
+
+    SECTION("Visibility changes are reflected immediately") {
+        // Set checkbox to checked
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1);
+
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_timelapse);
+        manager.set_preprint_visibility_subjects(
+            &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+            &subjects.can_show_nozzle_clean, &subjects.can_show_timelapse);
+
+        // Initially visible
+        auto options1 = manager.read_options_from_subjects();
+        REQUIRE(options1.bed_mesh == true);
+
+        // Hide it
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 0);
+
+        // Should now be false
+        auto options2 = manager.read_options_from_subjects();
+        REQUIRE(options2.bed_mesh == false);
+
+        // Show it again
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 1);
+
+        // Should be true again
+        auto options3 = manager.read_options_from_subjects();
+        REQUIRE(options3.bed_mesh == true);
+    }
+}
+
+// ============================================================================
 // Tests: Lifecycle Management
 // ============================================================================
 

@@ -231,6 +231,24 @@ class PrintSelectDetailView : public OverlayBase {
         return timelapse_checkbox_;
     }
 
+    // === Subject Access (for prep manager to read toggle state - LT2) ===
+
+    [[nodiscard]] lv_subject_t* get_preprint_bed_mesh_subject() {
+        return &preprint_bed_mesh_;
+    }
+    [[nodiscard]] lv_subject_t* get_preprint_qgl_subject() {
+        return &preprint_qgl_;
+    }
+    [[nodiscard]] lv_subject_t* get_preprint_z_tilt_subject() {
+        return &preprint_z_tilt_;
+    }
+    [[nodiscard]] lv_subject_t* get_preprint_nozzle_clean_subject() {
+        return &preprint_nozzle_clean_;
+    }
+    [[nodiscard]] lv_subject_t* get_preprint_timelapse_subject() {
+        return &preprint_timelapse_;
+    }
+
     // === Resize Handling ===
 
     /**
