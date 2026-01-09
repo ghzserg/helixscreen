@@ -128,6 +128,14 @@ void PrintPreparationManager::analyze_print_start_macro() {
         return;
     }
 
+    // Reset retry counter when starting fresh
+    macro_analysis_retry_count_ = 0;
+
+    // Delegate to internal implementation
+    analyze_print_start_macro_internal();
+}
+
+void PrintPreparationManager::analyze_print_start_macro_internal() {
     if (!api_) {
         spdlog::warn("[PrintPreparationManager] Cannot analyze PRINT_START - no API connection");
         return;
@@ -140,7 +148,8 @@ void PrintPreparationManager::analyze_print_start_macro() {
     }
 
     macro_analysis_in_progress_ = true;
-    spdlog::info("[PrintPreparationManager] Starting PRINT_START macro analysis");
+    spdlog::info("[PrintPreparationManager] Starting PRINT_START macro analysis (attempt {} of {})",
+                 macro_analysis_retry_count_ + 1, MAX_MACRO_ANALYSIS_RETRIES + 1);
 
     auto* self = this;
     auto alive = alive_guard_; // Capture shared_ptr to detect destruction
@@ -178,8 +187,8 @@ void PrintPreparationManager::analyze_print_start_macro() {
         },
         // Error callback - NOTE: runs on HTTP thread
         [self, alive](const MoonrakerError& error) {
-            spdlog::warn("[PrintPreparationManager] PRINT_START analysis failed: {}",
-                         error.message);
+            spdlog::warn("[PrintPreparationManager] PRINT_START analysis failed (attempt {}): {}",
+                         self->macro_analysis_retry_count_ + 1, error.message);
 
             // Defer shared state updates to main LVGL thread
             struct MacroErrorData {
@@ -195,13 +204,58 @@ void PrintPreparationManager::analyze_print_start_macro() {
                                       "manager destroyed");
                         return;
                     }
-                    d->mgr->macro_analysis_in_progress_ = false;
-                    // Create empty "not found" result
+
+                    auto* mgr = d->mgr;
+
+                    // Check if we should retry
+                    if (mgr->macro_analysis_retry_count_ < MAX_MACRO_ANALYSIS_RETRIES) {
+                        mgr->macro_analysis_retry_count_++;
+                        // Exponential backoff: 1s, 2s
+                        int delay_ms = 1000 * (1 << (mgr->macro_analysis_retry_count_ - 1));
+
+                        spdlog::info("[PrintPreparationManager] Retrying PRINT_START analysis in "
+                                     "{}ms (attempt {} of {})",
+                                     delay_ms, mgr->macro_analysis_retry_count_ + 1,
+                                     MAX_MACRO_ANALYSIS_RETRIES + 1);
+
+                        // Schedule retry via LVGL timer
+                        // Capture alive_guard to avoid use-after-free if manager destroyed
+                        struct RetryTimerData {
+                            PrintPreparationManager* mgr;
+                            std::shared_ptr<bool> alive_guard;
+                        };
+                        auto* timer_data = new RetryTimerData{mgr, mgr->alive_guard_};
+
+                        lv_timer_t* retry_timer = lv_timer_create(
+                            [](lv_timer_t* timer) {
+                                auto* data =
+                                    static_cast<RetryTimerData*>(lv_timer_get_user_data(timer));
+                                // Check alive_guard BEFORE dereferencing manager
+                                if (data && data->alive_guard && *data->alive_guard) {
+                                    data->mgr->analyze_print_start_macro_internal();
+                                }
+                                delete data;
+                                lv_timer_delete(timer);
+                            },
+                            delay_ms, timer_data);
+                        lv_timer_set_repeat_count(retry_timer, 1);
+                        return;
+                    }
+
+                    // Final failure - notify user
+                    spdlog::error(
+                        "[PrintPreparationManager] PRINT_START analysis failed after {} attempts",
+                        MAX_MACRO_ANALYSIS_RETRIES + 1);
+                    NOTIFY_ERROR("Could not analyze PRINT_START macro. Some print options may be "
+                                 "unavailable.");
+
+                    // Set empty result
+                    mgr->macro_analysis_in_progress_ = false;
                     helix::PrintStartAnalysis not_found;
                     not_found.found = false;
-                    d->mgr->macro_analysis_ = not_found;
-                    if (d->mgr->on_macro_analysis_complete_) {
-                        d->mgr->on_macro_analysis_complete_(not_found);
+                    mgr->macro_analysis_ = not_found;
+                    if (mgr->on_macro_analysis_complete_) {
+                        mgr->on_macro_analysis_complete_(not_found);
                     }
                 });
         });
@@ -453,51 +507,15 @@ std::string PrintPreparationManager::format_preprint_steps() const {
     std::map<std::string, UnifiedOp> ops;
 
     // Friendly name mapping for macro operations
+    // Uses the shared category_name() from operation_patterns.h
     auto get_macro_friendly_name = [](helix::PrintStartOpCategory cat) -> std::string {
-        switch (cat) {
-        case helix::PrintStartOpCategory::BED_MESH:
-            return "Bed mesh";
-        case helix::PrintStartOpCategory::QGL:
-            return "Quad gantry leveling";
-        case helix::PrintStartOpCategory::Z_TILT:
-            return "Z-tilt adjustment";
-        case helix::PrintStartOpCategory::NOZZLE_CLEAN:
-            return "Nozzle cleaning";
-        case helix::PrintStartOpCategory::PRIMING:
-            return "Nozzle priming";
-        case helix::PrintStartOpCategory::SKEW_CORRECT:
-            return "Skew correction";
-        case helix::PrintStartOpCategory::CHAMBER_SOAK:
-            return "Chamber heat soak";
-        case helix::PrintStartOpCategory::BED_LEVEL:
-            return "Bed leveling";
-        default:
-            return "";
-        }
+        return helix::category_name(cat);
     };
 
     // Category key for deduplication
+    // Uses the shared category_key() from operation_patterns.h
     auto get_category_key = [](helix::PrintStartOpCategory cat) -> std::string {
-        switch (cat) {
-        case helix::PrintStartOpCategory::BED_MESH:
-            return "bed_mesh";
-        case helix::PrintStartOpCategory::QGL:
-            return "qgl";
-        case helix::PrintStartOpCategory::Z_TILT:
-            return "z_tilt";
-        case helix::PrintStartOpCategory::NOZZLE_CLEAN:
-            return "nozzle_clean";
-        case helix::PrintStartOpCategory::PRIMING:
-            return "priming";
-        case helix::PrintStartOpCategory::SKEW_CORRECT:
-            return "skew_correct";
-        case helix::PrintStartOpCategory::CHAMBER_SOAK:
-            return "chamber_soak";
-        case helix::PrintStartOpCategory::BED_LEVEL:
-            return "bed_level";
-        default:
-            return "";
-        }
+        return helix::category_key(cat);
     };
 
     // Priority order matches collect_macro_skip_params() for consistency:

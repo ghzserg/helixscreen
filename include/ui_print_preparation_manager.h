@@ -382,6 +382,10 @@ class PrintPreparationManager {
     std::optional<helix::PrintStartAnalysis> macro_analysis_;
     bool macro_analysis_in_progress_ = false;
 
+    // Retry logic for macro analysis
+    int macro_analysis_retry_count_ = 0;
+    static constexpr int MAX_MACRO_ANALYSIS_RETRIES = 2; // 3 total attempts
+
     // === Lifetime Guard for Async Callbacks ===
     // Shared pointer to track if this object is still alive when async callbacks execute.
     // Callbacks capture this shared_ptr; if *alive_guard_ is false, the callback bails out.
@@ -458,6 +462,14 @@ class PrintPreparationManager {
      * @brief Static callback for connection state observer
      */
     static void on_connection_state_changed(lv_observer_t* observer, lv_subject_t* subject);
+
+    /**
+     * @brief Internal implementation of macro analysis (for retries)
+     *
+     * Called by analyze_print_start_macro() and by retry timer callbacks.
+     * Does not reset retry counter.
+     */
+    void analyze_print_start_macro_internal();
 
     /**
      * @brief Collect macro skip parameters based on user checkboxes and macro analysis
