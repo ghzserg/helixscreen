@@ -34,6 +34,7 @@
 #include "ui_status_bar.h"
 #include "ui_wizard.h"
 
+#include "abort_manager.h"
 #include "active_print_media_manager.h"
 #include "ams_state.h"
 #include "app_globals.h"
@@ -266,6 +267,11 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     EmergencyStopOverlay::instance().init_subjects();
     StaticPanelRegistry::instance().register_destroy(
         "EmergencyStopSubjects", []() { EmergencyStopOverlay::instance().deinit_subjects(); });
+
+    // AbortManager subjects (for smart print cancellation)
+    helix::AbortManager::instance().init_subjects();
+    StaticPanelRegistry::instance().register_destroy(
+        "AbortManagerSubjects", []() { helix::AbortManager::instance().deinit_subjects(); });
 
     // Navigation manager subjects (StaticSubjectRegistry - state manager, not a visual panel)
     StaticSubjectRegistry::instance().register_deinit(

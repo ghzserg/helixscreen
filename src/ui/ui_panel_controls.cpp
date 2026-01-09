@@ -593,9 +593,13 @@ void ControlsPanel::populate_secondary_fans() {
     }
 
     // IMPORTANT: Cleanup order matters to avoid dangling pointers:
-    // 1. Clear observers first (they hold 'this' as user_data and reference subjects)
+    // 1. Release observers first - they may reference subjects that were already deinit'd
+    //    by PrinterState::init_fans() before it notified fans_version_ observers
     // 2. Clear row tracking (contains widget pointers that will become invalid)
     // 3. Clean widgets last (invalidates the pointers we just cleared)
+    for (auto& obs : secondary_fan_observers_) {
+        obs.release(); // Don't try to remove from potentially-invalid subjects
+    }
     secondary_fan_observers_.clear();
     secondary_fan_rows_.clear();
     lv_obj_clean(secondary_fans_list_);

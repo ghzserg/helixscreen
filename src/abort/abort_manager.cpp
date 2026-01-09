@@ -1,0 +1,823 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "abort_manager.h"
+
+#include "ui_update_queue.h"
+
+#include "moonraker_api.h"
+#include "printer_state.h"
+
+#include <spdlog/spdlog.h>
+
+#include <cstring>
+
+namespace helix {
+
+// ============================================================================
+// Singleton Instance
+// ============================================================================
+
+AbortManager& AbortManager::instance() {
+    static AbortManager instance;
+    return instance;
+}
+
+// ============================================================================
+// Initialization
+// ============================================================================
+
+void AbortManager::init(MoonrakerAPI* api, PrinterState* state) {
+    api_ = api;
+    printer_state_ = state;
+    spdlog::debug("[AbortManager] Initialized with dependencies");
+}
+
+void AbortManager::init_subjects() {
+    if (subjects_initialized_) {
+        return;
+    }
+
+    // Register XML component for the modal
+    lv_xml_register_component_from_file("A:ui_xml/abort_progress_modal.xml");
+
+    // Initialize state subject (default IDLE)
+    lv_subject_init_int(&abort_state_subject_, static_cast<int>(State::IDLE));
+    lv_xml_register_subject(nullptr, "abort_state", &abort_state_subject_);
+
+    // Initialize progress message subject
+    std::strncpy(progress_message_buf_, "", sizeof(progress_message_buf_));
+    lv_subject_init_string(&progress_message_subject_, progress_message_buf_, nullptr,
+                           sizeof(progress_message_buf_), progress_message_buf_);
+    lv_xml_register_subject(nullptr, "abort_progress_message", &progress_message_subject_);
+
+    // Initialize visibility subject (0 = hidden, 1 = visible)
+    lv_subject_init_int(&abort_progress_visible_subject_, 0);
+    lv_xml_register_subject(nullptr, "abort_progress_visible", &abort_progress_visible_subject_);
+
+    subjects_initialized_ = true;
+    spdlog::debug("[AbortManager] Subjects initialized");
+
+    // Create modal on lv_layer_top() after subjects are ready
+    create_modal();
+}
+
+void AbortManager::deinit_subjects() {
+    if (!subjects_initialized_) {
+        return;
+    }
+
+    // Cancel any pending timers
+    cancel_all_timers();
+
+    // Clear klippy observer before deinitializing subjects
+    klippy_observer_.reset();
+
+    // Delete modal widget if it exists
+    if (modal_ && lv_is_initialized()) {
+        lv_obj_delete(modal_);
+        modal_ = nullptr;
+    }
+
+    // Deinitialize subjects
+    lv_subject_deinit(&abort_state_subject_);
+    lv_subject_deinit(&progress_message_subject_);
+    lv_subject_deinit(&abort_progress_visible_subject_);
+
+    subjects_initialized_ = false;
+    spdlog::debug("[AbortManager] Subjects deinitialized");
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+void AbortManager::start_abort() {
+    // Ignore if already aborting
+    if (is_aborting()) {
+        spdlog::debug("[AbortManager] Already aborting, ignoring start_abort()");
+        return;
+    }
+
+    spdlog::info("[AbortManager] Starting abort sequence");
+    escalation_level_ = 0;
+    {
+        std::lock_guard<std::mutex> lock(message_mutex_);
+        last_result_message_.clear();
+    }
+
+    // Decide starting state based on cached Kalico status
+    if (kalico_status_ == KalicoStatus::NOT_PRESENT) {
+        // Skip HEATER_INTERRUPT, go directly to PROBE_QUEUE
+        spdlog::debug("[AbortManager] Kalico NOT_PRESENT cached, skipping to PROBE_QUEUE");
+        set_state(State::PROBE_QUEUE);
+        set_progress_message("Probing queue...");
+        start_probe();
+    } else {
+        // Unknown or DETECTED - try HEATER_INTERRUPT
+        // For DETECTED, we still send it as a soft interrupt (helps with M109 waits)
+        spdlog::debug("[AbortManager] Trying HEATER_INTERRUPT (Kalico status: {})",
+                      kalico_status_ == KalicoStatus::UNKNOWN ? "UNKNOWN" : "DETECTED");
+        set_state(State::TRY_HEATER_INTERRUPT);
+        set_progress_message("Checking Kalico...");
+        try_heater_interrupt();
+    }
+}
+
+bool AbortManager::is_aborting() const {
+    State current = abort_state_.load();
+    return current != State::IDLE && current != State::COMPLETE;
+}
+
+bool AbortManager::is_idle() const {
+    return abort_state_.load() == State::IDLE;
+}
+
+bool AbortManager::is_handling_shutdown() const {
+    // Check persistent flag first - this persists even after state machine completes
+    if (shutdown_recovery_in_progress_.load()) {
+        return true;
+    }
+    // Also check states for completeness
+    State current = abort_state_.load();
+    return current == State::SENT_ESTOP || current == State::SENT_RESTART ||
+           current == State::WAITING_RECONNECT;
+}
+
+AbortManager::State AbortManager::get_state() const {
+    return abort_state_.load();
+}
+
+AbortManager::KalicoStatus AbortManager::get_kalico_status() const {
+    return kalico_status_.load();
+}
+
+std::string AbortManager::get_state_name() const {
+    switch (abort_state_.load()) {
+    case State::IDLE:
+        return "IDLE";
+    case State::TRY_HEATER_INTERRUPT:
+        return "TRY_HEATER_INTERRUPT";
+    case State::PROBE_QUEUE:
+        return "PROBE_QUEUE";
+    case State::SENT_CANCEL:
+        return "SENT_CANCEL";
+    case State::SENT_ESTOP:
+        return "SENT_ESTOP";
+    case State::SENT_RESTART:
+        return "SENT_RESTART";
+    case State::WAITING_RECONNECT:
+        return "WAITING_RECONNECT";
+    case State::COMPLETE:
+        return "COMPLETE";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+std::string AbortManager::get_progress_message() const {
+    return std::string(progress_message_buf_);
+}
+
+std::string AbortManager::last_result_message() const {
+    std::lock_guard<std::mutex> lock(message_mutex_);
+    return last_result_message_;
+}
+
+int AbortManager::escalation_level() const {
+    return escalation_level_.load();
+}
+
+int AbortManager::get_commands_sent_count() const {
+    return commands_sent_.load();
+}
+
+lv_subject_t* AbortManager::get_abort_state_subject() {
+    return &abort_state_subject_;
+}
+
+lv_subject_t* AbortManager::get_progress_message_subject() {
+    return &progress_message_subject_;
+}
+
+// ============================================================================
+// State Machine Transitions
+// ============================================================================
+
+void AbortManager::try_heater_interrupt() {
+    // If no API, just stay in TRY_HEATER_INTERRUPT state
+    // Tests will call on_heater_interrupt_*_for_testing() to progress
+    if (!api_) {
+        spdlog::debug("[AbortManager] No API, waiting for test callback in TRY_HEATER_INTERRUPT");
+        return;
+    }
+
+    commands_sent_++;
+
+    // Start timeout timer
+    heater_interrupt_timer_ =
+        lv_timer_create(heater_interrupt_timer_cb, HEATER_INTERRUPT_TIMEOUT_MS, this);
+    lv_timer_set_repeat_count(heater_interrupt_timer_, 1);
+
+    // Send HEATER_INTERRUPT G-code
+    api_->execute_gcode(
+        "HEATER_INTERRUPT",
+        [this]() {
+            // Success callback - Kalico detected
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_heater_interrupt_success();
+                },
+                this);
+        },
+        [this](const MoonrakerError& err) {
+            // Error callback - likely "Unknown command"
+            spdlog::debug("[AbortManager] HEATER_INTERRUPT error: {}", err.message);
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_heater_interrupt_error();
+                },
+                this);
+        });
+}
+
+void AbortManager::start_probe() {
+    // If no API, just stay in PROBE_QUEUE state
+    // Tests will call on_probe_*_for_testing() to progress
+    if (!api_) {
+        spdlog::debug("[AbortManager] No API, waiting for test callback in PROBE_QUEUE");
+        return;
+    }
+
+    commands_sent_++;
+
+    // Start timeout timer
+    probe_timer_ = lv_timer_create(probe_timer_cb, PROBE_TIMEOUT_MS, this);
+    lv_timer_set_repeat_count(probe_timer_, 1);
+
+    // Send M115 to probe the queue
+    api_->execute_gcode(
+        "M115",
+        [this]() {
+            // Success callback - queue is responsive
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_probe_response();
+                },
+                this);
+        },
+        [this](const MoonrakerError& /* err */) {
+            // Error callback - treat as timeout/blocked
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_probe_timeout();
+                },
+                this);
+        });
+}
+
+void AbortManager::send_cancel_print() {
+    // If no API, just stay in SENT_CANCEL state
+    // Tests will call on_cancel_*_for_testing() to progress
+    if (!api_) {
+        spdlog::debug("[AbortManager] No API, waiting for test callback in SENT_CANCEL");
+        return;
+    }
+
+    commands_sent_++;
+
+    // Start timeout timer
+    cancel_timer_ = lv_timer_create(cancel_timer_cb, CANCEL_TIMEOUT_MS, this);
+    lv_timer_set_repeat_count(cancel_timer_, 1);
+
+    // Send CANCEL_PRINT
+    api_->execute_gcode(
+        "CANCEL_PRINT",
+        [this]() {
+            // Success callback
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_cancel_success();
+                },
+                this);
+        },
+        [this](const MoonrakerError& /* err */) {
+            // Error callback - escalate to ESTOP
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_cancel_timeout();
+                },
+                this);
+        });
+}
+
+void AbortManager::escalate_to_estop() {
+    spdlog::warn("[AbortManager] Escalating to M112 emergency stop");
+    escalation_level_++;
+
+    // Set persistent flag - will be cleared when we see klippy READY
+    // This suppresses the "Printer Shutdown" dialog during recovery
+    shutdown_recovery_in_progress_.store(true);
+
+    cancel_all_timers();
+    set_state(State::SENT_ESTOP);
+    set_progress_message("Emergency stopping...");
+
+    // If no API, just stay in SENT_ESTOP state
+    // Tests will call on_estop_sent_for_testing() to progress
+    if (!api_) {
+        spdlog::debug("[AbortManager] No API, waiting for test callback in SENT_ESTOP");
+        return;
+    }
+
+    commands_sent_++;
+
+    // Send M112 emergency stop
+    api_->emergency_stop(
+        [this]() {
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_estop_sent();
+                },
+                this);
+        },
+        [this](const MoonrakerError& /* err */) {
+            // Even on error, proceed to restart (M112 may have worked)
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_estop_sent();
+                },
+                this);
+        });
+}
+
+void AbortManager::send_firmware_restart() {
+    spdlog::info("[AbortManager] Sending FIRMWARE_RESTART");
+    set_state(State::SENT_RESTART);
+    set_progress_message("Restarting firmware...");
+
+    // If no API, just stay in SENT_RESTART state
+    // Tests will call on_restart_sent_for_testing() to progress
+    if (!api_) {
+        spdlog::debug("[AbortManager] No API, waiting for test callback in SENT_RESTART");
+        return;
+    }
+
+    commands_sent_++;
+
+    // Send FIRMWARE_RESTART
+    api_->restart_firmware(
+        [this]() {
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_restart_sent();
+                },
+                this);
+        },
+        [this](const MoonrakerError& /* err */) {
+            // Even on error, proceed to wait for reconnect
+            ui_async_call(
+                [](void* user_data) {
+                    auto* self = static_cast<AbortManager*>(user_data);
+                    self->on_restart_sent();
+                },
+                this);
+        });
+}
+
+void AbortManager::wait_for_reconnect() {
+    spdlog::info("[AbortManager] Waiting for klippy reconnection");
+
+    // Reset flag - we need to see SHUTDOWN before accepting READY
+    // This prevents the observer's initial callback (with stale READY) from completing immediately
+    seen_shutdown_during_reconnect_.store(false);
+
+    set_state(State::WAITING_RECONNECT);
+    set_progress_message("Waiting for reconnect...");
+
+    // Start reconnect timeout timer
+    reconnect_timer_ = lv_timer_create(reconnect_timer_cb, RECONNECT_TIMEOUT_MS, this);
+    lv_timer_set_repeat_count(reconnect_timer_, 1);
+
+    // Register observer on klippy_state subject to detect when klippy becomes ready
+    if (printer_state_) {
+        klippy_observer_ = ObserverGuard(printer_state_->get_klippy_state_subject(),
+                                         klippy_state_observer_cb, this);
+        spdlog::debug("[AbortManager] Registered klippy_state observer for reconnect detection");
+    }
+}
+
+void AbortManager::complete_abort(const char* message) {
+    spdlog::info("[AbortManager] Abort complete: {}", message);
+    cancel_all_timers();
+
+    // Clear klippy observer since we're no longer waiting for reconnect
+    klippy_observer_.reset();
+
+    {
+        std::lock_guard<std::mutex> lock(message_mutex_);
+        last_result_message_ = message;
+    }
+    set_state(State::COMPLETE);
+    set_progress_message(message);
+}
+
+// ============================================================================
+// Internal Callbacks
+// ============================================================================
+
+void AbortManager::on_heater_interrupt_success() {
+    if (abort_state_ != State::TRY_HEATER_INTERRUPT) {
+        return; // Stale callback
+    }
+
+    // Cancel timeout timer
+    if (heater_interrupt_timer_) {
+        lv_timer_delete(heater_interrupt_timer_);
+        heater_interrupt_timer_ = nullptr;
+    }
+
+    spdlog::info("[AbortManager] Kalico detected (HEATER_INTERRUPT succeeded)");
+    kalico_status_ = KalicoStatus::DETECTED;
+
+    // Proceed to PROBE_QUEUE
+    set_state(State::PROBE_QUEUE);
+    set_progress_message("Probing queue...");
+    start_probe();
+}
+
+void AbortManager::on_heater_interrupt_error() {
+    if (abort_state_ != State::TRY_HEATER_INTERRUPT) {
+        return; // Stale callback
+    }
+
+    // Cancel timeout timer
+    if (heater_interrupt_timer_) {
+        lv_timer_delete(heater_interrupt_timer_);
+        heater_interrupt_timer_ = nullptr;
+    }
+
+    spdlog::info("[AbortManager] Kalico NOT present (HEATER_INTERRUPT failed)");
+    kalico_status_ = KalicoStatus::NOT_PRESENT;
+
+    // Proceed to PROBE_QUEUE
+    set_state(State::PROBE_QUEUE);
+    set_progress_message("Probing queue...");
+    start_probe();
+}
+
+void AbortManager::on_heater_interrupt_timeout() {
+    if (abort_state_ != State::TRY_HEATER_INTERRUPT) {
+        return; // Stale callback
+    }
+
+    heater_interrupt_timer_ = nullptr;
+
+    spdlog::warn("[AbortManager] HEATER_INTERRUPT timed out, treating as not-Kalico");
+    kalico_status_ = KalicoStatus::NOT_PRESENT;
+
+    // Proceed to PROBE_QUEUE
+    set_state(State::PROBE_QUEUE);
+    set_progress_message("Probing queue...");
+    start_probe();
+}
+
+void AbortManager::on_probe_response() {
+    if (abort_state_ != State::PROBE_QUEUE) {
+        return; // Stale callback
+    }
+
+    // Cancel timeout timer
+    if (probe_timer_) {
+        lv_timer_delete(probe_timer_);
+        probe_timer_ = nullptr;
+    }
+
+    spdlog::info("[AbortManager] Queue responsive, sending CANCEL_PRINT");
+    set_state(State::SENT_CANCEL);
+    set_progress_message("Cancelling print...");
+    send_cancel_print();
+}
+
+void AbortManager::on_probe_timeout() {
+    if (abort_state_ != State::PROBE_QUEUE) {
+        return; // Stale callback
+    }
+
+    probe_timer_ = nullptr;
+
+    spdlog::warn("[AbortManager] Queue blocked (M115 timed out), escalating to ESTOP");
+    escalate_to_estop();
+}
+
+void AbortManager::on_cancel_success() {
+    if (abort_state_ != State::SENT_CANCEL) {
+        return; // Stale callback
+    }
+
+    // Cancel timeout timer
+    if (cancel_timer_) {
+        lv_timer_delete(cancel_timer_);
+        cancel_timer_ = nullptr;
+    }
+
+    spdlog::info("[AbortManager] CANCEL_PRINT succeeded");
+    complete_abort("Print cancelled");
+}
+
+void AbortManager::on_cancel_timeout() {
+    if (abort_state_ != State::SENT_CANCEL) {
+        return; // Stale callback
+    }
+
+    cancel_timer_ = nullptr;
+
+    spdlog::warn("[AbortManager] CANCEL_PRINT timed out, escalating to ESTOP");
+    escalate_to_estop();
+}
+
+void AbortManager::on_estop_sent() {
+    if (abort_state_ != State::SENT_ESTOP) {
+        return; // Stale callback
+    }
+
+    spdlog::info("[AbortManager] M112 sent, sending FIRMWARE_RESTART");
+    send_firmware_restart();
+}
+
+void AbortManager::on_restart_sent() {
+    if (abort_state_ != State::SENT_RESTART) {
+        return; // Stale callback
+    }
+
+    spdlog::info("[AbortManager] FIRMWARE_RESTART sent, waiting for reconnect");
+    wait_for_reconnect();
+}
+
+void AbortManager::on_klippy_state_changed(KlippyState klippy_state) {
+    if (abort_state_ != State::WAITING_RECONNECT) {
+        return; // Not waiting for reconnect
+    }
+
+    // Track when we've seen SHUTDOWN - this prevents completing immediately
+    // when the observer fires with a stale READY value on registration
+    if (klippy_state == KlippyState::SHUTDOWN) {
+        spdlog::debug("[AbortManager] Observed SHUTDOWN state during reconnect wait");
+        seen_shutdown_during_reconnect_.store(true);
+        return;
+    }
+
+    if (klippy_state == KlippyState::READY) {
+        // Only complete if we've actually seen SHUTDOWN first
+        // (prevents completing from observer's initial callback with stale READY)
+        if (!seen_shutdown_during_reconnect_.load()) {
+            spdlog::debug(
+                "[AbortManager] Ignoring READY - haven't seen SHUTDOWN yet (stale value)");
+            return;
+        }
+
+        // Cancel reconnect timer
+        if (reconnect_timer_) {
+            lv_timer_delete(reconnect_timer_);
+            reconnect_timer_ = nullptr;
+        }
+
+        // Clear the persistent shutdown recovery flag - we've seen READY after SHUTDOWN
+        shutdown_recovery_in_progress_.store(false);
+        spdlog::debug("[AbortManager] Cleared shutdown_recovery_in_progress flag");
+
+        spdlog::info("[AbortManager] Klippy READY after SHUTDOWN, abort complete");
+        complete_abort("Print aborted. Home before resuming.");
+    }
+    // For other states (STARTUP, ERROR), continue waiting
+}
+
+// ============================================================================
+// Helper Methods
+// ============================================================================
+
+void AbortManager::set_state(State new_state) {
+    State old_state = abort_state_.exchange(new_state);
+    spdlog::debug("[AbortManager] State: {} -> {}", static_cast<int>(old_state),
+                  static_cast<int>(new_state));
+
+    // Update subject for UI binding
+    if (subjects_initialized_) {
+        lv_subject_set_int(&abort_state_subject_, static_cast<int>(new_state));
+        update_visibility();
+    }
+}
+
+void AbortManager::set_progress_message(const char* message) {
+    std::strncpy(progress_message_buf_, message, sizeof(progress_message_buf_) - 1);
+    progress_message_buf_[sizeof(progress_message_buf_) - 1] = '\0';
+
+    if (subjects_initialized_) {
+        lv_subject_copy_string(&progress_message_subject_, progress_message_buf_);
+    }
+}
+
+void AbortManager::cancel_all_timers() {
+    if (heater_interrupt_timer_) {
+        lv_timer_delete(heater_interrupt_timer_);
+        heater_interrupt_timer_ = nullptr;
+    }
+    if (probe_timer_) {
+        lv_timer_delete(probe_timer_);
+        probe_timer_ = nullptr;
+    }
+    if (cancel_timer_) {
+        lv_timer_delete(cancel_timer_);
+        cancel_timer_ = nullptr;
+    }
+    if (reconnect_timer_) {
+        lv_timer_delete(reconnect_timer_);
+        reconnect_timer_ = nullptr;
+    }
+}
+
+void AbortManager::create_modal() {
+    if (modal_) {
+        spdlog::warn("[AbortManager] Modal already exists - skipping creation");
+        return;
+    }
+
+    // Create modal on lv_layer_top() so it survives screen changes
+    modal_ = static_cast<lv_obj_t*>(lv_xml_create(lv_layer_top(), "abort_progress_modal", nullptr));
+    if (modal_) {
+        spdlog::debug("[AbortManager] Modal created on lv_layer_top()");
+    } else {
+        spdlog::error("[AbortManager] Failed to create abort_progress_modal");
+    }
+}
+
+void AbortManager::update_visibility() {
+    // Modal is visible when state is not IDLE and not COMPLETE
+    State current = abort_state_.load();
+    int visible = (current != State::IDLE && current != State::COMPLETE) ? 1 : 0;
+    lv_subject_set_int(&abort_progress_visible_subject_, visible);
+    spdlog::debug("[AbortManager] Visibility updated: {}", visible ? "visible" : "hidden");
+}
+
+void AbortManager::klippy_state_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
+    auto* self = static_cast<AbortManager*>(lv_observer_get_user_data(observer));
+    if (!self) {
+        return;
+    }
+
+    auto klippy_state = static_cast<KlippyState>(lv_subject_get_int(subject));
+    self->on_klippy_state_changed(klippy_state);
+}
+
+// ============================================================================
+// Static Timer Callbacks
+// ============================================================================
+
+void AbortManager::heater_interrupt_timer_cb(lv_timer_t* timer) {
+    auto* self = static_cast<AbortManager*>(lv_timer_get_user_data(timer));
+    if (self) {
+        self->heater_interrupt_timer_ = nullptr; // Timer auto-deletes after one-shot
+        self->on_heater_interrupt_timeout();
+    }
+}
+
+void AbortManager::probe_timer_cb(lv_timer_t* timer) {
+    auto* self = static_cast<AbortManager*>(lv_timer_get_user_data(timer));
+    if (self) {
+        self->probe_timer_ = nullptr;
+        self->on_probe_timeout();
+    }
+}
+
+void AbortManager::cancel_timer_cb(lv_timer_t* timer) {
+    auto* self = static_cast<AbortManager*>(lv_timer_get_user_data(timer));
+    if (self) {
+        self->cancel_timer_ = nullptr;
+        self->on_cancel_timeout();
+    }
+}
+
+void AbortManager::reconnect_timer_cb(lv_timer_t* timer) {
+    auto* self = static_cast<AbortManager*>(lv_timer_get_user_data(timer));
+    if (self) {
+        self->reconnect_timer_ = nullptr;
+        // Timeout without reconnect - still complete (with warning message)
+        self->complete_abort("Abort complete (reconnect timeout). Check printer status.");
+    }
+}
+
+// ============================================================================
+// Testing Interface
+// ============================================================================
+
+void AbortManager::reset_for_testing() {
+    reset_state_for_testing();
+    // Also reset cached values that reset_state_for_testing() preserves
+    kalico_status_ = KalicoStatus::UNKNOWN;
+    commands_sent_ = 0;
+}
+
+void AbortManager::reset_state_for_testing() {
+    cancel_all_timers();
+    klippy_observer_.reset();
+    abort_state_ = State::IDLE;
+    escalation_level_ = 0;
+    shutdown_recovery_in_progress_ = false;
+    seen_shutdown_during_reconnect_ = false;
+    {
+        std::lock_guard<std::mutex> lock(message_mutex_);
+        last_result_message_.clear();
+    }
+    // Keep kalico_status_ and commands_sent_ cached
+
+    if (subjects_initialized_) {
+        lv_subject_set_int(&abort_state_subject_, static_cast<int>(State::IDLE));
+        lv_subject_copy_string(&progress_message_subject_, "");
+        update_visibility();
+    }
+}
+
+void AbortManager::on_heater_interrupt_success_for_testing() {
+    on_heater_interrupt_success();
+}
+
+void AbortManager::on_heater_interrupt_error_for_testing(const std::string& /* error */) {
+    on_heater_interrupt_error();
+}
+
+void AbortManager::on_heater_interrupt_timeout_for_testing() {
+    on_heater_interrupt_timeout();
+}
+
+void AbortManager::on_probe_response_for_testing() {
+    on_probe_response();
+}
+
+void AbortManager::on_probe_timeout_for_testing() {
+    on_probe_timeout();
+}
+
+void AbortManager::on_cancel_success_for_testing() {
+    on_cancel_success();
+}
+
+void AbortManager::on_cancel_timeout_for_testing() {
+    on_cancel_timeout();
+}
+
+void AbortManager::on_estop_sent_for_testing() {
+    on_estop_sent();
+}
+
+void AbortManager::on_restart_sent_for_testing() {
+    on_restart_sent();
+}
+
+void AbortManager::on_klippy_ready_for_testing() {
+    on_klippy_state_changed(KlippyState::READY);
+}
+
+void AbortManager::on_reconnect_timeout_for_testing() {
+    // Simulate the timer callback
+    if (reconnect_timer_) {
+        lv_timer_delete(reconnect_timer_);
+        reconnect_timer_ = nullptr;
+    }
+    complete_abort("Abort complete (reconnect timeout). Check printer status.");
+}
+
+void AbortManager::on_klippy_state_change_for_testing(KlippyState klippy_state) {
+    on_klippy_state_changed(klippy_state);
+}
+
+void AbortManager::on_api_error_for_testing(const std::string& /* error */) {
+    // Handle API error based on current state
+    switch (abort_state_.load()) {
+    case State::TRY_HEATER_INTERRUPT:
+        // Treat as not-Kalico and continue
+        on_heater_interrupt_error();
+        break;
+    case State::PROBE_QUEUE:
+        // Queue may be blocked, escalate
+        on_probe_timeout();
+        break;
+    case State::SENT_CANCEL:
+        // Cancel failed, escalate to ESTOP
+        escalate_to_estop();
+        break;
+    default:
+        // For other states, just log
+        spdlog::warn("[AbortManager] API error in state {}", get_state_name());
+        break;
+    }
+}
+
+} // namespace helix

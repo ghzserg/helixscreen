@@ -18,6 +18,7 @@
 #include "ui_modal.h"
 #include "ui_panel_filament.h"
 
+#include "abort_manager.h"
 #include "ams_state.h"
 #include "app_constants.h"
 #include "app_globals.h"
@@ -290,9 +291,15 @@ void MoonrakerManager::register_callbacks() {
         if (evt.type == MoonrakerEventType::CONNECTION_FAILED) {
             title = "Connection Failed";
         } else if (evt.type == MoonrakerEventType::KLIPPY_DISCONNECTED) {
-            // Check if disconnect modal is suppressed (intentional restart)
+            // Check if disconnect modal is suppressed (intentional restart or AbortManager
+            // handling)
             if (m_client && m_client->is_disconnect_modal_suppressed()) {
                 spdlog::info("[MoonrakerManager] Suppressing disconnect modal (expected restart)");
+                return;
+            }
+            if (helix::AbortManager::instance().is_handling_shutdown()) {
+                spdlog::info(
+                    "[MoonrakerManager] Suppressing disconnect modal (AbortManager handling)");
                 return;
             }
             title = "Printer Firmware Disconnected";

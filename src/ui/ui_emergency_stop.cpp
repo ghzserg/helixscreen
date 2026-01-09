@@ -7,6 +7,8 @@
 #include "ui_toast.h"
 #include "ui_update_queue.h"
 
+#include "abort_manager.h"
+
 #include <spdlog/spdlog.h>
 
 EmergencyStopOverlay& EmergencyStopOverlay::instance() {
@@ -367,6 +369,12 @@ void EmergencyStopOverlay::klippy_state_observer_cb(lv_observer_t* observer,
         // (Klipper briefly enters SHUTDOWN during firmware/klipper restart)
         if (self->restart_in_progress_) {
             spdlog::debug("[KlipperRecovery] Ignoring SHUTDOWN during restart operation");
+            return;
+        }
+        // Don't show recovery dialog if AbortManager is handling controlled shutdown
+        // (M112 -> FIRMWARE_RESTART escalation path)
+        if (helix::AbortManager::instance().is_handling_shutdown()) {
+            spdlog::debug("[KlipperRecovery] Ignoring SHUTDOWN - AbortManager handling recovery");
             return;
         }
         // Auto-popup recovery dialog when Klipper enters SHUTDOWN state
