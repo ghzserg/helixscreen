@@ -795,8 +795,11 @@ void HomePanel::reload_from_config() {
         }
     }
 
-    // Update printer image based on configured printer type
+    // Update printer type in PrinterState (triggers capability cache refresh)
     std::string printer_type = config->get<std::string>(helix::wizard::PRINTER_TYPE, "");
+    printer_state_.set_printer_type_sync(printer_type);
+
+    // Update printer image based on configured printer type
     if (!printer_type.empty()) {
         // Look up image filename from printer database
         std::string image_filename = PrinterDetector::get_image_for_printer(printer_type);
