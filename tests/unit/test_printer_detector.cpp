@@ -309,8 +309,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: fan_match heuristic -
                                  .fans = {"bed_fans"}, // Medium confidence alone
                                  .leds = {},
                                  .hostname = "test",
-                                 .steppers = {},
                                  .printer_objects = {},
+                                 .steppers = {},
+
                                  .kinematics = "corexy"}; // Add kinematics to boost confidence
 
     auto result = PrinterDetector::detect(hardware);
@@ -347,8 +348,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: fan_combo missing one
         .fans = {"bed_fans"}, // Has bed_fans but missing chamber/exhaust
         .leds = {},
         .hostname = "generic-test", // No hostname match
-        .steppers = {},
         .printer_objects = {},
+        .steppers = {},
+
         .kinematics = "corexy" // Add kinematics to boost confidence
     };
 
@@ -413,8 +415,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Voron 2.4 without v2 
         .fans = {"bed_fans", "exhaust_fan", "controller_fan"},
         .leds = {},
         .hostname = "mainsailos", // Generic hostname
-        .steppers = {},
         .printer_objects = {},
+        .steppers = {},
+
         .kinematics = "corexy" // Add kinematics to confirm Voron pattern
     };
 
@@ -562,8 +565,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Medium confidence (50
                                  .fans = {"bed_fans"}, // 50% confidence
                                  .leds = {},
                                  .hostname = "test",
-                                 .steppers = {},
                                  .printer_objects = {},
+                                 .steppers = {},
+
                                  .kinematics = "corexy"}; // Add kinematics to boost confidence
 
     auto result = PrinterDetector::detect(hardware);
@@ -641,8 +645,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: kinematics_match heur
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test-printer",
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -660,8 +665,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: kinematics_match heur
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test",
-                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
                                  .printer_objects = {"delta_calibrate"},
+                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
+
                                  .kinematics = "delta"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -679,8 +685,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test",
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "corexz"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -698,8 +705,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: kinematics_match heur
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "ender3-test", // To help distinguish
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "cartesian"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -720,9 +728,10 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test",
+                                 .printer_objects = {"quad_gantry_level"},
                                  .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1",
                                               "stepper_z2", "stepper_z3"},
-                                 .printer_objects = {"quad_gantry_level"},
+
                                  .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -741,8 +750,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {},
         .leds = {},
         .hostname = "test",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2"},
         .printer_objects = {"z_tilt"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2"},
+
         .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -760,8 +770,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "voron-v0", // Help identify V0
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -783,8 +794,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {},
         .leds = {},
         .hostname = "voron-v02", // Use v02 to specifically match Voron 0.2
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "corexy",
         .build_volume = {.x_min = 0, .x_max = 120, .y_min = 0, .y_max = 120, .z_max = 120}};
 
@@ -806,8 +818,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {"chamber_fan"},
         .leds = {},
         .hostname = "creality-k1max", // Specific K1 Max hostname
-        .steppers = {},
         .printer_objects = {},
+        .steppers = {},
+
         .kinematics = "corexy",
         .build_volume = {.x_min = 0, .x_max = 300, .y_min = 0, .y_max = 300, .z_max = 300}};
 
@@ -828,8 +841,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {},
         .leds = {},
         .hostname = "ender5-max", // Add "max" to specifically match Ender 5 Max
-        .steppers = {},
         .printer_objects = {},
+        .steppers = {},
+
         .kinematics = "cartesian",
         .build_volume = {.x_min = 0, .x_max = 400, .y_min = 0, .y_max = 400, .z_max = 400}};
 
@@ -852,10 +866,11 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: macro_match heuristic
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test",
-                                 .steppers = {},
                                  .printer_objects = {"gcode_macro ADAPTIVE_BED_MESH",
                                                      "gcode_macro LINE_PURGE",
                                                      "gcode_macro PRINT_START"},
+                                 .steppers = {},
+
                                  .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -873,10 +888,11 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test",
-                                 .steppers = {},
                                  .printer_objects = {"gcode_macro AXES_SHAPER_CALIBRATION",
                                                      "gcode_macro BELTS_SHAPER_CALIBRATION",
                                                      "gcode_macro PRINT_START"},
+                                 .steppers = {},
+
                                  .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -893,10 +909,11 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: macro_match heuristic
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test",
-                                 .steppers = {},
                                  .printer_objects = {"gcode_macro ATTACH_PROBE",
                                                      "gcode_macro DOCK_PROBE",
                                                      "gcode_macro PRINT_START"},
+                                 .steppers = {},
+
                                  .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -914,8 +931,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: macro_match heuristic
         .fans = {},
         .leds = {},
         .hostname = "test",
-        .steppers = {},
         .printer_objects = {"mmu", "gcode_macro MMU_CHANGE_TOOL", "gcode_macro _MMU_LOAD"},
+        .steppers = {},
+
         .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -932,12 +950,13 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test",
-                                 .steppers = {},
                                  .printer_objects =
                                      {
                                          "gcode_macro adaptive_bed_mesh", // lowercase
                                          "gcode_macro LINE_purge"         // mixed case
                                      },
+                                 .steppers = {},
+
                                  .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -958,9 +977,10 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {},
                                  .leds = {},
                                  .hostname = "test",
+                                 .printer_objects = {"quad_gantry_level"},
                                  .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1",
                                               "stepper_z2", "stepper_z3"},
-                                 .printer_objects = {"quad_gantry_level"},
+
                                  .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -978,8 +998,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: object_exists heurist
         .fans = {},
         .leds = {},
         .hostname = "test",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2"},
         .printer_objects = {"z_tilt"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2"},
+
         .kinematics = "corexy"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -1004,9 +1025,10 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {"bed_fans", "exhaust_fan", "nevermore"},
         .leds = {"stealthburner_leds"}, // Voron-specific LED name, not "neopixel"
         .hostname = "voron-2-4",
+        .printer_objects = {"quad_gantry_level"},
         .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2",
                      "stepper_z3"},
-        .printer_objects = {"quad_gantry_level"},
+
         .kinematics = "corexy",
         .build_volume = {.x_min = 0, .x_max = 350, .y_min = 0, .y_max = 350, .z_max = 330}};
 
@@ -1027,8 +1049,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {"fan", "chamber_fan"},
         .leds = {},
         .hostname = "k1-printer",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {"temperature_fan chamber_fan"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "corexy",
         .build_volume = {.x_min = 0, .x_max = 220, .y_min = 0, .y_max = 220, .z_max = 250}};
 
@@ -1048,8 +1071,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Combined heuristics -
         .fans = {"fan"},
         .leds = {},
         .hostname = "flsun-v400",
-        .steppers = {"stepper_a", "stepper_b", "stepper_c"},
         .printer_objects = {"delta_calibrate"},
+        .steppers = {"stepper_a", "stepper_b", "stepper_c"},
+
         .kinematics = "delta",
         .build_volume = {.x_min = -100, .x_max = 100, .y_min = -100, .y_max = 100, .z_max = 400}};
 
@@ -1074,8 +1098,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {"fan", "fan_generic exhaust_fan"},
                                  .leds = {"led_strip"}, // LED chamber light - AD5M Pro exclusive
                                  .hostname = "flashforge-ad5m", // Generic AD5M hostname
-                                 .steppers = {},
                                  .printer_objects = {},
+                                 .steppers = {},
+
                                  .kinematics = "cartesian"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -1095,8 +1120,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Regular AD5M without 
                                  .fans = {"fan"},
                                  .leds = {}, // No LEDs - regular AD5M
                                  .hostname = "flashforge",
-                                 .steppers = {},
                                  .printer_objects = {},
+                                 .steppers = {},
+
                                  .kinematics = "cartesian"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -1117,8 +1143,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: AD5M Pro with neopixe
         .fans = {"fan"},
         .leds = {"neopixel led_strip"}, // Neopixel variant with led_strip name
         .hostname = "ad5m",
-        .steppers = {},
         .printer_objects = {},
+        .steppers = {},
+
         .kinematics = "cartesian"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -1141,8 +1168,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Prusa MK3S+ fingerpri
         .fans = {"fan", "heater_fan hotend_fan"},
         .leds = {},
         .hostname = "prusa-i3-mk3s", // Use "i3-mk3s" to be more specific
-        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_e"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_e"},
+
         .kinematics = "cartesian",
         .build_volume = {.x_min = 0, .x_max = 250, .y_min = 0, .y_max = 210, .z_max = 210}};
 
@@ -1163,8 +1191,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Prusa MINI fingerprin
         .fans = {"fan"},
         .leds = {},
         .hostname = "prusa-mini-plus", // Use "mini-plus" to be more specific
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
         .build_volume = {.x_min = 0, .x_max = 180, .y_min = 0, .y_max = 180, .z_max = 180}};
 
@@ -1185,8 +1214,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Rat Rig V-Core 3 fing
         .fans = {"fan", "heater_fan hotend_fan"},
         .leds = {},
         .hostname = "ratrig-vcore3",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2"},
         .printer_objects = {"z_tilt"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2"},
+
         .kinematics = "corexy",
         .build_volume = {.x_min = 0, .x_max = 300, .y_min = 0, .y_max = 300, .z_max = 300}};
 
@@ -1206,8 +1236,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Anycubic Kobra finger
         .fans = {"fan", "heater_fan hotend_fan"},
         .leds = {},
         .hostname = "anycubic-kobra",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
         .build_volume = {.x_min = 0, .x_max = 220, .y_min = 0, .y_max = 220, .z_max = 250}};
 
@@ -1227,8 +1258,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Elegoo Neptune finger
         .fans = {"fan"},
         .leds = {},
         .hostname = "elegoo-neptune", // Remove "3" to match generic Neptune
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
         .build_volume = {.x_min = 0, .x_max = 220, .y_min = 0, .y_max = 220, .z_max = 280}};
 
@@ -1248,8 +1280,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Sovol SV06 fingerprin
         .fans = {"fan"},
         .leds = {},
         .hostname = "sovol-sv06",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
         .build_volume = {.x_min = 0, .x_max = 220, .y_min = 0, .y_max = 220, .z_max = 250}};
 
@@ -1269,8 +1302,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Artillery Sidewinder 
         .fans = {"fan"},
         .leds = {},
         .hostname = "artillery-sidewinder-x2", // Add more specific model
-        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1"}, // Dual Z
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1"}, // Dual Z
+
         .kinematics = "cartesian",
         .build_volume = {.x_min = 0, .x_max = 300, .y_min = 0, .y_max = 300, .z_max = 400}};
 
@@ -1295,8 +1329,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: BIQU B1 fingerprint",
         .fans = {"fan"},
         .leds = {},
         .hostname = "bigtreetech-b1", // Use "bigtreetech" instead of "biqu"
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
         .build_volume = {.x_min = 0, .x_max = 235, .y_min = 0, .y_max = 235, .z_max = 270}};
 
@@ -1321,8 +1356,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Two Trees Sapphire Pr
         .fans = {"fan"},
         .leds = {},
         .hostname = "twotrees-sapphire-pro", // Add "twotrees" to hostname
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "corexy",
         .build_volume = {.x_min = 0, .x_max = 235, .y_min = 0, .y_max = 235, .z_max = 235}};
 
@@ -1347,9 +1383,10 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - STM32H723
         .fans = {"fan"},
         .leds = {},
         .hostname = "test",
+        .printer_objects = {"quad_gantry_level"},
         .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1", "stepper_z2",
                      "stepper_z3"},
-        .printer_objects = {"quad_gantry_level"},
+
         .kinematics = "corexy",
         .mcu = "stm32h723xx",                          // BTT Octopus Pro MCU
         .mcu_list = {"stm32h723xx", "rp2040", "linux"} // Main + EBB CAN + Linux host
@@ -1371,8 +1408,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "flashforge",
-                                 .steppers = {},
                                  .printer_objects = {},
+                                 .steppers = {},
+
                                  .kinematics = "cartesian",
                                  .mcu = "stm32f103xe", // FlashForge stock MCU
                                  .mcu_list = {"stm32f103xe"}};
@@ -1396,8 +1434,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: No false positive on 
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "raspberrypi-4b-2022",
-                                 .steppers = {},
                                  .printer_objects = {},
+                                 .steppers = {},
+
                                  .kinematics = ""}; // Empty kinematics to avoid matching
 
     auto result = PrinterDetector::detect(hardware);
@@ -1414,8 +1453,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: No false positive on 
         .fans = {},
         .leds = {},
         .hostname = "localhost",
-        .steppers = {}, // No steppers to avoid matching
         .printer_objects = {},
+        .steppers = {}, // No steppers to avoid matching
+
         .kinematics = "" // Unknown kinematics
     };
 
@@ -1435,8 +1475,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {"fan"},
         .leds = {},
         .hostname = "printer-v2-test", // Contains "v2" but not a Voron
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian" // Not corexy
     };
 
@@ -1460,8 +1501,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - HC32F460 
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "kobra2",
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "cartesian",
                                  .mcu = "HC32F460",
                                  .mcu_list = {"HC32F460"}};
@@ -1483,12 +1525,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {"fan"},
         .leds = {},
         .hostname = "kobra-2-max",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
-        .build_volume = {.x_min = 0, .x_max = 420, .y_min = 0, .y_max = 420, .z_max = 500},
         .mcu = "HC32F460",
-        .mcu_list = {"HC32F460"}};
+        .mcu_list = {"HC32F460"},
+        .build_volume = {.x_min = 0, .x_max = 420, .y_min = 0, .y_max = 420, .z_max = 500},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1505,12 +1549,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - HC32F460 
         .fans = {"fan"},
         .leds = {},
         .hostname = "kobra-s1",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
-        .build_volume = {.x_min = 0, .x_max = 250, .y_min = 0, .y_max = 250, .z_max = 250},
         .mcu = "HC32F460",
-        .mcu_list = {"HC32F460"}};
+        .mcu_list = {"HC32F460"},
+        .build_volume = {.x_min = 0, .x_max = 250, .y_min = 0, .y_max = 250, .z_max = 250},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1528,12 +1574,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {"fan"},
         .leds = {},
         .hostname = "kobra-s1-max",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
-        .build_volume = {.x_min = 0, .x_max = 400, .y_min = 0, .y_max = 400, .z_max = 450},
         .mcu = "HC32F460",
-        .mcu_list = {"HC32F460"}};
+        .mcu_list = {"HC32F460"},
+        .build_volume = {.x_min = 0, .x_max = 400, .y_min = 0, .y_max = 400, .z_max = 450},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1551,8 +1599,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "test-printer", // Generic hostname
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "cartesian",
                                  .mcu = "HC32F460",
                                  .mcu_list = {"HC32F460"}};
@@ -1579,8 +1628,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - GD32F303 
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "flsun-v400",
-                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
                                  .printer_objects = {"delta_calibrate"},
+                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
+
                                  .kinematics = "delta",
                                  .mcu = "GD32F303",
                                  .mcu_list = {"GD32F303"}};
@@ -1600,8 +1650,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - GD32F303 
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "flsun-sr",
-                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
                                  .printer_objects = {"delta_calibrate"},
+                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
+
                                  .kinematics = "delta",
                                  .mcu = "GD32F303",
                                  .mcu_list = {"GD32F303"}};
@@ -1625,12 +1676,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - STM32H723
         .fans = {"fan", "chamber_fan"},
         .leds = {},
         .hostname = "creality-k1",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "corexy",
-        .build_volume = {.x_min = 0, .x_max = 220, .y_min = 0, .y_max = 220, .z_max = 250},
         .mcu = "STM32H723",
-        .mcu_list = {"STM32H723"}};
+        .mcu_list = {"STM32H723"},
+        .build_volume = {.x_min = 0, .x_max = 220, .y_min = 0, .y_max = 220, .z_max = 250},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1647,12 +1700,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - STM32H723
         .fans = {"fan", "chamber_fan"},
         .leds = {},
         .hostname = "creality-k1-max",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "corexy",
-        .build_volume = {.x_min = 0, .x_max = 300, .y_min = 0, .y_max = 300, .z_max = 300},
         .mcu = "STM32H723",
-        .mcu_list = {"STM32H723"}};
+        .mcu_list = {"STM32H723"},
+        .build_volume = {.x_min = 0, .x_max = 300, .y_min = 0, .y_max = 300, .z_max = 300},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1668,8 +1723,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - STM32H723
                                  .fans = {"fan", "chamber_fan"},
                                  .leds = {},
                                  .hostname = "creality-k1c",
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "corexy",
                                  .mcu = "STM32H723",
                                  .mcu_list = {"STM32H723"}};
@@ -1692,8 +1748,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - STM32F401
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "elegoo-neptune4",
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "cartesian",
                                  .mcu = "STM32F401",
                                  .mcu_list = {"STM32F401"}};
@@ -1713,8 +1770,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "elegoo-neptune4-pro",
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "cartesian",
                                  .mcu = "STM32F401",
                                  .mcu_list = {"STM32F401"}};
@@ -1738,12 +1796,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - STM32F402
         .fans = {"fan", "chamber_fan"},
         .leds = {},
         .hostname = "qidi-plus4",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "corexy",
-        .build_volume = {.x_min = 0, .x_max = 305, .y_min = 0, .y_max = 305, .z_max = 305},
         .mcu = "STM32F402",
-        .mcu_list = {"STM32F402"}};
+        .mcu_list = {"STM32F402"},
+        .build_volume = {.x_min = 0, .x_max = 305, .y_min = 0, .y_max = 305, .z_max = 305},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1763,9 +1823,10 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match - STM32F103
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "sovol-sv08",
+                                 .printer_objects = {"quad_gantry_level"},
                                  .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1",
                                               "stepper_z2", "stepper_z3"},
-                                 .printer_objects = {"quad_gantry_level"},
+
                                  .kinematics = "corexy",
                                  .mcu = "STM32F103",
                                  .mcu_list = {"STM32F103"}};
@@ -1790,12 +1851,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: build_volume_range - 
         .fans = {"fan"},
         .leds = {},
         .hostname = "kobra-s1", // Specific Kobra S1 hostname
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
-        .build_volume = {.x_min = 0, .x_max = 250, .y_min = 0, .y_max = 250, .z_max = 250},
         .mcu = "HC32F460",
-        .mcu_list = {"HC32F460"}};
+        .mcu_list = {"HC32F460"},
+        .build_volume = {.x_min = 0, .x_max = 250, .y_min = 0, .y_max = 250, .z_max = 250},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1815,12 +1878,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {"fan"},
         .leds = {},
         .hostname = "kobra-2-max", // Specific Kobra 2 Max hostname
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
-        .build_volume = {.x_min = 0, .x_max = 420, .y_min = 0, .y_max = 420, .z_max = 500},
         .mcu = "HC32F460",
-        .mcu_list = {"HC32F460"}};
+        .mcu_list = {"HC32F460"},
+        .build_volume = {.x_min = 0, .x_max = 420, .y_min = 0, .y_max = 420, .z_max = 500},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1842,8 +1907,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match case insens
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "kobra2",
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics = "cartesian",
                                  .mcu = "hc32f460", // lowercase
                                  .mcu_list = {"hc32f460"}};
@@ -1864,8 +1930,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: MCU match case insens
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "flsun",
-                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
                                  .printer_objects = {"delta_calibrate"},
+                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
+
                                  .kinematics = "delta",
                                  .mcu = "gd32f303xx", // lowercase with suffix
                                  .mcu_list = {"gd32f303xx"}};
@@ -1892,12 +1959,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
         .fans = {"fan", "heater_fan hotend_fan"},
         .leds = {},
         .hostname = "anycubic-kobra-2",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
         .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
         .kinematics = "cartesian",
-        .build_volume = {.x_min = 0, .x_max = 220, .y_min = 0, .y_max = 220, .z_max = 250},
         .mcu = "HC32F460PETB",
-        .mcu_list = {"HC32F460PETB"}};
+        .mcu_list = {"HC32F460PETB"},
+        .build_volume = {.x_min = 0, .x_max = 220, .y_min = 0, .y_max = 220, .z_max = 250},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1915,12 +1984,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Combined - FLSUN V400
         .fans = {"fan", "heater_fan hotend_fan"},
         .leds = {},
         .hostname = "flsun-v400-delta",
-        .steppers = {"stepper_a", "stepper_b", "stepper_c"},
         .printer_objects = {"delta_calibrate", "bed_mesh"},
+        .steppers = {"stepper_a", "stepper_b", "stepper_c"},
+
         .kinematics = "delta",
-        .build_volume = {.x_min = -150, .x_max = 150, .y_min = -150, .y_max = 150, .z_max = 400},
         .mcu = "GD32F303RET6",
-        .mcu_list = {"GD32F303RET6"}};
+        .mcu_list = {"GD32F303RET6"},
+        .build_volume = {.x_min = -150, .x_max = 150, .y_min = -150, .y_max = 150, .z_max = 400},
+    };
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1939,12 +2010,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Combined - Qidi Plus 
         .fans = {"fan", "chamber_fan", "auxiliary_fan"},
         .leds = {}, // Remove LEDs to avoid matching AD5M Pro LED patterns
         .hostname = "qidi-plus-4",
-        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1"},
         .printer_objects = {"z_tilt"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1"},
+
         .kinematics = "corexy",
-        .build_volume = {.x_min = 0, .x_max = 305, .y_min = 0, .y_max = 305, .z_max = 305},
         .mcu = "STM32F402",
-        .mcu_list = {"STM32F402", "rp2040"} // Main + toolhead
+        .mcu_list = {"STM32F402", "rp2040"},
+        .build_volume = {.x_min = 0, .x_max = 305, .y_min = 0, .y_max = 305, .z_max = 305},
+        // Main + toolhead
     };
 
     auto result = PrinterDetector::detect(hardware);
@@ -1968,9 +2041,10 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {"bed_fans", "exhaust_fan"},
                                  .leds = {"stealthburner_leds"}, // Voron-specific LED name
                                  .hostname = "voron-2-4-350",
+                                 .printer_objects = {"quad_gantry_level"},
                                  .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1",
                                               "stepper_z2", "stepper_z3"},
-                                 .printer_objects = {"quad_gantry_level"},
+
                                  .kinematics = "corexy",
                                  .mcu = "HC32F460", // Anycubic MCU in Voron (unusual)
                                  .mcu_list = {"HC32F460"}};
@@ -1993,8 +2067,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                                  .fans = {"fan"},
                                  .leds = {},
                                  .hostname = "test-printer-123",
-                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
                                  .printer_objects = {},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+
                                  .kinematics =
                                      "unknown_kinematics", // Use unknown to avoid kinematics match
                                  .mcu = "STM32F103",       // Very common, low confidence
