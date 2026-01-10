@@ -65,6 +65,25 @@ char* format_temperature_pair(int current, int target, char* buffer, size_t buff
     return buffer;
 }
 
+char* format_temperature_f(float temp, char* buffer, size_t buffer_size) {
+    snprintf(buffer, buffer_size, "%.1f°C", temp);
+    return buffer;
+}
+
+char* format_temperature_pair_f(float current, float target, char* buffer, size_t buffer_size) {
+    if (target == 0.0f) {
+        snprintf(buffer, buffer_size, "%.1f / --°C", current);
+    } else {
+        snprintf(buffer, buffer_size, "%.1f / %.1f°C", current, target);
+    }
+    return buffer;
+}
+
+char* format_temperature_range(int min_temp, int max_temp, char* buffer, size_t buffer_size) {
+    snprintf(buffer, buffer_size, "%d-%d°C", min_temp, max_temp);
+    return buffer;
+}
+
 // ============================================================================
 // Display Color Functions
 // ============================================================================

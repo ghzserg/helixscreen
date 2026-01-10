@@ -375,3 +375,152 @@ TEST_CASE("Temperature Utils: Integration - ABS printing scenario", "[temp_utils
     const char* status = get_extrusion_safety_status(nozzle_current, 220);
     REQUIRE(std::string(status) == "Ready");
 }
+
+// ============================================================================
+// format_temperature() Tests
+// ============================================================================
+
+TEST_CASE("Temperature Utils: format_temperature - basic formatting", "[temp_utils][format]") {
+    char buf[16];
+
+    SECTION("Typical nozzle temp") {
+        format_temperature(210, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "210°C");
+    }
+
+    SECTION("Typical bed temp") {
+        format_temperature(60, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "60°C");
+    }
+
+    SECTION("Zero temperature") {
+        format_temperature(0, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "0°C");
+    }
+
+    SECTION("High temperature") {
+        format_temperature(300, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "300°C");
+    }
+}
+
+TEST_CASE("Temperature Utils: format_temperature - returns buffer pointer",
+          "[temp_utils][format]") {
+    char buf[16];
+    char* result = format_temperature(210, buf, sizeof(buf));
+    REQUIRE(result == buf);
+}
+
+// ============================================================================
+// format_temperature_pair() Tests
+// ============================================================================
+
+TEST_CASE("Temperature Utils: format_temperature_pair - basic formatting", "[temp_utils][format]") {
+    char buf[24];
+
+    SECTION("Heating up") {
+        format_temperature_pair(180, 210, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "180 / 210°C");
+    }
+
+    SECTION("At target") {
+        format_temperature_pair(210, 210, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "210 / 210°C");
+    }
+
+    SECTION("Heater off (target = 0)") {
+        format_temperature_pair(180, 0, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "180 / --°C");
+    }
+
+    SECTION("Cold with target") {
+        format_temperature_pair(25, 60, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "25 / 60°C");
+    }
+}
+
+// ============================================================================
+// format_temperature_f() Tests (NEW - float formatting)
+// ============================================================================
+
+TEST_CASE("Temperature Utils: format_temperature_f - float formatting", "[temp_utils][format]") {
+    char buf[16];
+
+    SECTION("Whole number") {
+        format_temperature_f(210.0f, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "210.0°C");
+    }
+
+    SECTION("One decimal place") {
+        format_temperature_f(210.5f, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "210.5°C");
+    }
+
+    SECTION("Rounding") {
+        format_temperature_f(210.99f, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "211.0°C");
+    }
+
+    SECTION("Zero") {
+        format_temperature_f(0.0f, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "0.0°C");
+    }
+}
+
+// ============================================================================
+// format_temperature_pair_f() Tests (NEW - float pair formatting)
+// ============================================================================
+
+TEST_CASE("Temperature Utils: format_temperature_pair_f - float pair formatting",
+          "[temp_utils][format]") {
+    char buf[32];
+
+    SECTION("Both floats") {
+        format_temperature_pair_f(210.5f, 215.0f, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "210.5 / 215.0°C");
+    }
+
+    SECTION("Target zero (heater off)") {
+        format_temperature_pair_f(180.5f, 0.0f, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "180.5 / --°C");
+    }
+
+    SECTION("At target") {
+        format_temperature_pair_f(60.0f, 60.0f, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "60.0 / 60.0°C");
+    }
+}
+
+// ============================================================================
+// format_temperature_range() Tests (NEW - range formatting for AMS)
+// ============================================================================
+
+TEST_CASE("Temperature Utils: format_temperature_range - AMS material temps",
+          "[temp_utils][format]") {
+    char buf[16];
+
+    SECTION("PLA nozzle range") {
+        format_temperature_range(200, 230, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "200-230°C");
+    }
+
+    SECTION("ABS nozzle range") {
+        format_temperature_range(240, 260, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "240-260°C");
+    }
+
+    SECTION("Bed range") {
+        format_temperature_range(55, 65, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "55-65°C");
+    }
+
+    SECTION("Same min and max") {
+        format_temperature_range(60, 60, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "60-60°C");
+    }
+
+    SECTION("Zero range") {
+        format_temperature_range(0, 0, buf, sizeof(buf));
+        REQUIRE(std::string(buf) == "0-0°C");
+    }
+}
