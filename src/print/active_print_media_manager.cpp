@@ -143,10 +143,6 @@ void ActivePrintMediaManager::process_filename(const char* raw_filename) {
 }
 
 void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filename) {
-    // Increment generation to invalidate any in-flight async operations
-    ++thumbnail_load_generation_;
-    uint32_t current_gen = thumbnail_load_generation_;
-
     // If we already have a directly-set thumbnail path, don't overwrite it.
     // This happens when PrintStartController sets the path from a pre-extracted
     // USB thumbnail before the filename observer fires.
@@ -163,6 +159,11 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
         spdlog::debug("[ActivePrintMediaManager] No API available - skipping thumbnail load");
         return;
     }
+
+    // Increment generation to invalidate any in-flight async operations
+    // (only after early-return checks to avoid incrementing when no async op starts)
+    ++thumbnail_load_generation_;
+    uint32_t current_gen = thumbnail_load_generation_;
 
     // Resolve to original filename if this is a modified temp file
     // (Moonraker only has metadata for original files, not modified copies)

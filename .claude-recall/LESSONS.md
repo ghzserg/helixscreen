@@ -9,8 +9,6 @@
 ## Active Lessons
 
 
-
-
 ### [L003] [***--|-----] Component names explicit
 - **Uses**: 10 | **Velocity**: 0.01 | **Learned**: 2025-12-14 | **Last**: 2025-12-30 | **Category**: pattern | **Type**: constraint
 > Always add name='component_name' on XML component tags. Internal view names don't propagate, causing lv_obj_find_by_name to return NULL
@@ -18,7 +16,7 @@
 
 ### [L004] [****-|-----] Subject init before create
 - **Uses**: 16 | **Velocity**: 0.01 | **Learned**: 2025-12-14 | **Last**: 2026-01-08 | **Category**: pattern | **Type**: informational
->
+> 
 
 
 ### [L008] [***--|-----] Design tokens mandatory
@@ -56,8 +54,8 @@
 > Text-only buttons: use `align="center"` on child. Icon+text buttons with flex_flow="row": need ALL THREE flex properties - style_flex_main_place="center" (horizontal), style_flex_cross_place="center" (vertical align items), style_flex_track_place="center" (vertical position of row). Missing track_place causes content to sit at top.
 
 
-### [L027] [***--|-----] Worktree initialization
-- **Uses**: 8 | **Velocity**: 0.04 | **Learned**: 2025-12-24 | **Last**: 2026-01-09 | **Category**: pattern | **Type**: constraint
+### [L027] [***--|+----] Worktree initialization
+- **Uses**: 9 | **Velocity**: 0.51 | **Learned**: 2025-12-24 | **Last**: 2026-01-09 | **Category**: pattern | **Type**: constraint
 > When creating a git worktree, ALWAYS run ./scripts/init-worktree.sh BEFORE any commits. Worktrees don't auto-initialize submodules - uninitialized submodules appear as deletions and will be silently removed from git's tree on your next commit.
 
 
@@ -68,7 +66,7 @@
 
 ### [L031] [****-|-----] XML no recompile
 - **Uses**: 14 | **Velocity**: 0.01 | **Learned**: 2025-12-27 | **Last**: 2026-01-09 | **Category**: gotcha | **Type**: constraint
->
+> 
 
 
 ### [L035] [**---|-----] Push It celebration
@@ -131,11 +129,21 @@
 > When using lv_timer_create with object pointer as user_data, wrap in struct that captures alive_guard. Check alive_guard BEFORE dereferencing object pointer to prevent use-after-free if object destroyed during timer delay.
 
 
-### [L051] [*----|+----] LVGL timer lifetime safety
-- **Uses**: 2 | **Velocity**: 0.5 | **Learned**: 2026-01-08 | **Last**: 2026-01-08 | **Category**: gotcha | **Type**: constraint
+### [L051] [*----|-----] LVGL timer lifetime safety
+- **Uses**: 2 | **Velocity**: 0.06 | **Learned**: 2026-01-08 | **Last**: 2026-01-08 | **Category**: gotcha | **Type**: constraint
 > When using lv_timer_create with object pointer as user_data, wrap in struct that captures alive_guard. Check alive_guard BEFORE dereferencing object pointer to prevent use-after-free if object destroyed during timer delay.
 
 
 ### [L052] [**---|+----] Tag hv::EventLoop tests as slow
-- **Uses**: 4 | **Velocity**: 0.75 | **Learned**: 2026-01-09 | **Last**: 2026-01-09 | **Category**: gotcha | **Type**: constraint
+- **Uses**: 5 | **Velocity**: 1.1 | **Learned**: 2026-01-09 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
 > Tests using hv::EventLoop (libhv network operations) MUST be tagged [slow] or they cause parallel test shards to hang indefinitely. This includes fixtures like MoonrakerRobustnessFixture, MoonrakerClientSecurityFixture, NewFeaturesTestFixture, EventTestFixture. The [slow] tag excludes them from default `make test-run` which uses filter `~[.] ~[slow]`.
+
+
+### [L053] [*----|+----] Reset static fixture state in destructor
+- **Uses**: 2 | **Velocity**: 1.0 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
+> Test fixtures using static state (e.g., static bool queue_initialized) MUST reset that state in the destructor. Otherwise, state persists across tests causing: 1) initialization to be skipped when it shouldn't, 2) shutdown to leave stale state for next test. Pattern: destructor calls shutdown(), then resets static flag to false.
+
+
+### [L054] [*----|+----] Clear pending queues on shutdown
+- **Uses**: 2 | **Velocity**: 1.0 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
+> Singleton queues (like UpdateQueue) MUST clear pending callbacks in shutdown(), not just null the timer. Without clearing, stale callbacks remain queued and execute on next init() with pointers to destroyed objects → use-after-free. Pattern: std::queue<T>().swap(pending_) to clear, then null timer.

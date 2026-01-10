@@ -118,8 +118,15 @@ class UpdateQueue {
      * 1. lv_deinit() will clean up all timers as part of its shutdown
      * 2. Manually deleting can cause double-free if LVGL state is corrupted
      * 3. This mirrors how DisplayManager handles display/input cleanup
+     *
+     * We DO clear the pending queue to prevent stale callbacks from executing
+     * after objects they reference have been destroyed (important for tests).
      */
     void shutdown() {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            std::queue<UpdateCallback>().swap(pending_); // Clear pending queue
+        }
         timer_ = nullptr;
         initialized_ = false;
     }
