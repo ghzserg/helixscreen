@@ -135,7 +135,7 @@ class MoonrakerAPIShutdownTestFixture {
 
 TEST_CASE_METHOD(MoonrakerAPIShutdownTestFixture,
                  "MoonrakerAPI destructor completes within timeout when thread is blocked",
-                 "[api][shutdown][timeout]") {
+                 "[api][shutdown][timeout][slow]") {
     // Start a thread that will block for 30 seconds (simulating slow download)
     api_->start_blocking_thread(cancel_flag_, std::chrono::milliseconds(30000));
 
@@ -159,7 +159,7 @@ TEST_CASE_METHOD(MoonrakerAPIShutdownTestFixture,
 
 TEST_CASE_METHOD(MoonrakerAPIShutdownTestFixture,
                  "MoonrakerAPI destructor completes quickly when no threads are active",
-                 "[api][shutdown]") {
+                 "[api][shutdown][slow]") {
     // No threads started - destruction should be instant
 
     auto start = std::chrono::steady_clock::now();
@@ -173,7 +173,7 @@ TEST_CASE_METHOD(MoonrakerAPIShutdownTestFixture,
 
 TEST_CASE_METHOD(MoonrakerAPIShutdownTestFixture,
                  "MoonrakerAPI destructor handles thread that completes during wait",
-                 "[api][shutdown]") {
+                 "[api][shutdown][slow]") {
     // Start a thread that blocks for just 500ms
     api_->start_blocking_thread(cancel_flag_, std::chrono::milliseconds(500));
 

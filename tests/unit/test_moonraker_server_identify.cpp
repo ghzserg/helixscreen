@@ -22,7 +22,7 @@
 // ============================================================================
 
 TEST_CASE("MoonrakerClientMock handles server.connection.identify",
-          "[moonraker][connection][identify]") {
+          "[moonraker][connection][identify][slow]") {
     MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
     mock.connect("ws://mock/websocket", []() {}, []() {});
 
@@ -88,7 +88,7 @@ TEST_CASE("MoonrakerClientMock handles server.connection.identify",
 // ============================================================================
 
 TEST_CASE("MoonrakerClientMock discover_printer doesn't fail due to identify",
-          "[moonraker][connection][discovery]") {
+          "[moonraker][connection][discovery][slow]") {
     MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
     mock.connect("ws://mock/websocket", []() {}, []() {});
 
@@ -117,7 +117,7 @@ TEST_CASE("MoonrakerClientMock discover_printer doesn't fail due to identify",
 // state tracking is available for inspection.
 
 TEST_CASE("MoonrakerClient identification state tracking",
-          "[moonraker][connection][identify][state]") {
+          "[moonraker][connection][identify][state][slow]") {
     MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
 
     SECTION("is_identified starts false before connection") {

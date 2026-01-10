@@ -1091,7 +1091,7 @@ TEST_CASE("MoonrakerClient destructor clears callbacks", "[slow][api][security][
 }
 
 TEST_CASE("MoonrakerClient cleanup_pending_requests is exception-safe",
-          "[api][security][lifecycle]") {
+          "[api][security][lifecycle][slow]") {
     SECTION("Cleanup with error callbacks that throw exceptions") {
         auto loop = std::make_shared<hv::EventLoop>();
         auto client = std::make_unique<MoonrakerClient>(loop);
