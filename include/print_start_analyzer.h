@@ -52,17 +52,7 @@ using PrintStartOpCategory = OperationCategory;
  */
 [[nodiscard]] const char* category_to_string(PrintStartOpCategory category);
 
-/**
- * @brief Semantic type for skip/perform parameters
- *
- * Indicates whether a parameter uses opt-out (SKIP_*) or opt-in (PERFORM_*) logic:
- * - OPT_OUT: SKIP_BED_MESH=1 means "skip it", =0 or omitted means "do it"
- * - OPT_IN: PERFORM_BED_MESH=1 means "do it", =0 or omitted means "skip it"
- */
-enum class ParameterSemantic {
-    OPT_OUT, ///< SKIP_*: param=1 means skip, param=0 means do
-    OPT_IN   ///< PERFORM_*/DO_*/FORCE_*: param=1 means do, param=0 means skip
-};
+// ParameterSemantic is now defined in operation_patterns.h (LT3 unification)
 
 /**
  * @brief An operation detected within a PRINT_START macro

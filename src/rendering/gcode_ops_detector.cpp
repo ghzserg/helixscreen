@@ -21,31 +21,7 @@ namespace gcode {
 // ============================================================================
 
 std::string DetectedOperation::display_name() const {
-    switch (type) {
-    case OperationType::BED_MESH:
-        return "Bed Mesh";
-    case OperationType::QGL:
-        return "Quad Gantry Level";
-    case OperationType::Z_TILT:
-        return "Z Tilt Adjust";
-    case OperationType::BED_LEVEL:
-        return "Bed Leveling";
-    case OperationType::NOZZLE_CLEAN:
-        return "Nozzle Cleaning";
-    case OperationType::HOMING:
-        return "Homing";
-    case OperationType::CHAMBER_SOAK:
-        return "Chamber Soak";
-    case OperationType::PURGE_LINE:
-        return "Purge Line";
-    case OperationType::SKEW_CORRECT:
-        return "Skew Correction";
-    case OperationType::START_PRINT:
-        return "Start Print";
-    case OperationType::UNKNOWN:
-        return "Unknown";
-    }
-    return "Unknown";
+    return helix::category_name(type);
 }
 
 // ============================================================================
@@ -217,8 +193,7 @@ ScanResult GCodeOpsDetector::scan_stream(std::istream& stream) const {
         // Skip comment-only lines and empty lines (but still track byte offset)
         if (!line.empty() && line[0] != ';') {
             // Check for PRINT_START or START_PRINT macro call (case-insensitive)
-            std::string upper_line = line;
-            std::transform(upper_line.begin(), upper_line.end(), upper_line.begin(), ::toupper);
+            std::string upper_line = helix::to_upper(line);
 
             // Capture the PRINT_START call info (first occurrence only)
             if (!result.print_start.found) {
@@ -275,12 +250,8 @@ void GCodeOpsDetector::check_line(const std::string& line, size_t line_number, s
         bool found = false;
 
         // Always case-insensitive, but exact_match controls exact vs substring
-        std::string upper_trimmed = trimmed;
-        std::string upper_pattern = pattern.pattern;
-        std::transform(upper_trimmed.begin(), upper_trimmed.end(), upper_trimmed.begin(),
-                       ::toupper);
-        std::transform(upper_pattern.begin(), upper_pattern.end(), upper_pattern.begin(),
-                       ::toupper);
+        std::string upper_trimmed = helix::to_upper(trimmed);
+        std::string upper_pattern = helix::to_upper(pattern.pattern);
 
         if (pattern.exact_match) {
             // G-codes: exact match at start of line (avoid G28 inside FOO_G28_BAR)
@@ -377,63 +348,63 @@ bool GCodeOpsDetector::is_layer_marker(const std::string& line) const {
     return false;
 }
 
+namespace {
+
+/**
+ * @brief Check if a value string indicates "truthy" (enabled)
+ *
+ * Returns true for: "TRUE", "1", "YES", or positive numbers
+ * Returns false for: "FALSE", "0", "NO", or non-numeric strings
+ */
+bool is_truthy_value(const std::string& value) {
+    std::string upper_value = helix::to_upper(value);
+
+    if (upper_value == "TRUE" || upper_value == "1" || upper_value == "YES") {
+        return true;
+    }
+    if (upper_value == "FALSE" || upper_value == "0" || upper_value == "NO") {
+        return false;
+    }
+
+    // Try parsing as number
+    try {
+        float num = std::stof(value);
+        return num > 0;
+    } catch (...) {
+        // Not a number - be conservative
+        return false;
+    }
+}
+
+} // namespace
+
 void GCodeOpsDetector::parse_start_print_params(const std::string& line, size_t line_number,
                                                 size_t byte_offset, ScanResult& result) const {
     // Parse parameters like: START_PRINT EXTRUDER_TEMP=220 BED_TEMP=60 FORCE_LEVELING=true
-    // We're looking for parameters that indicate operations:
-    // - FORCE_LEVELING, DO_BED_MESH, MESH -> bed mesh calibration
-    // - QGL, GANTRY_LEVEL, DO_QGL -> QGL
-    // - Z_TILT, TILT_ADJUST -> Z tilt
-    // - NOZZLE_CLEAN, CLEAN_NOZZLE, WIPE -> nozzle clean
-    // - CHAMBER, CHAMBER_TEMP, SOAK_TIME -> chamber soak
+    // Uses shared parameter matching from operation_patterns.h
 
-    // Map of parameter names to operation types
-    static const std::vector<std::pair<std::string, OperationType>> param_mappings = {
-        // Bed mesh
-        {"FORCE_LEVELING", OperationType::BED_MESH},
-        {"DO_BED_MESH", OperationType::BED_MESH},
-        {"MESH", OperationType::BED_MESH},
+    std::string upper_line = helix::to_upper(line);
 
-        // QGL
-        {"QGL", OperationType::QGL},
-        {"GANTRY_LEVEL", OperationType::QGL},
-        {"DO_QGL", OperationType::QGL},
-
-        // Z tilt
-        {"Z_TILT", OperationType::Z_TILT},
-        {"TILT_ADJUST", OperationType::Z_TILT},
-
-        // Nozzle clean
-        {"NOZZLE_CLEAN", OperationType::NOZZLE_CLEAN},
-        {"CLEAN_NOZZLE", OperationType::NOZZLE_CLEAN},
-        {"WIPE", OperationType::NOZZLE_CLEAN},
-
-        // Chamber soak
-        {"CHAMBER_SOAK", OperationType::CHAMBER_SOAK},
-        {"SOAK_TIME", OperationType::CHAMBER_SOAK},
-
-        // Purge
-        {"PURGE", OperationType::PURGE_LINE},
-        {"PRIME", OperationType::PURGE_LINE},
-    };
-
-    // Convert line to uppercase for case-insensitive matching
-    std::string upper_line = line;
-    std::transform(upper_line.begin(), upper_line.end(), upper_line.begin(), ::toupper);
-
-    for (const auto& mapping : param_mappings) {
-        const std::string& param_name = mapping.first;
-        const OperationType op_type = mapping.second;
-
-        // Look for PARAM_NAME= pattern
-        std::string pattern = param_name + "=";
-        size_t pos = upper_line.find(pattern);
-        if (pos == std::string::npos) {
-            continue;
+    // Parse all KEY=VALUE pairs from the line
+    // We scan for patterns like "KEY=" and extract the value
+    size_t pos = 0;
+    while (pos < upper_line.size()) {
+        // Find next '=' sign
+        size_t eq_pos = upper_line.find('=', pos);
+        if (eq_pos == std::string::npos || eq_pos == 0) {
+            break;
         }
 
-        // Extract value
-        size_t value_start = pos + pattern.size();
+        // Extract key (scan backwards from '=' to find start of key)
+        size_t key_start = eq_pos;
+        while (key_start > 0 && upper_line[key_start - 1] != ' ' &&
+               upper_line[key_start - 1] != '\t') {
+            key_start--;
+        }
+        std::string key = upper_line.substr(key_start, eq_pos - key_start);
+
+        // Extract value (from line, not upper_line, to preserve original case)
+        size_t value_start = eq_pos + 1;
         std::string value;
         for (size_t i = value_start; i < line.size(); i++) {
             char c = line[i];
@@ -443,51 +414,49 @@ void GCodeOpsDetector::parse_start_print_params(const std::string& line, size_t 
             value += c;
         }
 
-        // Check if value indicates "enabled" (true, 1, non-zero number)
-        std::string upper_value = value;
-        std::transform(upper_value.begin(), upper_value.end(), upper_value.begin(), ::toupper);
+        // Try to match this parameter to an operation category
+        // Include slicer-style short params (MESH, QGL, NOZZLE_CLEAN, etc.)
+        auto match = helix::match_parameter_to_category(key, true);
+        if (match) {
+            // Determine if enabled based on semantic
+            bool enabled = false;
+            if (match->semantic == helix::ParameterSemantic::OPT_IN) {
+                // PERFORM_*, DO_*, FORCE_*, or short names: enabled if value is truthy
+                enabled = is_truthy_value(value);
+            } else {
+                // SKIP_*: enabled if value is falsy (meaning "don't skip")
+                enabled = !is_truthy_value(value);
+            }
 
-        bool enabled = false;
-        if (upper_value == "TRUE" || upper_value == "1" || upper_value == "YES") {
-            enabled = true;
-        } else if (upper_value == "FALSE" || upper_value == "0" || upper_value == "NO") {
-            enabled = false;
-        } else {
-            // Try parsing as number
-            try {
-                float num = std::stof(value);
-                enabled = num > 0;
-            } catch (...) {
-                // Not a number - for soak times etc., non-empty means enabled
-                // But we should be conservative and not enable unknown values
-                enabled = false;
+            if (enabled) {
+                // Check if we already have this operation type
+                OperationType op_type = match->category;
+                bool already_detected = std::any_of(
+                    result.operations.begin(), result.operations.end(),
+                    [op_type](const DetectedOperation& op) { return op.type == op_type; });
+
+                if (!already_detected) {
+                    DetectedOperation op;
+                    op.type = op_type;
+                    op.embedding = OperationEmbedding::MACRO_PARAMETER;
+                    op.raw_line = line;
+                    op.macro_name = "START_PRINT";
+                    op.param_name = key;
+                    op.param_value = value;
+                    op.line_number = line_number;
+                    op.byte_offset = byte_offset;
+
+                    result.operations.push_back(std::move(op));
+
+                    spdlog::trace(
+                        "[GCodeOpsDetector] Detected {} via START_PRINT param {}={} at line {}",
+                        operation_type_name(op_type), key, value, line_number);
+                }
             }
         }
 
-        if (enabled) {
-            // Check if we already have this operation type
-            bool already_detected =
-                std::any_of(result.operations.begin(), result.operations.end(),
-                            [op_type](const DetectedOperation& op) { return op.type == op_type; });
-
-            if (!already_detected) {
-                DetectedOperation op;
-                op.type = op_type;
-                op.embedding = OperationEmbedding::MACRO_PARAMETER;
-                op.raw_line = line;
-                op.macro_name = "START_PRINT";
-                op.param_name = param_name;
-                op.param_value = value;
-                op.line_number = line_number;
-                op.byte_offset = byte_offset;
-
-                result.operations.push_back(std::move(op));
-
-                spdlog::trace(
-                    "[GCodeOpsDetector] Detected {} via START_PRINT param {}={} at line {}",
-                    operation_type_name(op_type), param_name, value, line_number);
-            }
-        }
+        // Move past this key=value pair
+        pos = eq_pos + 1 + value.size();
     }
 }
 

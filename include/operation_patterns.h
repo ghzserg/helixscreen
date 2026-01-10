@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -171,6 +172,54 @@ inline const std::vector<std::string> PERFORM_PARAM_VARIATIONS[] = {
 // clang-format on
 
 /**
+ * @brief Slicer-style short parameter names for G-code detection
+ *
+ * These are short parameter names that slicers may pass to START_PRINT macros.
+ * They are separate from SKIP_X and PERFORM_X variations because they may collide
+ * with Jinja2 printer object names (e.g., "bed_mesh" in printer['bed_mesh']).
+ *
+ * Used by GCodeOpsDetector for parameter parsing, NOT by PrintStartAnalyzer.
+ */
+// clang-format off
+inline const std::vector<std::string> SLICER_PARAM_VARIATIONS[] = {
+    // Index 0: BED_MESH
+    {"MESH", "BED_MESH", "DO_BED_MESH"},
+    // Index 1: QGL
+    {"QGL", "GANTRY_LEVEL", "DO_QGL"},
+    // Index 2: Z_TILT
+    {"Z_TILT", "TILT_ADJUST"},
+    // Index 3: BED_LEVEL (parent of QGL and Z_TILT)
+    {},
+    // Index 4: NOZZLE_CLEAN
+    {"NOZZLE_CLEAN", "CLEAN_NOZZLE", "WIPE"},
+    // Index 5: PURGE_LINE
+    {"PURGE", "PRIME"},
+    // Index 6: HOMING
+    {},
+    // Index 7: CHAMBER_SOAK
+    {"CHAMBER_SOAK", "SOAK_TIME"},
+    // Index 8: SKEW_CORRECT
+    {},
+};
+// clang-format on
+
+/**
+ * @brief Get slicer-style short parameter variations for a category
+ *
+ * @param cat The operation category
+ * @return Vector of short parameter name variations, or empty if none
+ */
+inline const std::vector<std::string>& get_slicer_param_variations(OperationCategory cat) {
+    static const std::vector<std::string> empty;
+    size_t idx = static_cast<size_t>(cat);
+    constexpr size_t count = sizeof(SLICER_PARAM_VARIATIONS) / sizeof(SLICER_PARAM_VARIATIONS[0]);
+    if (idx < count) {
+        return SLICER_PARAM_VARIATIONS[idx];
+    }
+    return empty;
+}
+
+/**
  * @brief Get human-readable name for a category
  */
 inline const char* category_name(OperationCategory cat) {
@@ -321,6 +370,40 @@ inline std::vector<std::string> get_all_perform_variations(OperationCategory cat
     return result;
 }
 
+// ============================================================================
+// String Utilities (LT3)
+// ============================================================================
+
+/**
+ * @brief Convert string to uppercase
+ */
+inline std::string to_upper(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+    return s;
+}
+
+/**
+ * @brief Convert string to lowercase
+ */
+inline std::string to_lower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+    return s;
+}
+
+/**
+ * @brief Case-insensitive substring search
+ */
+inline bool contains_ci(const std::string& haystack, const std::string& needle) {
+    return to_upper(haystack).find(to_upper(needle)) != std::string::npos;
+}
+
+/**
+ * @brief Case-insensitive string equality
+ */
+inline bool equals_ci(const std::string& a, const std::string& b) {
+    return to_upper(a) == to_upper(b);
+}
+
 /**
  * @brief Find keyword entry by pattern string (substring match, case-insensitive)
  *
@@ -336,12 +419,10 @@ inline std::vector<std::string> get_all_perform_variations(OperationCategory cat
  */
 inline const OperationKeyword* find_keyword(const std::string& pattern) {
     // Always uppercase for case-insensitive comparison
-    std::string pat = pattern;
-    std::transform(pat.begin(), pat.end(), pat.begin(), ::toupper);
+    std::string pat = to_upper(pattern);
 
     for (size_t i = 0; i < OPERATION_KEYWORDS_COUNT; ++i) {
-        std::string keyword = OPERATION_KEYWORDS[i].keyword;
-        std::transform(keyword.begin(), keyword.end(), keyword.begin(), ::toupper);
+        std::string keyword = to_upper(OPERATION_KEYWORDS[i].keyword);
 
         if (OPERATION_KEYWORDS[i].exact_match) {
             // G-codes: exact match only (avoid G28 matching inside FOO_G28_BAR)
@@ -356,6 +437,69 @@ inline const OperationKeyword* find_keyword(const std::string& pattern) {
         }
     }
     return nullptr;
+}
+
+// ============================================================================
+// Parameter Matching Infrastructure (LT3)
+// ============================================================================
+
+/**
+ * @brief Semantic type for parameter interpretation
+ */
+enum class ParameterSemantic {
+    OPT_OUT, ///< SKIP_*: param=1 means skip, param=0 means do
+    OPT_IN   ///< PERFORM_*/DO_*/FORCE_*: param=1 means do, param=0 means skip
+};
+
+/**
+ * @brief Result of matching a parameter name to an operation category
+ */
+struct ParamMatchResult {
+    OperationCategory category = OperationCategory::UNKNOWN;
+    ParameterSemantic semantic = ParameterSemantic::OPT_OUT;
+    std::string matched_param;
+};
+
+/**
+ * @brief Match a parameter name to its operation category
+ *
+ * Searches through all skip and perform variations for all categories
+ * to find a match. Case-insensitive matching.
+ *
+ * @param param_name The parameter name to match (e.g., "SKIP_BED_MESH", "FORCE_LEVELING")
+ * @param include_slicer_params If true, also checks slicer-style short params (MESH, QGL, etc.)
+ * @return ParamMatchResult if found, nullopt otherwise
+ */
+inline std::optional<ParamMatchResult>
+match_parameter_to_category(const std::string& param_name, bool include_slicer_params = false) {
+    // Check all categories
+    for (size_t i = 0; i < static_cast<size_t>(OperationCategory::UNKNOWN); ++i) {
+        auto cat = static_cast<OperationCategory>(i);
+
+        // Check perform variations (OPT_IN) first - they're more specific
+        for (const auto& var : get_all_perform_variations(cat)) {
+            if (equals_ci(param_name, var)) {
+                return ParamMatchResult{cat, ParameterSemantic::OPT_IN, var};
+            }
+        }
+
+        // Check skip variations (OPT_OUT)
+        for (const auto& var : get_all_skip_variations(cat)) {
+            if (equals_ci(param_name, var)) {
+                return ParamMatchResult{cat, ParameterSemantic::OPT_OUT, var};
+            }
+        }
+
+        // Check slicer-style short params (OPT_IN semantics: value=1 means do it)
+        if (include_slicer_params) {
+            for (const auto& var : get_slicer_param_variations(cat)) {
+                if (equals_ci(param_name, var)) {
+                    return ParamMatchResult{cat, ParameterSemantic::OPT_IN, var};
+                }
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 } // namespace helix

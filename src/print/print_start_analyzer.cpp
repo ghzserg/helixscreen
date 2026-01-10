@@ -106,24 +106,12 @@ struct ConfigFileSearchState {
 };
 
 /**
- * @brief Case-insensitive string search
- */
-bool contains_ci(const std::string& haystack, const std::string& needle) {
-    std::string hay_lower = haystack;
-    std::string needle_lower = needle;
-    std::transform(hay_lower.begin(), hay_lower.end(), hay_lower.begin(), ::tolower);
-    std::transform(needle_lower.begin(), needle_lower.end(), needle_lower.begin(), ::tolower);
-    return hay_lower.find(needle_lower) != std::string::npos;
-}
-
-/**
  * @brief Extract gcode content from a macro section in config file text
  */
 std::string extract_gcode_from_section(const std::string& content, const std::string& section_start,
                                        size_t section_pos) {
     // Find the gcode: line
-    std::string content_lower = content;
-    std::transform(content_lower.begin(), content_lower.end(), content_lower.begin(), ::tolower);
+    std::string content_lower = to_lower(content);
 
     size_t gcode_pos = content_lower.find("gcode:", section_pos);
     if (gcode_pos == std::string::npos) {
@@ -181,12 +169,8 @@ void search_next_file(std::shared_ptr<ConfigFileSearchState> state) {
 
                 if (contains_ci(content, section)) {
                     // Found the macro in this file!
-                    std::string content_lower = content;
-                    std::transform(content_lower.begin(), content_lower.end(),
-                                   content_lower.begin(), ::tolower);
-                    std::string section_lower = section;
-                    std::transform(section_lower.begin(), section_lower.end(),
-                                   section_lower.begin(), ::tolower);
+                    std::string content_lower = to_lower(content);
+                    std::string section_lower = to_lower(section);
 
                     size_t section_pos = content_lower.find(section_lower);
                     std::string gcode = extract_gcode_from_section(content, section, section_pos);
@@ -420,13 +404,11 @@ bool PrintStartAnalyzer::detect_skip_conditional(const std::string& gcode,
     // Search up to 500 characters before the operation
     size_t search_start = (op_pos > 500) ? op_pos - 500 : 0;
     std::string context = gcode.substr(search_start, op_pos - search_start);
-    std::string context_lower = context;
-    std::transform(context_lower.begin(), context_lower.end(), context_lower.begin(), ::tolower);
+    std::string context_lower = to_lower(context);
 
     // Helper lambda to check if a param is in an if statement or set statement
     auto check_param_in_context = [&](const std::string& param) -> bool {
-        std::string param_lower = param;
-        std::transform(param_lower.begin(), param_lower.end(), param_lower.begin(), ::tolower);
+        std::string param_lower = to_lower(param);
 
         if (context_lower.find(param_lower) == std::string::npos) {
             return false;
@@ -490,9 +472,7 @@ std::vector<std::string> PrintStartAnalyzer::extract_parameters(const std::strin
     std::string::const_iterator search_start = gcode.cbegin();
 
     while (std::regex_search(search_start, gcode.cend(), match, params_pattern)) {
-        std::string param = match[1].str();
-        // Convert to uppercase
-        std::transform(param.begin(), param.end(), param.begin(), ::toupper);
+        std::string param = to_upper(match[1].str());
 
         // Avoid duplicates
         if (std::find(params.begin(), params.end(), param) == params.end()) {
