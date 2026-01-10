@@ -2246,3 +2246,351 @@ TEST_CASE("PrintPreparationManager: collect_macro_skip_params with matrix",
         REQUIRE(found_skip_bed_mesh);
     }
 }
+
+// ============================================================================
+// Tests: Unified Operation Capability Lookup (Phase 4)
+// ============================================================================
+
+/**
+ * Phase 4: lookup_operation_capability() - Unified Entry Point for Capability Queries
+ *
+ * This method provides a single interface for determining what action to take for
+ * a pre-print operation based on:
+ * 1. Visibility state (from PrinterState subjects)
+ * 2. Checkbox state (from UI subjects)
+ * 3. Available capability sources (database, macro analysis, file scan)
+ *
+ * Return semantics:
+ * - nullopt: Operation should be ignored (hidden, enabled, or no capability source)
+ * - OperationCapabilityResult: Operation is disabled, contains skip parameters
+ *
+ * These tests are designed to FAIL initially because:
+ * - lookup_operation_capability() doesn't exist yet
+ * - OperationCapabilityResult struct doesn't exist yet
+ *
+ * After implementation, they should PASS.
+ */
+
+TEST_CASE("PrintPreparationManager: lookup_operation_capability", "[print_preparation][p4]") {
+    lv_init_safe();
+    PrintPreparationManager manager;
+    PreprintSubjectsFixture subjects;
+    subjects.init_all_subjects();
+
+    // Set up manager with all subjects
+    manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                  &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                  &subjects.preprint_purge_line, &subjects.preprint_timelapse);
+    manager.set_preprint_visibility_subjects(
+        &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+        &subjects.can_show_nozzle_clean, &subjects.can_show_purge_line,
+        &subjects.can_show_timelapse);
+
+    SECTION("Returns skip param when operation disabled (visible + unchecked)") {
+        // Set up PrinterState with AD5M Pro (has database capability for BED_MESH)
+        PrinterState printer_state;
+        printer_state.init_subjects(false);
+        printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
+        manager.set_dependencies(nullptr, &printer_state);
+
+        // Set visibility = shown (1), checked = unchecked (0) for BED_MESH
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 1); // visible
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 0); // unchecked = user wants to skip
+
+        // Call the new unified method
+        auto result = manager.lookup_operation_capability(OperationCategory::BED_MESH);
+
+        // Should return a result with skip parameters
+        REQUIRE(result.has_value());
+        REQUIRE(result->should_skip == true);
+        REQUIRE(result->param_name == "FORCE_LEVELING");
+        // AD5M uses OPT_IN semantic: skip_value is "false" (FORCE_LEVELING=false means skip)
+        REQUIRE(result->skip_value == "false");
+        REQUIRE(result->source == CapabilityOrigin::DATABASE);
+    }
+
+    SECTION("Returns nullopt when operation hidden (visibility = 0)") {
+        // Set up PrinterState with known printer
+        PrinterState printer_state;
+        printer_state.init_subjects(false);
+        printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
+        manager.set_dependencies(nullptr, &printer_state);
+
+        // Hide the BED_MESH option (visibility = 0)
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 0); // hidden
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1); // checked (doesn't matter when hidden)
+
+        // When operation is hidden, it's not applicable to this printer
+        auto result = manager.lookup_operation_capability(OperationCategory::BED_MESH);
+
+        // Should return nullopt - operation is hidden, nothing to do
+        REQUIRE_FALSE(result.has_value());
+    }
+
+    SECTION("Returns nullopt when operation enabled (visible + checked)") {
+        // Set up PrinterState with known printer
+        PrinterState printer_state;
+        printer_state.init_subjects(false);
+        printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
+        manager.set_dependencies(nullptr, &printer_state);
+
+        // Set visibility = shown (1), checked = checked (1) for BED_MESH
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 1); // visible
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 1); // checked = user wants operation
+
+        // When user wants the operation enabled, no skip param needed
+        auto result = manager.lookup_operation_capability(OperationCategory::BED_MESH);
+
+        // Should return nullopt - user wants operation, no skip needed
+        REQUIRE_FALSE(result.has_value());
+    }
+
+    SECTION("Returns nullopt when no capability source available") {
+        // No PrinterState set, no macro analysis, no file scan
+        // Manager has no way to know how to control this operation
+
+        // Make the operation visible and unchecked
+        lv_subject_set_int(&subjects.can_show_qgl, 1);
+        lv_subject_set_int(&subjects.preprint_qgl, 0); // unchecked
+
+        // Without any capability source, can't return skip params
+        auto result = manager.lookup_operation_capability(OperationCategory::QGL);
+
+        // Should return nullopt - no capability source available
+        REQUIRE_FALSE(result.has_value());
+    }
+
+    SECTION("Uses macro analysis as capability source") {
+        // Set up macro analysis with QGL capability (no database for this example)
+        PrintStartAnalysis analysis;
+        analysis.found = true;
+        analysis.macro_name = "PRINT_START";
+
+        PrintStartOperation op;
+        op.name = "QUAD_GANTRY_LEVEL";
+        op.category = PrintStartOpCategory::QGL;
+        op.has_skip_param = true;
+        op.skip_param_name = "SKIP_QGL";
+        op.param_semantic = ParameterSemantic::OPT_OUT;
+        analysis.operations.push_back(op);
+        analysis.controllable_count = 1;
+        analysis.is_controllable = true;
+
+        manager.set_macro_analysis(analysis);
+
+        // Make QGL visible but unchecked
+        lv_subject_set_int(&subjects.can_show_qgl, 1);
+        lv_subject_set_int(&subjects.preprint_qgl, 0); // unchecked
+
+        auto result = manager.lookup_operation_capability(OperationCategory::QGL);
+
+        REQUIRE(result.has_value());
+        REQUIRE(result->should_skip == true);
+        REQUIRE(result->param_name == "SKIP_QGL");
+        // OPT_OUT semantic: skip_value is "1"
+        REQUIRE(result->skip_value == "1");
+        REQUIRE(result->source == CapabilityOrigin::MACRO_ANALYSIS);
+    }
+
+    SECTION("Uses best source based on priority (database over macro)") {
+        // Set up PrinterState with AD5M Pro (database source)
+        PrinterState printer_state;
+        printer_state.init_subjects(false);
+        printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
+        manager.set_dependencies(nullptr, &printer_state);
+
+        // Also add macro analysis for the same operation with different param
+        PrintStartAnalysis analysis;
+        analysis.found = true;
+        analysis.macro_name = "PRINT_START";
+
+        PrintStartOperation op;
+        op.name = "BED_MESH_CALIBRATE";
+        op.category = PrintStartOpCategory::BED_MESH;
+        op.has_skip_param = true;
+        op.skip_param_name = "SKIP_BED_MESH"; // Different from database's FORCE_LEVELING
+        op.param_semantic = ParameterSemantic::OPT_OUT;
+        analysis.operations.push_back(op);
+
+        manager.set_macro_analysis(analysis);
+
+        // Make BED_MESH visible but unchecked
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 1);
+        lv_subject_set_int(&subjects.preprint_bed_mesh, 0);
+
+        auto result = manager.lookup_operation_capability(OperationCategory::BED_MESH);
+
+        // Database should win over macro analysis
+        REQUIRE(result.has_value());
+        REQUIRE(result->source == CapabilityOrigin::DATABASE);
+        REQUIRE(result->param_name == "FORCE_LEVELING"); // Database param, not SKIP_BED_MESH
+    }
+
+    SECTION("Uses file scan as capability source when no other sources") {
+        // Set up file scan with NOZZLE_CLEAN operation
+        gcode::ScanResult scan;
+        scan.lines_scanned = 100;
+        scan.bytes_scanned = 5000;
+
+        gcode::DetectedOperation op;
+        op.type = gcode::OperationType::NOZZLE_CLEAN;
+        op.embedding = gcode::OperationEmbedding::MACRO_PARAMETER;
+        op.param_name = "SKIP_NOZZLE_CLEAN";
+        op.macro_name = "PRINT_START";
+        op.line_number = 42;
+        scan.operations.push_back(op);
+
+        manager.set_cached_scan_result(scan, "test.gcode");
+
+        // Make NOZZLE_CLEAN visible but unchecked
+        lv_subject_set_int(&subjects.can_show_nozzle_clean, 1);
+        lv_subject_set_int(&subjects.preprint_nozzle_clean, 0);
+
+        auto result = manager.lookup_operation_capability(OperationCategory::NOZZLE_CLEAN);
+
+        REQUIRE(result.has_value());
+        REQUIRE(result->source == CapabilityOrigin::FILE_SCAN);
+        REQUIRE(result->param_name == "SKIP_NOZZLE_CLEAN");
+    }
+}
+
+TEST_CASE("PrintPreparationManager: lookup_operation_capability edge cases",
+          "[print_preparation][p4]") {
+    lv_init_safe();
+    PrintPreparationManager manager;
+    PreprintSubjectsFixture subjects;
+    subjects.init_all_subjects();
+
+    SECTION("Returns nullopt when subjects not set") {
+        // Don't call set_preprint_subjects or set_preprint_visibility_subjects
+        // Manager has no subjects to check
+
+        // Set up a capability source
+        PrinterState printer_state;
+        printer_state.init_subjects(false);
+        printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
+        manager.set_dependencies(nullptr, &printer_state);
+
+        // Without subjects, can't determine visibility or checked state
+        auto result = manager.lookup_operation_capability(OperationCategory::BED_MESH);
+
+        // Should return nullopt - can't determine user intent without subjects
+        REQUIRE_FALSE(result.has_value());
+    }
+
+    SECTION("Returns nullopt for UNKNOWN operation category") {
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_purge_line, &subjects.preprint_timelapse);
+        manager.set_preprint_visibility_subjects(
+            &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+            &subjects.can_show_nozzle_clean, &subjects.can_show_purge_line,
+            &subjects.can_show_timelapse);
+
+        // UNKNOWN is not a valid operation to look up
+        auto result = manager.lookup_operation_capability(OperationCategory::UNKNOWN);
+
+        REQUIRE_FALSE(result.has_value());
+    }
+
+    SECTION("Handles Z_TILT operation correctly") {
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_purge_line, &subjects.preprint_timelapse);
+        manager.set_preprint_visibility_subjects(
+            &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+            &subjects.can_show_nozzle_clean, &subjects.can_show_purge_line,
+            &subjects.can_show_timelapse);
+
+        // Set up macro analysis with Z_TILT capability
+        PrintStartAnalysis analysis;
+        analysis.found = true;
+        analysis.macro_name = "PRINT_START";
+
+        PrintStartOperation op;
+        op.name = "Z_TILT_ADJUST";
+        op.category = PrintStartOpCategory::Z_TILT;
+        op.has_skip_param = true;
+        op.skip_param_name = "SKIP_Z_TILT";
+        op.param_semantic = ParameterSemantic::OPT_OUT;
+        analysis.operations.push_back(op);
+
+        manager.set_macro_analysis(analysis);
+
+        // Make Z_TILT visible but unchecked
+        lv_subject_set_int(&subjects.can_show_z_tilt, 1);
+        lv_subject_set_int(&subjects.preprint_z_tilt, 0);
+
+        auto result = manager.lookup_operation_capability(OperationCategory::Z_TILT);
+
+        REQUIRE(result.has_value());
+        REQUIRE(result->param_name == "SKIP_Z_TILT");
+        REQUIRE(result->skip_value == "1");
+    }
+
+    SECTION("Handles PURGE_LINE operation correctly") {
+        manager.set_preprint_subjects(&subjects.preprint_bed_mesh, &subjects.preprint_qgl,
+                                      &subjects.preprint_z_tilt, &subjects.preprint_nozzle_clean,
+                                      &subjects.preprint_purge_line, &subjects.preprint_timelapse);
+        manager.set_preprint_visibility_subjects(
+            &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+            &subjects.can_show_nozzle_clean, &subjects.can_show_purge_line,
+            &subjects.can_show_timelapse);
+
+        // Set up macro analysis with PURGE_LINE capability
+        PrintStartAnalysis analysis;
+        analysis.found = true;
+        analysis.macro_name = "PRINT_START";
+
+        PrintStartOperation op;
+        op.name = "PRIME_LINE";
+        op.category = PrintStartOpCategory::PURGE_LINE;
+        op.has_skip_param = true;
+        op.skip_param_name = "PERFORM_PURGE"; // OPT_IN style
+        op.param_semantic = ParameterSemantic::OPT_IN;
+        analysis.operations.push_back(op);
+
+        manager.set_macro_analysis(analysis);
+
+        // Make PURGE_LINE visible but unchecked
+        lv_subject_set_int(&subjects.can_show_purge_line, 1);
+        lv_subject_set_int(&subjects.preprint_purge_line, 0);
+
+        auto result = manager.lookup_operation_capability(OperationCategory::PURGE_LINE);
+
+        REQUIRE(result.has_value());
+        REQUIRE(result->param_name == "PERFORM_PURGE");
+        // OPT_IN: skip_value is "0" (PERFORM_PURGE=0 means don't do it)
+        REQUIRE(result->skip_value == "0");
+    }
+}
+
+TEST_CASE("PrintPreparationManager: lookup_operation_capability with visibility-only subjects",
+          "[print_preparation][p4]") {
+    lv_init_safe();
+    PrintPreparationManager manager;
+    PreprintSubjectsFixture subjects;
+    subjects.init_all_subjects();
+
+    // Only set visibility subjects, not checkbox subjects
+    manager.set_preprint_visibility_subjects(
+        &subjects.can_show_bed_mesh, &subjects.can_show_qgl, &subjects.can_show_z_tilt,
+        &subjects.can_show_nozzle_clean, &subjects.can_show_purge_line,
+        &subjects.can_show_timelapse);
+
+    SECTION("Returns nullopt when checkbox subjects not set") {
+        // Set up capability source
+        PrinterState printer_state;
+        printer_state.init_subjects(false);
+        printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
+        manager.set_dependencies(nullptr, &printer_state);
+
+        // Visibility is set, but checkbox subjects are not
+        lv_subject_set_int(&subjects.can_show_bed_mesh, 1);
+
+        auto result = manager.lookup_operation_capability(OperationCategory::BED_MESH);
+
+        // Without checkbox subject, can't determine if user wants to skip
+        REQUIRE_FALSE(result.has_value());
+    }
+}

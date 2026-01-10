@@ -70,6 +70,17 @@ struct PrePrintOptions {
 };
 
 /**
+ * @brief Result of capability lookup for an operation
+ */
+struct OperationCapabilityResult {
+    bool should_skip = false; ///< Whether this operation should be skipped
+    std::string param_name;   ///< Parameter name to pass (e.g., "FORCE_LEVELING")
+    std::string skip_value;   ///< Value to use when skipping (e.g., "false", "1")
+    helix::CapabilityOrigin source =
+        helix::CapabilityOrigin::DATABASE; ///< Where capability came from
+};
+
+/**
  * @brief Result of checking if G-code modification can be performed safely
  *
  * On resource-constrained devices (like AD5M with 512MB RAM), modifying large
@@ -261,6 +272,20 @@ class PrintPreparationManager {
      * @return CapabilityMatrix populated with all known capabilities
      */
     [[nodiscard]] CapabilityMatrix build_capability_matrix() const;
+
+    /**
+     * @brief Look up capability info for a single operation
+     *
+     * This is the unified entry point for capability queries. It checks:
+     * 1. If the operation is hidden (visibility subject = 0) -> nullopt
+     * 2. If the operation is enabled (checkbox checked) -> nullopt
+     * 3. Otherwise, gets skip param from CapabilityMatrix
+     *
+     * @param cat The operation category to look up
+     * @return OperationCapabilityResult if operation should be skipped, nullopt otherwise
+     */
+    [[nodiscard]] std::optional<OperationCapabilityResult>
+    lookup_operation_capability(helix::OperationCategory cat) const;
 
     // === Test Helpers ===
 
@@ -554,6 +579,33 @@ class PrintPreparationManager {
      */
     [[nodiscard]] bool is_option_disabled_from_subject(lv_subject_t* visibility_subject,
                                                        lv_subject_t* checked_subject) const;
+
+    /**
+     * @brief Get the visibility and checkbox subjects for a given operation category
+     *
+     * @param cat The operation category
+     * @return Pair of (visibility_subject, checked_subject), either may be nullptr
+     */
+    [[nodiscard]] std::pair<lv_subject_t*, lv_subject_t*>
+    get_subjects_for_category(helix::OperationCategory cat) const;
+
+    /**
+     * @brief Check if an operation is visible (visibility subject is 1 or null)
+     *
+     * @param cat The operation category to check
+     * @return true if operation is visible, false if hidden (visibility = 0)
+     */
+    [[nodiscard]] bool is_operation_visible(helix::OperationCategory cat) const;
+
+    /**
+     * @brief Check if an operation is disabled from its checkbox subject
+     *
+     * Returns true if the checkbox subject is not null and its value is 0 (unchecked).
+     *
+     * @param cat The operation category to check
+     * @return true if the checkbox is unchecked (user wants to skip)
+     */
+    [[nodiscard]] bool is_option_disabled_from_subject(helix::OperationCategory cat) const;
 
     /**
      * @brief Static callback for connection state observer

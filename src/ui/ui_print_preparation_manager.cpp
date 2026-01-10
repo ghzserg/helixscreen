@@ -26,6 +26,10 @@ PrintStatusPanel& get_global_print_status_panel();
 
 namespace helix::ui {
 
+// Bring helix:: types into scope for cleaner code
+using helix::CapabilityOrigin;
+using helix::OperationCategory;
+
 // ============================================================================
 // Construction / Destruction
 // ============================================================================
@@ -885,6 +889,92 @@ bool PrintPreparationManager::is_option_disabled_from_subject(lv_subject_t* visi
         return true;
     }
     return false;
+}
+
+std::pair<lv_subject_t*, lv_subject_t*>
+PrintPreparationManager::get_subjects_for_category(OperationCategory cat) const {
+    switch (cat) {
+    case OperationCategory::BED_MESH:
+        return {can_show_bed_mesh_subject_, preprint_bed_mesh_subject_};
+    case OperationCategory::QGL:
+        return {can_show_qgl_subject_, preprint_qgl_subject_};
+    case OperationCategory::Z_TILT:
+        return {can_show_z_tilt_subject_, preprint_z_tilt_subject_};
+    case OperationCategory::NOZZLE_CLEAN:
+        return {can_show_nozzle_clean_subject_, preprint_nozzle_clean_subject_};
+    case OperationCategory::PURGE_LINE:
+        return {can_show_purge_line_subject_, preprint_purge_line_subject_};
+    // Note: We don't have timelapse in OperationCategory - it's separate
+    default:
+        return {nullptr, nullptr};
+    }
+}
+
+bool PrintPreparationManager::is_operation_visible(OperationCategory cat) const {
+    auto [visibility_subject, checked_subject] = get_subjects_for_category(cat);
+
+    // If we don't have a visibility subject for this category, consider it not applicable
+    if (!visibility_subject) {
+        return false;
+    }
+
+    // Visible if value is 1 (or non-zero)
+    return lv_subject_get_int(visibility_subject) != 0;
+}
+
+bool PrintPreparationManager::is_option_disabled_from_subject(OperationCategory cat) const {
+    auto [visibility_subject, checked_subject] = get_subjects_for_category(cat);
+
+    // If we don't have a checkbox subject for this category, can't determine state
+    if (!checked_subject) {
+        return false;
+    }
+
+    // Disabled = unchecked (value 0)
+    return lv_subject_get_int(checked_subject) == 0;
+}
+
+std::optional<OperationCapabilityResult>
+PrintPreparationManager::lookup_operation_capability(OperationCategory cat) const {
+    // 1. Check if we have subjects for this category
+    auto [visibility_subject, checked_subject] = get_subjects_for_category(cat);
+
+    // If we don't have subjects for this category, can't determine user intent
+    if (!visibility_subject || !checked_subject) {
+        return std::nullopt;
+    }
+
+    // 2. Check if operation is hidden (not applicable to this printer)
+    if (!is_operation_visible(cat)) {
+        return std::nullopt;
+    }
+
+    // 3. Check if operation is enabled (user wants it to run)
+    if (!is_option_disabled_from_subject(cat)) {
+        return std::nullopt;
+    }
+
+    // 4. Get skip param from CapabilityMatrix
+    auto matrix = build_capability_matrix();
+    auto skip_param = matrix.get_skip_param(cat);
+
+    if (!skip_param.has_value()) {
+        return std::nullopt; // No capability source for this operation
+    }
+
+    // 5. Build result
+    OperationCapabilityResult result;
+    result.should_skip = true;
+    result.param_name = skip_param->first;
+    result.skip_value = skip_param->second;
+
+    // Get source info
+    auto source = matrix.get_best_source(cat);
+    if (source) {
+        result.source = source->origin;
+    }
+
+    return result;
 }
 
 std::vector<gcode::OperationType> PrintPreparationManager::collect_ops_to_disable() const {
