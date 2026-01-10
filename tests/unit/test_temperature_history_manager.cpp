@@ -58,14 +58,32 @@ static LVGLInitializerTempHistory lvgl_init;
 // ============================================================================
 
 class TemperatureHistoryManagerTestFixture {
+    static bool queue_initialized;
+
   public:
     TemperatureHistoryManagerTestFixture() {
+        // Initialize update queue once (static guard) - CRITICAL for ui_queue_update()
+        if (!queue_initialized) {
+            ui_update_queue_init();
+            queue_initialized = true;
+        }
+
         printer_state_.init_subjects(false);
         manager_ = std::make_unique<TemperatureHistoryManager>(printer_state_);
     }
 
     ~TemperatureHistoryManagerTestFixture() {
+        // Destroy managed objects first
         manager_.reset();
+
+        // Drain pending callbacks
+        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+
+        // Shutdown queue
+        ui_update_queue_shutdown();
+
+        // Reset static flag for next test
+        queue_initialized = false;
     }
 
   protected:
@@ -142,6 +160,7 @@ class TemperatureHistoryManagerTestFixture {
     PrinterState printer_state_;
     std::unique_ptr<TemperatureHistoryManager> manager_;
 };
+bool TemperatureHistoryManagerTestFixture::queue_initialized = false;
 
 // ============================================================================
 // Test Case 1: Initial State

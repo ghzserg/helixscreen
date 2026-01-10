@@ -39,6 +39,8 @@ using namespace helix;
  *
  * Provides LVGL initialization and a mock MoonrakerAPI for testing
  * state machine transitions without real network calls.
+ *
+ * Note: LVGLTestFixture base class handles UpdateQueue init/shutdown (L053/L054).
  */
 class AbortManagerTestFixture : public LVGLTestFixture {
   public:
@@ -52,6 +54,8 @@ class AbortManagerTestFixture : public LVGLTestFixture {
         AbortManager::instance().deinit_subjects();
         // Ensure clean state after test
         AbortManager::instance().reset_for_testing();
+
+        // Note: Queue drain/shutdown handled by LVGLTestFixture base class
     }
 
   protected:

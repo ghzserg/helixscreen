@@ -4,6 +4,7 @@
 #pragma once
 
 #include "lvgl/lvgl.h"
+#include "ui_update_queue.h"
 
 #include <mutex>
 
@@ -34,16 +35,21 @@ constexpr int TEST_DISPLAY_HEIGHT = 480;
  * - Test screen creation with automatic cleanup
  */
 class LVGLTestFixture {
+    static bool s_queue_initialized;
+
   public:
     /**
      * @brief Construct fixture and ensure LVGL is initialized
      *
      * Creates a fresh test screen for each test case.
+     * Also initializes the UpdateQueue (L053/L054 pattern).
      */
     LVGLTestFixture();
 
     /**
      * @brief Destroy fixture and clean up test objects
+     *
+     * Drains pending callbacks and shuts down UpdateQueue (L053/L054 pattern).
      */
     virtual ~LVGLTestFixture();
 

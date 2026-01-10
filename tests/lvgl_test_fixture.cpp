@@ -12,6 +12,7 @@
 std::once_flag LVGLTestFixture::s_init_flag;
 bool LVGLTestFixture::s_initialized = false;
 lv_display_t* LVGLTestFixture::s_display = nullptr;
+bool LVGLTestFixture::s_queue_initialized = false;
 
 // Display buffer - static to persist across test cases
 // Size: width * 10 lines for partial rendering mode
@@ -30,6 +31,14 @@ static void test_display_flush_cb(lv_display_t* disp, const lv_area_t* /*area*/,
 
 LVGLTestFixture::LVGLTestFixture() : m_test_screen(nullptr) {
     ensure_lvgl_initialized();
+
+    // Initialize update queue once (static guard) - CRITICAL for ui_queue_update()
+    // Per L053/L054: Tests using UpdateQueue need proper lifecycle
+    if (!s_queue_initialized) {
+        ui_update_queue_init();
+        s_queue_initialized = true;
+    }
+
     m_test_screen = create_test_screen();
 }
 
@@ -46,6 +55,15 @@ LVGLTestFixture::~LVGLTestFixture() {
         lv_obj_delete(m_test_screen);
         m_test_screen = nullptr;
     }
+
+    // Per L053/L054: Drain pending callbacks before shutdown
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+
+    // Shutdown queue
+    ui_update_queue_shutdown();
+
+    // Reset static flag for next test
+    s_queue_initialized = false;
 }
 
 void LVGLTestFixture::ensure_lvgl_initialized() {

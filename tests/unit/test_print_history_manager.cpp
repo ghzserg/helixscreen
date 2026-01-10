@@ -53,8 +53,16 @@ static LVGLInitializerHistoryManager lvgl_init;
 // ============================================================================
 
 class HistoryManagerTestFixture {
+    static bool queue_initialized;
+
   public:
     HistoryManagerTestFixture() : client_(MoonrakerClientMock::PrinterType::VORON_24, 1000.0) {
+        // Initialize update queue once (static guard) - CRITICAL for ui_queue_update()
+        if (!queue_initialized) {
+            ui_update_queue_init();
+            queue_initialized = true;
+        }
+
         printer_state_.init_subjects(false);
         client_.connect("ws://mock/websocket", []() {}, []() {});
         api_ = std::make_unique<MoonrakerAPI>(client_, printer_state_);
@@ -62,9 +70,19 @@ class HistoryManagerTestFixture {
     }
 
     ~HistoryManagerTestFixture() {
+        // Destroy managed objects first
         manager_.reset();
         api_.reset();
         client_.disconnect();
+
+        // Drain pending callbacks
+        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+
+        // Shutdown queue
+        ui_update_queue_shutdown();
+
+        // Reset static flag for next test
+        queue_initialized = false;
     }
 
   protected:
@@ -87,6 +105,7 @@ class HistoryManagerTestFixture {
     std::unique_ptr<MoonrakerAPI> api_;
     std::unique_ptr<PrintHistoryManager> manager_;
 };
+bool HistoryManagerTestFixture::queue_initialized = false;
 
 // ============================================================================
 // Basic Functionality Tests

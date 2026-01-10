@@ -4,6 +4,8 @@
 #include "ui_print_preparation_manager.h"
 #include "ui_update_queue.h"
 
+#include "capability_matrix.h"
+
 #include "../mocks/mock_websocket_server.h"
 #include "../ui_test_utils.h"
 #include "hv/EventLoopThread.h"
@@ -1123,10 +1125,18 @@ TEST_CASE("PrintPreparationManager: format_preprint_steps formatting",
  * - Return file list to proceed to download phase
  */
 class MacroAnalysisRetryFixture {
+    static bool queue_initialized;
+
   public:
     MacroAnalysisRetryFixture() {
         // Initialize LVGL for subjects and update queue
         lv_init_safe();
+
+        // Initialize update queue once (static guard) - CRITICAL for ui_queue_update()
+        if (!queue_initialized) {
+            ui_update_queue_init();
+            queue_initialized = true;
+        }
 
         // Initialize PrinterState subjects (needed for dependency injection)
         printer_state_.init_subjects(false); // false = no XML registration
@@ -1177,6 +1187,15 @@ class MacroAnalysisRetryFixture {
         client_.reset();
         server_->stop();
         server_.reset();
+
+        // Drain pending callbacks
+        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+
+        // Shutdown queue
+        ui_update_queue_shutdown();
+
+        // Reset static flag for next test [L053]
+        queue_initialized = false;
     }
 
     /**
@@ -1305,6 +1324,7 @@ class MacroAnalysisRetryFixture {
     std::mutex call_times_mutex_;
     std::vector<std::chrono::steady_clock::time_point> list_files_call_times_;
 };
+bool MacroAnalysisRetryFixture::queue_initialized = false;
 
 TEST_CASE_METHOD(MacroAnalysisRetryFixture,
                  "PrintPreparationManager: macro analysis retry - first attempt succeeds",
