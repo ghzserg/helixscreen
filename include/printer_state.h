@@ -8,6 +8,7 @@
 #include "lvgl/lvgl.h"
 #include "printer_detector.h"
 #include "printer_hardware_discovery.h"
+#include "printer_temperature_state.h"
 #include "spdlog/spdlog.h"
 #include "subject_managed_panel.h"
 
@@ -244,19 +245,20 @@ class PrinterState {
     // Subject accessors for XML binding
     //
 
-    // Temperature subjects (centidegrees: value * 10 for 0.1°C resolution)
-    // Example: 205.3°C is stored as 2053. Divide by 10 for display.
+    // Temperature subjects (centidegrees: value * 10 for 0.1C resolution)
+    // Example: 205.3C is stored as 2053. Divide by 10 for display.
+    // Delegated to PrinterTemperatureState component.
     lv_subject_t* get_extruder_temp_subject() {
-        return &extruder_temp_;
+        return temperature_state_.get_extruder_temp_subject();
     }
     lv_subject_t* get_extruder_target_subject() {
-        return &extruder_target_;
+        return temperature_state_.get_extruder_target_subject();
     }
     lv_subject_t* get_bed_temp_subject() {
-        return &bed_temp_;
+        return temperature_state_.get_bed_temp_subject();
     }
     lv_subject_t* get_bed_target_subject() {
-        return &bed_target_;
+        return temperature_state_.get_bed_target_subject();
     }
 
     // Print progress subjects
@@ -1210,11 +1212,8 @@ class PrinterState {
     /// RAII manager for automatic subject cleanup - deinits all subjects on destruction
     SubjectManager subjects_;
 
-    // Temperature subjects
-    lv_subject_t extruder_temp_;
-    lv_subject_t extruder_target_;
-    lv_subject_t bed_temp_;
-    lv_subject_t bed_target_;
+    /// Temperature state component (extruder and bed temperatures)
+    helix::PrinterTemperatureState temperature_state_;
 
     // Print progress subjects
     lv_subject_t print_progress_;         // Integer 0-100

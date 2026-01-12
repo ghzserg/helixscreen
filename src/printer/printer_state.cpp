@@ -115,6 +115,9 @@ void PrinterState::reset_for_testing() {
 
     spdlog::info("[PrinterState] reset_for_testing: Deinitializing subjects to clear observers");
 
+    // Reset temperature state component
+    temperature_state_.reset_for_testing();
+
     // Use SubjectManager for automatic subject cleanup
     subjects_.deinit_all();
 
@@ -155,11 +158,8 @@ void PrinterState::init_subjects(bool register_xml) {
 
     spdlog::debug("[PrinterState] Initializing subjects (register_xml={})", register_xml);
 
-    // Temperature subjects (integer, degrees Celsius)
-    lv_subject_init_int(&extruder_temp_, 0);
-    lv_subject_init_int(&extruder_target_, 0);
-    lv_subject_init_int(&bed_temp_, 0);
-    lv_subject_init_int(&bed_target_, 0);
+    // Initialize temperature state component (extruder and bed temperatures)
+    temperature_state_.init_subjects(register_xml);
 
     // Print progress subjects
     lv_subject_init_int(&print_progress_, 0);
@@ -299,11 +299,7 @@ void PrinterState::init_subjects(bool register_xml) {
                            sizeof(moonraker_version_buf_), "—");
 
     // Register all subjects with SubjectManager for automatic cleanup
-    // Temperature subjects
-    subjects_.register_subject(&extruder_temp_);
-    subjects_.register_subject(&extruder_target_);
-    subjects_.register_subject(&bed_temp_);
-    subjects_.register_subject(&bed_target_);
+    // Note: Temperature subjects are managed by temperature_state_ component
     // Print progress subjects
     subjects_.register_subject(&print_progress_);
     subjects_.register_subject(&print_filename_);
@@ -404,12 +400,9 @@ void PrinterState::init_subjects(bool register_xml) {
     spdlog::debug("[PrinterState] Registered {} subjects with SubjectManager", subjects_.count());
 
     // Register all subjects with LVGL XML system (CRITICAL for XML bindings)
+    // Note: Temperature subjects are registered by temperature_state_ component
     if (register_xml) {
         spdlog::debug("[PrinterState] Registering subjects with XML system");
-        lv_xml_register_subject(NULL, "extruder_temp", &extruder_temp_);
-        lv_xml_register_subject(NULL, "extruder_target", &extruder_target_);
-        lv_xml_register_subject(NULL, "bed_temp", &bed_temp_);
-        lv_xml_register_subject(NULL, "bed_target", &bed_target_);
         lv_xml_register_subject(NULL, "print_progress", &print_progress_);
         lv_xml_register_subject(NULL, "print_filename", &print_filename_);
         lv_xml_register_subject(NULL, "print_state", &print_state_);
@@ -532,40 +525,8 @@ void PrinterState::update_from_status(const json& state) {
     // Debug: Check if we're in render phase (this should never be true)
     LV_DEBUG_RENDER_STATE();
 
-    // Update extruder temperature (stored as centidegrees for 0.1°C resolution)
-    if (state.contains("extruder")) {
-        const auto& extruder = state["extruder"];
-
-        if (extruder.contains("temperature") && extruder["temperature"].is_number()) {
-            int temp_centi = helix::units::json_to_centidegrees(extruder, "temperature");
-            lv_subject_set_int(&extruder_temp_, temp_centi);
-            lv_subject_notify(&extruder_temp_); // Force notify for graph updates even if unchanged
-        }
-
-        if (extruder.contains("target") && extruder["target"].is_number()) {
-            int target_centi = helix::units::json_to_centidegrees(extruder, "target");
-            lv_subject_set_int(&extruder_target_, target_centi);
-        }
-    }
-
-    // Update bed temperature (stored as centidegrees for 0.1°C resolution)
-    if (state.contains("heater_bed")) {
-        const auto& bed = state["heater_bed"];
-
-        if (bed.contains("temperature") && bed["temperature"].is_number()) {
-            int temp_centi = helix::units::json_to_centidegrees(bed, "temperature");
-            lv_subject_set_int(&bed_temp_, temp_centi);
-            lv_subject_notify(&bed_temp_); // Force notify for graph updates even if unchanged
-            spdlog::trace("[PrinterState] Bed temp: {}.{}°C", temp_centi / 10, temp_centi % 10);
-        }
-
-        if (bed.contains("target") && bed["target"].is_number()) {
-            int target_centi = helix::units::json_to_centidegrees(bed, "target");
-            lv_subject_set_int(&bed_target_, target_centi);
-            spdlog::trace("[PrinterState] Bed target: {}.{}°C", target_centi / 10,
-                          target_centi % 10);
-        }
-    }
+    // Delegate temperature updates to temperature state component
+    temperature_state_.update_from_status(state);
 
     // Update print progress
     if (state.contains("virtual_sdcard")) {
