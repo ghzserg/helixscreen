@@ -274,6 +274,16 @@ test-slow: $(TEST_BIN)
 	DURATION=$$((END_TIME - START_TIME)); \
 	echo "$(GREEN)$(BOLD)✓ Slow tests passed in $${DURATION}s$(RESET)"
 
+# Run only eventloop tests - hv::EventLoop network tests (very slow, 5-10 min)
+# These are the slowest tests due to WebSocket connection/disconnection cycles
+test-eventloop: $(TEST_BIN)
+	$(ECHO) "$(CYAN)$(BOLD)Running eventloop tests only (this will take 5-10 minutes)...$(RESET)"
+	@START_TIME=$$(date +%s); \
+	$(TEST_BIN) "[eventloop]" "~[.]" && \
+	END_TIME=$$(date +%s); \
+	DURATION=$$((END_TIME - START_TIME)); \
+	echo "$(GREEN)$(BOLD)✓ EventLoop tests passed in $${DURATION}s$(RESET)"
+
 # Smoke test - minimal critical tests for quick validation (<30s)
 # Use during rapid iteration to catch obvious regressions
 test-smoke: $(TEST_BIN)
@@ -860,6 +870,7 @@ help-test:
 	echo "  $${G}test-smoke$${X}           - Quick smoke test (~30s) for rapid iteration"; \
 	echo "  $${G}test-all$${X}             - Run ALL tests in parallel (including slow)"; \
 	echo "  $${G}test-slow$${X}            - Run only [slow] tagged tests"; \
+	echo "  $${G}test-eventloop$${X}       - Run only [eventloop] tests (5-10 min)"; \
 	echo "  $${G}test-verbose$${X}         - Run with per-test timing (sequential)"; \
 	echo ""; \
 	echo "$${C}Component Tests:$${X}"; \

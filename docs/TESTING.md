@@ -1,7 +1,7 @@
 # Testing Infrastructure
 
 **Status:** Active
-**Last Updated:** 2026-01-09
+**Last Updated:** 2026-01-11
 
 ---
 
@@ -32,6 +32,7 @@ Tests are tagged by **feature/importance**, not layer/speed. This enables runnin
 |-----|-------|---------|
 | `[core]` | ~18 | Critical tests - if these fail, the app is fundamentally broken |
 | `[slow]` | ~185 | Tests with network/timing - excluded from `test-run` |
+| `[eventloop]` | ~54 | Uses `hv::EventLoop` - very slow, always paired with `[slow]` |
 
 ### Feature Tags
 
@@ -100,6 +101,8 @@ These validate fundamental functionality:
 | `make test-run` | Parallel, excludes `[slow]` and hidden |
 | `make test-fast` | Same as test-run |
 | `make test-all` | Parallel, includes `[slow]` |
+| `make test-slow` | Only `[slow]` tagged tests |
+| `make test-eventloop` | Only `[eventloop]` tests (5-10 min) |
 | `make test-serial` | Sequential for debugging |
 | `make test-verbose` | Sequential with timing |
 
@@ -201,10 +204,15 @@ Slow tests are excluded from `test-run` but can be run with `make test-slow`.
 | Other (16 files) | ~55 | Various timing/network tests |
 
 **When to add `[slow]`:**
-- Test creates `hv::EventLoop` (network operations)
+- Test creates `hv::EventLoop` (network operations) - also add `[eventloop]`
 - Test uses `std::this_thread::sleep_for()` for timing
 - Test uses fixtures with network clients (e.g., `MoonrakerClientSecurityFixture`)
 - Test takes >500ms to complete
+
+**When to add `[eventloop]`:**
+- Test creates `hv::EventLoop` for WebSocket operations
+- Test requires real network connection/disconnection cycles
+- ALWAYS add `[slow]` alongside `[eventloop]` - eventloop tests are inherently slow
 
 ### Disabled Tests (#if 0)
 
@@ -233,6 +241,83 @@ make test-all
 # List all slow tests
 ./build/bin/helix-tests "[slow]" --list-tests
 ```
+
+---
+
+## Test Timing Categories
+
+Tests fall into three timing categories based on their execution characteristics. Understanding these helps plan CI/CD pipelines and local development workflows.
+
+### Fast Tests (~1,400 tests, ~27s parallel)
+
+The majority of tests complete quickly and are suitable for rapid iteration during development.
+
+```bash
+make test-run    # Default: runs fast tests in parallel shards
+```
+
+**Characteristics:**
+- No network operations or event loops
+- Pure logic, parsing, state management
+- Typical test: <100ms
+
+### Slow Non-EventLoop Tests (~52 tests)
+
+Tests marked `[slow]` that do NOT use `hv::EventLoop`. These are slow due to deliberate delays, database operations, or simulation work.
+
+```bash
+make test-slow   # Run only [slow] tagged tests
+```
+
+**Why slow:**
+- `std::this_thread::sleep_for()` for timing tests
+- Database/history operations (SQLite)
+- Mock print simulation with phase transitions
+
+| File | Count | Reason |
+|------|------:|--------|
+| `test_print_history_api.cpp` | 18 | SQLite operations |
+| `test_notification_history.cpp` | 13 | History persistence |
+| `test_moonraker_mock_behavior.cpp` | 12 | Mock simulation delays |
+| `test_gcode_streaming_controller.cpp` | 12 | Layer processing |
+
+### EventLoop Tests (~54 tests, 5-10 min total)
+
+Tests using `hv::EventLoop` for real network operations. These are the slowest tests and are tagged with BOTH `[eventloop]` AND `[slow]`.
+
+```bash
+# Run eventloop tests specifically
+./build/bin/helix-tests "[eventloop]" "~[.]"
+
+# These are already excluded by make test-run (via ~[slow])
+```
+
+**Why very slow:**
+- Real WebSocket connection/disconnection cycles
+- Network timeout waiting (1-5 seconds per test)
+- Event loop startup/shutdown overhead
+- Thread synchronization
+
+| File | Count | Tests |
+|------|------:|-------|
+| `test_moonraker_client_subscription_cancel.cpp` | 17 | Subscription lifecycle |
+| `test_moonraker_client_robustness.cpp` | 14 | Edge cases, concurrent access |
+| `test_moonraker_client_security.cpp` | 14 | Security validation |
+| `test_print_preparation_manager.cpp` | 6 | Print preparation retry |
+| `test_moonraker_api_security.cpp` | 2 | API lifecycle |
+| `test_moonraker_connection_retry.cpp` | 1 | Connection retry logic |
+
+**Important:** All `[eventloop]` tests MUST also be tagged `[slow]` to ensure they are excluded from `make test-run`.
+
+### Test Execution Matrix
+
+| Command | Fast | Slow (non-eventloop) | EventLoop | Hidden |
+|---------|:----:|:--------------------:|:---------:|:------:|
+| `make test-run` | Yes | No | No | No |
+| `make test-fast` | Yes | No | No | No |
+| `make test-slow` | No | Yes | Yes | No |
+| `make test-all` | Yes | Yes | Yes | No |
+| `[eventloop]` | No | No | Yes | No |
 
 ---
 
