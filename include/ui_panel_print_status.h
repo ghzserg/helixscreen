@@ -7,6 +7,8 @@
 #include "ui_modal.h"
 #include "ui_observer_guard.h"
 #include "ui_print_cancel_modal.h"
+#include "ui_print_light_timelapse.h"
+#include "ui_print_tune_overlay.h"
 #include "ui_runout_guidance_modal.h"
 #include "ui_save_z_offset_modal.h"
 
@@ -251,38 +253,7 @@ class PrintStatusPanel : public OverlayBase {
      */
     void set_temp_control_panel(TempControlPanel* temp_panel);
 
-    //
-    // === Tune Panel Handlers (called by XML event callbacks) ===
-    //
-
-    /**
-     * @brief Handle speed slider value change
-     * @param value New speed percentage (50-200)
-     */
-    void handle_tune_speed_changed(int value);
-
-    /**
-     * @brief Handle flow slider value change
-     * @param value New flow percentage (75-125)
-     */
-    void handle_tune_flow_changed(int value);
-
-    /**
-     * @brief Handle reset button click - resets speed/flow to 100%
-     */
-    void handle_tune_reset();
-
-    /**
-     * @brief Handle Z-offset button click (baby stepping)
-     * @param delta Z-offset change in mm (negative = closer/more squish)
-     */
-    void handle_tune_z_offset_changed(double delta);
-
-    /**
-     * @brief Handle save Z-offset button click
-     * Shows warning modal since SAVE_CONFIG will restart Klipper
-     */
-    void handle_tune_save_z_offset();
+    // Tune panel handlers delegated to PrintTuneOverlay (tune_overlay_ member)
 
   private:
     //
@@ -310,10 +281,7 @@ class PrintStatusPanel : public OverlayBase {
     lv_subject_t speed_subject_;
     lv_subject_t flow_subject_;
     lv_subject_t pause_button_subject_;
-    lv_subject_t pause_label_subject_;      ///< Pause button label ("Pause"/"Resume")
-    lv_subject_t timelapse_button_subject_; ///< Timelapse icon (video/video-off)
-    lv_subject_t timelapse_label_subject_;  ///< Timelapse button label ("On"/"Off")
-    lv_subject_t light_button_subject_;     ///< Light icon (lightbulb_outline/lightbulb_on)
+    lv_subject_t pause_label_subject_; ///< Pause button label ("Pause"/"Resume")
 
     // Preparing state subjects
     lv_subject_t preparing_visible_subject_;   // int: 1 if preparing, 0 otherwise
@@ -335,9 +303,6 @@ class PrintStatusPanel : public OverlayBase {
     char flow_buf_[32] = "100%";
     char pause_button_buf_[32] = "\xF3\xB0\x8F\xA4"; // MDI pause icon (F03E4)
     char pause_label_buf_[16] = "Pause";             ///< Pause button label
-    char timelapse_button_buf_[8] = "";              ///< MDI icon codepoint for timelapse state
-    char timelapse_label_buf_[16] = "Off";           ///< Timelapse button label
-    char light_button_buf_[8] = "\xF3\xB0\x8C\xB6";  ///< MDI lightbulb_outline (off state)
 
     //
     // === Instance State ===
@@ -346,8 +311,6 @@ class PrintStatusPanel : public OverlayBase {
     /// Shutdown guard for async callbacks - set false in destructor
     /// Captured by lambdas to prevent use-after-free on shutdown [L012]
     std::shared_ptr<std::atomic<bool>> m_alive = std::make_shared<std::atomic<bool>>(true);
-
-    bool timelapse_enabled_ = false; ///< Current timelapse recording state
     PrintState current_state_ = PrintState::Idle;
     int current_progress_ = 0;
 
@@ -420,19 +383,12 @@ class PrintStatusPanel : public OverlayBase {
     TempControlPanel* temp_control_panel_ = nullptr;
     lv_obj_t* nozzle_temp_panel_ = nullptr;
     lv_obj_t* bed_temp_panel_ = nullptr;
-    lv_obj_t* tune_panel_ = nullptr;
 
-    // Tuning panel subjects
-    lv_subject_t tune_speed_subject_;
-    lv_subject_t tune_flow_subject_;
-    lv_subject_t tune_z_offset_subject_;
-    char tune_speed_buf_[16] = "100%";
-    char tune_flow_buf_[16] = "100%";
-    char tune_z_offset_buf_[16] = "0.000mm";
-    double current_z_offset_ = 0.0; ///< Current Z-offset in mm (for display)
+    // Tune overlay (extracted Phase 3 functionality)
+    PrintTuneOverlay tune_overlay_;
 
-    // Z-offset save warning modal
-    SaveZOffsetModal save_z_offset_modal_;
+    // Light/timelapse controls (extracted Phase 2 functionality)
+    PrintLightTimelapseControls light_timelapse_controls_;
 
     // Resize callback registration flag
     bool resize_registered_ = false;
@@ -447,9 +403,6 @@ class PrintStatusPanel : public OverlayBase {
     void load_thumbnail_for_file(const std::string& filename); ///< Fetch and display thumbnail
     void
     load_gcode_for_viewing(const std::string& filename); ///< Download and load G-code into viewer
-    void setup_tune_panel(lv_obj_t* panel);
-    void update_tune_display();
-    void update_z_offset_icons(lv_obj_t* panel); ///< Update Z-offset icons based on kinematics
     void update_button_states();    ///< Enable/disable buttons based on current print state
     void animate_print_complete();  ///< Celebratory animation when print finishes
     void animate_print_cancelled(); ///< Warning animation when print is cancelled
@@ -463,8 +416,6 @@ class PrintStatusPanel : public OverlayBase {
 
     void handle_nozzle_card_click();
     void handle_bed_card_click();
-    void handle_light_button();
-    void handle_timelapse_button();
     void handle_pause_button();
     void handle_tune_button();
     void handle_cancel_button();
@@ -477,8 +428,6 @@ class PrintStatusPanel : public OverlayBase {
 
     static void on_nozzle_card_clicked(lv_event_t* e);
     static void on_bed_card_clicked(lv_event_t* e);
-    static void on_light_clicked(lv_event_t* e);
-    static void on_timelapse_clicked(lv_event_t* e);
     static void on_pause_clicked(lv_event_t* e);
     static void on_tune_clicked(lv_event_t* e);
     static void on_cancel_clicked(lv_event_t* e);
@@ -549,9 +498,6 @@ class PrintStatusPanel : public OverlayBase {
     ObserverGuard print_start_phase_observer_;
     ObserverGuard print_start_message_observer_;
     ObserverGuard print_start_progress_observer_;
-
-    bool led_on_ = false;
-    std::string configured_led_;
 
     //
     // === Exclude Object State ===

@@ -49,15 +49,6 @@ static std::unique_ptr<PrintStatusPanel> g_print_status_panel;
 
 using helix::ui::temperature::centi_to_degrees;
 
-// Forward declarations for XML event callbacks (registered in init_subjects)
-static void on_tune_speed_changed_cb(lv_event_t* e);
-static void on_tune_flow_changed_cb(lv_event_t* e);
-static void on_tune_reset_clicked_cb(lv_event_t* e);
-
-// Z-offset tune callbacks (single handler extracts delta from button name)
-static void on_tune_z_offset_cb(lv_event_t* e);
-static void on_tune_save_z_offset_cb(lv_event_t* e);
-
 // Helper to get or create the global instance
 PrintStatusPanel& get_global_print_status_panel() {
     if (!g_print_status_panel) {
@@ -120,14 +111,15 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, MoonrakerAPI* ap
 
     spdlog::debug("[{}] Subscribed to PrinterState subjects", get_name());
 
-    // Load configured LED from wizard settings
+    // Load configured LED from wizard settings and pass to light controls
     Config* config = Config::get_instance();
     if (config) {
-        configured_led_ = config->get<std::string>(helix::wizard::LED_STRIP, "");
-        if (!configured_led_.empty()) {
+        std::string configured_led = config->get<std::string>(helix::wizard::LED_STRIP, "");
+        if (!configured_led.empty()) {
+            light_timelapse_controls_.set_configured_led(configured_led);
             led_state_observer_ =
                 ObserverGuard(printer_state_.get_led_state_subject(), led_state_observer_cb, this);
-            spdlog::debug("[{}] Configured LED: {} (observing state)", get_name(), configured_led_);
+            spdlog::debug("[{}] Configured LED: {} (observing state)", get_name(), configured_led);
         }
     }
 }
@@ -192,17 +184,10 @@ void PrintStatusPanel::init_subjects() {
     UI_MANAGED_SUBJECT_STRING(pause_label_subject_, pause_label_buf_, "Pause", "pause_button_label",
                               subjects_);
 
-    // Timelapse button icon (F0567=video, F0568=video-off)
-    // MDI icons in Plane 15 (U+F0xxx) use 4-byte UTF-8 encoding
-    // Default to video-off (timelapse disabled): U+F0568 = \xF3\xB0\x95\xA8
-    UI_MANAGED_SUBJECT_STRING(timelapse_button_subject_, timelapse_button_buf_, "\xF3\xB0\x95\xA8",
-                              "timelapse_button_icon", subjects_);
-    UI_MANAGED_SUBJECT_STRING(timelapse_label_subject_, timelapse_label_buf_, "Off",
-                              "timelapse_button_label", subjects_);
-
-    // Light button icon (F0336=lightbulb-outline OFF, F06E8=lightbulb-on ON)
-    UI_MANAGED_SUBJECT_STRING(light_button_subject_, light_button_buf_, "\xF3\xB0\x8C\xB6",
-                              "light_button_icon", subjects_);
+    // Initialize light/timelapse controls (extracted Phase 2)
+    light_timelapse_controls_.init_subjects();
+    light_timelapse_controls_.set_api(api_);
+    set_global_light_timelapse_controls(&light_timelapse_controls_);
 
     // Preparing state subjects
     UI_MANAGED_SUBJECT_INT(preparing_visible_subject_, 0, "preparing_visible", subjects_);
@@ -215,26 +200,12 @@ void PrintStatusPanel::init_subjects() {
     // Viewer mode subject (0=thumbnail, 1=3D gcode viewer, 2=2D gcode viewer)
     UI_MANAGED_SUBJECT_INT(gcode_viewer_mode_subject_, 0, "gcode_viewer_mode", subjects_);
 
-    // Tuning panel subjects (for tune panel sliders)
-    UI_MANAGED_SUBJECT_STRING(tune_speed_subject_, tune_speed_buf_, "100%", "tune_speed_display",
-                              subjects_);
-    UI_MANAGED_SUBJECT_STRING(tune_flow_subject_, tune_flow_buf_, "100%", "tune_flow_display",
-                              subjects_);
-    UI_MANAGED_SUBJECT_STRING(tune_z_offset_subject_, tune_z_offset_buf_, "0.000mm",
-                              "tune_z_offset_display", subjects_);
-
-    // Register XML event callbacks for tune panel
-    lv_xml_register_event_cb(nullptr, "on_tune_speed_changed", on_tune_speed_changed_cb);
-    lv_xml_register_event_cb(nullptr, "on_tune_flow_changed", on_tune_flow_changed_cb);
-    lv_xml_register_event_cb(nullptr, "on_tune_reset_clicked", on_tune_reset_clicked_cb);
-
-    // Z-offset tune callbacks (single handler parses button name for delta)
-    lv_xml_register_event_cb(nullptr, "on_tune_z_offset", on_tune_z_offset_cb);
-    lv_xml_register_event_cb(nullptr, "on_tune_save_z_offset", on_tune_save_z_offset_cb);
+    // Initialize tune overlay subjects and callbacks (extracted Phase 3)
+    tune_overlay_.init_subjects(printer_state_);
+    set_global_print_tune_overlay(&tune_overlay_);
 
     // Register XML event callbacks for print status panel buttons
-    lv_xml_register_event_cb(nullptr, "on_print_status_light", on_light_clicked);
-    lv_xml_register_event_cb(nullptr, "on_print_status_timelapse", on_timelapse_clicked);
+    // (light and timelapse callbacks are registered by light_timelapse_controls_.init_subjects())
     lv_xml_register_event_cb(nullptr, "on_print_status_pause", on_pause_clicked);
     lv_xml_register_event_cb(nullptr, "on_print_status_tune", on_tune_clicked);
     lv_xml_register_event_cb(nullptr, "on_print_status_cancel", on_cancel_clicked);
@@ -276,6 +247,14 @@ void PrintStatusPanel::init_subjects() {
 void PrintStatusPanel::deinit_subjects() {
     if (!subjects_initialized_)
         return;
+
+    // Clear tune overlay global accessor
+    set_global_print_tune_overlay(nullptr);
+    tune_overlay_.deinit_subjects();
+
+    // Clear light/timelapse global accessor
+    set_global_light_timelapse_controls(nullptr);
+    light_timelapse_controls_.deinit_subjects();
 
     subjects_.deinit_all();
 
@@ -789,88 +768,6 @@ void PrintStatusPanel::handle_bed_card_click() {
     }
 }
 
-void PrintStatusPanel::handle_light_button() {
-    spdlog::info("[{}] Light button clicked", get_name());
-
-    // Check if LED is configured
-    if (configured_led_.empty()) {
-        spdlog::warn("[{}] Light toggle called but no LED configured", get_name());
-        return;
-    }
-
-    // Toggle to opposite of current state
-    bool new_state = !led_on_;
-
-    // Send command to Moonraker
-    if (api_) {
-        if (new_state) {
-            api_->set_led_on(
-                configured_led_,
-                [this]() {
-                    spdlog::info("[{}] LED turned ON - waiting for state update", get_name());
-                },
-                [](const MoonrakerError& err) {
-                    spdlog::error("[Print Status] Failed to turn LED on: {}", err.message);
-                    NOTIFY_ERROR("Failed to turn light on: {}", err.user_message());
-                });
-        } else {
-            api_->set_led_off(
-                configured_led_,
-                [this]() {
-                    spdlog::info("[{}] LED turned OFF - waiting for state update", get_name());
-                },
-                [](const MoonrakerError& err) {
-                    spdlog::error("[Print Status] Failed to turn LED off: {}", err.message);
-                    NOTIFY_ERROR("Failed to turn light off: {}", err.user_message());
-                });
-        }
-    } else {
-        spdlog::warn("[{}] API not available - cannot control LED", get_name());
-        NOTIFY_ERROR("Cannot control light: printer not connected");
-    }
-}
-
-void PrintStatusPanel::handle_timelapse_button() {
-    spdlog::info("[{}] Timelapse button clicked (current state: {})", get_name(),
-                 timelapse_enabled_ ? "enabled" : "disabled");
-
-    // Toggle to opposite of current state
-    bool new_state = !timelapse_enabled_;
-
-    if (api_) {
-        api_->set_timelapse_enabled(
-            new_state,
-            [this, new_state]() {
-                spdlog::info("[{}] Timelapse {} successfully", get_name(),
-                             new_state ? "enabled" : "disabled");
-
-                // Update local state
-                timelapse_enabled_ = new_state;
-
-                // Update icon and label: U+F0567 = video (enabled), U+F0568 = video-off (disabled)
-                // MDI Plane 15 icons use 4-byte UTF-8 encoding
-                if (timelapse_enabled_) {
-                    std::snprintf(timelapse_button_buf_, sizeof(timelapse_button_buf_),
-                                  "\xF3\xB0\x95\xA7"); // video
-                    std::snprintf(timelapse_label_buf_, sizeof(timelapse_label_buf_), "On");
-                } else {
-                    std::snprintf(timelapse_button_buf_, sizeof(timelapse_button_buf_),
-                                  "\xF3\xB0\x95\xA8"); // video-off
-                    std::snprintf(timelapse_label_buf_, sizeof(timelapse_label_buf_), "Off");
-                }
-                lv_subject_copy_string(&timelapse_button_subject_, timelapse_button_buf_);
-                lv_subject_copy_string(&timelapse_label_subject_, timelapse_label_buf_);
-            },
-            [this](const MoonrakerError& err) {
-                spdlog::error("[{}] Failed to toggle timelapse: {}", get_name(), err.message);
-                NOTIFY_ERROR("Failed to toggle timelapse: {}", err.user_message());
-            });
-    } else {
-        spdlog::warn("[{}] API not available - cannot control timelapse", get_name());
-        NOTIFY_ERROR("Cannot control timelapse: printer not connected");
-    }
-}
-
 void PrintStatusPanel::handle_pause_button() {
     if (current_state_ == PrintState::Printing) {
         spdlog::info("[{}] Pausing print...", get_name());
@@ -938,14 +835,15 @@ void PrintStatusPanel::handle_tune_button() {
     spdlog::info("[{}] Tune button clicked - opening tuning panel", get_name());
 
     // Create tune panel on first access (lazy initialization)
-    if (!tune_panel_ && parent_screen_) {
+    lv_obj_t* tune_panel = tune_overlay_.get_panel();
+    if (!tune_panel && parent_screen_) {
         spdlog::debug("[{}] Creating tuning panel...", get_name());
 
-        tune_panel_ =
+        tune_panel =
             static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "print_tune_panel", nullptr));
-        if (tune_panel_) {
-            setup_tune_panel(tune_panel_);
-            lv_obj_add_flag(tune_panel_, LV_OBJ_FLAG_HIDDEN);
+        if (tune_panel) {
+            tune_overlay_.setup(tune_panel, parent_screen_, api_, printer_state_);
+            lv_obj_add_flag(tune_panel, LV_OBJ_FLAG_HIDDEN);
             spdlog::info("[{}] Tuning panel created and initialized", get_name());
         } else {
             spdlog::error("[{}] Failed to create tuning panel from XML", get_name());
@@ -955,11 +853,12 @@ void PrintStatusPanel::handle_tune_button() {
     }
 
     // Update displays with current values before showing
-    update_tune_display();
+    tune_overlay_.update_speed_flow_display(speed_percent_, flow_percent_);
 
     // Set slider values to current PrinterState values
-    if (tune_panel_) {
-        lv_obj_t* overlay_content = lv_obj_find_by_name(tune_panel_, "overlay_content");
+    tune_panel = tune_overlay_.get_panel();
+    if (tune_panel) {
+        lv_obj_t* overlay_content = lv_obj_find_by_name(tune_panel, "overlay_content");
         if (overlay_content) {
             lv_obj_t* speed_slider = lv_obj_find_by_name(overlay_content, "speed_slider");
             lv_obj_t* flow_slider = lv_obj_find_by_name(overlay_content, "flow_slider");
@@ -971,7 +870,7 @@ void PrintStatusPanel::handle_tune_button() {
                 lv_slider_set_value(flow_slider, flow_percent_, LV_ANIM_OFF);
             }
         }
-        ui_nav_push_overlay(tune_panel_);
+        ui_nav_push_overlay(tune_panel);
     }
 }
 
@@ -1070,20 +969,6 @@ void PrintStatusPanel::on_bed_card_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_bed_card_clicked");
     (void)e;
     get_global_print_status_panel().handle_bed_card_click();
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void PrintStatusPanel::on_light_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_light_clicked");
-    (void)e;
-    get_global_print_status_panel().handle_light_button();
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-void PrintStatusPanel::on_timelapse_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[PrintStatusPanel] on_timelapse_clicked");
-    (void)e;
-    get_global_print_status_panel().handle_timelapse_button();
     LVGL_SAFE_EVENT_CB_END();
 }
 
@@ -1510,34 +1395,13 @@ void PrintStatusPanel::on_flow_factor_changed(int flow) {
 }
 
 void PrintStatusPanel::on_gcode_z_offset_changed(int microns) {
-    // Update display from PrinterState (microns -> mm)
-    current_z_offset_ = microns / 1000.0;
-    if (subjects_initialized_) {
-        std::snprintf(tune_z_offset_buf_, sizeof(tune_z_offset_buf_), "%.3fmm", current_z_offset_);
-        lv_subject_copy_string(&tune_z_offset_subject_, tune_z_offset_buf_);
-    }
-    spdlog::trace("[{}] G-code Z-offset updated: {}µm ({}mm)", get_name(), microns,
-                  current_z_offset_);
+    // Delegate to tune overlay (extracted Phase 3)
+    tune_overlay_.update_z_offset_display(microns);
 }
 
 void PrintStatusPanel::on_led_state_changed(int state) {
-    led_on_ = (state != 0);
-
-    // Guard: subjects may not be initialized if called from constructor's observer setup
-    if (!subjects_initialized_) {
-        return;
-    }
-
-    // Update light button icon: lightbulb_on (F06E8) or lightbulb_outline (F0336)
-    if (led_on_) {
-        std::snprintf(light_button_buf_, sizeof(light_button_buf_), "\xF3\xB0\x9B\xA8");
-    } else {
-        std::snprintf(light_button_buf_, sizeof(light_button_buf_), "\xF3\xB0\x8C\xB6");
-    }
-    lv_subject_copy_string(&light_button_subject_, light_button_buf_);
-
-    spdlog::debug("[{}] LED state changed: {} (from PrinterState)", get_name(),
-                  led_on_ ? "ON" : "OFF");
+    // Delegate to light/timelapse controls (extracted Phase 2)
+    light_timelapse_controls_.update_led_state(state != 0);
 }
 
 void PrintStatusPanel::on_print_layer_changed(int current_layer) {
@@ -1707,68 +1571,6 @@ void PrintStatusPanel::on_print_start_progress_changed(int progress) {
         lv_bar_set_value(preparing_progress_bar_, progress, anim_enable);
     }
     spdlog::trace("[{}] Print start progress: {}%", get_name(), progress);
-}
-
-// ============================================================================
-// TUNE PANEL HELPERS
-// ============================================================================
-
-void PrintStatusPanel::setup_tune_panel(lv_obj_t* panel) {
-    // Use standard overlay panel setup for back button handling
-    ui_overlay_panel_setup_standard(panel, parent_screen_, "overlay_header", "overlay_content");
-
-    // Event handlers are registered via XML event_cb declarations
-    // (on_tune_speed_changed, on_tune_flow_changed, on_tune_reset_clicked, on_tune_z_offset)
-    // Callbacks registered in init_subjects() via lv_xml_register_event_cb()
-
-    // Update Z-offset icons based on printer kinematics
-    update_z_offset_icons(panel);
-
-    spdlog::debug("[{}] Tune panel setup complete (events wired via XML)", get_name());
-}
-
-void PrintStatusPanel::update_z_offset_icons(lv_obj_t* panel) {
-    // Get kinematics type from PrinterState
-    // 0 = unknown, 1 = bed moves Z (CoreXY), 2 = head moves Z (Cartesian/Delta)
-    int kin = lv_subject_get_int(printer_state_.get_printer_bed_moves_subject());
-    bool bed_moves_z = (kin == 1);
-
-    // Select icon codepoints based on kinematics
-    // CoreXY (bed moves): expand icons show bed motion
-    // Cartesian/Delta (head moves): arrow icons show head motion
-    const char* closer_icon =
-        bed_moves_z ? "\xF3\xB0\x9E\x93" : "\xF3\xB0\x81\x85"; // arrow-expand-down : arrow-down
-    const char* farther_icon =
-        bed_moves_z ? "\xF3\xB0\x9E\x96" : "\xF3\xB0\x81\x9D"; // arrow-expand-up : arrow-up
-
-    // Find and update all closer icons (3 buttons)
-    const char* closer_names[] = {"icon_z_closer_01", "icon_z_closer_005", "icon_z_closer_001"};
-    for (const char* name : closer_names) {
-        lv_obj_t* icon = lv_obj_find_by_name(panel, name);
-        if (icon) {
-            lv_label_set_text(icon, closer_icon);
-        }
-    }
-
-    // Find and update all farther icons (3 buttons)
-    const char* farther_names[] = {"icon_z_farther_001", "icon_z_farther_005", "icon_z_farther_01"};
-    for (const char* name : farther_names) {
-        lv_obj_t* icon = lv_obj_find_by_name(panel, name);
-        if (icon) {
-            lv_label_set_text(icon, farther_icon);
-        }
-    }
-
-    spdlog::debug("[{}] Z-offset icons set for {} kinematics", get_name(),
-                  bed_moves_z ? "bed-moves-Z" : "head-moves-Z");
-}
-
-void PrintStatusPanel::update_tune_display() {
-    std::snprintf(tune_speed_buf_, sizeof(tune_speed_buf_), "%d%%", speed_percent_);
-    lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
-
-    std::snprintf(tune_flow_buf_, sizeof(tune_flow_buf_), "%d%%", flow_percent_);
-    lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
 }
 
 void PrintStatusPanel::update_button_states() {
@@ -1956,210 +1758,13 @@ void PrintStatusPanel::animate_print_cancelled() {
     spdlog::debug("[{}] Print cancelled animation started", get_name());
 }
 
-void PrintStatusPanel::handle_tune_speed_changed(int value) {
-    // Update display immediately for responsive feel
-    std::snprintf(tune_speed_buf_, sizeof(tune_speed_buf_), "%d%%", value);
-    lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
-
-    // Send G-code command
-    if (api_) {
-        std::string gcode = "M220 S" + std::to_string(value);
-        api_->execute_gcode(
-            gcode, [value]() { spdlog::debug("[PrintStatusPanel] Speed set to {}%", value); },
-            [](const MoonrakerError& err) {
-                spdlog::error("[PrintStatusPanel] Failed to set speed: {}", err.message);
-                NOTIFY_ERROR("Failed to set print speed: {}", err.user_message());
-            });
-    }
-}
-
-void PrintStatusPanel::handle_tune_flow_changed(int value) {
-    // Update display immediately for responsive feel
-    std::snprintf(tune_flow_buf_, sizeof(tune_flow_buf_), "%d%%", value);
-    lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
-
-    // Send G-code command
-    if (api_) {
-        std::string gcode = "M221 S" + std::to_string(value);
-        api_->execute_gcode(
-            gcode, [value]() { spdlog::debug("[PrintStatusPanel] Flow set to {}%", value); },
-            [](const MoonrakerError& err) {
-                spdlog::error("[PrintStatusPanel] Failed to set flow: {}", err.message);
-                NOTIFY_ERROR("Failed to set flow rate: {}", err.user_message());
-            });
-    }
-}
-
-void PrintStatusPanel::handle_tune_reset() {
-    if (!tune_panel_) {
-        return;
-    }
-
-    lv_obj_t* overlay_content = lv_obj_find_by_name(tune_panel_, "overlay_content");
-    if (!overlay_content) {
-        return;
-    }
-
-    // Reset sliders to 100%
-    lv_obj_t* speed_slider = lv_obj_find_by_name(overlay_content, "speed_slider");
-    lv_obj_t* flow_slider = lv_obj_find_by_name(overlay_content, "flow_slider");
-
-    if (speed_slider) {
-        lv_slider_set_value(speed_slider, 100, LV_ANIM_ON);
-    }
-    if (flow_slider) {
-        lv_slider_set_value(flow_slider, 100, LV_ANIM_ON);
-    }
-
-    // Update displays
-    std::snprintf(tune_speed_buf_, sizeof(tune_speed_buf_), "100%%");
-    lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
-    std::snprintf(tune_flow_buf_, sizeof(tune_flow_buf_), "100%%");
-    lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
-
-    // Send G-code commands
-    if (api_) {
-        api_->execute_gcode(
-            "M220 S100", []() { spdlog::debug("[PrintStatusPanel] Speed reset to 100%"); },
-            [](const MoonrakerError& err) {
-                NOTIFY_ERROR("Failed to reset speed: {}", err.user_message());
-            });
-        api_->execute_gcode(
-            "M221 S100", []() { spdlog::debug("[PrintStatusPanel] Flow reset to 100%"); },
-            [](const MoonrakerError& err) {
-                NOTIFY_ERROR("Failed to reset flow: {}", err.user_message());
-            });
-    }
-}
-
-void PrintStatusPanel::handle_tune_z_offset_changed(double delta) {
-    // Update local display immediately for responsive feel
-    current_z_offset_ += delta;
-    std::snprintf(tune_z_offset_buf_, sizeof(tune_z_offset_buf_), "%.3fmm", current_z_offset_);
-    lv_subject_copy_string(&tune_z_offset_subject_, tune_z_offset_buf_);
-
-    // Track pending delta for "unsaved adjustment" notification in Controls panel
-    int delta_microns = static_cast<int>(delta * 1000.0);
-    get_printer_state().add_pending_z_offset_delta(delta_microns);
-
-    spdlog::debug("[{}] Z-offset adjust: {:+.3f}mm (total: {:.3f}mm)", get_name(), delta,
-                  current_z_offset_);
-
-    // Send SET_GCODE_OFFSET Z_ADJUST command to Klipper
-    if (api_) {
-        char gcode[64];
-        std::snprintf(gcode, sizeof(gcode), "SET_GCODE_OFFSET Z_ADJUST=%.3f", delta);
-        api_->execute_gcode(
-            gcode, [delta]() { spdlog::debug("[PrintStatusPanel] Z adjusted {:+.3f}mm", delta); },
-            [](const MoonrakerError& err) {
-                spdlog::error("[PrintStatusPanel] Z-offset adjust failed: {}", err.message);
-                NOTIFY_ERROR("Z-offset failed: {}", err.user_message());
-            });
-    }
-}
-
-void PrintStatusPanel::handle_tune_save_z_offset() {
-    // Show warning modal - SAVE_CONFIG restarts Klipper and cancels active prints!
-    save_z_offset_modal_.set_on_confirm([this]() {
-        if (api_) {
-            api_->execute_gcode(
-                "SAVE_CONFIG",
-                []() {
-                    spdlog::info("[PrintStatusPanel] Z-offset saved - Klipper restarting");
-                    ui_toast_show(ToastSeverity::WARNING, "Z-offset saved - Klipper restarting...",
-                                  5000);
-                },
-                [](const MoonrakerError& err) {
-                    spdlog::error("[PrintStatusPanel] SAVE_CONFIG failed: {}", err.message);
-                    NOTIFY_ERROR("Save failed: {}", err.user_message());
-                });
-        }
-    });
-    save_z_offset_modal_.show(lv_screen_active());
-}
-
-// ============================================================================
-// XML EVENT CALLBACKS (free functions using global accessor)
-// ============================================================================
-
-static void on_tune_speed_changed_cb(lv_event_t* e) {
-    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    if (slider) {
-        int value = lv_slider_get_value(slider);
-        get_global_print_status_panel().handle_tune_speed_changed(value);
-    }
-}
-
-static void on_tune_flow_changed_cb(lv_event_t* e) {
-    lv_obj_t* slider = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    if (slider) {
-        int value = lv_slider_get_value(slider);
-        get_global_print_status_panel().handle_tune_flow_changed(value);
-    }
-}
-
-static void on_tune_reset_clicked_cb(lv_event_t* /*e*/) {
-    get_global_print_status_panel().handle_tune_reset();
-}
-
-/**
- * @brief Single callback for all Z-offset buttons
- *
- * Parses button name to determine direction and magnitude:
- *   - btn_z_closer_01  -> -0.1mm (closer = negative = more squish)
- *   - btn_z_closer_005 -> -0.05mm
- *   - btn_z_closer_001 -> -0.01mm
- *   - btn_z_farther_001 -> +0.01mm (farther = positive = less squish)
- *   - btn_z_farther_005 -> +0.05mm
- *   - btn_z_farther_01 -> +0.1mm
- */
-static void on_tune_z_offset_cb(lv_event_t* e) {
-    lv_obj_t* btn = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    if (!btn) {
-        return;
-    }
-
-    // Get button name to determine delta
-    const char* name = lv_obj_get_name(btn);
-    if (!name) {
-        spdlog::warn("[on_tune_z_offset_cb] Button has no name");
-        return;
-    }
-
-    // Parse direction: "closer" = negative, "farther" = positive
-    double delta = 0.0;
-    bool is_closer = (strstr(name, "closer") != nullptr);
-    bool is_farther = (strstr(name, "farther") != nullptr);
-
-    if (!is_closer && !is_farther) {
-        spdlog::warn("[on_tune_z_offset_cb] Unknown button name: {}", name);
-        return;
-    }
-
-    // Parse magnitude from suffix: "_01" = 0.1, "_005" = 0.05, "_001" = 0.01
-    if (strstr(name, "_01") && !strstr(name, "_001")) {
-        delta = 0.1;
-    } else if (strstr(name, "_005")) {
-        delta = 0.05;
-    } else if (strstr(name, "_001")) {
-        delta = 0.01;
-    } else {
-        spdlog::warn("[on_tune_z_offset_cb] Unknown delta in button name: {}", name);
-        return;
-    }
-
-    // Apply direction: closer = more squish = negative Z adjust
-    if (is_closer) {
-        delta = -delta;
-    }
-
-    spdlog::trace("[on_tune_z_offset_cb] Button '{}' -> delta {:+.3f}mm", name, delta);
-    get_global_print_status_panel().handle_tune_z_offset_changed(delta);
-}
-
-static void on_tune_save_z_offset_cb(lv_event_t* /*e*/) {
-    get_global_print_status_panel().handle_tune_save_z_offset();
-}
+// Tune panel handlers delegated to PrintTuneOverlay:
+// - handle_tune_speed_changed -> tune_overlay_.handle_speed_changed()
+// - handle_tune_flow_changed -> tune_overlay_.handle_flow_changed()
+// - handle_tune_reset -> tune_overlay_.handle_reset()
+// - handle_tune_z_offset_changed -> tune_overlay_.handle_z_offset_changed()
+// - handle_tune_save_z_offset -> tune_overlay_.handle_save_z_offset()
+// XML callbacks are registered in ui_print_tune_overlay.cpp
 
 // ============================================================================
 // THUMBNAIL LOADING
