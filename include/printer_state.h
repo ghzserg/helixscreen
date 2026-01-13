@@ -8,12 +8,14 @@
 #include "lvgl/lvgl.h"
 #include "printer_calibration_state.h"
 #include "printer_capabilities_state.h"
+#include "printer_composite_visibility_state.h"
 #include "printer_detector.h"
 #include "printer_fan_state.h"
 #include "printer_hardware_discovery.h"
 #include "printer_hardware_validation_state.h"
 #include "printer_led_state.h"
 #include "printer_motion_state.h"
+#include "printer_network_state.h"
 #include "printer_plugin_status_state.h"
 #include "printer_print_state.h"
 #include "printer_temperature_state.h"
@@ -640,27 +642,28 @@ class PrinterState {
         motion_state_.clear_pending_z_offset_delta();
     }
 
-    // Printer connection state subjects (Moonraker WebSocket)
+    // Printer connection state subjects (Moonraker WebSocket) - delegated to PrinterNetworkState
     lv_subject_t* get_printer_connection_state_subject() {
-        return &printer_connection_state_;
+        return network_state_.get_printer_connection_state_subject();
     } // 0=disconnected, 1=connecting, 2=connected, 3=reconnecting, 4=failed
     lv_subject_t* get_printer_connection_message_subject() {
-        return &printer_connection_message_;
+        return network_state_.get_printer_connection_message_subject();
     } // Status message
 
-    // Network connectivity subject (WiFi/Ethernet)
+    // Network connectivity subject (WiFi/Ethernet) - delegated to PrinterNetworkState
     lv_subject_t* get_network_status_subject() {
-        return &network_status_;
+        return network_state_.get_network_status_subject();
     } // 0=disconnected, 1=connecting, 2=connected (matches NetworkStatus enum)
 
-    // Klipper firmware state subject
+    // Klipper firmware state subject - delegated to PrinterNetworkState
     lv_subject_t* get_klippy_state_subject() {
-        return &klippy_state_;
+        return network_state_.get_klippy_state_subject();
     } // 0=ready, 1=startup, 2=shutdown, 3=error (matches KlippyState enum)
 
-    // Combined nav button enabled subject (for navbar icon visibility)
+    // Combined nav button enabled subject (for navbar icon visibility) - delegated to
+    // PrinterNetworkState
     lv_subject_t* get_nav_buttons_enabled_subject() {
-        return &nav_buttons_enabled_;
+        return network_state_.get_nav_buttons_enabled_subject();
     } // 1=enabled (connected AND klippy ready), 0=disabled
 
     // LED state subjects - delegated to PrinterLedState component
@@ -776,7 +779,7 @@ class PrinterState {
      * being connected" (yellow warning icon).
      */
     bool was_ever_connected() const {
-        return was_ever_connected_;
+        return network_state_.was_ever_connected();
     }
 
     /**
@@ -953,28 +956,28 @@ class PrinterState {
      * printer_has_bed_mesh), 0 otherwise.
      */
     lv_subject_t* get_can_show_bed_mesh_subject() {
-        return &can_show_bed_mesh_;
+        return composite_visibility_state_.get_can_show_bed_mesh_subject();
     }
 
     /**
      * @brief Get visibility subject for QGL row
      */
     lv_subject_t* get_can_show_qgl_subject() {
-        return &can_show_qgl_;
+        return composite_visibility_state_.get_can_show_qgl_subject();
     }
 
     /**
      * @brief Get visibility subject for Z-tilt row
      */
     lv_subject_t* get_can_show_z_tilt_subject() {
-        return &can_show_z_tilt_;
+        return composite_visibility_state_.get_can_show_z_tilt_subject();
     }
 
     /**
      * @brief Get visibility subject for nozzle clean row
      */
     lv_subject_t* get_can_show_nozzle_clean_subject() {
-        return &can_show_nozzle_clean_;
+        return composite_visibility_state_.get_can_show_nozzle_clean_subject();
     }
 
     /**
@@ -1003,7 +1006,7 @@ class PrinterState {
      * printer_has_purge_line), 0 otherwise.
      */
     lv_subject_t* get_can_show_purge_line_subject() {
-        return &can_show_purge_line_;
+        return composite_visibility_state_.get_can_show_purge_line_subject();
     }
 
     /**
@@ -1242,6 +1245,12 @@ class PrinterState {
     /// Hardware validation state component (issue counts, severity, status text)
     helix::PrinterHardwareValidationState hardware_validation_state_;
 
+    /// Composite visibility state component (can_show_* derived subjects)
+    helix::PrinterCompositeVisibilityState composite_visibility_state_;
+
+    /// Network state component (connection, klippy, nav buttons)
+    helix::PrinterNetworkState network_state_;
+
     // Note: Print subjects are now managed by print_domain_ component
     // (print_progress_, print_filename_, print_state_, print_state_enum_,
     //  print_outcome_, print_active_, print_show_progress_, print_display_filename_,
@@ -1256,19 +1265,9 @@ class PrinterState {
     // Note: Fan subjects (fan_speed_, fans_, fans_version_, fan_speed_subjects_)
     // are now managed by fan_state_ component
 
-    // Printer connection state subjects (Moonraker WebSocket)
-    lv_subject_t printer_connection_state_;   // Integer: uses PrinterStatus enum values
-    lv_subject_t printer_connection_message_; // String buffer
-
-    // Network connectivity subject (WiFi/Ethernet)
-    lv_subject_t network_status_; // Integer: uses NetworkStatus enum values
-
-    // Klipper firmware state subject
-    lv_subject_t klippy_state_; // Integer: uses KlippyState enum values
-
-    // Combined nav button enabled state (for navbar icon visibility)
-    // 1 = enabled (connected AND klippy ready), 0 = disabled
-    lv_subject_t nav_buttons_enabled_;
+    // Note: Network subjects (printer_connection_state_, printer_connection_message_,
+    // network_status_, klippy_state_, nav_buttons_enabled_, was_ever_connected_)
+    // are now managed by network_state_ component
 
     // Note: LED subjects (led_state_, led_r_, led_g_, led_b_, led_w_, led_brightness_)
     // are now managed by led_state_component_
@@ -1287,14 +1286,9 @@ class PrinterState {
     // Note: Plugin status subjects (helix_plugin_installed_, phase_tracking_enabled_)
     // are now managed by plugin_status_state_ component
 
-    // Composite subjects for G-code modification option visibility
-    // These combine helix_plugin_installed with individual printer capabilities.
-    // An option is shown only when BOTH: plugin installed AND printer has capability.
-    lv_subject_t can_show_bed_mesh_;     // helix_plugin_installed && printer_has_bed_mesh
-    lv_subject_t can_show_qgl_;          // helix_plugin_installed && printer_has_qgl
-    lv_subject_t can_show_z_tilt_;       // helix_plugin_installed && printer_has_z_tilt
-    lv_subject_t can_show_nozzle_clean_; // helix_plugin_installed && printer_has_nozzle_clean
-    lv_subject_t can_show_purge_line_;   // helix_plugin_installed && printer_has_purge_line
+    // Note: Composite visibility subjects (can_show_bed_mesh_, can_show_qgl_,
+    // can_show_z_tilt_, can_show_nozzle_clean_, can_show_purge_line_)
+    // are now managed by composite_visibility_state_ component
 
     // Note: Firmware retraction, manual probe, and motor state subjects
     // (retract_length_, retract_speed_, unretract_extra_length_, unretract_speed_,
@@ -1317,7 +1311,7 @@ class PrinterState {
     // Note: homed_axes_buf_ is now in motion_state_ component
     // Note: print-related buffers are now in print_domain_ component
     // Note: hardware validation buffers are now in hardware_validation_state_ component
-    char printer_connection_message_buf_[128];
+    // Note: printer_connection_message_buf_ is now in network_state_ component
     char klipper_version_buf_[64];
     char moonraker_version_buf_[64];
 
@@ -1331,8 +1325,7 @@ class PrinterState {
     // Cached display pointer to detect LVGL reinitialization (for test isolation)
     lv_display_t* cached_display_ = nullptr;
 
-    // Track if we've ever successfully connected (for UI display)
-    bool was_ever_connected_ = false;
+    // Note: was_ever_connected_ is now managed by network_state_ component
 
     // Capability override layer (user config overrides for auto-detected capabilities)
     CapabilityOverrides capability_overrides_;

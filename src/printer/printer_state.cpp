@@ -87,12 +87,11 @@ PrinterState::PrinterState() {
     // Initialize string buffers
     // Note: homed_axes_buf_ is now in motion_state_ component
     // Note: print-related buffers are now in print_domain_ component
-    std::memset(printer_connection_message_buf_, 0, sizeof(printer_connection_message_buf_));
+    // Note: printer_connection_message_buf_ is now in network_state_ component
     std::memset(klipper_version_buf_, 0, sizeof(klipper_version_buf_));
     std::memset(moonraker_version_buf_, 0, sizeof(moonraker_version_buf_));
 
     // Set default values
-    std::strcpy(printer_connection_message_buf_, "Disconnected");
     std::strcpy(klipper_version_buf_, "—");
     std::strcpy(moonraker_version_buf_, "—");
 
@@ -137,6 +136,12 @@ void PrinterState::reset_for_testing() {
 
     // Reset hardware validation state component
     hardware_validation_state_.reset_for_testing();
+
+    // Reset composite visibility state component
+    composite_visibility_state_.reset_for_testing();
+
+    // Reset network state component
+    network_state_.reset_for_testing();
 
     // Use SubjectManager for automatic subject cleanup
     subjects_.deinit_all();
@@ -199,22 +204,8 @@ void PrinterState::init_subjects(bool register_xml) {
     // Note: Capability subjects (printer_has_qgl_, printer_has_z_tilt_, etc.)
     // are now initialized by capabilities_state_.init_subjects() above
 
-    // Printer connection state subjects (Moonraker WebSocket)
-    lv_subject_init_int(&printer_connection_state_, 0); // 0 = disconnected
-    lv_subject_init_string(&printer_connection_message_, printer_connection_message_buf_, nullptr,
-                           sizeof(printer_connection_message_buf_), "Disconnected");
-
-    // Network connectivity subject (WiFi/Ethernet)
-    // TODO: Get actual network status from EthernetManager/WiFiManager
-    lv_subject_init_int(&network_status_,
-                        2); // 0=DISCONNECTED, 1=CONNECTING, 2=CONNECTED (mock mode default)
-
-    // Klipper firmware state subject (default to READY)
-    lv_subject_init_int(&klippy_state_, static_cast<int>(KlippyState::READY));
-
-    // Combined nav button enabled subject (connected AND klippy ready)
-    // Starts disabled (0) - will be updated when connection/klippy state changes
-    lv_subject_init_int(&nav_buttons_enabled_, 0);
+    // Initialize network state component (connection, klippy, nav buttons)
+    network_state_.init_subjects(register_xml);
 
     // Note: LED subjects are initialized by led_state_component_.init_subjects() above
 
@@ -230,13 +221,8 @@ void PrinterState::init_subjects(bool register_xml) {
     // Hardware validation subjects (for Hardware Health section in Settings)
     hardware_validation_state_.init_subjects(register_xml);
 
-    // Composite subjects for G-code modification option visibility
-    // These are derived from helix_plugin_installed AND printer_has_* subjects
-    lv_subject_init_int(&can_show_bed_mesh_, 0);
-    lv_subject_init_int(&can_show_qgl_, 0);
-    lv_subject_init_int(&can_show_z_tilt_, 0);
-    lv_subject_init_int(&can_show_nozzle_clean_, 0);
-    lv_subject_init_int(&can_show_purge_line_, 0);
+    // Composite visibility subjects (derived can_show_* subjects)
+    composite_visibility_state_.init_subjects(register_xml);
 
     // Note: Hardware validation subjects are now initialized by
     // hardware_validation_state_.init_subjects() above
@@ -256,27 +242,15 @@ void PrinterState::init_subjects(bool register_xml) {
     // Note: Motion subjects are registered by motion_state_ component
     // Note: Fan subjects are registered by fan_state_ component
     // Note: Capability subjects are managed by capabilities_state_ component
-    // Printer connection subjects
-    subjects_.register_subject(&printer_connection_state_);
-    subjects_.register_subject(&printer_connection_message_);
-    subjects_.register_subject(&network_status_);
-    subjects_.register_subject(&klippy_state_);
-    subjects_.register_subject(&nav_buttons_enabled_);
+    // Note: Network subjects are registered by network_state_.init_subjects()
     // Note: LED subjects are registered by led_state_component_.init_subjects()
     // Excluded objects
     subjects_.register_subject(&excluded_objects_version_);
     // Note: Plugin status subjects are registered by plugin_status_state_.init_subjects()
-    // Composite subjects for G-code modification visibility
-    subjects_.register_subject(&can_show_bed_mesh_);
-    subjects_.register_subject(&can_show_qgl_);
-    subjects_.register_subject(&can_show_z_tilt_);
-    subjects_.register_subject(&can_show_nozzle_clean_);
-    subjects_.register_subject(&can_show_purge_line_);
-    // Note: Hardware validation subjects are registered by
-    // hardware_validation_state_.init_subjects()
-    // Note: Firmware retraction, manual probe, and motor state subjects
-    // are registered by calibration_state_.init_subjects()
-    // Version subjects
+    // Note: Composite visibility subjects are registered by
+    // composite_visibility_state_.init_subjects() Note: Hardware validation subjects are registered
+    // by hardware_validation_state_.init_subjects() Note: Firmware retraction, manual probe, and
+    // motor state subjects are registered by calibration_state_.init_subjects() Version subjects
     subjects_.register_subject(&klipper_version_);
     subjects_.register_subject(&moonraker_version_);
 
@@ -288,26 +262,16 @@ void PrinterState::init_subjects(bool register_xml) {
     // Note: Motion subjects are registered by motion_state_ component
     // Note: Fan subjects are registered by fan_state_ component
     // Note: Capability subjects are registered by capabilities_state_ component
+    // Note: Network subjects are registered by network_state_.init_subjects()
+    // Note: LED subjects are registered by led_state_component_.init_subjects()
+    // Note: Plugin status subjects are registered by plugin_status_state_.init_subjects()
+    // Note: Composite visibility subjects are registered by
+    // composite_visibility_state_.init_subjects() Note: Hardware validation subjects are registered
+    // by hardware_validation_state_.init_subjects() Note: Firmware retraction, manual probe, and
+    // motor state subjects are registered by calibration_state_.init_subjects()
     if (register_xml) {
         spdlog::debug("[PrinterState] Registering subjects with XML system");
-        lv_xml_register_subject(NULL, "printer_connection_state", &printer_connection_state_);
-        lv_xml_register_subject(NULL, "printer_connection_message", &printer_connection_message_);
-        lv_xml_register_subject(NULL, "network_status", &network_status_);
-        lv_xml_register_subject(NULL, "klippy_state", &klippy_state_);
-        lv_xml_register_subject(NULL, "nav_buttons_enabled", &nav_buttons_enabled_);
-        // Note: LED subjects are registered by led_state_component_.init_subjects()
         lv_xml_register_subject(NULL, "excluded_objects_version", &excluded_objects_version_);
-        // Note: Plugin status subjects are registered by plugin_status_state_.init_subjects()
-        // Composite subjects for G-code modification visibility
-        lv_xml_register_subject(NULL, "can_show_bed_mesh", &can_show_bed_mesh_);
-        lv_xml_register_subject(NULL, "can_show_qgl", &can_show_qgl_);
-        lv_xml_register_subject(NULL, "can_show_z_tilt", &can_show_z_tilt_);
-        lv_xml_register_subject(NULL, "can_show_nozzle_clean", &can_show_nozzle_clean_);
-        lv_xml_register_subject(NULL, "can_show_purge_line", &can_show_purge_line_);
-        // Note: Hardware validation subjects are registered by
-        // hardware_validation_state_.init_subjects()
-        // Note: Firmware retraction, manual probe, and motor state subjects
-        // are registered by calibration_state_.init_subjects()
         lv_xml_register_subject(NULL, "klipper_version", &klipper_version_);
         lv_xml_register_subject(NULL, "moonraker_version", &moonraker_version_);
     } else {
@@ -417,7 +381,7 @@ void PrinterState::update_from_status(const json& state) {
                 new_state = KlippyState::ERROR;
             }
 
-            lv_subject_set_int(&klippy_state_, static_cast<int>(new_state));
+            network_state_.set_klippy_state_internal(new_state);
             spdlog::debug("[PrinterState] Klippy state from webhooks: {}", klippy_state_str);
         }
     }
@@ -454,29 +418,13 @@ void PrinterState::set_printer_connection_state(int state, const char* message) 
 }
 
 void PrinterState::set_printer_connection_state_internal(int state, const char* message) {
-    // Called from main thread via ui_async_call
-    spdlog::info("[PrinterState] Printer connection state changed: {} - {}", state, message);
-
-    // Track if we've ever successfully connected
-    if (state == static_cast<int>(ConnectionState::CONNECTED) && !was_ever_connected_) {
-        was_ever_connected_ = true;
-        spdlog::debug("[PrinterState] First successful connection - was_ever_connected_ = true");
-    }
-
-    spdlog::trace("[PrinterState] Setting printer_connection_state_ subject (at {}) to value {}",
-                  (void*)&printer_connection_state_, state);
-    lv_subject_set_int(&printer_connection_state_, state);
-    spdlog::trace("[PrinterState] Subject value now: {}",
-                  lv_subject_get_int(&printer_connection_state_));
-    lv_subject_copy_string(&printer_connection_message_, message);
-    update_nav_buttons_enabled();
-    spdlog::trace(
-        "[PrinterState] Printer connection state update complete, observers should be notified");
+    // Delegate to network_state_ component
+    network_state_.set_printer_connection_state_internal(state, message);
 }
 
 void PrinterState::set_network_status(int status) {
-    spdlog::debug("[PrinterState] Network status changed: {}", status);
-    lv_subject_set_int(&network_status_, status);
+    // Delegate to network_state_ component
+    network_state_.set_network_status(status);
 }
 
 void PrinterState::set_klippy_state(KlippyState state) {
@@ -490,27 +438,13 @@ void PrinterState::set_klippy_state_sync(KlippyState state) {
 }
 
 void PrinterState::set_klippy_state_internal(KlippyState state) {
-    const char* state_names[] = {"READY", "STARTUP", "SHUTDOWN", "ERROR"};
-    int state_int = static_cast<int>(state);
-    spdlog::info("[PrinterState] Klippy state changed: {} ({})", state_names[state_int], state_int);
-    lv_subject_set_int(&klippy_state_, state_int);
-    update_nav_buttons_enabled();
+    // Delegate to network_state_ component
+    network_state_.set_klippy_state_internal(state);
 }
 
 void PrinterState::update_nav_buttons_enabled() {
-    // Compute combined state: enabled when connected AND klippy ready
-    int connection = lv_subject_get_int(&printer_connection_state_);
-    int klippy = lv_subject_get_int(&klippy_state_);
-    bool connected = (connection == static_cast<int>(ConnectionState::CONNECTED));
-    bool klippy_ready = (klippy == static_cast<int>(KlippyState::READY));
-    int enabled = (connected && klippy_ready) ? 1 : 0;
-
-    // Only update if changed to avoid unnecessary observer notifications
-    if (lv_subject_get_int(&nav_buttons_enabled_) != enabled) {
-        spdlog::debug("[PrinterState] nav_buttons_enabled: {} (connected={}, klippy_ready={})",
-                      enabled, connected, klippy_ready);
-        lv_subject_set_int(&nav_buttons_enabled_, enabled);
-    }
+    // Delegate to network_state_ component
+    network_state_.update_nav_buttons_enabled();
 }
 
 void PrinterState::set_print_in_progress(bool in_progress) {
@@ -588,46 +522,9 @@ bool PrinterState::is_phase_tracking_enabled() const {
 }
 
 void PrinterState::update_gcode_modification_visibility() {
-    // Recalculate composite subjects: can_show_X = helix_plugin_installed && printer_has_X
-    // These control visibility of pre-print G-code modification options in the UI
-    // Only consider plugin "installed" when value is 1 (not -1=unknown or 0=not installed)
+    // Delegate to composite visibility component
     bool plugin = plugin_status_state_.service_has_helix_plugin();
-
-    auto update_if_changed = [](lv_subject_t* subject, int new_value) {
-        if (lv_subject_get_int(subject) != new_value) {
-            lv_subject_set_int(subject, new_value);
-        }
-    };
-
-    // Read capability values from capabilities_state_ component
-    update_if_changed(
-        &can_show_bed_mesh_,
-        (plugin && lv_subject_get_int(capabilities_state_.get_printer_has_bed_mesh_subject())) ? 1
-                                                                                               : 0);
-    update_if_changed(
-        &can_show_qgl_,
-        (plugin && lv_subject_get_int(capabilities_state_.get_printer_has_qgl_subject())) ? 1 : 0);
-    update_if_changed(
-        &can_show_z_tilt_,
-        (plugin && lv_subject_get_int(capabilities_state_.get_printer_has_z_tilt_subject())) ? 1
-                                                                                             : 0);
-    update_if_changed(
-        &can_show_nozzle_clean_,
-        (plugin && lv_subject_get_int(capabilities_state_.get_printer_has_nozzle_clean_subject()))
-            ? 1
-            : 0);
-    update_if_changed(
-        &can_show_purge_line_,
-        (plugin && lv_subject_get_int(capabilities_state_.get_printer_has_purge_line_subject()))
-            ? 1
-            : 0);
-
-    spdlog::debug("[PrinterState] G-code modification visibility updated: bed_mesh={}, qgl={}, "
-                  "z_tilt={}, nozzle_clean={}, purge_line={} (plugin={})",
-                  lv_subject_get_int(&can_show_bed_mesh_), lv_subject_get_int(&can_show_qgl_),
-                  lv_subject_get_int(&can_show_z_tilt_),
-                  lv_subject_get_int(&can_show_nozzle_clean_),
-                  lv_subject_get_int(&can_show_purge_line_), plugin);
+    composite_visibility_state_.update_visibility(plugin, capabilities_state_);
 }
 
 // Note: update_print_show_progress() is now in print_domain_ component

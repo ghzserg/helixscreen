@@ -93,73 +93,73 @@ class PrinterCapabilitiesState {
     // ========================================================================
 
     /// 1 if printer has quad_gantry_level
-    lv_subject_t* get_printer_has_qgl_subject() {
-        return &printer_has_qgl_;
+    lv_subject_t* get_printer_has_qgl_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_qgl_);
     }
 
     /// 1 if printer has z_tilt_adjust
-    lv_subject_t* get_printer_has_z_tilt_subject() {
-        return &printer_has_z_tilt_;
+    lv_subject_t* get_printer_has_z_tilt_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_z_tilt_);
     }
 
     /// 1 if printer has bed_mesh calibration
-    lv_subject_t* get_printer_has_bed_mesh_subject() {
-        return &printer_has_bed_mesh_;
+    lv_subject_t* get_printer_has_bed_mesh_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_bed_mesh_);
     }
 
     /// 1 if printer has nozzle clean macro
-    lv_subject_t* get_printer_has_nozzle_clean_subject() {
-        return &printer_has_nozzle_clean_;
+    lv_subject_t* get_printer_has_nozzle_clean_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_nozzle_clean_);
     }
 
     /// 1 if printer has probe or bltouch
-    lv_subject_t* get_printer_has_probe_subject() {
-        return &printer_has_probe_;
+    lv_subject_t* get_printer_has_probe_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_probe_);
     }
 
     /// 1 if printer has heated bed
-    lv_subject_t* get_printer_has_heater_bed_subject() {
-        return &printer_has_heater_bed_;
+    lv_subject_t* get_printer_has_heater_bed_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_heater_bed_);
     }
 
     /// 1 if printer has controllable LED
-    lv_subject_t* get_printer_has_led_subject() {
-        return &printer_has_led_;
+    lv_subject_t* get_printer_has_led_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_led_);
     }
 
     /// 1 if printer has accelerometer for input shaping
-    lv_subject_t* get_printer_has_accelerometer_subject() {
-        return &printer_has_accelerometer_;
+    lv_subject_t* get_printer_has_accelerometer_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_accelerometer_);
     }
 
     /// 1 if spoolman filament manager is available
-    lv_subject_t* get_printer_has_spoolman_subject() {
-        return &printer_has_spoolman_;
+    lv_subject_t* get_printer_has_spoolman_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_spoolman_);
     }
 
     /// 1 if printer has speaker for M300 audio
-    lv_subject_t* get_printer_has_speaker_subject() {
-        return &printer_has_speaker_;
+    lv_subject_t* get_printer_has_speaker_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_speaker_);
     }
 
     /// 1 if moonraker-timelapse plugin is installed
-    lv_subject_t* get_printer_has_timelapse_subject() {
-        return &printer_has_timelapse_;
+    lv_subject_t* get_printer_has_timelapse_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_timelapse_);
     }
 
     /// 1 if printer has purge/priming capability
-    lv_subject_t* get_printer_has_purge_line_subject() {
-        return &printer_has_purge_line_;
+    lv_subject_t* get_printer_has_purge_line_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_purge_line_);
     }
 
     /// 1 if printer has firmware retraction (G10/G11)
-    lv_subject_t* get_printer_has_firmware_retraction_subject() {
-        return &printer_has_firmware_retraction_;
+    lv_subject_t* get_printer_has_firmware_retraction_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_firmware_retraction_);
     }
 
     /// 1 if bed moves on Z axis, 0 if gantry moves
-    lv_subject_t* get_printer_bed_moves_subject() {
-        return &printer_bed_moves_;
+    lv_subject_t* get_printer_bed_moves_subject() const {
+        return const_cast<lv_subject_t*>(&printer_bed_moves_);
     }
 
     // ========================================================================
