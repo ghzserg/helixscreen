@@ -194,7 +194,7 @@ For each timer found, classify:
 
 **Why:** Prevents future timer leaks by making cleanup automatic.
 
-- [ ] **Create header** `include/ui_timer_guard.h`:
+- [x] **Create header** `include/ui_timer_guard.h`: ✅ DONE (2026-01-12)
 
 ```cpp
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -1317,7 +1317,7 @@ Update this table as work progresses:
 
 | Priority | Status | Progress | Completed Date | Notes |
 |----------|--------|----------|----------------|-------|
-| P1: Critical Safety | [~] | 75% | | Timer leak fix done; `LvglTimerGuard` created but not adopted |
+| P1: Critical Safety | [x] | 100% | | Timer leak fix done; `LvglTimerGuard` RAII wrapper created; all timer deletions guarded |
 | P2: RAII Compliance | [~] | 15% | | `ui_hsv_picker.cpp` migrated; 3 files remaining (8 deletes) |
 | P3: XML Tokens | [~] | 80% | | Down from 85+ files to 16 occurrences |
 | P4: Declarative UI | [~] | 20% | | 140 event handlers (many legitimate); 533 inline styles |
@@ -1331,6 +1331,7 @@ Update this table as work progresses:
 
 | Date | Author | Changes |
 |------|--------|---------|
+| 2026-01-12 | Claude | P1 COMPLETE: All timer deletions now guarded with lv_is_initialized(); LvglTimerGuard RAII wrapper created |
 | 2025-12-18 | Claude | Audit & rebaseline: Updated all metrics, corrected progress percentages, renamed to Technical Debt Tracker |
 | 2025-12-16 | Claude | P1 partial: HomePanel timer fix, LvglTimerGuard RAII wrapper created (not yet adopted) |
 | 2025-12-16 | Claude | P2 started: RAII fix in ui_hsv_picker.cpp |
