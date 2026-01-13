@@ -26,11 +26,11 @@
  * ## Usage
  *
  * ```cpp
- * PrinterHardware hw(client.get_heaters(), client.get_sensors(),
- *                    client.get_fans(), client.get_leds());
+ * const auto& hw = client.hardware();
+ * PrinterHardware guesser(hw.heaters(), hw.sensors(), hw.fans(), hw.leds());
  *
- * std::string bed = hw.guess_bed_heater();       // e.g., "heater_bed"
- * std::string fan = hw.guess_part_cooling_fan(); // e.g., "fan"
+ * std::string bed = guesser.guess_bed_heater();       // e.g., "heater_bed"
+ * std::string fan = guesser.guess_part_cooling_fan(); // e.g., "fan"
  * ```
  */
 class PrinterHardware {

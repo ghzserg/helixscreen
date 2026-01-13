@@ -117,8 +117,8 @@
         <text_small width="100%" text="Currently Loaded" style_text_color="#text_secondary"/>
         <!-- Currently Loaded Card - horizontal layout: swatch left, details stacked right -->
         <ui_card name="current_loaded_card"
-                 width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_sm"
-                 flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
+                 width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_sm" flex_flow="row"
+                 style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
           <!-- Color swatch for current filament (left side) -->
           <lv_obj name="current_swatch"
                   width="#current_swatch_size" height="#current_swatch_size" style_radius="#border_radius"

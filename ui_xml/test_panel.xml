@@ -39,8 +39,7 @@
     <!-- ============================================================ -->
     <!-- SPOOL VISUALIZATION TESTS - Pseudo-3D Canvas vs Flat Ring    -->
     <!-- ============================================================ -->
-    <lv_label text="Spool Visualization (Pseudo-3D Canvas)"
-              style_text_font="#font_heading" style_margin_bottom="5"/>
+    <lv_label text="Spool Visualization (Pseudo-3D Canvas)" style_text_font="#font_heading" style_margin_bottom="5"/>
     <ui_card width="100%"
              height="100" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_evenly" style_flex_cross_place="center">
@@ -124,31 +123,23 @@
              height="56" style_radius="#border_radius" style_pad_all="#space_lg" style_pad_gap="#space_md"
              flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
       <lv_label text="Toggle Feature" style_text_font="#font_body"/>
-      <ui_switch name="test_switch_1"
-                 width="44" height="24" style_pad_knob_all="2"/>
+      <ui_switch name="test_switch_1" width="44" height="24" style_pad_knob_all="2"/>
     </ui_card>
     <!-- Test Row 2: Large Label + Switch -->
     <ui_card width="100%"
-             height="72" style_radius="#border_radius" style_pad_all="#space_lg"
-             style_pad_gap="#space_md" flex_flow="row" style_flex_main_place="space_between"
-             style_flex_cross_place="center">
+             height="72" style_radius="#border_radius" style_pad_all="#space_lg" style_pad_gap="#space_md"
+             flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
       <lv_label text="Advanced Setting" style_text_font="#font_heading"/>
-      <ui_switch name="test_switch_2"
-                 width="56" height="32"
-                 style_pad_knob_all="3" checked="true"/>
+      <ui_switch name="test_switch_2" width="56" height="32" style_pad_knob_all="3" checked="true"/>
     </ui_card>
     <!-- Test Row 3: Compact Row with Two Switches -->
     <ui_card width="100%"
              height="56" style_radius="#border_radius" style_pad_all="#space_lg" style_pad_gap="#space_md"
              flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center">
       <lv_label text="WiFi" style_text_font="#font_body" style_margin_right="10"/>
-      <ui_switch name="test_switch_3"
-                 width="44" height="24" style_pad_knob_all="2"
-                 style_margin_right="20"/>
+      <ui_switch name="test_switch_3" width="44" height="24" style_pad_knob_all="2" style_margin_right="20"/>
       <lv_label text="Bluetooth" style_text_font="#font_body" style_margin_right="10"/>
-      <ui_switch name="test_switch_4"
-                 width="44" height="24" style_pad_knob_all="2"
-                 checked="true"/>
+      <ui_switch name="test_switch_4" width="44" height="24" style_pad_knob_all="2" checked="true"/>
     </ui_card>
     <!-- NEW: Test semantic size parameter -->
     <lv_label text="Semantic Size Parameter Tests" style_text_font="#font_heading" style_margin_top="10"/>

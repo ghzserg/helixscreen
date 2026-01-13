@@ -12,7 +12,7 @@
     <px name="bed_diagram_height_small" value="130"/>
     <px name="bed_diagram_height_medium" value="160"/>
     <px name="bed_diagram_height_large" value="200"/>
-    
+
     <!-- Screw indicator compound widget size (direction + adjustment text) -->
     <px name="screw_indicator_width_small" value="54"/>
     <px name="screw_indicator_width_medium" value="64"/>

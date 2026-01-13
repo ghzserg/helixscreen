@@ -250,8 +250,8 @@
       <!-- Card 4: Calibration & Tools (40% width, 2x2 grid) -->
       <ui_card name="card_calibration"
                width="0" height="100%" flex_grow="2" flex_flow="column" style_flex_main_place="start"
-               style_radius="#border_radius" style_border_width="0" style_pad_all="#space_sm"
-               style_pad_gap="#space_xs" scrollable="false">
+               style_radius="#border_radius" style_border_width="0" style_pad_all="#space_sm" style_pad_gap="#space_xs"
+               scrollable="false">
         <!-- Header Row -->
         <lv_obj width="100%"
                 height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"

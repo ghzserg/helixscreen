@@ -57,26 +57,22 @@
                 width="100%" height="content" style_bg_opa="0" style_pad_all="0" style_border_width="2"
                 scrollable="false" flex_flow="row_wrap" style_flex_main_place="space_between" style_pad_gap="#space_xs">
           <lv_button name="preset_off"
-                     width="48%" height="#button_height_sm" style_radius="#border_radius_small"
-                     style_border_width="0">
+                     width="48%" height="#button_height_sm" style_radius="#border_radius_small" style_border_width="0">
             <text_small text="Off" align="center"/>
             <event_cb trigger="clicked" callback="on_nozzle_preset_off_clicked"/>
           </lv_button>
           <lv_button name="preset_pla"
-                     width="48%" height="#button_height_sm" style_radius="#border_radius_small"
-                     style_border_width="0">
+                     width="48%" height="#button_height_sm" style_radius="#border_radius_small" style_border_width="0">
             <text_small text="PLA" align="center"/>
             <event_cb trigger="clicked" callback="on_nozzle_preset_pla_clicked"/>
           </lv_button>
           <lv_button name="preset_petg"
-                     width="48%" height="#button_height_sm" style_radius="#border_radius_small"
-                     style_border_width="0">
+                     width="48%" height="#button_height_sm" style_radius="#border_radius_small" style_border_width="0">
             <text_small text="PETG" align="center"/>
             <event_cb trigger="clicked" callback="on_nozzle_preset_petg_clicked"/>
           </lv_button>
           <lv_button name="preset_abs"
-                     width="48%" height="#button_height_sm" style_radius="#border_radius_small"
-                     style_border_width="0">
+                     width="48%" height="#button_height_sm" style_radius="#border_radius_small" style_border_width="0">
             <text_small text="ABS" align="center"/>
             <event_cb trigger="clicked" callback="on_nozzle_preset_abs_clicked"/>
           </lv_button>

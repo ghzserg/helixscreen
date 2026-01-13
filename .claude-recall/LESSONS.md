@@ -54,8 +54,8 @@
 > Text-only buttons: use `align="center"` on child. Icon+text buttons with flex_flow="row": need ALL THREE flex properties - style_flex_main_place="center" (horizontal), style_flex_cross_place="center" (vertical align items), style_flex_track_place="center" (vertical position of row). Missing track_place causes content to sit at top.
 
 
-### [L027] [***--|+----] Worktree initialization
-- **Uses**: 9 | **Velocity**: 0.51 | **Learned**: 2025-12-24 | **Last**: 2026-01-09 | **Category**: pattern | **Type**: constraint
+### [L027] [***--|-----] Worktree initialization
+- **Uses**: 10 | **Velocity**: 0.01 | **Learned**: 2025-12-24 | **Last**: 2026-01-12 | **Category**: pattern | **Type**: constraint
 > When creating a git worktree, ALWAYS run ./scripts/init-worktree.sh BEFORE any commits. Worktrees don't auto-initialize submodules - uninitialized submodules appear as deletions and will be silently removed from git's tree on your next commit.
 
 
@@ -114,8 +114,8 @@
 > Recover lost session content: 1) ~/.claude/history.jsonl has user prompts + session IDs + timestamps, 2) ~/.claude/projects/<url-encoded-path>/<session-id>.jsonl has full transcripts, 3) ~/.claude/plans/ survives /clear. Key grep: -l for filename search, -o to extract JSON fields, pipe through sed 's/\n/\n/g' to decode. Use ls -lt for recency, ls -lS for size (longer sessions).
 
 
-### [L048] [*----|-----] Async tests need queue drain
-- **Uses**: 2 | **Velocity**: 0.01 | **Learned**: 2026-01-08 | **Last**: 2026-01-08 | **Category**: pattern | **Type**: constraint
+### [L048] [**---|-----] Async tests need queue drain
+- **Uses**: 5 | **Velocity**: 0.09 | **Learned**: 2026-01-08 | **Last**: 2026-01-12 | **Category**: pattern | **Type**: constraint
 > Tests calling async setters (functions using helix::async::invoke or ui_queue_update) must call helix::ui::UpdateQueue::instance().drain_queue_for_testing() before assertions. Without draining, the update is still pending and subjects won't have the new value. See test_printer_state.cpp for examples.
 
 
@@ -130,20 +130,25 @@
 
 
 ### [L051] [*----|-----] LVGL timer lifetime safety
-- **Uses**: 2 | **Velocity**: 0.06 | **Learned**: 2026-01-08 | **Last**: 2026-01-08 | **Category**: gotcha | **Type**: constraint
+- **Uses**: 2 | **Velocity**: 0.01 | **Learned**: 2026-01-08 | **Last**: 2026-01-08 | **Category**: gotcha | **Type**: constraint
 > When using lv_timer_create with object pointer as user_data, wrap in struct that captures alive_guard. Check alive_guard BEFORE dereferencing object pointer to prevent use-after-free if object destroyed during timer delay.
 
 
-### [L052] [**---|+----] Tag hv::EventLoop tests as slow
-- **Uses**: 5 | **Velocity**: 1.1 | **Learned**: 2026-01-09 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
+### [L052] [***--|-----] Tag hv::EventLoop tests as slow
+- **Uses**: 8 | **Velocity**: 0.01 | **Learned**: 2026-01-09 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
 > Tests using hv::EventLoop (libhv network operations) MUST be tagged [slow] or they cause parallel test shards to hang indefinitely. This includes fixtures like MoonrakerRobustnessFixture, MoonrakerClientSecurityFixture, NewFeaturesTestFixture, EventTestFixture. The [slow] tag excludes them from default `make test-run` which uses filter `~[.] ~[slow]`.
 
 
-### [L053] [*----|+----] Reset static fixture state in destructor
-- **Uses**: 2 | **Velocity**: 1.0 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
+### [L053] [***--|-----] Reset static fixture state in destructor
+- **Uses**: 6 | **Velocity**: 0.01 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
 > Test fixtures using static state (e.g., static bool queue_initialized) MUST reset that state in the destructor. Otherwise, state persists across tests causing: 1) initialization to be skipped when it shouldn't, 2) shutdown to leave stale state for next test. Pattern: destructor calls shutdown(), then resets static flag to false.
 
 
-### [L054] [*----|+----] Clear pending queues on shutdown
-- **Uses**: 2 | **Velocity**: 1.0 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
+### [L054] [***--|-----] Clear pending queues on shutdown
+- **Uses**: 6 | **Velocity**: 0.01 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
 > Singleton queues (like UpdateQueue) MUST clear pending callbacks in shutdown(), not just null the timer. Without clearing, stale callbacks remain queued and execute on next init() with pointers to destroyed objects → use-after-free. Pattern: std::queue<T>().swap(pending_) to clear, then null timer.
+
+
+### [L055] [**---|-----] LVGL pad_all excludes flex gaps
+- **Uses**: 3 | **Velocity**: 0.01 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
+> `style_pad_all` only sets edge padding (top/bottom/left/right), NOT inter-item spacing. For zero-gap flex layouts, also need `style_pad_row="0"` (column) or `style_pad_column="0"` (row), or `style_pad_gap="0"` for both.

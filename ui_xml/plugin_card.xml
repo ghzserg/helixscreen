@@ -55,17 +55,17 @@
             style_radius="#border_radius_small" style_border_width="0" style_pad_all="#space_sm" style_pad_left="56"
             style_margin_top="#space_xs" scrollable="false" flex_flow="column" style_pad_gap="#space_sm" hidden="true">
       <!-- Error message row -->
-      <lv_obj width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
-              scrollable="false" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+      <lv_obj width="100%"
+              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
         <icon src="alert" size="xs" color="#error_color"/>
         <text_small name="error_label"
                     text="$error_message" style_text_color="#error_color" long_mode="wrap" flex_grow="1"/>
       </lv_obj>
       <!-- Disable button -->
-      <lv_button name="disable_btn" width="content" height="32"
-                 style_bg_color="#error_color" style_bg_opa="255"
-                 style_radius="#border_radius_small"
-                 style_pad_left="#space_md" style_pad_right="#space_md"
+      <lv_button name="disable_btn"
+                 width="content" height="32" style_bg_color="#error_color" style_bg_opa="255"
+                 style_radius="#border_radius_small" style_pad_left="#space_md" style_pad_right="#space_md"
                  style_pad_top="#space_xs" style_pad_bottom="#space_xs">
         <text_small text="Disable" style_text_color="#ffffff" align="center"/>
         <event_cb trigger="clicked" callback="on_plugin_card_disable_clicked"/>

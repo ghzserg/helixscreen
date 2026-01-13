@@ -22,17 +22,16 @@
       <text_heading width="100%" text="Probing Bed Mesh" style_text_align="center"/>
       <!-- Progress text -->
       <text_body name="probe_progress_text"
-                 width="100%" bind_text="bed_mesh_probe_text" text="Initializing..."
-                 style_text_align="center" style_text_color="#text_secondary"/>
+                 width="100%" bind_text="bed_mesh_probe_text" text="Initializing..." style_text_align="center"
+                 style_text_color="#text_secondary"/>
       <!-- Progress bar -->
       <lv_bar name="probe_progress_bar"
               width="90%" height="12" bind_value="bed_mesh_probe_progress" min_value="0" max_value="100"
               style_bg_color="#card_bg" style_radius="#space_xs"/>
       <!-- E-Stop button (prominent, red) -->
       <lv_button name="btn_emergency_stop"
-                 width="100%" height="#button_height_lg" style_radius="#border_radius"
-                 style_bg_color="#error_color" style_border_width="0" style_shadow_width="0"
-                 style_margin_top="#space_sm" clickable="true">
+                 width="100%" height="#button_height_lg" style_radius="#border_radius" style_bg_color="#error_color"
+                 style_border_width="0" style_shadow_width="0" style_margin_top="#space_sm" clickable="true">
         <event_cb trigger="clicked" callback="on_bed_mesh_emergency_stop"/>
         <lv_obj width="100%"
                 height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
@@ -44,8 +43,8 @@
       </lv_button>
       <!-- Warning text -->
       <text_small width="100%"
-                  text="Stops all motion. Requires firmware restart."
-                  style_text_align="center" style_text_color="#text_secondary"/>
+                  text="Stops all motion. Requires firmware restart." style_text_align="center"
+                  style_text_color="#text_secondary"/>
     </lv_obj>
     <!-- ============================================================ -->
     <!-- STATE: NAMING (state=2) - Success + Profile name input -->
@@ -63,8 +62,7 @@
       <text_heading width="100%" text="Mesh Complete" style_text_align="center"/>
       <!-- Instructions -->
       <text_small width="100%"
-                  text="Enter a name to save this profile"
-                  style_text_align="center" style_text_color="#text_secondary"/>
+                  text="Enter a name to save this profile" style_text_align="center" style_text_color="#text_secondary"/>
       <!-- Profile name input -->
       <lv_textarea name="calibrate_profile_name_input"
                    width="100%" height="#input_height" placeholder="Profile name (e.g., default)" max_length="32"
@@ -125,8 +123,8 @@
       </lv_button>
       <!-- Vertical divider -->
       <lv_obj width="1"
-              height="100%" style_bg_color="#text_secondary" style_bg_opa="64" style_border_width="0"
-              style_pad_all="0" scrollable="false"/>
+              height="100%" style_bg_color="#text_secondary" style_bg_opa="64" style_border_width="0" style_pad_all="0"
+              scrollable="false"/>
       <!-- Save button -->
       <lv_button name="btn_save"
                  height="100%" flex_grow="1" style_radius="0" style_border_width="0" style_shadow_width="0"

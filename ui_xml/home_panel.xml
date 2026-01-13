@@ -90,7 +90,7 @@
     <lv_obj width="100%"
             flex_grow="2" style_bg_opa="0%" style_border_width="0" style_pad_all="#space_lg" flex_flow="row"
             style_pad_gap="#space_md" style_flex_cross_place="start" scrollable="false">
-    
+
       <!-- Print Files Card - Benchy thumbnail + text in horizontal layout -->
       <!-- Disabled when not connected (state != 2) using LVGL's native disabled state -->
       <lv_button name="print_card"
@@ -154,19 +154,19 @@
           </lv_obj>
         </lv_obj>
       </lv_button>
-    
-    
+
+
       <!-- Status Card - Column layout with status row on top, info row below -->
       <ui_card name="status_card"
                height="100%" flex_grow="2" style_radius="#border_radius" style_pad_all="#space_md" flex_flow="column"
                style_pad_gap="#space_sm">
-    
+
         <!-- Top Row: [AMS if available] + Printer Status + Notification -->
         <!-- Uses flex_grow="1" like bottom row so divider height="80%" works correctly -->
         <lv_obj width="100%"
                 flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
                 style_flex_cross_place="center">
-    
+
           <!-- Printer Status -->
           <lv_obj height="100%"
                   flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="column"
@@ -193,12 +193,12 @@
               </icon>
             </lv_button>
           </lv_obj>
-    
+
           <!-- Vertical divider -->
           <lv_obj name="status_divider"
                   width="1" height="80%" style_bg_color="#text_secondary" style_bg_opa="128" style_border_width="0"
                   style_pad_all="0"/>
-    
+
           <!-- Network status - icon on top, label below (centered) -->
           <!-- Icons switch based on home_network_icon_state: 0=disconnected, 1-4=wifi strength, 5=ethernet -->
           <!-- Note: Uses different subject than navigation_bar's network_icon_state (simpler 3-state) -->
@@ -268,14 +268,14 @@
               </lv_obj>
             </lv_obj>
           </lv_obj>
-    
+
           <!-- E-stop divider (ONLY visible when printing) -->
           <lv_obj name="estop_divider"
                   width="1" height="80%" style_bg_color="#text_secondary" style_bg_opa="128" style_border_width="0"
                   style_pad_all="0" hidden="true">
             <lv_obj-bind_flag_if_eq subject="estop_visible" flag="hidden" ref_value="0"/>
           </lv_obj>
-    
+
           <!-- E-stop button container (ONLY visible when printing) -->
           <lv_obj height="100%"
                   flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="column"
@@ -290,14 +290,14 @@
               <event_cb trigger="clicked" callback="emergency_stop_clicked"/>
             </lv_button>
           </lv_obj>
-    
+
           <!-- Firmware restart divider (ONLY visible when klippy SHUTDOWN) -->
           <lv_obj name="firmware_restart_divider"
                   width="1" height="80%" style_bg_color="#text_secondary" style_bg_opa="128" style_border_width="0"
                   style_pad_all="0" hidden="true">
             <lv_obj-bind_flag_if_not_eq subject="klippy_state" flag="hidden" ref_value="2"/>
           </lv_obj>
-    
+
           <!-- Firmware restart button container (ONLY visible when klippy SHUTDOWN) -->
           <lv_obj height="100%"
                   flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="column"
@@ -313,12 +313,12 @@
             </lv_button>
           </lv_obj>
         </lv_obj>
-    
+
         <!-- Bottom Row: Temperature, Network, Light -->
         <lv_obj width="100%"
                 flex_grow="1" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="row"
                 style_flex_cross_place="center">
-    
+
           <!-- Temperature display - icon on top, text below -->
           <!-- Icon color controlled by HeatingIconAnimator (gradient + pulse while heating) -->
           <!-- Disabled when not connected (state != 2) using LVGL's native disabled state -->
@@ -333,14 +333,14 @@
                           width="100%" size="md" show_target="false" bind_current="extruder_temp"
                           bind_target="extruder_target" align="center"/>
           </lv_button>
-    
+
           <!-- Vertical divider (hidden if no LED capability) -->
           <lv_obj name="divider2"
                   width="1" height="80%" style_bg_color="#text_secondary" style_bg_opa="50%" style_border_width="0"
                   style_pad_all="0">
             <lv_obj-bind_flag_if_eq subject="printer_has_led" flag="hidden" ref_value="0"/>
           </lv_obj>
-    
+
           <!-- Light control button - single icon with dynamic brightness/color -->
           <lv_button name="light_button"
                      height="100%" flex_grow="1" style_bg_opa="0%" style_border_width="0" style_pad_all="0"
@@ -352,7 +352,7 @@
                   src="lightbulb_outline" size="#icon_size_card" align="center" color="#light_icon_off"/>
             <event_cb trigger="clicked" callback="light_toggle_cb"/>
           </lv_button>
-    
+
           <!-- Divider before AMS - visibility bound to ams_slot_count subject -->
           <lv_obj name="ams_divider"
                   width="1" height="80%" style_bg_color="#text_secondary" style_bg_opa="50%" style_border_width="0"
@@ -370,7 +370,7 @@
             <lv_obj name="ams_indicator_container"
                     width="100%" height="100%" style_bg_opa="0" style_border_width="0" style_pad_all="0"/>
           </lv_button>
-    
+
           <!-- Vertical divider for filament sensor (hidden if no sensors) -->
           <lv_obj name="divider_filament"
                   width="1" height="80%" style_bg_color="#text_secondary" style_bg_opa="50%" style_border_width="0"
@@ -393,8 +393,8 @@
             </text_tiny>
           </lv_obj>
         </lv_obj>
-    
-    
+
+
         <!-- Plugin injection point: widgets from plugins appear here -->
         <!-- Plugins can inject status widgets, indicators, or custom controls -->
         <lv_obj name="home_widget_area"

@@ -23,7 +23,7 @@
   <view name="print_select_panel_root"
         extends="lv_obj" width="100%" height="100%" style_pad_all="0" style_pad_gap="0" style_border_width="0"
         flex_flow="column">
-        
+
     <!-- Compact header with source tabs and view toggle (32px) -->
     <lv_obj width="100%"
             height="content" style_border_width="0" style_bg_opa="0" style_pad_left="#space_md"
@@ -34,21 +34,21 @@
       <lv_obj name="source_selector"
               width="content" height="content" style_bg_opa="0" style_radius="#space_sm" style_border_width="1"
               style_pad_all="#space_xxs" flex_flow="row" style_pad_gap="0" scrollable="false">
-        
+
         <!-- printer files -->
         <lv_button name="source_printer_btn"
                    width="content" height="#button_height_sm" style_radius="#space_xs" style_border_width="0"
-                   style_shadow_width="0" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_xxs"
-                   style_pad_bottom="#space_xxs" scrollable="false">
+                   style_shadow_width="0" style_pad_left="#space_lg" style_pad_right="#space_lg"
+                   style_pad_top="#space_xxs" style_pad_bottom="#space_xxs" scrollable="false">
           <event_cb trigger="clicked" callback="on_print_select_source_printer"/>
           <text_small text="Printer" scrollable="false" align="center"/>
         </lv_button>
 
         <!-- usb files (conditionally hidden) -->
         <lv_button name="source_usb_btn"
-                   width="content" height="#button_height_sm" style_radius="#space_xs" style_border_width="0" 
-                   style_shadow_width="0" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_xxs"
-                   style_pad_bottom="#space_xxs" scrollable="false">
+                   width="content" height="#button_height_sm" style_radius="#space_xs" style_border_width="0"
+                   style_shadow_width="0" style_pad_left="#space_lg" style_pad_right="#space_lg"
+                   style_pad_top="#space_xxs" style_pad_bottom="#space_xxs" scrollable="false">
           <event_cb trigger="clicked" callback="on_print_select_source_usb"/>
           <text_small text="USB" scrollable="false" align="center"/>
         </lv_button>
@@ -56,11 +56,13 @@
 
       <!-- View toggle button (icon-only, compact) -->
       <lv_button name="view_toggle_btn"
-                 height="content" style_bg_opa="0" style_border_width="0" style_shadow_width="0" style_pad_all="#space_sm">
+                 height="content" style_bg_opa="0" style_border_width="0" style_shadow_width="0"
+                 style_pad_all="#space_sm">
         <event_cb trigger="clicked" callback="on_print_select_view_toggle"/>
         <icon name="view_toggle_icon" src="list" size="sm" variant="primary"/>
       </lv_button>
-    </lv_obj> <!-- header -->
+    </lv_obj>
+    <!-- header -->
 
     <!-- Card view container (visible when view_mode == 0) -->
     <!-- Note: style_pad_gap controls spacing between cards, used by C++ layout calculations -->

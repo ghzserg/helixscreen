@@ -7,7 +7,8 @@
   <consts>
     <!-- Step metadata (read by wizard orchestrator) -->
     <str name="step_title" value="Printer Setup: LEDs"/>
-    <str name="step_subtitle" value="Optional - select your main lighting source, or skip if your printer doesn't have one"/>
+    <str name="step_subtitle"
+         value="Optional - select your main lighting source, or skip if your printer doesn't have one"/>
     <int name="step_order" value="7"/>
   </consts>
   <view name="wizard_led_select_root"

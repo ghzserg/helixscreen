@@ -29,17 +29,17 @@
       <ui_card name="thumbnail_section"
                height="100%" flex_grow="5" style_pad_all="0" style_radius="#border_radius" style_clip_corner="true">
         <!-- All children overlap as direct children of the card (matching print_file_detail pattern) -->
-        
+
         <!-- Pre-rendered gradient background (shown in thumbnail[0] and 2D[2] modes, hidden in 3D[1]) -->
         <lv_image name="gradient_background" width="100%" height="100%" src="A:assets/images/gradient-panel-medium.bin">
           <lv_obj-bind_flag_if_eq subject="gcode_viewer_mode" flag="hidden" ref_value="1"/>
         </lv_image>
-        
+
         <!-- G-code Viewer (shown in 3D[1] and 2D[2] modes, hidden in thumbnail[0]) -->
         <gcode_viewer name="print_gcode_viewer" width="100%" height="100%">
           <lv_obj-bind_flag_if_eq subject="gcode_viewer_mode" flag="hidden" ref_value="0"/>
         </gcode_viewer>
-        
+
         <!-- Thumbnail image (shown in thumbnail[0] mode only, hidden in 3D[1] and 2D[2]) -->
         <!-- Image source set programmatically via lv_image_set_src() when thumbnail available -->
         <lv_image name="print_thumbnail"
@@ -47,7 +47,7 @@
                   style_translate_y="#preview_offset_y">
           <lv_obj-bind_flag_if_gt subject="gcode_viewer_mode" flag="hidden" ref_value="0"/>
         </lv_image>
-        
+
         <!-- Rotate hint icon (shown in 3D[1] mode only, hidden in thumbnail[0] and 2D[2]) -->
         <lv_label name="rotate_hint"
                   text="#icon_rotate_3d" style_text_font="mdi_icons_24" style_text_color="#text_secondary"
@@ -89,7 +89,7 @@
             <text_heading text="Print Complete!" style_text_color="#text_primary"/>
           </lv_obj>
         </lv_obj>
-      
+
         <!-- PRINT CANCELLED OVERLAY: Shown when print is cancelled -->
         <!-- Hidden by default. Binding removes hidden ONLY when outcome == CANCELLED (2) -->
         <lv_obj name="print_cancelled_overlay"
@@ -108,7 +108,7 @@
             <text_heading text="Print Cancelled" style_text_color="#text_primary"/>
           </lv_obj>
         </lv_obj>
-      
+
         <!-- Metadata container - fixed height at bottom, overlaying thumbnail -->
         <lv_obj name="metadata_clip"
                 width="100%" height="93" style_bg_opa="0" style_border_width="0" style_radius="0" style_pad_all="0"
@@ -146,18 +146,20 @@
               <text_small name="print_percent" text="0%" bind_text="print_progress_text"/>
             </lv_obj>
 
-          </lv_obj> <!-- metadata_overlay -->
-        </lv_obj> <!-- metadata_clip -->
+          </lv_obj>
+          <!-- metadata_overlay -->
+        </lv_obj>
+        <!-- metadata_clip -->
 
       </ui_card>
-      
+
       <!-- ================================================================== -->
       <!-- RIGHT SECTION: Controls (4/9 width via flex_grow) -->
       <!-- ================================================================== -->
       <lv_obj name="controls_section"
               height="100%" flex_grow="4" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
               flex_flow="column" style_pad_gap="#space_lg">
-        
+
         <!-- Nozzle Temperature Card -->
         <ui_card name="nozzle_temp_card"
                  width="100%" height="80" style_radius="#border_radius" flex_flow="column"
@@ -168,7 +170,7 @@
           <temp_display name="nozzle_temp_display"
                         size="lg" show_target="true" bind_current="extruder_temp" bind_target="extruder_target"/>
         </ui_card>
-        
+
         <!-- Bed Temperature Card -->
         <ui_card name="bed_temp_card"
                  width="100%" height="80" style_radius="#border_radius" flex_flow="column"
@@ -179,7 +181,7 @@
           <temp_display name="bed_temp_display"
                         size="lg" show_target="true" bind_current="bed_temp" bind_target="bed_target"/>
         </ui_card>
-        
+
         <!-- Filament & AMS Status Row (side-by-side) -->
         <lv_obj name="filament_ams_status_row"
                 width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md"
@@ -267,10 +269,9 @@
             </lv_button>
             <!-- Reprint button: shown only when outcome == CANCELLED (2) -->
             <lv_button name="btn_reprint"
-                       height="#button_height_lg" flex_grow="1" style_border_width="0"
-                       style_bg_color="#primary_color" flex_flow="row" style_flex_main_place="center"
-                       style_flex_cross_place="center" style_flex_track_place="center" style_pad_gap="#space_xs"
-                       hidden="true">
+                       height="#button_height_lg" flex_grow="1" style_border_width="0" style_bg_color="#primary_color"
+                       flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
+                       style_flex_track_place="center" style_pad_gap="#space_xs" hidden="true">
               <lv_obj-bind_flag_if_not_eq subject="print_outcome" flag="hidden" ref_value="2"/>
               <event_cb trigger="clicked" callback="on_print_status_reprint"/>
               <icon src="refresh" size="sm" color="#text_primary"/>
