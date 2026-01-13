@@ -138,15 +138,12 @@ class SettingsPanel : public PanelBase {
     // See ui_settings_filament_sensors.h
     // Note: Macro Buttons overlay is now managed by MacroButtonsOverlay class
     // See ui_settings_macro_buttons.h
-    lv_obj_t* hardware_health_overlay_ = nullptr;
+    // Note: Hardware Health overlay is now managed by HardwareHealthOverlay class
+    // See ui_settings_hardware_health.h
     // Note: Bed mesh panel managed by get_global_bed_mesh_panel()
     // Note: Z-Offset calibration panel managed by get_global_zoffset_cal_panel()
     // Note: PID calibration panel managed by get_global_pid_cal_panel()
     // Note: factory_reset_dialog_ and theme_restart_dialog_ are public (for static callbacks)
-
-    // Hardware save confirmation dialog state
-    std::string pending_hardware_save_;
-    lv_obj_t* hardware_save_dialog_ = nullptr;
 
     // Note: Machine Limits overlay is now managed by MachineLimitsOverlay class
     // See ui_settings_machine_limits.h
@@ -182,7 +179,7 @@ class SettingsPanel : public PanelBase {
     void show_theme_restart_dialog();
     // Note: populate_sensor_list() moved to FilamentSensorSettingsOverlay
     // Note: populate_macro_dropdowns() moved to MacroButtonsOverlay
-    void populate_hardware_issues();
+    // Note: populate_hardware_issues() moved to HardwareHealthOverlay
 
   public:
     // Called by static modal callbacks - performs actual reset after confirmation
@@ -194,9 +191,8 @@ class SettingsPanel : public PanelBase {
     // Called by plugin failure toast action to open plugins overlay
     void handle_plugins_clicked();
 
-    // Called by hardware issue row action buttons
-    // is_ignore: true="Ignore" (mark optional), false="Save" (add to config with confirmation)
-    void handle_hardware_action(const char* hardware_name, bool is_ignore);
+    // Note: handle_hardware_action() moved to HardwareHealthOverlay
+    // See ui_settings_hardware_health.h
 
     // Dialog pointers accessible to static callbacks
     lv_obj_t* theme_restart_dialog_ = nullptr;
@@ -234,16 +230,11 @@ class SettingsPanel : public PanelBase {
     static void on_header_back_clicked(lv_event_t* e);
     static void on_brightness_changed(lv_event_t* e);
 
-    // Static callbacks for hardware save confirmation dialog
-    static void on_hardware_save_confirm(lv_event_t* e);
-    static void on_hardware_save_cancel(lv_event_t* e);
+    // Note: Hardware save confirmation callbacks moved to HardwareHealthOverlay
+    // See ui_settings_hardware_health.h
 
     // Note: Machine limits overlay callbacks are now in MachineLimitsOverlay class
     // See ui_settings_machine_limits.h
-
-    // Instance methods called by static callbacks
-    void handle_hardware_save_confirm();
-    void handle_hardware_save_cancel();
 };
 
 // Global instance accessor (needed by main.cpp)
