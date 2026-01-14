@@ -171,6 +171,24 @@ detect_ad5m_firmware() {
     echo "forge_x"
 }
 
+# Configure ForgeX display settings to prevent GuppyScreen from starting
+# ForgeX mod's start.sh checks variables.cfg for display='GUPPY' and starts
+# GuppyScreen before standard init scripts run. We need to disable this.
+configure_forgex_display() {
+    local var_file="/opt/config/mod_data/variables.cfg"
+    if [ -f "$var_file" ]; then
+        # Check if GuppyScreen is currently enabled
+        if grep -q "display[[:space:]]*=[[:space:]]*'GUPPY'" "$var_file"; then
+            log_info "Disabling GuppyScreen in ForgeX configuration..."
+            # Change display = 'GUPPY' to display = 'STOCK'
+            sed -i "s/display[[:space:]]*=[[:space:]]*'GUPPY'/display = 'STOCK'/" "$var_file"
+            log_success "ForgeX display mode set to STOCK"
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # Set installation paths based on platform and firmware
 # Sets: INSTALL_DIR, INIT_SCRIPT_DEST, PREVIOUS_UI_SCRIPT, TMP_DIR
 set_install_paths() {
@@ -993,6 +1011,12 @@ main() {
         version=$(get_latest_version)
     fi
     log_info "Target version: ${BOLD}${version}${NC}"
+
+    # For ForgeX firmware, disable GuppyScreen in variables.cfg before stopping UIs
+    # This prevents ForgeX's start.sh from launching GuppyScreen on boot
+    if [ "$AD5M_FIRMWARE" = "forge_x" ]; then
+        configure_forgex_display || true
+    fi
 
     # Stop competing UIs (GuppyScreen, KlipperScreen, FeatherScreen, etc.)
     stop_competing_uis
