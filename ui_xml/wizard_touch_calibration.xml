@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <!-- First-Run Wizard: Touch Calibration Screen -->
+  <!-- 3-point touchscreen calibration for framebuffer displays -->
+  <consts>
+    <!-- Step metadata (read by wizard orchestrator) -->
+    <str name="step_title" value="Printer Setup: Touch Calibration"/>
+    <str name="step_subtitle" value="Calibrate your touchscreen for accurate input"/>
+    <int name="step_order" value="0"/>
+  </consts>
+  <view name="wizard_touch_calibration_root"
+        extends="lv_obj" width="100%" height="100%" scrollable="false" style_bg_opa="0" style_border_width="0"
+        style_pad_all="0" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center">
+
+    <!-- Instruction text at top -->
+    <text_body name="instruction_label"
+               bind_text="touch_cal_instruction_text"
+               width="100%"
+               style_text_align="center"
+               style_pad_top="#space_md"
+               style_pad_bottom="#space_lg"/>
+
+    <!-- Crosshair target - positioned dynamically by C++ code -->
+    <!-- Uses MDI crosshairs-gps icon (U+F0785) -->
+    <lv_label name="crosshair"
+              text="&#xF0785;"
+              style_text_font="mdi_icons_48"
+              style_text_color="#accent"
+              width="50"
+              height="50"
+              style_text_align="center"
+              align="top_left"
+              hidden="true"/>
+
+    <!-- Button container at bottom -->
+    <lv_obj width="100%"
+            height="content"
+            style_bg_opa="0"
+            style_border_width="0"
+            style_pad_all="0"
+            style_pad_gap="#space_md"
+            flex_flow="row"
+            style_flex_main_place="center"
+            style_flex_cross_place="center"
+            style_pad_top="#space_xl">
+
+      <!-- Start Calibration button - visible in IDLE state -->
+      <lv_button name="btn_start" width="200" height="#button_height">
+        <text_body text="Start Calibration" align="center"/>
+        <event_cb trigger="clicked" callback="on_touch_cal_start_clicked"/>
+      </lv_button>
+
+      <!-- Accept button - visible in VERIFY state -->
+      <lv_button name="btn_accept" width="150" height="#button_height" hidden="true">
+        <text_body text="Accept" align="center"/>
+        <event_cb trigger="clicked" callback="on_touch_cal_accept_clicked"/>
+      </lv_button>
+
+      <!-- Retry button - visible in VERIFY state -->
+      <lv_button name="btn_retry" width="150" height="#button_height" hidden="true" style_bg_color="#bg_tertiary">
+        <text_body text="Retry" align="center"/>
+        <event_cb trigger="clicked" callback="on_touch_cal_retry_clicked"/>
+      </lv_button>
+
+      <!-- Skip button - always visible, allows skipping calibration -->
+      <lv_button name="btn_skip" width="100" height="#button_height" style_bg_color="#bg_tertiary">
+        <text_body text="Skip" align="center"/>
+        <event_cb trigger="clicked" callback="on_touch_cal_skip_clicked"/>
+      </lv_button>
+    </lv_obj>
+  </view>
+</component>

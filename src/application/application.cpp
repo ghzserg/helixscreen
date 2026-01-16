@@ -73,6 +73,7 @@
 #include "ui_utils.h"
 #include "ui_wizard.h"
 #include "ui_wizard_ams_identify.h"
+#include "ui_wizard_touch_calibration.h"
 #include "ui_wizard_wifi.h"
 
 #include "settings_manager.h"
@@ -955,7 +956,8 @@ bool Application::run_wizard() {
         return false;
     }
 
-    int initial_step = (m_args.wizard_step >= 1) ? m_args.wizard_step : 1;
+    // Determine initial wizard step (step 0 = touch calibration, auto-skipped if not needed)
+    int initial_step = (m_args.wizard_step >= 0) ? m_args.wizard_step : 0;
     ui_wizard_navigate_to_step(initial_step);
 
     // Move keyboard above wizard

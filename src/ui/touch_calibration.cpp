@@ -34,12 +34,18 @@ bool compute_calibration(const Point screen_points[3], const Point touch_points[
     float Xs3 = static_cast<float>(screen_points[2].x);
     float Ys3 = static_cast<float>(screen_points[2].y);
 
-    // Compute divisor (determinant) - Maxim AN5296 algorithm
+    // Compute divisor (determinant) using Maxim Integrated AN5296 algorithm
+    // Reference: https://pdfserv.maximintegrated.com/en/an/AN5296.pdf
     // div = (Xt1-Xt3)*(Yt2-Yt3) - (Xt2-Xt3)*(Yt1-Yt3)
     float div = (Xt1 - Xt3) * (Yt2 - Yt3) - (Xt2 - Xt3) * (Yt1 - Yt3);
 
     // Check for degenerate case (collinear or duplicate points)
-    constexpr float epsilon = 1.0f;
+    // Use scale-relative epsilon based on coordinate magnitudes.
+    // For typical touchscreens (12-bit ADC, 0-4095 range), valid triangles
+    // produce determinants >> 1000, so 0.01% of max coordinate is safe.
+    float max_coord = std::max(
+        {std::abs(Xt1), std::abs(Yt1), std::abs(Xt2), std::abs(Yt2), std::abs(Xt3), std::abs(Yt3)});
+    float epsilon = std::max(1.0f, max_coord * 0.0001f);
     if (std::abs(div) < epsilon) {
         return false;
     }
@@ -59,7 +65,7 @@ bool compute_calibration(const Point screen_points[3], const Point touch_points[
     return true;
 }
 
-Point transform_point(const TouchCalibration& cal, Point raw) {
+Point transform_point(const TouchCalibration& cal, Point raw, int max_x, int max_y) {
     // If calibration is invalid, return input unchanged
     if (!cal.valid) {
         return raw;
@@ -73,7 +79,40 @@ Point transform_point(const TouchCalibration& cal, Point raw) {
     result.x = static_cast<int>(std::round(cal.a * raw_x + cal.b * raw_y + cal.c));
     result.y = static_cast<int>(std::round(cal.d * raw_x + cal.e * raw_y + cal.f));
 
+    // Clamp to screen bounds if specified (prevents out-of-bounds coordinates
+    // from corrupted calibration data)
+    if (max_x > 0) {
+        result.x = std::max(0, std::min(result.x, max_x));
+    }
+    if (max_y > 0) {
+        result.y = std::max(0, std::min(result.y, max_y));
+    }
+
     return result;
+}
+
+bool is_calibration_valid(const TouchCalibration& cal) {
+    if (!cal.valid) {
+        return false;
+    }
+
+    // Check all coefficients are finite (not NaN or Infinity)
+    if (!std::isfinite(cal.a) || !std::isfinite(cal.b) || !std::isfinite(cal.c) ||
+        !std::isfinite(cal.d) || !std::isfinite(cal.e) || !std::isfinite(cal.f)) {
+        return false;
+    }
+
+    // Check coefficients are within reasonable bounds
+    if (std::abs(cal.a) > MAX_CALIBRATION_COEFFICIENT ||
+        std::abs(cal.b) > MAX_CALIBRATION_COEFFICIENT ||
+        std::abs(cal.c) > MAX_CALIBRATION_COEFFICIENT ||
+        std::abs(cal.d) > MAX_CALIBRATION_COEFFICIENT ||
+        std::abs(cal.e) > MAX_CALIBRATION_COEFFICIENT ||
+        std::abs(cal.f) > MAX_CALIBRATION_COEFFICIENT) {
+        return false;
+    }
+
+    return true;
 }
 
 } // namespace helix

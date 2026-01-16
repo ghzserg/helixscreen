@@ -148,6 +148,18 @@ class TouchCalibrationPanel {
     Point screen_points_[3]; ///< Target screen positions
     Point touch_points_[3];  ///< Captured raw touch positions
     TouchCalibration calibration_;
+
+    /// Calculate target position for a given step using screen dimensions
+    Point compute_target_position(int step) const;
+
+    // Calibration target positions as screen ratios
+    // These form a well-distributed triangle for accurate affine transform
+    static constexpr float TARGET_0_X_RATIO = 0.15f; ///< 15% from left edge
+    static constexpr float TARGET_0_Y_RATIO = 0.30f; ///< 30% from top edge
+    static constexpr float TARGET_1_X_RATIO = 0.50f; ///< Center X
+    static constexpr float TARGET_1_Y_RATIO = 0.85f; ///< 85% from top
+    static constexpr float TARGET_2_X_RATIO = 0.85f; ///< 85% from left
+    static constexpr float TARGET_2_Y_RATIO = 0.15f; ///< 15% from top
 };
 
 } // namespace helix

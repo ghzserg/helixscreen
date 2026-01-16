@@ -36,8 +36,21 @@ bool compute_calibration(const Point screen_points[3], const Point touch_points[
  *
  * @param cal Calibration coefficients (must be valid)
  * @param raw Raw touch point from controller
+ * @param max_x Optional maximum X value for clamping (0 = no clamp)
+ * @param max_y Optional maximum Y value for clamping (0 = no clamp)
  * @return Transformed screen coordinates (or raw if cal.valid is false)
  */
-Point transform_point(const TouchCalibration& cal, Point raw);
+Point transform_point(const TouchCalibration& cal, Point raw, int max_x = 0, int max_y = 0);
+
+/**
+ * @brief Validate calibration coefficients are finite and within reasonable bounds
+ *
+ * @param cal Calibration to validate
+ * @return true if all coefficients are finite and within bounds
+ */
+bool is_calibration_valid(const TouchCalibration& cal);
+
+/// Maximum reasonable coefficient value for validation
+constexpr float MAX_CALIBRATION_COEFFICIENT = 1000.0f;
 
 } // namespace helix
