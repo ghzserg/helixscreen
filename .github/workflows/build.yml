@@ -10,7 +10,7 @@ jobs:
   build-ubuntu:
     name: Build (Ubuntu 22.04)
     runs-on: ubuntu-22.04
-    timeout-minutes: 35
+    timeout-minutes: 50
 
     steps:
     - name: Checkout repository
@@ -40,7 +40,8 @@ jobs:
             libjpeg-dev \
             libnl-3-dev \
             libnl-genl-3-dev \
-            libxml2-utils
+            libxml2-utils \
+            ccache
 
     - name: Cache compiled dependencies
       uses: actions/cache@v4
@@ -55,6 +56,14 @@ jobs:
         restore-keys: |
           deps-ubuntu-22.04-
 
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ccache
+        key: ccache-ubuntu-22.04-${{ github.sha }}
+        restore-keys: |
+          ccache-ubuntu-22.04-
+
     - name: Verify submodules
       run: |
         echo "Checking submodule status..."
@@ -68,8 +77,17 @@ jobs:
         max_attempts: 3
         command: npm install
 
+    - name: Configure ccache
+      run: |
+        ccache --set-config=max_size=500M
+        ccache --set-config=compression=true
+        ccache -z  # Reset stats for this run
+
     - name: Build HelixScreen (includes all dependencies)
-      timeout-minutes: 20
+      timeout-minutes: 30
+      env:
+        CC: ccache clang
+        CXX: ccache clang++
       run: |
         # The Makefile handles all dependency builds automatically:
         # - libhv (HTTP/WebSocket library)
@@ -78,8 +96,10 @@ jobs:
         # - Font generation
         # - LVGL patches
         # Dependencies are cached and will only rebuild if source changed
+        # ccache speeds up recompilation of unchanged source files
         make -j$(nproc)
         echo "HelixScreen and all dependencies built successfully"
+        ccache -s  # Show ccache stats
 
     - name: Run unit tests
       timeout-minutes: 15
@@ -102,7 +122,7 @@ jobs:
   build-macos:
     name: Build (macOS 14)
     runs-on: macos-14
-    timeout-minutes: 35
+    timeout-minutes: 50
 
     steps:
     - name: Checkout repository
@@ -112,7 +132,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install sdl2
+        brew install sdl2 ccache
         # node/npm usually pre-installed on GitHub Actions macOS runners
 
     - name: Cache compiled dependencies
@@ -128,6 +148,14 @@ jobs:
         restore-keys: |
           deps-macos-14-
 
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/ccache
+        key: ccache-macos-14-${{ github.sha }}
+        restore-keys: |
+          ccache-macos-14-
+
     - name: Verify submodules
       run: |
         echo "Checking submodule status..."
@@ -141,8 +169,17 @@ jobs:
         max_attempts: 3
         command: npm install
 
+    - name: Configure ccache
+      run: |
+        ccache --set-config=max_size=500M
+        ccache --set-config=compression=true
+        ccache -z  # Reset stats for this run
+
     - name: Build HelixScreen (includes all dependencies)
-      timeout-minutes: 20
+      timeout-minutes: 30
+      env:
+        CC: ccache clang
+        CXX: ccache clang++
       run: |
         # The Makefile handles all dependency builds automatically:
         # - libhv (HTTP/WebSocket library)
@@ -150,8 +187,10 @@ jobs:
         # - Font generation
         # - LVGL patches
         # Dependencies are cached and will only rebuild if source changed
+        # ccache speeds up recompilation of unchanged source files
         make -j$(sysctl -n hw.ncpu)
         echo "HelixScreen and all dependencies built successfully"
+        ccache -s  # Show ccache stats
 
     - name: Run unit tests
       timeout-minutes: 15
