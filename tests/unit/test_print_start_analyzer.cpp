@@ -1,6 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "moonraker_types.h"
 #include "operation_patterns.h"
 #include "print_start_analyzer.h"
 
@@ -670,5 +671,46 @@ TEST_CASE("PrintStart: get_all_perform_variations helper", "[print_start][perfor
                 variations.end());
         REQUIRE(std::find(variations.begin(), variations.end(), "DO_NOZZLE_CLEAN") !=
                 variations.end());
+    }
+}
+
+// ============================================================================
+// Tests: Subdirectory Path Handling (FileInfo.path vs filename)
+// ============================================================================
+
+TEST_CASE("PrintStartAnalyzer: get_config_file_path helper", "[print_start][path]") {
+    // Tests the get_config_file_path() helper used in analyze() when processing FileInfo
+    // Bug fix: Previously used f.filename which loses subdirectory info
+
+    SECTION("Files in subdirectory - returns full path") {
+        FileInfo file_in_subdir;
+        file_in_subdir.path = "conf.d/autotune_motors.cfg";
+        file_in_subdir.filename = "autotune_motors.cfg";
+
+        REQUIRE(get_config_file_path(file_in_subdir) == "conf.d/autotune_motors.cfg");
+    }
+
+    SECTION("Files in root directory - path equals filename") {
+        FileInfo file_in_root;
+        file_in_root.path = "printer.cfg";
+        file_in_root.filename = "printer.cfg";
+
+        REQUIRE(get_config_file_path(file_in_root) == "printer.cfg");
+    }
+
+    SECTION("Legacy response - empty path, falls back to filename") {
+        FileInfo legacy_file;
+        legacy_file.path = "";
+        legacy_file.filename = "printer.cfg";
+
+        REQUIRE(get_config_file_path(legacy_file) == "printer.cfg");
+    }
+
+    SECTION("Nested subdirectory - preserves full path") {
+        FileInfo nested_file;
+        nested_file.path = "conf.d/macros/print_start.cfg";
+        nested_file.filename = "print_start.cfg";
+
+        REQUIRE(get_config_file_path(nested_file) == "conf.d/macros/print_start.cfg");
     }
 }

@@ -231,7 +231,7 @@ void PrintStartAnalyzer::analyze(MoonrakerAPI* api, AnalysisCallback on_complete
             for (const auto& f : files) {
                 if (!f.is_dir && f.filename.size() > 4 &&
                     f.filename.substr(f.filename.size() - 4) == ".cfg") {
-                    cfg_files.push_back(f.filename);
+                    cfg_files.push_back(get_config_file_path(f));
                 }
             }
 

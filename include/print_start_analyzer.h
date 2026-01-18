@@ -20,6 +20,7 @@
  */
 
 #include "moonraker_error.h"
+#include "moonraker_types.h"
 #include "operation_patterns.h"
 
 #include <functional>
@@ -30,6 +31,24 @@
 class MoonrakerAPI;
 
 namespace helix {
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * @brief Get the correct file path from FileInfo for subdirectory support
+ *
+ * When config files are in subdirectories (e.g., [include conf.d/\*.cfg]),
+ * FileInfo.path contains the full relative path (conf.d/autotune_motors.cfg)
+ * while FileInfo.filename contains just the name (autotune_motors.cfg).
+ *
+ * @param file FileInfo from Moonraker file listing
+ * @return Full path if available, otherwise filename
+ */
+[[nodiscard]] inline std::string get_config_file_path(const FileInfo& file) {
+    return file.path.empty() ? file.filename : file.path;
+}
 
 // ============================================================================
 // Data Structures
