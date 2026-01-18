@@ -97,6 +97,33 @@ class ConfigTestFixture {
                 config.data.erase("touch_calibration");
             }
         }
+
+        // Second migration: move calibration and touch_device from /display/ to /input/
+        migrate_to_input();
+    }
+
+    // Helper to migrate touch settings from /display/ to /input/ (second migration step)
+    void migrate_to_input() {
+        // Ensure input section exists
+        if (!config.data.contains("input")) {
+            config.data["input"] = json::object();
+        }
+
+        // Migrate /display/calibration -> /input/calibration
+        if (config.data.contains("display") && config.data["display"].contains("calibration")) {
+            if (!config.data["input"].contains("calibration")) {
+                config.data["input"]["calibration"] = config.data["display"]["calibration"];
+            }
+            config.data["display"].erase("calibration");
+        }
+
+        // Migrate /display/touch_device -> /input/touch_device
+        if (config.data.contains("display") && config.data["display"].contains("touch_device")) {
+            if (!config.data["input"].contains("touch_device")) {
+                config.data["input"]["touch_device"] = config.data["display"]["touch_device"];
+            }
+            config.data["display"].erase("touch_device");
+        }
     }
 
     // Helper to check display subsection contains a key
@@ -104,10 +131,10 @@ class ConfigTestFixture {
         return config.data.contains("display") && config.data["display"].contains(key);
     }
 
-    // Helper to check calibration subsection contains a key
+    // Helper to check calibration subsection contains a key (now under /input/)
     bool calibration_contains(const std::string& key) {
-        return config.data.contains("display") && config.data["display"].contains("calibration") &&
-               config.data["display"]["calibration"].contains(key);
+        return config.data.contains("input") && config.data["input"].contains("calibration") &&
+               config.data["input"]["calibration"].contains(key);
     }
 
     // Helper to get display section size
@@ -635,35 +662,42 @@ TEST_CASE("WizardConfigPaths: LED_STRIP uses plural /printer/leds/",
 TEST_CASE_METHOD(ConfigTestFixture, "Config: display section exists with defaults for new config",
                  "[config][display][migration]") {
     // Populate with display section using test helper
+    // Note: calibration and touch_device are now under /input/, not /display/
     set_data_for_plural_test({{"printer", {{"moonraker_host", "127.0.0.1"}}},
                               {"display",
                                {{"rotate", 0},
                                 {"sleep_sec", 600},
                                 {"dim_sec", 300},
                                 {"dim_brightness", 30},
-                                {"drm_device", ""},
-                                {"touch_device", ""},
+                                {"drm_device", ""}}},
+                              {"input",
+                               {{"touch_device", ""},
                                 {"calibration", {{"valid", false}, {"a", 1.0}, {"b", 0.0}}}}}});
 
-    // Verify display section has expected structure
+    // Verify display section has expected structure (no calibration - that's in /input/)
     auto display = config.get<json>("/display");
     REQUIRE(display.is_object());
     REQUIRE(display.contains("rotate"));
     REQUIRE(display.contains("sleep_sec"));
     REQUIRE(display.contains("dim_sec"));
     REQUIRE(display.contains("dim_brightness"));
-    REQUIRE(display.contains("calibration"));
+    REQUIRE_FALSE(display.contains("calibration")); // Now under /input/
 
     REQUIRE(display["rotate"].get<int>() == 0);
     REQUIRE(display["sleep_sec"].get<int>() == 600);
     REQUIRE(display["dim_sec"].get<int>() == 300);
     REQUIRE(display["dim_brightness"].get<int>() == 30);
+
+    // Verify calibration is under /input/
+    auto input = config.get<json>("/input");
+    REQUIRE(input.contains("calibration"));
+    REQUIRE(input.contains("touch_device"));
 }
 
-TEST_CASE_METHOD(ConfigTestFixture, "Config: display/calibration section has coefficients",
-                 "[config][display][migration]") {
-    // Set up display section with calibration
-    set_data_for_plural_test({{"display",
+TEST_CASE_METHOD(ConfigTestFixture, "Config: input/calibration section has coefficients",
+                 "[config][input][migration]") {
+    // Set up input section with calibration (new location)
+    set_data_for_plural_test({{"input",
                                {{"calibration",
                                  {{"valid", true},
                                   {"a", 1.5},
@@ -673,7 +707,7 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: display/calibration section has coe
                                   {"e", 1.3},
                                   {"f", -5.0}}}}}});
 
-    auto cal = config.get<json>("/display/calibration");
+    auto cal = config.get<json>("/input/calibration");
     REQUIRE(cal.is_object());
     REQUIRE(cal.contains("valid"));
     REQUIRE(cal.contains("a"));
@@ -699,7 +733,7 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: display settings accessible via get
     int sleep_sec = config.get<int>("/display/sleep_sec", 1800);
     REQUIRE(sleep_sec == 1800);
 
-    bool cal_valid = config.get<bool>("/display/calibration/valid", false);
+    bool cal_valid = config.get<bool>("/input/calibration/valid", false);
     REQUIRE(cal_valid == false);
 }
 
@@ -720,8 +754,8 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: display settings readable when popu
     REQUIRE(config.get<int>("/display/dim_sec") == 120);
     REQUIRE(config.get<int>("/display/dim_brightness") == 50);
     REQUIRE(config.get<bool>("/display/gcode_3d_enabled") == false);
-    REQUIRE(config.get<bool>("/display/calibration/valid") == true);
-    REQUIRE(config.get<double>("/display/calibration/a") == Catch::Approx(2.0));
+    REQUIRE(config.get<bool>("/input/calibration/valid") == true);
+    REQUIRE(config.get<double>("/input/calibration/a") == Catch::Approx(2.0));
 }
 
 TEST_CASE_METHOD(ConfigTestFixture, "Config: display settings can be set and updated",
@@ -732,20 +766,21 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: display settings can be set and upd
     // Set values
     config.set<int>("/display/rotate", 270);
     config.set<int>("/display/sleep_sec", 900);
-    config.set<bool>("/display/calibration/valid", true);
-    config.set<double>("/display/calibration/a", 1.1);
+    config.set<bool>("/input/calibration/valid", true);
+    config.set<double>("/input/calibration/a", 1.1);
 
     // Verify
     REQUIRE(config.get<int>("/display/rotate") == 270);
     REQUIRE(config.get<int>("/display/sleep_sec") == 900);
-    REQUIRE(config.get<bool>("/display/calibration/valid") == true);
-    REQUIRE(config.get<double>("/display/calibration/a") == Catch::Approx(1.1));
+    REQUIRE(config.get<bool>("/input/calibration/valid") == true);
+    REQUIRE(config.get<double>("/input/calibration/a") == Catch::Approx(1.1));
 }
 
 TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: display calibration default values are identity matrix",
-                 "[config][display][migration]") {
-    // Set up default calibration (identity transform)
+                 "Config: migrates /display/calibration to /input/calibration",
+                 "[config][input][migration]") {
+    // Set up calibration under old location (/display/)
+    // Migration should move it to /input/
     set_data_for_plural_test({{"display",
                                {{"calibration",
                                  {{"valid", false},
@@ -756,7 +791,9 @@ TEST_CASE_METHOD(ConfigTestFixture,
                                   {"e", 1.0},
                                   {"f", 0.0}}}}}});
 
-    auto cal = config.get<json>("/display/calibration");
+    // Verify migration moved calibration to /input/
+    auto cal = config.get<json>("/input/calibration");
+    REQUIRE(cal.is_object());
 
     // Identity matrix check: a=1, b=0, c=0, d=0, e=1, f=0
     REQUIRE(cal["a"].get<double>() == Catch::Approx(1.0));
@@ -765,6 +802,9 @@ TEST_CASE_METHOD(ConfigTestFixture,
     REQUIRE(cal["d"].get<double>() == Catch::Approx(0.0));
     REQUIRE(cal["e"].get<double>() == Catch::Approx(1.0));
     REQUIRE(cal["f"].get<double>() == Catch::Approx(0.0));
+
+    // Verify old location no longer has calibration
+    REQUIRE_FALSE(display_contains("calibration"));
 }
 
 // ============================================================================
@@ -861,7 +901,7 @@ TEST_CASE_METHOD(ConfigTestFixture,
 }
 
 TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: migrates touch_calibrated to /display/calibration/valid",
+                 "Config: migrates touch_calibrated to /input/calibration/valid",
                  "[config][display][migration]") {
     json old_format = {{"display_rotate", 0}, {"touch_calibrated", true}};
 
@@ -869,11 +909,11 @@ TEST_CASE_METHOD(ConfigTestFixture,
     apply_migration();
 
     REQUIRE_FALSE(data_contains("touch_calibrated"));
-    REQUIRE(config.get<bool>("/display/calibration/valid") == true);
+    REQUIRE(config.get<bool>("/input/calibration/valid") == true);
 }
 
 TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: migrates touch_calibration coefficients to /display/calibration",
+                 "Config: migrates touch_calibration coefficients to /input/calibration",
                  "[config][display][migration]") {
     json old_format = {
         {"display_rotate", 0},
@@ -884,12 +924,12 @@ TEST_CASE_METHOD(ConfigTestFixture,
     apply_migration();
 
     REQUIRE_FALSE(data_contains("touch_calibration"));
-    REQUIRE(config.get<double>("/display/calibration/a") == Catch::Approx(1.5));
-    REQUIRE(config.get<double>("/display/calibration/b") == Catch::Approx(0.1));
-    REQUIRE(config.get<double>("/display/calibration/c") == Catch::Approx(-10.0));
-    REQUIRE(config.get<double>("/display/calibration/d") == Catch::Approx(0.2));
-    REQUIRE(config.get<double>("/display/calibration/e") == Catch::Approx(1.3));
-    REQUIRE(config.get<double>("/display/calibration/f") == Catch::Approx(-5.0));
+    REQUIRE(config.get<double>("/input/calibration/a") == Catch::Approx(1.5));
+    REQUIRE(config.get<double>("/input/calibration/b") == Catch::Approx(0.1));
+    REQUIRE(config.get<double>("/input/calibration/c") == Catch::Approx(-10.0));
+    REQUIRE(config.get<double>("/input/calibration/d") == Catch::Approx(0.2));
+    REQUIRE(config.get<double>("/input/calibration/e") == Catch::Approx(1.3));
+    REQUIRE(config.get<double>("/input/calibration/f") == Catch::Approx(-5.0));
 }
 
 TEST_CASE_METHOD(ConfigTestFixture, "Config: migration removes all old root-level display keys",
@@ -920,8 +960,8 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: migration removes all old root-leve
     REQUIRE(config.get<int>("/display/sleep_sec") == 900);
     REQUIRE(config.get<int>("/display/dim_sec") == 180);
     REQUIRE(config.get<int>("/display/dim_brightness") == 25);
-    REQUIRE(config.get<bool>("/display/calibration/valid") == true);
-    REQUIRE(config.get<double>("/display/calibration/a") == Catch::Approx(1.1));
+    REQUIRE(config.get<bool>("/input/calibration/valid") == true);
+    REQUIRE(config.get<double>("/input/calibration/a") == Catch::Approx(1.1));
 }
 
 TEST_CASE_METHOD(ConfigTestFixture, "Config: partial migration handles only existing old keys",
@@ -936,7 +976,7 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: partial migration handles only exis
     // Present keys should be migrated
     REQUIRE(config.get<int>("/display/rotate") == 180);
     REQUIRE(config.get<int>("/display/sleep_sec") == 1200);
-    REQUIRE(config.get<bool>("/display/calibration/valid") == false);
+    REQUIRE(config.get<bool>("/input/calibration/valid") == false);
 
     // Missing keys should NOT exist in new location (no defaults injected by migration)
     REQUIRE_FALSE(display_contains("dim_sec"));
@@ -993,7 +1033,7 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: default display/touch_device is emp
                  "[config][display][defaults]") {
     set_data_empty();
 
-    std::string touch_device = config.get<std::string>("/display/touch_device", "");
+    std::string touch_device = config.get<std::string>("/input/touch_device", "");
     REQUIRE(touch_device == "");
 }
 
@@ -1021,26 +1061,26 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: default display/bed_mesh_render_mod
     REQUIRE(bed_mesh_render_mode == 0);
 }
 
-TEST_CASE_METHOD(ConfigTestFixture, "Config: default display/calibration/valid is false",
-                 "[config][display][defaults]") {
+TEST_CASE_METHOD(ConfigTestFixture, "Config: default input/calibration/valid is false",
+                 "[config][input][defaults]") {
     set_data_empty();
 
-    bool cal_valid = config.get<bool>("/display/calibration/valid", false);
+    bool cal_valid = config.get<bool>("/input/calibration/valid", false);
     REQUIRE(cal_valid == false);
 }
 
 TEST_CASE_METHOD(ConfigTestFixture,
-                 "Config: default display/calibration coefficients form identity matrix",
-                 "[config][display][defaults]") {
+                 "Config: default input/calibration coefficients form identity matrix",
+                 "[config][input][defaults]") {
     set_data_empty();
 
     // Identity matrix: a=1, b=0, c=0, d=0, e=1, f=0
-    REQUIRE(config.get<double>("/display/calibration/a", 1.0) == Catch::Approx(1.0));
-    REQUIRE(config.get<double>("/display/calibration/b", 0.0) == Catch::Approx(0.0));
-    REQUIRE(config.get<double>("/display/calibration/c", 0.0) == Catch::Approx(0.0));
-    REQUIRE(config.get<double>("/display/calibration/d", 0.0) == Catch::Approx(0.0));
-    REQUIRE(config.get<double>("/display/calibration/e", 1.0) == Catch::Approx(1.0));
-    REQUIRE(config.get<double>("/display/calibration/f", 0.0) == Catch::Approx(0.0));
+    REQUIRE(config.get<double>("/input/calibration/a", 1.0) == Catch::Approx(1.0));
+    REQUIRE(config.get<double>("/input/calibration/b", 0.0) == Catch::Approx(0.0));
+    REQUIRE(config.get<double>("/input/calibration/c", 0.0) == Catch::Approx(0.0));
+    REQUIRE(config.get<double>("/input/calibration/d", 0.0) == Catch::Approx(0.0));
+    REQUIRE(config.get<double>("/input/calibration/e", 1.0) == Catch::Approx(1.0));
+    REQUIRE(config.get<double>("/input/calibration/f", 0.0) == Catch::Approx(0.0));
 }
 
 // ----------------------------------------------------------------------------
@@ -1069,35 +1109,35 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get display/sleep_sec",
     REQUIRE(config.get<int>("/display/sleep_sec") == 0);
 }
 
-TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get display/calibration/valid",
-                 "[config][display][readwrite]") {
-    set_data_for_plural_test({{"display", {{"calibration", json::object()}}}});
+TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get input/calibration/valid",
+                 "[config][input][readwrite]") {
+    set_data_for_plural_test({{"input", {{"calibration", json::object()}}}});
 
-    config.set<bool>("/display/calibration/valid", true);
-    REQUIRE(config.get<bool>("/display/calibration/valid") == true);
+    config.set<bool>("/input/calibration/valid", true);
+    REQUIRE(config.get<bool>("/input/calibration/valid") == true);
 
-    config.set<bool>("/display/calibration/valid", false);
-    REQUIRE(config.get<bool>("/display/calibration/valid") == false);
+    config.set<bool>("/input/calibration/valid", false);
+    REQUIRE(config.get<bool>("/input/calibration/valid") == false);
 }
 
-TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get display/calibration coefficients",
-                 "[config][display][readwrite]") {
-    set_data_for_plural_test({{"display", {{"calibration", json::object()}}}});
+TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get input/calibration coefficients",
+                 "[config][input][readwrite]") {
+    set_data_for_plural_test({{"input", {{"calibration", json::object()}}}});
 
     // Set custom calibration values
-    config.set<double>("/display/calibration/a", 1.25);
-    config.set<double>("/display/calibration/b", 0.05);
-    config.set<double>("/display/calibration/c", -15.5);
-    config.set<double>("/display/calibration/d", 0.03);
-    config.set<double>("/display/calibration/e", 1.15);
-    config.set<double>("/display/calibration/f", -8.2);
+    config.set<double>("/input/calibration/a", 1.25);
+    config.set<double>("/input/calibration/b", 0.05);
+    config.set<double>("/input/calibration/c", -15.5);
+    config.set<double>("/input/calibration/d", 0.03);
+    config.set<double>("/input/calibration/e", 1.15);
+    config.set<double>("/input/calibration/f", -8.2);
 
-    REQUIRE(config.get<double>("/display/calibration/a") == Catch::Approx(1.25));
-    REQUIRE(config.get<double>("/display/calibration/b") == Catch::Approx(0.05));
-    REQUIRE(config.get<double>("/display/calibration/c") == Catch::Approx(-15.5));
-    REQUIRE(config.get<double>("/display/calibration/d") == Catch::Approx(0.03));
-    REQUIRE(config.get<double>("/display/calibration/e") == Catch::Approx(1.15));
-    REQUIRE(config.get<double>("/display/calibration/f") == Catch::Approx(-8.2));
+    REQUIRE(config.get<double>("/input/calibration/a") == Catch::Approx(1.25));
+    REQUIRE(config.get<double>("/input/calibration/b") == Catch::Approx(0.05));
+    REQUIRE(config.get<double>("/input/calibration/c") == Catch::Approx(-15.5));
+    REQUIRE(config.get<double>("/input/calibration/d") == Catch::Approx(0.03));
+    REQUIRE(config.get<double>("/input/calibration/e") == Catch::Approx(1.15));
+    REQUIRE(config.get<double>("/input/calibration/f") == Catch::Approx(-8.2));
 }
 
 TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get display/drm_device",
@@ -1108,12 +1148,12 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get display/drm_device",
     REQUIRE(config.get<std::string>("/display/drm_device") == "/dev/dri/card0");
 }
 
-TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get display/touch_device",
-                 "[config][display][readwrite]") {
-    set_data_for_plural_test({{"display", json::object()}});
+TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get input/touch_device",
+                 "[config][input][readwrite]") {
+    set_data_for_plural_test({{"input", json::object()}});
 
-    config.set<std::string>("/display/touch_device", "/dev/input/event0");
-    REQUIRE(config.get<std::string>("/display/touch_device") == "/dev/input/event0");
+    config.set<std::string>("/input/touch_device", "/dev/input/event0");
+    REQUIRE(config.get<std::string>("/input/touch_device") == "/dev/input/event0");
 }
 
 TEST_CASE_METHOD(ConfigTestFixture, "Config: set and get display/gcode_3d_enabled",
@@ -1147,17 +1187,17 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: empty display section gets populate
 }
 
 TEST_CASE_METHOD(ConfigTestFixture, "Config: missing calibration subsection can be created via set",
-                 "[config][display][edge]") {
-    // Display section without calibration
-    set_data_for_plural_test({{"display", {{"rotate", 0}}}});
+                 "[config][input][edge]") {
+    // Input section without calibration
+    set_data_for_plural_test({{"input", json::object()}});
 
-    REQUIRE_FALSE(display_contains("calibration"));
+    REQUIRE_FALSE(calibration_contains("valid"));
 
     // Set creates the path
-    config.set<bool>("/display/calibration/valid", true);
+    config.set<bool>("/input/calibration/valid", true);
 
-    REQUIRE(display_contains("calibration"));
-    REQUIRE(config.get<bool>("/display/calibration/valid") == true);
+    REQUIRE(calibration_contains("valid"));
+    REQUIRE(config.get<bool>("/input/calibration/valid") == true);
 }
 
 TEST_CASE_METHOD(ConfigTestFixture, "Config: migration preserves existing /display/ values",
@@ -1192,8 +1232,8 @@ TEST_CASE_METHOD(ConfigTestFixture,
     apply_migration();
 
     // Coefficients should be migrated
-    REQUIRE(config.get<double>("/display/calibration/a") == Catch::Approx(1.2));
-    REQUIRE(config.get<double>("/display/calibration/e") == Catch::Approx(1.2));
+    REQUIRE(config.get<double>("/input/calibration/a") == Catch::Approx(1.2));
+    REQUIRE(config.get<double>("/input/calibration/e") == Catch::Approx(1.2));
 
     // valid flag should NOT be set (since touch_calibrated wasn't present)
     REQUIRE_FALSE(calibration_contains("valid"));
@@ -1209,7 +1249,7 @@ TEST_CASE_METHOD(ConfigTestFixture,
     apply_migration();
 
     // Flag should be migrated
-    REQUIRE(config.get<bool>("/display/calibration/valid") == true);
+    REQUIRE(config.get<bool>("/input/calibration/valid") == true);
 
     // Coefficients should NOT be set
     REQUIRE_FALSE(calibration_contains("a"));
@@ -1225,8 +1265,8 @@ TEST_CASE_METHOD(ConfigTestFixture,
     apply_migration();
 
     // Present coefficients should be migrated
-    REQUIRE(config.get<double>("/display/calibration/a") == Catch::Approx(1.5));
-    REQUIRE(config.get<double>("/display/calibration/e") == Catch::Approx(1.3));
+    REQUIRE(config.get<double>("/input/calibration/a") == Catch::Approx(1.5));
+    REQUIRE(config.get<double>("/input/calibration/e") == Catch::Approx(1.3));
 
     // Missing coefficients should NOT be set
     REQUIRE_FALSE(calibration_contains("b"));
@@ -1260,21 +1300,21 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: display values with boundary condit
     REQUIRE(config.get<int>("/display/dim_brightness") == 100);
 }
 
-TEST_CASE_METHOD(ConfigTestFixture, "Config: display calibration with extreme coefficient values",
-                 "[config][display][edge]") {
-    set_data_for_plural_test({{"display", {{"calibration", json::object()}}}});
+TEST_CASE_METHOD(ConfigTestFixture, "Config: input calibration with extreme coefficient values",
+                 "[config][input][edge]") {
+    set_data_for_plural_test({{"input", {{"calibration", json::object()}}}});
 
     // Test very small values
-    config.set<double>("/display/calibration/a", 0.001);
-    REQUIRE(config.get<double>("/display/calibration/a") == Catch::Approx(0.001));
+    config.set<double>("/input/calibration/a", 0.001);
+    REQUIRE(config.get<double>("/input/calibration/a") == Catch::Approx(0.001));
 
     // Test negative values
-    config.set<double>("/display/calibration/c", -500.0);
-    REQUIRE(config.get<double>("/display/calibration/c") == Catch::Approx(-500.0));
+    config.set<double>("/input/calibration/c", -500.0);
+    REQUIRE(config.get<double>("/input/calibration/c") == Catch::Approx(-500.0));
 
     // Test large values
-    config.set<double>("/display/calibration/f", 1000.0);
-    REQUIRE(config.get<double>("/display/calibration/f") == Catch::Approx(1000.0));
+    config.set<double>("/input/calibration/f", 1000.0);
+    REQUIRE(config.get<double>("/input/calibration/f") == Catch::Approx(1000.0));
 }
 
 TEST_CASE_METHOD(

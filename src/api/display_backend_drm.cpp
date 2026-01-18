@@ -204,7 +204,7 @@ lv_indev_t* DisplayBackendDRM::create_input_pointer() {
     // Priority 2: Config file override
     if (device_override.empty()) {
         Config* cfg = Config::get_instance();
-        device_override = cfg->get<std::string>("/display/touch_device", "");
+        device_override = cfg->get<std::string>("/input/touch_device", "");
         if (!device_override.empty()) {
             spdlog::info("[DRM Backend] Using touch device from config: {}", device_override);
         }

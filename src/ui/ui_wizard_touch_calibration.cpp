@@ -242,7 +242,7 @@ bool WizardTouchCalibrationStep::should_skip() const {
 
     // Skip if already calibrated
     Config* config = Config::get_instance();
-    if (config && config->get<bool>("/display/calibration/valid", false)) {
+    if (config && config->get<bool>("/input/calibration/valid", false)) {
         spdlog::debug("[{}] Skipping: already calibrated", get_name());
         return true;
     }
@@ -475,13 +475,13 @@ void WizardTouchCalibrationStep::on_calibration_complete(const helix::TouchCalib
         // Save calibration to config
         Config* config = Config::get_instance();
         if (config) {
-            config->set<bool>("/display/calibration/valid", true);
-            config->set<double>("/display/calibration/a", static_cast<double>(cal->a));
-            config->set<double>("/display/calibration/b", static_cast<double>(cal->b));
-            config->set<double>("/display/calibration/c", static_cast<double>(cal->c));
-            config->set<double>("/display/calibration/d", static_cast<double>(cal->d));
-            config->set<double>("/display/calibration/e", static_cast<double>(cal->e));
-            config->set<double>("/display/calibration/f", static_cast<double>(cal->f));
+            config->set<bool>("/input/calibration/valid", true);
+            config->set<double>("/input/calibration/a", static_cast<double>(cal->a));
+            config->set<double>("/input/calibration/b", static_cast<double>(cal->b));
+            config->set<double>("/input/calibration/c", static_cast<double>(cal->c));
+            config->set<double>("/input/calibration/d", static_cast<double>(cal->d));
+            config->set<double>("/input/calibration/e", static_cast<double>(cal->e));
+            config->set<double>("/input/calibration/f", static_cast<double>(cal->f));
             config->save();
             spdlog::info("[{}] Calibration saved to config", get_name());
         }

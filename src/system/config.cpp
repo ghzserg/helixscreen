@@ -59,18 +59,9 @@ json get_default_display_config() {
             {"dim_sec", 300},
             {"dim_brightness", 30},
             {"drm_device", ""},
-            {"touch_device", ""},
             {"gcode_render_mode", 0},
             {"gcode_3d_enabled", true},
-            {"bed_mesh_render_mode", 0},
-            {"calibration",
-             {{"valid", false},
-              {"a", 1.0},
-              {"b", 0.0},
-              {"c", 0.0},
-              {"d", 0.0},
-              {"e", 1.0},
-              {"f", 0.0}}}};
+            {"bed_mesh_render_mode", 0}};
 }
 
 /// Migrate legacy display settings from root level to /display/ section
@@ -154,6 +145,52 @@ bool migrate_display_config(json& data) {
     return true;
 }
 
+/// Migrate config keys from old paths to new paths
+/// @param data JSON config data to migrate (modified in place)
+/// @param migrations Vector of {from_path, to_path} pairs (JSON pointer format)
+/// @return true if any migration occurred, false if no migration needed
+bool migrate_config_keys(json& data,
+                         const std::vector<std::pair<std::string, std::string>>& migrations) {
+    bool any_migrated = false;
+
+    for (const auto& [from_path, to_path] : migrations) {
+        json::json_pointer from_ptr(from_path);
+        json::json_pointer to_ptr(to_path);
+
+        // Skip if source doesn't exist
+        if (!data.contains(from_ptr)) {
+            continue;
+        }
+
+        // Skip if target already exists (don't overwrite)
+        if (data.contains(to_ptr)) {
+            spdlog::debug("[Config] Migration skipped: {} already exists", to_path);
+            data.erase(from_ptr);
+            any_migrated = true;
+            continue;
+        }
+
+        // Ensure parent path exists for target
+        // For example, if to_path is "/input/calibration", ensure "/input" exists
+        auto last_slash = to_path.rfind('/');
+        if (last_slash != std::string::npos && last_slash > 0) {
+            std::string parent_path = to_path.substr(0, last_slash);
+            json::json_pointer parent_ptr(parent_path);
+            if (!data.contains(parent_ptr)) {
+                data[parent_ptr] = json::object();
+            }
+        }
+
+        // Copy value to new location and remove from old
+        data[to_ptr] = data[from_ptr];
+        data.erase(from_ptr);
+        spdlog::info("[Config] Migrated {} -> {}", from_path, to_path);
+        any_migrated = true;
+    }
+
+    return any_migrated;
+}
+
 /// Default root-level config - shared between init() and reset_to_defaults()
 /// @param moonraker_host Host address for printer
 /// @param include_user_prefs Include user preference fields (brightness, sounds, etc.)
@@ -163,7 +200,18 @@ json get_default_config(const std::string& moonraker_host, bool include_user_pre
                    {"dark_mode", true},
                    {"display", get_default_display_config()},
                    {"gcode_viewer", {{"shading_model", "phong"}, {"tube_sides", 4}}},
-                   {"input", {{"scroll_throw", 25}, {"scroll_limit", 5}}},
+                   {"input",
+                    {{"scroll_throw", 25},
+                     {"scroll_limit", 5},
+                     {"touch_device", ""},
+                     {"calibration",
+                      {{"valid", false},
+                       {"a", 1.0},
+                       {"b", 0.0},
+                       {"c", 0.0},
+                       {"d", 0.0},
+                       {"e", 1.0},
+                       {"f", 0.0}}}}},
                    {"printer", get_default_printer_config(moonraker_host)}};
 
     if (include_user_prefs) {
@@ -237,6 +285,12 @@ void Config::init(const std::string& config_path) {
 
         // Run display config migration (moves root-level display_* to /display/)
         if (migrate_display_config(data)) {
+            config_modified = true;
+        }
+
+        // Migrate touch settings from /display/ to /input/
+        if (migrate_config_keys(data, {{"/display/calibration", "/input/calibration"},
+                                        {"/display/touch_device", "/input/touch_device"}})) {
             config_modified = true;
         }
     } else {
@@ -315,20 +369,65 @@ void Config::init(const std::string& config_path) {
         config_modified = true;
     } else {
         // Ensure all display subsections exist with defaults
-        auto defaults = get_default_display_config();
+        auto display_defaults = get_default_display_config();
         auto& display = data["display"];
 
-        for (auto& [key, value] : defaults.items()) {
+        for (auto& [key, value] : display_defaults.items()) {
             if (!display.contains(key)) {
                 display[key] = value;
                 config_modified = true;
             }
         }
+    }
 
-        // Ensure calibration subsection has all required fields
-        if (display.contains("calibration")) {
-            auto& cal = display["calibration"];
-            auto& cal_defaults = defaults["calibration"];
+    // Ensure input section exists with defaults (scroll settings + touch calibration)
+    if (!data.contains("input")) {
+        data["input"] = {{"scroll_throw", 25},
+                         {"scroll_limit", 5},
+                         {"touch_device", ""},
+                         {"calibration",
+                          {{"valid", false},
+                           {"a", 1.0},
+                           {"b", 0.0},
+                           {"c", 0.0},
+                           {"d", 0.0},
+                           {"e", 1.0},
+                           {"f", 0.0}}}};
+        config_modified = true;
+    } else {
+        // Ensure all input subsections exist with defaults
+        auto& input = data["input"];
+
+        // Ensure scroll settings exist
+        if (!input.contains("scroll_throw")) {
+            input["scroll_throw"] = 25;
+            config_modified = true;
+        }
+        if (!input.contains("scroll_limit")) {
+            input["scroll_limit"] = 5;
+            config_modified = true;
+        }
+        if (!input.contains("touch_device")) {
+            input["touch_device"] = "";
+            config_modified = true;
+        }
+
+        // Ensure calibration subsection exists with all required fields
+        if (!input.contains("calibration")) {
+            input["calibration"] = {{"valid", false},
+                                    {"a", 1.0},
+                                    {"b", 0.0},
+                                    {"c", 0.0},
+                                    {"d", 0.0},
+                                    {"e", 1.0},
+                                    {"f", 0.0}};
+            config_modified = true;
+        } else {
+            // Ensure all calibration fields exist
+            auto& cal = input["calibration"];
+            const json cal_defaults = {{"valid", false}, {"a", 1.0}, {"b", 0.0},
+                                       {"c", 0.0},       {"d", 0.0}, {"e", 1.0},
+                                       {"f", 0.0}};
             for (auto& [key, value] : cal_defaults.items()) {
                 if (!cal.contains(key)) {
                     cal[key] = value;

@@ -375,13 +375,13 @@ void TouchCalibrationOverlay::handle_accept_clicked() {
     // Save calibration to config
     Config* config = Config::get_instance();
     if (config) {
-        config->set<bool>("/display/calibration/valid", true);
-        config->set<double>("/display/calibration/a", static_cast<double>(cal->a));
-        config->set<double>("/display/calibration/b", static_cast<double>(cal->b));
-        config->set<double>("/display/calibration/c", static_cast<double>(cal->c));
-        config->set<double>("/display/calibration/d", static_cast<double>(cal->d));
-        config->set<double>("/display/calibration/e", static_cast<double>(cal->e));
-        config->set<double>("/display/calibration/f", static_cast<double>(cal->f));
+        config->set<bool>("/input/calibration/valid", true);
+        config->set<double>("/input/calibration/a", static_cast<double>(cal->a));
+        config->set<double>("/input/calibration/b", static_cast<double>(cal->b));
+        config->set<double>("/input/calibration/c", static_cast<double>(cal->c));
+        config->set<double>("/input/calibration/d", static_cast<double>(cal->d));
+        config->set<double>("/input/calibration/e", static_cast<double>(cal->e));
+        config->set<double>("/input/calibration/f", static_cast<double>(cal->f));
         config->save();
         spdlog::info("[{}] Calibration saved to config", get_name());
     }

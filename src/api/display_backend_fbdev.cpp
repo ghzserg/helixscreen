@@ -138,18 +138,18 @@ helix::TouchCalibration load_touch_calibration() {
         return cal;
     }
 
-    cal.valid = cfg->get<bool>("/display/calibration/valid", false);
+    cal.valid = cfg->get<bool>("/input/calibration/valid", false);
     if (!cal.valid) {
         spdlog::debug("[Fbdev Backend] No valid calibration in config");
         return cal;
     }
 
-    cal.a = static_cast<float>(cfg->get<double>("/display/calibration/a", 1.0));
-    cal.b = static_cast<float>(cfg->get<double>("/display/calibration/b", 0.0));
-    cal.c = static_cast<float>(cfg->get<double>("/display/calibration/c", 0.0));
-    cal.d = static_cast<float>(cfg->get<double>("/display/calibration/d", 0.0));
-    cal.e = static_cast<float>(cfg->get<double>("/display/calibration/e", 1.0));
-    cal.f = static_cast<float>(cfg->get<double>("/display/calibration/f", 0.0));
+    cal.a = static_cast<float>(cfg->get<double>("/input/calibration/a", 1.0));
+    cal.b = static_cast<float>(cfg->get<double>("/input/calibration/b", 0.0));
+    cal.c = static_cast<float>(cfg->get<double>("/input/calibration/c", 0.0));
+    cal.d = static_cast<float>(cfg->get<double>("/input/calibration/d", 0.0));
+    cal.e = static_cast<float>(cfg->get<double>("/input/calibration/e", 1.0));
+    cal.f = static_cast<float>(cfg->get<double>("/input/calibration/f", 0.0));
 
     if (!helix::is_calibration_valid(cal)) {
         spdlog::warn("[Fbdev Backend] Stored calibration failed validation");
