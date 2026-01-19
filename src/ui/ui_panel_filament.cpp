@@ -360,7 +360,8 @@ void FilamentPanel::update_warning_text() {
 void FilamentPanel::update_safety_state() {
     bool allowed = helix::ui::temperature::is_extrusion_safe(nozzle_current_, min_extrude_temp_);
 
-    // Update reactive subjects - XML bindings handle button disabled state and safety warning visibility
+    // Update reactive subjects - XML bindings handle button disabled state and safety warning
+    // visibility
     lv_subject_set_int(&extrusion_allowed_subject_, allowed ? 1 : 0);
     lv_subject_set_int(&safety_warning_visible_subject_, allowed ? 0 : 1);
 

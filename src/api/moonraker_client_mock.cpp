@@ -2211,7 +2211,8 @@ void MoonrakerClientMock::dispatch_historical_temperatures() {
             double chamber_temp =
                 chamber_mid + chamber_amp * std::sin(2.0 * M_PI * timestamp_sec / CHAMBER_PERIOD);
             double chamber_noise = pseudo_random(i * 3) * 0.5;
-            status_obj["temperature_sensor chamber"] = {{"temperature", chamber_temp + chamber_noise}};
+            status_obj["temperature_sensor chamber"] = {
+                {"temperature", chamber_temp + chamber_noise}};
         }
 
         json notification = {{"method", "notify_status_update"},
@@ -2375,8 +2376,8 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         if (has_chamber_sensor()) {
             constexpr double CHAMBER_MIN = 25.0;
             constexpr double CHAMBER_MAX = 45.0;
-            constexpr double CHAMBER_HEAT_RATE = 0.05;  // °C/sec (very slow heating)
-            constexpr double CHAMBER_COOL_RATE = 0.02;  // °C/sec (slow passive cooling)
+            constexpr double CHAMBER_HEAT_RATE = 0.05;   // °C/sec (very slow heating)
+            constexpr double CHAMBER_COOL_RATE = 0.02;   // °C/sec (slow passive cooling)
             constexpr double CHAMBER_WAVE_PERIOD = 90.0; // 90 second period for idle variation
 
             double chamber = chamber_temp_.load();
