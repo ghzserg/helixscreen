@@ -3,6 +3,7 @@
 #pragma once
 
 #include "lvgl/lvgl.h"
+#include "unit_conversions.h"
 
 #include <cstddef>
 
@@ -47,7 +48,7 @@ namespace temperature {
  * @return Temperature in degrees (e.g., 210)
  */
 inline int centi_to_degrees(int centi) {
-    return centi / 10;
+    return static_cast<int>(helix::units::from_centidegrees(centi));
 }
 
 /**
@@ -59,7 +60,7 @@ inline int centi_to_degrees(int centi) {
  * @return Temperature in degrees (e.g., 210.5f)
  */
 inline float centi_to_degrees_f(int centi) {
-    return static_cast<float>(centi) / 10.0f;
+    return static_cast<float>(helix::units::from_centidegrees(centi));
 }
 
 /**
@@ -71,7 +72,7 @@ inline float centi_to_degrees_f(int centi) {
  * @return Temperature in centidegrees (e.g., 2100)
  */
 inline int degrees_to_centi(int degrees) {
-    return degrees * 10;
+    return helix::units::to_centidegrees(static_cast<double>(degrees));
 }
 
 // ============================================================================

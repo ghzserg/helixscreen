@@ -83,7 +83,7 @@ class MotionPanel : public OverlayBase {
     jog_distance_t current_distance_ = JOG_DIST_1MM;
     float current_x_ = 0.0f;
     float current_y_ = 0.0f;
-    float current_z_ = 0.0f;  // Gcode (commanded) Z position
+    float current_z_ = 0.0f; // Gcode (commanded) Z position
 
     // For Z display: track both commanded and actual positions
     int gcode_z_centimm_ = 0;
@@ -108,7 +108,7 @@ class MotionPanel : public OverlayBase {
     // Position observers use lambda-based observer factory (no static callbacks needed)
 
     void update_z_axis_label(bool bed_moves);
-    void update_z_display();  // Updates Z label with actual in brackets when different
+    void update_z_display(); // Updates Z label with actual in brackets when different
 };
 
 MotionPanel& get_global_motion_panel();

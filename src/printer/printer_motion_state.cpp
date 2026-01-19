@@ -23,10 +23,16 @@ void PrinterMotionState::init_subjects(bool register_xml) {
 
     spdlog::debug("[PrinterMotionState] Initializing subjects (register_xml={})", register_xml);
 
-    // Motion subjects
+    // Toolhead position subjects (actual physical position)
     lv_subject_init_int(&position_x_, 0);
     lv_subject_init_int(&position_y_, 0);
     lv_subject_init_int(&position_z_, 0);
+
+    // Gcode position subjects (commanded position)
+    lv_subject_init_int(&gcode_position_x_, 0);
+    lv_subject_init_int(&gcode_position_y_, 0);
+    lv_subject_init_int(&gcode_position_z_, 0);
+
     lv_subject_init_string(&homed_axes_, homed_axes_buf_, nullptr, sizeof(homed_axes_buf_), "");
 
     // Speed/Flow subjects (percentages)
@@ -39,6 +45,9 @@ void PrinterMotionState::init_subjects(bool register_xml) {
     subjects_.register_subject(&position_x_);
     subjects_.register_subject(&position_y_);
     subjects_.register_subject(&position_z_);
+    subjects_.register_subject(&gcode_position_x_);
+    subjects_.register_subject(&gcode_position_y_);
+    subjects_.register_subject(&gcode_position_z_);
     subjects_.register_subject(&homed_axes_);
     subjects_.register_subject(&speed_factor_);
     subjects_.register_subject(&flow_factor_);
@@ -51,6 +60,9 @@ void PrinterMotionState::init_subjects(bool register_xml) {
         lv_xml_register_subject(NULL, "position_x", &position_x_);
         lv_xml_register_subject(NULL, "position_y", &position_y_);
         lv_xml_register_subject(NULL, "position_z", &position_z_);
+        lv_xml_register_subject(NULL, "gcode_position_x", &gcode_position_x_);
+        lv_xml_register_subject(NULL, "gcode_position_y", &gcode_position_y_);
+        lv_xml_register_subject(NULL, "gcode_position_z", &gcode_position_z_);
         lv_xml_register_subject(NULL, "homed_axes", &homed_axes_);
         lv_xml_register_subject(NULL, "speed_factor", &speed_factor_);
         lv_xml_register_subject(NULL, "flow_factor", &flow_factor_);
@@ -82,10 +94,11 @@ void PrinterMotionState::update_from_status(const nlohmann::json& status) {
         if (toolhead.contains("position") && toolhead["position"].is_array()) {
             const auto& pos = toolhead["position"];
             // Note: Klipper can send null position values before homing or during errors
+            // Store positions as centimillimeters (×100) for 0.01mm precision
             if (pos.size() >= 3 && pos[0].is_number() && pos[1].is_number() && pos[2].is_number()) {
-                lv_subject_set_int(&position_x_, static_cast<int>(pos[0].get<double>()));
-                lv_subject_set_int(&position_y_, static_cast<int>(pos[1].get<double>()));
-                lv_subject_set_int(&position_z_, static_cast<int>(pos[2].get<double>()));
+                lv_subject_set_int(&position_x_, helix::units::to_centimm(pos[0].get<double>()));
+                lv_subject_set_int(&position_y_, helix::units::to_centimm(pos[1].get<double>()));
+                lv_subject_set_int(&position_z_, helix::units::to_centimm(pos[2].get<double>()));
             }
         }
 
@@ -97,9 +110,22 @@ void PrinterMotionState::update_from_status(const nlohmann::json& status) {
         }
     }
 
-    // Update speed factor
+    // Update gcode_move data (commanded position, speed/flow factors, z-offset)
     if (status.contains("gcode_move")) {
         const auto& gcode_move = status["gcode_move"];
+
+        // Parse commanded position from gcode_move.position
+        if (gcode_move.contains("position") && gcode_move["position"].is_array()) {
+            const auto& pos = gcode_move["position"];
+            if (pos.size() >= 3 && pos[0].is_number() && pos[1].is_number() && pos[2].is_number()) {
+                lv_subject_set_int(&gcode_position_x_,
+                                   helix::units::to_centimm(pos[0].get<double>()));
+                lv_subject_set_int(&gcode_position_y_,
+                                   helix::units::to_centimm(pos[1].get<double>()));
+                lv_subject_set_int(&gcode_position_z_,
+                                   helix::units::to_centimm(pos[2].get<double>()));
+            }
+        }
 
         if (gcode_move.contains("speed_factor") && gcode_move["speed_factor"].is_number()) {
             int factor_pct = helix::units::json_to_percent(gcode_move, "speed_factor");

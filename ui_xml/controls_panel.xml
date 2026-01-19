@@ -52,7 +52,7 @@
         <lv_obj height="content"
                 flex_flow="row" style_flex_cross_place="center" style_flex_track_place="center" style_pad_all="0"
                 style_pad_gap="#space_sm" style_border_width="0">
-          <icon src="axis_arrow" size="sm" variant="secondary"/>
+          <icon src="axis_arrow" size="sm" variant="primary"/>
           <text_small text="Position" style_text_color="#text_primary" style_translate_y="2"/>
         </lv_obj>
         <!-- Position display with homing indicators -->
@@ -185,7 +185,7 @@
             <lv_obj width="100%"
                     height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
                     style_pad_gap="#space_sm" style_border_width="0" scrollable="false">
-              <icon src="heater" size="sm" variant="secondary"/>
+              <icon src="heater" size="sm" variant="primary"/>
               <text_small text="Temperatures" style_text_color="#text_primary" style_translate_y="2"/>
             </lv_obj>
             <!-- Nozzle section (clickable) -->
@@ -235,7 +235,7 @@
             <lv_obj width="100%"
                     height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
                     style_pad_gap="#space_sm" style_border_width="0" scrollable="false">
-              <icon name="fan_icon" src="fan" size="sm" variant="secondary"/>
+              <icon name="fan_icon" src="fan" size="sm" variant="primary"/>
               <text_small text="Cooling" style_text_color="#text_primary" style_translate_y="2"/>
             </lv_obj>
             <!-- Part cooling hero section -->
@@ -271,7 +271,7 @@
         <lv_obj width="100%"
                 height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
                 flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <icon src="wrench" size="sm" variant="secondary"/>
+          <icon src="wrench" size="sm" variant="primary"/>
           <text_small text="Calibration &amp; Tools" style_text_color="#text_primary" style_translate_y="2"/>
         </lv_obj>
         <!-- 2x2 Grid Container -->
@@ -346,7 +346,7 @@
         <lv_obj height="content"
                 flex_flow="row" style_flex_cross_place="center" style_flex_track_place="center" style_pad_all="0"
                 style_pad_gap="#space_sm" style_border_width="0">
-          <icon src="home" size="sm" variant="secondary"/>
+          <icon src="home" size="sm" variant="primary"/>
           <text_small text="Quick Actions" style_text_color="#text_primary" style_translate_y="2"/>
         </lv_obj>
         <!-- Home section header -->

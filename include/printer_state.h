@@ -519,7 +519,7 @@ class PrinterState {
      */
     void reset_print_start_state();
 
-    // Motion subjects - delegated to PrinterMotionState component
+    // Toolhead position subjects - actual physical position (includes mesh compensation)
     lv_subject_t* get_position_x_subject() {
         return motion_state_.get_position_x_subject();
     }
@@ -529,6 +529,18 @@ class PrinterState {
     lv_subject_t* get_position_z_subject() {
         return motion_state_.get_position_z_subject();
     }
+
+    // Gcode position subjects - commanded position (what user requested)
+    lv_subject_t* get_gcode_position_x_subject() {
+        return motion_state_.get_gcode_position_x_subject();
+    }
+    lv_subject_t* get_gcode_position_y_subject() {
+        return motion_state_.get_gcode_position_y_subject();
+    }
+    lv_subject_t* get_gcode_position_z_subject() {
+        return motion_state_.get_gcode_position_z_subject();
+    }
+
     lv_subject_t* get_homed_axes_subject() {
         return motion_state_.get_homed_axes_subject();
     } // "xyz", "xy", etc.

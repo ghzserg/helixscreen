@@ -168,23 +168,23 @@ TEST_CASE("Motion characterization: position updates from JSON",
     state.reset_for_testing();
     state.init_subjects(false);
 
-    SECTION("positions are truncated to integers") {
+    SECTION("positions store as centimillimeters with 0.01mm precision") {
         json status = {{"toolhead", {{"position", {150.5, 200.3, 10.7}}}}};
         state.update_from_status(status);
 
-        // Positions are truncated (not rounded)
-        REQUIRE(lv_subject_get_int(state.get_position_x_subject()) == 150);
-        REQUIRE(lv_subject_get_int(state.get_position_y_subject()) == 200);
-        REQUIRE(lv_subject_get_int(state.get_position_z_subject()) == 10);
+        // Positions stored as centimillimeters (mm × 100)
+        REQUIRE(lv_subject_get_int(state.get_position_x_subject()) == 15050);
+        REQUIRE(lv_subject_get_int(state.get_position_y_subject()) == 20030);
+        REQUIRE(lv_subject_get_int(state.get_position_z_subject()) == 1070);
     }
 
     SECTION("whole positions store correctly") {
         json status = {{"toolhead", {{"position", {100.0, 200.0, 50.0}}}}};
         state.update_from_status(status);
 
-        REQUIRE(lv_subject_get_int(state.get_position_x_subject()) == 100);
-        REQUIRE(lv_subject_get_int(state.get_position_y_subject()) == 200);
-        REQUIRE(lv_subject_get_int(state.get_position_z_subject()) == 50);
+        REQUIRE(lv_subject_get_int(state.get_position_x_subject()) == 10000);
+        REQUIRE(lv_subject_get_int(state.get_position_y_subject()) == 20000);
+        REQUIRE(lv_subject_get_int(state.get_position_z_subject()) == 5000);
     }
 
     SECTION("zero positions store correctly") {
@@ -200,9 +200,9 @@ TEST_CASE("Motion characterization: position updates from JSON",
         json status = {{"toolhead", {{"position", {350.0, 350.0, 400.0}}}}};
         state.update_from_status(status);
 
-        REQUIRE(lv_subject_get_int(state.get_position_x_subject()) == 350);
-        REQUIRE(lv_subject_get_int(state.get_position_y_subject()) == 350);
-        REQUIRE(lv_subject_get_int(state.get_position_z_subject()) == 400);
+        REQUIRE(lv_subject_get_int(state.get_position_x_subject()) == 35000);
+        REQUIRE(lv_subject_get_int(state.get_position_y_subject()) == 35000);
+        REQUIRE(lv_subject_get_int(state.get_position_z_subject()) == 40000);
     }
 
     SECTION("negative positions store correctly") {
@@ -210,8 +210,8 @@ TEST_CASE("Motion characterization: position updates from JSON",
         json status = {{"toolhead", {{"position", {-10.5, -5.2, 0.0}}}}};
         state.update_from_status(status);
 
-        REQUIRE(lv_subject_get_int(state.get_position_x_subject()) == -10);
-        REQUIRE(lv_subject_get_int(state.get_position_y_subject()) == -5);
+        REQUIRE(lv_subject_get_int(state.get_position_x_subject()) == -1050);
+        REQUIRE(lv_subject_get_int(state.get_position_y_subject()) == -520);
         REQUIRE(lv_subject_get_int(state.get_position_z_subject()) == 0);
     }
 }

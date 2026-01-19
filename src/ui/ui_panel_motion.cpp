@@ -266,7 +266,8 @@ void MotionPanel::register_position_observers() {
 
     // Use gcode position (commanded) for X/Y display and jog calculations
     position_x_observer_ = observe_int_sync<MotionPanel>(
-        get_printer_state().get_gcode_position_x_subject(), this, [](MotionPanel* self, int centimm) {
+        get_printer_state().get_gcode_position_x_subject(), this,
+        [](MotionPanel* self, int centimm) {
             if (!self->subjects_initialized_)
                 return;
             float x = static_cast<float>(helix::units::from_centimm(centimm));
@@ -276,7 +277,8 @@ void MotionPanel::register_position_observers() {
         });
 
     position_y_observer_ = observe_int_sync<MotionPanel>(
-        get_printer_state().get_gcode_position_y_subject(), this, [](MotionPanel* self, int centimm) {
+        get_printer_state().get_gcode_position_y_subject(), this,
+        [](MotionPanel* self, int centimm) {
             if (!self->subjects_initialized_)
                 return;
             float y = static_cast<float>(helix::units::from_centimm(centimm));
@@ -288,7 +290,8 @@ void MotionPanel::register_position_observers() {
     // Z needs both gcode (commanded) and actual (with mesh compensation) positions
     // Display shows commanded with actual in brackets when they differ
     gcode_z_observer_ = observe_int_sync<MotionPanel>(
-        get_printer_state().get_gcode_position_z_subject(), this, [](MotionPanel* self, int centimm) {
+        get_printer_state().get_gcode_position_z_subject(), this,
+        [](MotionPanel* self, int centimm) {
             if (!self->subjects_initialized_)
                 return;
             self->gcode_z_centimm_ = centimm;
@@ -296,13 +299,13 @@ void MotionPanel::register_position_observers() {
             self->update_z_display();
         });
 
-    actual_z_observer_ = observe_int_sync<MotionPanel>(
-        get_printer_state().get_position_z_subject(), this, [](MotionPanel* self, int centimm) {
-            if (!self->subjects_initialized_)
-                return;
-            self->actual_z_centimm_ = centimm;
-            self->update_z_display();
-        });
+    actual_z_observer_ = observe_int_sync<MotionPanel>(get_printer_state().get_position_z_subject(),
+                                                       this, [](MotionPanel* self, int centimm) {
+                                                           if (!self->subjects_initialized_)
+                                                               return;
+                                                           self->actual_z_centimm_ = centimm;
+                                                           self->update_z_display();
+                                                       });
 
     // Watch for kinematics changes to update Z-axis label ("Bed" vs "Print Head")
     bed_moves_observer_ =

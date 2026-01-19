@@ -13,7 +13,12 @@ namespace helix {
  * @brief Manages motion-related subjects for printer state
  *
  * Extracted from PrinterState as part of god class decomposition.
- * Positions stored as integers (mm), Z-offset as microns.
+ *
+ * Position storage (all in centimillimeters, use from_centimm() for mm):
+ * - position_x/y/z: toolhead.position - actual physical position (includes mesh compensation)
+ * - gcode_position_x/y/z: gcode_move.position - commanded position (what user requested)
+ *
+ * Z-offset stored as microns.
  */
 class PrinterMotionState {
   public:
@@ -46,7 +51,7 @@ class PrinterMotionState {
      */
     void reset_for_testing();
 
-    // Position accessors (integer mm)
+    // Toolhead position accessors - actual physical position (centimillimeters)
     lv_subject_t* get_position_x_subject() {
         return &position_x_;
     }
@@ -56,6 +61,18 @@ class PrinterMotionState {
     lv_subject_t* get_position_z_subject() {
         return &position_z_;
     }
+
+    // Gcode position accessors - commanded position (centimillimeters)
+    lv_subject_t* get_gcode_position_x_subject() {
+        return &gcode_position_x_;
+    }
+    lv_subject_t* get_gcode_position_y_subject() {
+        return &gcode_position_y_;
+    }
+    lv_subject_t* get_gcode_position_z_subject() {
+        return &gcode_position_z_;
+    }
+
     lv_subject_t* get_homed_axes_subject() {
         return &homed_axes_;
     }
@@ -86,10 +103,16 @@ class PrinterMotionState {
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 
-    // Position subjects
+    // Toolhead position subjects (actual physical position)
     lv_subject_t position_x_{};
     lv_subject_t position_y_{};
     lv_subject_t position_z_{};
+
+    // Gcode position subjects (commanded position)
+    lv_subject_t gcode_position_x_{};
+    lv_subject_t gcode_position_y_{};
+    lv_subject_t gcode_position_z_{};
+
     lv_subject_t homed_axes_{};
     char homed_axes_buf_[8]{};
 

@@ -18,6 +18,7 @@
 #include "ui_panel_motion.h"
 #include "ui_panel_screws_tilt.h"
 #include "ui_panel_temp_control.h"
+#include "ui_position_utils.h"
 #include "ui_subject_registry.h"
 #include "ui_temperature_utils.h"
 #include "ui_theme.h"
@@ -46,6 +47,7 @@ MotionPanel& get_global_motion_panel();
 class ExtrusionPanel;
 ExtrusionPanel& get_global_extrusion_panel();
 
+using helix::ui::position::format_position;
 using helix::ui::temperature::centi_to_degrees_f;
 
 // ============================================================================
@@ -428,28 +430,23 @@ void ControlsPanel::register_observers() {
                                             self->update_z_offset_delta_display(delta_microns);
                                         });
 
-    // Subscribe to position updates for Position card
+    // Subscribe to gcode position updates for Position card (commanded position in
+    // centimillimeters)
     position_x_observer_ = observe_int_sync<ControlsPanel>(
-        printer_state_.get_position_x_subject(), this, [](ControlsPanel* self, int value) {
-            float x = static_cast<float>(value);
-            std::snprintf(self->controls_pos_x_buf_, sizeof(self->controls_pos_x_buf_), "%7.1f mm",
-                          x);
+        printer_state_.get_gcode_position_x_subject(), this, [](ControlsPanel* self, int centimm) {
+            format_position(centimm, self->controls_pos_x_buf_, sizeof(self->controls_pos_x_buf_));
             lv_subject_copy_string(&self->controls_pos_x_subject_, self->controls_pos_x_buf_);
         });
 
     position_y_observer_ = observe_int_sync<ControlsPanel>(
-        printer_state_.get_position_y_subject(), this, [](ControlsPanel* self, int value) {
-            float y = static_cast<float>(value);
-            std::snprintf(self->controls_pos_y_buf_, sizeof(self->controls_pos_y_buf_), "%7.1f mm",
-                          y);
+        printer_state_.get_gcode_position_y_subject(), this, [](ControlsPanel* self, int centimm) {
+            format_position(centimm, self->controls_pos_y_buf_, sizeof(self->controls_pos_y_buf_));
             lv_subject_copy_string(&self->controls_pos_y_subject_, self->controls_pos_y_buf_);
         });
 
     position_z_observer_ = observe_int_sync<ControlsPanel>(
-        printer_state_.get_position_z_subject(), this, [](ControlsPanel* self, int value) {
-            float z = static_cast<float>(value);
-            std::snprintf(self->controls_pos_z_buf_, sizeof(self->controls_pos_z_buf_), "%7.2f mm",
-                          z);
+        printer_state_.get_gcode_position_z_subject(), this, [](ControlsPanel* self, int centimm) {
+            format_position(centimm, self->controls_pos_z_buf_, sizeof(self->controls_pos_z_buf_));
             lv_subject_copy_string(&self->controls_pos_z_subject_, self->controls_pos_z_buf_);
         });
 
