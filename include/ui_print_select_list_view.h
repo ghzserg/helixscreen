@@ -164,6 +164,10 @@ class PrintSelectListView {
     int visible_start_ = -1;
     int visible_end_ = -1;
 
+    // === Cached Dimensions (set once after first layout) ===
+    int cached_row_height_ = 0;
+    int cached_row_gap_ = 0;
+
     // === Callbacks ===
     FileClickCallback on_file_click_;
     MetadataFetchCallback on_metadata_fetch_;

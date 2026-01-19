@@ -335,6 +335,21 @@ void PrintSelectListView::populate(const std::vector<PrintFileData>& file_list,
     // Create spacers if needed
     create_spacers();
 
+    // Cache row dimensions on first populate (after pool exists but before hiding all rows)
+    // We need a visible, laid-out row to measure correctly
+    if (cached_row_height_ == 0 && !list_pool_.empty() && !file_list.empty()) {
+        // Temporarily configure and show first row to measure it
+        lv_obj_t* row = list_pool_[0];
+        configure_row(row, 0, 0, file_list[0]);
+        lv_obj_update_layout(container_);
+
+        cached_row_height_ = lv_obj_get_height(row);
+        cached_row_gap_ = lv_obj_get_style_pad_row(container_, LV_PART_MAIN);
+
+        spdlog::debug("[PrintSelectListView] Cached row dimensions: height={} gap={}",
+                      cached_row_height_, cached_row_gap_);
+    }
+
     // Reset visible range tracking
     visible_start_ = -1;
     visible_end_ = -1;
@@ -366,9 +381,10 @@ void PrintSelectListView::update_visible(const std::vector<PrintFileData>& file_
 
     int total_rows = static_cast<int>(file_list.size());
 
-    // Calculate row stride from actual widget height + container gap
-    int row_height = list_pool_.empty() ? 44 : lv_obj_get_height(list_pool_[0]);
-    int row_gap = lv_obj_get_style_pad_row(container_, LV_PART_MAIN);
+    // Use cached row dimensions (set in populate())
+    // Fall back to defaults if not yet cached
+    int row_height = cached_row_height_ > 0 ? cached_row_height_ : 44;
+    int row_gap = cached_row_gap_;
     int row_stride = row_height + row_gap;
 
     // Calculate visible row range (with buffer)
@@ -381,8 +397,8 @@ void PrintSelectListView::update_visible(const std::vector<PrintFileData>& file_
         return;
     }
 
-    spdlog::trace("[PrintSelectListView] Scroll: {} viewport: {} visible: {}-{}", scroll_y,
-                  viewport_height, first_visible, last_visible);
+    spdlog::trace("[PrintSelectListView] Scroll: y={} viewport={} visible={}-{}/{} stride={}",
+                  scroll_y, viewport_height, first_visible, last_visible, total_rows, row_stride);
 
     // Update leading spacer height
     int leading_height = first_visible * row_stride;
