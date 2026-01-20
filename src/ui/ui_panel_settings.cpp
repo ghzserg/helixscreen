@@ -54,19 +54,14 @@ SettingsPanel::~SettingsPanel() {
     // Applying [L041]: deinit_subjects() as first line in destructor
     deinit_subjects();
 
-    // Remove observers BEFORE labels are destroyed to prevent use-after-free
-    // The subjects (in PrinterState) outlive this panel, so observers must be
-    // explicitly removed or LVGL will try to update destroyed labels
-    // Check lv_is_initialized() to handle static destruction order safely
+    // Widget-bound observers (from lv_label_bind_text) are automatically removed
+    // by LVGL when the bound widget is deleted. We avoid manual lv_observer_remove()
+    // because the observers may already be removed (stale pointers) if the widget
+    // tree was cleaned up. The subjects (in PrinterState) outlive this panel and
+    // will handle any remaining observer cleanup via lv_subject_deinit().
     if (lv_is_initialized()) {
-        if (klipper_version_observer_) {
-            lv_observer_remove(klipper_version_observer_);
-            klipper_version_observer_ = nullptr;
-        }
-        if (moonraker_version_observer_) {
-            lv_observer_remove(moonraker_version_observer_);
-            moonraker_version_observer_ = nullptr;
-        }
+        klipper_version_observer_ = nullptr;
+        moonraker_version_observer_ = nullptr;
 
         // Unregister overlay callbacks to prevent dangling 'this' in callbacks
         auto& nav = NavigationManager::instance();

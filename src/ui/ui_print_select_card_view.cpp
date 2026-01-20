@@ -104,40 +104,18 @@ bool PrintSelectCardView::setup(lv_obj_t* container, FileClickCallback on_file_c
 }
 
 void PrintSelectCardView::cleanup() {
-    // Remove observers BEFORE clearing data pools to prevent crashes
+    // Deinitialize subjects - this properly removes all attached observers.
+    // We use lv_subject_deinit() instead of lv_observer_remove() because
+    // widget-bound observers (from lv_label_bind_text, lv_obj_bind_flag_if_*)
+    // can be auto-removed by LVGL when widgets are deleted, leaving dangling
+    // pointers. Working from the subject side is always safe since we own them.
     if (lv_is_initialized()) {
         for (auto& data : card_data_pool_) {
             if (data) {
-                // Text binding observers
-                if (data->filename_observer) {
-                    lv_observer_remove(data->filename_observer);
-                    data->filename_observer = nullptr;
-                }
-                if (data->time_observer) {
-                    lv_observer_remove(data->time_observer);
-                    data->time_observer = nullptr;
-                }
-                if (data->filament_observer) {
-                    lv_observer_remove(data->filament_observer);
-                    data->filament_observer = nullptr;
-                }
-                // Directory visibility binding observers
-                if (data->metadata_row_observer) {
-                    lv_observer_remove(data->metadata_row_observer);
-                    data->metadata_row_observer = nullptr;
-                }
-                if (data->folder_icon_observer) {
-                    lv_observer_remove(data->folder_icon_observer);
-                    data->folder_icon_observer = nullptr;
-                }
-                if (data->parent_dir_icon_observer) {
-                    lv_observer_remove(data->parent_dir_icon_observer);
-                    data->parent_dir_icon_observer = nullptr;
-                }
-                if (data->thumbnail_observer) {
-                    lv_observer_remove(data->thumbnail_observer);
-                    data->thumbnail_observer = nullptr;
-                }
+                lv_subject_deinit(&data->filename_subject);
+                lv_subject_deinit(&data->time_subject);
+                lv_subject_deinit(&data->filament_subject);
+                lv_subject_deinit(&data->folder_type_subject);
             }
         }
     }

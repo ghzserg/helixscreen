@@ -155,11 +155,10 @@ void AmsSpoolmanPicker::hide() {
     // Invalidate async callbacks first [L012]
     callback_guard_.reset();
 
-    // Remove observer before destroying picker [L020]
-    if (slot_indicator_observer_) {
-        lv_observer_remove(slot_indicator_observer_);
-        slot_indicator_observer_ = nullptr;
-    }
+    // Observer cleanup is handled by SubjectManager::deinit_all() in deinit_subjects()
+    // which calls lv_subject_deinit() on each subject. We avoid manual lv_observer_remove()
+    // to prevent potential crashes from stale observer pointers during shutdown.
+    slot_indicator_observer_ = nullptr;
 
     if (picker_) {
         lv_obj_delete(picker_);

@@ -199,44 +199,22 @@ void MacroEnhanceWizard::on_hide() {
         return;
     }
 
-    // Remove observers before subjects become invalid [L020]
-    if (step_title_observer_) {
-        lv_observer_remove(step_title_observer_);
-        step_title_observer_ = nullptr;
-    }
-    if (step_progress_observer_) {
-        lv_observer_remove(step_progress_observer_);
-        step_progress_observer_ = nullptr;
-    }
-    if (description_observer_) {
-        lv_observer_remove(description_observer_);
-        description_observer_ = nullptr;
-    }
-    if (diff_preview_observer_) {
-        lv_observer_remove(diff_preview_observer_);
-        diff_preview_observer_ = nullptr;
-    }
-    if (summary_observer_) {
-        lv_observer_remove(summary_observer_);
-        summary_observer_ = nullptr;
-    }
-    // Cleanup observers for shared description bindings
-    if (applying_status_observer_) {
-        lv_observer_remove(applying_status_observer_);
-        applying_status_observer_ = nullptr;
-    }
-    if (success_message_observer_) {
-        lv_observer_remove(success_message_observer_);
-        success_message_observer_ = nullptr;
-    }
-    if (error_message_observer_) {
-        lv_observer_remove(error_message_observer_);
-        error_message_observer_ = nullptr;
-    }
-    if (backup_label_observer_) {
-        lv_observer_remove(backup_label_observer_);
-        backup_label_observer_ = nullptr;
-    }
+    // Deinitialize subjects to properly remove all attached observers.
+    // We use lv_subject_deinit() instead of lv_observer_remove() because
+    // widget-bound observers can be auto-removed by LVGL when widgets are
+    // deleted, leaving dangling pointers. Working from the subject side is safe.
+    lv_subject_deinit(&step_title_subject_);
+    lv_subject_deinit(&step_progress_subject_);
+    lv_subject_deinit(&description_subject_);
+    lv_subject_deinit(&diff_preview_subject_);
+    lv_subject_deinit(&summary_subject_);
+    lv_subject_deinit(&backup_text_subject_);
+    lv_subject_deinit(&state_subject_);
+    lv_subject_deinit(&show_operation_subject_);
+    lv_subject_deinit(&show_summary_subject_);
+    lv_subject_deinit(&show_applying_subject_);
+    lv_subject_deinit(&show_success_subject_);
+    lv_subject_deinit(&show_error_subject_);
 }
 
 void MacroEnhanceWizard::bind_subjects_to_widgets() {

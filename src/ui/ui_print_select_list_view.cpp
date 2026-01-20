@@ -85,26 +85,17 @@ bool PrintSelectListView::setup(lv_obj_t* container, FileClickCallback on_file_c
 }
 
 void PrintSelectListView::cleanup() {
-    // Remove observers BEFORE clearing data pools
+    // Deinitialize subjects - this properly removes all attached observers.
+    // We use lv_subject_deinit() instead of lv_observer_remove() because
+    // widget-bound observers can be auto-removed by LVGL when widgets are
+    // deleted, leaving dangling pointers.
     if (lv_is_initialized()) {
         for (auto& data : list_data_pool_) {
             if (data) {
-                if (data->filename_observer) {
-                    lv_observer_remove(data->filename_observer);
-                    data->filename_observer = nullptr;
-                }
-                if (data->size_observer) {
-                    lv_observer_remove(data->size_observer);
-                    data->size_observer = nullptr;
-                }
-                if (data->modified_observer) {
-                    lv_observer_remove(data->modified_observer);
-                    data->modified_observer = nullptr;
-                }
-                if (data->time_observer) {
-                    lv_observer_remove(data->time_observer);
-                    data->time_observer = nullptr;
-                }
+                lv_subject_deinit(&data->filename_subject);
+                lv_subject_deinit(&data->size_subject);
+                lv_subject_deinit(&data->modified_subject);
+                lv_subject_deinit(&data->time_subject);
             }
         }
     }

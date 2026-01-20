@@ -179,35 +179,17 @@ void AmsEditModal::on_hide() {
         return;
     }
 
-    // Remove observers BEFORE modal destruction [L020]
-    if (slot_indicator_observer_) {
-        lv_observer_remove(slot_indicator_observer_);
-        slot_indicator_observer_ = nullptr;
-    }
-    if (color_name_observer_) {
-        lv_observer_remove(color_name_observer_);
-        color_name_observer_ = nullptr;
-    }
-    if (temp_nozzle_observer_) {
-        lv_observer_remove(temp_nozzle_observer_);
-        temp_nozzle_observer_ = nullptr;
-    }
-    if (temp_bed_observer_) {
-        lv_observer_remove(temp_bed_observer_);
-        temp_bed_observer_ = nullptr;
-    }
-    if (remaining_pct_observer_) {
-        lv_observer_remove(remaining_pct_observer_);
-        remaining_pct_observer_ = nullptr;
-    }
-    if (save_btn_text_observer_) {
-        lv_observer_remove(save_btn_text_observer_);
-        save_btn_text_observer_ = nullptr;
-    }
+    // Observer cleanup is handled by SubjectManager::deinit_all() in deinit_subjects()
+    // which calls lv_subject_deinit() on each subject. This properly removes all
+    // attached observers from the subject side. We avoid manual lv_observer_remove()
+    // because the destructor calls deinit_subjects() before the Modal base destructor
+    // calls on_hide(), which would leave us with stale observer pointers.
 
     // Reset edit mode subject
-    lv_subject_set_int(&remaining_mode_subject_, 0);
-    spdlog::debug("[AmsEditModal] cleanup()");
+    if (subjects_initialized_) {
+        lv_subject_set_int(&remaining_mode_subject_, 0);
+    }
+    spdlog::debug("[AmsEditModal] on_hide()");
 }
 
 // ============================================================================

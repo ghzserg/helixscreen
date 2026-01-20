@@ -144,19 +144,11 @@ void AmsColorPicker::on_show() {
 }
 
 void AmsColorPicker::on_hide() {
-    // Remove observers BEFORE modal destruction [L020]
-    // Check if LVGL is initialized - may be called from destructor during static destruction
-    if (lv_is_initialized()) {
-        if (hex_label_observer_) {
-            lv_observer_remove(hex_label_observer_);
-            hex_label_observer_ = nullptr;
-        }
-        if (name_label_observer_) {
-            lv_observer_remove(name_label_observer_);
-            name_label_observer_ = nullptr;
-        }
-    }
-    spdlog::debug("[AmsColorPicker] cleanup()");
+    // Observer cleanup is handled by SubjectManager::deinit_all() in deinit_subjects()
+    // which calls lv_subject_deinit() on each subject. We avoid manual lv_observer_remove()
+    // because the destructor calls deinit_subjects() before the Modal base destructor
+    // calls on_hide(), which would leave us with stale observer pointers.
+    spdlog::debug("[AmsColorPicker] on_hide()");
 }
 
 void AmsColorPicker::on_cancel() {
