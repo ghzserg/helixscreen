@@ -70,8 +70,7 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, MoonrakerAPI* ap
     : printer_state_(printer_state), api_(api) {
     // Subscribe to temperature subjects using bundle (replaces 4 individual observers)
     temp_observers_.setup_sync(
-        this, printer_state_,
-        [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
+        this, printer_state_, [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); });

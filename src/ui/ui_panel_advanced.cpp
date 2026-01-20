@@ -3,7 +3,6 @@
 
 #include "ui_panel_advanced.h"
 
-#include "ui/ui_lazy_panel_helper.h"
 #include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_overlay_timelapse_settings.h"
@@ -21,6 +20,7 @@
 #include "moonraker_manager.h"
 #include "printer_state.h"
 #include "static_panel_registry.h"
+#include "ui/ui_lazy_panel_helper.h"
 
 #include <spdlog/spdlog.h>
 
@@ -128,13 +128,13 @@ void AdvancedPanel::handle_spoolman_clicked() {
 }
 
 void AdvancedPanel::handle_macros_clicked() {
-    helix::ui::lazy_create_and_push_overlay<MacrosPanel>(
-        get_global_macros_panel, macros_panel_, parent_screen_, "Macros", get_name());
+    helix::ui::lazy_create_and_push_overlay<MacrosPanel>(get_global_macros_panel, macros_panel_,
+                                                         parent_screen_, "Macros", get_name());
 }
 
 void AdvancedPanel::handle_console_clicked() {
-    helix::ui::lazy_create_and_push_overlay<ConsolePanel>(
-        get_global_console_panel, console_panel_, parent_screen_, "Console", get_name());
+    helix::ui::lazy_create_and_push_overlay<ConsolePanel>(get_global_console_panel, console_panel_,
+                                                          parent_screen_, "Console", get_name());
 }
 
 void AdvancedPanel::handle_history_clicked() {

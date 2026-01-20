@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ui/temperature_observer_bundle.h"
 #include "ui_filament_runout_handler.h"
 #include "ui_modal.h"
 #include "ui_observer_guard.h"
@@ -16,6 +15,7 @@
 #include "overlay_base.h"
 #include "printer_state.h"
 #include "subject_managed_panel.h"
+#include "ui/temperature_observer_bundle.h"
 
 // Forward declaration
 class MoonrakerAPI;

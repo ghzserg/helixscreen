@@ -3,13 +3,13 @@
 
 #pragma once
 
-#include "ui/temperature_observer_bundle.h"
 #include "ui_observer_guard.h"
 #include "ui_panel_base.h"
 
 #include "config.h"
 #include "standard_macros.h"
 #include "subject_managed_panel.h"
+#include "ui/temperature_observer_bundle.h"
 
 #include <optional>
 

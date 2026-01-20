@@ -15,9 +15,10 @@
 
 #pragma once
 
+#include "ui_observer_guard.h"
+
 #include "observer_factory.h"
 #include "printer_state.h"
-#include "ui_observer_guard.h"
 
 namespace helix::ui {
 
@@ -56,9 +57,8 @@ namespace helix::ui {
  * );
  * @endcode
  */
-template <typename Panel>
-class TemperatureObserverBundle {
-public:
+template <typename Panel> class TemperatureObserverBundle {
+  public:
     /**
      * @brief Setup synchronous temperature observers with individual callbacks
      *
@@ -72,30 +72,26 @@ public:
      * @param on_bed_temp Called when bed current temperature changes
      * @param on_bed_target Called when bed target temperature changes
      */
-    template <typename NozzleTempHandler, typename NozzleTargetHandler,
-              typename BedTempHandler, typename BedTargetHandler>
-    void setup_sync(Panel* panel, PrinterState& state,
-                    NozzleTempHandler&& on_nozzle_temp,
-                    NozzleTargetHandler&& on_nozzle_target,
-                    BedTempHandler&& on_bed_temp,
+    template <typename NozzleTempHandler, typename NozzleTargetHandler, typename BedTempHandler,
+              typename BedTargetHandler>
+    void setup_sync(Panel* panel, PrinterState& state, NozzleTempHandler&& on_nozzle_temp,
+                    NozzleTargetHandler&& on_nozzle_target, BedTempHandler&& on_bed_temp,
                     BedTargetHandler&& on_bed_target) {
         clear();
 
-        nozzle_temp_observer_ = observe_int_sync<Panel>(
-            state.get_extruder_temp_subject(), panel,
-            std::forward<NozzleTempHandler>(on_nozzle_temp));
+        nozzle_temp_observer_ =
+            observe_int_sync<Panel>(state.get_extruder_temp_subject(), panel,
+                                    std::forward<NozzleTempHandler>(on_nozzle_temp));
 
-        nozzle_target_observer_ = observe_int_sync<Panel>(
-            state.get_extruder_target_subject(), panel,
-            std::forward<NozzleTargetHandler>(on_nozzle_target));
+        nozzle_target_observer_ =
+            observe_int_sync<Panel>(state.get_extruder_target_subject(), panel,
+                                    std::forward<NozzleTargetHandler>(on_nozzle_target));
 
-        bed_temp_observer_ = observe_int_sync<Panel>(
-            state.get_bed_temp_subject(), panel,
-            std::forward<BedTempHandler>(on_bed_temp));
+        bed_temp_observer_ = observe_int_sync<Panel>(state.get_bed_temp_subject(), panel,
+                                                     std::forward<BedTempHandler>(on_bed_temp));
 
         bed_target_observer_ = observe_int_sync<Panel>(
-            state.get_bed_target_subject(), panel,
-            std::forward<BedTargetHandler>(on_bed_target));
+            state.get_bed_target_subject(), panel, std::forward<BedTargetHandler>(on_bed_target));
     }
 
     /**
@@ -113,35 +109,29 @@ public:
      * @param cache_bed_target Handler to cache bed target (any thread)
      * @param update_handler Called on UI thread after any temp changes
      */
-    template <typename CacheNozzleTemp, typename CacheNozzleTarget,
-              typename CacheBedTemp, typename CacheBedTarget,
-              typename UpdateHandler>
-    void setup_async(Panel* panel, PrinterState& state,
-                     CacheNozzleTemp&& cache_nozzle_temp,
-                     CacheNozzleTarget&& cache_nozzle_target,
-                     CacheBedTemp&& cache_bed_temp,
-                     CacheBedTarget&& cache_bed_target,
-                     UpdateHandler&& update_handler) {
+    template <typename CacheNozzleTemp, typename CacheNozzleTarget, typename CacheBedTemp,
+              typename CacheBedTarget, typename UpdateHandler>
+    void setup_async(Panel* panel, PrinterState& state, CacheNozzleTemp&& cache_nozzle_temp,
+                     CacheNozzleTarget&& cache_nozzle_target, CacheBedTemp&& cache_bed_temp,
+                     CacheBedTarget&& cache_bed_target, UpdateHandler&& update_handler) {
         clear();
 
-        nozzle_temp_observer_ = observe_int_async<Panel>(
-            state.get_extruder_temp_subject(), panel,
-            std::forward<CacheNozzleTemp>(cache_nozzle_temp),
-            std::forward<UpdateHandler>(update_handler));
+        nozzle_temp_observer_ =
+            observe_int_async<Panel>(state.get_extruder_temp_subject(), panel,
+                                     std::forward<CacheNozzleTemp>(cache_nozzle_temp),
+                                     std::forward<UpdateHandler>(update_handler));
 
-        nozzle_target_observer_ = observe_int_async<Panel>(
-            state.get_extruder_target_subject(), panel,
-            std::forward<CacheNozzleTarget>(cache_nozzle_target),
-            std::forward<UpdateHandler>(update_handler));
+        nozzle_target_observer_ =
+            observe_int_async<Panel>(state.get_extruder_target_subject(), panel,
+                                     std::forward<CacheNozzleTarget>(cache_nozzle_target),
+                                     std::forward<UpdateHandler>(update_handler));
 
-        bed_temp_observer_ = observe_int_async<Panel>(
-            state.get_bed_temp_subject(), panel,
-            std::forward<CacheBedTemp>(cache_bed_temp),
-            std::forward<UpdateHandler>(update_handler));
+        bed_temp_observer_ = observe_int_async<Panel>(state.get_bed_temp_subject(), panel,
+                                                      std::forward<CacheBedTemp>(cache_bed_temp),
+                                                      std::forward<UpdateHandler>(update_handler));
 
         bed_target_observer_ = observe_int_async<Panel>(
-            state.get_bed_target_subject(), panel,
-            std::forward<CacheBedTarget>(cache_bed_target),
+            state.get_bed_target_subject(), panel, std::forward<CacheBedTarget>(cache_bed_target),
             std::forward<UpdateHandler>(update_handler));
     }
 
@@ -162,11 +152,11 @@ public:
      * @return true if any observer is set up
      */
     [[nodiscard]] bool is_active() const {
-        return nozzle_temp_observer_ || nozzle_target_observer_ ||
-               bed_temp_observer_ || bed_target_observer_;
+        return nozzle_temp_observer_ || nozzle_target_observer_ || bed_temp_observer_ ||
+               bed_target_observer_;
     }
 
-private:
+  private:
     ObserverGuard nozzle_temp_observer_;
     ObserverGuard nozzle_target_observer_;
     ObserverGuard bed_temp_observer_;

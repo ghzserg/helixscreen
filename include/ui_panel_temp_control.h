@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ui/temperature_observer_bundle.h"
 #include "ui_heater_config.h"
 #include "ui_heating_animator.h"
 #include "ui_observer_guard.h"
@@ -11,6 +10,7 @@
 
 #include "lvgl/lvgl.h"
 #include "subject_managed_panel.h"
+#include "ui/temperature_observer_bundle.h"
 
 #include <array>
 #include <functional>

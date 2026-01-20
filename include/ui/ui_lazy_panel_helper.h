@@ -62,11 +62,8 @@ namespace helix::ui {
  * @endcode
  */
 template <typename PanelType, typename Getter>
-bool lazy_create_and_push_overlay(Getter getter,
-                                  lv_obj_t*& cached_panel,
-                                  lv_obj_t* parent_screen,
-                                  const char* panel_display_name,
-                                  const char* caller_name) {
+bool lazy_create_and_push_overlay(Getter getter, lv_obj_t*& cached_panel, lv_obj_t* parent_screen,
+                                  const char* panel_display_name, const char* caller_name) {
     spdlog::debug("[{}] {} clicked - opening panel", caller_name, panel_display_name);
 
     // Create panel on first access (lazy initialization)
@@ -82,7 +79,8 @@ bool lazy_create_and_push_overlay(Getter getter,
         // Create overlay UI
         cached_panel = panel.create(parent_screen);
         if (!cached_panel) {
-            spdlog::error("[{}] Failed to create {} panel from XML", caller_name, panel_display_name);
+            spdlog::error("[{}] Failed to create {} panel from XML", caller_name,
+                          panel_display_name);
             ui_toast_show(ToastSeverity::ERROR,
                           (std::string("Failed to open ") + panel_display_name).c_str(), 2000);
             return false;
