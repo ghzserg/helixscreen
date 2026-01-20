@@ -58,6 +58,12 @@ struct SlotBarData {
     bool has_error = false; // Slot is in error/blocked state
 };
 
+static lv_color_t lighten_color(lv_color_t c, uint8_t amt) {
+    return lv_color_make((c.red + amt > 255) ? 255 : c.red + amt,
+                         (c.green + amt > 255) ? 255 : c.green + amt,
+                         (c.blue + amt > 255) ? 255 : c.blue + amt);
+}
+
 /**
  * @brief User data stored on each ams_mini_status widget
  */
@@ -124,7 +130,12 @@ static void update_slot_bar(SlotBarData* slot) {
 
     // Fill: colored portion from bottom, filling up within bar_bg
     if (slot->present && slot->fill_pct > 0) {
-        lv_obj_set_style_bg_color(slot->bar_fill, lv_color_hex(slot->color_rgb), LV_PART_MAIN);
+        lv_color_t base_color = lv_color_hex(slot->color_rgb);
+        lv_color_t light_color = lighten_color(base_color, 50);
+
+        lv_obj_set_style_bg_color(slot->bar_fill, light_color, LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_color(slot->bar_fill, base_color, LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_dir(slot->bar_fill, LV_GRAD_DIR_VER, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(slot->bar_fill, LV_OPA_COVER, LV_PART_MAIN);
 
         // Use percentage height relative to parent's content area
