@@ -583,6 +583,17 @@ AmsError AmsBackendToolChanger::set_tool_mapping(int /*tool_number*/, int /*slot
     return AmsErrorHelper::not_supported("Tool mapping");
 }
 
+helix::printer::ToolMappingCapabilities
+AmsBackendToolChanger::get_tool_mapping_capabilities() const {
+    // Tool changers have fixed 1:1 mapping - tools ARE slots, not configurable
+    return {false, false, ""};
+}
+
+std::vector<int> AmsBackendToolChanger::get_tool_mapping() const {
+    // Tool changers have fixed 1:1 mapping - return empty (not supported)
+    return {};
+}
+
 // ============================================================================
 // Bypass Mode (Not Applicable)
 // ============================================================================

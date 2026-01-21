@@ -801,4 +801,21 @@ struct EndlessSpoolConfig {
     int backup_slot = -1; ///< Backup slot index (-1 = no backup)
 };
 
+/**
+ * @brief Capabilities for tool mapping feature
+ *
+ * Describes whether tool mapping is supported and whether the UI can modify
+ * the configuration. Different backends have different capabilities:
+ * - AFC: Fully editable, per-lane tool assignment via SET_MAP
+ * - Happy Hare: Fully editable, tool-to-gate mapping via MMU_TTG_MAP
+ * - Mock: Configurable for testing both modes
+ * - ValgACE: Not supported (1:1 fixed mapping)
+ * - ToolChanger: Not supported (tools ARE slots)
+ */
+struct ToolMappingCapabilities {
+    bool supported = false;  ///< Does this backend support tool mapping?
+    bool editable = false;   ///< Can the UI modify the mapping?
+    std::string description; ///< UI hint text (e.g., "Per-lane tool assignment via SET_MAP")
+};
+
 } // namespace helix::printer

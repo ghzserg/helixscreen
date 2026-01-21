@@ -313,6 +313,16 @@ AmsError AmsBackendValgACE::set_tool_mapping(int tool_number, int slot_index) {
     return AmsErrorHelper::not_supported("Tool mapping");
 }
 
+helix::printer::ToolMappingCapabilities AmsBackendValgACE::get_tool_mapping_capabilities() const {
+    // ValgACE has fixed 1:1 mapping - not configurable
+    return {false, false, ""};
+}
+
+std::vector<int> AmsBackendValgACE::get_tool_mapping() const {
+    // ValgACE has fixed 1:1 mapping - return empty (not supported)
+    return {};
+}
+
 // ============================================================================
 // Bypass Mode (not supported)
 // ============================================================================

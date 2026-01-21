@@ -112,6 +112,11 @@ class AmsBackendValgACE : public AmsBackend {
     AmsError set_slot_info(int slot_index, const SlotInfo& info) override;
     AmsError set_tool_mapping(int tool_number, int slot_index) override;
 
+    // ValgACE has fixed 1:1 mapping (tools ARE slots), not configurable
+    [[nodiscard]] helix::printer::ToolMappingCapabilities
+    get_tool_mapping_capabilities() const override;
+    [[nodiscard]] std::vector<int> get_tool_mapping() const override;
+
     // ========================================================================
     // Bypass Mode (not supported on ACE Pro)
     // ========================================================================

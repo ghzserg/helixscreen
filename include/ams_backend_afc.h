@@ -146,6 +146,26 @@ class AmsBackendAfc : public AmsBackend {
      */
     AmsError set_endless_spool_backup(int slot_index, int backup_slot) override;
 
+    // Tool Mapping support
+    /**
+     * @brief Get tool mapping capabilities for AFC
+     *
+     * AFC supports per-lane tool assignment via SET_MAP G-code.
+     *
+     * @return Capabilities with supported=true, editable=true
+     */
+    [[nodiscard]] helix::printer::ToolMappingCapabilities
+    get_tool_mapping_capabilities() const override;
+
+    /**
+     * @brief Get current tool-to-slot mapping
+     *
+     * Returns the tool_to_slot_map from system_info_.
+     *
+     * @return Vector where index=tool, value=slot
+     */
+    [[nodiscard]] std::vector<int> get_tool_mapping() const override;
+
     /**
      * @brief Set discovered lane and hub names from PrinterCapabilities
      *

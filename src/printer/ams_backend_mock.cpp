@@ -1245,6 +1245,33 @@ AmsError AmsBackendMock::set_endless_spool_backup(int slot_index, int backup_slo
 }
 
 // ============================================================================
+// Tool mapping implementation
+// ============================================================================
+
+helix::printer::ToolMappingCapabilities AmsBackendMock::get_tool_mapping_capabilities() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // Tool changers don't support tool mapping (tools ARE slots)
+    if (tool_changer_mode_) {
+        return {false, false, ""};
+    }
+
+    // Filament systems support editable tool mapping
+    return {true, true, "Mock tool-to-slot mapping"};
+}
+
+std::vector<int> AmsBackendMock::get_tool_mapping() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // Tool changers don't support tool mapping (tools ARE slots)
+    if (tool_changer_mode_) {
+        return {};
+    }
+
+    return system_info_.tool_to_slot_map;
+}
+
+// ============================================================================
 // Factory method implementations (in ams_backend.cpp, but included here for mock)
 // ============================================================================
 

@@ -1352,6 +1352,20 @@ helix::printer::EndlessSpoolCapabilities AmsBackendAfc::get_endless_spool_capabi
     return {true, true, "AFC per-slot backup"};
 }
 
+// ============================================================================
+// Tool Mapping Operations
+// ============================================================================
+
+helix::printer::ToolMappingCapabilities AmsBackendAfc::get_tool_mapping_capabilities() const {
+    // AFC supports per-lane tool assignment via SET_MAP G-code
+    return {true, true, "Per-lane tool assignment via SET_MAP"};
+}
+
+std::vector<int> AmsBackendAfc::get_tool_mapping() const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    return system_info_.tool_to_slot_map;
+}
+
 std::vector<helix::printer::EndlessSpoolConfig> AmsBackendAfc::get_endless_spool_config() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     return endless_spool_configs_;

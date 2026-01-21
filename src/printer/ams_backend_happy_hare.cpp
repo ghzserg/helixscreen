@@ -819,3 +819,17 @@ AmsError AmsBackendHappyHare::set_endless_spool_backup(int slot_index, int backu
     (void)backup_slot;
     return AmsErrorHelper::not_supported("Endless spool configuration");
 }
+
+// ============================================================================
+// Tool Mapping Operations
+// ============================================================================
+
+helix::printer::ToolMappingCapabilities AmsBackendHappyHare::get_tool_mapping_capabilities() const {
+    // Happy Hare supports tool-to-gate mapping via MMU_TTG_MAP G-code
+    return {true, true, "Tool-to-gate mapping via MMU_TTG_MAP"};
+}
+
+std::vector<int> AmsBackendHappyHare::get_tool_mapping() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return system_info_.tool_to_slot_map;
+}

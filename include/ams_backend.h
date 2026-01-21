@@ -494,6 +494,36 @@ class AmsBackend {
     }
 
     // ========================================================================
+    // Tool Mapping Control
+    // ========================================================================
+
+    /**
+     * @brief Get tool mapping capabilities for this backend
+     *
+     * Returns information about whether tool mapping is supported and
+     * whether the configuration can be modified via the UI.
+     *
+     * @return Capabilities struct with supported/editable flags
+     */
+    [[nodiscard]] virtual helix::printer::ToolMappingCapabilities
+    get_tool_mapping_capabilities() const {
+        return {false, false, ""}; // Default: not supported
+    }
+
+    /**
+     * @brief Get current tool-to-slot mapping
+     *
+     * Returns the mapping from tool number to slot index.
+     * The vector index represents the tool number, and the value at that
+     * index is the slot that tool maps to.
+     *
+     * @return Vector where index=tool, value=slot (empty if not supported)
+     */
+    [[nodiscard]] virtual std::vector<int> get_tool_mapping() const {
+        return {}; // Default: empty
+    }
+
+    // ========================================================================
     // Capability Queries
     // ========================================================================
 

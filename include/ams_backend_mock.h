@@ -89,6 +89,11 @@ class AmsBackendMock : public AmsBackend {
     get_endless_spool_config() const override;
     AmsError set_endless_spool_backup(int slot_index, int backup_slot) override;
 
+    // Tool mapping
+    [[nodiscard]] helix::printer::ToolMappingCapabilities
+    get_tool_mapping_capabilities() const override;
+    [[nodiscard]] std::vector<int> get_tool_mapping() const override;
+
     // ========================================================================
     // Mock-specific methods (for testing)
     // ========================================================================
