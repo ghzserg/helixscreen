@@ -4,6 +4,7 @@
 #include "ui_panel_ams.h"
 
 #include "ui_ams_dryer_card.h"
+#include "ui_ams_settings_overlay.h"
 #include "ui_ams_slot.h"
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
@@ -80,6 +81,7 @@ static void on_unload_clicked_xml(lv_event_t* e);
 static void on_reset_clicked_xml(lv_event_t* e);
 static void on_bypass_clicked_xml(lv_event_t* e);
 static void on_bypass_toggled_xml(lv_event_t* e);
+static void on_settings_clicked_xml(lv_event_t* e);
 // Dryer card callbacks now handled by helix::ui::AmsDryerCard class
 // Context menu and spoolman picker callbacks are now in extracted classes
 
@@ -113,9 +115,13 @@ static void ensure_ams_widgets_registered() {
     lv_xml_register_event_cb(nullptr, "ams_reset_clicked_cb", on_reset_clicked_xml);
     lv_xml_register_event_cb(nullptr, "ams_bypass_clicked_cb", on_bypass_clicked_xml);
     lv_xml_register_event_cb(nullptr, "ams_bypass_toggled_cb", on_bypass_toggled_xml);
+    lv_xml_register_event_cb(nullptr, "on_ams_panel_settings_clicked", on_settings_clicked_xml);
 
     // Register dryer card callbacks BEFORE XML parsing (callbacks must exist when parser sees them)
     helix::ui::AmsDryerCard::register_callbacks_static();
+
+    // Register AMS settings overlay callbacks BEFORE XML parsing
+    helix::ui::get_ams_settings_overlay().register_callbacks();
 
     // Context menu callbacks registered by helix::ui::AmsContextMenu class
     // Spoolman picker callbacks registered by helix::ui::AmsSpoolmanPicker class
@@ -125,6 +131,8 @@ static void ensure_ams_widgets_registered() {
     // there)
     lv_xml_register_component_from_file("A:ui_xml/ams_dryer_card.xml");
     lv_xml_register_component_from_file("A:ui_xml/dryer_presets_modal.xml");
+    lv_xml_register_component_from_file("A:ui_xml/ams_settings_nav_row.xml");
+    lv_xml_register_component_from_file("A:ui_xml/ams_settings_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/ams_panel.xml");
     lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml");
     lv_xml_register_component_from_file("A:ui_xml/spoolman_spool_item.xml");
@@ -170,6 +178,26 @@ static void on_bypass_toggled_xml(lv_event_t* e) {
     if (panel) {
         panel->handle_bypass_toggle();
     }
+}
+
+static void on_settings_clicked_xml(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[AmsPanel] on_settings_clicked");
+    LV_UNUSED(e);
+
+    spdlog::info("[AmsPanel] Opening AMS Settings overlay");
+
+    auto& overlay = helix::ui::get_ams_settings_overlay();
+    if (!overlay.are_subjects_initialized()) {
+        overlay.init_subjects();
+        overlay.register_callbacks();
+    }
+
+    // Create if needed, then show
+    auto* target = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    lv_obj_t* parent = lv_obj_get_screen(target);
+    overlay.show(parent);
+
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 // Dryer card callbacks now handled by helix::ui::AmsDryerCard class

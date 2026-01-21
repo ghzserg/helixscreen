@@ -139,6 +139,7 @@ static const IconMapping ICON_MAP[] = {
     {"leaf",               "\xF3\xB0\x8C\xAA"},  // F032A leaf
     {"light",              "\xF3\xB0\x8C\xB5"},  // F0335 lightbulb
     {"light_off",          "\xF3\xB0\xB9\x8F"},  // F0E4F lightbulb-off
+    {"link",               "\xF3\xB0\x8C\xB9"},  // F0339 link (tool mapping)
     {"lightbulb_on",       "\xF3\xB0\x9B\xA8"},  // F06E8 lightbulb-on (100%)
     {"lightbulb_on_10",    "\xF3\xB1\xA9\x8E"},  // F1A4E lightbulb-on-10
     {"lightbulb_on_20",    "\xF3\xB1\xA9\x8F"},  // F1A4F lightbulb-on-20

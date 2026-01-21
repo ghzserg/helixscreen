@@ -99,6 +99,7 @@ MDI_ICONS+=",0xF02FD"    # information-outline
 MDI_ICONS+=",0xF0317"    # lan
 MDI_ICONS+=",0xF0328"    # layers
 MDI_ICONS+=",0xF0335"    # lightbulb
+MDI_ICONS+=",0xF0339"    # link (tool mapping)
 MDI_ICONS+=",0xF033E"    # lock
 MDI_ICONS+=",0xF0374"    # minus
 MDI_ICONS+=",0xF0F1B"    # play-outline

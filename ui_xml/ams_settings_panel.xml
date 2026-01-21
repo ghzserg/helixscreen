@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- AMS Settings Panel Overlay -->
+<!-- iOS Settings-style panel with navigation rows for each section -->
+<component>
+  <view name="ams_settings_panel"
+        extends="overlay_panel" width="#overlay_panel_width_full" title="AMS Settings" bg_color="#app_bg_color">
+    <!-- Content Area (scrollable) -->
+    <lv_obj name="overlay_content"
+            width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="#space_md"
+            scrollable="true" scroll_dir="ver" style_border_width="0"
+            flex_flow="column" style_pad_gap="#space_sm">
+      <!-- ================================================================== -->
+      <!-- STATUS CARD - Backend type, version, connection status             -->
+      <!-- ================================================================== -->
+      <ui_card name="status_card"
+               width="100%" height="content" style_radius="#border_radius"
+               style_pad_all="#space_md" flex_flow="row" style_flex_main_place="space_between"
+               style_flex_cross_place="center">
+        <!-- Left side: Backend icon + name + version -->
+        <lv_obj width="content"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm"
+                scrollable="false">
+          <!-- Backend logo (set programmatically) -->
+          <lv_image name="backend_logo" width="#space_2xl" height="#space_2xl" inner_align="contain"/>
+          <!-- Backend name and version stacked -->
+          <lv_obj width="content"
+                  height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                  flex_flow="column" style_pad_gap="0" scrollable="false">
+            <text_body name="backend_name" bind_text="ams_system_name"/>
+            <text_small name="backend_version" bind_text="ams_settings_version" style_text_color="#text_secondary"/>
+          </lv_obj>
+        </lv_obj>
+        <!-- Right side: Connection status indicator -->
+        <lv_obj width="content"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_xs"
+                scrollable="false">
+          <!-- Status dot (green when connected) -->
+          <lv_obj name="status_dot"
+                  width="#space_sm" height="#space_sm" style_radius="1000" style_bg_color="#success_color"
+                  style_bg_opa="255" style_border_width="0" scrollable="false"/>
+          <text_small name="slot_count_label" bind_text="ams_settings_slot_count" style_text_color="#text_secondary"/>
+        </lv_obj>
+      </ui_card>
+      <!-- ================================================================== -->
+      <!-- NAVIGATION ROWS - Each opens a sub-panel                           -->
+      <!-- ================================================================== -->
+      <!-- Tool Mapping -->
+      <ams_settings_nav_row name="row_tool_mapping"
+                            label="Tool Mapping" icon="link" summary=""
+                            callback="on_ams_settings_tool_mapping_clicked"/>
+      <!-- Endless Spool -->
+      <ams_settings_nav_row name="row_endless_spool"
+                            label="Endless Spool" icon="refresh" summary=""
+                            callback="on_ams_settings_endless_spool_clicked"/>
+      <!-- Maintenance -->
+      <ams_settings_nav_row name="row_maintenance"
+                            label="Maintenance" icon="wrench" summary=""
+                            callback="on_ams_settings_maintenance_clicked"/>
+      <!-- Calibration -->
+      <ams_settings_nav_row name="row_calibration"
+                            label="Calibration" icon="ruler" summary=""
+                            callback="on_ams_settings_calibration_clicked"/>
+      <!-- Speed Settings -->
+      <ams_settings_nav_row name="row_speed_settings"
+                            label="Speed Settings" icon="speed" summary=""
+                            callback="on_ams_settings_speed_clicked"/>
+      <!-- Spoolman -->
+      <ams_settings_nav_row name="row_spoolman"
+                            label="Spoolman" icon="spoolman" summary=""
+                            callback="on_ams_settings_spoolman_clicked"/>
+    </lv_obj>
+  </view>
+</component>

@@ -205,6 +205,14 @@
             <text_body text="Reset" align="center"/>
             <event_cb trigger="clicked" callback="ams_reset_clicked_cb"/>
           </lv_button>
+          <!-- Settings Button (full width) -->
+          <lv_button name="btn_settings"
+                     width="100%" height="#button_height" style_radius="#border_radius" style_border_width="0"
+                     style_shadow_width="0">
+            <icon src="settings" size="sm" align="left_mid" style_translate_x="#space_sm"/>
+            <text_body text="Settings" align="center"/>
+            <event_cb trigger="clicked" callback="on_ams_panel_settings_clicked"/>
+          </lv_button>
         </lv_obj>
         <!-- Dryer Card (hidden when dryer not supported or for tool changers) -->
         <ams_dryer_card name="dryer_card"/>
