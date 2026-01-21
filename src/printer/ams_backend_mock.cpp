@@ -172,6 +172,31 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
         }
     }
 
+    // Initialize default device sections (AFC-like)
+    mock_device_sections_ = {
+        {"calibration", "Calibration", "wrench", 0},
+        {"speed", "Speed Settings", "speedometer", 1},
+    };
+
+    // Initialize default device actions
+    using helix::printer::ActionType;
+    mock_device_actions_ = {
+        // Calibration section
+        {"calibration_wizard", "Run Calibration Wizard", "play", "calibration",
+         "Interactive calibration for all lanes", ActionType::BUTTON, {}, {}, 0, 100, "", -1, true,
+         ""},
+        {"bowden_length", "Bowden Length", "ruler", "calibration",
+         "Distance from hub to toolhead", ActionType::SLIDER, 450.0f, {}, 100.0f, 1000.0f, "mm", -1,
+         true, ""},
+        // Speed section
+        {"speed_fwd", "Forward Multiplier", "fast-forward", "speed",
+         "Speed multiplier for forward moves", ActionType::SLIDER, 1.0f, {}, 0.5f, 2.0f, "x", -1,
+         true, ""},
+        {"speed_rev", "Reverse Multiplier", "rewind", "speed",
+         "Speed multiplier for reverse moves", ActionType::SLIDER, 1.0f, {}, 0.5f, 2.0f, "x", -1,
+         true, ""},
+    };
+
     spdlog::debug("[AmsBackendMock] Created with {} slots", slot_count);
 }
 
@@ -1269,6 +1294,67 @@ std::vector<int> AmsBackendMock::get_tool_mapping() const {
     }
 
     return system_info_.tool_to_slot_map;
+}
+
+// ============================================================================
+// Factory method implementations (in ams_backend.cpp, but included here for mock)
+// ============================================================================
+
+// ============================================================================
+// Device actions implementation
+// ============================================================================
+
+std::vector<helix::printer::DeviceSection> AmsBackendMock::get_device_sections() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return mock_device_sections_;
+}
+
+std::vector<helix::printer::DeviceAction> AmsBackendMock::get_device_actions() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return mock_device_actions_;
+}
+
+AmsError AmsBackendMock::execute_device_action(const std::string& action_id, const std::any& value) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // Store for test verification
+    last_action_id_ = action_id;
+    last_action_value_ = value;
+
+    // Find the action to verify it exists
+    for (const auto& action : mock_device_actions_) {
+        if (action.id == action_id) {
+            if (!action.enabled) {
+                return AmsErrorHelper::not_supported(action.disable_reason);
+            }
+            spdlog::info("[AMS Mock] Executed device action: {} with value type: {}", action_id,
+                         value.has_value() ? value.type().name() : "none");
+            return AmsErrorHelper::success();
+        }
+    }
+
+    return AmsErrorHelper::not_supported("Unknown action: " + action_id);
+}
+
+void AmsBackendMock::set_device_sections(std::vector<helix::printer::DeviceSection> sections) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    mock_device_sections_ = std::move(sections);
+}
+
+void AmsBackendMock::set_device_actions(std::vector<helix::printer::DeviceAction> actions) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    mock_device_actions_ = std::move(actions);
+}
+
+std::pair<std::string, std::any> AmsBackendMock::get_last_executed_action() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return {last_action_id_, last_action_value_};
+}
+
+void AmsBackendMock::clear_last_executed_action() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    last_action_id_.clear();
+    last_action_value_.reset();
 }
 
 // ============================================================================
