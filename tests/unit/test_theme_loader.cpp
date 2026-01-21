@@ -3,6 +3,8 @@
 
 #include "theme_loader.h"
 
+#include <cstdio>
+
 #include "../catch_amalgamated.hpp"
 
 using namespace helix;
@@ -97,4 +99,49 @@ TEST_CASE("get_default_nord_theme returns valid theme", "[theme]") {
     REQUIRE(theme.name == "Nord");
     REQUIRE(theme.is_valid());
     REQUIRE(theme.colors.bg_darkest == "#2e3440");
+}
+
+TEST_CASE("parse_theme_json falls back to Nord for missing colors", "[theme]") {
+    // JSON with only 2 colors - rest should fall back to Nord
+    const char* json = R"({
+        "name": "Partial Theme",
+        "colors": {
+            "bg_darkest": "#111111",
+            "status_special": "#222222"
+        }
+    })";
+
+    auto theme = helix::parse_theme_json(json, "partial.json");
+
+    REQUIRE(theme.name == "Partial Theme");
+    REQUIRE(theme.colors.bg_darkest == "#111111");     // From JSON
+    REQUIRE(theme.colors.status_special == "#222222"); // From JSON
+    REQUIRE(theme.colors.bg_dark == "#3b4252");        // Nord fallback
+    REQUIRE(theme.colors.accent_primary == "#88c0d0"); // Nord fallback
+}
+
+TEST_CASE("parse_theme_json returns Nord on invalid JSON", "[theme]") {
+    auto theme = helix::parse_theme_json("{ invalid json", "bad.json");
+
+    REQUIRE(theme.name == "Nord");
+    REQUIRE(theme.is_valid());
+}
+
+TEST_CASE("save_theme_to_file and load_theme_from_file roundtrip", "[theme]") {
+    auto original = helix::get_default_nord_theme();
+    original.name = "Roundtrip Test";
+    original.properties.border_radius = 20;
+
+    std::string path = "/tmp/test_theme_roundtrip.json";
+    REQUIRE(helix::save_theme_to_file(original, path));
+
+    auto loaded = helix::load_theme_from_file(path);
+
+    REQUIRE(loaded.name == "Roundtrip Test");
+    REQUIRE(loaded.properties.border_radius == 20);
+    REQUIRE(loaded.colors.bg_darkest == original.colors.bg_darkest);
+    REQUIRE(loaded.is_valid());
+
+    // Cleanup
+    std::remove(path.c_str());
 }
