@@ -98,18 +98,39 @@ class ThemeEditorOverlay : public OverlayBase {
     void mark_dirty();
     void clear_dirty();
 
-    // Callbacks
+    // Static callbacks for XML event_cb registration
     static void on_swatch_clicked(lv_event_t* e);
     static void on_slider_changed(lv_event_t* e);
-    static void on_save_clicked(lv_event_t* e);
-    static void on_save_as_clicked(lv_event_t* e);
-    static void on_revert_clicked(lv_event_t* e);
     static void on_close_requested(lv_event_t* e);
 
+    // Slider property callbacks (registered with XML)
+    static void on_border_radius_changed(lv_event_t* e);
+    static void on_border_width_changed(lv_event_t* e);
+    static void on_border_opacity_changed(lv_event_t* e);
+    static void on_shadow_changed(lv_event_t* e);
+
+    // Action button callbacks (registered with XML)
+    static void on_theme_save_clicked(lv_event_t* e);
+    static void on_theme_save_as_clicked(lv_event_t* e);
+    static void on_theme_revert_clicked(lv_event_t* e);
+
+    // Instance handlers for slider property changes
+    void handle_border_radius_changed(int value);
+    void handle_border_width_changed(int value);
+    void handle_border_opacity_changed(int value);
+    void handle_shadow_intensity_changed(int value);
+
+    // Instance handlers for action buttons
+    void handle_save_clicked();
+    void handle_save_as_clicked();
+    void handle_revert_clicked();
+
+    // Legacy handlers (to be refactored)
     void handle_swatch_click(int palette_index);
     void handle_slider_change(const char* slider_name, int value);
     void show_color_picker(int palette_index);
     void show_save_as_dialog();
+    void show_restart_dialog();
     void show_discard_confirmation(std::function<void()> on_discard);
 
     helix::ThemeData editing_theme_;
