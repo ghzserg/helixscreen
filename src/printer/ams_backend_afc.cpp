@@ -1452,6 +1452,42 @@ AmsError AmsBackendAfc::set_endless_spool_backup(int slot_index, int backup_slot
     return execute_gcode(gcode);
 }
 
+AmsError AmsBackendAfc::reset_tool_mappings() {
+    spdlog::info("[AMS AFC] Resetting tool mappings");
+
+    // Use RESET_AFC_MAPPING with RUNOUT=no to only reset tool mappings
+    AmsError result = execute_gcode("RESET_AFC_MAPPING RUNOUT=no");
+
+    // Tool mapping will be refreshed from next status update
+    return result;
+}
+
+AmsError AmsBackendAfc::reset_endless_spool() {
+    spdlog::info("[AMS AFC] Resetting endless spool mappings");
+
+    int slot_count = 0;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        slot_count = static_cast<int>(endless_spool_configs_.size());
+    }
+
+    // AFC has no command to reset only runout lanes, iterate through slots
+    // Continue on failure to reset as many as possible, return first error
+    AmsError first_error = AmsErrorHelper::success();
+    for (int slot = 0; slot < slot_count; slot++) {
+        AmsError result = set_endless_spool_backup(slot, -1);
+        if (!result.success()) {
+            spdlog::error("[AMS AFC] Failed to reset slot {} endless spool: {}", slot,
+                          result.technical_msg);
+            if (first_error.success()) {
+                first_error = result;
+            }
+        }
+    }
+
+    return first_error;
+}
+
 // ============================================================================
 // Device Actions (AFC-specific calibration and speed settings)
 // ============================================================================

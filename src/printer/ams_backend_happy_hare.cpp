@@ -830,6 +830,38 @@ AmsError AmsBackendHappyHare::set_endless_spool_backup(int slot_index, int backu
     return AmsErrorHelper::not_supported("Endless spool configuration");
 }
 
+AmsError AmsBackendHappyHare::reset_tool_mappings() {
+    spdlog::info("[AMS HappyHare] Resetting tool mappings to 1:1");
+
+    int tool_count = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        tool_count = static_cast<int>(system_info_.tool_to_slot_map.size());
+    }
+
+    // Reset to 1:1 mapping (T0→Gate0, T1→Gate1, etc.)
+    // Continue on failure to reset as many as possible, return first error
+    AmsError first_error = AmsErrorHelper::success();
+    for (int tool = 0; tool < tool_count; tool++) {
+        AmsError result = set_tool_mapping(tool, tool);
+        if (!result.success()) {
+            spdlog::error("[AMS HappyHare] Failed to reset tool {} mapping: {}", tool,
+                          result.technical_msg);
+            if (first_error.success()) {
+                first_error = result;
+            }
+        }
+    }
+
+    return first_error;
+}
+
+AmsError AmsBackendHappyHare::reset_endless_spool() {
+    // Happy Hare endless spool is read-only (configured in mmu_vars.cfg)
+    spdlog::warn("[AMS HappyHare] Endless spool reset not supported (read-only)");
+    return AmsErrorHelper::not_supported("Happy Hare endless spool is read-only");
+}
+
 // ============================================================================
 // Tool Mapping Operations
 // ============================================================================

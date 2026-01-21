@@ -147,6 +147,26 @@ class AmsBackendAfc : public AmsBackend {
      */
     AmsError set_endless_spool_backup(int slot_index, int backup_slot) override;
 
+    /**
+     * @brief Reset all tool mappings to defaults
+     *
+     * Uses RESET_AFC_MAPPING RUNOUT=no to reset tool-to-lane mappings
+     * while preserving existing endless spool configuration.
+     *
+     * @return AmsError with result
+     */
+    AmsError reset_tool_mappings() override;
+
+    /**
+     * @brief Reset all endless spool backup mappings
+     *
+     * Iterates through all lanes and sets each backup to -1 (disabled)
+     * via SET_RUNOUT G-code commands.
+     *
+     * @return AmsError with result
+     */
+    AmsError reset_endless_spool() override;
+
     // Tool Mapping support
     /**
      * @brief Get tool mapping capabilities for AFC

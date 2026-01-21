@@ -9,6 +9,7 @@
 #include "ui_ams_endless_spool_overlay.h"
 
 #include "ui_event_safety.h"
+#include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 #include "ui_nav_manager.h"
 #include "ui_theme.h"
@@ -93,6 +94,9 @@ void AmsEndlessSpoolOverlay::init_subjects() {
 void AmsEndlessSpoolOverlay::register_callbacks() {
     // Register backup dropdown callback
     lv_xml_register_event_cb(nullptr, "on_ams_endless_spool_backup_changed", on_backup_changed);
+
+    // Register reset mappings button callback
+    lv_xml_register_event_cb(nullptr, "on_endless_spool_reset_clicked", on_reset_clicked);
 
     spdlog::debug("[{}] Callbacks registered", get_name());
 }
@@ -301,9 +305,13 @@ lv_obj_t* AmsEndlessSpoolOverlay::create_slot_row(lv_obj_t* parent, int slot_ind
     lv_label_set_text(slot_label, slot_text);
     lv_obj_set_style_text_color(slot_label, ui_theme_get_color("text_primary"), 0);
 
-    // Arrow indicator
+    // Arrow indicator (use responsive icon font)
     lv_obj_t* arrow_label = lv_label_create(left_container);
-    lv_label_set_text(arrow_label, LV_SYMBOL_RIGHT);
+    lv_label_set_text(arrow_label, ui_icon::lookup_codepoint("arrow_right"));
+    const char* icon_font_name = lv_xml_get_const(nullptr, "icon_font_sm");
+    if (icon_font_name) {
+        lv_obj_set_style_text_font(arrow_label, lv_xml_get_font(nullptr, icon_font_name), 0);
+    }
     lv_obj_set_style_text_color(arrow_label, ui_theme_get_color("text_secondary"), 0);
 
     // Right side: Backup indicator or dropdown
@@ -445,6 +453,26 @@ void AmsEndlessSpoolOverlay::on_backup_changed(lv_event_t* e) {
                 // TODO: Show error toast to user
             }
         }
+    }
+
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void AmsEndlessSpoolOverlay::on_reset_clicked(lv_event_t* /*e*/) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[AmsEndlessSpoolOverlay] on_reset_clicked");
+
+    spdlog::info("[AmsEndlessSpoolOverlay] Resetting endless spool mappings");
+
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (backend) {
+        AmsError result = backend->reset_endless_spool();
+        if (!result.success()) {
+            spdlog::error("[AmsEndlessSpoolOverlay] Failed to reset: {}", result.technical_msg);
+            // TODO: Show error toast to user
+        }
+
+        // Refresh UI to show updated state
+        get_ams_endless_spool_overlay().refresh();
     }
 
     LVGL_SAFE_EVENT_CB_END();

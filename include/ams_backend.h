@@ -494,6 +494,30 @@ class AmsBackend {
         return AmsErrorHelper::not_supported("Endless spool");
     }
 
+    /**
+     * @brief Reset all tool mappings to defaults
+     *
+     * Resets tool-to-slot mappings to their original/default configuration.
+     * Default behavior is typically 1:1 mapping (T0→Slot0, T1→Slot1, etc.).
+     *
+     * @return AmsError with result
+     */
+    virtual AmsError reset_tool_mappings() {
+        return AmsErrorHelper::not_supported("Reset tool mappings");
+    }
+
+    /**
+     * @brief Reset all endless spool backup mappings
+     *
+     * Clears all endless spool backup slot configurations, setting each
+     * slot's backup to -1 (no backup).
+     *
+     * @return AmsError with result
+     */
+    virtual AmsError reset_endless_spool() {
+        return AmsErrorHelper::not_supported("Reset endless spool");
+    }
+
     // ========================================================================
     // Tool Mapping Control
     // ========================================================================

@@ -104,6 +104,26 @@ class AmsBackendHappyHare : public AmsBackend {
     get_endless_spool_config() const override;
     AmsError set_endless_spool_backup(int slot_index, int backup_slot) override;
 
+    /**
+     * @brief Reset all tool mappings to defaults
+     *
+     * Resets tool-to-gate mappings to 1:1 (T0→Gate0, T1→Gate1, etc.)
+     * by iterating through all tools and calling set_tool_mapping().
+     *
+     * @return AmsError with result
+     */
+    AmsError reset_tool_mappings() override;
+
+    /**
+     * @brief Reset all endless spool backup mappings
+     *
+     * Happy Hare endless spool is read-only (configured in mmu_vars.cfg).
+     * Returns not_supported error.
+     *
+     * @return AmsError with not_supported result
+     */
+    AmsError reset_endless_spool() override;
+
     // Tool Mapping support
     /**
      * @brief Get tool mapping capabilities for Happy Hare
