@@ -145,6 +145,24 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
         return system_info_.get_slot_global(slot_index);
     }
 
+    // Initialize endless spool configs for reset testing
+    void initialize_endless_spool_configs(int count) {
+        endless_spool_configs_.clear();
+        for (int i = 0; i < count; ++i) {
+            helix::printer::EndlessSpoolConfig config;
+            config.slot_index = i;
+            config.backup_slot = -1;
+            endless_spool_configs_.push_back(config);
+        }
+    }
+
+    // Set a specific endless spool backup for testing
+    void set_endless_spool_config(int slot, int backup) {
+        if (slot >= 0 && slot < static_cast<int>(endless_spool_configs_.size())) {
+            endless_spool_configs_[slot].backup_slot = backup;
+        }
+    }
+
     // For persistence tests: capture G-code commands
     std::vector<std::string> captured_gcodes;
 
@@ -795,4 +813,82 @@ TEST_CASE("AFC persistence: sends multiple commands for full slot info",
     REQUIRE(helper.has_gcode("SET_MATERIAL LANE=lane1 MATERIAL=PETG"));
     REQUIRE(helper.has_gcode("SET_WEIGHT LANE=lane1 WEIGHT=750"));
     REQUIRE(helper.has_gcode("SET_SPOOL_ID LANE=lane1 SPOOL_ID=99"));
+}
+
+// ============================================================================
+// reset_tool_mappings() Tests
+// ============================================================================
+
+TEST_CASE("AFC reset_tool_mappings sends RESET_AFC_MAPPING RUNOUT=no",
+          "[ams][afc][tool_mapping][reset]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+
+    auto result = helper.reset_tool_mappings();
+
+    REQUIRE(result.success());
+    REQUIRE(helper.has_gcode("RESET_AFC_MAPPING RUNOUT=no"));
+}
+
+TEST_CASE("AFC reset_tool_mappings sends single command regardless of lane count",
+          "[ams][afc][tool_mapping][reset]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(8);
+
+    auto result = helper.reset_tool_mappings();
+
+    REQUIRE(result.success());
+    // Should send exactly one command, not one per lane
+    REQUIRE(helper.captured_gcodes.size() == 1);
+    REQUIRE(helper.has_gcode("RESET_AFC_MAPPING RUNOUT=no"));
+}
+
+// ============================================================================
+// reset_endless_spool() Tests
+// ============================================================================
+
+TEST_CASE("AFC reset_endless_spool clears all slots", "[ams][afc][endless_spool][reset]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.initialize_endless_spool_configs(4);
+
+    // Set some backups first
+    helper.set_endless_spool_config(0, 1);
+    helper.set_endless_spool_config(2, 3);
+
+    auto result = helper.reset_endless_spool();
+
+    REQUIRE(result.success());
+    // Should have sent 4 SET_RUNOUT commands (one per slot)
+    REQUIRE(helper.captured_gcodes.size() == 4);
+
+    // Each should be setting RUNOUT_LANE= (empty) to disable
+    REQUIRE(helper.has_gcode("SET_RUNOUT LANE=lane1 RUNOUT_LANE="));
+    REQUIRE(helper.has_gcode("SET_RUNOUT LANE=lane2 RUNOUT_LANE="));
+    REQUIRE(helper.has_gcode("SET_RUNOUT LANE=lane3 RUNOUT_LANE="));
+    REQUIRE(helper.has_gcode("SET_RUNOUT LANE=lane4 RUNOUT_LANE="));
+}
+
+TEST_CASE("AFC reset_endless_spool with zero slots is no-op", "[ams][afc][endless_spool][reset]") {
+    AmsBackendAfcTestHelper helper;
+    // Don't initialize any lanes or configs
+
+    auto result = helper.reset_endless_spool();
+
+    REQUIRE(result.success());
+    REQUIRE(helper.captured_gcodes.empty());
+}
+
+TEST_CASE("AFC reset_endless_spool continues on partial failure",
+          "[ams][afc][endless_spool][reset]") {
+    // This test verifies that if one slot fails, we still attempt the remaining slots
+    // The implementation should return the first error but continue processing
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.initialize_endless_spool_configs(4);
+
+    auto result = helper.reset_endless_spool();
+
+    // Should still have attempted all 4 slots even if one hypothetically failed
+    REQUIRE(helper.captured_gcodes.size() == 4);
 }

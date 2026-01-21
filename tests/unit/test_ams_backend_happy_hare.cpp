@@ -46,6 +46,12 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
         system_info_.units.push_back(unit);
         system_info_.total_slots = count;
         gates_initialized_ = true;
+
+        // Also initialize tool_to_slot_map for reset_tool_mappings tests
+        system_info_.tool_to_slot_map.clear();
+        for (int i = 0; i < count; ++i) {
+            system_info_.tool_to_slot_map.push_back(i);
+        }
     }
 
     /**
@@ -355,4 +361,65 @@ TEST_CASE("Happy Hare persistence: different gate indices", "[ams][happy_hare][p
         // FAILS: set_slot_info doesn't call execute_gcode yet
         REQUIRE(helper.has_gcode_starting_with("MMU_GATE_MAP GATE=7"));
     }
+}
+
+// ============================================================================
+// reset_tool_mappings() Tests
+// ============================================================================
+
+TEST_CASE("Happy Hare reset_tool_mappings sends MMU_TTG_MAP for each tool",
+          "[ams][happy_hare][tool_mapping][reset]") {
+    AmsBackendHappyHareTestHelper helper;
+    helper.initialize_test_gates(4);
+
+    auto result = helper.reset_tool_mappings();
+
+    REQUIRE(result.success());
+    // Should have sent 4 MMU_TTG_MAP commands (one per tool)
+    REQUIRE(helper.captured_gcodes.size() == 4);
+    REQUIRE(helper.has_gcode("MMU_TTG_MAP TOOL=0 GATE=0"));
+    REQUIRE(helper.has_gcode("MMU_TTG_MAP TOOL=1 GATE=1"));
+    REQUIRE(helper.has_gcode("MMU_TTG_MAP TOOL=2 GATE=2"));
+    REQUIRE(helper.has_gcode("MMU_TTG_MAP TOOL=3 GATE=3"));
+}
+
+TEST_CASE("Happy Hare reset_tool_mappings with 8 tools", "[ams][happy_hare][tool_mapping][reset]") {
+    AmsBackendHappyHareTestHelper helper;
+    helper.initialize_test_gates(8);
+
+    auto result = helper.reset_tool_mappings();
+
+    REQUIRE(result.success());
+    REQUIRE(helper.captured_gcodes.size() == 8);
+    // Verify first and last
+    REQUIRE(helper.has_gcode("MMU_TTG_MAP TOOL=0 GATE=0"));
+    REQUIRE(helper.has_gcode("MMU_TTG_MAP TOOL=7 GATE=7"));
+}
+
+TEST_CASE("Happy Hare reset_tool_mappings with zero tools is no-op",
+          "[ams][happy_hare][tool_mapping][reset]") {
+    AmsBackendHappyHareTestHelper helper;
+    // Don't initialize gates - tool_to_slot_map is empty
+
+    auto result = helper.reset_tool_mappings();
+
+    REQUIRE(result.success());
+    REQUIRE(helper.captured_gcodes.empty());
+}
+
+// ============================================================================
+// reset_endless_spool() Tests
+// ============================================================================
+
+TEST_CASE("Happy Hare reset_endless_spool returns not_supported",
+          "[ams][happy_hare][endless_spool][reset]") {
+    AmsBackendHappyHareTestHelper helper;
+    helper.initialize_test_gates(4);
+
+    auto result = helper.reset_endless_spool();
+
+    CHECK_FALSE(result.success());
+    CHECK(result.result == AmsResult::NOT_SUPPORTED);
+    // Should NOT send any G-code commands
+    REQUIRE(helper.captured_gcodes.empty());
 }
