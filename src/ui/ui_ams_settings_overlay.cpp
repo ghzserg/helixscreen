@@ -9,6 +9,7 @@
 #include "ui_ams_settings_overlay.h"
 
 #include "ui_ams_behavior_overlay.h"
+#include "ui_ams_endless_spool_overlay.h"
 #include "ui_ams_maintenance_overlay.h"
 #include "ui_ams_spoolman_overlay.h"
 #include "ui_ams_tool_mapping_overlay.h"
@@ -239,8 +240,14 @@ void AmsSettingsOverlay::on_tool_mapping_clicked(lv_event_t* e) {
 void AmsSettingsOverlay::on_endless_spool_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[AmsSettingsOverlay] on_endless_spool_clicked");
     LV_UNUSED(e);
-    spdlog::info("[AmsSettingsOverlay] Endless Spool clicked (not yet implemented)");
-    // TODO: Push endless spool sub-panel
+
+    auto& overlay = get_ams_endless_spool_overlay();
+    if (!overlay.are_subjects_initialized()) {
+        overlay.init_subjects();
+        overlay.register_callbacks();
+    }
+    overlay.show(get_ams_settings_overlay().get_parent_screen());
+
     LVGL_SAFE_EVENT_CB_END();
 }
 

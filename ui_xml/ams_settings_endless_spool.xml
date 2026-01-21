@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- AMS Endless Spool Settings Overlay Panel -->
+<!-- Sub-panel for viewing and configuring endless spool backup slot mappings -->
+<component>
+  <view name="ams_settings_endless_spool"
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Endless Spool" bg_color="#app_bg_color">
+    <!-- Content Area (scrollable) -->
+    <lv_obj name="overlay_content"
+            width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="#space_md" scrollable="true" scroll_dir="ver"
+            style_border_width="0" flex_flow="column" style_pad_gap="#space_sm">
+      <!-- Description text -->
+      <text_small name="description"
+                  width="100%" text="Configure backup slots for automatic filament switching when a spool runs out."
+                  style_text_color="#text_secondary"/>
+      <!-- ================================================================== -->
+      <!-- Not Supported Card (shown when endless spool not available)        -->
+      <!-- ================================================================== -->
+      <ui_card name="not_supported_card"
+               width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_md" flex_flow="row"
+               style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <bind_flag_if_eq subject="ams_endless_spool_supported" flag="hidden" ref_value="1"/>
+        <icon src="alert-circle" size="sm" variant="warning"/>
+        <lv_obj width="content"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="column"
+                style_pad_gap="#space_xs" scrollable="false" flex_grow="1">
+          <text_body text="Not Supported" style_text_color="#text_primary"/>
+          <text_small bind_text="ams_endless_spool_description" style_text_color="#text_secondary"/>
+        </lv_obj>
+      </ui_card>
+      <!-- ================================================================== -->
+      <!-- Capabilities Info Card (shown when supported)                      -->
+      <!-- ================================================================== -->
+      <ui_card name="capabilities_card"
+               width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_md" flex_flow="row"
+               style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <bind_flag_if_eq subject="ams_endless_spool_supported" flag="hidden" ref_value="0"/>
+        <icon src="info" size="sm" variant="secondary"/>
+        <lv_obj width="content"
+                height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="column"
+                style_pad_gap="#space_xs" scrollable="false" flex_grow="1">
+          <text_body bind_text="ams_endless_spool_description" style_text_color="#text_primary"/>
+          <text_small name="editable_hint" style_text_color="#text_secondary">
+            <bind_flag_if_eq subject="ams_endless_spool_editable" flag="hidden" ref_value="1"/>
+            <bind_text subject="ams_endless_spool_editable_text"/>
+          </text_small>
+        </lv_obj>
+      </ui_card>
+      <!-- ================================================================== -->
+      <!-- Slot Mapping Container (holds dynamic slot rows)                   -->
+      <!-- ================================================================== -->
+      <lv_obj name="slot_container"
+              width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" flex_flow="column"
+              style_pad_gap="#space_sm" scrollable="false">
+        <bind_flag_if_eq subject="ams_endless_spool_supported" flag="hidden" ref_value="0"/>
+        <!-- Slot rows are created dynamically in C++ -->
+      </lv_obj>
+    </lv_obj>
+  </view>
+</component>
