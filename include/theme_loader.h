@@ -1,6 +1,14 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+/**
+ * @file theme_loader.h
+ * @brief Data structures for JSON-based dynamic theming system
+ *
+ * @pattern POD structs with accessor methods; used by ThemeLoader
+ * @threading Main thread only
+ */
+
 #pragma once
 
 #include <array>
