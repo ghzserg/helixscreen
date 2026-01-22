@@ -1,72 +1,28 @@
 ---
 description: Continue a multi-phase project. Reads plan doc, shows progress, and resumes work.
-argument-hint: "[plan-doc-path or project-name]"
+argument-hint: "[plan-doc-path or project-name] [--defaults]"
 ---
 
 # CONTINUE MULTI-PHASE PROJECT
 
-```dot
-digraph continue {
-  rankdir=TB;
+## FLOW (strict order, no skipping)
 
-  // Main flow
-  start [label="Start" shape=circle];
-  locate [label="Locate Plan Doc"];
-  read [label="Read Current State"];
-  match [label="Match Handoff" shape=diamond];
-  status [label="Display Status"];
-  worktree [label="Check Worktree"];
-  overrides [label="Ask Overrides"];
-  execute [label="Execute Phase"];
-  verify [label="Verify & Commit"];
-  update [label="Update Progress"];
-  more [label="More Phases?" shape=diamond];
-  finish [label="Finish Branch"];
-  done [label="Done" shape=doublecircle];
+### 1. LOCATE
+- Path provided → use directly
+- Else search `docs/plans/` then `~/.claude/plans/`
+- **NOT FOUND** → STOP. AskUserQuestion for path.
 
-  // Decision nodes
-  ask_path [label="ASK: plan path"];
-  ask_handoff [label="ASK: which handoff?"];
-  create_handoff [label="Create new handoff"];
+### 2. READ
+Extract from plan: project name, completed phases (checked Progress), next phase, key files, verification steps.
 
-  // Flow
-  start -> locate;
-  locate -> read [label="found"];
-  locate -> ask_path [label="not found/no arg"];
-  ask_path -> locate;
-
-  read -> match;
-  match -> ask_handoff [label="ambiguous/multiple/doubt"];
-  match -> create_handoff [label="none exists"];
-  match -> status [label="clear single match"];
-  ask_handoff -> status;
-  create_handoff -> status;
-
-  status -> worktree;
-  worktree -> overrides;
-  overrides -> execute;
-
-  execute -> verify [label="phase work done"];
-  verify -> update;
-  update -> more;
-  more -> execute [label="yes"];
-  more -> finish [label="no"];
-  finish -> done;
-}
-```
-
-## NODE DETAILS
-
-**locate**: Search `docs/plans/` then `~/.claude/plans/`. Path provided → read directly.
-
-**read**: Extract from plan: project name, completed phases (checked Progress), next phase, key files, verification steps.
-
-**match**: Plan doc = source of truth. Handoffs pollute across sessions.
+### 3. MATCH HANDOFF
+Plan doc = source of truth. Handoffs pollute across sessions.
 - Verify: title contains project name, refs match Key Files, phase aligns with Progress
-- Edge "ambiguous": multiple matches, ambiguous title, refs span projects, ANY doubt
-- Edge "none exists": Output `HANDOFF: [Project Name] Phase [N]`
+- **CLEAR SINGLE MATCH** → use it
+- **MULTIPLE/AMBIGUOUS/ANY DOUBT** → STOP. AskUserQuestion: which handoff?
+- **NONE** → create: `HANDOFF: [Project Name] Phase [N]`
 
-**status**: Display compact summary:
+### 4. STATUS (must display before proceeding)
 ```
 ## [Project Name]
 Completed: [x] Phase 0 - `hash` | [x] Phase 1 - `hash`
@@ -74,17 +30,54 @@ Next: Phase 2 - [Name] ([goal])
 Files: path/file.cpp | Handoff: [hf-XXX]
 ```
 
-**worktree**: If exists, run `git status` + `git log --oneline -3`. Report uncommitted/divergence.
+### 5. WORKTREE
+If exists: `git status` + `git log --oneline -3`. Report uncommitted/divergence.
+- **UNCOMMITTED CHANGES** → STOP. AskUserQuestion: stash/commit/abort?
 
-**overrides**: AskUserQuestion: None | Skip TDD | Extra review | Custom
+### 6. OVERRIDES (checkpoint)
+**If `--defaults` flag passed:** Skip prompt, use defaults (subagent-driven, TDD per DEFAULTS section).
 
-**execute**: If `superpowers:executing-plans` available → delegate. Else follow plan steps directly.
+**Otherwise MUST** AskUserQuestion with two questions:
 
-**verify**: Run tests/verification from plan. If `superpowers:requesting-code-review` available → use for significant changes.
+1. **Execution** (header: "Execution"):
+   - "Subagent-driven (Recommended)" - fresh subagent/task, two-stage review
+   - "Batched with checkpoints" - human-in-loop between batches of 3
 
-**update**: Commit `feat(scope): phase N desc`. Update Progress: `- [x] Phase N: [Name] - \`hash\` (date)`. Mark todo complete.
+2. **Overrides** (header: "Overrides", multiSelect: true):
+   - "None - use defaults"
+   - "Skip TDD for this phase"
+   - "Extra review rigor"
 
-**finish**: If `superpowers:finishing-a-development-branch` available → delegate. Else: full tests, ask merge/PR/keep, cleanup worktree.
+**DO NOT PROCEED** without response (unless `--defaults`).
+
+### 7. EXECUTE (REQUIRED skill)
+- Subagent-driven → **MUST** `superpowers:subagent-driven-development`
+- Batched → **MUST** `superpowers:executing-plans`
+
+Only exception: skill not installed → STOP, inform user.
+**DO NOT** execute phase yourself.
+
+### 8. VERIFY (REQUIRED skill)
+- Run verification from plan
+- **MUST** `superpowers:requesting-code-review` for any code changes
+
+Only exception: skill not installed.
+
+### 9. UPDATE
+- Commit: `feat(scope): phase N desc`
+- Update plan Progress: `- [x] Phase N: [Name] - \`hash\` (date)`
+- Mark todo complete
+
+### 10. MORE PHASES?
+- **YES** → return to step 6 (preserving `--defaults` flag if originally provided)
+- **NO** → step 11
+
+### 11. FINISH (REQUIRED skill)
+**MUST** `superpowers:finishing-a-development-branch`
+
+Only exception: skill not installed.
+
+---
 
 ## HANDOFF MATCHING RULES
 
@@ -97,4 +90,4 @@ Files: path/file.cpp | Handoff: [hf-XXX]
 | Any doubt | **ASK** - never auto-select |
 
 ## DEFAULTS
-Delegation: main coordinates, agents implement | TDD: backend=yes, UI=skip | Reviews: proportional | Commits: 1/phase
+Execution: `subagent-driven-development` (recommended) | Delegation: **MANDATORY** - main coordinates, subagents implement (only skip if skill not installed) | TDD: backend=yes, UI=skip | Reviews: required for code changes | Commits: 1/phase

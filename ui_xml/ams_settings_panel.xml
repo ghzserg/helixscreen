@@ -60,6 +60,10 @@
       <ams_settings_nav_row name="row_endless_spool"
                             label="Endless Spool" icon="refresh" summary_bind="ams_settings_endless_spool_summary"
                             callback="on_ams_settings_endless_spool_clicked"/>
+      <!-- Device Operations -->
+      <ams_settings_nav_row name="row_device_operations"
+                            label="Device Operations" icon="cog" summary_bind="ams_settings_device_operations_summary"
+                            callback="on_ams_settings_device_operations_clicked"/>
       <!-- Maintenance -->
       <ams_settings_nav_row name="row_maintenance"
                             label="Maintenance" icon="wrench" summary_bind="ams_settings_maintenance_summary"

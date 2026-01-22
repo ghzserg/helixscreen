@@ -10,6 +10,7 @@
 
 #include "ui_ams_behavior_overlay.h"
 #include "ui_ams_device_actions_overlay.h"
+#include "ui_ams_device_operations_overlay.h"
 #include "ui_ams_endless_spool_overlay.h"
 #include "ui_ams_maintenance_overlay.h"
 #include "ui_ams_spoolman_overlay.h"
@@ -58,6 +59,7 @@ AmsSettingsOverlay::~AmsSettingsOverlay() {
         lv_subject_deinit(&connection_status_subject_);
         lv_subject_deinit(&tool_mapping_summary_subject_);
         lv_subject_deinit(&endless_spool_summary_subject_);
+        lv_subject_deinit(&device_operations_summary_subject_);
         lv_subject_deinit(&maintenance_summary_subject_);
         lv_subject_deinit(&behavior_summary_subject_);
         lv_subject_deinit(&calibration_summary_subject_);
@@ -105,6 +107,13 @@ void AmsSettingsOverlay::init_subjects() {
     lv_xml_register_subject(nullptr, "ams_settings_endless_spool_summary",
                             &endless_spool_summary_subject_);
 
+    snprintf(device_operations_summary_buf_, sizeof(device_operations_summary_buf_), "");
+    lv_subject_init_string(&device_operations_summary_subject_, device_operations_summary_buf_,
+                           nullptr, sizeof(device_operations_summary_buf_),
+                           device_operations_summary_buf_);
+    lv_xml_register_subject(nullptr, "ams_settings_device_operations_summary",
+                            &device_operations_summary_subject_);
+
     snprintf(maintenance_summary_buf_, sizeof(maintenance_summary_buf_), "");
     lv_subject_init_string(&maintenance_summary_subject_, maintenance_summary_buf_, nullptr,
                            sizeof(maintenance_summary_buf_), maintenance_summary_buf_);
@@ -142,6 +151,8 @@ void AmsSettingsOverlay::register_callbacks() {
                              on_tool_mapping_clicked);
     lv_xml_register_event_cb(nullptr, "on_ams_settings_endless_spool_clicked",
                              on_endless_spool_clicked);
+    lv_xml_register_event_cb(nullptr, "on_ams_settings_device_operations_clicked",
+                             on_device_operations_clicked);
     lv_xml_register_event_cb(nullptr, "on_ams_settings_maintenance_clicked",
                              on_maintenance_clicked);
     lv_xml_register_event_cb(nullptr, "on_ams_settings_behavior_clicked", on_behavior_clicked);
@@ -283,6 +294,9 @@ void AmsSettingsOverlay::update_nav_summaries() {
         snprintf(endless_spool_summary_buf_, sizeof(endless_spool_summary_buf_), "");
         lv_subject_copy_string(&endless_spool_summary_subject_, endless_spool_summary_buf_);
 
+        snprintf(device_operations_summary_buf_, sizeof(device_operations_summary_buf_), "");
+        lv_subject_copy_string(&device_operations_summary_subject_, device_operations_summary_buf_);
+
         snprintf(maintenance_summary_buf_, sizeof(maintenance_summary_buf_), "");
         lv_subject_copy_string(&maintenance_summary_subject_, maintenance_summary_buf_);
 
@@ -333,6 +347,22 @@ void AmsSettingsOverlay::update_nav_summaries() {
     }
     lv_subject_copy_string(&endless_spool_summary_subject_, endless_spool_summary_buf_);
 
+    // Device Operations summary: count total actions (calibration + speed)
+    auto actions = backend->get_device_actions();
+    int device_ops_count = 0;
+    for (const auto& action : actions) {
+        if (action.section == "calibration" || action.section == "speed") {
+            device_ops_count++;
+        }
+    }
+    if (device_ops_count > 0) {
+        snprintf(device_operations_summary_buf_, sizeof(device_operations_summary_buf_),
+                 "%d action%s", device_ops_count, device_ops_count == 1 ? "" : "s");
+    } else {
+        snprintf(device_operations_summary_buf_, sizeof(device_operations_summary_buf_), "");
+    }
+    lv_subject_copy_string(&device_operations_summary_subject_, device_operations_summary_buf_);
+
     // Maintenance summary: leave empty for now
     snprintf(maintenance_summary_buf_, sizeof(maintenance_summary_buf_), "");
     lv_subject_copy_string(&maintenance_summary_subject_, maintenance_summary_buf_);
@@ -342,7 +372,6 @@ void AmsSettingsOverlay::update_nav_summaries() {
     lv_subject_copy_string(&behavior_summary_subject_, behavior_summary_buf_);
 
     // Calibration summary: count actions in calibration section
-    auto actions = backend->get_device_actions();
     int calibration_count = 0;
     for (const auto& action : actions) {
         if (action.section == "calibration") {
@@ -402,6 +431,20 @@ void AmsSettingsOverlay::on_endless_spool_clicked(lv_event_t* e) {
     LV_UNUSED(e);
 
     auto& overlay = get_ams_endless_spool_overlay();
+    if (!overlay.are_subjects_initialized()) {
+        overlay.init_subjects();
+        overlay.register_callbacks();
+    }
+    overlay.show(get_ams_settings_overlay().get_parent_screen());
+
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void AmsSettingsOverlay::on_device_operations_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[AmsSettingsOverlay] on_device_operations_clicked");
+    LV_UNUSED(e);
+
+    auto& overlay = get_ams_device_operations_overlay();
     if (!overlay.are_subjects_initialized()) {
         overlay.init_subjects();
         overlay.register_callbacks();

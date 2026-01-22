@@ -175,6 +175,12 @@ Settings
 - `ui_xml/ams_settings_spoolman.xml`
 - Corresponding C++ files for above
 
+## Progress
+
+- [ ] Phase 1: Main AMS Panel Enhancements
+- [ ] Phase 2: Device Operations Panel (partial - overlay created, needs navigation)
+- [ ] Phase 3: Cleanup
+
 ## Success Criteria
 
 1. Tool mapping configurable directly from main AMS panel

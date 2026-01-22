@@ -60,7 +60,7 @@
 
 
 ### [L031] [****-|-----] XML no recompile
-- **Uses**: 16 | **Velocity**: 0.07 | **Learned**: 2025-12-27 | **Last**: 2026-01-21 | **Category**: gotcha | **Type**: constraint
+- **Uses**: 16 | **Velocity**: 0.01 | **Learned**: 2025-12-27 | **Last**: 2026-01-21 | **Category**: gotcha | **Type**: constraint
 > 
 
 

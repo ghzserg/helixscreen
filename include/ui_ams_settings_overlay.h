@@ -138,6 +138,7 @@ class AmsSettingsOverlay : public OverlayBase {
 
     static void on_tool_mapping_clicked(lv_event_t* e);
     static void on_endless_spool_clicked(lv_event_t* e);
+    static void on_device_operations_clicked(lv_event_t* e);
     static void on_maintenance_clicked(lv_event_t* e);
     static void on_behavior_clicked(lv_event_t* e);
     static void on_calibration_clicked(lv_event_t* e);
@@ -167,6 +168,9 @@ class AmsSettingsOverlay : public OverlayBase {
 
     lv_subject_t endless_spool_summary_subject_;
     char endless_spool_summary_buf_[32];
+
+    lv_subject_t device_operations_summary_subject_;
+    char device_operations_summary_buf_[32];
 
     lv_subject_t maintenance_summary_subject_;
     char maintenance_summary_buf_[32];

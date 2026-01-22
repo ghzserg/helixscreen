@@ -181,6 +181,7 @@ void register_xml_components() {
     lv_xml_register_component_from_file("A:ui_xml/ams_settings_behavior.xml");
     lv_xml_register_component_from_file("A:ui_xml/ams_settings_spoolman.xml");
     lv_xml_register_component_from_file("A:ui_xml/ams_settings_device_actions.xml");
+    lv_xml_register_component_from_file("A:ui_xml/ams_device_operations.xml");
 
     // Feature parity panels
     lv_xml_register_component_from_file("A:ui_xml/macro_card.xml");

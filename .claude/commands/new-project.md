@@ -5,83 +5,113 @@ argument-hint: "[rough description of what you want to build]"
 
 # NEW MULTI-PHASE PROJECT
 
-```dot
-digraph new_project {
-  rankdir=TB;
+## FLOW (strict order, no skipping)
 
-  // Main flow
-  start [label="Start" shape=circle];
-  check_super [label="Superpowers?" shape=diamond];
-  requirements [label="Gather Requirements"];
-  research [label="Research Codebase"];
-  propose [label="Propose Phases"];
-  refine [label="Refine with User"];
-  plan [label="Create Plan Doc"];
-  worktree_ask [label="Worktree?" shape=diamond];
-  worktree_setup [label="Setup Worktree"];
-  handoff [label="Output HANDOFF"];
-  done [label="Done" shape=doublecircle];
+### 1. CHECK SUPERPOWERS
+Test if `superpowers:brainstorming` available.
+- **AVAILABLE** → follow SUPERPOWERS PATH (step 2a)
+- **NOT AVAILABLE** → follow FALLBACK PATH (step 2b)
 
-  // Superpowers delegation
-  sp_brainstorm [label="superpowers:brainstorming"];
-  sp_plans [label="superpowers:writing-plans"];
-  sp_worktree [label="superpowers:using-git-worktrees"];
+---
 
-  // Flow - with superpowers
-  start -> check_super;
-  check_super -> sp_brainstorm [label="available"];
-  sp_brainstorm -> sp_plans [label="design approved"];
-  sp_plans -> sp_worktree [label="plan complete"];
-  sp_worktree -> handoff;
+## SUPERPOWERS PATH (preferred)
 
-  // Flow - fallback
-  check_super -> requirements [label="not available"];
-  requirements -> research;
-  research -> propose;
-  propose -> refine;
-  refine -> propose [label="needs changes"];
-  refine -> plan [label="approved"];
-  plan -> worktree_ask;
-  worktree_ask -> worktree_setup [label="yes"];
-  worktree_ask -> handoff [label="no"];
-  worktree_setup -> handoff;
+### 2a. BRAINSTORM (REQUIRED skill)
+**MUST** invoke `superpowers:brainstorming`
+- Explores user intent, requirements, design before implementation
+- Produces approved design
 
-  handoff -> done;
-}
-```
+### 3a. WRITE PLAN (REQUIRED skill)
+**MUST** invoke `superpowers:writing-plans`
+- Creates structured plan doc from approved design
 
-## NODE DETAILS
+### 4a. SETUP WORKTREE (REQUIRED skill)
+**MUST** invoke `superpowers:using-git-worktrees`
+- Creates isolated worktree for feature work
 
-**check_super**: Test if `superpowers:brainstorming` skill available. If yes, delegate entire flow to superpowers chain.
+### 5a. HANDOFF
+- Output `HANDOFF: [Project Name]`
+- Inform user: plan location, worktree path, use `/continue` to resume
 
-**requirements**: If user hasn't described feature, ask: "What feature would you like to build?"
+**DONE**
 
-**research**: Launch Explore agents for: similar patterns, architecture, testing conventions, existing infrastructure.
+---
 
-**propose**: AskUserQuestion with phase breakdown. Each phase ≈ 1 commit. Phase 0 = foundation. Include goal, deliverables, verification. Typically 3-6 phases.
+## FALLBACK PATH (only if superpowers unavailable)
 
-**refine**: Iterate based on feedback. Clarify: priorities, patterns, testing requirements.
+### 2b. REQUIREMENTS
+- If user hasn't described feature → AskUserQuestion: "What feature would you like to build?"
+- Clarify scope, constraints, priorities
 
-**plan**: Write to `docs/plans/[project-name]-plan.md`:
+### 3b. RESEARCH
+Launch Explore agents (parallel) for:
+- Similar patterns in codebase
+- Architecture/conventions
+- Testing patterns
+- Existing infrastructure to leverage
+
+### 4b. PROPOSE PHASES
+AskUserQuestion with phase breakdown:
+- Each phase ≈ 1 commit
+- Phase 0 = foundation/setup
+- Typically 3-6 phases
+- Each phase has: goal, deliverables, verification
+
+**DO NOT PROCEED** without user approval.
+
+### 5b. REFINE
+Based on feedback:
+- **NEEDS CHANGES** → return to step 4b
+- **APPROVED** → step 6b
+
+### 6b. CREATE PLAN DOC
+Write to `docs/plans/[project-name]-plan.md`:
 ```markdown
 # [Feature Name]
+
 ## Overview
 [1-2 sentences]
+
 ## Phases
-### Phase N: [Name]
-**Goal**: [What] | **Deliverables**: [List] | **Verification**: [How]
+
+### Phase 0: [Name]
+**Goal**: [What]
+**Deliverables**: [List]
+**Verification**: [How to verify]
+
+### Phase 1: [Name]
+...
+
 ## Progress
 - [ ] Phase 0: [Name]
+- [ ] Phase 1: [Name]
+
 ## Key Files
 - `path/file.cpp` - [role]
 ```
 
-**worktree_setup**: Check CLAUDE.md for conventions. Run: `git worktree add -b [branch] ../[project]-[feature] main` + init scripts.
+### 7b. WORKTREE? (checkpoint)
+AskUserQuestion: "Create worktree for isolated development?"
+- **YES** → step 8b
+- **NO** → step 9b
 
-**handoff**: Output `HANDOFF: [Project Name]`. Inform user: plan location, worktree path (if created), use `/continue` to resume.
+### 8b. SETUP WORKTREE
+Check CLAUDE.md for conventions. Run:
+```bash
+git worktree add -b [branch] ../helixscreen-[feature] main
+./scripts/init-worktree.sh ../helixscreen-[feature]
+```
+
+### 9b. HANDOFF
+- Output `HANDOFF: [Project Name]`
+- Inform user: plan location, worktree path (if created), use `/continue` to resume
+
+**DONE**
+
+---
 
 ## PLAN LOCATION
 Prefer `docs/plans/` (in project, versioned). Use `~/.claude/plans/` only if project disallows.
 
 ## DEFAULTS
-Delegation: main coordinates, agents implement | TDD: backend=yes, UI=skip | Reviews: proportional | Commits: 1/phase
+Delegation: main coordinates, agents research | TDD: backend=yes, UI=skip | Commits: 1/phase
