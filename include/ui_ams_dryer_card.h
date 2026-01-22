@@ -5,7 +5,10 @@
 
 #include "ui_observer_guard.h"
 
+#include "filament_database.h"
+
 #include <lvgl.h>
+#include <vector>
 
 namespace helix::ui {
 
@@ -109,9 +112,7 @@ class AmsDryerCard {
     // === Static Callbacks ===
     static void on_open_modal_cb(lv_event_t* e);
     static void on_close_modal_cb(lv_event_t* e);
-    static void on_preset_pla_cb(lv_event_t* e);
-    static void on_preset_petg_cb(lv_event_t* e);
-    static void on_preset_abs_cb(lv_event_t* e);
+    static void on_preset_changed_cb(lv_event_t* e);
     static void on_stop_cb(lv_event_t* e);
     static void on_temp_minus_cb(lv_event_t* e);
     static void on_temp_plus_cb(lv_event_t* e);
@@ -123,6 +124,14 @@ class AmsDryerCard {
      * @brief Find dryer card instance from event target
      */
     static AmsDryerCard* get_instance_from_event(lv_event_t* e);
+
+    /**
+     * @brief Populate preset dropdown with data from filament database
+     */
+    void populate_preset_dropdown();
+
+    // === Cached Presets ===
+    std::vector<filament::DryingPreset> cached_presets_;
 };
 
 } // namespace helix::ui

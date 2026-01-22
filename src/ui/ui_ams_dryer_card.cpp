@@ -7,10 +7,12 @@
 #include "ui_modal.h"
 
 #include "ams_state.h"
+#include "filament_database.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <sstream>
 
 namespace helix::ui {
 
@@ -35,8 +37,8 @@ AmsDryerCard::~AmsDryerCard() {
 
 AmsDryerCard::AmsDryerCard(AmsDryerCard&& other) noexcept
     : dryer_card_(other.dryer_card_), dryer_modal_(other.dryer_modal_),
-      progress_fill_(other.progress_fill_),
-      progress_observer_(std::move(other.progress_observer_)) {
+      progress_fill_(other.progress_fill_), progress_observer_(std::move(other.progress_observer_)),
+      cached_presets_(std::move(other.cached_presets_)) {
     other.dryer_card_ = nullptr;
     other.dryer_modal_ = nullptr;
     other.progress_fill_ = nullptr;
@@ -50,6 +52,7 @@ AmsDryerCard& AmsDryerCard::operator=(AmsDryerCard&& other) noexcept {
         dryer_modal_ = other.dryer_modal_;
         progress_fill_ = other.progress_fill_;
         progress_observer_ = std::move(other.progress_observer_);
+        cached_presets_ = std::move(other.cached_presets_);
 
         other.dryer_card_ = nullptr;
         other.dryer_modal_ = nullptr;
@@ -197,9 +200,7 @@ void AmsDryerCard::register_callbacks_static() {
 
     lv_xml_register_event_cb(nullptr, "dryer_open_modal_cb", on_open_modal_cb);
     lv_xml_register_event_cb(nullptr, "dryer_modal_close_cb", on_close_modal_cb);
-    lv_xml_register_event_cb(nullptr, "dryer_preset_pla_cb", on_preset_pla_cb);
-    lv_xml_register_event_cb(nullptr, "dryer_preset_petg_cb", on_preset_petg_cb);
-    lv_xml_register_event_cb(nullptr, "dryer_preset_abs_cb", on_preset_abs_cb);
+    lv_xml_register_event_cb(nullptr, "dryer_preset_changed_cb", on_preset_changed_cb);
     lv_xml_register_event_cb(nullptr, "dryer_stop_clicked_cb", on_stop_cb);
     lv_xml_register_event_cb(nullptr, "dryer_temp_minus_cb", on_temp_minus_cb);
     lv_xml_register_event_cb(nullptr, "dryer_temp_plus_cb", on_temp_plus_cb);
@@ -251,6 +252,9 @@ void AmsDryerCard::on_open_modal_cb(lv_event_t* e) {
     if (self->dryer_modal_) {
         // Store 'this' in modal's user_data for callback traversal
         lv_obj_set_user_data(self->dryer_modal_, self);
+
+        // Populate the preset dropdown with data from filament database
+        self->populate_preset_dropdown();
     }
 }
 
@@ -268,24 +272,21 @@ void AmsDryerCard::on_close_modal_cb(lv_event_t* e) {
     }
 }
 
-void AmsDryerCard::on_preset_pla_cb(lv_event_t* e) {
+void AmsDryerCard::on_preset_changed_cb(lv_event_t* e) {
     auto* self = get_instance_from_event(e);
-    if (self) {
-        self->apply_preset(45, 240); // PLA: 45°C, 4h
+    if (!self) {
+        return;
     }
-}
 
-void AmsDryerCard::on_preset_petg_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
-    if (self) {
-        self->apply_preset(55, 240); // PETG: 55°C, 4h
-    }
-}
+    auto* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    uint32_t selected = lv_dropdown_get_selected(dropdown);
 
-void AmsDryerCard::on_preset_abs_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
-    if (self) {
-        self->apply_preset(65, 240); // ABS: 65°C, 4h
+    // Look up preset from cached data
+    if (selected < self->cached_presets_.size()) {
+        const auto& preset = self->cached_presets_[selected];
+        spdlog::debug("[AmsDryerCard] Preset selected: {} ({}°C, {}min)", preset.name,
+                      preset.temp_c, preset.time_min);
+        self->apply_preset(preset.temp_c, preset.time_min);
     }
 }
 
@@ -337,6 +338,58 @@ void AmsDryerCard::on_power_toggled_cb(lv_event_t* e) {
         int duration = AmsState::instance().get_modal_duration_min();
         self->start_drying(static_cast<float>(temp), duration, DEFAULT_FAN_SPEED_PCT);
     }
+}
+
+// ============================================================================
+// Dropdown Population
+// ============================================================================
+
+void AmsDryerCard::populate_preset_dropdown() {
+    if (!dryer_modal_) {
+        return;
+    }
+
+    lv_obj_t* dropdown = lv_obj_find_by_name(dryer_modal_, "preset_dropdown");
+    if (!dropdown) {
+        spdlog::warn("[AmsDryerCard] preset_dropdown not found in modal");
+        return;
+    }
+
+    // Get presets from filament database
+    cached_presets_ = filament::get_drying_presets_by_group();
+
+    if (cached_presets_.empty()) {
+        spdlog::warn("[AmsDryerCard] No drying presets available");
+        lv_dropdown_set_options(dropdown, "No presets");
+        return;
+    }
+
+    // Build options string: "PLA (45°C, 4h)\nPETG (55°C, 6h)\n..."
+    std::ostringstream options;
+    for (size_t i = 0; i < cached_presets_.size(); ++i) {
+        const auto& preset = cached_presets_[i];
+        int hours = preset.time_min / 60;
+        int mins = preset.time_min % 60;
+
+        options << preset.name << " (" << preset.temp_c << "°C, ";
+        if (hours > 0) {
+            options << hours << "h";
+            if (mins > 0) {
+                options << mins << "m";
+            }
+        } else {
+            options << mins << "m";
+        }
+        options << ")";
+
+        if (i < cached_presets_.size() - 1) {
+            options << "\n";
+        }
+    }
+
+    lv_dropdown_set_options(dropdown, options.str().c_str());
+    spdlog::debug("[AmsDryerCard] Populated preset dropdown with {} presets",
+                  cached_presets_.size());
 }
 
 } // namespace helix::ui

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "filament_database.h"
+
 #include <any>
 #include <cmath>
 #include <cstdint>
@@ -752,20 +754,20 @@ struct DryerInfo {
 /**
  * @brief Get default drying presets
  *
- * Returns hardcoded presets for common filament materials.
+ * Returns presets derived from the filament database, one per compatibility group.
+ * Uses filament::get_drying_presets_by_group() as the single source of truth.
  * These can be overridden via helixconfig.json "dryer_presets" array.
  *
  * @return Vector of default DryingPreset structs
  */
 inline std::vector<DryingPreset> get_default_drying_presets() {
-    return {
-        {"PLA", 45.0f, 240, 50},   // 45°C for 4 hours
-        {"PETG", 55.0f, 360, 50},  // 55°C for 6 hours
-        {"ABS", 65.0f, 360, 50},   // 65°C for 6 hours
-        {"TPU", 50.0f, 300, 40},   // 50°C for 5 hours
-        {"Nylon", 70.0f, 480, 50}, // 70°C for 8 hours
-        {"ASA", 65.0f, 360, 50}    // 65°C for 6 hours
-    };
+    constexpr int DEFAULT_FAN_PCT = 50;
+
+    std::vector<DryingPreset> result;
+    for (const auto& fp : filament::get_drying_presets_by_group()) {
+        result.emplace_back(fp.name, static_cast<float>(fp.temp_c), fp.time_min, DEFAULT_FAN_PCT);
+    }
+    return result;
 }
 
 // ============================================================================

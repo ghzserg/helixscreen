@@ -19,6 +19,7 @@
 #include "ams_state.h"
 #include "app_constants.h"
 #include "app_globals.h"
+#include "filament_database.h"
 #include "filament_sensor_manager.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
@@ -32,10 +33,10 @@
 #include <cstring>
 #include <memory>
 
-// Material temperature presets (indexed by material ID: 0=PLA, 1=PETG, 2=ABS, 3=TPU)
-static const int MATERIAL_NOZZLE_TEMPS[] = {210, 240, 250, 230};
-static const int MATERIAL_BED_TEMPS[] = {60, 80, 100, 50};
-static const char* MATERIAL_NAMES[] = {"PLA", "PETG", "ABS", "TPU"};
+// Preset material names (indexed by material ID: 0=PLA, 1=PETG, 2=ABS, 3=TPU)
+// Temperatures are now looked up from filament_database.h
+static constexpr const char* PRESET_MATERIAL_NAMES[] = {"PLA", "PETG", "ABS", "TPU"};
+static constexpr int PRESET_COUNT = 4;
 
 // Format string for safety warning (used in constructor and set_limits)
 static constexpr const char* SAFETY_WARNING_FMT = "Heat to at least %d°C to load/unload";
@@ -383,8 +384,9 @@ void FilamentPanel::update_preset_buttons_visual() {
 void FilamentPanel::check_and_auto_select_preset() {
     // Check if both nozzle and bed targets match any preset
     int matching_preset = -1;
-    for (int i = 0; i < 4; i++) {
-        if (nozzle_target_ == MATERIAL_NOZZLE_TEMPS[i] && bed_target_ == MATERIAL_BED_TEMPS[i]) {
+    for (int i = 0; i < PRESET_COUNT; i++) {
+        auto mat = filament::find_material(PRESET_MATERIAL_NAMES[i]);
+        if (mat && nozzle_target_ == mat->nozzle_recommended() && bed_target_ == mat->bed_temp) {
             matching_preset = i;
             break;
         }
@@ -398,7 +400,7 @@ void FilamentPanel::check_and_auto_select_preset() {
 
         if (matching_preset >= 0) {
             spdlog::debug("[{}] Auto-selected preset: {} (nozzle={}°C, bed={}°C)", get_name(),
-                          MATERIAL_NAMES[matching_preset], nozzle_target_, bed_target_);
+                          PRESET_MATERIAL_NAMES[matching_preset], nozzle_target_, bed_target_);
         } else {
             spdlog::debug("[{}] No matching preset for nozzle={}°C, bed={}°C", get_name(),
                           nozzle_target_, bed_target_);
@@ -411,9 +413,22 @@ void FilamentPanel::check_and_auto_select_preset() {
 // ============================================================================
 
 void FilamentPanel::handle_preset_button(int material_id) {
+    if (material_id < 0 || material_id >= PRESET_COUNT) {
+        spdlog::error("[{}] Invalid preset ID {} (valid: 0-{})", get_name(), material_id,
+                      PRESET_COUNT - 1);
+        return;
+    }
+
+    auto mat = filament::find_material(PRESET_MATERIAL_NAMES[material_id]);
+    if (!mat) {
+        spdlog::error("[{}] Material '{}' not found in database", get_name(),
+                      PRESET_MATERIAL_NAMES[material_id]);
+        return;
+    }
+
     selected_material_ = material_id;
-    nozzle_target_ = MATERIAL_NOZZLE_TEMPS[material_id];
-    bed_target_ = MATERIAL_BED_TEMPS[material_id];
+    nozzle_target_ = mat->nozzle_recommended();
+    bed_target_ = mat->bed_temp;
 
     lv_subject_set_int(&material_selected_subject_, selected_material_);
     update_preset_buttons_visual();
@@ -422,7 +437,7 @@ void FilamentPanel::handle_preset_button(int material_id) {
     update_status();
 
     spdlog::info("[{}] Material selected: {} (nozzle={}°C, bed={}°C)", get_name(),
-                 MATERIAL_NAMES[material_id], nozzle_target_, bed_target_);
+                 PRESET_MATERIAL_NAMES[material_id], nozzle_target_, bed_target_);
 
     // Send temperature commands to printer (both nozzle and bed)
     if (api_) {
@@ -890,14 +905,22 @@ void FilamentPanel::get_temp(int* current, int* target) const {
 }
 
 void FilamentPanel::set_material(int material_id) {
-    if (material_id < 0 || material_id > 3) {
-        spdlog::error("[{}] Invalid material ID {} (valid: 0-3)", get_name(), material_id);
+    if (material_id < 0 || material_id >= PRESET_COUNT) {
+        spdlog::error("[{}] Invalid material ID {} (valid: 0-{})", get_name(), material_id,
+                      PRESET_COUNT - 1);
+        return;
+    }
+
+    auto mat = filament::find_material(PRESET_MATERIAL_NAMES[material_id]);
+    if (!mat) {
+        spdlog::error("[{}] Material '{}' not found in database", get_name(),
+                      PRESET_MATERIAL_NAMES[material_id]);
         return;
     }
 
     selected_material_ = material_id;
-    nozzle_target_ = MATERIAL_NOZZLE_TEMPS[material_id];
-    bed_target_ = MATERIAL_BED_TEMPS[material_id];
+    nozzle_target_ = mat->nozzle_recommended();
+    bed_target_ = mat->bed_temp;
 
     lv_subject_set_int(&material_selected_subject_, selected_material_);
     update_preset_buttons_visual();
@@ -906,7 +929,7 @@ void FilamentPanel::set_material(int material_id) {
     update_status();
 
     spdlog::info("[{}] Material set: {} (nozzle={}°C, bed={}°C)", get_name(),
-                 MATERIAL_NAMES[material_id], nozzle_target_, bed_target_);
+                 PRESET_MATERIAL_NAMES[material_id], nozzle_target_, bed_target_);
 }
 
 bool FilamentPanel::is_extrusion_allowed() const {

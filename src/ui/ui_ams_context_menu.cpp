@@ -3,9 +3,11 @@
 
 #include "ui_ams_context_menu.h"
 
+#include "ui_toast.h"
 #include "ui_utils.h"
 
 #include "ams_backend.h"
+#include "filament_database.h"
 
 #include <spdlog/spdlog.h>
 
@@ -374,6 +376,28 @@ void AmsContextMenu::handle_backup_changed() {
         }
     }
 
+    // Validate material compatibility if a backup slot was selected
+    if (backup_slot >= 0 && slot_index_ >= 0) {
+        std::string current_material = backend_->get_slot_info(slot_index_).material;
+        std::string backup_material = backend_->get_slot_info(backup_slot).material;
+
+        // Only check compatibility if both slots have materials set
+        if (!current_material.empty() && !backup_material.empty() &&
+            !filament::are_materials_compatible(current_material, backup_material)) {
+            spdlog::warn("[AmsContextMenu] Incompatible backup: {} cannot use {} as backup",
+                         current_material, backup_material);
+
+            // Show toast error
+            std::string msg = "Incompatible materials: " + current_material + " cannot use " +
+                              backup_material + " as backup";
+            ui_toast_show(ToastSeverity::ERROR, msg.c_str());
+
+            // Reset dropdown to "None" (index 0)
+            lv_dropdown_set_selected(backup_dropdown_, 0);
+            return;
+        }
+    }
+
     spdlog::info("[AmsContextMenu] Backup slot changed for slot {}: backup {}", slot_index_,
                  backup_slot >= 0 ? backup_slot : -1);
 
@@ -500,11 +524,30 @@ std::string AmsContextMenu::build_tool_options() const {
 
 std::string AmsContextMenu::build_backup_options() const {
     std::string options = "None";
+
+    // Get current slot's material for compatibility checking
+    std::string current_material;
+    if (backend_ && slot_index_ >= 0) {
+        current_material = backend_->get_slot_info(slot_index_).material;
+    }
+
     // Add slot options Slot 1, Slot 2... based on total slots
     // Skip the current slot (can't be backup for itself)
+    // Mark incompatible materials
     for (int i = 0; i < total_slots_; ++i) {
         if (i != slot_index_) {
-            options += "\nSlot " + std::to_string(i + 1);
+            std::string slot_option = "\nSlot " + std::to_string(i + 1);
+
+            // Check material compatibility if we have a current material
+            if (backend_ && !current_material.empty()) {
+                std::string other_material = backend_->get_slot_info(i).material;
+                if (!other_material.empty() &&
+                    !filament::are_materials_compatible(current_material, other_material)) {
+                    slot_option += " (incompatible)";
+                }
+            }
+
+            options += slot_option;
         }
     }
     return options;
