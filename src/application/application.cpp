@@ -1667,6 +1667,11 @@ void Application::shutdown() {
         m_display->restore_display_on_shutdown();
     }
 
+    // Clear pending async callbacks BEFORE destroying panels.
+    // This prevents use-after-free: async observer callbacks may have been queued
+    // with stale 'self' pointers that will crash if processed after panel destruction.
+    ui_update_queue_shutdown();
+
     // Destroy ALL static panel/overlay globals via self-registration pattern.
     // Must happen BEFORE deinit_all() so ObserverGuards can properly unsubscribe
     // from subjects that still exist. Safe at this point because m_moonraker is
