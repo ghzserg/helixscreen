@@ -54,6 +54,31 @@
         <text_body text="Assign Spool"/>
         <event_cb trigger="clicked" callback="ams_context_spoolman_cb"/>
       </lv_button>
+      <!-- Divider before dropdowns -->
+      <lv_obj name="dropdown_divider"
+              width="100%" height="1" style_bg_color="#text_secondary" style_bg_opa="38" style_border_width="0"
+              style_pad_all="0" style_margin_top="#space_xs" style_margin_bottom="#space_xs" scrollable="false"
+              hidden="true"/>
+      <!-- Tool Mapping Dropdown -->
+      <lv_obj name="tool_dropdown_row"
+              width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+              style_pad_left="#space_sm" style_pad_right="#space_sm" flex_flow="row"
+              style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false" hidden="true">
+        <text_small text="Tool" style_text_color="#text_secondary"/>
+        <lv_dropdown name="tool_dropdown" width="80" height="32" style_radius="#border_radius" style_border_width="0">
+          <event_cb trigger="value_changed" callback="ams_context_tool_changed_cb"/>
+        </lv_dropdown>
+      </lv_obj>
+      <!-- Backup Slot Dropdown (Endless Spool) -->
+      <lv_obj name="backup_dropdown_row"
+              width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+              style_pad_left="#space_sm" style_pad_right="#space_sm" flex_flow="row"
+              style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false" hidden="true">
+        <text_small text="Backup" style_text_color="#text_secondary"/>
+        <lv_dropdown name="backup_dropdown" width="80" height="32" style_radius="#border_radius" style_border_width="0">
+          <event_cb trigger="value_changed" callback="ams_context_backup_changed_cb"/>
+        </lv_dropdown>
+      </lv_obj>
     </lv_obj>
   </view>
 </component>

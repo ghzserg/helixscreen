@@ -5,6 +5,10 @@
 
 #include <functional>
 #include <lvgl.h>
+#include <string>
+
+// Forward declaration
+class AmsBackend;
 
 namespace helix::ui {
 
@@ -59,10 +63,11 @@ class AmsContextMenu {
      * @param slot_index Slot this menu is for (0-based)
      * @param near_widget Widget to position menu near (typically slot widget)
      * @param is_loaded True if filament is loaded to extruder (enables Unload button)
+     * @param backend Optional backend pointer for tool mapping/endless spool features
      * @return true if menu was shown successfully
      */
     bool show_near_widget(lv_obj_t* parent, int slot_index, lv_obj_t* near_widget,
-                          bool is_loaded = false);
+                          bool is_loaded = false, AmsBackend* backend = nullptr);
 
     /**
      * @brief Hide the context menu
@@ -99,12 +104,31 @@ class AmsContextMenu {
     lv_subject_t slot_is_loaded_subject_;
     bool subject_initialized_ = false;
 
+    // === Backend reference for dropdown operations ===
+    AmsBackend* backend_ = nullptr;
+    int total_slots_ = 0;
+
+    // === Dropdown widget pointers ===
+    lv_obj_t* tool_dropdown_ = nullptr;
+    lv_obj_t* backup_dropdown_ = nullptr;
+
     // === Event Handlers ===
     void handle_backdrop_clicked();
     void handle_load();
     void handle_unload();
     void handle_edit();
     void handle_spoolman();
+    void handle_tool_changed();
+    void handle_backup_changed();
+
+    // === Dropdown Configuration ===
+    void configure_dropdowns();
+    void populate_tool_dropdown();
+    void populate_backup_dropdown();
+    std::string build_tool_options() const;
+    std::string build_backup_options() const;
+    int get_current_tool_for_slot() const;
+    int get_current_backup_for_slot() const;
 
     // === Static Callback Registration ===
     static void register_callbacks();
@@ -116,6 +140,8 @@ class AmsContextMenu {
     static void on_unload_cb(lv_event_t* e);
     static void on_edit_cb(lv_event_t* e);
     static void on_spoolman_cb(lv_event_t* e);
+    static void on_tool_changed_cb(lv_event_t* e);
+    static void on_backup_changed_cb(lv_event_t* e);
 
     /**
      * @brief Find menu instance from event target
