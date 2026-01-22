@@ -10,6 +10,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_nav_manager.h"
+#include "ui_theme_editor_overlay.h"
 #include "ui_utils.h"
 
 #include "settings_manager.h"
@@ -313,22 +314,34 @@ void DisplaySettingsOverlay::handle_theme_settings_clicked() {
         return;
     }
 
+    // Create theme editor overlay on first access (lazy initialization)
     if (!theme_settings_overlay_) {
-        spdlog::debug("[{}] Creating theme settings overlay...", get_name());
-        theme_settings_overlay_ = static_cast<lv_obj_t*>(
-            lv_xml_create(parent_screen_, "theme_settings_overlay", nullptr));
+        spdlog::debug("[{}] Creating theme editor overlay...", get_name());
+        auto& overlay = get_theme_editor_overlay();
+
+        // Initialize subjects and callbacks if not already done
+        if (!overlay.are_subjects_initialized()) {
+            overlay.init_subjects();
+        }
+        overlay.register_callbacks();
+
+        // Create overlay UI
+        theme_settings_overlay_ = overlay.create(parent_screen_);
         if (!theme_settings_overlay_) {
-            spdlog::error("[{}] Failed to create theme settings overlay", get_name());
+            spdlog::error("[{}] Failed to create theme editor overlay", get_name());
             return;
         }
 
-        lv_obj_add_flag(theme_settings_overlay_, LV_OBJ_FLAG_HIDDEN);
-        NavigationManager::instance().register_overlay_close_callback(
-            theme_settings_overlay_, [this]() { lv_obj_safe_delete(theme_settings_overlay_); });
+        // Register with NavigationManager for lifecycle callbacks
+        NavigationManager::instance().register_overlay_instance(theme_settings_overlay_, &overlay);
     }
 
-    init_theme_preset_dropdown(theme_settings_overlay_);
-    ui_nav_push_overlay(theme_settings_overlay_);
+    if (theme_settings_overlay_) {
+        // Load current theme for editing
+        auto theme_name = SettingsManager::instance().get_theme_name();
+        get_theme_editor_overlay().load_theme(theme_name);
+        ui_nav_push_overlay(theme_settings_overlay_);
+    }
 }
 
 // ============================================================================

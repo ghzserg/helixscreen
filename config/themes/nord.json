@@ -1,0 +1,25 @@
+{
+  "border_opacity": 40,
+  "border_radius": 12,
+  "border_width": 1,
+  "colors": {
+    "accent_highlight": "#8fbcbb",
+    "accent_primary": "#88c0d0",
+    "accent_secondary": "#81a1c1",
+    "accent_tertiary": "#5e81ac",
+    "bg_dark": "#3b4252",
+    "bg_dark_highlight": "#434c5e",
+    "bg_darkest": "#2e3440",
+    "bg_light": "#e5e9f0",
+    "bg_lightest": "#eceff4",
+    "border_muted": "#4c566a",
+    "status_danger": "#d08770",
+    "status_error": "#bf616a",
+    "status_special": "#b48ead",
+    "status_success": "#a3be8c",
+    "status_warning": "#ebcb8b",
+    "text_light": "#d8dee9"
+  },
+  "name": "Nord",
+  "shadow_intensity": 0
+}

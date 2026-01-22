@@ -319,22 +319,26 @@
       <setting_slider_row name="row_border_radius"
                           label="Border Radius" icon="cube"
                           description="Corner roundness (0 = sharp, 20 = very round)"
-                          min="0" max="20" value="8" callback="on_border_radius_changed"/>
+                          min="0" max="20" value="8" min_icon="minus" max_icon="plus"
+                          callback="on_border_radius_changed"/>
 
       <setting_slider_row name="row_border_width"
                           label="Border Width" icon="ruler"
                           description="Default border thickness"
-                          min="0" max="4" value="1" callback="on_border_width_changed"/>
+                          min="0" max="4" value="1" min_icon="minus" max_icon="plus"
+                          callback="on_border_width_changed"/>
 
       <setting_slider_row name="row_border_opacity"
                           label="Border Opacity" icon="layers"
                           description="Border transparency (0 = invisible, 255 = solid)"
-                          min="0" max="255" value="128" callback="on_border_opacity_changed"/>
+                          min="0" max="255" value="128" min_icon="minus" max_icon="plus"
+                          callback="on_border_opacity_changed"/>
 
       <setting_slider_row name="row_shadow_intensity"
                           label="Shadow Intensity" icon="animation"
                           description="Drop shadow strength (0 = disabled)"
-                          min="0" max="50" value="0" callback="on_shadow_changed"/>
+                          min="0" max="50" value="0" min_icon="minus" max_icon="plus"
+                          callback="on_shadow_changed"/>
 
       <!-- ================================================================== -->
       <!-- ACTION BUTTONS -->
