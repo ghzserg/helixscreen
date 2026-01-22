@@ -120,6 +120,14 @@ class ThemeEditorOverlay : public OverlayBase {
     static void on_theme_save_as_clicked(lv_event_t* e);
     static void on_theme_revert_clicked(lv_event_t* e);
 
+    // Save As dialog callbacks
+    static void on_save_as_confirm(lv_event_t* e);
+    static void on_save_as_cancel(lv_event_t* e);
+
+    // Restart dialog callbacks
+    static void on_restart_now(lv_event_t* e);
+    static void on_restart_later(lv_event_t* e);
+
     // Instance handlers for slider property changes
     void handle_border_radius_changed(int value);
     void handle_border_width_changed(int value);
@@ -141,6 +149,14 @@ class ThemeEditorOverlay : public OverlayBase {
     void update_title_dirty_indicator();
     void handle_back_clicked();
 
+    // Save As dialog handlers
+    void handle_save_as_confirm();
+
+    // Filename helpers
+    static std::string sanitize_filename(const std::string& name);
+    static std::string generate_unique_filename(const std::string& base_name,
+                                                const std::string& themes_dir);
+
     helix::ThemeData editing_theme_;
     helix::ThemeData original_theme_;
     bool dirty_ = false;
@@ -155,6 +171,12 @@ class ThemeEditorOverlay : public OverlayBase {
     // Discard confirmation dialog tracking
     lv_obj_t* discard_dialog_ = nullptr;
     std::function<void()> pending_discard_action_;
+
+    // Save As dialog tracking
+    lv_obj_t* save_as_dialog_ = nullptr;
+
+    // Restart dialog tracking
+    lv_obj_t* restart_dialog_ = nullptr;
 };
 
 /**

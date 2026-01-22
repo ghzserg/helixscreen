@@ -6,6 +6,7 @@
 #include "ui_ams_color_picker.h"
 #include "ui_event_safety.h"
 #include "ui_global_panel_helper.h"
+#include "ui_keyboard_manager.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_theme.h"
@@ -14,6 +15,12 @@
 #include "settings_manager.h"
 
 #include <spdlog/spdlog.h>
+
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cstdlib>
+#include <sys/stat.h>
 
 // ============================================================================
 // GLOBAL INSTANCE
@@ -121,6 +128,14 @@ void ThemeEditorOverlay::register_callbacks() {
     // Custom back button callback to intercept close and check dirty state
     lv_xml_register_event_cb(nullptr, "on_theme_editor_back_clicked", on_back_clicked);
 
+    // Save As dialog callbacks
+    lv_xml_register_event_cb(nullptr, "on_theme_save_as_confirm", on_save_as_confirm);
+    lv_xml_register_event_cb(nullptr, "on_theme_save_as_cancel", on_save_as_cancel);
+
+    // Restart dialog callbacks
+    lv_xml_register_event_cb(nullptr, "on_theme_restart_now", on_restart_now);
+    lv_xml_register_event_cb(nullptr, "on_theme_restart_later", on_restart_later);
+
     spdlog::debug("[{}] Callbacks registered", get_name());
 }
 
@@ -149,6 +164,18 @@ void ThemeEditorOverlay::cleanup() {
         discard_dialog_ = nullptr;
     }
     pending_discard_action_ = nullptr;
+
+    // Clean up save as dialog if showing
+    if (save_as_dialog_) {
+        Modal::hide(save_as_dialog_);
+        save_as_dialog_ = nullptr;
+    }
+
+    // Clean up restart dialog if showing
+    if (restart_dialog_) {
+        Modal::hide(restart_dialog_);
+        restart_dialog_ = nullptr;
+    }
 
     // Clear swatch references (widgets will be destroyed by LVGL)
     swatch_objects_.fill(nullptr);
@@ -630,14 +657,51 @@ void ThemeEditorOverlay::show_color_picker(int palette_index) {
 }
 
 void ThemeEditorOverlay::show_save_as_dialog() {
-    // Stub for save as dialog - will be implemented in task 6.5
-    spdlog::info("[{}] Save As dialog not yet implemented", get_name());
+    // Close existing dialog if any
+    if (save_as_dialog_) {
+        Modal::hide(save_as_dialog_);
+        save_as_dialog_ = nullptr;
+    }
+
+    // Show save as modal
+    save_as_dialog_ = ui_modal_show("theme_save_as_modal");
+    if (!save_as_dialog_) {
+        spdlog::error("[{}] Failed to show Save As dialog", get_name());
+        return;
+    }
+
+    // Find and configure the textarea
+    lv_obj_t* input = lv_obj_find_by_name(save_as_dialog_, "theme_name_input");
+    if (input) {
+        // Pre-fill with current theme name as suggestion
+        std::string suggested_name = editing_theme_.name + " Copy";
+        lv_textarea_set_text(input, suggested_name.c_str());
+        lv_textarea_set_cursor_pos(input, LV_TEXTAREA_CURSOR_LAST);
+
+        // Register with keyboard manager for on-screen keyboard
+        ui_modal_register_keyboard(save_as_dialog_, input);
+    }
+
+    spdlog::debug("[{}] Showing Save As dialog", get_name());
 }
 
 void ThemeEditorOverlay::show_restart_dialog() {
-    // Stub for restart dialog - will be implemented in task 6.5
-    spdlog::info("[{}] Restart dialog not yet implemented - theme saved, restart to apply",
-                 get_name());
+    // Close existing dialog if any
+    if (restart_dialog_) {
+        Modal::hide(restart_dialog_);
+        restart_dialog_ = nullptr;
+    }
+
+    // Show restart prompt using confirmation dialog
+    restart_dialog_ = ui_modal_show_confirmation(
+        "Theme Saved", "Theme changes require an app restart to fully apply. Restart now?",
+        ModalSeverity::Info, "Restart Now", on_restart_now, on_restart_later, nullptr);
+
+    if (!restart_dialog_) {
+        spdlog::error("[{}] Failed to show restart dialog", get_name());
+    }
+
+    spdlog::debug("[{}] Showing restart dialog", get_name());
 }
 
 void ThemeEditorOverlay::show_discard_confirmation(std::function<void()> on_discard) {
@@ -653,4 +717,202 @@ void ThemeEditorOverlay::show_discard_confirmation(std::function<void()> on_disc
         spdlog::error("[{}] Failed to show discard confirmation dialog", get_name());
         pending_discard_action_ = nullptr;
     }
+}
+
+// ============================================================================
+// SAVE AS DIALOG CALLBACKS
+// ============================================================================
+
+void ThemeEditorOverlay::on_save_as_confirm(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[ThemeEditorOverlay] on_save_as_confirm");
+    static_cast<void>(lv_event_get_current_target(e));
+    get_theme_editor_overlay().handle_save_as_confirm();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void ThemeEditorOverlay::on_save_as_cancel(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[ThemeEditorOverlay] on_save_as_cancel");
+    static_cast<void>(lv_event_get_current_target(e));
+
+    auto& overlay = get_theme_editor_overlay();
+    if (overlay.save_as_dialog_) {
+        Modal::hide(overlay.save_as_dialog_);
+        overlay.save_as_dialog_ = nullptr;
+    }
+
+    spdlog::debug("[ThemeEditorOverlay] Save As cancelled");
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void ThemeEditorOverlay::handle_save_as_confirm() {
+    if (!save_as_dialog_) {
+        spdlog::error("[{}] handle_save_as_confirm: no dialog", get_name());
+        return;
+    }
+
+    // Get theme name from input field
+    lv_obj_t* input = lv_obj_find_by_name(save_as_dialog_, "theme_name_input");
+    if (!input) {
+        spdlog::error("[{}] Could not find theme_name_input", get_name());
+        return;
+    }
+
+    const char* raw_name = lv_textarea_get_text(input);
+    if (!raw_name || std::strlen(raw_name) == 0) {
+        // Show error in status field
+        lv_obj_t* status = lv_obj_find_by_name(save_as_dialog_, "save_as_status");
+        if (status) {
+            lv_label_set_text(status, "Please enter a theme name");
+            lv_obj_remove_flag(status, LV_OBJ_FLAG_HIDDEN);
+        }
+        return;
+    }
+
+    std::string theme_name(raw_name);
+    std::string themes_dir = helix::get_themes_directory();
+
+    // Sanitize and generate unique filename
+    std::string base_filename = sanitize_filename(theme_name);
+    if (base_filename.empty()) {
+        base_filename = "custom_theme";
+    }
+    std::string unique_filename = generate_unique_filename(base_filename, themes_dir);
+
+    // Update theme data with new name and filename
+    editing_theme_.name = theme_name;
+    editing_theme_.filename = unique_filename;
+
+    // Save to new file
+    std::string filepath = themes_dir + "/" + unique_filename + ".json";
+    if (!helix::save_theme_to_file(editing_theme_, filepath)) {
+        spdlog::error("[{}] Failed to save theme to '{}'", get_name(), filepath);
+        lv_obj_t* status = lv_obj_find_by_name(save_as_dialog_, "save_as_status");
+        if (status) {
+            lv_label_set_text(status, "Failed to save theme file");
+            lv_obj_remove_flag(status, LV_OBJ_FLAG_HIDDEN);
+        }
+        return;
+    }
+
+    // Update config to use new theme
+    SettingsManager::instance().set_theme_name(unique_filename);
+
+    // Clear dirty state
+    clear_dirty();
+    original_theme_ = editing_theme_;
+
+    spdlog::info("[{}] Theme saved as '{}' (file: {}.json)", get_name(), theme_name,
+                 unique_filename);
+
+    // Hide save as dialog
+    Modal::hide(save_as_dialog_);
+    save_as_dialog_ = nullptr;
+
+    // Show restart dialog
+    show_restart_dialog();
+}
+
+// ============================================================================
+// RESTART DIALOG CALLBACKS
+// ============================================================================
+
+void ThemeEditorOverlay::on_restart_now(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[ThemeEditorOverlay] on_restart_now");
+    static_cast<void>(lv_event_get_current_target(e));
+
+    auto& overlay = get_theme_editor_overlay();
+    if (overlay.restart_dialog_) {
+        Modal::hide(overlay.restart_dialog_);
+        overlay.restart_dialog_ = nullptr;
+    }
+
+    spdlog::info("[ThemeEditorOverlay] User requested restart - exiting application");
+
+    // Exit the application to trigger restart (supervisor will restart it)
+    std::exit(0);
+
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void ThemeEditorOverlay::on_restart_later(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[ThemeEditorOverlay] on_restart_later");
+    static_cast<void>(lv_event_get_current_target(e));
+
+    auto& overlay = get_theme_editor_overlay();
+    if (overlay.restart_dialog_) {
+        Modal::hide(overlay.restart_dialog_);
+        overlay.restart_dialog_ = nullptr;
+    }
+
+    spdlog::info("[ThemeEditorOverlay] User chose to restart later");
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+// ============================================================================
+// FILENAME HELPERS
+// ============================================================================
+
+std::string ThemeEditorOverlay::sanitize_filename(const std::string& name) {
+    std::string result;
+    result.reserve(name.size());
+
+    for (char c : name) {
+        if (std::isalnum(static_cast<unsigned char>(c))) {
+            // Keep alphanumeric characters, convert to lowercase
+            result += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        } else if (c == ' ' || c == '-' || c == '_') {
+            // Replace spaces and dashes with underscores
+            if (!result.empty() && result.back() != '_') {
+                result += '_';
+            }
+        }
+        // Skip all other characters (punctuation, special chars, etc.)
+    }
+
+    // Trim trailing underscores
+    while (!result.empty() && result.back() == '_') {
+        result.pop_back();
+    }
+
+    // Limit length
+    constexpr size_t MAX_FILENAME_LEN = 32;
+    if (result.size() > MAX_FILENAME_LEN) {
+        result.resize(MAX_FILENAME_LEN);
+        // Trim trailing underscore from truncation
+        while (!result.empty() && result.back() == '_') {
+            result.pop_back();
+        }
+    }
+
+    return result;
+}
+
+std::string ThemeEditorOverlay::generate_unique_filename(const std::string& base_name,
+                                                         const std::string& themes_dir) {
+    struct stat st{};
+
+    // Check if base name is available
+    std::string candidate = base_name;
+    std::string filepath = themes_dir + "/" + candidate + ".json";
+
+    if (stat(filepath.c_str(), &st) != 0) {
+        return candidate;
+    }
+
+    // Append numbers until we find an available name
+    for (int i = 2; i < 100; ++i) {
+        candidate = base_name + "_" + std::to_string(i);
+        filepath = themes_dir + "/" + candidate + ".json";
+
+        if (stat(filepath.c_str(), &st) != 0) {
+            return candidate;
+        }
+    }
+
+    // Fallback: use timestamp
+    auto now = std::chrono::system_clock::now();
+    auto epoch = now.time_since_epoch();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(epoch).count();
+
+    return base_name + "_" + std::to_string(seconds);
 }
