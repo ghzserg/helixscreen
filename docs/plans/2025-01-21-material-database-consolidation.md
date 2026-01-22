@@ -181,7 +181,7 @@ float weight_to_length_m(float weight_g, float density, float diameter_mm = 1.75
 - [x] Phase 2: Refactor ams_types.h - `f4d354f7`
 - [x] Phase 3: Endless spool material validation - `3f58aad3`
 - [x] Phase 4: Dryer presets dropdown - `e9320a51`
-- [ ] Phase 5: Refactor ui_panel_filament.cpp
+- [x] Phase 5: Refactor ui_panel_filament.cpp - `3a608f98`
 
 ---
 
