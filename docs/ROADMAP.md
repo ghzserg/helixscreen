@@ -1,6 +1,6 @@
 # HelixScreen Development Roadmap
 
-**Last Updated:** 2026-01-02 | **Status:** Beta - Seeking Testers
+**Last Updated:** 2026-01-22 | **Status:** Beta - Seeking Testers
 
 ---
 
@@ -8,20 +8,76 @@
 
 | Area | Status |
 |------|--------|
-| **Production Panels** | 30 panels + 10 overlays |
+| **Production Panels** | 30 panels + 16 overlays |
 | **First-Run Wizard** | 7-step guided setup |
 | **Moonraker API** | 40+ methods |
-| **Multi-Material (AMS)** | Core complete (Happy Hare, AFC, ValgACE) |
+| **Multi-Material (AMS)** | Core complete (Happy Hare, AFC, ValgACE, Toolchanger) |
 | **Plugin System** | Core infrastructure complete |
-| **Test Suite** | 97+ unit tests |
+| **Test Suite** | 156 test files, 6600+ test cases |
 | **Platforms** | Pi, AD5M, macOS, Linux |
 | **Printer Database** | 59 printer models with auto-detection |
+| **Filament Database** | 48 materials with temp/drying/compatibility data |
+| **Theme System** | Dynamic JSON themes with live preview |
+
+---
+
+## Recently Completed
+
+### Dynamic Theming System ✅
+**Completed:** 2026-01-21
+
+Full JSON-based theming with live preview:
+- 16-color palette system (replaces hardcoded Nord)
+- Theme editor overlay with color picker
+- Live preview without restart
+- Property sliders (border radius, opacity, shadows)
+- Save/Save As New/Revert workflow
+- Theme discovery and directory management
+
+**Files:** `theme_loader.h`, `ui_theme_editor_overlay.cpp`, `helix_theme.c`
+
+### Material Database Consolidation ✅
+**Completed:** 2026-01-22
+
+Single source of truth for filament data:
+- 48 materials with temp ranges, drying params, density, compatibility groups
+- Material alias resolution ("Nylon" → "PA")
+- Endless spool compatibility validation with toast warnings
+- Dryer presets dropdown (replaced hardcoded buttons)
+- All UI components now use database lookups
+
+**Files:** `filament_database.h`, `ui_panel_filament.cpp`, `ui_ams_edit_modal.cpp`
+
+### God Class Decomposition ✅
+**Completed:** 2026-01-12
+
+Major architectural improvements:
+- **PrinterState:** Decomposed into 13 focused domain classes (was 1514 lines)
+- **SettingsPanel:** Extracted 5 overlay components (1976→935 lines, 53% reduction)
+- **PrintStatusPanel:** Extracted 8 components (2983→1700 lines)
 
 ---
 
 ## Current Priorities
 
-### 1. Input Shaper Implementation
+### 1. AMS Settings Redesign 🔄
+**Status:** Phase 2 in progress
+
+Consolidating 7 sparse AMS settings panels into visual slot-based configuration:
+
+**Completed:**
+- [x] Tool badges on AMS slots (T0, T1, etc.)
+- [x] Endless spool arrow visualization (backup chains)
+- [x] Tap-to-edit popup for quick tool/backup config
+- [x] Device Operations overlay (consolidates maintenance/calibration/speed)
+
+**Remaining:**
+- [ ] Phase 3: Remove old sub-panels, update navigation
+
+**Files:** `ui_panel_ams.cpp`, `ams_device_operations.xml`
+**Plan:** `docs/plans/2026-01-21-ams-settings-redesign.md`
+
+### 2. Input Shaper Implementation
 
 **Status:** Stub panel exists, awaiting implementation
 
@@ -33,7 +89,7 @@ The Input Shaper panel currently shows a "Coming Soon" overlay. Implementation r
 
 **Files:** `src/ui_panel_input_shaper.cpp`, `ui_xml/input_shaper_panel.xml`
 
-### 2. Plugin Ecosystem
+### 3. Plugin Ecosystem
 
 **Status:** Core infrastructure complete, expanding ecosystem
 
@@ -46,14 +102,14 @@ The plugin system launched with version checking, UI injection points, and async
 
 **Files:** `src/plugin_manager.cpp`, `docs/PLUGIN_DEVELOPMENT.md`
 
-### 3. Production Hardening
+### 4. Production Hardening
 
 Remaining items for production readiness:
 - [ ] Structured logging with log rotation
 - [ ] Edge case testing (print failures, filesystem errors)
 - [ ] Streaming file operations verified on AD5M with 50MB+ G-code files
 
-### 4. Bed Mesh Renderer Refactor
+### 5. Bed Mesh Renderer Refactor
 
 **Status:** Phases 1-4 complete, 5-7 remaining
 
@@ -72,20 +128,30 @@ See `IMPLEMENTATION_PLAN.md` for detailed phase breakdown.
 - Reactive Subject-Observer data binding
 - Design token system (no hardcoded colors/spacing)
 - RAII lifecycle management (PanelBase, ObserverGuard, SubscriptionGuard)
-- Theme system with dark/light modes
+- **Dynamic theme system** with JSON themes, live preview, and theme editor
 - Responsive breakpoints (small/medium/large displays)
+- Observer factory pattern (`observe_int_sync`, `observe_string_async`, etc.)
 
 ### Panels & Features
 - **30 Production Panels:** Home, Controls, Motion, Print Status, Print Select, Settings, Advanced, Macros, Console, Power, Print History, Spoolman, AMS, Bed Mesh, PID Calibration, Z-Offset, Screws Tilt, Extrusion, Filament, Temperature panels, and more
-- **10+ Overlays:** WiFi, Timelapse Settings, Firmware Retraction, Machine Limits, Fan Control, Exclude Object, Print Cancel Confirmation, Print Complete, and more
+- **16+ Overlays:** WiFi, Timelapse Settings, Firmware Retraction, Machine Limits, Fan Control, Exclude Object, Print Tune, Theme Editor, AMS Device Operations, Network Settings, Touch Calibration, and more
 - **First-Run Wizard:** WiFi → Moonraker → Printer ID → Heaters → Fans → LEDs → Summary
 
 ### Multi-Material (AMS)
 - 5 backend implementations: Happy Hare, AFC-Klipper, ValgACE, Toolchanger, Mock
 - Spool visualization with 3D-style gradients and animations
+- **Visual slot configuration:** Tool badges, endless spool arrows, tap-to-edit popup
+- **Material compatibility validation** with toast warnings for incompatible endless spool
 - Spoolman integration (6 API methods: list spools, assign, consume, etc.)
 - Print color requirements display from G-code metadata
 - External spool bypass support
+
+### Filament Database
+- **48 materials** with temperature ranges, drying parameters, density, compatibility groups
+- 7 compatibility groups (PLA, PETG, ABS_ASA, PA, TPU, PC, HIGH_TEMP)
+- Material alias resolution ("Nylon" → "PA", "Polycarbonate" → "PC")
+- Dryer presets dropdown populated from database
+- Endless spool material validation
 
 ### Plugin System
 - Dynamic plugin loading with version compatibility checking
@@ -105,6 +171,7 @@ See `IMPLEMENTATION_PLAN.md` for detailed phase breakdown.
 - Pre-commit hooks (clang-format, quality checks)
 - CI/CD with GitHub Actions
 - Icon font generation with validation
+- Incremental compile_commands.json generation for LSP
 
 ---
 
@@ -119,6 +186,7 @@ See `IMPLEMENTATION_PLAN.md` for detailed phase breakdown.
 | **NULL → nullptr cleanup** | Low | Consistency across C++ codebase |
 | **Belt tension visualization** | Future | Controlled excitation + stroboscopic LED feedback |
 | **OTA updates** | Future | Currently requires manual binary update |
+| **Custom theme creation wizard** | Low | Guide users through creating themes from scratch |
 
 See `docs/IDEAS.md` for additional ideas and design rationale.
 
@@ -128,11 +196,16 @@ See `docs/IDEAS.md` for additional ideas and design rationale.
 
 See `docs/ARCHITECTURAL_DEBT.md` for the full register.
 
-**Key items:**
-- **PrinterState god class** (1514 lines, 194 methods) → decompose into domain objects
-- **PrintStatusPanel** (2983 lines) → extract PrintJobController, PrintDisplayModel
+**Resolved (2026-01):**
+- ~~PrinterState god class~~ → Decomposed into 13 domain classes
+- ~~PrintStatusPanel~~ → Extracted 8 focused components
+- ~~SettingsPanel~~ → Extracted 5 overlay components
+
+**Remaining:**
+- **Application class** (1249 lines) → Extract bootstrapper and runtime
 - **Singleton cascade pattern** → UIPanelContext value object
-- **Code duplication** → SubjectManagedPanel base class, DEFINE_GLOBAL_PANEL macro
+- **Code duplication** → SubjectManagedPanel base class (in progress)
+- **NavigationManager intimacy** → Extract INavigable interface
 
 ---
 
