@@ -108,16 +108,6 @@ Remaining items for production readiness:
 - [ ] Edge case testing (print failures, filesystem errors)
 - [ ] Streaming file operations verified on AD5M with 50MB+ G-code files
 
-### 3. Bed Mesh Renderer Refactor
-
-**Status:** Phases 1-4 complete, 5-7 remaining
-
-Decomposing the 2,243-line god-file into modular architecture:
-- Rasterizer, Overlays, Geometry, Clipping modules
-- Target: 1,450 lines total with single-responsibility modules
-
-See `IMPLEMENTATION_PLAN.md` for detailed phase breakdown.
-
 ---
 
 ## What's Complete
@@ -136,6 +126,7 @@ See `IMPLEMENTATION_PLAN.md` for detailed phase breakdown.
 - **16+ Overlays:** WiFi, Timelapse Settings, Firmware Retraction, Machine Limits, Fan Control, Exclude Object, Print Tune, Theme Editor, AMS Device Operations, Network Settings, Touch Calibration, and more
 - **First-Run Wizard:** WiFi → Moonraker → Printer ID → Heaters → Fans → LEDs → Input Shaper → Summary
 - **Calibration Workflows:** PID tuning, Z-offset with live adjust, Screws Tilt, Input Shaper (full ADXL integration)
+- **Bed Mesh:** 3D visualization with touch rotation, profile switching, 38 FPS optimized rendering
 
 ### Multi-Material (AMS)
 - 5 backend implementations: Happy Hare, AFC-Klipper, ValgACE, Toolchanger, Mock
