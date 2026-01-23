@@ -9,7 +9,7 @@
 | Area | Status |
 |------|--------|
 | **Production Panels** | 30 panels + 16 overlays |
-| **First-Run Wizard** | 7-step guided setup |
+| **First-Run Wizard** | 8-step guided setup (Input Shaper optional) |
 | **Moonraker API** | 40+ methods |
 | **Multi-Material (AMS)** | Core complete (Happy Hare, AFC, ValgACE, Toolchanger) |
 | **Plugin System** | Core infrastructure complete |
@@ -23,6 +23,21 @@
 
 ## Recently Completed
 
+### Input Shaper Calibration ✅
+**Completed:** 2026-01-22
+
+Full resonance compensation workflow:
+- Calibration trigger for X/Y axes + accelerometer noise check
+- Frequency response chart (hardware-adaptive: full/simplified/table based on platform)
+- Results display with recommended shaper + 5 alternatives (frequency, vibrations, smoothing)
+- Apply (session) / Save Config (persistent) / Test Print (TUNING_TOWER) workflow
+- 30-day persistent cache with printer ID matching
+- First-run wizard integration (optional step, auto-skipped if no ADXL)
+- Platform tier detection (EMBEDDED/BASIC/STANDARD) for UI adaptation
+
+**Files:** `input_shaper_calibrator.cpp`, `ui_panel_input_shaper.cpp`, `ui_frequency_response_chart.cpp`
+**Tests:** 535+ assertions across 6 test files
+
 ### Dynamic Theming System ✅
 **Completed:** 2026-01-21
 
@@ -35,6 +50,19 @@ Full JSON-based theming with live preview:
 - Theme discovery and directory management
 
 **Files:** `theme_loader.h`, `ui_theme_editor_overlay.cpp`, `helix_theme.c`
+
+### AMS Settings Redesign ✅
+**Completed:** 2026-01-22
+
+Visual slot-based configuration replacing 7 sparse panels:
+- Tool badges on AMS slots (T0, T1, etc.)
+- Endless spool arrow visualization (routed backup chains)
+- Tap-to-edit popup for quick tool/backup configuration
+- Device Operations overlay (consolidated Home/Recover/Abort + dynamic calibration/speed)
+- iOS-style settings navigation with 8 sub-panels
+- Material compatibility validation with toast warnings
+
+**Files:** `ui_panel_ams.cpp`, `ui_ams_device_operations_overlay.cpp`, `ui_endless_spool_arrows.cpp`
 
 ### Material Database Consolidation ✅
 **Completed:** 2026-01-22
@@ -60,36 +88,7 @@ Major architectural improvements:
 
 ## Current Priorities
 
-### 1. AMS Settings Redesign 🔄
-**Status:** Phase 2 in progress
-
-Consolidating 7 sparse AMS settings panels into visual slot-based configuration:
-
-**Completed:**
-- [x] Tool badges on AMS slots (T0, T1, etc.)
-- [x] Endless spool arrow visualization (backup chains)
-- [x] Tap-to-edit popup for quick tool/backup config
-- [x] Device Operations overlay (consolidates maintenance/calibration/speed)
-
-**Remaining:**
-- [ ] Phase 3: Remove old sub-panels, update navigation
-
-**Files:** `ui_panel_ams.cpp`, `ams_device_operations.xml`
-**Plan:** `docs/plans/2026-01-21-ams-settings-redesign.md`
-
-### 2. Input Shaper Implementation
-
-**Status:** Stub panel exists, awaiting implementation
-
-The Input Shaper panel currently shows a "Coming Soon" overlay. Implementation requires:
-- Integration with Klipper's `input_shaper` module
-- Graphing `SHAPER_CALIBRATE` results (frequency response)
-- Recommended shaper selection UI
-- Apply/revert workflow
-
-**Files:** `src/ui_panel_input_shaper.cpp`, `ui_xml/input_shaper_panel.xml`
-
-### 3. Plugin Ecosystem
+### 1. Plugin Ecosystem
 
 **Status:** Core infrastructure complete, expanding ecosystem
 
@@ -102,14 +101,14 @@ The plugin system launched with version checking, UI injection points, and async
 
 **Files:** `src/plugin_manager.cpp`, `docs/PLUGIN_DEVELOPMENT.md`
 
-### 4. Production Hardening
+### 2. Production Hardening
 
 Remaining items for production readiness:
 - [ ] Structured logging with log rotation
 - [ ] Edge case testing (print failures, filesystem errors)
 - [ ] Streaming file operations verified on AD5M with 50MB+ G-code files
 
-### 5. Bed Mesh Renderer Refactor
+### 3. Bed Mesh Renderer Refactor
 
 **Status:** Phases 1-4 complete, 5-7 remaining
 
@@ -133,9 +132,10 @@ See `IMPLEMENTATION_PLAN.md` for detailed phase breakdown.
 - Observer factory pattern (`observe_int_sync`, `observe_string_async`, etc.)
 
 ### Panels & Features
-- **30 Production Panels:** Home, Controls, Motion, Print Status, Print Select, Settings, Advanced, Macros, Console, Power, Print History, Spoolman, AMS, Bed Mesh, PID Calibration, Z-Offset, Screws Tilt, Extrusion, Filament, Temperature panels, and more
+- **30 Production Panels:** Home, Controls, Motion, Print Status, Print Select, Settings, Advanced, Macros, Console, Power, Print History, Spoolman, AMS, Bed Mesh, PID Calibration, Z-Offset, Screws Tilt, Input Shaper, Extrusion, Filament, Temperature panels, and more
 - **16+ Overlays:** WiFi, Timelapse Settings, Firmware Retraction, Machine Limits, Fan Control, Exclude Object, Print Tune, Theme Editor, AMS Device Operations, Network Settings, Touch Calibration, and more
-- **First-Run Wizard:** WiFi → Moonraker → Printer ID → Heaters → Fans → LEDs → Summary
+- **First-Run Wizard:** WiFi → Moonraker → Printer ID → Heaters → Fans → LEDs → Input Shaper → Summary
+- **Calibration Workflows:** PID tuning, Z-offset with live adjust, Screws Tilt, Input Shaper (full ADXL integration)
 
 ### Multi-Material (AMS)
 - 5 backend implementations: Happy Hare, AFC-Klipper, ValgACE, Toolchanger, Mock
@@ -163,7 +163,8 @@ See `IMPLEMENTATION_PLAN.md` for detailed phase breakdown.
 ### Moonraker Integration
 - WebSocket client with auto-reconnection
 - JSON-RPC protocol with timeout management
-- 40+ API methods: print control, motion, heaters, fans, LEDs, power devices, print history, timelapse, screws tilt, firmware retraction, machine limits, Spoolman
+- 40+ API methods: print control, motion, heaters, fans, LEDs, power devices, print history, timelapse, screws tilt, firmware retraction, machine limits, Spoolman, input shaper
+- Full mock backend for development without real printer
 
 ### Build System
 - Parallel builds (`make -j`)
