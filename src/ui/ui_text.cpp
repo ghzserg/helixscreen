@@ -181,7 +181,9 @@ static void* ui_text_xs_create(lv_xml_parser_state_t* state, const char** attrs)
 static void* ui_text_button_create(lv_xml_parser_state_t* state, const char** attrs) {
     lv_obj_t* label = create_semantic_label(state, attrs, "font_body", "text_primary");
     if (label) {
-        // Default to center alignment for button labels
+        // Center the label within its parent (the button)
+        lv_obj_set_align(label, LV_ALIGN_CENTER);
+        // Also set text alignment for multi-line button labels
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     }
     return label;
