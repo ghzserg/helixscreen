@@ -23,6 +23,10 @@ typedef struct {
     lv_style_t switch_indicator_style;   // Switch checked state (accent color)
     lv_style_t switch_knob_style;        // Switch knob (handle) color
     lv_style_t focus_ring_style;         // Focus ring for accessibility (outline)
+    lv_style_t slider_track_style;       // Slider track (unfilled portion) - border color
+    lv_style_t slider_indicator_style;   // Slider indicator (filled portion) - primary color
+    lv_style_t slider_knob_style;        // Slider knob with shadow
+    lv_style_t slider_disabled_style;    // Slider disabled state (50% opacity)
     bool is_dark_mode;                   // Track theme mode for context
 } helix_theme_t;
 
@@ -138,8 +142,19 @@ static void helix_theme_apply(lv_theme_t* theme, lv_obj_t* obj) {
 #endif
 
 #if LV_USE_SLIDER
-    // Focus ring for sliders
+    // Slider theming: track, indicator, knob, and disabled states
     if (lv_obj_check_type(obj, &lv_slider_class)) {
+        // Track background (unfilled portion)
+        lv_obj_add_style(obj, &helix->slider_track_style, LV_PART_MAIN);
+        // Indicator (filled portion)
+        lv_obj_add_style(obj, &helix->slider_indicator_style, LV_PART_INDICATOR);
+        // Knob with shadow
+        lv_obj_add_style(obj, &helix->slider_knob_style, LV_PART_KNOB);
+        // Disabled state for all parts
+        lv_obj_add_style(obj, &helix->slider_disabled_style, LV_PART_MAIN | LV_STATE_DISABLED);
+        lv_obj_add_style(obj, &helix->slider_disabled_style, LV_PART_INDICATOR | LV_STATE_DISABLED);
+        lv_obj_add_style(obj, &helix->slider_disabled_style, LV_PART_KNOB | LV_STATE_DISABLED);
+        // Focus ring for accessibility
         lv_obj_add_style(obj, &helix->focus_ring_style, LV_STATE_FOCUSED);
     }
 #endif
@@ -149,7 +164,7 @@ lv_theme_t* theme_core_init(lv_display_t* display, lv_color_t primary_color,
                             lv_color_t secondary_color, lv_color_t text_primary_color, bool is_dark,
                             const lv_font_t* base_font, lv_color_t screen_bg, lv_color_t card_bg,
                             lv_color_t surface_control, lv_color_t focus_color,
-                            int32_t border_radius) {
+                            lv_color_t border_color, int32_t border_radius) {
     // Clean up previous theme instance if exists
     if (helix_theme_instance) {
         lv_style_reset(&helix_theme_instance->input_bg_style);
@@ -161,6 +176,10 @@ lv_theme_t* theme_core_init(lv_display_t* display, lv_color_t primary_color,
         lv_style_reset(&helix_theme_instance->switch_indicator_style);
         lv_style_reset(&helix_theme_instance->switch_knob_style);
         lv_style_reset(&helix_theme_instance->focus_ring_style);
+        lv_style_reset(&helix_theme_instance->slider_track_style);
+        lv_style_reset(&helix_theme_instance->slider_indicator_style);
+        lv_style_reset(&helix_theme_instance->slider_knob_style);
+        lv_style_reset(&helix_theme_instance->slider_disabled_style);
         free(helix_theme_instance);
         helix_theme_instance = NULL;
     }
@@ -263,6 +282,28 @@ lv_theme_t* theme_core_init(lv_display_t* display, lv_color_t primary_color,
     lv_style_set_outline_opa(&helix_theme_instance->focus_ring_style, LV_OPA_COVER);
     lv_style_set_outline_pad(&helix_theme_instance->focus_ring_style, 2);
 
+    // Initialize slider track style (unfilled portion) - uses border color
+    lv_style_init(&helix_theme_instance->slider_track_style);
+    lv_style_set_bg_color(&helix_theme_instance->slider_track_style, border_color);
+    lv_style_set_bg_opa(&helix_theme_instance->slider_track_style, LV_OPA_COVER);
+
+    // Initialize slider indicator style (filled portion) - uses primary color
+    lv_style_init(&helix_theme_instance->slider_indicator_style);
+    lv_style_set_bg_color(&helix_theme_instance->slider_indicator_style, primary_color);
+    lv_style_set_bg_opa(&helix_theme_instance->slider_indicator_style, LV_OPA_COVER);
+
+    // Initialize slider knob style - card_bg with shadow using screen_bg
+    lv_style_init(&helix_theme_instance->slider_knob_style);
+    lv_style_set_bg_color(&helix_theme_instance->slider_knob_style, card_bg);
+    lv_style_set_bg_opa(&helix_theme_instance->slider_knob_style, LV_OPA_COVER);
+    lv_style_set_shadow_color(&helix_theme_instance->slider_knob_style, screen_bg);
+    lv_style_set_shadow_width(&helix_theme_instance->slider_knob_style, 4);
+    lv_style_set_shadow_opa(&helix_theme_instance->slider_knob_style, LV_OPA_50);
+
+    // Initialize slider disabled style - 50% opacity
+    lv_style_init(&helix_theme_instance->slider_disabled_style);
+    lv_style_set_opa(&helix_theme_instance->slider_disabled_style, LV_OPA_50);
+
     // CRITICAL: Now we need to patch the default theme's color fields
     // This is necessary because LVGL's default theme bakes colors into pre-computed
     // styles during init. We must update both the theme color fields AND the styles.
@@ -322,7 +363,8 @@ lv_theme_t* theme_core_init(lv_display_t* display, lv_color_t primary_color,
 
 void theme_core_update_colors(bool is_dark, lv_color_t screen_bg, lv_color_t card_bg,
                               lv_color_t surface_control, lv_color_t text_primary_color,
-                              lv_color_t focus_color) {
+                              lv_color_t focus_color, lv_color_t primary_color,
+                              lv_color_t border_color) {
     if (!helix_theme_instance) {
         return;
     }
@@ -343,6 +385,12 @@ void theme_core_update_colors(bool is_dark, lv_color_t screen_bg, lv_color_t car
 
     // Update focus ring color
     lv_style_set_outline_color(&helix_theme_instance->focus_ring_style, focus_color);
+
+    // Update slider styles
+    lv_style_set_bg_color(&helix_theme_instance->slider_track_style, border_color);
+    lv_style_set_bg_color(&helix_theme_instance->slider_indicator_style, primary_color);
+    lv_style_set_bg_color(&helix_theme_instance->slider_knob_style, card_bg);
+    lv_style_set_shadow_color(&helix_theme_instance->slider_knob_style, screen_bg);
 
     // Update LVGL default theme's internal styles
     // This is the same private API access pattern used in theme_core_init
@@ -437,6 +485,14 @@ void theme_core_preview_colors(bool is_dark, const char* colors[16], int32_t bor
     // Update focus ring color (colors[15] is focus)
     lv_color_t focus_color = lv_color_hex(strtoul(colors[15] + 1, NULL, 16));
     lv_style_set_outline_color(&helix_theme_instance->focus_ring_style, focus_color);
+
+    // Update slider styles
+    // For legacy palette: use text_light (4) as approximate border color
+    lv_color_t border_approx = lv_color_hex(strtoul(colors[4] + 1, NULL, 16));
+    lv_style_set_bg_color(&helix_theme_instance->slider_track_style, border_approx);
+    lv_style_set_bg_color(&helix_theme_instance->slider_indicator_style, accent_color);
+    lv_style_set_bg_color(&helix_theme_instance->slider_knob_style, card_bg);
+    lv_style_set_shadow_color(&helix_theme_instance->slider_knob_style, screen_bg);
 
     // Update default theme internal styles (private API access)
     typedef struct {
