@@ -78,13 +78,17 @@ lv_obj_t* ThemeEditorOverlay::create(lv_obj_t* parent) {
 
     // Wire up custom back button handler for dirty state check
     // Exception to "NO lv_obj_add_event_cb" rule: Required for unsaved data protection
-    // The default XML callback (on_header_back_clicked) is removed and replaced with ours
+    // The default XML callback (on_header_back_clicked) must be removed first
     lv_obj_t* header = lv_obj_find_by_name(overlay_root_, "overlay_header");
     if (header) {
         lv_obj_t* back_button = lv_obj_find_by_name(header, "back_button");
         if (back_button) {
-            // Remove existing click handlers and add our custom one
-            lv_obj_remove_event_cb(back_button, nullptr); // Remove all callbacks
+            // Remove ALL existing click handlers by index (passing nullptr doesn't work!)
+            // The XML-registered on_header_back_clicked would cause double navigation
+            uint32_t event_count = lv_obj_get_event_count(back_button);
+            for (uint32_t i = event_count; i > 0; --i) {
+                lv_obj_remove_event(back_button, i - 1);
+            }
             lv_obj_add_event_cb(back_button, on_back_clicked, LV_EVENT_CLICKED, nullptr);
             spdlog::debug("[{}] Wired custom back button handler for dirty state check",
                           get_name());
