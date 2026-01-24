@@ -49,23 +49,23 @@
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0">
             <lv_button name="btn_travels" flex_grow="1" flag_checkable="true">
-              <text_body text="Travels" align="center"/>
+              <text_button text="Travels"/>
             </lv_button>
             <lv_button name="btn_top" flex_grow="1">
-              <text_body text="Top" align="center"/>
+              <text_button text="Top"/>
             </lv_button>
             <lv_button name="btn_front" flex_grow="1">
-              <text_body text="Front" align="center"/>
+              <text_button text="Front"/>
             </lv_button>
           </lv_obj>
           <!-- Row 2 -->
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0">
             <lv_button name="btn_side" flex_grow="1">
-              <text_body text="Side" align="center"/>
+              <text_button text="Side"/>
             </lv_button>
             <lv_button name="btn_reset" flex_grow="1">
-              <text_body text="Reset" align="center"/>
+              <text_button text="Reset"/>
             </lv_button>
           </lv_obj>
         </lv_obj>
@@ -77,10 +77,10 @@
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0">
             <lv_button name="btn_zoom_in" flex_grow="1">
-              <text_body text="+" align="center"/>
+              <text_button text="+"/>
             </lv_button>
             <lv_button name="btn_zoom_out" flex_grow="1">
-              <text_body text="-" align="center"/>
+              <text_button text="-"/>
             </lv_button>
           </lv_obj>
         </lv_obj>
@@ -118,10 +118,10 @@
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_border_width="0">
             <lv_button name="btn_load_test" flex_grow="1">
-              <text_body text="Browse" align="center"/>
+              <text_button text="Browse"/>
             </lv_button>
             <lv_button name="btn_clear" flex_grow="1">
-              <text_body text="Clear" align="center"/>
+              <text_button text="Clear"/>
             </lv_button>
           </lv_obj>
         </lv_obj>
