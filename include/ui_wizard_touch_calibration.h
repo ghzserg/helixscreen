@@ -85,6 +85,16 @@ class WizardTouchCalibrationStep {
     void cleanup();
 
     /**
+     * @brief Commit pending calibration to config
+     *
+     * Saves the calibration data to config file. Called by wizard
+     * when user clicks 'Next' to confirm calibration.
+     *
+     * @return true if calibration was saved, false if no pending calibration
+     */
+    bool commit_calibration();
+
+    /**
      * @brief Check if step should be skipped
      *
      * Returns true if:
@@ -115,6 +125,10 @@ class WizardTouchCalibrationStep {
 
     bool subjects_initialized_ = false;
     bool calibration_failed_ = false; // True after failed attempt, cleared on first point capture
+
+    // Pending calibration data (saved only when user clicks 'Next')
+    bool has_pending_calibration_ = false;
+    helix::TouchCalibration pending_calibration_;
 
     // Event handlers (static trampolines)
     static void on_accept_clicked_static(lv_event_t* e);

@@ -860,6 +860,11 @@ static void on_next_clicked(lv_event_t* e) {
         return;
     }
 
+    // Commit touch calibration when leaving step 0 (only saves if user completed calibration)
+    if (current == 0) {
+        get_wizard_touch_calibration_step()->commit_calibration();
+    }
+
     int next_step = current + 1;
 
     // Skip AMS step (6) if no AMS detected

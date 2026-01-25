@@ -214,6 +214,39 @@ void WizardTouchCalibrationStep::cleanup() {
         panel_->set_completion_callback(nullptr);
         panel_->cancel();
     }
+
+    // Clear pending calibration (user skipped or went back)
+    has_pending_calibration_ = false;
+}
+
+// ============================================================================
+// Commit Calibration (called when user clicks 'Next')
+// ============================================================================
+
+bool WizardTouchCalibrationStep::commit_calibration() {
+    if (!has_pending_calibration_) {
+        spdlog::debug("[{}] No pending calibration to commit", get_name());
+        return false;
+    }
+
+    Config* config = Config::get_instance();
+    if (!config) {
+        spdlog::error("[{}] Cannot commit calibration: Config not available", get_name());
+        return false;
+    }
+
+    config->set<bool>("/input/calibration/valid", true);
+    config->set<double>("/input/calibration/a", static_cast<double>(pending_calibration_.a));
+    config->set<double>("/input/calibration/b", static_cast<double>(pending_calibration_.b));
+    config->set<double>("/input/calibration/c", static_cast<double>(pending_calibration_.c));
+    config->set<double>("/input/calibration/d", static_cast<double>(pending_calibration_.d));
+    config->set<double>("/input/calibration/e", static_cast<double>(pending_calibration_.e));
+    config->set<double>("/input/calibration/f", static_cast<double>(pending_calibration_.f));
+    config->save();
+
+    spdlog::info("[{}] Calibration committed to config", get_name());
+    has_pending_calibration_ = false;
+    return true;
 }
 
 // ============================================================================
@@ -289,6 +322,9 @@ void WizardTouchCalibrationStep::handle_retry_clicked() {
 
     // Use start() to restart calibration (works from any state including COMPLETE)
     panel_->start();
+
+    // Clear pending calibration since user is recalibrating
+    has_pending_calibration_ = false;
 
     // Reset button text back to "Skip" since calibration is starting over
     lv_subject_copy_string(&wizard_next_button_text, "Skip");
@@ -405,19 +441,10 @@ void WizardTouchCalibrationStep::on_calibration_complete(const helix::TouchCalib
 
         spdlog::info("[{}] Calibration complete and valid", get_name());
 
-        // Save calibration to config
-        Config* config = Config::get_instance();
-        if (config) {
-            config->set<bool>("/input/calibration/valid", true);
-            config->set<double>("/input/calibration/a", static_cast<double>(cal->a));
-            config->set<double>("/input/calibration/b", static_cast<double>(cal->b));
-            config->set<double>("/input/calibration/c", static_cast<double>(cal->c));
-            config->set<double>("/input/calibration/d", static_cast<double>(cal->d));
-            config->set<double>("/input/calibration/e", static_cast<double>(cal->e));
-            config->set<double>("/input/calibration/f", static_cast<double>(cal->f));
-            config->save();
-            spdlog::info("[{}] Calibration saved to config", get_name());
-        }
+        // Store calibration for later commit (saved only when user clicks 'Next')
+        pending_calibration_ = *cal;
+        has_pending_calibration_ = true;
+        spdlog::debug("[{}] Calibration stored (will save when 'Next' is clicked)", get_name());
 
         // Apply calibration immediately (no restart required)
         DisplayManager* dm = DisplayManager::instance();
