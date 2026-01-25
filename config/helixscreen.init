@@ -30,6 +30,9 @@ LOGFILE="/tmp/helixscreen.log"
 SCREEN_WIDTH="${HELIX_SCREEN_WIDTH:-800}"
 SCREEN_HEIGHT="${HELIX_SCREEN_HEIGHT:-480}"
 
+# ForgeX backlight control paths (AD5M with ForgeX firmware)
+FORGEX_BACKLIGHT="/root/printer_data/py/backlight.py"
+
 # Check if binary exists
 [ -x "$DAEMON" ] || exit 0
 
@@ -103,6 +106,29 @@ stop_competing_uis() {
     sleep 1
 }
 
+# ForgeX chroot location (AD5M with ForgeX firmware)
+FORGEX_CHROOT="/data/.mod/.forge-x"
+
+# Enable display backlight (for ForgeX firmware on AD5M)
+# ForgeX may leave the backlight off when display mode is STOCK,
+# so we explicitly enable it before starting HelixScreen.
+# NOTE: FORGEX_BACKLIGHT is the path INSIDE the chroot, not the host path!
+enable_backlight() {
+    # ForgeX stores backlight.py inside a chroot environment
+    # Must run via chroot for the ioctl to work
+    # Check the FULL path (chroot + script) for existence
+    local full_backlight_path="${FORGEX_CHROOT}${FORGEX_BACKLIGHT}"
+    if [ -d "$FORGEX_CHROOT" ] && [ -x "$full_backlight_path" ]; then
+        echo "Enabling backlight via ForgeX chroot..."
+        /usr/sbin/chroot "$FORGEX_CHROOT" "$FORGEX_BACKLIGHT" 100 2>/dev/null || true
+        return 0
+    fi
+
+    # Log if we couldn't enable backlight (helps debug boot issues)
+    echo "Warning: Could not enable backlight (chroot=$FORGEX_CHROOT, script=$full_backlight_path)"
+    return 1
+}
+
 # Start splash screen (if available)
 # Returns the --splash-pid argument on stdout (for capture by caller)
 # Status messages go to stderr to avoid polluting the return value
@@ -129,8 +155,14 @@ stop_splash() {
 start() {
     echo "Starting $DESC..."
 
+    # Create flag file so ForgeX S99root skips screen output
+    touch /tmp/helixscreen_active
+
     # Stop any competing UIs first
     stop_competing_uis
+
+    # Enable backlight (ForgeX may leave it off)
+    enable_backlight
 
     # Check if already running
     if [ -f "$PIDFILE" ]; then
@@ -144,14 +176,27 @@ start() {
 
     cd "$DAEMON_DIR"
 
-    # Use launcher script if available (handles splash + watchdog automatically)
-    # Otherwise fall back to direct daemon start with splash
+    # Start splash screen early (before launcher) so it's visible during load
+    EARLY_SPLASH_PID=""
+    if [ -x "$SPLASH" ]; then
+        echo "Starting splash screen..."
+        "$SPLASH" -w "$SCREEN_WIDTH" -h "$SCREEN_HEIGHT" >/dev/null 2>&1 &
+        EARLY_SPLASH_PID=$!
+        echo "$EARLY_SPLASH_PID" > /var/run/helix-splash.pid
+    fi
+
+    # Use launcher script if available (handles watchdog)
+    # Pass early splash PID so watchdog doesn't start another splash
     if [ -x "$LAUNCHER" ]; then
-        # Launcher handles splash and watchdog coordination
+        SPLASH_ENV=""
+        if [ -n "$EARLY_SPLASH_PID" ]; then
+            SPLASH_ENV="HELIX_SPLASH_PID=$EARLY_SPLASH_PID"
+        fi
         if command -v start-stop-daemon >/dev/null 2>&1; then
-            start-stop-daemon -S -b -m -p "$PIDFILE" -x /bin/sh -- -c "cd $DAEMON_DIR && exec $LAUNCHER"
+            start-stop-daemon -S -b -m -p "$PIDFILE" -x /bin/sh -- -c "cd $DAEMON_DIR && $SPLASH_ENV exec $LAUNCHER"
         else
-            (cd "$DAEMON_DIR" && "$LAUNCHER" >> "$LOGFILE" 2>&1) &
+            # Use sh -c for consistent environment variable handling
+            /bin/sh -c "cd $DAEMON_DIR && $SPLASH_ENV exec $LAUNCHER" >> "$LOGFILE" 2>&1 &
             echo $! > "$PIDFILE"
         fi
     else
@@ -185,6 +230,9 @@ start() {
 
 stop() {
     echo "Stopping $DESC..."
+
+    # Remove flag file
+    rm -f /tmp/helixscreen_active
 
     # Stop splash first
     stop_splash

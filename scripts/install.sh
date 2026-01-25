@@ -171,20 +171,47 @@ detect_ad5m_firmware() {
     echo "forge_x"
 }
 
-# Configure ForgeX display settings to prevent GuppyScreen from starting
-# ForgeX mod's start.sh checks variables.cfg for display='GUPPY' and starts
-# GuppyScreen before standard init scripts run. We need to disable this.
+# Configure ForgeX display settings for HelixScreen
+# We use GUPPY mode because ForgeX handles backlight properly in this mode.
+# STOCK mode expects ffstartup-arm to manage display/backlight which doesn't work for us.
+# We disable GuppyScreen's init scripts so HelixScreen takes over the display.
 configure_forgex_display() {
     local var_file="/opt/config/mod_data/variables.cfg"
+    local guppy_init="/opt/config/mod/.root/S80guppyscreen"
+    local tslib_init="/opt/config/mod/.root/S35tslib"
+    local changed=false
+
+    # Set display mode to GUPPY (required for backlight to work)
     if [ -f "$var_file" ]; then
-        # Check if GuppyScreen is currently enabled
-        if grep -q "display[[:space:]]*=[[:space:]]*'GUPPY'" "$var_file"; then
-            log_info "Disabling GuppyScreen in ForgeX configuration..."
-            # Change display = 'GUPPY' to display = 'STOCK'
-            sed -i "s/display[[:space:]]*=[[:space:]]*'GUPPY'/display = 'STOCK'/" "$var_file"
-            log_success "ForgeX display mode set to STOCK"
-            return 0
+        if grep -q "display[[:space:]]*=[[:space:]]*'STOCK'" "$var_file"; then
+            log_info "Setting ForgeX display mode to GUPPY..."
+            $SUDO sed -i "s/display[[:space:]]*=[[:space:]]*'STOCK'/display = 'GUPPY'/" "$var_file"
+            changed=true
+        elif grep -q "display[[:space:]]*=[[:space:]]*'HEADLESS'" "$var_file"; then
+            log_info "Setting ForgeX display mode to GUPPY..."
+            $SUDO sed -i "s/display[[:space:]]*=[[:space:]]*'HEADLESS'/display = 'GUPPY'/" "$var_file"
+            changed=true
         fi
+    fi
+
+    # Disable GuppyScreen init script (remove execute permission)
+    if [ -x "$guppy_init" ]; then
+        log_info "Disabling GuppyScreen init script..."
+        $SUDO chmod -x "$guppy_init"
+        changed=true
+    fi
+
+    # Disable tslib init script (GuppyScreen's touch input layer)
+    # HelixScreen uses its own input handling
+    if [ -x "$tslib_init" ]; then
+        log_info "Disabling tslib init script..."
+        $SUDO chmod -x "$tslib_init"
+        changed=true
+    fi
+
+    if [ "$changed" = true ]; then
+        log_success "ForgeX configured for HelixScreen (GUPPY mode, GuppyScreen disabled)"
+        return 0
     fi
     return 1
 }
@@ -856,9 +883,12 @@ uninstall() {
 
     if [ -z "$restored_ui" ]; then
         # Forge-X - restore GuppyScreen and stock UI settings
-        # Restore ForgeX display mode to GUPPY
+        # Restore ForgeX display mode to GUPPY (from HEADLESS or STOCK)
         if [ -f "/opt/config/mod_data/variables.cfg" ]; then
-            if grep -q "display[[:space:]]*=[[:space:]]*'STOCK'" "/opt/config/mod_data/variables.cfg"; then
+            if grep -q "display[[:space:]]*=[[:space:]]*'HEADLESS'" "/opt/config/mod_data/variables.cfg"; then
+                log_info "Restoring ForgeX display mode to GUPPY..."
+                sed -i "s/display[[:space:]]*=[[:space:]]*'HEADLESS'/display = 'GUPPY'/" "/opt/config/mod_data/variables.cfg"
+            elif grep -q "display[[:space:]]*=[[:space:]]*'STOCK'" "/opt/config/mod_data/variables.cfg"; then
                 log_info "Restoring ForgeX display mode to GUPPY..."
                 sed -i "s/display[[:space:]]*=[[:space:]]*'STOCK'/display = 'GUPPY'/" "/opt/config/mod_data/variables.cfg"
             fi

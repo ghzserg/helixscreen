@@ -107,9 +107,15 @@ if [ -x "${WATCHDOG_BIN}" ]; then
     log "Watchdog available: crash recovery enabled"
 fi
 
-# Check if splash is available (watchdog will manage it)
+# Check if splash is already running (started by init script for earlier visibility)
+# If so, pass the PID to helix-screen for cleanup, and don't start another
 SPLASH_ARGS=""
-if [ -x "${SPLASH_BIN}" ]; then
+if [ -n "${HELIX_SPLASH_PID}" ]; then
+    # Splash was pre-started by init script, pass PID to helix-screen for cleanup
+    PASSTHROUGH_ARGS="${PASSTHROUGH_ARGS} --splash-pid=${HELIX_SPLASH_PID}"
+    log "Using pre-started splash (PID ${HELIX_SPLASH_PID})"
+elif [ -x "${SPLASH_BIN}" ]; then
+    # No pre-started splash, let watchdog manage it
     SPLASH_ARGS="--splash-bin=${SPLASH_BIN}"
     log "Splash binary: ${SPLASH_BIN}"
 fi
