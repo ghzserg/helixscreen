@@ -9,9 +9,11 @@
 #include "ui_keyboard_manager.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
+#include "ui_toast_manager.h"
 
 #include "lvgl/src/xml/lv_xml.h"
 #include "settings_manager.h"
+#include "theme_loader.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -121,7 +123,7 @@ void ThemeEditorOverlay::register_callbacks() {
     // Action button callbacks
     lv_xml_register_event_cb(nullptr, "on_theme_save_clicked", on_theme_save_clicked);
     lv_xml_register_event_cb(nullptr, "on_theme_save_as_clicked", on_theme_save_as_clicked);
-    lv_xml_register_event_cb(nullptr, "on_theme_revert_clicked", on_theme_revert_clicked);
+    lv_xml_register_event_cb(nullptr, "on_theme_reset_clicked", on_theme_reset_clicked);
 
     // Custom back button callback to intercept close and check dirty state
     lv_xml_register_event_cb(nullptr, "on_theme_editor_back_clicked", on_back_clicked);
@@ -396,10 +398,10 @@ void ThemeEditorOverlay::on_theme_save_as_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-void ThemeEditorOverlay::on_theme_revert_clicked(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[ThemeEditorOverlay] on_theme_revert_clicked");
+void ThemeEditorOverlay::on_theme_reset_clicked(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[ThemeEditorOverlay] on_theme_reset_clicked");
     static_cast<void>(lv_event_get_current_target(e));
-    get_theme_editor_overlay().handle_revert_clicked();
+    get_theme_editor_overlay().handle_reset_clicked();
     LVGL_SAFE_EVENT_CB_END();
 }
 
@@ -554,27 +556,64 @@ void ThemeEditorOverlay::handle_save_as_clicked() {
     show_save_as_dialog();
 }
 
-void ThemeEditorOverlay::handle_revert_clicked() {
-    // If dirty, show confirmation before reverting
-    if (dirty_) {
-        show_discard_confirmation([this]() {
-            // Restore original theme
-            editing_theme_ = original_theme_;
-            clear_dirty();
-
-            // Update UI to reflect reverted values
-            update_swatch_colors();
-            update_property_sliders();
-
-            // Preview the original theme
-            theme_manager_preview(editing_theme_);
-
-            spdlog::info("[{}] Theme reverted to original state", get_name());
-        });
+void ThemeEditorOverlay::handle_reset_clicked() {
+    // Check if this theme has a default we can reset to
+    if (helix::has_default_theme(editing_theme_.filename)) {
+        // Built-in theme: Show confirmation and reset to defaults
+        if (dirty_) {
+            show_discard_confirmation([this]() { perform_reset_to_default(); });
+        } else {
+            perform_reset_to_default();
+        }
     } else {
-        // Not dirty, no confirmation needed
-        spdlog::debug("[{}] No changes to revert", get_name());
+        // User-created theme: Revert to original loaded state
+        if (dirty_) {
+            show_discard_confirmation([this]() {
+                // Restore original theme
+                editing_theme_ = original_theme_;
+                clear_dirty();
+
+                // Update UI to reflect reverted values
+                update_swatch_colors();
+                update_property_sliders();
+
+                // Preview the original theme
+                theme_manager_preview(editing_theme_);
+
+                spdlog::info("[{}] User theme reverted to last saved state", get_name());
+                ToastManager::instance().show(ToastSeverity::INFO,
+                                              "Theme reverted to last saved state");
+            });
+        } else {
+            // Not dirty, no changes to revert
+            spdlog::debug("[{}] No changes to revert", get_name());
+            ToastManager::instance().show(ToastSeverity::INFO, "No changes to revert");
+        }
     }
+}
+
+void ThemeEditorOverlay::perform_reset_to_default() {
+    auto result = helix::reset_theme_to_default(editing_theme_.filename);
+    if (!result) {
+        spdlog::error("[{}] Failed to reset theme to default", get_name());
+        ToastManager::instance().show(ToastSeverity::ERROR, "Failed to reset theme");
+        return;
+    }
+
+    // Update editing theme with default
+    editing_theme_ = *result;
+    original_theme_ = *result;
+    clear_dirty();
+
+    // Update UI to reflect default values
+    update_swatch_colors();
+    update_property_sliders();
+
+    // Preview the default theme
+    theme_manager_preview(editing_theme_);
+
+    spdlog::info("[{}] Theme '{}' reset to defaults", get_name(), editing_theme_.name);
+    ToastManager::instance().show(ToastSeverity::SUCCESS, "Theme reset to defaults");
 }
 
 // ============================================================================

@@ -4,6 +4,7 @@
 #include "theme_loader.h"
 
 #include <cstdio>
+#include <sys/stat.h>
 
 #include "../catch_amalgamated.hpp"
 
@@ -144,4 +145,156 @@ TEST_CASE("save_theme_to_file and load_theme_from_file roundtrip", "[theme]") {
 
     // Cleanup
     std::remove(path.c_str());
+}
+
+// ============================================================================
+// Two-Tier Theme Loading Tests
+// ============================================================================
+
+TEST_CASE("get_default_themes_directory returns defaults path", "[theme]") {
+    auto path = helix::get_default_themes_directory();
+    REQUIRE(path.find("/defaults") != std::string::npos);
+}
+
+TEST_CASE("load_theme_from_file falls back to defaults directory", "[theme]") {
+    // Setup: Theme exists only in defaults/, not in themes/
+    // The "nord" theme should exist in defaults/ but not themes/
+    std::string themes_dir = helix::get_themes_directory();
+    std::string defaults_dir = helix::get_default_themes_directory();
+
+    // Ensure nord doesn't exist in user themes dir
+    std::string user_nord = themes_dir + "/nord.json";
+    std::remove(user_nord.c_str());
+
+    // Load should fall back to defaults
+    auto theme = helix::load_theme_from_file("nord");
+
+    REQUIRE(theme.is_valid());
+    REQUIRE(theme.name == "Nord");
+}
+
+TEST_CASE("user theme overrides default theme with same name", "[theme]") {
+    std::string themes_dir = helix::get_themes_directory();
+
+    // Create a user theme with the same name as a default theme
+    helix::ThemeData user_theme = helix::get_default_nord_theme();
+    user_theme.name = "User Nord Override";
+    user_theme.dark.app_bg = "#111111"; // Different color to identify it
+
+    std::string user_path = themes_dir + "/nord.json";
+    REQUIRE(helix::save_theme_to_file(user_theme, user_path));
+
+    // Load should return user version
+    auto loaded = helix::load_theme_from_file("nord");
+
+    REQUIRE(loaded.name == "User Nord Override");
+    REQUIRE(loaded.dark.app_bg == "#111111");
+
+    // Cleanup
+    std::remove(user_path.c_str());
+}
+
+TEST_CASE("discover_themes merges user and default themes", "[theme]") {
+    std::string themes_dir = helix::get_themes_directory();
+
+    // Create a user-only theme
+    helix::ThemeData user_only = helix::get_default_nord_theme();
+    user_only.name = "User Only Theme";
+    user_only.filename = "user_only_test";
+
+    std::string user_path = themes_dir + "/user_only_test.json";
+    REQUIRE(helix::save_theme_to_file(user_only, user_path));
+
+    // Discover themes - should include both defaults and user themes
+    auto themes = helix::discover_themes(themes_dir);
+
+    // Check that we have some themes (defaults + user)
+    REQUIRE(themes.size() > 1);
+
+    // Check that user-only theme is included
+    bool found_user_only = false;
+    for (const auto& info : themes) {
+        if (info.filename == "user_only_test") {
+            found_user_only = true;
+            REQUIRE(info.display_name == "User Only Theme");
+            break;
+        }
+    }
+    REQUIRE(found_user_only);
+
+    // Check that a default theme is also included (e.g., nord)
+    bool found_default = false;
+    for (const auto& info : themes) {
+        if (info.filename == "nord") {
+            found_default = true;
+            break;
+        }
+    }
+    REQUIRE(found_default);
+
+    // Cleanup
+    std::remove(user_path.c_str());
+}
+
+TEST_CASE("has_default_theme returns true for bundled themes", "[theme]") {
+    // "nord" is a shipped default theme
+    REQUIRE(helix::has_default_theme("nord") == true);
+    REQUIRE(helix::has_default_theme("gruvbox") == true);
+    REQUIRE(helix::has_default_theme("catppuccin") == true);
+}
+
+TEST_CASE("has_default_theme returns false for user-created themes", "[theme]") {
+    // Non-existent themes
+    REQUIRE(helix::has_default_theme("my-custom-theme") == false);
+    REQUIRE(helix::has_default_theme("nonexistent") == false);
+}
+
+TEST_CASE("reset_theme_to_default deletes user file and returns default", "[theme]") {
+    std::string themes_dir = helix::get_themes_directory();
+
+    // Create a user override for nord
+    helix::ThemeData user_override = helix::get_default_nord_theme();
+    user_override.name = "Modified Nord";
+    user_override.dark.app_bg = "#222222";
+
+    std::string user_path = themes_dir + "/nord.json";
+    REQUIRE(helix::save_theme_to_file(user_override, user_path));
+
+    // Verify user file exists
+    struct stat st;
+    REQUIRE(stat(user_path.c_str(), &st) == 0);
+
+    // Reset to default
+    auto result = helix::reset_theme_to_default("nord");
+
+    REQUIRE(result.has_value());
+    REQUIRE(result->name == "Nord");           // Should be original default
+    REQUIRE(result->dark.app_bg != "#222222"); // Should not be user override
+
+    // User file should be deleted
+    REQUIRE(stat(user_path.c_str(), &st) != 0);
+}
+
+TEST_CASE("reset_theme_to_default returns nullopt for user-created themes", "[theme]") {
+    std::string themes_dir = helix::get_themes_directory();
+
+    // Create a user-only theme (no default exists)
+    helix::ThemeData user_theme = helix::get_default_nord_theme();
+    user_theme.name = "My Custom Theme";
+    user_theme.filename = "my_custom_test";
+
+    std::string user_path = themes_dir + "/my_custom_test.json";
+    REQUIRE(helix::save_theme_to_file(user_theme, user_path));
+
+    // Try to reset - should return nullopt since there's no default
+    auto result = helix::reset_theme_to_default("my_custom_test");
+
+    REQUIRE_FALSE(result.has_value());
+
+    // User file should still exist
+    struct stat st;
+    REQUIRE(stat(user_path.c_str(), &st) == 0);
+
+    // Cleanup
+    std::remove(user_path.c_str());
 }

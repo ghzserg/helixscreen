@@ -380,7 +380,7 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
 }
 
 // Stub implementations for toast functions (tests don't display UI)
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 
 void ui_toast_init() {
     // No-op in tests
@@ -408,6 +408,51 @@ void ui_toast_hide() {
 }
 
 bool ui_toast_is_visible() {
+    return false;
+}
+
+// Stub ToastManager class for tests
+// The real ToastManager is excluded from test build, so we need a stub singleton
+static ToastManager* s_test_toast_manager_instance = nullptr;
+
+ToastManager& ToastManager::instance() {
+    if (!s_test_toast_manager_instance) {
+        s_test_toast_manager_instance = new ToastManager();
+    }
+    return *s_test_toast_manager_instance;
+}
+
+ToastManager::~ToastManager() {
+    // Stub destructor
+}
+
+void ToastManager::init() {
+    spdlog::debug("[Test Stub] ToastManager::init()");
+}
+
+void ToastManager::show(ToastSeverity severity, const char* message, uint32_t duration_ms) {
+    (void)severity;
+    (void)duration_ms;
+    spdlog::debug("[Test Stub] ToastManager::show: {}", message ? message : "(null)");
+}
+
+void ToastManager::show_with_action(ToastSeverity severity, const char* message,
+                                    const char* action_text,
+                                    toast_action_callback_t action_callback, void* user_data,
+                                    uint32_t duration_ms) {
+    (void)severity;
+    (void)action_text;
+    (void)action_callback;
+    (void)user_data;
+    (void)duration_ms;
+    spdlog::debug("[Test Stub] ToastManager::show_with_action: {}", message ? message : "(null)");
+}
+
+void ToastManager::hide() {
+    spdlog::debug("[Test Stub] ToastManager::hide()");
+}
+
+bool ToastManager::is_visible() const {
     return false;
 }
 

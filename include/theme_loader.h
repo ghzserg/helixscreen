@@ -12,6 +12,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -184,9 +185,33 @@ std::vector<ThemeInfo> discover_themes(const std::string& themes_dir);
 bool ensure_themes_directory(const std::string& themes_dir);
 
 /**
- * @brief Get themes directory path
+ * @brief Get themes directory path (user overrides)
  * @return Full path to config/themes/
  */
 std::string get_themes_directory();
+
+/**
+ * @brief Get default themes directory path (shipped themes)
+ * @return Full path to config/themes/defaults/
+ */
+std::string get_default_themes_directory();
+
+/**
+ * @brief Check if a theme exists in the defaults directory
+ * @param filename Theme filename (without .json extension)
+ * @return true if the theme is a shipped default theme
+ */
+bool has_default_theme(const std::string& filename);
+
+/**
+ * @brief Reset a theme to its default state
+ *
+ * For built-in themes: Deletes the user override file and returns the default theme.
+ * For user-created themes: Returns nullopt (no default to reset to).
+ *
+ * @param filename Theme filename (without .json extension)
+ * @return The default ThemeData if reset succeeded, nullopt if theme has no default
+ */
+std::optional<ThemeData> reset_theme_to_default(const std::string& filename);
 
 } // namespace helix

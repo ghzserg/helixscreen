@@ -466,9 +466,8 @@ static helix::ThemeData theme_manager_load_active_theme() {
         theme_name = config ? config->get<std::string>("/display/theme", "nord") : "nord";
     }
 
-    // Load theme file
-    std::string theme_path = themes_dir + "/" + theme_name + ".json";
-    auto theme = helix::load_theme_from_file(theme_path);
+    // Load theme file (supports fallback from user themes to defaults)
+    auto theme = helix::load_theme_from_file(theme_name);
 
     if (!theme.is_valid()) {
         spdlog::warn("[Theme] Theme '{}' not found or invalid, using Nord", theme_name);

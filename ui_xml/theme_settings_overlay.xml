@@ -354,12 +354,12 @@
               style_pad_top="#space_lg" style_pad_bottom="#space_lg" flex_flow="row" style_pad_gap="#space_md"
               style_bg_opa="0" style_border_width="0" scrollable="false">
 
-        <lv_button name="btn_revert"
+        <lv_button name="btn_reset"
                    height="#button_height" flex_grow="1" style_radius="#border_radius" style_bg_color="#card_bg"
                    style_bg_opa="255" style_border_width="1" style_border_color="#text_muted" style_border_opa="80"
                    style_shadow_width="0" scroll_on_focus="false">
-          <event_cb trigger="clicked" callback="on_theme_revert_clicked"/>
-          <text_button text="Revert"/>
+          <event_cb trigger="clicked" callback="on_theme_reset_clicked"/>
+          <text_button text="Reset"/>
         </lv_button>
 
         <lv_button name="btn_save_as"

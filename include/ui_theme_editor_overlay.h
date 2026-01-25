@@ -126,7 +126,7 @@ class ThemeEditorOverlay : public OverlayBase {
     // Action button callbacks (registered with XML)
     static void on_theme_save_clicked(lv_event_t* e);
     static void on_theme_save_as_clicked(lv_event_t* e);
-    static void on_theme_revert_clicked(lv_event_t* e);
+    static void on_theme_reset_clicked(lv_event_t* e);
 
     // Save As dialog callbacks
     static void on_save_as_confirm(lv_event_t* e);
@@ -151,7 +151,8 @@ class ThemeEditorOverlay : public OverlayBase {
     // Instance handlers for action buttons
     void handle_save_clicked();
     void handle_save_as_clicked();
-    void handle_revert_clicked();
+    void handle_reset_clicked();
+    void perform_reset_to_default();
 
     // Legacy handlers (to be refactored)
     void handle_swatch_click(int palette_index);

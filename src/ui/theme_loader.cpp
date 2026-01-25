@@ -10,6 +10,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <sys/stat.h>
@@ -402,7 +403,42 @@ ThemeData parse_theme_json(const std::string& json_str, const std::string& filen
     return theme;
 }
 
-ThemeData load_theme_from_file(const std::string& filepath) {
+ThemeData load_theme_from_file(const std::string& filepath_or_name) {
+    std::string filepath = filepath_or_name;
+    std::string filename;
+
+    // Check if this is a full path or just a theme name
+    if (filepath_or_name.find('/') == std::string::npos) {
+        // Just a theme name - look up in directories
+        std::string themes_dir = get_themes_directory();
+        std::string defaults_dir = get_default_themes_directory();
+
+        // Add .json extension if not present
+        std::string name_with_ext = filepath_or_name;
+        if (name_with_ext.size() < 5 || name_with_ext.substr(name_with_ext.size() - 5) != ".json") {
+            name_with_ext += ".json";
+        }
+
+        // Check user themes directory first
+        std::string user_path = themes_dir + "/" + name_with_ext;
+        struct stat st;
+        if (stat(user_path.c_str(), &st) == 0) {
+            filepath = user_path;
+            spdlog::debug("[ThemeLoader] Loading user theme from {}", filepath);
+        } else {
+            // Fall back to defaults directory
+            std::string defaults_path = defaults_dir + "/" + name_with_ext;
+            if (stat(defaults_path.c_str(), &st) == 0) {
+                filepath = defaults_path;
+                spdlog::debug("[ThemeLoader] Loading default theme from {}", filepath);
+            } else {
+                spdlog::error("[ThemeLoader] Theme '{}' not found in themes or defaults",
+                              filepath_or_name);
+                return {};
+            }
+        }
+    }
+
     std::ifstream file(filepath);
     if (!file.is_open()) {
         spdlog::error("[ThemeLoader] Failed to open {}", filepath);
@@ -413,7 +449,7 @@ ThemeData load_theme_from_file(const std::string& filepath) {
     buffer << file.rdbuf();
 
     // Extract filename from path
-    std::string filename = filepath;
+    filename = filepath;
     size_t slash = filepath.rfind('/');
     if (slash != std::string::npos) {
         filename = filepath.substr(slash + 1);
@@ -478,6 +514,56 @@ std::string get_themes_directory() {
     return "config/themes";
 }
 
+std::string get_default_themes_directory() {
+    return "config/themes/defaults";
+}
+
+bool has_default_theme(const std::string& filename) {
+    std::string defaults_dir = get_default_themes_directory();
+
+    // Add .json extension if not present
+    std::string name_with_ext = filename;
+    if (name_with_ext.size() < 5 || name_with_ext.substr(name_with_ext.size() - 5) != ".json") {
+        name_with_ext += ".json";
+    }
+
+    std::string defaults_path = defaults_dir + "/" + name_with_ext;
+    struct stat st;
+    return stat(defaults_path.c_str(), &st) == 0;
+}
+
+std::optional<ThemeData> reset_theme_to_default(const std::string& filename) {
+    // Check if a default exists
+    if (!has_default_theme(filename)) {
+        spdlog::debug("[ThemeLoader] No default theme for '{}', cannot reset", filename);
+        return std::nullopt;
+    }
+
+    std::string themes_dir = get_themes_directory();
+    std::string defaults_dir = get_default_themes_directory();
+
+    // Add .json extension if not present
+    std::string name_with_ext = filename;
+    if (name_with_ext.size() < 5 || name_with_ext.substr(name_with_ext.size() - 5) != ".json") {
+        name_with_ext += ".json";
+    }
+
+    // Delete user override if it exists
+    std::string user_path = themes_dir + "/" + name_with_ext;
+    struct stat st;
+    if (stat(user_path.c_str(), &st) == 0) {
+        if (std::remove(user_path.c_str()) != 0) {
+            spdlog::error("[ThemeLoader] Failed to delete user theme override: {}", user_path);
+            return std::nullopt;
+        }
+        spdlog::info("[ThemeLoader] Deleted user theme override: {}", user_path);
+    }
+
+    // Load and return the default theme
+    std::string defaults_path = defaults_dir + "/" + name_with_ext;
+    return load_theme_from_file(defaults_path);
+}
+
 bool ensure_themes_directory(const std::string& themes_dir) {
     struct stat st;
 
@@ -518,46 +604,68 @@ bool ensure_themes_directory(const std::string& themes_dir) {
 
 std::vector<ThemeInfo> discover_themes(const std::string& themes_dir) {
     std::vector<ThemeInfo> themes;
+    std::set<std::string> seen_filenames;
 
-    DIR* dir = opendir(themes_dir.c_str());
-    if (!dir) {
-        spdlog::warn("[ThemeLoader] Could not open themes directory: {}", themes_dir);
-        return themes;
-    }
-
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != nullptr) {
-        std::string filename = entry->d_name;
-
-        // Skip non-json files
-        if (filename.size() <= 5 || filename.substr(filename.size() - 5) != ".json") {
-            continue;
+    // Helper lambda to scan a directory
+    auto scan_directory = [&](const std::string& dir_path, bool is_defaults) {
+        DIR* dir = opendir(dir_path.c_str());
+        if (!dir) {
+            if (!is_defaults) {
+                // User themes dir not existing is fine
+                spdlog::debug("[ThemeLoader] Themes directory doesn't exist yet: {}", dir_path);
+            }
+            return;
         }
 
-        // Skip hidden files
-        if (filename[0] == '.') {
-            continue;
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != nullptr) {
+            std::string filename = entry->d_name;
+
+            // Skip non-json files
+            if (filename.size() <= 5 || filename.substr(filename.size() - 5) != ".json") {
+                continue;
+            }
+
+            // Skip hidden files
+            if (filename[0] == '.') {
+                continue;
+            }
+
+            std::string base_name = filename.substr(0, filename.size() - 5); // Remove .json
+
+            // Skip if we've already seen this theme (user overrides take precedence)
+            if (seen_filenames.count(base_name) > 0) {
+                continue;
+            }
+
+            std::string filepath = dir_path + "/" + filename;
+            auto theme = load_theme_from_file(filepath);
+
+            if (theme.is_valid()) {
+                ThemeInfo info;
+                info.filename = base_name;
+                info.display_name = theme.name;
+                themes.push_back(info);
+                seen_filenames.insert(base_name);
+            }
         }
 
-        std::string filepath = themes_dir + "/" + filename;
-        auto theme = load_theme_from_file(filepath);
+        closedir(dir);
+    };
 
-        if (theme.is_valid()) {
-            ThemeInfo info;
-            info.filename = filename.substr(0, filename.size() - 5); // Remove .json
-            info.display_name = theme.name;
-            themes.push_back(info);
-        }
-    }
+    // First scan user themes directory (takes precedence)
+    scan_directory(themes_dir, false);
 
-    closedir(dir);
+    // Then scan defaults directory
+    std::string defaults_dir = get_default_themes_directory();
+    scan_directory(defaults_dir, true);
 
     // Sort alphabetically by display name
     std::sort(themes.begin(), themes.end(), [](const ThemeInfo& a, const ThemeInfo& b) {
         return a.display_name < b.display_name;
     });
 
-    spdlog::debug("[ThemeLoader] Discovered {} themes in {}", themes.size(), themes_dir);
+    spdlog::debug("[ThemeLoader] Discovered {} themes (user + defaults)", themes.size());
     return themes;
 }
 
