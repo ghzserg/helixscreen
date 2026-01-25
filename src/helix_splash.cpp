@@ -6,8 +6,8 @@
  *
  * This is a lightweight splash screen that starts instantly while the main
  * helix-screen application initializes in parallel. It displays the
- * HelixScreen logo with a fade-in animation and automatically exits when
- * the main app takes over the framebuffer.
+ * HelixScreen logo with a fade-in animation (on capable hardware) and
+ * automatically exits when the main app takes over the framebuffer.
  *
  * Design goals:
  * - Minimal dependencies (LVGL + display backend only, no libhv/spdlog/etc)
@@ -54,7 +54,7 @@ static constexpr int DEFAULT_WIDTH = 800;
 static constexpr int DEFAULT_HEIGHT = 480;
 
 // Splash timing
-static constexpr int FADE_DURATION_MS = 300; // Fast fade-in
+static constexpr int FADE_DURATION_MS = 300; // Fast fade-in (disabled on slow hardware)
 static constexpr int FRAME_DELAY_US = 16000; // ~60 FPS
 
 // Read brightness from config file (simple parsing, no JSON library)
@@ -134,7 +134,7 @@ static lv_obj_t* create_splash_ui(lv_obj_t* screen, int width, int height) {
     lv_obj_set_style_border_width(container, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(container, 0, LV_PART_MAIN);
     lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_opa(container, LV_OPA_TRANSP, LV_PART_MAIN); // Start invisible
+    lv_obj_set_style_opa(container, LV_OPA_TRANSP, LV_PART_MAIN); // Start invisible for fade-in
     lv_obj_center(container);
 
     // Create logo image
@@ -172,15 +172,22 @@ static lv_obj_t* create_splash_ui(lv_obj_t* screen, int width, int height) {
         }
     }
 
-    // Start fade-in animation
-    lv_anim_t anim;
-    lv_anim_init(&anim);
-    lv_anim_set_var(&anim, container);
-    lv_anim_set_values(&anim, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&anim, FADE_DURATION_MS);
-    lv_anim_set_path_cb(&anim, lv_anim_path_ease_in);
-    lv_anim_set_exec_cb(&anim, fade_anim_cb);
-    lv_anim_start(&anim);
+    // Fade-in animation: skip on slow hardware (pre-rendered = slow device)
+    // Alpha blending each frame is too slow on AD5M's Cortex-A7
+    if (use_prerendered) {
+        // Slow hardware: show immediately at full opacity
+        lv_obj_set_style_opa(container, LV_OPA_COVER, LV_PART_MAIN);
+    } else {
+        // Fast hardware: smooth fade-in animation
+        lv_anim_t anim;
+        lv_anim_init(&anim);
+        lv_anim_set_var(&anim, container);
+        lv_anim_set_values(&anim, LV_OPA_TRANSP, LV_OPA_COVER);
+        lv_anim_set_duration(&anim, FADE_DURATION_MS);
+        lv_anim_set_path_cb(&anim, lv_anim_path_ease_in);
+        lv_anim_set_exec_cb(&anim, fade_anim_cb);
+        lv_anim_start(&anim);
+    }
 
     return container;
 }
