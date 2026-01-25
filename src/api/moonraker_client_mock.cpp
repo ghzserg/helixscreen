@@ -297,6 +297,15 @@ void MoonrakerClientMock::populate_capabilities() {
     // Parse objects into hardware discovery (unified hardware access)
     hardware_.parse_objects(mock_objects);
 
+    // Mock accelerometer configuration for input shaper wizard testing
+    // Real Klipper doesn't expose accelerometers in objects list (no get_status()),
+    // so we simulate what parse_config_keys() would find from configfile.config
+    json mock_config;
+    mock_config["adxl345"] = json::object();
+    mock_config["resonance_tester"] = json::object();
+    hardware_.parse_config_keys(mock_config);
+    spdlog::debug("[MoonrakerClientMock] Mock accelerometer config: adxl345, resonance_tester");
+
     // Populate printer objects for hardware discovery
     std::vector<std::string> all_objects;
     for (const auto& obj : mock_objects) {

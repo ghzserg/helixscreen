@@ -1123,7 +1123,32 @@ void MoonrakerClient::continue_discovery(std::function<void()> on_complete,
                         }
                     }
 
-                    // Step 4: Query MCU information for printer detection
+                    // Step 4: Query configfile for accelerometer detection
+                    // Klipper's objects/list only returns objects with get_status() methods.
+                    // Accelerometers (adxl345, lis2dw, mpu9250, resonance_tester) don't have
+                    // get_status() since they're on-demand calibration tools.
+                    // Must check configfile.config keys instead.
+                    send_jsonrpc(
+                        "printer.objects.query",
+                        {{"objects", json::object({{"configfile", json::array({"config"})}})}},
+                        [this](json config_response) {
+                            if (config_response.contains("result") &&
+                                config_response["result"].contains("status") &&
+                                config_response["result"]["status"].contains("configfile") &&
+                                config_response["result"]["status"]["configfile"].contains(
+                                    "config")) {
+                                hardware_.parse_config_keys(
+                                    config_response["result"]["status"]["configfile"]["config"]);
+                            }
+                        },
+                        [](const MoonrakerError& err) {
+                            // Configfile query failed - not critical, continue with discovery
+                            spdlog::debug(
+                                "[Moonraker Client] Configfile query failed, continuing: {}",
+                                err.message);
+                        });
+
+                    // Step 5: Query MCU information for printer detection
                     // Find all MCU objects (e.g., "mcu", "mcu EBBCan", "mcu rpi")
                     std::vector<std::string> mcu_objects;
                     for (const auto& obj : hardware_.printer_objects()) {

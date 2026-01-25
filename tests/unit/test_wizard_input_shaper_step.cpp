@@ -72,16 +72,20 @@ class WizardInputShaperStepTestFixture {
 
     // Helper to simulate accelerometer discovery via hardware
     void set_has_accelerometer(bool has_accel) {
-        // Create hardware discovery with accelerometer objects
+        // Create hardware discovery with appropriate objects
         PrinterDiscovery hardware;
-        nlohmann::json objects;
-        if (has_accel) {
-            objects =
-                nlohmann::json::array({"heater_bed", "extruder", "adxl345", "resonance_tester"});
-        } else {
-            objects = nlohmann::json::array({"heater_bed", "extruder", "fan"});
-        }
+        nlohmann::json objects = nlohmann::json::array({"heater_bed", "extruder", "fan"});
         hardware.parse_objects(objects);
+
+        // Accelerometers are detected from configfile, not objects list
+        // (Klipper's objects list only includes objects with get_status() method)
+        if (has_accel) {
+            nlohmann::json config;
+            config["adxl345"] = nlohmann::json::object();
+            config["resonance_tester"] = nlohmann::json::object();
+            hardware.parse_config_keys(config);
+        }
+
         state().set_hardware(hardware);
 
         // Drain async queue to apply subject updates

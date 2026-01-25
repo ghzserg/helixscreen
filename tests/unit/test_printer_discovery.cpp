@@ -82,8 +82,7 @@ TEST_CASE("PrinterDiscovery handles malformed input", "[printer_discovery]") {
 // Heater Extraction Tests
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery parses heaters - extruders and bed",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery parses heaters - extruders and bed", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("Single extruder and heater_bed") {
@@ -192,8 +191,7 @@ TEST_CASE("PrinterDiscovery parses fans - all fan types", "[printer_discovery]")
 // Sensor Extraction Tests
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery parses sensors - temperature sensors",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery parses sensors - temperature sensors", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("Temperature sensor") {
@@ -227,8 +225,7 @@ TEST_CASE("PrinterDiscovery parses sensors - temperature sensors",
 // LED Extraction Tests
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery parses LEDs - neopixel and dotstar",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery parses LEDs - neopixel and dotstar", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("Neopixel strip") {
@@ -267,8 +264,7 @@ TEST_CASE("PrinterDiscovery parses LEDs - neopixel and dotstar",
 // Capability Detection Tests - Leveling
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery detects QGL when quad_gantry_level present",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery detects QGL when quad_gantry_level present", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     json objects = {"extruder", "heater_bed", "quad_gantry_level", "bed_mesh"};
@@ -294,8 +290,7 @@ TEST_CASE("PrinterDiscovery detects z_tilt", "[printer_discovery]") {
 // Capability Detection Tests - Probes
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery detects probe when bltouch present",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery detects probe when bltouch present", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("BLTouch probe") {
@@ -324,8 +319,7 @@ TEST_CASE("PrinterDiscovery detects probe when bltouch present",
 // Macro Detection Tests
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery detects macros and caches common patterns",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery detects macros and caches common patterns", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("Nozzle clean macro - CLEAN_NOZZLE") {
@@ -372,8 +366,7 @@ TEST_CASE("PrinterDiscovery detects macros and caches common patterns",
 // AFC/MMU Detection Tests
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery detects AFC and extracts lane names",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery detects AFC and extracts lane names", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("AFC detection") {
@@ -415,8 +408,7 @@ TEST_CASE("PrinterDiscovery detects Happy Hare MMU", "[printer_discovery]") {
     REQUIRE(hw.mmu_type() == AmsType::HAPPY_HARE);
 }
 
-TEST_CASE("PrinterDiscovery parses Happy Hare mmu_encoder objects",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery parses Happy Hare mmu_encoder objects", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("Single encoder") {
@@ -452,8 +444,7 @@ TEST_CASE("PrinterDiscovery parses Happy Hare mmu_encoder objects",
     }
 }
 
-TEST_CASE("PrinterDiscovery parses Happy Hare mmu_servo objects",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery parses Happy Hare mmu_servo objects", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("Single servo") {
@@ -489,8 +480,7 @@ TEST_CASE("PrinterDiscovery parses Happy Hare mmu_servo objects",
     }
 }
 
-TEST_CASE("PrinterDiscovery parses full Happy Hare configuration",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery parses full Happy Hare configuration", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     // Typical Happy Hare setup with multiple encoders and servos
@@ -527,8 +517,7 @@ TEST_CASE("PrinterDiscovery detects tool changer", "[printer_discovery]") {
 // Filament Sensor Detection Tests
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery detects filament sensors - both types",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery detects filament sensors - both types", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("Switch sensor") {
@@ -578,25 +567,89 @@ TEST_CASE("PrinterDiscovery parses steppers", "[printer_discovery]") {
 // Additional Capability Detection Tests
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery detects accelerometer", "[printer_discovery]") {
+// ============================================================================
+// Accelerometer Detection Tests
+// ============================================================================
+// NOTE: Klipper's objects/list ONLY returns objects with get_status() method.
+// Accelerometers (adxl345, lis2dw, mpu9250, resonance_tester) intentionally
+// don't have get_status() since they're on-demand calibration tools.
+// Therefore: accelerometer detection MUST use parse_config_keys(), not parse_objects().
+
+TEST_CASE("PrinterDiscovery parse_objects ignores accelerometer names", "[printer_discovery]") {
+    // These objects will NEVER appear in Klipper's objects/list response anyway,
+    // but we verify parse_objects() doesn't try to detect them
     PrinterDiscovery hw;
 
-    SECTION("ADXL345") {
-        json objects = {"adxl345"};
+    SECTION("adxl345 in objects list does not set accelerometer flag") {
+        json objects = {"adxl345", "extruder", "heater_bed"};
         hw.parse_objects(objects);
+        REQUIRE_FALSE(hw.has_accelerometer());
+    }
+
+    SECTION("resonance_tester in objects list does not set accelerometer flag") {
+        json objects = {"resonance_tester", "extruder"};
+        hw.parse_objects(objects);
+        REQUIRE_FALSE(hw.has_accelerometer());
+    }
+
+    SECTION("named adxl345 in objects list does not set accelerometer flag") {
+        json objects = {"adxl345 bed", "extruder"};
+        hw.parse_objects(objects);
+        REQUIRE_FALSE(hw.has_accelerometer());
+    }
+}
+
+TEST_CASE("PrinterDiscovery detects accelerometers from config keys", "[printer_discovery]") {
+    PrinterDiscovery hw;
+
+    SECTION("detects adxl345") {
+        json config = {{"adxl345", json::object()}};
+        hw.parse_config_keys(config);
         REQUIRE(hw.has_accelerometer());
     }
 
-    SECTION("LIS2DW") {
-        json objects = {"lis2dw"};
-        hw.parse_objects(objects);
+    SECTION("detects named adxl345") {
+        json config = {{"adxl345 bed", json::object()}};
+        hw.parse_config_keys(config);
         REQUIRE(hw.has_accelerometer());
     }
 
-    SECTION("Resonance tester") {
-        json objects = {"resonance_tester"};
-        hw.parse_objects(objects);
+    SECTION("detects lis2dw") {
+        json config = {{"lis2dw", json::object()}};
+        hw.parse_config_keys(config);
         REQUIRE(hw.has_accelerometer());
+    }
+
+    SECTION("detects named lis2dw") {
+        json config = {{"lis2dw toolhead", json::object()}};
+        hw.parse_config_keys(config);
+        REQUIRE(hw.has_accelerometer());
+    }
+
+    SECTION("detects mpu9250") {
+        json config = {{"mpu9250", json::object()}};
+        hw.parse_config_keys(config);
+        REQUIRE(hw.has_accelerometer());
+    }
+
+    SECTION("detects resonance_tester") {
+        json config = {{"resonance_tester", json::object()}};
+        hw.parse_config_keys(config);
+        REQUIRE(hw.has_accelerometer());
+    }
+
+    SECTION("does not detect unrelated config keys") {
+        json config = {{"extruder", json::object()}, {"heater_bed", json::object()}};
+        hw.parse_config_keys(config);
+        REQUIRE_FALSE(hw.has_accelerometer());
+    }
+
+    SECTION("handles non-object input gracefully") {
+        hw.parse_config_keys(json::array());
+        REQUIRE_FALSE(hw.has_accelerometer());
+
+        hw.parse_config_keys(nullptr);
+        REQUIRE_FALSE(hw.has_accelerometer());
     }
 }
 
@@ -646,8 +699,7 @@ TEST_CASE("PrinterDiscovery detects timelapse plugin", "[printer_discovery]") {
     REQUIRE(hw.has_timelapse());
 }
 
-TEST_CASE("PrinterDiscovery detects chamber heater and sensor",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery detects chamber heater and sensor", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     SECTION("Chamber heater") {
@@ -705,8 +757,7 @@ TEST_CASE("PrinterDiscovery clear resets all state", "[printer_discovery]") {
 // Real-world Configuration Tests
 // ============================================================================
 
-TEST_CASE("PrinterDiscovery handles full Voron 2.4 config",
-          "[printer_discovery]") {
+TEST_CASE("PrinterDiscovery handles full Voron 2.4 config", "[printer_discovery]") {
     PrinterDiscovery hw;
 
     json objects = {"configfile",

@@ -16,6 +16,8 @@
 #include "ams_types.h"
 #include "printer_detector.h" // For BuildVolume struct
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cctype>
 #include <string>
@@ -167,12 +169,11 @@ class PrinterDiscovery {
             } else if (name == "screws_tilt_adjust") {
                 has_screws_tilt_ = true;
             }
-            // Accelerometer detection
-            else if (name == "adxl345" || name.rfind("adxl345 ", 0) == 0 || name == "lis2dw" ||
-                     name.rfind("lis2dw ", 0) == 0 || name == "mpu9250" ||
-                     name.rfind("mpu9250 ", 0) == 0 || name == "resonance_tester") {
-                has_accelerometer_ = true;
-            }
+            // NOTE: Accelerometer detection removed from parse_objects().
+            // Klipper's objects/list only returns objects with get_status() methods.
+            // Accelerometers (adxl345, lis2dw, mpu9250, resonance_tester) intentionally
+            // don't have get_status() since they're on-demand calibration tools.
+            // Use parse_config_keys() instead to detect accelerometers from configfile.
             // ================================================================
             // MMU/AMS detection
             // ================================================================
@@ -289,6 +290,31 @@ class PrinterDiscovery {
         // Set mmu_type_ for tool changers (after all objects processed)
         if (has_tool_changer_ && !tool_names_.empty()) {
             mmu_type_ = AmsType::TOOL_CHANGER;
+        }
+    }
+
+    /**
+     * @brief Parse configfile keys to detect accelerometers
+     *
+     * Klipper's objects/list only returns objects with get_status() methods.
+     * Accelerometer modules (adxl345, lis2dw, mpu9250, resonance_tester) don't
+     * have get_status() since they're on-demand calibration tools.
+     * Must check configfile instead.
+     *
+     * @param config JSON object from configfile.config response
+     */
+    void parse_config_keys(const nlohmann::json& config) {
+        if (!config.is_object()) {
+            return;
+        }
+
+        for (const auto& [key, value] : config.items()) {
+            if (key == "adxl345" || key.rfind("adxl345 ", 0) == 0 || key == "lis2dw" ||
+                key.rfind("lis2dw ", 0) == 0 || key == "mpu9250" || key.rfind("mpu9250 ", 0) == 0 ||
+                key == "resonance_tester") {
+                has_accelerometer_ = true;
+                spdlog::debug("[PrinterDiscovery] Accelerometer detected from config: {}", key);
+            }
         }
     }
 
