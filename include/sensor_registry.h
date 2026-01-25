@@ -3,15 +3,17 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
+
 #include "hv/json.hpp"
 
 namespace helix::sensors {
 
 /// @brief Interface for sensor category managers
 class ISensorManager {
-public:
+  public:
     virtual ~ISensorManager() = default;
 
     /// @brief Get the category name (e.g., "switch", "humidity")
@@ -32,13 +34,15 @@ public:
 
 /// @brief Central registry for all sensor managers
 class SensorRegistry {
-public:
+  public:
     SensorRegistry() = default;
     ~SensorRegistry() = default;
 
-    // Non-copyable
+    // Non-copyable, non-movable (contains mutex)
     SensorRegistry(const SensorRegistry&) = delete;
     SensorRegistry& operator=(const SensorRegistry&) = delete;
+    SensorRegistry(SensorRegistry&&) = delete;
+    SensorRegistry& operator=(SensorRegistry&&) = delete;
 
     /// @brief Register a sensor manager
     void register_manager(std::string category, std::unique_ptr<ISensorManager> manager);
@@ -58,8 +62,9 @@ public:
     /// @brief Save config from all managers
     [[nodiscard]] nlohmann::json save_config() const;
 
-private:
+  private:
+    mutable std::recursive_mutex mutex_;
     std::map<std::string, std::unique_ptr<ISensorManager>> managers_;
 };
 
-}  // namespace helix::sensors
+} // namespace helix::sensors
