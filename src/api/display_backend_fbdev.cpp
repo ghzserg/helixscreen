@@ -482,7 +482,7 @@ bool DisplayBackendFbdev::unblank_display() {
         return false;
     }
 
-    // 1. Unblank the display (turns on backlight)
+    // 1. Unblank the display via framebuffer ioctl
     if (ioctl(fd, FBIOBLANK, FB_BLANK_UNBLANK) != 0) {
         spdlog::warn("[Fbdev Backend] FBIOBLANK unblank failed: {}", strerror(errno));
         // Continue anyway - some drivers don't support this but pan may still work
@@ -496,19 +496,25 @@ bool DisplayBackendFbdev::unblank_display() {
     if (ioctl(fd, FBIOGET_VSCREENINFO, &var_info) != 0) {
         spdlog::warn("[Fbdev Backend] FBIOGET_VSCREENINFO failed: {}", strerror(errno));
         close(fd);
-        return true; // Unblank may have worked
-    }
-
-    var_info.yoffset = 0;
-
-    if (ioctl(fd, FBIOPAN_DISPLAY, &var_info) != 0) {
-        spdlog::debug("[Fbdev Backend] FBIOPAN_DISPLAY failed: {} (may be unsupported)",
-                      strerror(errno));
+        // Don't return - try Allwinner backlight below
     } else {
-        spdlog::info("[Fbdev Backend] Display pan reset to yoffset=0");
+        var_info.yoffset = 0;
+        if (ioctl(fd, FBIOPAN_DISPLAY, &var_info) != 0) {
+            spdlog::debug("[Fbdev Backend] FBIOPAN_DISPLAY failed: {} (may be unsupported)",
+                          strerror(errno));
+        } else {
+            spdlog::info("[Fbdev Backend] Display pan reset to yoffset=0");
+        }
     }
 
     close(fd);
+
+    // NOTE: Allwinner backlight control is NOT done here!
+    // BacklightBackend handles all backlight control via /dev/disp ioctls.
+    // Having duplicate ioctl calls here and in BacklightBackend can put the
+    // Allwinner DISP2 driver into an inverted state where higher values = dimmer.
+    // Let DisplayManager's m_backlight->set_brightness() handle backlight.
+
     return true;
 }
 

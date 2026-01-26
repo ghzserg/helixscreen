@@ -247,6 +247,48 @@ class BacklightBackendAllwinner : public BacklightBackend {
 
     BacklightBackendAllwinner() {
         probe_device();
+        if (available_) {
+            // Reset backlight driver state by cycling through DISABLE.
+            // On AD5M, the Allwinner DISP2 driver can get into an "inverted" state
+            // where higher brightness values = dimmer screen. Cycling through
+            // DISABLE clears this state and restores normal polarity.
+            reset_driver_state();
+        }
+    }
+
+    /**
+     * @brief Reset the Allwinner backlight driver to a known good state
+     *
+     * The Allwinner DISP2 driver can get into a state where brightness values
+     * are inverted. Cycling through DISABLE then back to the desired brightness
+     * resets the PWM polarity to normal operation.
+     */
+    void reset_driver_state() {
+        FdGuard fd(open(DISP_DEVICE, O_RDWR));
+        if (fd.get() < 0) {
+            return;
+        }
+
+        unsigned long args[4] = {0, 0, 0, 0};
+
+        // Disable backlight first to reset driver state
+        if (ioctl(fd.get(), DISP_LCD_BACKLIGHT_DISABLE, args) == 0) {
+            spdlog::info("[Backlight-Allwinner] Reset: DISABLE to clear driver state");
+        }
+
+        // Brief delay for hardware to settle (10ms)
+        usleep(10000);
+
+        // Re-enable backlight
+        if (ioctl(fd.get(), DISP_LCD_BACKLIGHT_ENABLE, args) == 0) {
+            spdlog::info("[Backlight-Allwinner] Reset: ENABLE after state clear");
+        }
+
+        // Set to max brightness initially
+        args[1] = MAX_BRIGHTNESS;
+        if (ioctl(fd.get(), DISP_LCD_SET_BRIGHTNESS, args) == 0) {
+            spdlog::info("[Backlight-Allwinner] Reset: brightness set to max");
+        }
     }
 
     bool set_brightness(int percent) override {
