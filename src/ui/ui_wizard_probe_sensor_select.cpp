@@ -307,7 +307,8 @@ void WizardProbeSensorSelectStep::cleanup() {
     auto& sensor_mgr = helix::FilamentSensorManager::instance();
 
     // Clear existing Z_PROBE role assignments first
-    for (const auto& sensor : available_sensors_) {
+    // NOTE: Query ALL sensors from the manager, not available_sensors_ (which only has role=NONE)
+    for (const auto& sensor : sensor_mgr.get_sensors()) {
         if (sensor.role == helix::FilamentSensorRole::Z_PROBE) {
             sensor_mgr.set_sensor_role(sensor.klipper_name, helix::FilamentSensorRole::NONE);
         }
