@@ -56,7 +56,7 @@ lv_theme_t* theme_core_init(lv_display_t* display, lv_color_t primary_color,
                             const lv_font_t* base_font, lv_color_t screen_bg, lv_color_t card_bg,
                             lv_color_t surface_control, lv_color_t focus_color,
                             lv_color_t border_color, int32_t border_radius, int32_t border_width,
-                            lv_color_t knob_color, lv_color_t accent_color);
+                            int32_t border_opacity, lv_color_t knob_color, lv_color_t accent_color);
 
 /**
  * @brief Update theme colors in-place without recreating the theme
@@ -84,7 +84,8 @@ void theme_core_update_colors(bool is_dark, lv_color_t screen_bg, lv_color_t car
                               lv_color_t surface_control, lv_color_t text_primary_color,
                               lv_color_t focus_color, lv_color_t primary_color,
                               lv_color_t secondary_color, lv_color_t border_color,
-                              lv_color_t knob_color, lv_color_t accent_color);
+                              int32_t border_opacity, lv_color_t knob_color,
+                              lv_color_t accent_color);
 
 /**
  * @brief Update all theme colors for live preview
@@ -96,7 +97,8 @@ void theme_core_update_colors(bool is_dark, lv_color_t screen_bg, lv_color_t car
  * @param colors Array of 16 hex color strings (palette order)
  * @param border_radius Corner radius in pixels
  */
-void theme_core_preview_colors(bool is_dark, const char* colors[16], int32_t border_radius);
+void theme_core_preview_colors(bool is_dark, const char* colors[16], int32_t border_radius,
+                               int32_t border_opacity);
 
 #ifdef __cplusplus
 }

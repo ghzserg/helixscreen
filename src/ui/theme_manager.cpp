@@ -695,6 +695,9 @@ void theme_manager_init(lv_display_t* display, bool use_dark_mode_param) {
     const char* border_width_str = lv_xml_get_const(nullptr, "border_width");
     int32_t border_width = border_width_str ? atoi(border_width_str) : 1;
 
+    const char* border_opacity_str = lv_xml_get_const(nullptr, "border_opacity");
+    int32_t border_opacity = border_opacity_str ? atoi(border_opacity_str) : 255;
+
     // Compute knob color: more saturated of primary vs tertiary for slider/switch handles
     const char* tertiary_str = lv_xml_get_const(nullptr, "tertiary");
     lv_color_t tertiary_color =
@@ -708,7 +711,7 @@ void theme_manager_init(lv_display_t* display, bool use_dark_mode_param) {
     current_theme =
         theme_core_init(display, primary_color, secondary_color, text_color, use_dark_mode,
                         base_font, screen_bg, card_bg, card_alt, focus_color, border_color,
-                        border_radius, border_width, knob_color, accent_color);
+                        border_radius, border_width, border_opacity, knob_color, accent_color);
 
     if (current_theme) {
         lv_display_set_theme(display, current_theme);
@@ -812,13 +815,17 @@ void theme_manager_toggle_dark_mode() {
     // Compute accent color: more saturated of primary vs secondary for checkbox checkmarks
     lv_color_t accent_color = more_saturated_color(primary_color, secondary_color);
 
+    // Get border_opacity from theme (already registered as XML constant)
+    const char* border_opacity_str = lv_xml_get_const(nullptr, "border_opacity");
+    int32_t border_opacity = border_opacity_str ? atoi(border_opacity_str) : 255;
+
     spdlog::debug("[Theme] New colors: screen={}, card={}, card_alt={}, text={}", screen_bg_str,
                   card_bg_str, card_alt_str, text_str);
 
     // Update helix theme styles in-place (triggers lv_obj_report_style_change)
     theme_core_update_colors(new_use_dark_mode, screen_bg, card_bg, card_alt, text_color,
-                             focus_color, primary_color, secondary_color, border_color, knob_color,
-                             accent_color);
+                             focus_color, primary_color, secondary_color, border_color,
+                             border_opacity, knob_color, accent_color);
 
     // Force style refresh on entire widget tree for local/inline styles
     theme_manager_refresh_widget_tree(lv_screen_active());
@@ -903,6 +910,8 @@ void theme_manager_refresh_preview_elements(lv_obj_t* root, const helix::ThemeDa
 
     // Theme geometry properties
     int32_t border_radius = theme.properties.border_radius;
+    int32_t border_width = theme.properties.border_width;
+    int32_t border_opacity = theme.properties.border_opacity;
 
     // ========================================================================
     // OVERLAY BACKGROUNDS - Update BOTH theme_preview_overlay AND theme_settings_overlay
@@ -1007,18 +1016,24 @@ void theme_manager_refresh_preview_elements(lv_obj_t* root, const helix::ThemeDa
     if (card) {
         lv_obj_set_style_bg_color(card, card_bg, LV_PART_MAIN);
         lv_obj_set_style_border_color(card, border, LV_PART_MAIN);
+        lv_obj_set_style_border_width(card, border_width, LV_PART_MAIN);
+        lv_obj_set_style_border_opa(card, border_opacity, LV_PART_MAIN);
         lv_obj_set_style_radius(card, border_radius, LV_PART_MAIN);
     }
     card = lv_obj_find_by_name(root, "preview_actions_card");
     if (card) {
         lv_obj_set_style_bg_color(card, card_bg, LV_PART_MAIN);
         lv_obj_set_style_border_color(card, border, LV_PART_MAIN);
+        lv_obj_set_style_border_width(card, border_width, LV_PART_MAIN);
+        lv_obj_set_style_border_opa(card, border_opacity, LV_PART_MAIN);
         lv_obj_set_style_radius(card, border_radius, LV_PART_MAIN);
     }
     card = lv_obj_find_by_name(root, "preview_background");
     if (card) {
         lv_obj_set_style_bg_color(card, app_bg, LV_PART_MAIN);
         lv_obj_set_style_border_color(card, border, LV_PART_MAIN);
+        lv_obj_set_style_border_width(card, border_width, LV_PART_MAIN);
+        lv_obj_set_style_border_opa(card, border_opacity, LV_PART_MAIN);
         lv_obj_set_style_radius(card, border_radius, LV_PART_MAIN);
     }
 

@@ -212,7 +212,8 @@ lv_theme_t* theme_core_init(lv_display_t* display, lv_color_t primary_color,
                             const lv_font_t* base_font, lv_color_t screen_bg, lv_color_t card_bg,
                             lv_color_t surface_control, lv_color_t focus_color,
                             lv_color_t border_color, int32_t border_radius, int32_t border_width,
-                            lv_color_t knob_color, lv_color_t accent_color) {
+                            int32_t border_opacity, lv_color_t knob_color,
+                            lv_color_t accent_color) {
     // Clean up previous theme instance if exists
     if (helix_theme_instance) {
         lv_style_reset(&helix_theme_instance->input_bg_style);
@@ -275,6 +276,10 @@ lv_theme_t* theme_core_init(lv_display_t* display, lv_color_t primary_color,
     lv_style_set_bg_color(&helix_theme_instance->input_bg_style, surface_control);
     lv_style_set_bg_opa(&helix_theme_instance->input_bg_style, LV_OPA_COVER);
     lv_style_set_text_color(&helix_theme_instance->input_bg_style, text_primary_color);
+    lv_style_set_radius(&helix_theme_instance->input_bg_style, border_radius);
+    lv_style_set_border_width(&helix_theme_instance->input_bg_style, border_width);
+    lv_style_set_border_color(&helix_theme_instance->input_bg_style, border_color);
+    lv_style_set_border_opa(&helix_theme_instance->input_bg_style, border_opacity);
 
     // Initialize global disabled state style (50% opacity)
     lv_style_init(&helix_theme_instance->disabled_style);
@@ -302,6 +307,7 @@ lv_theme_t* theme_core_init(lv_display_t* display, lv_color_t primary_color,
     lv_style_set_radius(&helix_theme_instance->button_style, border_radius);
     lv_style_set_border_width(&helix_theme_instance->button_style, border_width);
     lv_style_set_border_color(&helix_theme_instance->button_style, border_color);
+    lv_style_set_border_opa(&helix_theme_instance->button_style, border_opacity);
     lv_style_set_shadow_width(&helix_theme_instance->button_style, 0);
     // NOTE: text_color intentionally NOT set on button_style
     // Button text color is handled by text_button component with auto-contrast logic
@@ -444,7 +450,8 @@ void theme_core_update_colors(bool is_dark, lv_color_t screen_bg, lv_color_t car
                               lv_color_t surface_control, lv_color_t text_primary_color,
                               lv_color_t focus_color, lv_color_t primary_color,
                               lv_color_t secondary_color, lv_color_t border_color,
-                              lv_color_t knob_color, lv_color_t accent_color) {
+                              int32_t border_opacity, lv_color_t knob_color,
+                              lv_color_t accent_color) {
     if (!helix_theme_instance) {
         return;
     }
@@ -455,9 +462,13 @@ void theme_core_update_colors(bool is_dark, lv_color_t screen_bg, lv_color_t car
     // Input widgets use card_alt color (surface_control) and text_primary for text
     lv_style_set_bg_color(&helix_theme_instance->input_bg_style, surface_control);
     lv_style_set_text_color(&helix_theme_instance->input_bg_style, text_primary_color);
+    lv_style_set_border_color(&helix_theme_instance->input_bg_style, border_color);
+    lv_style_set_border_opa(&helix_theme_instance->input_bg_style, border_opacity);
 
     // Update button style colors (text_color handled by text_button auto-contrast)
     lv_style_set_bg_color(&helix_theme_instance->button_style, surface_control);
+    lv_style_set_border_color(&helix_theme_instance->button_style, border_color);
+    lv_style_set_border_opa(&helix_theme_instance->button_style, border_opacity);
 
     // Update checkbox styles
     lv_style_set_text_color(&helix_theme_instance->checkbox_text_style, text_primary_color);
@@ -530,7 +541,8 @@ void theme_core_update_colors(bool is_dark, lv_color_t screen_bg, lv_color_t car
     lv_obj_report_style_change(NULL);
 }
 
-void theme_core_preview_colors(bool is_dark, const char* colors[16], int32_t border_radius) {
+void theme_core_preview_colors(bool is_dark, const char* colors[16], int32_t border_radius,
+                               int32_t border_opacity) {
     if (!helix_theme_instance) {
         return;
     }
@@ -559,11 +571,14 @@ void theme_core_preview_colors(bool is_dark, const char* colors[16], int32_t bor
     // Input widgets use card_alt color and text_primary for text
     lv_style_set_bg_color(&helix_theme_instance->input_bg_style, card_alt);
     lv_style_set_text_color(&helix_theme_instance->input_bg_style, text_primary);
+    lv_style_set_radius(&helix_theme_instance->input_bg_style, border_radius);
+    lv_style_set_border_opa(&helix_theme_instance->input_bg_style, border_opacity);
 
     // Update button style (text_color handled by text_button auto-contrast)
     lv_style_set_bg_color(&helix_theme_instance->button_style, card_alt);
     lv_style_set_radius(&helix_theme_instance->button_style, border_radius);
     lv_style_set_radius(&helix_theme_instance->pressed_style, border_radius);
+    lv_style_set_border_opa(&helix_theme_instance->button_style, border_opacity);
 
     // Parse accent colors: colors[8]=primary, colors[9]=secondary, colors[10]=tertiary
     lv_color_t primary_accent = lv_color_hex(strtoul(colors[8] + 1, NULL, 16));

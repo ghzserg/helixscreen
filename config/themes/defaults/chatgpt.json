@@ -38,6 +38,6 @@
   },
   "border_radius": 28,
   "border_width": 1,
-  "border_opacity": 60,
+  "border_opacity": 255,
   "shadow_intensity": 30
 }

@@ -37,8 +37,10 @@ static void* ui_card_xml_create(lv_xml_parser_state_t* state, const char** attrs
     // 2. Disabled state: 50% opacity for visual feedback
     lv_obj_set_style_opa(obj, LV_OPA_50, LV_PART_MAIN | LV_STATE_DISABLED);
 
-    // 3. Border: 0 (no border by default)
-    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN);
+    // 3. Border: theme-aware width, color, and opacity
+    lv_obj_set_style_border_width(obj, theme_manager_get_spacing("border_width"), LV_PART_MAIN);
+    lv_obj_set_style_border_color(obj, theme_manager_get_color("border"), LV_PART_MAIN);
+    lv_obj_set_style_border_opa(obj, theme_manager_get_spacing("border_opacity"), LV_PART_MAIN);
 
     // 4. Disable scrolling (cards are fixed containers, not scroll areas)
     lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
@@ -46,8 +48,9 @@ static void* ui_card_xml_create(lv_xml_parser_state_t* state, const char** attrs
     // 5. Shadow: 0 (no shadow)
     lv_obj_set_style_shadow_width(obj, 0, LV_PART_MAIN);
 
-    // 6. Padding: 16px default
-    lv_obj_set_style_pad_all(obj, 16, LV_PART_MAIN);
+    // 6. Padding: theme-aware via space_md
+    lv_obj_set_style_pad_all(obj, theme_manager_get_spacing("space_md"), LV_PART_MAIN);
+    lv_obj_set_style_pad_gap(obj, theme_manager_get_spacing("space_md"), LV_PART_MAIN);
 
     // 7. Border radius: theme-aware via theme_manager_get_spacing
     int32_t radius = theme_manager_get_spacing("border_radius");

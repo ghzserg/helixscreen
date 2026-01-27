@@ -43,10 +43,8 @@
               width="100%" height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_md" style_bg_opa="0"
               style_border_width="0" scrollable="false">
         <!-- Typography Preview Card -->
-        <lv_obj name="preview_typography_card"
-                width="0" height="content" flex_grow="3" flex_flow="column" style_bg_color="#card_bg" style_bg_opa="255"
-                style_radius="#card_radius" style_pad_all="#space_md" style_pad_gap="#space_md" style_border_width="1"
-                style_border_color="#border" style_border_opa="40" scrollable="false">
+        <ui_card name="preview_typography_card"
+                 width="0" height="content" flex_grow="3" flex_flow="column">
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_bg_opa="0"
                   style_border_width="0" style_flex_cross_place="center" scrollable="false">
@@ -94,12 +92,10 @@
             <icon src="light" size="xs" variant="primary"/>
             <lv_checkbox name="preview_checkbox" text="Enable" style_pad_all="#space_xs" checked="true"/>
           </lv_obj>
-        </lv_obj>
+        </ui_card>
         <!-- Actions Preview Card -->
-        <lv_obj name="preview_actions_card"
-                width="0" height="content" flex_grow="2" flex_flow="column" style_bg_color="#card_bg" style_bg_opa="255"
-                style_radius="#card_radius" style_pad_all="#space_md" style_pad_gap="#space_md" style_border_width="1"
-                style_border_color="#border" style_border_opa="40" scrollable="false">
+        <ui_card name="preview_actions_card"
+                 width="0" height="content" flex_grow="2" flex_flow="column">
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" style_bg_opa="0"
                   style_border_width="0" style_flex_cross_place="center" scrollable="false">
@@ -174,17 +170,15 @@
                       style_border_color="#border" style_border_opa="80" scrollable="false"/>
             </lv_obj>
           </lv_obj>
-        </lv_obj>
+        </ui_card>
       </lv_obj>
       <!-- Background Preview -->
-      <lv_obj name="preview_background"
-              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255" style_border_width="1"
-              style_border_color="#border" style_radius="#border_radius" style_pad_all="#space_md"
-              style_pad_gap="#space_xs" flex_flow="column" scrollable="false">
+      <ui_card name="preview_background"
+               width="100%" height="content" style_bg_color="#app_bg" style_pad_gap="#space_xs" flex_flow="column">
         <text_body name="preview_bg_title" text="App Background" style_text_color="#text"/>
         <text_small name="preview_bg_description" text="Surfaces inherit app background tokens for light and dark modes."
                     style_text_color="#text_muted" long_mode="wrap"/>
-      </lv_obj>
+      </ui_card>
       <info_note icon="info" text="Theme changes apply after restart."/>
     </lv_obj>
   </view>
