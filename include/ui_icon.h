@@ -5,7 +5,7 @@
  * @file ui_icon.h
  * @brief Font-based Material Design Icons with semantic sizing and coloring
  *
- * @pattern Semantic variants (primary/secondary/success/error) instead of hardcoded colors
+ * @pattern Semantic variants (text/muted/primary/danger/etc.) with shared reactive styles
  * @threading Main thread only
  * @gotchas Must call ui_icon_register_widget() BEFORE loading icon.xml
  */
@@ -24,8 +24,9 @@
  * Properties:
  *   - src: Icon short name (e.g., "home", "wifi", "settings")
  *   - size: Semantic size string - "xs", "sm", "md", "lg", "xl"
- *   - variant: Color variant - "primary", "secondary", "accent", "disabled",
- *              "success", "warning", "error", "none"
+ *   - variant: Color variant - "text", "muted", "primary", "secondary",
+ *              "tertiary", "disabled", "success", "warning", "danger",
+ *              "info", "none"
  *   - color: Custom color override (e.g., "0xFF0000", "#FF0000")
  *   - clickable: Boolean to enable/disable click events ("true" or "false")
  *
@@ -36,15 +37,18 @@
  *   lg: 48px (mdi_icons_48)
  *   xl: 64px (mdi_icons_64)
  *
- * Variant mapping (reads from globals.xml theme constants):
- *   primary:   Text color #text_primary (100% opacity)
- *   secondary: Text color #text_secondary (100% opacity)
- *   accent:    Text color #primary_color (100% opacity)
- *   disabled:  Text color #text_primary (50% opacity)
- *   success:   Text color #success_color (100% opacity)
- *   warning:   Text color #warning_color (100% opacity)
- *   error:     Text color #error_color (100% opacity)
- *   none:      Text color #text_primary (default)
+ * Variant mapping (uses shared styles from theme_core for reactive theming):
+ *   text:      Primary text color (100% opacity)
+ *   muted:     De-emphasized text color (100% opacity)
+ *   primary:   Accent/brand color (100% opacity)
+ *   secondary: Secondary accent color (100% opacity)
+ *   tertiary:  Tertiary/subtle color (100% opacity)
+ *   disabled:  Primary text color (50% opacity)
+ *   success:   Success/green color (100% opacity)
+ *   warning:   Warning/amber color (100% opacity)
+ *   danger:    Danger/error/red color (100% opacity)
+ *   info:      Info/blue color (100% opacity)
+ *   none:      Same as "text" (default)
  *
  * Call once at application startup, BEFORE registering XML components.
  *
@@ -75,8 +79,9 @@ void ui_icon_set_size(lv_obj_t* icon, const char* size_str);
  * Change the icon color variant at runtime.
  *
  * @param icon         Icon widget
- * @param variant_str  Variant string: "primary", "secondary", "accent",
- *                     "disabled", "success", "warning", "error", or "none"
+ * @param variant_str  Variant string: "text", "muted", "primary", "secondary",
+ *                     "tertiary", "disabled", "success", "warning", "danger",
+ *                     "info", or "none"
  */
 void ui_icon_set_variant(lv_obj_t* icon, const char* variant_str);
 

@@ -14,6 +14,7 @@
 #include "lvgl/src/xml/lv_xml_utils.h"
 #include "lvgl/src/xml/lv_xml_widget.h"
 #include "lvgl/src/xml/parsers/lv_xml_obj_parser.h"
+#include "theme_core.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -27,17 +28,28 @@ enum class IconSize { XS, SM, MD, LG, XL };
 
 /**
  * Variant mapping: semantic name -> color styling
+ *
+ * NEW semantic names (Phase 2.2):
+ *   TEXT     - Primary text color (was PRIMARY)
+ *   MUTED    - De-emphasized text (was SECONDARY)
+ *   PRIMARY  - Accent/brand color (was ACCENT)
+ *   SECONDARY- Secondary accent color (NEW)
+ *   TERTIARY - Tertiary accent color (NEW)
+ *   DANGER   - Error/danger state (was ERROR)
+ *   INFO     - Info state (NEW)
  */
 enum class IconVariant {
-    NONE,
-    PRIMARY,
-    SECONDARY,
-    ACCENT,
-    DISABLED,
+    NONE,      // Uses text style (default)
+    TEXT,      // Primary text color
+    MUTED,     // De-emphasized text
+    PRIMARY,   // Accent/brand color
+    SECONDARY, // Secondary accent
+    TERTIARY,  // Tertiary accent
+    DISABLED,  // Text @ 50% opacity
     SUCCESS,
     WARNING,
-    ERROR,
-    INFO
+    DANGER, // Was ERROR
+    INFO    // NEW
 };
 
 /**
@@ -85,24 +97,41 @@ static const lv_font_t* get_font_for_size(IconSize size) {
 
 /**
  * Parse variant string to IconVariant enum
+ *
+ * Semantic variant names:
+ *   "text"      -> TEXT (primary text color)
+ *   "muted"     -> MUTED (de-emphasized text)
+ *   "primary"   -> PRIMARY (accent/brand color)
+ *   "secondary" -> SECONDARY (secondary accent color)
+ *   "tertiary"  -> TERTIARY (tertiary accent color)
+ *   "disabled"  -> DISABLED (text @ 50% opacity)
+ *   "success"   -> SUCCESS (green)
+ *   "warning"   -> WARNING (amber)
+ *   "danger"    -> DANGER (red)
+ *   "info"      -> INFO (blue)
+ *   "none"      -> NONE (uses text style)
  */
 static IconVariant parse_variant(const char* variant_str) {
     if (!variant_str || strlen(variant_str) == 0) {
         return IconVariant::NONE;
+    } else if (strcmp(variant_str, "text") == 0) {
+        return IconVariant::TEXT;
+    } else if (strcmp(variant_str, "muted") == 0) {
+        return IconVariant::MUTED;
     } else if (strcmp(variant_str, "primary") == 0) {
         return IconVariant::PRIMARY;
     } else if (strcmp(variant_str, "secondary") == 0) {
         return IconVariant::SECONDARY;
-    } else if (strcmp(variant_str, "accent") == 0) {
-        return IconVariant::ACCENT;
+    } else if (strcmp(variant_str, "tertiary") == 0) {
+        return IconVariant::TERTIARY;
     } else if (strcmp(variant_str, "disabled") == 0) {
         return IconVariant::DISABLED;
     } else if (strcmp(variant_str, "success") == 0) {
         return IconVariant::SUCCESS;
     } else if (strcmp(variant_str, "warning") == 0) {
         return IconVariant::WARNING;
-    } else if (strcmp(variant_str, "error") == 0) {
-        return IconVariant::ERROR;
+    } else if (strcmp(variant_str, "danger") == 0) {
+        return IconVariant::DANGER;
     } else if (strcmp(variant_str, "info") == 0) {
         return IconVariant::INFO;
     } else if (strcmp(variant_str, "none") == 0) {
@@ -128,56 +157,85 @@ static void apply_size(lv_obj_t* obj, IconSize size) {
 }
 
 /**
+ * Remove any previously applied icon variant style from the object.
+ *
+ * This prevents style accumulation when changing variants multiple times.
+ * We remove all known icon styles - only one will be present at a time.
+ */
+static void remove_icon_styles(lv_obj_t* obj) {
+    // Remove all possible icon styles - only one should be attached
+    lv_style_t* styles_to_remove[] = {
+        theme_core_get_icon_text_style(),     theme_core_get_icon_muted_style(),
+        theme_core_get_icon_primary_style(),  theme_core_get_icon_secondary_style(),
+        theme_core_get_icon_tertiary_style(), theme_core_get_icon_success_style(),
+        theme_core_get_icon_warning_style(),  theme_core_get_icon_danger_style(),
+        theme_core_get_icon_info_style(),
+    };
+
+    for (lv_style_t* style : styles_to_remove) {
+        if (style) {
+            lv_obj_remove_style(obj, style, LV_PART_MAIN);
+        }
+    }
+}
+
+/**
  * Apply variant color styling to icon widget
- * Uses colors from ui_theme.h (single source of truth)
+ *
+ * Uses shared styles from theme_core instead of inline colors. This enables
+ * reactive theming - when theme_core_update_colors() is called, icons
+ * automatically update because they reference the shared style objects.
+ *
+ * Removes any previously applied icon style first to prevent accumulation.
  */
 static void apply_variant(lv_obj_t* obj, IconVariant variant) {
-    lv_color_t color;
+    // Remove any existing icon style first to prevent accumulation
+    remove_icon_styles(obj);
+
+    lv_style_t* style = nullptr;
     lv_opa_t opa = LV_OPA_COVER;
 
     switch (variant) {
+    case IconVariant::TEXT:
+    case IconVariant::NONE:
+        style = theme_core_get_icon_text_style();
+        break;
+    case IconVariant::MUTED:
+        style = theme_core_get_icon_muted_style();
+        break;
     case IconVariant::PRIMARY:
-        // Primary text color (white in dark mode)
-        color = theme_manager_get_color("text");
+        style = theme_core_get_icon_primary_style();
         break;
     case IconVariant::SECONDARY:
-        // Secondary text color (gray)
-        color = theme_manager_get_color("text_muted");
+        style = theme_core_get_icon_secondary_style();
         break;
-    case IconVariant::ACCENT:
-        // Accent color: more saturated of primary vs secondary
-        color = theme_get_accent_color();
+    case IconVariant::TERTIARY:
+        style = theme_core_get_icon_tertiary_style();
         break;
     case IconVariant::DISABLED:
-        // Primary text color at 50% opacity
-        color = theme_manager_get_color("text");
+        style = theme_core_get_icon_text_style();
         opa = LV_OPA_50;
         break;
     case IconVariant::SUCCESS:
-        // Success color (green) from globals.xml
-        color = theme_manager_get_color("success");
+        style = theme_core_get_icon_success_style();
         break;
     case IconVariant::WARNING:
-        // Warning color (orange) from globals.xml
-        color = theme_manager_get_color("warning");
+        style = theme_core_get_icon_warning_style();
         break;
-    case IconVariant::ERROR:
-        // Error color (red) from globals.xml
-        color = theme_manager_get_color("danger");
+    case IconVariant::DANGER:
+        style = theme_core_get_icon_danger_style();
         break;
     case IconVariant::INFO:
-        // Info color (blue) from globals.xml
-        color = theme_manager_get_color("info");
-        break;
-    case IconVariant::NONE:
-    default:
-        // Use default text color (inherit from theme)
-        color = theme_manager_get_color("text");
+        style = theme_core_get_icon_info_style();
         break;
     }
 
-    lv_obj_set_style_text_color(obj, color, LV_PART_MAIN);
-    lv_obj_set_style_text_opa(obj, opa, LV_PART_MAIN);
+    if (style) {
+        lv_obj_add_style(obj, style, LV_PART_MAIN);
+        lv_obj_set_style_text_opa(obj, opa, LV_PART_MAIN);
+    } else {
+        spdlog::error("[Icon] Failed to get style for variant - theme not initialized?");
+    }
 }
 
 /**
