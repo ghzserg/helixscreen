@@ -9,15 +9,15 @@
         extends="overlay_panel" width="#overlay_panel_width_full" title="Sensors" bg_color="#app_bg">
     <!-- Content Area -->
     <lv_obj name="overlay_content"
-            width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="#space_lg" scrollable="true"
-            scroll_dir="VER" scroll_elastic="false" style_border_width="0" flex_flow="column" style_pad_gap="#space_lg">
+            width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="#space_lg" scrollable="true" scroll_dir="VER"
+            scroll_elastic="false" style_border_width="0" flex_flow="column" style_pad_gap="#space_lg">
       <!-- ================================================================== -->
       <!-- SWITCH SENSORS SECTION (filament runout/motion sensors) -->
       <!-- ================================================================== -->
       <lv_obj name="switch_sensors_section"
-              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255"
-              style_radius="#border_radius" style_border_width="0" style_pad_all="#space_lg" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_md">
+              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255" style_radius="#border_radius"
+              style_border_width="0" style_pad_all="#space_lg" scrollable="false" flex_flow="column"
+              style_pad_gap="#space_md">
         <bind_flag_if_eq subject="filament_sensor_count" flag="hidden" ref_value="0"/>
         <!-- Section Header -->
         <lv_obj width="100%"
@@ -47,17 +47,17 @@
                     style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="switch_sensors_list"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0"
-                style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
+                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
       </lv_obj>
 
       <!-- ================================================================== -->
       <!-- PROBE SENSORS SECTION -->
       <!-- ================================================================== -->
       <lv_obj name="probe_sensors_section"
-              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255"
-              style_radius="#border_radius" style_border_width="0" style_pad_all="#space_lg" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_md">
+              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255" style_radius="#border_radius"
+              style_border_width="0" style_pad_all="#space_lg" scrollable="false" flex_flow="column"
+              style_pad_gap="#space_md">
         <bind_flag_if_eq subject="probe_count" flag="hidden" ref_value="0"/>
         <!-- Section Header -->
         <lv_obj width="100%"
@@ -65,7 +65,7 @@
                 flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
           <icon src="arrow_down_bold" size="sm" variant="secondary"/>
           <text_body text="Probe Sensors" style_text_color="#text" flex_grow="1"/>
-          <text_small name="probe_sensor_count" text="(0)" style_text_color="#text_muted"/>
+          <text_small name="probe_sensor_count_label" text="(0)" style_text_color="#text_muted"/>
         </lv_obj>
         <!-- Description -->
         <text_small width="100%"
@@ -73,17 +73,17 @@
                     style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="probe_sensors_list"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0"
-                style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
+                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
       </lv_obj>
 
       <!-- ================================================================== -->
       <!-- WIDTH SENSORS SECTION -->
       <!-- ================================================================== -->
       <lv_obj name="width_sensors_section"
-              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255"
-              style_radius="#border_radius" style_border_width="0" style_pad_all="#space_lg" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_md">
+              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255" style_radius="#border_radius"
+              style_border_width="0" style_pad_all="#space_lg" scrollable="false" flex_flow="column"
+              style_pad_gap="#space_md">
         <bind_flag_if_eq subject="width_sensor_count" flag="hidden" ref_value="0"/>
         <!-- Section Header -->
         <lv_obj width="100%"
@@ -99,17 +99,17 @@
                     style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="width_sensors_list"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0"
-                style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
+                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
       </lv_obj>
 
       <!-- ================================================================== -->
       <!-- HUMIDITY SENSORS SECTION -->
       <!-- ================================================================== -->
       <lv_obj name="humidity_sensors_section"
-              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255"
-              style_radius="#border_radius" style_border_width="0" style_pad_all="#space_lg" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_md">
+              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255" style_radius="#border_radius"
+              style_border_width="0" style_pad_all="#space_lg" scrollable="false" flex_flow="column"
+              style_pad_gap="#space_md">
         <bind_flag_if_eq subject="humidity_sensor_count" flag="hidden" ref_value="0"/>
         <!-- Section Header -->
         <lv_obj width="100%"
@@ -121,21 +121,20 @@
         </lv_obj>
         <!-- Description -->
         <text_small width="100%"
-                    text="Chamber and dryer humidity monitoring" style_text_color="#text_muted"
-                    style_text_align="left"/>
+                    text="Chamber and dryer humidity monitoring" style_text_color="#text_muted" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="humidity_sensors_list"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0"
-                style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
+                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
       </lv_obj>
 
       <!-- ================================================================== -->
       <!-- ACCELEROMETER SENSORS SECTION -->
       <!-- ================================================================== -->
       <lv_obj name="accel_sensors_section"
-              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255"
-              style_radius="#border_radius" style_border_width="0" style_pad_all="#space_lg" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_md">
+              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255" style_radius="#border_radius"
+              style_border_width="0" style_pad_all="#space_lg" scrollable="false" flex_flow="column"
+              style_pad_gap="#space_md">
         <bind_flag_if_eq subject="accel_count" flag="hidden" ref_value="0"/>
         <!-- Section Header -->
         <lv_obj width="100%"
@@ -147,21 +146,20 @@
         </lv_obj>
         <!-- Description -->
         <text_small width="100%"
-                    text="Input shaper calibration sensors" style_text_color="#text_muted"
-                    style_text_align="left"/>
+                    text="Input shaper calibration sensors" style_text_color="#text_muted" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="accel_sensors_list"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0"
-                style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
+                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
       </lv_obj>
 
       <!-- ================================================================== -->
       <!-- COLOR SENSORS SECTION -->
       <!-- ================================================================== -->
       <lv_obj name="color_sensors_section"
-              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255"
-              style_radius="#border_radius" style_border_width="0" style_pad_all="#space_lg" scrollable="false"
-              flex_flow="column" style_pad_gap="#space_md">
+              width="100%" height="content" style_bg_color="#app_bg" style_bg_opa="255" style_radius="#border_radius"
+              style_border_width="0" style_pad_all="#space_lg" scrollable="false" flex_flow="column"
+              style_pad_gap="#space_md">
         <bind_flag_if_eq subject="color_sensor_count" flag="hidden" ref_value="0"/>
         <!-- Section Header -->
         <lv_obj width="100%"
@@ -173,12 +171,11 @@
         </lv_obj>
         <!-- Description -->
         <text_small width="100%"
-                    text="TD-1 filament color detection" style_text_color="#text_muted"
-                    style_text_align="left"/>
+                    text="TD-1 filament color detection" style_text_color="#text_muted" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="color_sensors_list"
-                width="100%" height="content" style_bg_opa="0" style_border_width="0"
-                style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
+                width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0"
+                scrollable="false" flex_flow="column" style_pad_gap="#space_xs"/>
       </lv_obj>
 
       <!-- ================================================================== -->
@@ -189,8 +186,7 @@
            Hidden programmatically by C++ when any sensors exist. -->
       <centered_column name="no_sensors_placeholder" flex_grow="1" style_pad_all="#space_lg" hidden="true">
         <icon src="sensor" size="md" variant="secondary"/>
-        <text_small text="No sensors detected"
-                    style_text_color="#text_muted" style_margin_top="#space_sm"/>
+        <text_small text="No sensors detected" style_text_color="#text_muted" style_margin_top="#space_sm"/>
       </centered_column>
 
       <!-- ================================================================== -->

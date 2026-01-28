@@ -308,7 +308,7 @@ void SensorSettingsOverlay::update_probe_sensor_count() {
     if (!overlay_root_)
         return;
 
-    lv_obj_t* count_label = lv_obj_find_by_name(overlay_root_, "probe_sensor_count");
+    lv_obj_t* count_label = lv_obj_find_by_name(overlay_root_, "probe_sensor_count_label");
     if (count_label) {
         auto& mgr = helix::sensors::ProbeSensorManager::instance();
         lv_label_set_text_fmt(count_label, "(%zu)", mgr.sensor_count());
@@ -344,7 +344,7 @@ void SensorSettingsOverlay::populate_probe_sensors() {
         lv_obj_set_height(row, LV_SIZE_CONTENT);
         lv_obj_set_style_bg_opa(row, 0, 0);
         lv_obj_set_style_border_width(row, 0, 0);
-        lv_obj_set_style_pad_all(row, 8, 0);
+        lv_obj_set_style_pad_all(row, theme_manager_get_spacing("space_sm"), 0);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, 0);
 
@@ -421,7 +421,7 @@ void SensorSettingsOverlay::populate_width_sensors() {
         lv_obj_set_height(row, LV_SIZE_CONTENT);
         lv_obj_set_style_bg_opa(row, 0, 0);
         lv_obj_set_style_border_width(row, 0, 0);
-        lv_obj_set_style_pad_all(row, 8, 0);
+        lv_obj_set_style_pad_all(row, theme_manager_get_spacing("space_sm"), 0);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, 0);
 
@@ -484,7 +484,7 @@ void SensorSettingsOverlay::populate_humidity_sensors() {
         lv_obj_set_height(row, LV_SIZE_CONTENT);
         lv_obj_set_style_bg_opa(row, 0, 0);
         lv_obj_set_style_border_width(row, 0, 0);
-        lv_obj_set_style_pad_all(row, 8, 0);
+        lv_obj_set_style_pad_all(row, theme_manager_get_spacing("space_sm"), 0);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, 0);
 
@@ -546,7 +546,7 @@ void SensorSettingsOverlay::populate_accel_sensors() {
         lv_obj_set_height(row, LV_SIZE_CONTENT);
         lv_obj_set_style_bg_opa(row, 0, 0);
         lv_obj_set_style_border_width(row, 0, 0);
-        lv_obj_set_style_pad_all(row, 8, 0);
+        lv_obj_set_style_pad_all(row, theme_manager_get_spacing("space_sm"), 0);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, 0);
 
@@ -624,7 +624,7 @@ void SensorSettingsOverlay::populate_color_sensors() {
         lv_obj_set_height(row, LV_SIZE_CONTENT);
         lv_obj_set_style_bg_opa(row, 0, 0);
         lv_obj_set_style_border_width(row, 0, 0);
-        lv_obj_set_style_pad_all(row, 8, 0);
+        lv_obj_set_style_pad_all(row, theme_manager_get_spacing("space_sm"), 0);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
         lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, 0);
 

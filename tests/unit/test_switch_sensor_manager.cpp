@@ -767,44 +767,124 @@ TEST_CASE("SwitchSensorTypes - type string conversion", "[sensors][switch][types
 // Z_PROBE Role Tests
 // ============================================================================
 
+// ============================================================================
+// Z_PROBE Role Tests
+// ============================================================================
+
 TEST_CASE_METHOD(FilamentSensorTestFixture, "FilamentSensorManager - Z_PROBE role assignment",
                  "[filament][probe]") {
-    // Discover a sensor that can be assigned as probe
-    std::vector<std::string> sensors = {"filament_switch_sensor e1_sensor"};
+    // Discover sensors that can be assigned as probe
+    std::vector<std::string> sensors = {"filament_switch_sensor e1_sensor",
+                                        "filament_switch_sensor e2_sensor"};
     mgr().discover_sensors(sensors);
 
     SECTION("Can assign Z_PROBE role") {
         mgr().set_sensor_role("filament_switch_sensor e1_sensor", FilamentSensorRole::Z_PROBE);
         auto configs = mgr().get_sensors();
-        REQUIRE(configs[0].role == FilamentSensorRole::Z_PROBE);
+        auto it = std::find_if(configs.begin(), configs.end(),
+                               [](const auto& c) { return c.sensor_name == "e1_sensor"; });
+        REQUIRE(it != configs.end());
+        REQUIRE(it->role == FilamentSensorRole::Z_PROBE);
+    }
+
+    SECTION("Z_PROBE role is stored correctly after assignment") {
+        mgr().set_sensor_role("filament_switch_sensor e1_sensor", FilamentSensorRole::Z_PROBE);
+
+        auto configs = mgr().get_sensors();
+        int probe_count = 0;
+        for (const auto& config : configs) {
+            if (config.role == FilamentSensorRole::Z_PROBE) {
+                probe_count++;
+                REQUIRE(config.klipper_name == "filament_switch_sensor e1_sensor");
+            }
+        }
+        REQUIRE(probe_count == 1);
+    }
+
+    SECTION("Z_PROBE role assignment is unique - clears from previous sensor") {
+        // Assign Z_PROBE to first sensor
+        mgr().set_sensor_role("filament_switch_sensor e1_sensor", FilamentSensorRole::Z_PROBE);
+
+        // Assign Z_PROBE to second sensor - should clear from first
+        mgr().set_sensor_role("filament_switch_sensor e2_sensor", FilamentSensorRole::Z_PROBE);
+
+        auto configs = mgr().get_sensors();
+
+        // First sensor should now have NONE
+        auto e1_it = std::find_if(configs.begin(), configs.end(),
+                                  [](const auto& c) { return c.sensor_name == "e1_sensor"; });
+        REQUIRE(e1_it->role == FilamentSensorRole::NONE);
+
+        // Second sensor should have Z_PROBE
+        auto e2_it = std::find_if(configs.begin(), configs.end(),
+                                  [](const auto& c) { return c.sensor_name == "e2_sensor"; });
+        REQUIRE(e2_it->role == FilamentSensorRole::Z_PROBE);
+    }
+
+    SECTION("Can clear Z_PROBE role by assigning NONE") {
+        mgr().set_sensor_role("filament_switch_sensor e1_sensor", FilamentSensorRole::Z_PROBE);
+        mgr().set_sensor_role("filament_switch_sensor e1_sensor", FilamentSensorRole::NONE);
+
+        auto configs = mgr().get_sensors();
+        for (const auto& config : configs) {
+            REQUIRE(config.role != FilamentSensorRole::Z_PROBE);
+        }
+    }
+
+    SECTION("Z_PROBE and filament roles are independent") {
+        // Assign both Z_PROBE and RUNOUT to different sensors
+        mgr().set_sensor_role("filament_switch_sensor e1_sensor", FilamentSensorRole::Z_PROBE);
+        mgr().set_sensor_role("filament_switch_sensor e2_sensor", FilamentSensorRole::RUNOUT);
+
+        auto configs = mgr().get_sensors();
+
+        auto e1_it = std::find_if(configs.begin(), configs.end(),
+                                  [](const auto& c) { return c.sensor_name == "e1_sensor"; });
+        auto e2_it = std::find_if(configs.begin(), configs.end(),
+                                  [](const auto& c) { return c.sensor_name == "e2_sensor"; });
+
+        REQUIRE(e1_it->role == FilamentSensorRole::Z_PROBE);
+        REQUIRE(e2_it->role == FilamentSensorRole::RUNOUT);
     }
 }
 
-TEST_CASE_METHOD(FilamentSensorTestFixture, "FilamentSensorManager - probe subject updates",
+TEST_CASE_METHOD(FilamentSensorTestFixture, "FilamentSensorManager - is_probe_triggered behavior",
                  "[filament][probe]") {
-    SECTION("Probe triggered subject updates from sensor state") {
-        mgr().discover_sensors({"filament_switch_sensor probe"});
-        mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+    SECTION("Returns false when no probe sensor is assigned") {
+        mgr().discover_sensors({"filament_switch_sensor e1"});
+        // No role assignment
+        REQUIRE_FALSE(mgr().is_probe_triggered());
+    }
 
-        auto* subject = mgr().get_probe_triggered_subject();
-        REQUIRE(subject != nullptr);
+    SECTION("Returns false when master is disabled") {
+        mgr().discover_sensors({"filament_switch_sensor e1"});
+        mgr().set_sensor_role("filament_switch_sensor e1", FilamentSensorRole::Z_PROBE);
 
-        // After assignment but no status update, should be 0 (not triggered)
-        REQUIRE(lv_subject_get_int(subject) == 0);
-
+        // Trigger the probe
         json status;
-        status["filament_switch_sensor probe"]["filament_detected"] = true;
+        status["filament_switch_sensor e1"]["filament_detected"] = true;
         mgr().update_from_status(status);
 
-        REQUIRE(lv_subject_get_int(subject) == 1); // Triggered
+        // Disable master
+        mgr().set_master_enabled(false);
+        REQUIRE_FALSE(mgr().is_probe_triggered());
     }
-}
 
-TEST_CASE_METHOD(FilamentSensorTestFixture, "FilamentSensorManager - is_probe_triggered query",
-                 "[filament][probe]") {
-    SECTION("is_probe_triggered returns correct state") {
-        REQUIRE_FALSE(mgr().is_probe_triggered()); // No probe assigned
+    SECTION("Returns false when probe sensor is individually disabled") {
+        mgr().discover_sensors({"filament_switch_sensor e1"});
+        mgr().set_sensor_role("filament_switch_sensor e1", FilamentSensorRole::Z_PROBE);
 
+        // Trigger the probe
+        json status;
+        status["filament_switch_sensor e1"]["filament_detected"] = true;
+        mgr().update_from_status(status);
+
+        // Disable just the probe sensor
+        mgr().set_sensor_enabled("filament_switch_sensor e1", false);
+        REQUIRE_FALSE(mgr().is_probe_triggered());
+    }
+
+    SECTION("Returns true when probe is enabled and triggered") {
         mgr().discover_sensors({"filament_switch_sensor e1"});
         mgr().set_sensor_role("filament_switch_sensor e1", FilamentSensorRole::Z_PROBE);
 
@@ -813,5 +893,209 @@ TEST_CASE_METHOD(FilamentSensorTestFixture, "FilamentSensorManager - is_probe_tr
         mgr().update_from_status(status);
 
         REQUIRE(mgr().is_probe_triggered());
+    }
+
+    SECTION("Returns false when probe is enabled but not triggered") {
+        mgr().discover_sensors({"filament_switch_sensor e1"});
+        mgr().set_sensor_role("filament_switch_sensor e1", FilamentSensorRole::Z_PROBE);
+
+        json status;
+        status["filament_switch_sensor e1"]["filament_detected"] = false;
+        mgr().update_from_status(status);
+
+        REQUIRE_FALSE(mgr().is_probe_triggered());
+    }
+
+    SECTION("Only the configured probe sensor affects is_probe_triggered") {
+        // Multiple sensors, only one is probe
+        mgr().discover_sensors(
+            {"filament_switch_sensor probe_sensor", "filament_switch_sensor other_sensor"});
+        mgr().set_sensor_role("filament_switch_sensor probe_sensor", FilamentSensorRole::Z_PROBE);
+        mgr().set_sensor_role("filament_switch_sensor other_sensor", FilamentSensorRole::RUNOUT);
+
+        // Trigger the non-probe sensor only
+        json status;
+        status["filament_switch_sensor other_sensor"]["filament_detected"] = true;
+        status["filament_switch_sensor probe_sensor"]["filament_detected"] = false;
+        mgr().update_from_status(status);
+
+        // Probe should not be triggered
+        REQUIRE_FALSE(mgr().is_probe_triggered());
+
+        // Now trigger the probe sensor
+        json status2;
+        status2["filament_switch_sensor probe_sensor"]["filament_detected"] = true;
+        mgr().update_from_status(status2);
+
+        REQUIRE(mgr().is_probe_triggered());
+    }
+
+    SECTION("Probe state transitions correctly") {
+        mgr().discover_sensors({"filament_switch_sensor e1"});
+        mgr().set_sensor_role("filament_switch_sensor e1", FilamentSensorRole::Z_PROBE);
+
+        // Initial state - not triggered
+        REQUIRE_FALSE(mgr().is_probe_triggered());
+
+        // Trigger
+        json status1;
+        status1["filament_switch_sensor e1"]["filament_detected"] = true;
+        mgr().update_from_status(status1);
+        REQUIRE(mgr().is_probe_triggered());
+
+        // Untrigger
+        json status2;
+        status2["filament_switch_sensor e1"]["filament_detected"] = false;
+        mgr().update_from_status(status2);
+        REQUIRE_FALSE(mgr().is_probe_triggered());
+
+        // Trigger again
+        json status3;
+        status3["filament_switch_sensor e1"]["filament_detected"] = true;
+        mgr().update_from_status(status3);
+        REQUIRE(mgr().is_probe_triggered());
+    }
+}
+
+TEST_CASE_METHOD(FilamentSensorTestFixture,
+                 "FilamentSensorManager - probe_triggered subject updates", "[filament][probe]") {
+    SECTION("Subject returns -1 when no probe assigned") {
+        mgr().discover_sensors({"filament_switch_sensor e1"});
+        // No Z_PROBE role assigned
+        auto* subject = mgr().get_probe_triggered_subject();
+        REQUIRE(subject != nullptr);
+        REQUIRE(lv_subject_get_int(subject) == -1);
+    }
+
+    SECTION("Subject returns 0 after probe assignment with no state update") {
+        mgr().discover_sensors({"filament_switch_sensor probe"});
+        mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+
+        auto* subject = mgr().get_probe_triggered_subject();
+        REQUIRE(lv_subject_get_int(subject) == 0);
+    }
+
+    SECTION("Subject returns 1 when probe is triggered") {
+        mgr().discover_sensors({"filament_switch_sensor probe"});
+        mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+
+        json status;
+        status["filament_switch_sensor probe"]["filament_detected"] = true;
+        mgr().update_from_status(status);
+
+        auto* subject = mgr().get_probe_triggered_subject();
+        REQUIRE(lv_subject_get_int(subject) == 1);
+    }
+
+    SECTION("Subject returns 0 when probe is not triggered") {
+        mgr().discover_sensors({"filament_switch_sensor probe"});
+        mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+
+        json status;
+        status["filament_switch_sensor probe"]["filament_detected"] = false;
+        mgr().update_from_status(status);
+
+        auto* subject = mgr().get_probe_triggered_subject();
+        REQUIRE(lv_subject_get_int(subject) == 0);
+    }
+
+    SECTION("Subject returns -1 when master disabled") {
+        mgr().discover_sensors({"filament_switch_sensor probe"});
+        mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+
+        json status;
+        status["filament_switch_sensor probe"]["filament_detected"] = true;
+        mgr().update_from_status(status);
+
+        mgr().set_master_enabled(false);
+
+        auto* subject = mgr().get_probe_triggered_subject();
+        REQUIRE(lv_subject_get_int(subject) == -1);
+    }
+
+    SECTION("Subject returns -1 when probe sensor disabled") {
+        mgr().discover_sensors({"filament_switch_sensor probe"});
+        mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+
+        json status;
+        status["filament_switch_sensor probe"]["filament_detected"] = true;
+        mgr().update_from_status(status);
+
+        mgr().set_sensor_enabled("filament_switch_sensor probe", false);
+
+        auto* subject = mgr().get_probe_triggered_subject();
+        REQUIRE(lv_subject_get_int(subject) == -1);
+    }
+
+    SECTION("Subject updates correctly via update_from_status with JSON") {
+        mgr().discover_sensors({"filament_switch_sensor probe"});
+        mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+
+        auto* subject = mgr().get_probe_triggered_subject();
+
+        // Sequence of state changes
+        json status1;
+        status1["filament_switch_sensor probe"]["filament_detected"] = true;
+        mgr().update_from_status(status1);
+        REQUIRE(lv_subject_get_int(subject) == 1);
+
+        json status2;
+        status2["filament_switch_sensor probe"]["filament_detected"] = false;
+        mgr().update_from_status(status2);
+        REQUIRE(lv_subject_get_int(subject) == 0);
+
+        json status3;
+        status3["filament_switch_sensor probe"]["filament_detected"] = true;
+        mgr().update_from_status(status3);
+        REQUIRE(lv_subject_get_int(subject) == 1);
+    }
+
+    SECTION("Probe subject is independent of filament role subjects") {
+        mgr().discover_sensors(
+            {"filament_switch_sensor probe", "filament_switch_sensor runout_sensor"});
+        mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+        mgr().set_sensor_role("filament_switch_sensor runout_sensor", FilamentSensorRole::RUNOUT);
+
+        // Update both sensors
+        json status;
+        status["filament_switch_sensor probe"]["filament_detected"] = true;
+        status["filament_switch_sensor runout_sensor"]["filament_detected"] = false;
+        mgr().update_from_status(status);
+
+        // Check subjects are independent
+        REQUIRE(lv_subject_get_int(mgr().get_probe_triggered_subject()) == 1);
+        REQUIRE(lv_subject_get_int(mgr().get_runout_detected_subject()) == 0);
+    }
+}
+
+TEST_CASE_METHOD(FilamentSensorTestFixture,
+                 "FilamentSensorManager - Z_PROBE with state change callback",
+                 "[filament][probe]") {
+    mgr().discover_sensors({"filament_switch_sensor probe"});
+    mgr().set_sensor_role("filament_switch_sensor probe", FilamentSensorRole::Z_PROBE);
+
+    SECTION("State change callback fires for probe sensor changes") {
+        bool callback_fired = false;
+        std::string changed_sensor;
+        bool old_detected = true;
+        bool new_detected = false;
+
+        mgr().set_state_change_callback([&](const std::string& name,
+                                            const FilamentSensorState& old_state,
+                                            const FilamentSensorState& new_state) {
+            callback_fired = true;
+            changed_sensor = name;
+            old_detected = old_state.filament_detected;
+            new_detected = new_state.filament_detected;
+        });
+
+        json status;
+        status["filament_switch_sensor probe"]["filament_detected"] = true;
+        mgr().update_from_status(status);
+
+        REQUIRE(callback_fired);
+        REQUIRE(changed_sensor == "filament_switch_sensor probe");
+        REQUIRE(old_detected == false);
+        REQUIRE(new_detected == true);
     }
 }

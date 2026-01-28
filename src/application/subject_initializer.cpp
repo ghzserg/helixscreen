@@ -42,16 +42,16 @@
 #include "color_sensor_manager.h"
 #include "filament_sensor_manager.h"
 #include "humidity_sensor_manager.h"
-#include "probe_sensor_manager.h"
-#include "width_sensor_manager.h"
 #include "lvgl/lvgl.h"
 #include "print_completion.h"
 #include "print_start_navigation.h"
 #include "printer_state.h"
+#include "probe_sensor_manager.h"
 #include "settings_manager.h"
 #include "static_panel_registry.h"
 #include "static_subject_registry.h"
 #include "usb_manager.h"
+#include "width_sensor_manager.h"
 #include "xml_registration.h"
 
 #include <spdlog/spdlog.h>
@@ -141,6 +141,14 @@ void SubjectInitializer::init_printer_state_subjects() {
 
 void SubjectInitializer::init_ams_subjects() {
     spdlog::trace("[SubjectInitializer] Initializing AMS/FilamentSensor subjects");
+
+    // Helper macro: initializes a sensor manager's subjects and registers cleanup.
+    // Takes the fully-qualified class name (e.g., helix::sensors::HumiditySensorManager).
+#define REGISTER_SENSOR_MANAGER(ManagerClass)                                                      \
+    ManagerClass::instance().init_subjects();                                                      \
+    StaticSubjectRegistry::instance().register_deinit(                                             \
+        #ManagerClass, []() { ManagerClass::instance().deinit_subjects(); })
+
     // Initialize AmsState subjects BEFORE panels so XML bindings can find ams_gate_count
     // Note: In mock mode, init_subjects() also creates the mock backend internally
     AmsState::instance().init_subjects(true);
@@ -149,39 +157,15 @@ void SubjectInitializer::init_ams_subjects() {
     StaticSubjectRegistry::instance().register_deinit(
         "AmsState", []() { AmsState::instance().deinit_subjects(); });
 
-    // Initialize FilamentSensorManager subjects BEFORE panels so XML bindings can work
-    helix::FilamentSensorManager::instance().init_subjects();
+    // Initialize sensor manager subjects BEFORE panels so XML bindings can work
+    REGISTER_SENSOR_MANAGER(helix::FilamentSensorManager);
+    REGISTER_SENSOR_MANAGER(helix::sensors::HumiditySensorManager);
+    REGISTER_SENSOR_MANAGER(helix::sensors::WidthSensorManager);
+    REGISTER_SENSOR_MANAGER(helix::sensors::ProbeSensorManager);
+    REGISTER_SENSOR_MANAGER(helix::sensors::AccelSensorManager);
+    REGISTER_SENSOR_MANAGER(helix::sensors::ColorSensorManager);
 
-    // Register FilamentSensorManager cleanup (StaticSubjectRegistry - core state singleton)
-    StaticSubjectRegistry::instance().register_deinit("FilamentSensorManager", []() {
-        helix::FilamentSensorManager::instance().deinit_subjects();
-    });
-
-    // Initialize additional sensor manager subjects BEFORE panels so XML bindings can work
-    helix::sensors::HumiditySensorManager::instance().init_subjects();
-    StaticSubjectRegistry::instance().register_deinit("HumiditySensorManager", []() {
-        helix::sensors::HumiditySensorManager::instance().deinit_subjects();
-    });
-
-    helix::sensors::WidthSensorManager::instance().init_subjects();
-    StaticSubjectRegistry::instance().register_deinit("WidthSensorManager", []() {
-        helix::sensors::WidthSensorManager::instance().deinit_subjects();
-    });
-
-    helix::sensors::ProbeSensorManager::instance().init_subjects();
-    StaticSubjectRegistry::instance().register_deinit("ProbeSensorManager", []() {
-        helix::sensors::ProbeSensorManager::instance().deinit_subjects();
-    });
-
-    helix::sensors::AccelSensorManager::instance().init_subjects();
-    StaticSubjectRegistry::instance().register_deinit("AccelSensorManager", []() {
-        helix::sensors::AccelSensorManager::instance().deinit_subjects();
-    });
-
-    helix::sensors::ColorSensorManager::instance().init_subjects();
-    StaticSubjectRegistry::instance().register_deinit("ColorSensorManager", []() {
-        helix::sensors::ColorSensorManager::instance().deinit_subjects();
-    });
+#undef REGISTER_SENSOR_MANAGER
 }
 
 void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {

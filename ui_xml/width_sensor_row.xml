@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Width Sensor Row Component -->
+<!-- A single row for filament width sensors (TSL1401CL, Hall) -->
+<!-- Shows sensor name, type badge, and enable toggle -->
+<!-- Usage: Created dynamically by C++ in sensor settings overlays -->
+<component>
+  <api>
+    <prop name="sensor_name" type="string" default="Width Sensor"/>
+    <prop name="sensor_type" type="string" default="hall"/>
+  </api>
+  <view name="sensor_row"
+        extends="lv_obj" width="100%" height="content" style_bg_opa="0" style_border_width="0"
+        style_pad_left="#space_sm" style_pad_right="#space_sm" style_pad_top="#space_md" style_pad_bottom="#space_md"
+        scrollable="false" flex_flow="column" style_pad_gap="#space_sm">
+    <!-- Row: Name + Type badge + Enable toggle -->
+    <lv_obj width="100%"
+            height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+            flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
+      <!-- Left: Sensor name with icon -->
+      <lv_obj width="content"
+              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <icon src="ruler" size="sm" variant="accent"/>
+        <text_body name="name_label" text="$sensor_name" style_text_color="#text"/>
+        <!-- Type badge -->
+        <lv_obj width="content"
+                height="content" style_bg_color="#text_muted" style_bg_opa="40" style_border_width="0"
+                style_radius="#border_radius" style_pad_left="#space_sm" style_pad_right="#space_sm"
+                style_pad_top="#space_xxs" style_pad_bottom="#space_xxs" scrollable="false">
+          <text_small name="type_label" text="$sensor_type" style_text_color="#text_muted"/>
+        </lv_obj>
+      </lv_obj>
+      <!-- Right: Enable toggle -->
+      <lv_obj width="content"
+              height="content" style_bg_opa="0" style_border_width="0" style_pad_all="0" scrollable="false"
+              flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <text_small text="Enabled" style_text_color="#text_muted"/>
+        <ui_switch name="enable_toggle" size="tiny"/>
+      </lv_obj>
+    </lv_obj>
+    <!-- Divider at bottom -->
+    <divider_horizontal style_margin_top="#space_xs"/>
+  </view>
+</component>
