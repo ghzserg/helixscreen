@@ -83,10 +83,11 @@
 - [x] **IMPLEMENT**: Add spinner_style_, severity_info/success/warning/danger_style_
 - [x] **REVIEW**: Code review of spinner/severity styles
 
-### Section 2.4: ui_spinner Shared Style
-- [ ] **TEST**: Write failing test that spinner arc color updates when theme changes
-- [ ] **IMPLEMENT**: Use `theme_core_get_spinner_style()` instead of inline color
-- [ ] **REVIEW**: Code review of ui_spinner changes
+### Section 2.4: ui_spinner Shared Style ✅ COMPLETE
+- [x] **TEST**: Write failing test that spinner arc color updates when theme changes
+- [x] **IMPLEMENT**: Use `theme_core_get_spinner_style()` instead of inline color
+- [x] **REVIEW**: Code review of ui_spinner changes
+- [x] **COMMIT**: `adeda572 feat(spinner): use shared theme_core style for reactive theme updates`
 
 ### Section 2.5: ui_severity_card Shared Styles
 - [ ] **TEST**: Write failing test that severity card border updates when theme changes
