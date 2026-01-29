@@ -30,6 +30,7 @@
 #include "static_panel_registry.h"
 #include "subject_managed_panel.h"
 #include "theme_manager.h"
+#include "ui/ui_lazy_panel_helper.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -795,32 +796,8 @@ void ControlsPanel::handle_save_z_offset_cancel() {
 // ============================================================================
 
 void ControlsPanel::handle_quick_actions_clicked() {
-    spdlog::debug("[{}] Quick Actions card clicked - opening Motion panel", get_name());
-
-    // Create motion panel on first access (lazy initialization)
-    if (!motion_panel_ && parent_screen_) {
-        auto& motion = get_global_motion_panel();
-
-        // Initialize subjects and callbacks if not already done
-        if (!motion.are_subjects_initialized()) {
-            motion.init_subjects();
-        }
-        motion.register_callbacks();
-
-        // Create overlay UI
-        motion_panel_ = motion.create(parent_screen_);
-        if (!motion_panel_) {
-            NOTIFY_ERROR("Failed to load motion panel");
-            return;
-        }
-
-        // Register with NavigationManager for lifecycle callbacks
-        NavigationManager::instance().register_overlay_instance(motion_panel_, &motion);
-    }
-
-    if (motion_panel_) {
-        ui_nav_push_overlay(motion_panel_);
-    }
+    helix::ui::lazy_create_and_push_overlay<MotionPanel>(get_global_motion_panel, motion_panel_,
+                                                         parent_screen_, "Motion", get_name());
 }
 
 void ControlsPanel::handle_temperatures_clicked() {
@@ -1257,69 +1234,19 @@ void ControlsPanel::handle_motors_cancel() {
 }
 
 void ControlsPanel::handle_calibration_bed_mesh() {
-    spdlog::debug("[{}] Bed Mesh button clicked", get_name());
-
-    if (!bed_mesh_panel_ && parent_screen_) {
-        auto& overlay = get_global_bed_mesh_panel();
-        if (!overlay.are_subjects_initialized()) {
-            overlay.init_subjects();
-        }
-        overlay.register_callbacks();
-        bed_mesh_panel_ = overlay.create(parent_screen_);
-        if (!bed_mesh_panel_) {
-            NOTIFY_ERROR("Failed to create bed mesh panel");
-            return;
-        }
-        NavigationManager::instance().register_overlay_instance(bed_mesh_panel_, &overlay);
-    }
-
-    if (bed_mesh_panel_) {
-        ui_nav_push_overlay(bed_mesh_panel_);
-    }
+    helix::ui::lazy_create_and_push_overlay<BedMeshPanel>(
+        get_global_bed_mesh_panel, bed_mesh_panel_, parent_screen_, "Bed Mesh", get_name());
 }
 
 void ControlsPanel::handle_calibration_zoffset() {
-    spdlog::debug("[{}] Z-Offset Calibration button clicked", get_name());
-
-    if (!zoffset_panel_ && parent_screen_) {
-        auto& overlay = get_global_zoffset_cal_panel();
-        if (!overlay.are_subjects_initialized()) {
-            overlay.init_subjects();
-        }
-        overlay.register_callbacks();
-        zoffset_panel_ = overlay.create(parent_screen_);
-        if (!zoffset_panel_) {
-            NOTIFY_ERROR("Failed to create Z-offset panel");
-            return;
-        }
-        NavigationManager::instance().register_overlay_instance(zoffset_panel_, &overlay);
-    }
-
-    if (zoffset_panel_) {
-        ui_nav_push_overlay(zoffset_panel_);
-    }
+    helix::ui::lazy_create_and_push_overlay<ZOffsetCalibrationPanel>(
+        get_global_zoffset_cal_panel, zoffset_panel_, parent_screen_, "Z-Offset Calibration",
+        get_name());
 }
 
 void ControlsPanel::handle_calibration_screws() {
-    spdlog::debug("[{}] Bed Screws button clicked", get_name());
-
-    if (!screws_panel_ && parent_screen_) {
-        auto& overlay = get_global_screws_tilt_panel();
-        if (!overlay.are_subjects_initialized()) {
-            overlay.init_subjects();
-        }
-        overlay.register_callbacks();
-        screws_panel_ = overlay.create(parent_screen_);
-        if (!screws_panel_) {
-            NOTIFY_ERROR("Failed to create screws tilt panel");
-            return;
-        }
-        NavigationManager::instance().register_overlay_instance(screws_panel_, &overlay);
-    }
-
-    if (screws_panel_) {
-        ui_nav_push_overlay(screws_panel_);
-    }
+    helix::ui::lazy_create_and_push_overlay<ScrewsTiltPanel>(
+        get_global_screws_tilt_panel, screws_panel_, parent_screen_, "Bed Screws", get_name());
 }
 
 void ControlsPanel::handle_calibration_motors() {

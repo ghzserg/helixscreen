@@ -100,4 +100,63 @@ bool lazy_create_and_push_overlay(Getter getter, lv_obj_t*& cached_panel, lv_obj
     return false;
 }
 
+/**
+ * @brief Simple lazy overlay creation and push
+ *
+ * A simpler version of lazy_create_and_push_overlay for overlays that don't
+ * follow the full global-panel pattern. Use this when you have a custom
+ * creation function that returns an lv_obj_t*.
+ *
+ * Pattern it replaces:
+ * @code
+ * if (!overlay_cache_) {
+ *     overlay_cache_ = create_overlay(parent);
+ *     if (!overlay_cache_) {
+ *         spdlog::error("[Panel] Failed to create overlay");
+ *         return;
+ *     }
+ * }
+ * ui_nav_push_overlay(overlay_cache_);
+ * @endcode
+ *
+ * @tparam CreateFunc Callable that takes (lv_obj_t* parent) and returns lv_obj_t*
+ *
+ * @param cache Reference to the cached lv_obj_t* pointer
+ * @param create_func Function that creates the overlay, returns nullptr on failure
+ * @param parent Parent screen for overlay creation
+ * @param error_msg Error message for toast notification (default: "Failed to create overlay")
+ *
+ * @return true if overlay was pushed, false on failure
+ *
+ * Example:
+ * @code
+ * void MyPanel::handle_settings_clicked() {
+ *     lazy_push_overlay(settings_overlay_, [this](lv_obj_t* p) {
+ *         auto* overlay = static_cast<lv_obj_t*>(lv_xml_create(p, "settings_panel", nullptr));
+ *         if (overlay) setup_settings(overlay);
+ *         return overlay;
+ *     }, parent_screen_, "Failed to load settings");
+ * }
+ * @endcode
+ */
+template <typename CreateFunc>
+bool lazy_push_overlay(lv_obj_t*& cache, CreateFunc create_func, lv_obj_t* parent,
+                       const char* error_msg = "Failed to create overlay") {
+    if (!cache && parent) {
+        cache = create_func(parent);
+        if (!cache) {
+            spdlog::error("{}", error_msg);
+            ui_toast_show(ToastSeverity::ERROR, error_msg, 2000);
+            return false;
+        }
+    }
+
+    if (cache) {
+        ui_nav_push_overlay(cache);
+        return true;
+    }
+
+    return false;
+}
+
 } // namespace helix::ui
