@@ -4,7 +4,8 @@
 #include "xml_registration.h"
 
 #include "ui_ams_current_tool.h"
-#include "ui_ams_device_operations_overlay.h"
+#include "ui_ams_settings_overlay.h"
+#include "ui_button.h"
 #include "ui_fan_dial.h"
 #include "ui_fonts.h"
 #include "ui_gcode_viewer.h"
@@ -93,6 +94,7 @@ void register_xml_components() {
     ui_text_init();
     ui_text_input_init(); // <text_input> with bind_text support
     ui_spinner_init();    // <spinner> with responsive sizing
+    ui_button_init();     // <ui_button> with variant styles and auto-contrast
 
     // Register no-op callback and subject for optional handlers in XML components
     // This silences warnings when components use callback/subject props with default=""
