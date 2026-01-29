@@ -21,11 +21,7 @@
     <prop name="action_button_height" type="string" default="content"/>
     <prop name="action_button_pad" type="string" default="#space_sm"/>
     <prop name="hide_action_button" type="string" default="true"/>
-    <!-- Second action button (left of primary) -->
-    <prop name="action_button_2_text" type="string" default=""/>
-    <prop name="action_button_2_bg_color" type="string" default="#secondary"/>
-    <prop name="action_button_2_callback" type="string" default=""/>
-    <prop name="hide_action_button_2" type="string" default="true"/>
+    <prop name="action_button_disabled_subject" type="string" default=""/>
     <prop name="width" type="string" default="#overlay_panel_width"/>
     <prop name="bg_color" type="string" default="#card_bg"/>
   </api>
@@ -36,10 +32,9 @@
     <!-- Header Bar -->
     <header_bar name="overlay_header"
                 title="$title" action_button_text="$action_button_text" hide_action_button="$hide_action_button"
-                action_button_callback="$action_button_callback" action_button_height="$action_button_height"
-                action_button_pad="$action_button_pad" action_button_2_text="$action_button_2_text"
-                action_button_2_bg_color="$action_button_2_bg_color"
-                action_button_2_callback="$action_button_2_callback" hide_action_button_2="$hide_action_button_2"/>
+                action_button_callback="$action_button_callback"
+                action_button_height="$action_button_height" action_button_pad="$action_button_pad"
+                action_button_disabled_subject="$action_button_disabled_subject"/>
     <!-- Panel-specific overlay_content and children go here -->
   </view>
 </component>

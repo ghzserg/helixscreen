@@ -55,6 +55,7 @@ DisplaySettingsOverlay::DisplaySettingsOverlay() {
 DisplaySettingsOverlay::~DisplaySettingsOverlay() {
     if (subjects_initialized_ && lv_is_initialized()) {
         lv_subject_deinit(&brightness_value_subject_);
+        lv_subject_deinit(&theme_apply_disabled_subject_);
     }
     spdlog::debug("[{}] Destroyed", get_name());
 }
@@ -74,6 +75,10 @@ void DisplaySettingsOverlay::init_subjects() {
     lv_subject_init_string(&brightness_value_subject_, brightness_value_buf_, nullptr,
                            sizeof(brightness_value_buf_), brightness_value_buf_);
     lv_xml_register_subject(nullptr, "brightness_value", &brightness_value_subject_);
+
+    // Initialize theme Apply button disabled subject (1=disabled initially)
+    lv_subject_init_int(&theme_apply_disabled_subject_, 1);
+    lv_xml_register_subject(nullptr, "theme_apply_disabled", &theme_apply_disabled_subject_);
 
     subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized", get_name());
@@ -267,16 +272,7 @@ void DisplaySettingsOverlay::init_theme_preset_dropdown(lv_obj_t* root) {
     if (!root)
         return;
 
-    // Try direct lookup first (Theme Explorer uses this name)
     lv_obj_t* theme_preset_dropdown = lv_obj_find_by_name(root, "theme_preset_dropdown");
-
-    // Fall back to nested row lookup (Theme Editor used this pattern)
-    if (!theme_preset_dropdown) {
-        lv_obj_t* theme_preset_row = lv_obj_find_by_name(root, "row_theme_preset");
-        theme_preset_dropdown =
-            theme_preset_row ? lv_obj_find_by_name(theme_preset_row, "dropdown") : nullptr;
-    }
-
     if (theme_preset_dropdown) {
         // Set dropdown options from discovered theme files
         std::string options = SettingsManager::instance().get_theme_options();
@@ -400,19 +396,8 @@ void DisplaySettingsOverlay::handle_explorer_theme_changed(int index) {
     // Preview the theme with the (possibly forced) dark mode setting
     theme_manager_preview(theme);
 
-    // Update Apply button state - enable if different from original
-    if (theme_explorer_overlay_) {
-        lv_obj_t* header = lv_obj_find_by_name(theme_explorer_overlay_, "overlay_header");
-        lv_obj_t* action_btn = header ? lv_obj_find_by_name(header, "action_button") : nullptr;
-        if (action_btn) {
-            bool should_disable = (index == original_theme_index_);
-            if (should_disable) {
-                lv_obj_add_state(action_btn, LV_STATE_DISABLED);
-            } else {
-                lv_obj_remove_state(action_btn, LV_STATE_DISABLED);
-            }
-        }
-    }
+    // Update Apply button state reactively - disabled when unchanged from original
+    lv_subject_set_int(&theme_apply_disabled_subject_, index == original_theme_index_ ? 1 : 0);
 
     // Update all preview widget colors (reuse dark mode toggle logic)
     handle_preview_dark_mode_toggled(preview_is_dark_);
@@ -482,21 +467,8 @@ void DisplaySettingsOverlay::handle_theme_settings_clicked() {
         }
     }
 
-    // Initially disable Apply button (no changes yet) and set proper text color
-    lv_obj_t* header = lv_obj_find_by_name(theme_explorer_overlay_, "overlay_header");
-    lv_obj_t* action_btn = header ? lv_obj_find_by_name(header, "action_button") : nullptr;
-    if (action_btn) {
-        lv_obj_add_state(action_btn, LV_STATE_DISABLED);
-
-        // Update button text color for disabled state
-        const char* text_light_str = lv_xml_get_const(NULL, "text_light");
-        const char* text_dark_str = lv_xml_get_const(NULL, "text_dark");
-        if (text_light_str && text_dark_str) {
-            lv_color_t text_light = theme_manager_parse_hex_color(text_light_str);
-            lv_color_t text_dark = theme_manager_parse_hex_color(text_dark_str);
-            update_button_text_contrast(action_btn, text_light, text_dark);
-        }
-    }
+    // Initially disable Apply button (no changes yet) - reactive via subject
+    lv_subject_set_int(&theme_apply_disabled_subject_, 1);
 
     ui_nav_push_overlay(theme_explorer_overlay_);
 }
@@ -517,12 +489,8 @@ void DisplaySettingsOverlay::handle_apply_theme_clicked() {
     // Update original index since theme is now applied
     original_theme_index_ = selected_index;
 
-    // Disable Apply button since changes are now saved
-    lv_obj_t* header = lv_obj_find_by_name(theme_explorer_overlay_, "overlay_header");
-    lv_obj_t* action_btn = header ? lv_obj_find_by_name(header, "action_button") : nullptr;
-    if (action_btn) {
-        lv_obj_add_state(action_btn, LV_STATE_DISABLED);
-    }
+    // Disable Apply button since changes are now saved - reactive via subject
+    lv_subject_set_int(&theme_apply_disabled_subject_, 1);
 
     // Show restart notice using info note toast (non-blocking)
     spdlog::info("[{}] Theme applied - index {}. Restart required for full effect.", get_name(),
@@ -620,69 +588,6 @@ void DisplaySettingsOverlay::on_preview_dark_mode_toggled(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-void DisplaySettingsOverlay::on_preview_open_modal(lv_event_t* e) {
-    LVGL_SAFE_EVENT_CB_BEGIN("[DisplaySettingsOverlay] on_preview_open_modal");
-    LV_UNUSED(e);
-
-    // Show a sample modal with lorem ipsum
-    ui_modal_show_confirmation(
-        "Sample Dialog",
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod "
-        "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim "
-        "veniam, quis nostrud exercitation ullamco laboris.",
-        ModalSeverity::Info, "OK", nullptr, nullptr, nullptr);
-
-    // Apply preview palette to the newly created modal
-    // (modal is created with global theme colors, need to update for preview)
-    auto& overlay = get_display_settings_overlay();
-    overlay.apply_preview_palette_to_screen_popups();
-
-    LVGL_SAFE_EVENT_CB_END();
-}
-
-// Helper to update button label text with contrast-aware color
-// text_light = dark text for light backgrounds (from light mode palette)
-// text_dark = light text for dark backgrounds (from dark mode palette)
-static void update_button_text_contrast(lv_obj_t* btn, lv_color_t text_light,
-                                        lv_color_t text_dark) {
-    if (!btn)
-        return;
-
-    // Get button's background color
-    lv_color_t bg_color = lv_obj_get_style_bg_color(btn, LV_PART_MAIN);
-    uint8_t lum = lv_color_luminance(bg_color);
-
-    // Pick text color based on luminance (same threshold as text_button component)
-    lv_color_t text_color = (lum > 140) ? text_light : text_dark;
-
-    // Get text_subtle for disabled state (muted gray with readable contrast)
-    const char* subtle_str = lv_xml_get_const(NULL, "text_subtle");
-    bool btn_disabled = lv_obj_has_state(btn, LV_STATE_DISABLED);
-
-    // Determine effective color: subtle for disabled (if available), otherwise contrast
-    lv_color_t effective_color = text_color;
-    if (btn_disabled && subtle_str) {
-        effective_color = theme_manager_parse_hex_color(subtle_str);
-    }
-
-    // Update all label children in the button
-    uint32_t count = lv_obj_get_child_count(btn);
-    for (uint32_t i = 0; i < count; i++) {
-        lv_obj_t* child = lv_obj_get_child(btn, i);
-        if (lv_obj_check_type(child, &lv_label_class)) {
-            lv_obj_set_style_text_color(child, effective_color, LV_PART_MAIN);
-        }
-        // Also check nested containers (some buttons have container > label structure)
-        uint32_t nested_count = lv_obj_get_child_count(child);
-        for (uint32_t j = 0; j < nested_count; j++) {
-            lv_obj_t* nested = lv_obj_get_child(child, j);
-            if (lv_obj_check_type(nested, &lv_label_class)) {
-                lv_obj_set_style_text_color(nested, effective_color, LV_PART_MAIN);
-            }
-        }
-    }
-}
-
 void DisplaySettingsOverlay::handle_preview_dark_mode_toggled(bool is_dark) {
     // Update local state
     preview_is_dark_ = is_dark;
@@ -699,8 +604,11 @@ void DisplaySettingsOverlay::handle_preview_dark_mode_toggled(bool is_dark) {
 
     int selected_index = lv_dropdown_get_selected(dropdown);
 
-    // Use cached theme list (populated when explorer opens)
-    if (selected_index < 0 || selected_index >= static_cast<int>(cached_themes_.size())) {
+    // Load theme
+    std::string themes_dir = helix::get_themes_directory();
+    auto themes = helix::discover_themes(themes_dir);
+
+    if (selected_index < 0 || selected_index >= static_cast<int>(themes.size())) {
         return;
     }
 
@@ -711,109 +619,17 @@ void DisplaySettingsOverlay::handle_preview_dark_mode_toggled(bool is_dark) {
         return;
     }
 
-    // Select palette based on mode toggle (fall back if mode not supported)
-    const helix::ModePalette* palette = nullptr;
-    if (is_dark && theme.supports_dark()) {
-        palette = &theme.dark;
-    } else if (!is_dark && theme.supports_light()) {
-        palette = &theme.light;
-    } else {
-        // Fall back to whatever is available
-        palette = theme.supports_dark() ? &theme.dark : &theme.light;
+    // Use reactive theme system: update shared styles, LVGL auto-refreshes widgets
+    const char* colors[16];
+    for (size_t i = 0; i < 16; ++i) {
+        colors[i] = theme.colors.at(i).c_str();
     }
+    theme_core_preview_colors(is_dark, colors, theme.properties.border_radius);
 
-    // Button text contrast colors - we need BOTH palettes for contrast calculation
-    // text_light = dark text for light backgrounds (from light palette)
-    // text_dark = light text for dark backgrounds (from dark palette)
-    lv_color_t text_primary = theme_manager_parse_hex_color(palette->text.c_str());
-    lv_color_t text_light = theme.supports_light()
-                                ? theme_manager_parse_hex_color(theme.light.text.c_str())
-                                : text_primary;
-    lv_color_t text_dark = theme.supports_dark()
-                               ? theme_manager_parse_hex_color(theme.dark.text.c_str())
-                               : text_primary;
+    // Refresh widget tree for any local/inline styles
+    theme_manager_refresh_widget_tree(lv_screen_active());
 
-    // Apply palette to entire widget tree (handles labels, switches, sliders, dropdowns, etc.)
-    theme_apply_palette_to_tree(theme_explorer_overlay_, *palette, text_light, text_dark);
-
-    // Style any open dropdown lists (they're screen-level popups, not in overlay tree)
-    theme_apply_palette_to_screen_dropdowns(*palette);
-
-    // Parse accent colors for specific named buttons
-    lv_color_t primary = theme_manager_parse_hex_color(palette->primary.c_str());
-    lv_color_t secondary = theme_manager_parse_hex_color(palette->secondary.c_str());
-    lv_color_t tertiary = theme_manager_parse_hex_color(palette->tertiary.c_str());
-    lv_color_t warning = theme_manager_parse_hex_color(palette->warning.c_str());
-    lv_color_t danger = theme_manager_parse_hex_color(palette->danger.c_str());
-    lv_color_t app_bg = theme_manager_parse_hex_color(palette->app_bg.c_str());
-
-    // Update overlay root background (tree walker doesn't know this is the root)
-    lv_obj_set_style_bg_color(theme_explorer_overlay_, app_bg, LV_PART_MAIN);
-
-    // Update specific accent-colored buttons (bg set by name, text contrast automatic)
-    struct ButtonColorMapping {
-        const char* name;
-        lv_color_t color;
-    };
-    ButtonColorMapping button_mappings[] = {
-        {"example_btn_primary", primary},   {"example_btn_secondary", secondary},
-        {"example_btn_tertiary", tertiary}, {"example_btn_warning", warning},
-        {"example_btn_danger", danger},
-    };
-
-    for (const auto& mapping : button_mappings) {
-        lv_obj_t* btn = lv_obj_find_by_name(theme_explorer_overlay_, mapping.name);
-        if (btn) {
-            lv_obj_set_style_bg_color(btn, mapping.color, LV_PART_MAIN);
-            // Refresh text contrast after changing background
-            theme_apply_palette_to_widget(btn, *palette, text_light, text_dark);
-        }
-    }
-
-    // Update header action buttons (Edit=secondary, Apply=primary)
-    lv_obj_t* header = lv_obj_find_by_name(theme_explorer_overlay_, "overlay_header");
-    if (header) {
-        lv_obj_t* edit_btn = lv_obj_find_by_name(header, "action_button_2");
-        if (edit_btn) {
-            lv_obj_set_style_bg_color(edit_btn, secondary, LV_PART_MAIN);
-            theme_apply_palette_to_widget(edit_btn, *palette, text_light, text_dark);
-        }
-        lv_obj_t* apply_btn = lv_obj_find_by_name(header, "action_button");
-        if (apply_btn) {
-            lv_obj_set_style_bg_color(apply_btn, primary, LV_PART_MAIN);
-            theme_apply_palette_to_widget(apply_btn, *palette, text_light, text_dark);
-        }
-        // Back button icon - ensure transparent background
-        lv_obj_t* back_btn = lv_obj_find_by_name(header, "back_button");
-        if (back_btn) {
-            lv_obj_set_style_bg_opa(back_btn, LV_OPA_TRANSP, LV_PART_MAIN);
-        }
-    }
-
-    // Update status icons with semantic colors
-    lv_obj_t* status_label =
-        lv_obj_find_by_name(theme_explorer_overlay_, "preview_label_status_icons");
-    if (status_label) {
-        lv_color_t info_color = theme_manager_parse_hex_color(palette->info.c_str());
-        lv_color_t success_color = theme_manager_parse_hex_color(palette->success.c_str());
-        lv_color_t warning_color = theme_manager_parse_hex_color(palette->warning.c_str());
-        lv_color_t danger_color = theme_manager_parse_hex_color(palette->danger.c_str());
-
-        // Icons are siblings before this label in the same row
-        lv_obj_t* row = lv_obj_get_parent(status_label);
-        if (row) {
-            uint32_t child_count = lv_obj_get_child_count(row);
-            // Icons are first 4 children: info, success, warning, error
-            if (child_count >= 4) {
-                lv_obj_set_style_text_color(lv_obj_get_child(row, 0), info_color, LV_PART_MAIN);
-                lv_obj_set_style_text_color(lv_obj_get_child(row, 1), success_color, LV_PART_MAIN);
-                lv_obj_set_style_text_color(lv_obj_get_child(row, 2), warning_color, LV_PART_MAIN);
-                lv_obj_set_style_text_color(lv_obj_get_child(row, 3), danger_color, LV_PART_MAIN);
-            }
-        }
-    }
-
-    spdlog::debug("[DisplaySettingsOverlay] Preview dark mode toggled to {} (local only)",
+    spdlog::debug("[DisplaySettingsOverlay] Preview dark mode toggled to {}",
                   is_dark ? "dark" : "light");
 }
 

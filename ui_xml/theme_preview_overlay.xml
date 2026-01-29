@@ -7,9 +7,8 @@
   <view name="theme_preview_overlay"
         extends="overlay_panel" width="#overlay_panel_width_full" title="Theme" bg_color="#app_bg"
         hide_action_button="false" action_button_text="Apply" action_button_callback="on_apply_theme_clicked"
-        action_button_height="#button_height_sm" action_button_pad="#space_sm" hide_action_button_2="false"
-        action_button_2_text="Edit" action_button_2_callback="on_edit_colors_clicked"
-        action_button_2_bg_color="#secondary">
+        action_button_height="#button_height" action_button_pad="#space_md"
+        action_button_disabled_subject="theme_apply_disabled">
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_bg_opa="0" style_pad_all="#space_lg" style_border_width="0"
             flex_flow="column" style_pad_gap="#space_md" scrollable="true" scroll_dir="ver">

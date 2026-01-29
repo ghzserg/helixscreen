@@ -256,6 +256,9 @@ class DisplaySettingsOverlay : public OverlayBase {
     lv_subject_t brightness_value_subject_;
     char brightness_value_buf_[8]; // e.g., "100%"
 
+    /// Subject for theme Apply button disabled state (1=disabled, 0=enabled)
+    lv_subject_t theme_apply_disabled_subject_;
+
     //
     // === Static Callbacks ===
     //
