@@ -14,6 +14,7 @@
 #include "ui_theme_editor_overlay.h"
 #include "ui_utils.h"
 
+#include "format_utils.h"
 #include "settings_manager.h"
 #include "static_panel_registry.h"
 #include "theme_core.h"
@@ -186,7 +187,8 @@ void DisplaySettingsOverlay::init_brightness_controls() {
         lv_slider_set_value(brightness_slider, brightness, LV_ANIM_OFF);
 
         // Update subject (label binding happens in XML)
-        snprintf(brightness_value_buf_, sizeof(brightness_value_buf_), "%d%%", brightness);
+        helix::fmt::format_percent(brightness, brightness_value_buf_,
+                                   sizeof(brightness_value_buf_));
         lv_subject_copy_string(&brightness_value_subject_, brightness_value_buf_);
 
         spdlog::debug("[{}] Brightness initialized to {}%", get_name(), brightness);
@@ -315,7 +317,7 @@ void DisplaySettingsOverlay::handle_brightness_changed(int value) {
     SettingsManager::instance().set_brightness(value);
 
     // Update subject (label binding happens in XML)
-    snprintf(brightness_value_buf_, sizeof(brightness_value_buf_), "%d%%", value);
+    helix::fmt::format_percent(value, brightness_value_buf_, sizeof(brightness_value_buf_));
     lv_subject_copy_string(&brightness_value_subject_, brightness_value_buf_);
 }
 

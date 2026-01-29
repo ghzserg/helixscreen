@@ -8,6 +8,7 @@
 #include "ui_nav_manager.h"
 #include "ui_toast.h"
 
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 #include "static_panel_registry.h"
@@ -550,9 +551,10 @@ void InputShaperPanel::populate_results() {
 
     // Update recommendation label
     if (recommendation_label_ && !recommended_type_.empty()) {
+        char freq_buf[16];
+        helix::fmt::format_frequency_hz(recommended_freq_, freq_buf, sizeof(freq_buf));
         char buf[128];
-        snprintf(buf, sizeof(buf), "Recommended: %s @ %.1f Hz", recommended_type_.c_str(),
-                 recommended_freq_);
+        snprintf(buf, sizeof(buf), "Recommended: %s @ %s", recommended_type_.c_str(), freq_buf);
         lv_label_set_text(recommendation_label_, buf);
     }
 
@@ -564,7 +566,8 @@ void InputShaperPanel::populate_results() {
             // Copy to fixed buffers
             snprintf(shaper_type_bufs_[i], SHAPER_TYPE_BUF_SIZE, "%s%s", fit.type.c_str(),
                      fit.is_recommended ? " ★" : "");
-            snprintf(shaper_freq_bufs_[i], SHAPER_VALUE_BUF_SIZE, "%.1f Hz", fit.frequency);
+            helix::fmt::format_frequency_hz(fit.frequency, shaper_freq_bufs_[i],
+                                            SHAPER_VALUE_BUF_SIZE);
             snprintf(shaper_vib_bufs_[i], SHAPER_VALUE_BUF_SIZE, "%.1f%%", fit.vibrations);
 
             // Update subjects

@@ -666,7 +666,7 @@ void PrintStatusPanel::update_all_displays() {
     }
 
     // Progress text
-    std::snprintf(progress_text_buf_, sizeof(progress_text_buf_), "%d%%", current_progress_);
+    helix::fmt::format_percent(current_progress_, progress_text_buf_, sizeof(progress_text_buf_));
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 
     // Layer text
@@ -691,10 +691,10 @@ void PrintStatusPanel::update_all_displays() {
     lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
 
     // Speeds
-    std::snprintf(speed_buf_, sizeof(speed_buf_), "%d%%", speed_percent_);
+    helix::fmt::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
     lv_subject_copy_string(&speed_subject_, speed_buf_);
 
-    std::snprintf(flow_buf_, sizeof(flow_buf_), "%d%%", flow_percent_);
+    helix::fmt::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
     lv_subject_copy_string(&flow_subject_, flow_buf_);
 
     // Update pause button icon and label based on state
@@ -1022,7 +1022,7 @@ void PrintStatusPanel::on_print_progress_changed(int progress) {
     }
 
     // Update progress text
-    std::snprintf(progress_text_buf_, sizeof(progress_text_buf_), "%d%%", current_progress_);
+    helix::fmt::format_percent(current_progress_, progress_text_buf_, sizeof(progress_text_buf_));
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 
     // Update progress bar with smooth animation (300ms ease-out) if animations enabled
@@ -1215,7 +1215,7 @@ void PrintStatusPanel::on_print_filename_changed(const char* filename) {
 void PrintStatusPanel::on_speed_factor_changed(int speed) {
     speed_percent_ = speed;
     if (subjects_initialized_) {
-        std::snprintf(speed_buf_, sizeof(speed_buf_), "%d%%", speed_percent_);
+        helix::fmt::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
         lv_subject_copy_string(&speed_subject_, speed_buf_);
     }
     spdlog::trace("[{}] Speed factor updated: {}%", get_name(), speed);
@@ -1224,7 +1224,7 @@ void PrintStatusPanel::on_speed_factor_changed(int speed) {
 void PrintStatusPanel::on_flow_factor_changed(int flow) {
     flow_percent_ = flow;
     if (subjects_initialized_) {
-        std::snprintf(flow_buf_, sizeof(flow_buf_), "%d%%", flow_percent_);
+        helix::fmt::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
         lv_subject_copy_string(&flow_subject_, flow_buf_);
     }
     spdlog::trace("[{}] Flow factor updated: {}%", get_name(), flow);

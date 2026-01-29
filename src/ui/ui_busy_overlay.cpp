@@ -5,6 +5,7 @@
 
 #include "ui_utils.h"
 
+#include "format_utils.h"
 #include "lvgl/lvgl.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "theme_manager.h"
@@ -170,8 +171,10 @@ void BusyOverlay::show(const std::string& initial_text, uint32_t grace_period_ms
 
 void BusyOverlay::set_progress(const std::string& operation, float percent) {
     // Format: "Operation... XX%"
+    char percent_buf[12];
+    helix::fmt::format_percent_float(percent, 0, percent_buf, sizeof(percent_buf));
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s... %.0f%%", operation.c_str(), percent);
+    snprintf(buf, sizeof(buf), "%s... %s", operation.c_str(), percent_buf);
 
     // Update pending text (in case overlay not yet visible)
     g_pending_text = buf;

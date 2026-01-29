@@ -8,6 +8,150 @@
 
 namespace helix::fmt {
 
+// =============================================================================
+// Constants
+// =============================================================================
+
+/**
+ * @brief Unavailable/unknown value placeholder (em dash)
+ *
+ * Use this constant for consistent display of unavailable data across the UI.
+ * Example: sensor disconnected, value not yet received, etc.
+ */
+inline constexpr const char* UNAVAILABLE = "—";
+
+// =============================================================================
+// Percentage Formatting
+// =============================================================================
+
+/**
+ * @brief Format integer percentage with % suffix
+ *
+ * @param percent Percentage value (0-100 typically, but any int supported)
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 8)
+ * @return Pointer to buffer for chaining
+ */
+char* format_percent(int percent, char* buf, size_t size);
+
+/**
+ * @brief Format percentage or show UNAVAILABLE when data is missing
+ *
+ * @param percent Percentage value
+ * @param available Whether the data is available
+ * @param buf Output buffer
+ * @param size Buffer size
+ * @return Pointer to buffer for chaining
+ */
+char* format_percent_or_unavailable(int percent, bool available, char* buf, size_t size);
+
+/**
+ * @brief Format float percentage with configurable decimal places
+ *
+ * @param percent Percentage value (float)
+ * @param decimals Decimal places (0-2)
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 12)
+ * @return Pointer to buffer for chaining
+ */
+char* format_percent_float(double percent, int decimals, char* buf, size_t size);
+
+/**
+ * @brief Format humidity from x10 value (e.g., 455 → "45%")
+ *
+ * Sensors often report humidity as value×10 for 0.1% resolution.
+ * This function divides by 10 and displays as whole percent.
+ *
+ * @param humidity_x10 Humidity × 10 (e.g., 455 for 45.5%)
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 8)
+ * @return Pointer to buffer for chaining
+ */
+char* format_humidity(int humidity_x10, char* buf, size_t size);
+
+// =============================================================================
+// Distance/Length Formatting
+// =============================================================================
+
+/**
+ * @brief Format distance in millimeters with configurable precision
+ *
+ * @param mm Distance in millimeters
+ * @param precision Decimal places (0-3)
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 16)
+ * @return Pointer to buffer for chaining
+ */
+char* format_distance_mm(double mm, int precision, char* buf, size_t size);
+
+/**
+ * @brief Format filament diameter (always 2 decimal places)
+ *
+ * Convenience function for common 1.75mm/2.85mm filament diameters.
+ *
+ * @param mm Diameter in millimeters
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 16)
+ * @return Pointer to buffer for chaining
+ */
+char* format_diameter_mm(float mm, char* buf, size_t size);
+
+// =============================================================================
+// Speed Formatting
+// =============================================================================
+
+/**
+ * @brief Format speed in mm/s (whole number)
+ *
+ * @param speed Speed in mm/s
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 16)
+ * @return Pointer to buffer for chaining
+ */
+char* format_speed_mm_s(double speed, char* buf, size_t size);
+
+/**
+ * @brief Format speed in mm/min (whole number)
+ *
+ * @param speed Speed in mm/min
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 16)
+ * @return Pointer to buffer for chaining
+ */
+char* format_speed_mm_min(double speed, char* buf, size_t size);
+
+// =============================================================================
+// Acceleration Formatting
+// =============================================================================
+
+/**
+ * @brief Format acceleration in mm/s²
+ *
+ * @param accel Acceleration in mm/s²
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 16)
+ * @return Pointer to buffer for chaining
+ */
+char* format_accel_mm_s2(double accel, char* buf, size_t size);
+
+// =============================================================================
+// Frequency Formatting
+// =============================================================================
+
+/**
+ * @brief Format frequency in Hz (1 decimal place)
+ *
+ * @param hz Frequency in Hz
+ * @param buf Output buffer
+ * @param size Buffer size (recommended: 16)
+ * @return Pointer to buffer for chaining
+ */
+char* format_frequency_hz(double hz, char* buf, size_t size);
+
+// =============================================================================
+// Duration Formatting
+// =============================================================================
+
 /**
  * @brief Format duration in seconds to human-readable string
  *

@@ -24,6 +24,7 @@
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
 #include "printer_detector.h"
@@ -389,7 +390,7 @@ void BedMeshPanel::update_profile_list_subjects() {
             // Set name
             lv_subject_copy_string(&profile_name_subjects_[idx], profiles[idx].c_str());
 
-            // Calculate and set range
+            // Calculate and set range (mm without suffix for profile lists)
             float range = calculate_profile_range(profiles[idx]);
             std::snprintf(profile_range_bufs_[idx].data(), 32, "%.3f", range);
             lv_subject_copy_string(&profile_range_subjects_[idx], profile_range_bufs_[idx].data());
@@ -628,18 +629,18 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
     // Update max label and value
     std::snprintf(max_label_buf_, sizeof(max_label_buf_), "Max [%.1f, %.1f]", max_x, max_y);
     lv_subject_copy_string(&bed_mesh_max_label_, max_label_buf_);
-    std::snprintf(max_value_buf_, sizeof(max_value_buf_), "%.3f mm", max_z);
+    helix::fmt::format_distance_mm(max_z, 3, max_value_buf_, sizeof(max_value_buf_));
     lv_subject_copy_string(&bed_mesh_max_value_, max_value_buf_);
 
     // Update min label and value
     std::snprintf(min_label_buf_, sizeof(min_label_buf_), "Min [%.1f, %.1f]", min_x, min_y);
     lv_subject_copy_string(&bed_mesh_min_label_, min_label_buf_);
-    std::snprintf(min_value_buf_, sizeof(min_value_buf_), "%.3f mm", min_z);
+    helix::fmt::format_distance_mm(min_z, 3, min_value_buf_, sizeof(min_value_buf_));
     lv_subject_copy_string(&bed_mesh_min_value_, min_value_buf_);
 
     // Update variance (range)
     float variance = max_z - min_z;
-    std::snprintf(variance_buf_, sizeof(variance_buf_), "%.3f mm", variance);
+    helix::fmt::format_distance_mm(variance, 3, variance_buf_, sizeof(variance_buf_));
     lv_subject_copy_string(&bed_mesh_variance_, variance_buf_);
 
     // Cache mesh bounds

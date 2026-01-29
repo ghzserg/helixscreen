@@ -65,7 +65,7 @@
  */
 #define NOTIFY_ERROR(msg, ...)                                                                     \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::error("[USER] {}", formatted_msg);                                                 \
         ui_notification_error(nullptr, formatted_msg.c_str(), false);                              \
     } while (0)
@@ -78,7 +78,7 @@
  */
 #define NOTIFY_ERROR_T(title, msg, ...)                                                            \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::error("[USER] {}: {}", title, formatted_msg);                                      \
         ui_notification_error(title, formatted_msg.c_str(), false);                                \
     } while (0)
@@ -91,7 +91,7 @@
  */
 #define NOTIFY_WARNING(msg, ...)                                                                   \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::warn("[USER] {}", formatted_msg);                                                  \
         ui_notification_warning(formatted_msg.c_str());                                            \
     } while (0)
@@ -101,7 +101,7 @@
  */
 #define NOTIFY_WARNING_T(title, msg, ...)                                                          \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::warn("[USER] {}: {}", title, formatted_msg);                                       \
         ui_notification_warning(title, formatted_msg.c_str());                                     \
     } while (0)
@@ -111,7 +111,7 @@
  */
 #define NOTIFY_INFO(msg, ...)                                                                      \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::info("[USER] {}", formatted_msg);                                                  \
         ui_notification_info(formatted_msg.c_str());                                               \
     } while (0)
@@ -121,7 +121,7 @@
  */
 #define NOTIFY_INFO_T(title, msg, ...)                                                             \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::info("[USER] {}: {}", title, formatted_msg);                                       \
         ui_notification_info(title, formatted_msg.c_str());                                        \
     } while (0)
@@ -131,7 +131,7 @@
  */
 #define NOTIFY_SUCCESS(msg, ...)                                                                   \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::info("[USER] {}", formatted_msg);                                                  \
         ui_notification_success(formatted_msg.c_str());                                            \
     } while (0)
@@ -141,7 +141,7 @@
  */
 #define NOTIFY_SUCCESS_T(title, msg, ...)                                                          \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::info("[USER] {}: {}", title, formatted_msg);                                       \
         ui_notification_success(title, formatted_msg.c_str());                                     \
     } while (0)
@@ -158,7 +158,7 @@
  */
 #define NOTIFY_ERROR_MODAL(title, msg, ...)                                                        \
     do {                                                                                           \
-        std::string formatted_msg = fmt::format(msg, ##__VA_ARGS__);                               \
+        std::string formatted_msg = ::fmt::format(msg, ##__VA_ARGS__);                             \
         spdlog::error("[CRITICAL] {}: {}", title, formatted_msg);                                  \
         ui_notification_error(title, formatted_msg.c_str(), true);                                 \
     } while (0)
@@ -212,7 +212,7 @@ class ErrorContext {
      */
     void warning(const char* details) {
         spdlog::warn("[{}] {}", operation_, details);
-        std::string msg = fmt::format("{}: {}", operation_, details);
+        std::string msg = ::fmt::format("{}: {}", operation_, details);
         ui_notification_warning(msg.c_str());
     }
 

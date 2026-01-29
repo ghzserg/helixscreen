@@ -5,6 +5,7 @@
 
 #include "ui_update_queue.h"
 
+#include "format_utils.h"
 #include "spdlog/spdlog.h"
 
 #include <algorithm>
@@ -171,8 +172,8 @@ void HumiditySensorManager::update_from_status(const nlohmann::json& status) {
 }
 
 void HumiditySensorManager::inject_mock_sensors(std::vector<std::string>& objects,
-                                                 nlohmann::json& /*config_keys*/,
-                                                 nlohmann::json& /*moonraker_info*/) {
+                                                nlohmann::json& /*config_keys*/,
+                                                nlohmann::json& /*moonraker_info*/) {
     // Humidity sensors are discovered from Klipper objects
     objects.emplace_back("bme280 chamber");
     objects.emplace_back("htu21d dryer");
@@ -549,13 +550,13 @@ void HumiditySensorManager::update_subjects() {
     lv_subject_set_int(&chamber_pressure_, get_chamber_pressure_value());
     lv_subject_set_int(&dryer_humidity_, get_dryer_humidity_value());
 
-    // Update text subject: format as "45%" or "--" if unavailable
+    // Update text subject: format as "45%" or "—" if unavailable
     if (chamber_humidity >= 0) {
-        // Humidity is stored as % x 10, so divide by 10 to get whole percentage
-        snprintf(chamber_humidity_text_buf_, sizeof(chamber_humidity_text_buf_), "%d%%",
-                 chamber_humidity / 10);
+        helix::fmt::format_humidity(chamber_humidity, chamber_humidity_text_buf_,
+                                    sizeof(chamber_humidity_text_buf_));
     } else {
-        snprintf(chamber_humidity_text_buf_, sizeof(chamber_humidity_text_buf_), "--");
+        snprintf(chamber_humidity_text_buf_, sizeof(chamber_humidity_text_buf_), "%s",
+                 helix::fmt::UNAVAILABLE);
     }
     lv_subject_copy_string(&chamber_humidity_text_, chamber_humidity_text_buf_);
 

@@ -23,6 +23,7 @@
 #include "ui_temperature_utils.h"
 
 #include "app_globals.h"
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -538,7 +539,7 @@ void ControlsPanel::update_fan_display() {
                       : 0;
 
     if (fan_pct > 0) {
-        std::snprintf(fan_speed_buf_, sizeof(fan_speed_buf_), "%d%%", fan_pct);
+        helix::fmt::format_percent(fan_pct, fan_speed_buf_, sizeof(fan_speed_buf_));
     } else {
         std::snprintf(fan_speed_buf_, sizeof(fan_speed_buf_), "Off");
     }
@@ -670,7 +671,7 @@ void ControlsPanel::populate_secondary_fans() {
         // Speed percentage label - right-aligned
         char speed_buf[16];
         if (fan.speed_percent > 0) {
-            std::snprintf(speed_buf, sizeof(speed_buf), "%d%%", fan.speed_percent);
+            helix::fmt::format_percent(fan.speed_percent, speed_buf, sizeof(speed_buf));
         } else {
             std::snprintf(speed_buf, sizeof(speed_buf), "Off");
         }
@@ -1124,7 +1125,7 @@ void ControlsPanel::update_speed_display() {
     if (auto* speed_subj = printer_state_.get_speed_factor_subject()) {
         speed_pct = lv_subject_get_int(speed_subj);
     }
-    std::snprintf(speed_override_buf_, sizeof(speed_override_buf_), "%d%%", speed_pct);
+    helix::fmt::format_percent(speed_pct, speed_override_buf_, sizeof(speed_override_buf_));
     lv_subject_copy_string(&speed_override_subject_, speed_override_buf_);
 }
 
@@ -1133,7 +1134,7 @@ void ControlsPanel::update_flow_display() {
     int flow_pct = 100;
     // Note: PrinterState may need a get_extrude_factor_subject() method
     // For now, we'll initialize to 100% and update when that's available
-    std::snprintf(flow_override_buf_, sizeof(flow_override_buf_), "%d%%", flow_pct);
+    helix::fmt::format_percent(flow_pct, flow_override_buf_, sizeof(flow_override_buf_));
     lv_subject_copy_string(&flow_override_subject_, flow_override_buf_);
 }
 
@@ -1200,7 +1201,7 @@ void ControlsPanel::handle_flow_up() {
     api_->execute_gcode(
         gcode,
         [this, new_flow]() {
-            std::snprintf(flow_override_buf_, sizeof(flow_override_buf_), "%d%%", new_flow);
+            helix::fmt::format_percent(new_flow, flow_override_buf_, sizeof(flow_override_buf_));
             lv_subject_copy_string(&flow_override_subject_, flow_override_buf_);
         },
         [](const MoonrakerError& err) {
@@ -1225,7 +1226,7 @@ void ControlsPanel::handle_flow_down() {
     api_->execute_gcode(
         gcode,
         [this, new_flow]() {
-            std::snprintf(flow_override_buf_, sizeof(flow_override_buf_), "%d%%", new_flow);
+            helix::fmt::format_percent(new_flow, flow_override_buf_, sizeof(flow_override_buf_));
             lv_subject_copy_string(&flow_override_subject_, flow_override_buf_);
         },
         [](const MoonrakerError& err) {
@@ -1636,7 +1637,7 @@ void ControlsPanel::update_secondary_fan_speed(const std::string& object_name, i
         if (row.object_name == object_name && row.speed_label) {
             char speed_buf[16];
             if (speed_pct > 0) {
-                std::snprintf(speed_buf, sizeof(speed_buf), "%d%%", speed_pct);
+                helix::fmt::format_percent(speed_pct, speed_buf, sizeof(speed_buf));
             } else {
                 std::snprintf(speed_buf, sizeof(speed_buf), "Off");
             }

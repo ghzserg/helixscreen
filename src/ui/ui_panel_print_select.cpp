@@ -30,6 +30,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "display_manager.h"
+#include "format_utils.h"
 #include "gcode_parser.h" // For extract_thumbnails_from_content (USB thumbnail fallback)
 #include "lvgl/src/xml/lv_xml.h"
 #include "moonraker_api.h"
@@ -901,7 +902,7 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     // Format layer height (e.g., "0.24 mm")
     char layer_height_buf[32];
     if (layer_height > 0.0) {
-        snprintf(layer_height_buf, sizeof(layer_height_buf), "%.2f mm", layer_height);
+        helix::fmt::format_distance_mm(layer_height, 2, layer_height_buf, sizeof(layer_height_buf));
     } else {
         snprintf(layer_height_buf, sizeof(layer_height_buf), "-");
     }

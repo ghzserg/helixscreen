@@ -14,6 +14,7 @@
 #include "ui_utils.h"
 
 #include "app_globals.h"
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -272,7 +273,7 @@ void MotionPanel::register_position_observers() {
                 return;
             float x = static_cast<float>(helix::units::from_centimm(centimm));
             self->current_x_ = x;
-            snprintf(self->pos_x_buf_, sizeof(self->pos_x_buf_), "%.2f mm", x);
+            helix::fmt::format_distance_mm(x, 2, self->pos_x_buf_, sizeof(self->pos_x_buf_));
             lv_subject_copy_string(&self->pos_x_subject_, self->pos_x_buf_);
         });
 
@@ -283,7 +284,7 @@ void MotionPanel::register_position_observers() {
                 return;
             float y = static_cast<float>(helix::units::from_centimm(centimm));
             self->current_y_ = y;
-            snprintf(self->pos_y_buf_, sizeof(self->pos_y_buf_), "%.2f mm", y);
+            helix::fmt::format_distance_mm(y, 2, self->pos_y_buf_, sizeof(self->pos_y_buf_));
             lv_subject_copy_string(&self->pos_y_subject_, self->pos_y_buf_);
         });
 
@@ -338,9 +339,10 @@ void MotionPanel::update_z_display() {
     // Show actual in brackets only when it differs from commanded (e.g., mesh compensation)
     // Use 1 centimm (0.01mm) threshold to avoid floating point noise
     if (std::abs(gcode_z_centimm_ - actual_z_centimm_) > 1) {
+        // Special case: compound format not covered by formatter
         snprintf(pos_z_buf_, sizeof(pos_z_buf_), "%.2f [%.2f] mm", gcode_z, actual_z);
     } else {
-        snprintf(pos_z_buf_, sizeof(pos_z_buf_), "%.2f mm", gcode_z);
+        helix::fmt::format_distance_mm(gcode_z, 2, pos_z_buf_, sizeof(pos_z_buf_));
     }
     lv_subject_copy_string(&pos_z_subject_, pos_z_buf_);
 }
@@ -433,8 +435,8 @@ void MotionPanel::set_position(float x, float y, float z) {
         return;
 
     // Update subjects (will automatically update bound UI elements)
-    snprintf(pos_x_buf_, sizeof(pos_x_buf_), "%.2f mm", x);
-    snprintf(pos_y_buf_, sizeof(pos_y_buf_), "%.2f mm", y);
+    helix::fmt::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
+    helix::fmt::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
 
     lv_subject_copy_string(&pos_x_subject_, pos_x_buf_);
     lv_subject_copy_string(&pos_y_subject_, pos_y_buf_);

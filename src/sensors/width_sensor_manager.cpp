@@ -5,6 +5,7 @@
 
 #include "ui_update_queue.h"
 
+#include "format_utils.h"
 #include "spdlog/spdlog.h"
 
 #include <algorithm>
@@ -162,8 +163,8 @@ void WidthSensorManager::update_from_status(const nlohmann::json& status) {
 }
 
 void WidthSensorManager::inject_mock_sensors(std::vector<std::string>& objects,
-                                              nlohmann::json& /*config_keys*/,
-                                              nlohmann::json& /*moonraker_info*/) {
+                                             nlohmann::json& /*config_keys*/,
+                                             nlohmann::json& /*moonraker_info*/) {
     // Width sensors are discovered from Klipper objects
     objects.emplace_back("hall_filament_width_sensor");
     spdlog::debug("[WidthSensorManager] Injected mock sensors: hall_filament_width_sensor");
@@ -499,13 +500,13 @@ void WidthSensorManager::update_subjects() {
     int diameter = get_diameter_value();
     lv_subject_set_int(&diameter_, diameter);
 
-    // Update text subject: format as "1.75mm" or "--" if unavailable
+    // Update text subject: format as "1.75 mm" or "—" if unavailable
     if (diameter >= 0) {
         // Diameter is stored as mm * 1000, so divide to get mm with 2 decimal places
         float diameter_mm = diameter / 1000.0f;
-        snprintf(diameter_text_buf_, sizeof(diameter_text_buf_), "%.2fmm", diameter_mm);
+        helix::fmt::format_diameter_mm(diameter_mm, diameter_text_buf_, sizeof(diameter_text_buf_));
     } else {
-        snprintf(diameter_text_buf_, sizeof(diameter_text_buf_), "--");
+        snprintf(diameter_text_buf_, sizeof(diameter_text_buf_), "%s", helix::fmt::UNAVAILABLE);
     }
     lv_subject_copy_string(&diameter_text_, diameter_text_buf_);
 

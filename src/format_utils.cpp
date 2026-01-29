@@ -8,6 +8,83 @@
 
 namespace helix::fmt {
 
+// =============================================================================
+// Percentage Formatting
+// =============================================================================
+
+char* format_percent(int percent, char* buf, size_t size) {
+    std::snprintf(buf, size, "%d%%", percent);
+    return buf;
+}
+
+char* format_percent_or_unavailable(int percent, bool available, char* buf, size_t size) {
+    if (available) {
+        return format_percent(percent, buf, size);
+    }
+    std::snprintf(buf, size, "%s", UNAVAILABLE);
+    return buf;
+}
+
+char* format_percent_float(double percent, int decimals, char* buf, size_t size) {
+    std::snprintf(buf, size, "%.*f%%", decimals, percent);
+    return buf;
+}
+
+char* format_humidity(int humidity_x10, char* buf, size_t size) {
+    // Divide by 10 to get whole percent (truncate, don't round)
+    return format_percent(humidity_x10 / 10, buf, size);
+}
+
+// =============================================================================
+// Distance/Length Formatting
+// =============================================================================
+
+char* format_distance_mm(double mm, int precision, char* buf, size_t size) {
+    std::snprintf(buf, size, "%.*f mm", precision, mm);
+    return buf;
+}
+
+char* format_diameter_mm(float mm, char* buf, size_t size) {
+    std::snprintf(buf, size, "%.2f mm", static_cast<double>(mm));
+    return buf;
+}
+
+// =============================================================================
+// Speed Formatting
+// =============================================================================
+
+char* format_speed_mm_s(double speed, char* buf, size_t size) {
+    std::snprintf(buf, size, "%.0f mm/s", speed);
+    return buf;
+}
+
+char* format_speed_mm_min(double speed, char* buf, size_t size) {
+    std::snprintf(buf, size, "%.0f mm/min", speed);
+    return buf;
+}
+
+// =============================================================================
+// Acceleration Formatting
+// =============================================================================
+
+char* format_accel_mm_s2(double accel, char* buf, size_t size) {
+    std::snprintf(buf, size, "%.0f mm/s²", accel);
+    return buf;
+}
+
+// =============================================================================
+// Frequency Formatting
+// =============================================================================
+
+char* format_frequency_hz(double hz, char* buf, size_t size) {
+    std::snprintf(buf, size, "%.1f Hz", hz);
+    return buf;
+}
+
+// =============================================================================
+// Duration Formatting
+// =============================================================================
+
 std::string duration(int total_seconds) {
     // Handle negative or zero
     if (total_seconds <= 0) {

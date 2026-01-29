@@ -8,6 +8,7 @@
 #include "ui_panel_common.h"
 #include "ui_toast.h"
 
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
 #include "static_panel_registry.h"
@@ -334,10 +335,10 @@ void PrintTuneOverlay::update_z_offset_icons(lv_obj_t* /*panel*/) {
 // ============================================================================
 
 void PrintTuneOverlay::update_display() {
-    std::snprintf(tune_speed_buf_, sizeof(tune_speed_buf_), "%d%%", speed_percent_);
+    helix::fmt::format_percent(speed_percent_, tune_speed_buf_, sizeof(tune_speed_buf_));
     lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
 
-    std::snprintf(tune_flow_buf_, sizeof(tune_flow_buf_), "%d%%", flow_percent_);
+    helix::fmt::format_percent(flow_percent_, tune_flow_buf_, sizeof(tune_flow_buf_));
     lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
 }
 
@@ -355,7 +356,8 @@ void PrintTuneOverlay::update_z_offset_display(int microns) {
     current_z_offset_ = microns / 1000.0;
 
     if (subjects_initialized_) {
-        std::snprintf(tune_z_offset_buf_, sizeof(tune_z_offset_buf_), "%.3fmm", current_z_offset_);
+        helix::fmt::format_distance_mm(current_z_offset_, 3, tune_z_offset_buf_,
+                                       sizeof(tune_z_offset_buf_));
         lv_subject_copy_string(&tune_z_offset_subject_, tune_z_offset_buf_);
     }
 
@@ -371,7 +373,7 @@ void PrintTuneOverlay::handle_speed_display(int value) {
     speed_percent_ = value;
 
     // Update display while dragging (no G-code)
-    std::snprintf(tune_speed_buf_, sizeof(tune_speed_buf_), "%d%%", value);
+    helix::fmt::format_percent(value, tune_speed_buf_, sizeof(tune_speed_buf_));
     lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
 }
 
@@ -392,7 +394,7 @@ void PrintTuneOverlay::handle_flow_display(int value) {
     flow_percent_ = value;
 
     // Update display while dragging (no G-code)
-    std::snprintf(tune_flow_buf_, sizeof(tune_flow_buf_), "%d%%", value);
+    helix::fmt::format_percent(value, tune_flow_buf_, sizeof(tune_flow_buf_));
     lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
 }
 
@@ -456,7 +458,8 @@ void PrintTuneOverlay::handle_reset() {
 void PrintTuneOverlay::handle_z_offset_changed(double delta) {
     // Update local display immediately for responsive feel
     current_z_offset_ += delta;
-    std::snprintf(tune_z_offset_buf_, sizeof(tune_z_offset_buf_), "%.3fmm", current_z_offset_);
+    helix::fmt::format_distance_mm(current_z_offset_, 3, tune_z_offset_buf_,
+                                   sizeof(tune_z_offset_buf_));
     lv_subject_copy_string(&tune_z_offset_subject_, tune_z_offset_buf_);
 
     // Track pending delta for "unsaved adjustment" notification in Controls panel

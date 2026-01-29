@@ -13,6 +13,7 @@
 
 #include "app_constants.h"
 #include "app_globals.h"
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -55,8 +56,8 @@ ExtrusionPanel::ExtrusionPanel() {
                   nozzle_target_);
     std::snprintf(warning_temps_buf_, sizeof(warning_temps_buf_), "Current: %dC\nTarget: %dC",
                   nozzle_current_, nozzle_target_);
-    std::snprintf(speed_display_buf_, sizeof(speed_display_buf_), "%d mm/min",
-                  extrusion_speed_mmpm_);
+    helix::fmt::format_speed_mm_min(static_cast<double>(extrusion_speed_mmpm_), speed_display_buf_,
+                                    sizeof(speed_display_buf_));
 
     spdlog::debug("[ExtrusionPanel] Instance created");
 }
@@ -486,8 +487,8 @@ void ExtrusionPanel::setup_speed_slider() {
 }
 
 void ExtrusionPanel::update_speed_display() {
-    std::snprintf(speed_display_buf_, sizeof(speed_display_buf_), "%d mm/min",
-                  extrusion_speed_mmpm_);
+    helix::fmt::format_speed_mm_min(static_cast<double>(extrusion_speed_mmpm_), speed_display_buf_,
+                                    sizeof(speed_display_buf_));
     lv_subject_copy_string(&speed_display_subject_, speed_display_buf_);
 }
 

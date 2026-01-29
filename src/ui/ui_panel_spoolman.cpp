@@ -13,6 +13,7 @@
 
 #include "ams_state.h"
 #include "app_globals.h"
+#include "format_utils.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
 #include "theme_manager.h"
@@ -307,8 +308,8 @@ void SpoolmanPanel::update_row_visuals(lv_obj_t* row, const SpoolInfo& spool) {
     lv_obj_t* percent_label = lv_obj_find_by_name(row, "percent_text");
     if (percent_label) {
         char percent_buf[16];
-        snprintf(percent_buf, sizeof(percent_buf), "%d%%",
-                 static_cast<int>(spool.remaining_percent()));
+        helix::fmt::format_percent(static_cast<int>(spool.remaining_percent()), percent_buf,
+                                   sizeof(percent_buf));
         lv_label_set_text(percent_label, percent_buf);
     }
 
