@@ -281,12 +281,29 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
  * @brief XML apply callback for <ui_button> widget
  *
  * Delegates to standard object parser for base properties (align, hidden, etc.)
+ * Also sets derived names for icon/label children if the button has a name.
  *
  * @param state XML parser state
  * @param attrs XML attributes
  */
 void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     lv_xml_obj_apply(state, attrs);
+
+    // If button has a name, give icon a derived name so it can be found
+    void* item = lv_xml_state_get_item(state);
+    lv_obj_t* btn = static_cast<lv_obj_t*>(item);
+    const char* btn_name = lv_obj_get_name(btn);
+
+    if (btn_name && strlen(btn_name) > 0) {
+        UiButtonData* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
+        if (data && data->icon) {
+            // Set icon name as "{button_name}_icon"
+            char icon_name[128];
+            snprintf(icon_name, sizeof(icon_name), "%s_icon", btn_name);
+            lv_obj_set_name(data->icon, icon_name);
+            spdlog::trace("[ui_button] Set icon name to '{}'", icon_name);
+        }
+    }
 }
 
 } // namespace

@@ -346,7 +346,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     list_rows_container_ = lv_obj_find_by_name(panel_, "list_rows_container");
     empty_state_container_ = lv_obj_find_by_name(panel_, "empty_state_container");
     view_toggle_btn_ = lv_obj_find_by_name(panel_, "view_toggle_btn");
-    view_toggle_icon_ = lv_obj_find_by_name(panel_, "view_toggle_icon");
+    view_toggle_icon_ = lv_obj_find_by_name(panel_, "view_toggle_btn_icon");
 
     if (!card_view_container_ || !list_view_container_ || !list_rows_container_ ||
         !empty_state_container_ || !view_toggle_btn_ || !view_toggle_icon_) {
