@@ -96,25 +96,6 @@ lv_color_t theme_manager_parse_hex_color(const char* hex_str) {
 }
 
 /**
- * @brief Darken a hex color string by a percentage
- * @param hex_str Color in "#RRGGBB" format
- * @param percent Percentage to keep (0.0-1.0), e.g., 0.7 = 70% brightness
- * @return New hex string (static buffer, not thread-safe)
- */
-static const char* darken_hex_color(const char* hex_str, float percent) {
-    static char result[8];
-    if (!hex_str || hex_str[0] != '#' || strlen(hex_str) < 7) {
-        return hex_str; // Return original on error
-    }
-    uint32_t hex = static_cast<uint32_t>(strtoul(hex_str + 1, NULL, 16));
-    uint8_t r = static_cast<uint8_t>(((hex >> 16) & 0xFF) * percent);
-    uint8_t g = static_cast<uint8_t>(((hex >> 8) & 0xFF) * percent);
-    uint8_t b = static_cast<uint8_t>((hex & 0xFF) * percent);
-    snprintf(result, sizeof(result), "#%02x%02x%02x", r, g, b);
-    return result;
-}
-
-/**
  * @brief Calculate perceived brightness of an lv_color_t
  * Uses standard luminance formula: 0.299*R + 0.587*G + 0.114*B
  * @return Brightness value 0-255
@@ -158,19 +139,6 @@ int theme_compute_saturation(lv_color_t c) {
  */
 lv_color_t theme_compute_more_saturated(lv_color_t a, lv_color_t b) {
     return theme_compute_saturation(a) >= theme_compute_saturation(b) ? a : b;
-}
-
-// Internal helpers for backward compatibility
-static int color_brightness(lv_color_t color) {
-    return theme_compute_brightness(color);
-}
-
-static lv_color_t brighter_color(lv_color_t a, lv_color_t b) {
-    return theme_compute_brighter_color(a, b);
-}
-
-static lv_color_t more_saturated_color(lv_color_t a, lv_color_t b) {
-    return theme_compute_more_saturated(a, b);
 }
 
 lv_color_t theme_get_knob_color() {
@@ -860,7 +828,7 @@ void theme_manager_refresh_preview_elements(lv_obj_t* root, const helix::ThemeDa
     lv_color_t info = theme_manager_parse_hex_color(palette->info.c_str());
 
     // Knob color: brighter of primary vs tertiary (for switch/slider handles)
-    lv_color_t knob_color = more_saturated_color(primary, tertiary);
+    lv_color_t knob_color = theme_compute_more_saturated(primary, tertiary);
 
     // Theme geometry properties
     int32_t border_radius = theme.properties.border_radius;
@@ -1130,7 +1098,7 @@ void theme_manager_refresh_preview_elements(lv_obj_t* root, const helix::ThemeDa
     // ========================================================================
     // ICONS - accent variant uses brighter of primary vs secondary
     // ========================================================================
-    lv_color_t accent_color = more_saturated_color(primary, secondary);
+    lv_color_t accent_color = theme_compute_more_saturated(primary, secondary);
     lv_obj_t* icon = lv_obj_find_by_name(root, "preview_icon_typography");
     if (icon) {
         lv_obj_set_style_text_color(icon, accent_color, LV_PART_MAIN);
