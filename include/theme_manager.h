@@ -51,6 +51,8 @@ enum class StyleRole {
     ButtonTertiary,
     ButtonDanger,
     ButtonGhost,
+    ButtonSuccess,
+    ButtonWarning,
     ButtonDisabled,
     ButtonPressed,
     SeverityInfo,

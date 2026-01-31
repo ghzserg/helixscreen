@@ -132,6 +132,16 @@ void configure_button_ghost(lv_style_t* s, const ThemePalette& p) {
     lv_style_set_bg_opa(s, LV_OPA_0);
 }
 
+void configure_button_success(lv_style_t* s, const ThemePalette& p) {
+    lv_style_set_bg_color(s, p.success);
+    lv_style_set_bg_opa(s, LV_OPA_COVER);
+}
+
+void configure_button_warning(lv_style_t* s, const ThemePalette& p) {
+    lv_style_set_bg_color(s, p.warning);
+    lv_style_set_bg_opa(s, LV_OPA_COVER);
+}
+
 void configure_button_disabled(lv_style_t* s, const ThemePalette& p) {
     (void)p;
     lv_style_set_opa(s, LV_OPA_50);

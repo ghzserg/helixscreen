@@ -27,6 +27,8 @@ void configure_button_secondary(lv_style_t* s, const ThemePalette& p);
 void configure_button_tertiary(lv_style_t* s, const ThemePalette& p);
 void configure_button_danger(lv_style_t* s, const ThemePalette& p);
 void configure_button_ghost(lv_style_t* s, const ThemePalette& p);
+void configure_button_success(lv_style_t* s, const ThemePalette& p);
+void configure_button_warning(lv_style_t* s, const ThemePalette& p);
 void configure_button_disabled(lv_style_t* s, const ThemePalette& p);
 void configure_button_pressed(lv_style_t* s, const ThemePalette& p);
 void configure_severity_info(lv_style_t* s, const ThemePalette& p);
@@ -149,6 +151,8 @@ void ThemeManager::register_style_configs() {
     styles_[static_cast<size_t>(StyleRole::ButtonTertiary)].configure = configure_button_tertiary;
     styles_[static_cast<size_t>(StyleRole::ButtonDanger)].configure = configure_button_danger;
     styles_[static_cast<size_t>(StyleRole::ButtonGhost)].configure = configure_button_ghost;
+    styles_[static_cast<size_t>(StyleRole::ButtonSuccess)].configure = configure_button_success;
+    styles_[static_cast<size_t>(StyleRole::ButtonWarning)].configure = configure_button_warning;
     styles_[static_cast<size_t>(StyleRole::ButtonDisabled)].configure = configure_button_disabled;
     styles_[static_cast<size_t>(StyleRole::ButtonPressed)].configure = configure_button_pressed;
 

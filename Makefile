@@ -235,7 +235,8 @@ LVGL_DEMO_SRCS := $(shell find $(LVGL_DIR)/demos -name "*.c" 2>/dev/null)
 LVGL_DEMO_OBJS := $(patsubst $(LVGL_DIR)/%.c,$(OBJ_DIR)/lvgl/%.o,$(LVGL_DEMO_SRCS))
 
 # Application C sources
-APP_C_SRCS := $(wildcard $(SRC_DIR)/*.c)
+# Exclude theme_core.c - replaced by ThemeManager refactor (theme_compat.cpp provides legacy API)
+APP_C_SRCS := $(filter-out $(SRC_DIR)/theme_core.c,$(wildcard $(SRC_DIR)/*.c))
 APP_C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(APP_C_SRCS))
 
 # Application C++ sources (exclude test binaries, splash binary, and lvgl-demo)
