@@ -444,7 +444,6 @@ lv_theme_t* theme_core_init(lv_display_t* display, const theme_palette_t* palett
     lv_style_set_border_color(&helix_theme_instance->button_style, border_color);
     lv_style_set_border_opa(&helix_theme_instance->button_style, border_opacity);
     lv_style_set_shadow_width(&helix_theme_instance->button_style, 0);
-    lv_style_set_border_width(&helix_theme_instance->button_style, 0);
     lv_style_set_text_color(&helix_theme_instance->button_style, text_primary_color);
     lv_style_set_transform_pivot_x(&helix_theme_instance->button_style, LV_PCT(50));
     lv_style_set_transform_pivot_y(&helix_theme_instance->button_style, LV_PCT(50));
