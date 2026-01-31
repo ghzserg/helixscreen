@@ -5,6 +5,26 @@
 # Handles all compilation rules, linking, and main build targets
 
 # ============================================================================
+# BUILD UP-TO-DATE CHECK (for pre-commit hook)
+# ============================================================================
+# Problem: 'make -q' can't evaluate shell commands in the 'all' target,
+# so it always returns "needs rebuild" even when the build is current.
+#
+# Solution: A fast target that uses 'find -newer' to compare source timestamps
+# against the binary. Used by scripts/quality-checks.sh to skip unnecessary builds.
+#
+# Exit codes: 0 = up to date, 1 = needs rebuild
+# ============================================================================
+.PHONY: check-uptodate
+check-uptodate:
+	@if [ ! -f "$(TARGET)" ]; then \
+		exit 1; \
+	fi
+	@if find $(SRC_DIR) $(INC_DIR) -type f \( -name '*.cpp' -o -name '*.c' -o -name '*.h' -o -name '*.mm' \) -newer "$(TARGET)" 2>/dev/null | grep -q .; then \
+		exit 1; \
+	fi
+
+# ============================================================================
 # UNLIMITED -j DETECTION AND AUTO-FIX
 # ============================================================================
 # Problem: 'make -j' (no number) means UNLIMITED parallelism in GNU Make.

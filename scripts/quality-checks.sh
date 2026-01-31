@@ -324,9 +324,19 @@ echo ""
 if [ "$STAGED_ONLY" = true ]; then
   SECTION_START=$(date +%s)
   echo -n "🔨 Verifying incremental build..."
-  # Use make -q (query mode) first - instant check if rebuild is needed
-  # Exit 0 = up to date, Exit 1 = needs rebuild, Exit 2 = error
-  if make -q >/dev/null 2>&1; then
+
+  # Fast timestamp check (avoids 2-3s make startup overhead)
+  # Check if binary exists and no source files are newer
+  TARGET="build/bin/helix-screen"
+  BUILD_NEEDED=false
+
+  if [ ! -f "$TARGET" ]; then
+    BUILD_NEEDED=true
+  elif find src include -type f \( -name '*.cpp' -o -name '*.c' -o -name '*.h' -o -name '*.mm' \) -newer "$TARGET" 2>/dev/null | grep -q .; then
+    BUILD_NEEDED=true
+  fi
+
+  if [ "$BUILD_NEEDED" = false ]; then
     section_time $SECTION_START
     echo ""
     echo "✅ Build up to date"
