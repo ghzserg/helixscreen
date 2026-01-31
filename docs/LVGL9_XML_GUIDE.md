@@ -47,15 +47,6 @@ LVGL 9's XML system enables declarative UI development with reactive data bindin
 └─────────────────┘
 ```
 
-### Key Benefits
-
-| XML Approach | vs. Traditional C++ |
-|-------------|---------------------|
-| Declarative and concise | Less verbose (3 lines XML vs. 15 lines C++) |
-| Separation of concerns | No manual widget management |
-| Reactive data binding | Automatic UI updates |
-| Rapid iteration (no recompile for layout) | Designer-friendly |
-
 ### Reactive Data Binding is MANDATORY
 
 **ALL UI updates MUST use reactive data binding. Direct widget manipulation is an anti-pattern.**
@@ -73,12 +64,6 @@ LVGL 9's XML system enables declarative UI development with reactive data bindin
 lv_subject_set_string(&status_message, "Connected");
 lv_subject_set_int(&connection_ready, 1);
 // UI updates automatically
-```
-
-```cpp
-// ❌ WRONG - Direct widget manipulation (ANTI-PATTERN)
-lv_obj_t* label = lv_obj_find_by_name(screen, "status_label");
-lv_label_set_text(label, "Connected");  // DO NOT DO THIS
 ```
 
 ---
@@ -334,19 +319,7 @@ Inline style attributes (e.g., `style_bg_color="#card_bg"`) have **higher priori
 
 #### Binding Limitations
 
-**❌ Text Conditionals DO NOT EXIST:**
-
-No `bind_text_if_eq`. Use multiple labels with flag bindings:
-
-```xml
-<!-- Workaround: Multiple labels with conditional visibility -->
-<lv_label text="Idle">
-    <bind_flag_if_not_eq subject="state" flag="hidden" ref_value="0"/>
-</lv_label>
-<lv_label text="Active">
-    <bind_flag_if_not_eq subject="state" flag="hidden" ref_value="1"/>
-</lv_label>
-```
+**❌ No `bind_text_if_eq`** - use multiple labels with `bind_flag_if_*` for conditional text.
 
 ### 4. Observer Cleanup in DELETE Handlers
 
@@ -376,6 +349,26 @@ static void on_delete(lv_event_t* e) {
 ---
 
 ## Layouts & Positioning
+
+### lv_obj Defaults (HelixScreen Theme)
+
+Our theme system sets these defaults on all `lv_obj` containers:
+
+| Property | Default Value | Notes |
+|----------|---------------|-------|
+| `width` | `content` | Shrinks to content size |
+| `height` | `content` | Shrinks to content size |
+| `border_width` | `0` | No border by default |
+| `bg_opa` | `0` | Transparent background |
+| `pad_all` | `0` | No internal padding |
+
+This means `lv_obj` acts as a pure layout container by default - no visual styling unless explicitly added.
+
+```xml
+<!-- These are equivalent in HelixScreen -->
+<lv_obj flex_flow="row">...</lv_obj>
+<lv_obj flex_flow="row" height="content" style_border_width="0" style_bg_opa="0" style_pad_all="0">...</lv_obj>
+```
 
 ### Flex Layout (Flexbox)
 
@@ -447,13 +440,7 @@ Children with `flex_grow` expand to fill remaining space:
 When using `flex_grow`, the parent MUST have explicit height:
 
 ```xml
-<!-- ❌ BROKEN - Parent has no height -->
-<lv_obj flex_flow="row">
-    <lv_obj flex_grow="3" height="100%">Left</lv_obj>
-    <lv_obj flex_grow="7" height="100%">Right</lv_obj>
-</lv_obj>
-
-<!-- ✅ CORRECT - Parent has explicit height -->
+<!-- ✅ Parent needs height="100%" for flex_grow to work -->
 <lv_obj flex_flow="row" height="100%">
     <lv_obj flex_grow="3" height="100%">Left</lv_obj>
     <lv_obj flex_grow="7" height="100%">Right</lv_obj>
@@ -470,36 +457,19 @@ When using `flex_grow`, the parent MUST have explicit height:
 
 ### Centering Techniques
 
-#### Horizontal Centering (Text)
-
 ```xml
-<lv_label text="Centered"
-          style_text_align="center"
-          width="100%"/>
-<!-- BOTH attributes required -->
-```
+<!-- Text: BOTH required -->
+<lv_label text="Centered" style_text_align="center" width="100%"/>
 
-#### Vertical Centering
-
-```xml
+<!-- Flex centering -->
 <lv_obj flex_flow="column" height="100%"
-        style_flex_main_place="center"
-        style_flex_cross_place="center">
+        style_flex_main_place="center" style_flex_cross_place="center">
     <lv_label text="Centered"/>
 </lv_obj>
-```
 
-#### Single Child - Use align, NOT flex
-
-```xml
-<!-- ✅ WORKS - No flex, pure positioning -->
+<!-- Single child: use align, NOT flex (flex conflicts with align) -->
 <lv_obj width="100%" height="100%">
     <lv_obj align="center">Perfectly centered</lv_obj>
-</lv_obj>
-
-<!-- ❌ BROKEN - Flex conflicts with align -->
-<lv_obj flex_flow="column" style_flex_main_place="center">
-    <lv_obj align="center">Off-center!</lv_obj>
 </lv_obj>
 ```
 
@@ -841,22 +811,6 @@ lv_xml_register_event_cb(nullptr, "on_slider_changed", [](lv_event_t* e) {
 | `focused` | Object gains focus |
 | `ready` | Text area complete |
 
-### ❌ WRONG vs ✅ RIGHT
-
-```cpp
-// ❌ WRONG - Imperative event wiring
-void MyPanel::setup(lv_obj_t* panel) {
-    lv_obj_t* btn = lv_obj_find_by_name(panel, "my_button");
-    lv_obj_add_event_cb(btn, on_click, LV_EVENT_CLICKED, this);  // BAD!
-}
-
-// ✅ RIGHT - Declarative in XML + registered callback
-void MyPanel::init_subjects() {
-    lv_xml_register_event_cb(nullptr, "on_my_button_clicked", on_click_cb);
-}
-// Plus <event_cb> in XML
-```
-
 ---
 
 ## Implementation Guide
@@ -1089,6 +1043,17 @@ Widgets **can safely omit names**:
 <lv_dropdown options="A\nB\nC"/>
 ```
 
+#### 5. Complex Layouts Need lv_obj_update_layout()
+
+Grid layouts or dynamic content with SIZE_CONTENT may need an explicit layout update:
+
+```cpp
+lv_obj_t* panel = lv_xml_create(parent, "complex_panel", NULL);
+lv_obj_update_layout(panel);  // Required for grid layouts
+```
+
+**Note:** SIZE_CONTENT disables flex wrapping - use explicit width if you need `row_wrap`.
+
 ### Debugging Checklist
 
 When layouts don't work:
@@ -1139,34 +1104,6 @@ lv_obj_t* obj = lv_xml_create(parent, "component_name", nullptr);
 lv_obj_t* w = lv_obj_find_by_name(parent, "widget_name");
 ```
 
-### Common XML Patterns
-
-```xml
-<!-- Flex row, evenly spaced -->
-<lv_obj flex_flow="row" width="100%"
-        style_flex_main_place="space_evenly"
-        style_flex_cross_place="center"/>
-
-<!-- Flex column, grow to fill -->
-<lv_obj flex_flow="column" height="100%" flex_grow="1"/>
-
-<!-- Centered single child -->
-<lv_obj width="100%" height="100%">
-    <lv_obj align="center"/>
-</lv_obj>
-
-<!-- Conditional visibility -->
-<lv_obj>
-    <bind_flag_if_eq subject="show_it" flag="hidden" ref_value="0"/>
-</lv_obj>
-
-<!-- Button with event -->
-<lv_button>
-    <event_cb trigger="clicked" callback="on_click"/>
-    <text_body text="Click"/>
-</lv_button>
-```
-
 ---
 
 ## Resources
@@ -1176,15 +1113,3 @@ lv_obj_t* w = lv_obj_find_by_name(parent, "widget_name");
 - **Quick Reference:** `docs/LVGL9_XML_ATTRIBUTES_REFERENCE.md`
 - **Example Panels:** `ui_xml/bed_mesh_panel.xml` (gold standard)
 
----
-
-**Document History:**
-
-- **2025-12-18:** Complete rewrite for accuracy
-  - Fixed `lv_xml_register_component_from_file()` API name
-  - Fixed `<event_cb>` syntax (was incorrectly documented as `<lv_event-call_function>`)
-  - Added responsive design token system documentation
-  - Updated project structure to match current 60+ XML files
-  - Added semantic typography components (`text_heading`, `text_body`, `text_small`)
-  - Added spinner and icon component documentation
-  - Streamlined to ~1000 lines from ~3000
