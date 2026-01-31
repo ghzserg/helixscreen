@@ -802,6 +802,10 @@ lv_obj_t* ui_gcode_viewer_create(lv_obj_t* parent) {
         return nullptr;
     }
 
+    // Set default size (will be overridden by XML attrs or manual sizing)
+    // This prevents 0x0 at init time since lv_obj now defaults to content sizing
+    lv_obj_set_size(obj, 200, 200);
+
     // Allocate state (C++ object) using RAII
     auto state_ptr = std::make_unique<gcode_viewer_state_t>();
     if (!state_ptr) {
