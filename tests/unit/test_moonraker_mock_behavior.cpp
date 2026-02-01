@@ -90,7 +90,18 @@
  */
 class MockBehaviorTestFixture {
   public:
+    /// Default speedup for tests (100x makes 250ms connect delay → 2.5ms)
+    static constexpr double TEST_SPEEDUP = 100.0;
+
     MockBehaviorTestFixture() = default;
+
+    /**
+     * @brief Create a mock with test speedup (100x faster than real-time)
+     */
+    std::unique_ptr<MoonrakerClientMock> create_mock(
+        MoonrakerClientMock::PrinterType type = MoonrakerClientMock::PrinterType::VORON_24) {
+        return std::make_unique<MoonrakerClientMock>(type, TEST_SPEEDUP);
+    }
 
     /**
      * @brief Wait for callback to be invoked with timeout
@@ -343,6 +354,44 @@ TEST_CASE("MoonrakerClientMock initial state dispatch", "[connection][slow][init
         REQUIRE(toolhead.contains("homed_axes"));
 
         mock.disconnect();
+    }
+
+    SECTION("initial state has correct gcode_move structure") {
+        // This test ensures the mock sends gcode_position which is required for
+        // Motion panel to display position correctly (position won't update without it)
+        auto mock = fixture.create_mock();
+        mock->register_notify_update(fixture.create_capture_callback());
+        mock->connect("ws://mock/websocket", []() {}, []() {});
+
+        REQUIRE(fixture.wait_for_callback(500));
+        mock->stop_temperature_simulation();
+
+        // Find the initial state notification (the one with gcode_move)
+        json initial_status;
+        bool found = false;
+        for (const auto& notification : fixture.get_notifications()) {
+            if (notification.contains("params") && notification["params"].is_array() &&
+                !notification["params"].empty()) {
+                const json& status = notification["params"][0];
+                if (status.is_object() && status.contains("gcode_move")) {
+                    initial_status = status;
+                    found = true;
+                    break;
+                }
+            }
+        }
+        REQUIRE(found);
+
+        // gcode_move structure (matches real Moonraker)
+        const json& gcode_move = initial_status["gcode_move"];
+        REQUIRE(gcode_move.contains("gcode_position"));
+        REQUIRE(gcode_move["gcode_position"].is_array());
+        REQUIRE(gcode_move["gcode_position"].size() == 4); // [x, y, z, e]
+        REQUIRE(gcode_move.contains("speed_factor"));
+        REQUIRE(gcode_move.contains("extrude_factor"));
+        REQUIRE(gcode_move.contains("homing_origin"));
+
+        mock->disconnect();
     }
 
     SECTION("initial state has correct print_stats structure") {

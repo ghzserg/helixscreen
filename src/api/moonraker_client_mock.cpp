@@ -149,8 +149,12 @@ int MoonrakerClientMock::connect(const char* url, std::function<void()> on_conne
     // Simulate connection state change (same as real client)
     set_connection_state(ConnectionState::CONNECTING);
 
-    // Small delay to simulate realistic connection (250ms)
-    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    // Small delay to simulate realistic connection (250ms / speedup)
+    double speedup = speedup_factor_.load();
+    auto delay_ms = static_cast<int>(250.0 / speedup);
+    if (delay_ms > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+    }
 
     // Check if we should simulate disconnected state for testing
     if (get_runtime_config()->simulate_disconnect) {
@@ -2062,7 +2066,8 @@ void MoonrakerClientMock::dispatch_initial_state() {
         {"toolhead",
          {{"position", {x, y, z, 0.0}}, {"homed_axes", homed}, {"kinematics", "cartesian"}}},
         {"gcode_move",
-         {{"speed_factor", speed / 100.0},
+         {{"gcode_position", {x, y, z, 0.0}}, // Commanded position (same as toolhead in mock)
+          {"speed_factor", speed / 100.0},
           {"extrude_factor", flow / 100.0},
           {"homing_origin", {0.0, 0.0, z_offset, 0.0}}}},
         {"fan", {{"speed", fan / 255.0}}},
@@ -2605,7 +2610,8 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             {"toolhead",
              {{"position", {x, y, z, 0.0}}, {"homed_axes", homed}, {"kinematics", "cartesian"}}},
             {"gcode_move",
-             {{"speed_factor", speed / 100.0},
+             {{"gcode_position", {x, y, z, 0.0}}, // Commanded position (same as toolhead in mock)
+              {"speed_factor", speed / 100.0},
               {"extrude_factor", flow / 100.0},
               {"homing_origin", {0.0, 0.0, z_offset, 0.0}}}},
             {"fan", {{"speed", fan / 255.0}}},
@@ -2766,9 +2772,13 @@ void MoonrakerClientMock::dispatch_gcode_move_update() {
     double z_offset = gcode_offset_z_.load();
     int speed = speed_factor_.load();
     int flow = flow_factor_.load();
+    double x = pos_x_.load();
+    double y = pos_y_.load();
+    double z = pos_z_.load();
 
     json gcode_move = {{"gcode_move",
-                        {{"speed_factor", speed / 100.0},
+                        {{"gcode_position", {x, y, z, 0.0}},
+                         {"speed_factor", speed / 100.0},
                          {"extrude_factor", flow / 100.0},
                          {"homing_origin", {0.0, 0.0, z_offset, 0.0}}}}};
     dispatch_status_update(gcode_move);
