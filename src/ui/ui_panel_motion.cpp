@@ -85,6 +85,34 @@ void MotionPanel::init_subjects() {
     register_position_observers();
 
     subjects_initialized_ = true;
+
+    // Sync initial position values (observers only fire on change, not on subscribe)
+    // Without this, panel shows dashes until next position update even if printer is homed
+    int x_centimm = lv_subject_get_int(get_printer_state().get_gcode_position_x_subject());
+    int y_centimm = lv_subject_get_int(get_printer_state().get_gcode_position_y_subject());
+    gcode_z_centimm_ = lv_subject_get_int(get_printer_state().get_gcode_position_z_subject());
+    actual_z_centimm_ = lv_subject_get_int(get_printer_state().get_position_z_subject());
+    int bed_moves = lv_subject_get_int(get_printer_state().get_printer_bed_moves_subject());
+
+    // Update X position display
+    float x = static_cast<float>(helix::units::from_centimm(x_centimm));
+    current_x_ = x;
+    helix::fmt::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
+    lv_subject_copy_string(&pos_x_subject_, pos_x_buf_);
+
+    // Update Y position display
+    float y = static_cast<float>(helix::units::from_centimm(y_centimm));
+    current_y_ = y;
+    helix::fmt::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
+    lv_subject_copy_string(&pos_y_subject_, pos_y_buf_);
+
+    // Update Z position display (uses gcode_z_centimm_ and actual_z_centimm_ we just set)
+    current_z_ = static_cast<float>(helix::units::from_centimm(gcode_z_centimm_));
+    update_z_display();
+
+    // Update Z axis label
+    update_z_axis_label(bed_moves != 0);
+
     spdlog::debug("[{}] Subjects initialized: X/Y/Z position + Z-axis label + observers ({} "
                   "subjects managed)",
                   get_name(), subjects_.count());
