@@ -408,7 +408,7 @@ PCH_FLAGS := -include $(PCH_HEADER)
 # This allows `make strict` to catch issues in project code while ignoring third-party header warnings
 # stb_image headers are in tinygl/include-demo (used for thumbnail processing)
 STB_INC := -isystem lib/tinygl/include-demo
-INCLUDES := -I. -I$(INC_DIR) -isystem lib -isystem lib/glm $(LVGL_INC) $(LIBHV_INC) $(SPDLOG_INC) $(TINYGL_INC) $(STB_INC) $(WPA_INC) $(SDL2_INC)
+INCLUDES := -I. -I$(INC_DIR) -Isrc/generated -isystem lib -isystem lib/glm $(LVGL_INC) $(LIBHV_INC) $(SPDLOG_INC) $(TINYGL_INC) $(STB_INC) $(WPA_INC) $(SDL2_INC)
 
 # Common linker flags (used by both macOS and Linux)
 LDFLAGS_COMMON := $(SDL2_LIBS) $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) -lm -lpthread
@@ -533,7 +533,7 @@ MOCK_OBJS := $(patsubst $(TEST_MOCK_DIR)/%.cpp,$(OBJ_DIR)/tests/mocks/%.o,$(MOCK
 # Default target
 .DEFAULT_GOAL := all
 
-.PHONY: all build clean run test tests test-integration test-cards test-print-select test-size-content demo compile_commands compile_commands_full libhv-build apply-patches generate-fonts validate-fonts regen-fonts update-mdi-cache verify-mdi-codepoints help check-deps install-deps venv-setup icon format format-staged screenshots tools moonraker-inspector strict quality setup
+.PHONY: all build clean run test tests test-integration test-cards test-print-select test-size-content demo compile_commands compile_commands_full libhv-build apply-patches generate-fonts validate-fonts regen-fonts update-mdi-cache verify-mdi-codepoints help check-deps install-deps venv-setup icon format format-staged screenshots tools moonraker-inspector strict quality setup translations
 
 # Developer setup - configure git hooks and commit template
 setup:
@@ -615,6 +615,7 @@ quality:
 # Include modular makefiles
 include mk/deps.mk
 include mk/patches.mk
+include mk/translations.mk
 include mk/tests.mk
 include mk/fonts.mk
 include mk/images.mk

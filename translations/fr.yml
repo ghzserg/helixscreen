@@ -1,0 +1,69 @@
+locale: fr
+translations:
+  "Home": Accueil
+  "Settings": Paramètres
+  "Back": Retour
+  "Cancel": Annuler
+  "Save": Enregistrer
+  "OK": OK
+  "Close": Fermer
+  "Nozzle": Buse
+  "Bed": Plateau
+  "Chamber": Chambre
+  "Target": Cible
+  "Actual": Actuel
+  "Preheat": Préchauffer
+  "Cooldown": Refroidir
+  "Motion": Mouvement
+  "Move": Déplacer
+  "Home All": Origine tous
+  "Home X": Origine X
+  "Home Y": Origine Y
+  "Home Z": Origine Z
+  "Step": Pas
+  "Speed": Vitesse
+  "Print": Imprimer
+  "Printing": Impression
+  "Pause": Pause
+  "Resume": Reprendre
+  "Stop": Arrêter
+  "Progress": Progression
+  "Remaining": Restant
+  "Elapsed": Écoulé
+  "Layer": Couche
+  "Files": Fichiers
+  "Select File": Sélectionner
+  "Delete": Supprimer
+  "Refresh": Actualiser
+  "Display": Affichage
+  "Dark Mode": Mode sombre
+  "Brightness": Luminosité
+  "Language": Langue
+  "Theme": Thème
+  "Sounds": Sons
+  "Notifications": Notifications
+  "About": À propos
+  "Filament": Filament
+  "Load": Charger
+  "Unload": Décharger
+  "Extrude": Extruder
+  "Retract": Rétracter
+  "Bed Mesh": Maillage du lit
+  "Calibrate": Calibrer
+  "Clear": Effacer
+  "Profile": Profil
+  "Error": Erreur
+  "Warning": Avertissement
+  "Ready": Prêt
+  "Busy": Occupé
+  "Offline": Hors ligne
+  "Connecting": Connexion
+  "Connected": Connecté
+  "Emergency Stop": "Arrêt d'urgence"
+  "E-Stop": Arrêt
+  "Never": Jamais
+  "seconds": secondes
+  "minute": minute
+  "minutes": minutes
+  "hour": heure
+  "hours": heures

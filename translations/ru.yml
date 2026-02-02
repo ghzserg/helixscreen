@@ -1,0 +1,69 @@
+locale: ru
+translations:
+  "Home": Главная
+  "Settings": Настройки
+  "Back": Назад
+  "Cancel": Отмена
+  "Save": Сохранить
+  "OK": OK
+  "Close": Закрыть
+  "Nozzle": Сопло
+  "Bed": Стол
+  "Chamber": Камера
+  "Target": Цель
+  "Actual": Текущая
+  "Preheat": Нагреть
+  "Cooldown": Охладить
+  "Motion": Движение
+  "Move": Двигать
+  "Home All": Домой все
+  "Home X": Домой X
+  "Home Y": Домой Y
+  "Home Z": Домой Z
+  "Step": Шаг
+  "Speed": Скорость
+  "Print": Печать
+  "Printing": Печать
+  "Pause": Пауза
+  "Resume": Продолжить
+  "Stop": Стоп
+  "Progress": Прогресс
+  "Remaining": Осталось
+  "Elapsed": Прошло
+  "Layer": Слой
+  "Files": Файлы
+  "Select File": Выбрать файл
+  "Delete": Удалить
+  "Refresh": Обновить
+  "Display": Дисплей
+  "Dark Mode": Темный режим
+  "Brightness": Яркость
+  "Language": Язык
+  "Theme": Тема
+  "Sounds": Звуки
+  "Notifications": Уведомления
+  "About": О программе
+  "Filament": Филамент
+  "Load": Загрузить
+  "Unload": Выгрузить
+  "Extrude": Экструдировать
+  "Retract": Втянуть
+  "Bed Mesh": Сетка стола
+  "Calibrate": Калибровать
+  "Clear": Очистить
+  "Profile": Профиль
+  "Error": Ошибка
+  "Warning": Предупреждение
+  "Ready": Готов
+  "Busy": Занят
+  "Offline": Не в сети
+  "Connecting": Подключение
+  "Connected": Подключен
+  "Emergency Stop": Аварийный стоп
+  "E-Stop": Стоп
+  "Never": Никогда
+  "seconds": секунд
+  "minute": минута
+  "minutes": минут
+  "hour": час
+  "hours": часов

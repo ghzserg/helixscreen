@@ -39,6 +39,9 @@ config/themes/*.json
 # ============================================================================
 # Generated Files & Logs
 # ============================================================================
+# Generated C/C++ translation files (from YAML via generate_translations.py)
+src/generated/
+
 # Auto-generated libhv logs
 *.log
 libhv.*.log

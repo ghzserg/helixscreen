@@ -1,0 +1,69 @@
+locale: en
+translations:
+  "Home": Home
+  "Settings": Settings
+  "Back": Back
+  "Cancel": Cancel
+  "Save": Save
+  "OK": OK
+  "Close": Close
+  "Nozzle": Nozzle
+  "Bed": Bed
+  "Chamber": Chamber
+  "Target": Target
+  "Actual": Actual
+  "Preheat": Preheat
+  "Cooldown": Cooldown
+  "Motion": Motion
+  "Move": Move
+  "Home All": Home All
+  "Home X": Home X
+  "Home Y": Home Y
+  "Home Z": Home Z
+  "Step": Step
+  "Speed": Speed
+  "Print": Print
+  "Printing": Printing
+  "Pause": Pause
+  "Resume": Resume
+  "Stop": Stop
+  "Progress": Progress
+  "Remaining": Remaining
+  "Elapsed": Elapsed
+  "Layer": Layer
+  "Files": Files
+  "Select File": Select File
+  "Delete": Delete
+  "Refresh": Refresh
+  "Display": Display
+  "Dark Mode": Dark Mode
+  "Brightness": Brightness
+  "Language": Language
+  "Theme": Theme
+  "Sounds": Sounds
+  "Notifications": Notifications
+  "About": About
+  "Filament": Filament
+  "Load": Load
+  "Unload": Unload
+  "Extrude": Extrude
+  "Retract": Retract
+  "Bed Mesh": Bed Mesh
+  "Calibrate": Calibrate
+  "Clear": Clear
+  "Profile": Profile
+  "Error": Error
+  "Warning": Warning
+  "Ready": Ready
+  "Busy": Busy
+  "Offline": Offline
+  "Connecting": Connecting
+  "Connected": Connected
+  "Emergency Stop": Emergency Stop
+  "E-Stop": E-Stop
+  "Never": Never
+  "seconds": seconds
+  "minute": minute
+  "minutes": minutes
+  "hour": hour
+  "hours": hours

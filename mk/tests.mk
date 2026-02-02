@@ -457,6 +457,7 @@ $(TEST_BIN): $(TEST_CORE_DEPS) \
              $(TEST_APP_OBJS) \
              $(MOCK_OBJS) \
              $(FONT_OBJS) \
+             $(TRANS_OBJS) \
              $(OBJCPP_OBJS) \
              $(TEST_PLATFORM_DEPS)
 	$(Q)mkdir -p $(BIN_DIR)

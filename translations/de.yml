@@ -1,0 +1,69 @@
+locale: de
+translations:
+  "Home": Startseite
+  "Settings": Einstellungen
+  "Back": Zurück
+  "Cancel": Abbrechen
+  "Save": Speichern
+  "OK": OK
+  "Close": Schließen
+  "Nozzle": Düse
+  "Bed": Heizbett
+  "Chamber": Kammer
+  "Target": Ziel
+  "Actual": Aktuell
+  "Preheat": Vorheizen
+  "Cooldown": Abkühlen
+  "Motion": Bewegung
+  "Move": Bewegen
+  "Home All": Alle referenzieren
+  "Home X": X referenzieren
+  "Home Y": Y referenzieren
+  "Home Z": Z referenzieren
+  "Step": Schritt
+  "Speed": Geschwindigkeit
+  "Print": Drucken
+  "Printing": Druckt
+  "Pause": Pause
+  "Resume": Fortsetzen
+  "Stop": Stoppen
+  "Progress": Fortschritt
+  "Remaining": Verbleibend
+  "Elapsed": Vergangen
+  "Layer": Schicht
+  "Files": Dateien
+  "Select File": Datei wählen
+  "Delete": Löschen
+  "Refresh": Aktualisieren
+  "Display": Anzeige
+  "Dark Mode": Dunkelmodus
+  "Brightness": Helligkeit
+  "Language": Sprache
+  "Theme": Thema
+  "Sounds": Töne
+  "Notifications": Benachrichtigungen
+  "About": Über
+  "Filament": Filament
+  "Load": Laden
+  "Unload": Entladen
+  "Extrude": Extrudieren
+  "Retract": Zurückziehen
+  "Bed Mesh": Bettnetz
+  "Calibrate": Kalibrieren
+  "Clear": Löschen
+  "Profile": Profil
+  "Error": Fehler
+  "Warning": Warnung
+  "Ready": Bereit
+  "Busy": Beschäftigt
+  "Offline": Offline
+  "Connecting": Verbinde
+  "Connected": Verbunden
+  "Emergency Stop": Notaus
+  "E-Stop": Notaus
+  "Never": Nie
+  "seconds": Sekunden
+  "minute": Minute
+  "minutes": Minuten
+  "hour": Stunde
+  "hours": Stunden

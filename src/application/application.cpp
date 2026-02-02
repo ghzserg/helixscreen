@@ -19,7 +19,6 @@
 #include "config.h"
 #include "display_manager.h"
 #include "hardware_validator.h"
-#include "lv_translation_stub.h"
 #include "moonraker_manager.h"
 #include "panel_factory.h"
 #include "print_history_manager.h"
@@ -101,6 +100,7 @@
 #include "gcode_file_modifier.h"
 #include "hv/hlog.h" // libhv logging - sync level with spdlog
 #include "logging_init.h"
+#include "lv_i18n_translations.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "lvgl/src/xml/lv_xml_translation.h"
@@ -741,21 +741,32 @@ bool Application::register_xml_components() {
 }
 
 bool Application::init_translations() {
-    // Load translation strings from XML
+    // Load translation strings from XML (for LVGL's native translation system)
     // This must happen before UI creation but after the XML system is initialized
     lv_result_t result =
         lv_xml_register_translation_from_file("A:ui_xml/translations/translations.xml");
     if (result != LV_RESULT_OK) {
-        spdlog::warn("[Application] Failed to load translations - UI will use English defaults");
+        spdlog::warn(
+            "[Application] Failed to load LVGL translations - UI will use English defaults");
         // Not fatal - English will work via fallback (tag = English text)
     } else {
-        spdlog::info("[Application] Translations loaded successfully");
+        spdlog::info("[Application] LVGL translations loaded successfully");
     }
 
-    // Set initial language from config
+    // Initialize lv_i18n translation system (for plural forms and runtime lookups)
+    int i18n_result = lv_i18n_init(lv_i18n_language_pack);
+    if (i18n_result != 0) {
+        spdlog::warn(
+            "[Application] Failed to initialize lv_i18n - plural translations unavailable");
+    } else {
+        spdlog::info("[Application] lv_i18n initialized successfully");
+    }
+
+    // Set initial language from config (sync both systems)
     std::string lang = m_config->get_language();
     lv_translation_set_language(lang.c_str());
-    spdlog::info("[Application] Language set to '{}'", lang);
+    lv_i18n_set_locale(lang.c_str());
+    spdlog::info("[Application] Language set to '{}' (both translation systems)", lang);
 
     return true;
 }

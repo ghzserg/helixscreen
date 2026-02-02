@@ -1,93 +1,70 @@
-<?xml version="1.0"?>
-<translations languages="en de fr es ru">
-  <!-- Navigation -->
-  <translation tag="Home" en="Home" de="Startseite" fr="Accueil" es="Inicio" ru="Главная"/>
-  <translation tag="Settings" en="Settings" de="Einstellungen" fr="Paramètres" es="Ajustes" ru="Настройки"/>
-  <translation tag="Back" en="Back" de="Zurück" fr="Retour" es="Volver" ru="Назад"/>
-  <translation tag="Cancel" en="Cancel" de="Abbrechen" fr="Annuler" es="Cancelar" ru="Отмена"/>
-  <translation tag="Save" en="Save" de="Speichern" fr="Enregistrer" es="Guardar" ru="Сохранить"/>
-  <translation tag="OK" en="OK" de="OK" fr="OK" es="OK" ru="OK"/>
-  <translation tag="Close" en="Close" de="Schließen" fr="Fermer" es="Cerrar" ru="Закрыть"/>
-
-  <!-- Temperature -->
-  <translation tag="Nozzle" en="Nozzle" de="Düse" fr="Buse" es="Boquilla" ru="Сопло"/>
-  <translation tag="Bed" en="Bed" de="Heizbett" fr="Plateau" es="Cama" ru="Стол"/>
-  <translation tag="Chamber" en="Chamber" de="Kammer" fr="Chambre" es="Cámara" ru="Камера"/>
-  <translation tag="Target" en="Target" de="Ziel" fr="Cible" es="Objetivo" ru="Цель"/>
-  <translation tag="Actual" en="Actual" de="Aktuell" fr="Actuel" es="Actual" ru="Текущая"/>
-  <translation tag="Preheat" en="Preheat" de="Vorheizen" fr="Préchauffer" es="Precalentar" ru="Нагреть"/>
-  <translation tag="Cooldown" en="Cooldown" de="Abkühlen" fr="Refroidir" es="Enfriar" ru="Охладить"/>
-
-  <!-- Motion -->
-  <translation tag="Motion" en="Motion" de="Bewegung" fr="Mouvement" es="Movimiento" ru="Движение"/>
-  <translation tag="Move" en="Move" de="Bewegen" fr="Déplacer" es="Mover" ru="Двигать"/>
-  <translation tag="Home All" en="Home All" de="Alle referenzieren" fr="Origine tous" es="Origen todo" ru="Домой все"/>
-  <translation tag="Home X" en="Home X" de="X referenzieren" fr="Origine X" es="Origen X" ru="Домой X"/>
-  <translation tag="Home Y" en="Home Y" de="Y referenzieren" fr="Origine Y" es="Origen Y" ru="Домой Y"/>
-  <translation tag="Home Z" en="Home Z" de="Z referenzieren" fr="Origine Z" es="Origen Z" ru="Домой Z"/>
-  <translation tag="Step" en="Step" de="Schritt" fr="Pas" es="Paso" ru="Шаг"/>
-  <translation tag="Speed" en="Speed" de="Geschwindigkeit" fr="Vitesse" es="Velocidad" ru="Скорость"/>
-
-  <!-- Printing -->
-  <translation tag="Print" en="Print" de="Drucken" fr="Imprimer" es="Imprimir" ru="Печать"/>
-  <translation tag="Printing" en="Printing" de="Druckt" fr="Impression" es="Imprimiendo" ru="Печать"/>
-  <translation tag="Pause" en="Pause" de="Pause" fr="Pause" es="Pausa" ru="Пауза"/>
-  <translation tag="Resume" en="Resume" de="Fortsetzen" fr="Reprendre" es="Reanudar" ru="Продолжить"/>
-  <translation tag="Stop" en="Stop" de="Stoppen" fr="Arrêter" es="Detener" ru="Стоп"/>
-  <translation tag="Progress" en="Progress" de="Fortschritt" fr="Progression" es="Progreso" ru="Прогресс"/>
-  <translation tag="Remaining" en="Remaining" de="Verbleibend" fr="Restant" es="Restante" ru="Осталось"/>
-  <translation tag="Elapsed" en="Elapsed" de="Vergangen" fr="Écoulé" es="Transcurrido" ru="Прошло"/>
-  <translation tag="Layer" en="Layer" de="Schicht" fr="Couche" es="Capa" ru="Слой"/>
-
-  <!-- Files -->
-  <translation tag="Files" en="Files" de="Dateien" fr="Fichiers" es="Archivos" ru="Файлы"/>
-  <translation tag="Select File" en="Select File" de="Datei wählen" fr="Sélectionner" es="Seleccionar" ru="Выбрать файл"/>
-  <translation tag="Delete" en="Delete" de="Löschen" fr="Supprimer" es="Eliminar" ru="Удалить"/>
-  <translation tag="Refresh" en="Refresh" de="Aktualisieren" fr="Actualiser" es="Actualizar" ru="Обновить"/>
-
-  <!-- Settings Panel -->
-  <translation tag="Display" en="Display" de="Anzeige" fr="Affichage" es="Pantalla" ru="Дисплей"/>
-  <translation tag="Dark Mode" en="Dark Mode" de="Dunkelmodus" fr="Mode sombre" es="Modo oscuro" ru="Темный режим"/>
-  <translation tag="Brightness" en="Brightness" de="Helligkeit" fr="Luminosité" es="Brillo" ru="Яркость"/>
-  <translation tag="Language" en="Language" de="Sprache" fr="Langue" es="Idioma" ru="Язык"/>
-  <translation tag="Theme" en="Theme" de="Thema" fr="Thème" es="Tema" ru="Тема"/>
-  <translation tag="Sounds" en="Sounds" de="Töne" fr="Sons" es="Sonidos" ru="Звуки"/>
-  <translation tag="Notifications"
-               en="Notifications" de="Benachrichtigungen" fr="Notifications" es="Notificaciones" ru="Уведомления"/>
-  <translation tag="About" en="About" de="Über" fr="À propos" es="Acerca de" ru="О программе"/>
-
-  <!-- Filament -->
-  <translation tag="Filament" en="Filament" de="Filament" fr="Filament" es="Filamento" ru="Филамент"/>
-  <translation tag="Load" en="Load" de="Laden" fr="Charger" es="Cargar" ru="Загрузить"/>
-  <translation tag="Unload" en="Unload" de="Entladen" fr="Décharger" es="Descargar" ru="Выгрузить"/>
-  <translation tag="Extrude" en="Extrude" de="Extrudieren" fr="Extruder" es="Extruir" ru="Экструдировать"/>
-  <translation tag="Retract" en="Retract" de="Zurückziehen" fr="Rétracter" es="Retraer" ru="Втянуть"/>
-
-  <!-- Bed Mesh -->
-  <translation tag="Bed Mesh" en="Bed Mesh" de="Bettnetz" fr="Maillage du lit" es="Malla de cama" ru="Сетка стола"/>
-  <translation tag="Calibrate" en="Calibrate" de="Kalibrieren" fr="Calibrer" es="Calibrar" ru="Калибровать"/>
-  <translation tag="Clear" en="Clear" de="Löschen" fr="Effacer" es="Borrar" ru="Очистить"/>
-  <translation tag="Profile" en="Profile" de="Profil" fr="Profil" es="Perfil" ru="Профиль"/>
-
-  <!-- Errors and Status -->
-  <translation tag="Error" en="Error" de="Fehler" fr="Erreur" es="Error" ru="Ошибка"/>
-  <translation tag="Warning" en="Warning" de="Warnung" fr="Avertissement" es="Advertencia" ru="Предупреждение"/>
-  <translation tag="Ready" en="Ready" de="Bereit" fr="Prêt" es="Listo" ru="Готов"/>
-  <translation tag="Busy" en="Busy" de="Beschäftigt" fr="Occupé" es="Ocupado" ru="Занят"/>
-  <translation tag="Offline" en="Offline" de="Offline" fr="Hors ligne" es="Sin conexión" ru="Не в сети"/>
-  <translation tag="Connecting" en="Connecting" de="Verbinde" fr="Connexion" es="Conectando" ru="Подключение"/>
-  <translation tag="Connected" en="Connected" de="Verbunden" fr="Connecté" es="Conectado" ru="Подключен"/>
-
-  <!-- Emergency -->
-  <translation tag="Emergency Stop"
-               en="Emergency Stop" de="Notaus" fr="Arrêt d'urgence" es="Parada de emergencia" ru="Аварийный стоп"/>
-  <translation tag="E-Stop" en="E-Stop" de="Notaus" fr="Arrêt" es="Parada" ru="Стоп"/>
-
-  <!-- Time -->
-  <translation tag="Never" en="Never" de="Nie" fr="Jamais" es="Nunca" ru="Никогда"/>
-  <translation tag="seconds" en="seconds" de="Sekunden" fr="secondes" es="segundos" ru="секунд"/>
-  <translation tag="minute" en="minute" de="Minute" fr="minute" es="minuto" ru="минута"/>
-  <translation tag="minutes" en="minutes" de="Minuten" fr="minutes" es="minutos" ru="минут"/>
-  <translation tag="hour" en="hour" de="Stunde" fr="heure" es="hora" ru="час"/>
-  <translation tag="hours" en="hours" de="Stunden" fr="heures" es="horas" ru="часов"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<translations languages="de en es fr ru">
+  <translation tag="About" de="Über" en="About" es="Acerca de" fr="À propos" ru="О программе"/>
+  <translation tag="Actual" de="Aktuell" en="Actual" es="Actual" fr="Actuel" ru="Текущая"/>
+  <translation tag="Back" de="Zurück" en="Back" es="Volver" fr="Retour" ru="Назад"/>
+  <translation tag="Bed" de="Heizbett" en="Bed" es="Cama" fr="Plateau" ru="Стол"/>
+  <translation tag="Bed Mesh" de="Bettnetz" en="Bed Mesh" es="Malla de cama" fr="Maillage du lit" ru="Сетка стола"/>
+  <translation tag="Brightness" de="Helligkeit" en="Brightness" es="Brillo" fr="Luminosité" ru="Яркость"/>
+  <translation tag="Busy" de="Beschäftigt" en="Busy" es="Ocupado" fr="Occupé" ru="Занят"/>
+  <translation tag="Calibrate" de="Kalibrieren" en="Calibrate" es="Calibrar" fr="Calibrer" ru="Калибровать"/>
+  <translation tag="Cancel" de="Abbrechen" en="Cancel" es="Cancelar" fr="Annuler" ru="Отмена"/>
+  <translation tag="Chamber" de="Kammer" en="Chamber" es="Cámara" fr="Chambre" ru="Камера"/>
+  <translation tag="Clear" de="Löschen" en="Clear" es="Borrar" fr="Effacer" ru="Очистить"/>
+  <translation tag="Close" de="Schließen" en="Close" es="Cerrar" fr="Fermer" ru="Закрыть"/>
+  <translation tag="Connected" de="Verbunden" en="Connected" es="Conectado" fr="Connecté" ru="Подключен"/>
+  <translation tag="Connecting" de="Verbinde" en="Connecting" es="Conectando" fr="Connexion" ru="Подключение"/>
+  <translation tag="Cooldown" de="Abkühlen" en="Cooldown" es="Enfriar" fr="Refroidir" ru="Охладить"/>
+  <translation tag="Dark Mode" de="Dunkelmodus" en="Dark Mode" es="Modo oscuro" fr="Mode sombre" ru="Темный режим"/>
+  <translation tag="Delete" de="Löschen" en="Delete" es="Eliminar" fr="Supprimer" ru="Удалить"/>
+  <translation tag="Display" de="Anzeige" en="Display" es="Pantalla" fr="Affichage" ru="Дисплей"/>
+  <translation tag="E-Stop" de="Notaus" en="E-Stop" es="Parada" fr="Arrêt" ru="Стоп"/>
+  <translation tag="Elapsed" de="Vergangen" en="Elapsed" es="Transcurrido" fr="Écoulé" ru="Прошло"/>
+  <translation tag="Emergency Stop" de="Notaus" en="Emergency Stop" es="Parada de emergencia" fr="Arrêt d&apos;urgence" ru="Аварийный стоп"/>
+  <translation tag="Error" de="Fehler" en="Error" es="Error" fr="Erreur" ru="Ошибка"/>
+  <translation tag="Extrude" de="Extrudieren" en="Extrude" es="Extruir" fr="Extruder" ru="Экструдировать"/>
+  <translation tag="Filament" de="Filament" en="Filament" es="Filamento" fr="Filament" ru="Филамент"/>
+  <translation tag="Files" de="Dateien" en="Files" es="Archivos" fr="Fichiers" ru="Файлы"/>
+  <translation tag="Home" de="Startseite" en="Home" es="Inicio" fr="Accueil" ru="Главная"/>
+  <translation tag="Home All" de="Alle referenzieren" en="Home All" es="Origen todo" fr="Origine tous" ru="Домой все"/>
+  <translation tag="Home X" de="X referenzieren" en="Home X" es="Origen X" fr="Origine X" ru="Домой X"/>
+  <translation tag="Home Y" de="Y referenzieren" en="Home Y" es="Origen Y" fr="Origine Y" ru="Домой Y"/>
+  <translation tag="Home Z" de="Z referenzieren" en="Home Z" es="Origen Z" fr="Origine Z" ru="Домой Z"/>
+  <translation tag="Language" de="Sprache" en="Language" es="Idioma" fr="Langue" ru="Язык"/>
+  <translation tag="Layer" de="Schicht" en="Layer" es="Capa" fr="Couche" ru="Слой"/>
+  <translation tag="Load" de="Laden" en="Load" es="Cargar" fr="Charger" ru="Загрузить"/>
+  <translation tag="Motion" de="Bewegung" en="Motion" es="Movimiento" fr="Mouvement" ru="Движение"/>
+  <translation tag="Move" de="Bewegen" en="Move" es="Mover" fr="Déplacer" ru="Двигать"/>
+  <translation tag="Never" de="Nie" en="Never" es="Nunca" fr="Jamais" ru="Никогда"/>
+  <translation tag="Notifications" de="Benachrichtigungen" en="Notifications" es="Notificaciones" fr="Notifications" ru="Уведомления"/>
+  <translation tag="Nozzle" de="Düse" en="Nozzle" es="Boquilla" fr="Buse" ru="Сопло"/>
+  <translation tag="OK" de="OK" en="OK" es="OK" fr="OK" ru="OK"/>
+  <translation tag="Offline" de="Offline" en="Offline" es="Sin conexión" fr="Hors ligne" ru="Не в сети"/>
+  <translation tag="Pause" de="Pause" en="Pause" es="Pausa" fr="Pause" ru="Пауза"/>
+  <translation tag="Preheat" de="Vorheizen" en="Preheat" es="Precalentar" fr="Préchauffer" ru="Нагреть"/>
+  <translation tag="Print" de="Drucken" en="Print" es="Imprimir" fr="Imprimer" ru="Печать"/>
+  <translation tag="Printing" de="Druckt" en="Printing" es="Imprimiendo" fr="Impression" ru="Печать"/>
+  <translation tag="Profile" de="Profil" en="Profile" es="Perfil" fr="Profil" ru="Профиль"/>
+  <translation tag="Progress" de="Fortschritt" en="Progress" es="Progreso" fr="Progression" ru="Прогресс"/>
+  <translation tag="Ready" de="Bereit" en="Ready" es="Listo" fr="Prêt" ru="Готов"/>
+  <translation tag="Refresh" de="Aktualisieren" en="Refresh" es="Actualizar" fr="Actualiser" ru="Обновить"/>
+  <translation tag="Remaining" de="Verbleibend" en="Remaining" es="Restante" fr="Restant" ru="Осталось"/>
+  <translation tag="Resume" de="Fortsetzen" en="Resume" es="Reanudar" fr="Reprendre" ru="Продолжить"/>
+  <translation tag="Retract" de="Zurückziehen" en="Retract" es="Retraer" fr="Rétracter" ru="Втянуть"/>
+  <translation tag="Save" de="Speichern" en="Save" es="Guardar" fr="Enregistrer" ru="Сохранить"/>
+  <translation tag="Select File" de="Datei wählen" en="Select File" es="Seleccionar" fr="Sélectionner" ru="Выбрать файл"/>
+  <translation tag="Settings" de="Einstellungen" en="Settings" es="Ajustes" fr="Paramètres" ru="Настройки"/>
+  <translation tag="Sounds" de="Töne" en="Sounds" es="Sonidos" fr="Sons" ru="Звуки"/>
+  <translation tag="Speed" de="Geschwindigkeit" en="Speed" es="Velocidad" fr="Vitesse" ru="Скорость"/>
+  <translation tag="Step" de="Schritt" en="Step" es="Paso" fr="Pas" ru="Шаг"/>
+  <translation tag="Stop" de="Stoppen" en="Stop" es="Detener" fr="Arrêter" ru="Стоп"/>
+  <translation tag="Target" de="Ziel" en="Target" es="Objetivo" fr="Cible" ru="Цель"/>
+  <translation tag="Theme" de="Thema" en="Theme" es="Tema" fr="Thème" ru="Тема"/>
+  <translation tag="Unload" de="Entladen" en="Unload" es="Descargar" fr="Décharger" ru="Выгрузить"/>
+  <translation tag="Warning" de="Warnung" en="Warning" es="Advertencia" fr="Avertissement" ru="Предупреждение"/>
+  <translation tag="hour" de="Stunde" en="hour" es="hora" fr="heure" ru="час"/>
+  <translation tag="hours" de="Stunden" en="hours" es="horas" fr="heures" ru="часов"/>
+  <translation tag="minute" de="Minute" en="minute" es="minuto" fr="minute" ru="минута"/>
+  <translation tag="minutes" de="Minuten" en="minutes" es="minutos" fr="minutes" ru="минут"/>
+  <translation tag="seconds" de="Sekunden" en="seconds" es="segundos" fr="secondes" ru="секунд"/>
 </translations>

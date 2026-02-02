@@ -8,7 +8,8 @@
 #include "app_globals.h"
 #include "config.h"
 #include "display_manager.h"
-#include "lv_translation_stub.h"
+#include "lv_i18n_translations.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 #include "printer_state.h"
@@ -589,7 +590,13 @@ void SettingsManager::set_language(const std::string& lang) {
     // This sends LV_EVENT_TRANSLATION_LANGUAGE_CHANGED to all widgets
     lv_translation_set_language(lang.c_str());
 
-    // 3. Persist to config
+    // 3. Sync lv_i18n system (for plural forms and runtime lookups)
+    int i18n_result = lv_i18n_set_locale(lang.c_str());
+    if (i18n_result != 0) {
+        spdlog::warn("[SettingsManager] Failed to set lv_i18n locale to '{}'", lang);
+    }
+
+    // 4. Persist to config
     Config* config = Config::get_instance();
     config->set_language(lang);
     config->save();
