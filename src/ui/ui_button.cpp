@@ -240,6 +240,16 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
     bool icon_on_bottom = (icon_pos_str && strcmp(icon_pos_str, "bottom") == 0);
     bool vertical_layout = icon_on_top || icon_on_bottom;
 
+    // Parse layout attribute for explicit flex direction on button children
+    // Supported values: "row", "column"
+    // This enables stacking text + XML children properly
+    const char* layout_str = lv_xml_get_value_of(attrs, "layout");
+    bool explicit_column = (layout_str && strcmp(layout_str, "column") == 0);
+    bool explicit_row = (layout_str && strcmp(layout_str, "row") == 0);
+    if (explicit_column) {
+        vertical_layout = true;
+    }
+
     // Allocate user data to track icon/label
     UiButtonData* data = new UiButtonData{.magic = UiButtonData::MAGIC,
                                           .icon = nullptr,
@@ -302,12 +312,41 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
             lv_obj_center(data->icon);
         }
     } else if (has_text) {
-        // Text only: center the label
-        data->label = lv_label_create(btn);
-        lv_label_set_text(data->label, text);
-        lv_obj_center(data->label);
+        if (explicit_column) {
+            // Text with column layout: set up flex for XML children below
+            lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_COLUMN);
+            lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                                  LV_FLEX_ALIGN_CENTER);
+            data->label = lv_label_create(btn);
+            lv_label_set_text(data->label, text);
+        } else if (explicit_row) {
+            // Text with row layout: set up flex for XML children beside
+            lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_ROW);
+            lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                                  LV_FLEX_ALIGN_CENTER);
+            lv_obj_set_style_pad_column(btn, theme_manager_get_spacing("space_xs"), LV_PART_MAIN);
+            data->label = lv_label_create(btn);
+            lv_label_set_text(data->label, text);
+        } else {
+            // Text only without explicit layout: center the label
+            data->label = lv_label_create(btn);
+            lv_label_set_text(data->label, text);
+            lv_obj_center(data->label);
+        }
+    } else if (explicit_column || explicit_row) {
+        // No icon, no text, but explicit layout: set up flex for XML children
+        if (explicit_column) {
+            lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_COLUMN);
+            lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                                  LV_FLEX_ALIGN_CENTER);
+        } else {
+            lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_ROW);
+            lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                                  LV_FLEX_ALIGN_CENTER);
+            lv_obj_set_style_pad_column(btn, theme_manager_get_spacing("space_xs"), LV_PART_MAIN);
+        }
     }
-    // else: No icon, no text - leave button empty for XML children
+    // else: No icon, no text, no layout - leave button empty for XML children
 
     // Store user data on button
     lv_obj_set_user_data(btn, data);
@@ -323,8 +362,10 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
                            : icon_on_bottom ? "bottom"
                            : icon_on_right  ? "right"
                                             : "left";
-    spdlog::trace("[ui_button] Created button variant='{}' text='{}' icon='{}' icon_pos='{}'",
-                  variant_str, text, icon_name ? icon_name : "", pos_name);
+    const char* layout_name = explicit_column ? "column" : (explicit_row ? "row" : "auto");
+    spdlog::trace(
+        "[ui_button] Created button variant='{}' text='{}' icon='{}' icon_pos='{}' layout='{}'",
+        variant_str, text, icon_name ? icon_name : "", pos_name, layout_name);
 
     return btn;
 }

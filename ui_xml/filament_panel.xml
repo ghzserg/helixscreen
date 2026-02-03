@@ -140,14 +140,18 @@
                   height="content" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_gap="#space_md">
-            <ui_button name="preset_pla" height="content" flex_grow="1" text="PLA" state_trickle="true">
+            <ui_button name="preset_pla" height="content" flex_grow="1" layout="column"
+                       state_trickle="true" style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_pla"/>
-              <text_small width="100%" text="210°C / 60°C" style_text_align="center"
+              <text_body text="PLA" style_text_color:checked="#text"/>
+              <text_small text="210°C / 60°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
-            <ui_button name="preset_petg" height="content" flex_grow="1" text="PETG" state_trickle="true">
+            <ui_button name="preset_petg" height="content" flex_grow="1" layout="column"
+                       state_trickle="true" style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_petg"/>
-              <text_small width="100%" text="240°C / 80°C" style_text_align="center"
+              <text_body text="PETG" style_text_color:checked="#text"/>
+              <text_small text="240°C / 80°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
           </lv_obj>
@@ -156,14 +160,18 @@
                   height="content" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_gap="#space_md">
-            <ui_button name="preset_abs" height="content" flex_grow="1" text="ABS" state_trickle="true">
+            <ui_button name="preset_abs" height="content" flex_grow="1" layout="column"
+                       state_trickle="true" style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_abs"/>
-              <text_small width="100%" text="250°C / 100°C" style_text_align="center"
+              <text_body text="ABS" style_text_color:checked="#text"/>
+              <text_small text="250°C / 100°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
-            <ui_button name="preset_tpu" height="content" flex_grow="1" text="TPU" state_trickle="true">
+            <ui_button name="preset_tpu" height="content" flex_grow="1" layout="column"
+                       state_trickle="true" style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_tpu"/>
-              <text_small width="100%" text="230°C / 50°C" style_text_align="center"
+              <text_body text="TPU" style_text_color:checked="#text"/>
+              <text_small text="230°C / 50°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
           </lv_obj>
