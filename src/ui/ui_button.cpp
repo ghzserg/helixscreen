@@ -66,45 +66,58 @@ void update_button_text_contrast(lv_obj_t* btn) {
         return;
     }
 
-    // For ghost buttons (transparent bg), use normal text color instead of auto-contrast
-    // Auto-contrast only makes sense when there's a visible background to contrast against
+    bool is_disabled = lv_obj_has_state(btn, LV_STATE_DISABLED);
     lv_opa_t bg_opa = lv_obj_get_style_bg_opa(btn, LV_PART_MAIN);
-    lv_color_t text_color;
+    bool is_ghost = bg_opa < LV_OPA_50;
 
-    if (bg_opa < LV_OPA_50) {
+    // Determine text color based on button type
+    lv_color_t text_color;
+    if (is_ghost) {
         // Ghost/transparent button - use theme text color
         text_color = theme_manager_get_color("text");
-        spdlog::trace("[ui_button] ghost button (opa={}), using text color", bg_opa);
     } else {
-        // Solid button - calculate contrast against background
+        // Solid button - calculate contrast against effective background
         lv_color_t bg = lv_obj_get_style_bg_color(btn, LV_PART_MAIN);
+
+        // Disabled buttons render at 50% opacity, so blend with screen bg
+        // to get the effective color for contrast calculation
+        if (is_disabled) {
+            lv_color_t screen_bg = theme_manager_get_color("screen_bg");
+            bg = lv_color_mix(bg, screen_bg, LV_OPA_50);
+        }
+
         text_color = theme_manager_get_contrast_text(bg);
-        spdlog::trace("[ui_button] text contrast: bg=0x{:06X} text=0x{:06X}",
-                      lv_color_to_u32(bg) & 0xFFFFFF, lv_color_to_u32(text_color) & 0xFFFFFF);
     }
 
-    // Apply to label if present
-    if (data->label) {
-        lv_obj_set_style_text_color(data->label, text_color, LV_PART_MAIN);
-    }
+    spdlog::trace("[ui_button] contrast: ghost={} disabled={} text=0x{:06X}", is_ghost, is_disabled,
+                  lv_color_to_u32(text_color) & 0xFFFFFF);
 
-    // Apply to icon if present
-    if (data->icon) {
-        lv_obj_set_style_text_color(data->icon, text_color, LV_PART_MAIN);
-    }
+    // Text opacity: slightly higher than button opacity (50%) for disabled state
+    // to maintain readability while indicating disabled
+    lv_opa_t text_opa = is_disabled ? LV_OPA_70 : LV_OPA_COVER;
+
+    // Apply color and opacity to label and icon
+    auto apply_text_style = [&](lv_obj_t* obj) {
+        if (obj) {
+            lv_obj_set_style_text_color(obj, text_color, LV_PART_MAIN);
+            lv_obj_set_style_text_opa(obj, text_opa, LV_PART_MAIN);
+        }
+    };
+
+    apply_text_style(data->label);
+    apply_text_style(data->icon);
 }
 
 /**
- * @brief Event callback for LV_EVENT_STYLE_CHANGED
+ * @brief Event callback for LV_EVENT_STYLE_CHANGED and LV_EVENT_STATE_CHANGED
  *
- * Called when button style changes (e.g., theme update).
- * Recalculates and applies appropriate text contrast.
+ * Called when button style changes (e.g., theme update) or state changes
+ * (e.g., disabled via bind_state_if_eq). Recalculates and applies text contrast.
  *
  * @param e Event object
  */
 void button_style_changed_cb(lv_event_t* e) {
     lv_obj_t* btn = lv_event_get_target_obj(e);
-    spdlog::trace("[ui_button] STYLE_CHANGED event fired");
     update_button_text_contrast(btn);
 }
 
@@ -353,6 +366,7 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
 
     // Register event handlers
     lv_obj_add_event_cb(btn, button_style_changed_cb, LV_EVENT_STYLE_CHANGED, nullptr);
+    lv_obj_add_event_cb(btn, button_style_changed_cb, LV_EVENT_STATE_CHANGED, nullptr);
     lv_obj_add_event_cb(btn, button_delete_cb, LV_EVENT_DELETE, nullptr);
 
     // Apply initial text contrast
