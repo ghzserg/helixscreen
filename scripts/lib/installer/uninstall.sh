@@ -119,7 +119,30 @@ uninstall() {
         if [ -f "/opt/config/mod/.root/S35tslib" ]; then
             $SUDO chmod +x "/opt/config/mod/.root/S35tslib" 2>/dev/null || true
         fi
+        # Clean up any leftover backup files from manual patches
+        for backup_file in /opt/config/mod/.shell/*.helix-backup /opt/config/mod/.shell/*.bak; do
+            if [ -f "$backup_file" ] 2>/dev/null; then
+                log_info "Removing leftover backup: $backup_file"
+                $SUDO rm -f "$backup_file"
+            fi
+        done
     fi
+
+    # Clean up helixscreen cache directories
+    for cache_dir in /root/.cache/helix /tmp/helix_thumbs /.cache/helix; do
+        if [ -d "$cache_dir" ] 2>/dev/null; then
+            log_info "Removing cache: $cache_dir"
+            $SUDO rm -rf "$cache_dir"
+        fi
+    done
+
+    # Clean up active flag file
+    $SUDO rm -f /tmp/helixscreen_active 2>/dev/null || true
+
+    # Clean up macOS resource fork files (created by scp from Mac)
+    for pattern in /opt/._helixscreen /root/._helixscreen; do
+        $SUDO rm -f "$pattern" 2>/dev/null || true
+    done
 
     # Remove update_manager section from moonraker.conf (if present)
     if type remove_update_manager_section >/dev/null 2>&1; then
