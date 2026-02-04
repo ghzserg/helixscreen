@@ -17,9 +17,13 @@ make pi-docker
 # Build for Flashforge Adventurer 5M (armv7-a/ARM32)
 make ad5m-docker
 
+# Build for Creality K1 series (MIPS32)
+make k1-docker
+
 # Verify the binaries
 file build/pi/bin/helix-screen    # ELF 64-bit LSB, ARM aarch64
 file build/ad5m/bin/helix-screen  # ELF 32-bit LSB, ARM EABI5
+file build/k1/bin/helix-screen    # ELF 32-bit LSB, MIPS32
 ```
 
 Docker images are **automatically built** on first use - no manual setup required!
@@ -30,6 +34,7 @@ Docker images are **automatically built** on first use - no manual setup require
 |--------|---------|--------------|---------|------------------|
 | **Raspberry Pi** | `make pi-docker` | aarch64 (ARM64) | DRM/fbdev | `build/pi/` |
 | **Adventurer 5M** | `make ad5m-docker` | armv7-a (hard-float) | fbdev | `build/ad5m/` |
+| **Creality K1** | `make k1-docker` | MIPS32r2 (musl) | fbdev | `build/k1/` |
 | **Native (SDL)** | `make` | Host architecture | SDL2 | `build/` |
 
 ### How It Works
@@ -53,11 +58,13 @@ Docker images are **automatically built** on first use - no manual setup require
 # Docker-based builds (recommended - no toolchain installation needed)
 make pi-docker           # Raspberry Pi via Docker
 make ad5m-docker         # Adventurer 5M via Docker
+make k1-docker           # Creality K1 series via Docker
 make docker-toolchains   # Pre-build all Docker images
 
 # Direct cross-compilation (requires toolchain installed on host)
 make pi                  # Raspberry Pi (needs aarch64-linux-gnu-gcc)
 make ad5m                # Adventurer 5M (needs arm-linux-gnueabihf-gcc)
+make k1                  # Creality K1 (needs Bootlin mips32el-musl toolchain)
 
 # Information
 make cross-info          # Show cross-compilation help
@@ -81,12 +88,22 @@ make cross-info          # Show cross-compilation help
 - **RAM**: 110MB total (~36MB available with Klipper running)
 - **Docker Image**: `helixscreen/toolchain-ad5m` (Debian Buster)
 
+#### Creality K1 Series (K1C, K1 Max, K2 Plus)
+- **CPU**: Ingenic X2000E (MIPS32r2 dual-core @ 1.2 GHz)
+- **Toolchain**: Bootlin `mips32el-musl` (GCC 12, musl libc)
+- **Display**: 480×400 (K1) or 480×800 (K2) framebuffer
+- **Input**: evdev for touch
+- **C Library**: musl (static linking for clean deployment)
+- **RAM**: 256MB
+- **Docker Image**: `helixscreen/toolchain-k1` (Debian Bookworm)
+
 ### Dockerfile Architecture
 
 ```
 docker/
 ├── Dockerfile.pi      # Pi toolchain (Debian Bookworm, GCC 12)
-└── Dockerfile.ad5m    # AD5M toolchain (Debian Buster, GCC 8)
+├── Dockerfile.ad5m    # AD5M toolchain (Debian Buster, GCC 8)
+└── Dockerfile.k1      # K1 toolchain (Bootlin mips32el-musl, GCC 12)
 ```
 
 The Dockerfiles handle:
