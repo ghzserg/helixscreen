@@ -535,66 +535,33 @@ bool Application::init_config() {
 }
 
 bool Application::init_logging() {
-    helix::logging::LogConfig log_config;
+    using namespace helix::logging;
 
-    // Determine log level: CLI verbosity takes precedence, then config file, then test_mode
-    if (m_args.verbosity > 0) {
-        // CLI -v flags override config
-        switch (m_args.verbosity) {
-        case 1:
-            log_config.level = spdlog::level::info;
-            break;
-        case 2:
-            log_config.level = spdlog::level::debug;
-            break;
-        default:
-            log_config.level = spdlog::level::trace;
-            break;
-        }
-    } else {
-        // No CLI verbosity - check config file first (empty string = absent)
-        std::string level_str = m_config->get<std::string>("/log_level", "");
-        if (level_str == "trace") {
-            log_config.level = spdlog::level::trace;
-        } else if (level_str == "debug") {
-            log_config.level = spdlog::level::debug;
-        } else if (level_str == "info") {
-            log_config.level = spdlog::level::info;
-        } else if (level_str == "warn" || level_str == "warning") {
-            log_config.level = spdlog::level::warn;
-        } else if (level_str == "error") {
-            log_config.level = spdlog::level::err;
-        } else if (get_runtime_config()->test_mode) {
-            // Test mode defaults to DEBUG for easier debugging (when log_level absent)
-            log_config.level = spdlog::level::debug;
-        } else {
-            log_config.level = spdlog::level::warn; // default for production
-        }
-    }
+    LogConfig log_config;
 
+    // Resolve log level with precedence: CLI verbosity > config file > defaults
+    std::string config_level = m_config->get<std::string>("/log_level", "");
+    log_config.level =
+        resolve_log_level(m_args.verbosity, config_level, get_runtime_config()->test_mode);
+
+    // Resolve log destination: CLI > config > auto
     std::string log_dest_str = g_log_dest_cli;
     if (log_dest_str.empty()) {
         log_dest_str = m_config->get<std::string>("/log_dest", "auto");
     }
-    log_config.target = helix::logging::parse_log_target(log_dest_str);
+    log_config.target = parse_log_target(log_dest_str);
 
+    // Resolve log file path: CLI > config
     log_config.file_path = g_log_file_cli;
     if (log_config.file_path.empty()) {
         log_config.file_path = m_config->get<std::string>("/log_path", "");
     }
 
-    helix::logging::init(log_config);
+    init(log_config);
 
-    // Set libhv log level from config file ONLY (CLI -v flags don't affect libhv)
-    // libhv levels: VERBOSE(0) < DEBUG < INFO < WARN < ERROR < FATAL < SILENT
-    std::string hv_level_str = m_config->get<std::string>("/log_level", "warn");
-    int hv_level = LOG_LEVEL_WARN;
-    if (hv_level_str == "trace" || hv_level_str == "debug") {
-        hv_level = LOG_LEVEL_DEBUG; // Cap at DEBUG; libhv VERBOSE is too noisy
-    } else if (hv_level_str == "info") {
-        hv_level = LOG_LEVEL_INFO;
-    }
-    hlog_set_level(hv_level);
+    // Set libhv log level from config (CLI -v flags don't affect libhv)
+    spdlog::level::level_enum hv_spdlog_level = parse_level(config_level, spdlog::level::warn);
+    hlog_set_level(to_hv_level(hv_spdlog_level));
 
     return true;
 }

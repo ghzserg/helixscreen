@@ -254,5 +254,88 @@ const char* log_target_name(LogTarget target) {
     return "unknown";
 }
 
+spdlog::level::level_enum parse_level(const std::string& str,
+                                      spdlog::level::level_enum default_level) {
+    if (str.empty()) {
+        return default_level;
+    }
+    if (str == "trace") {
+        return spdlog::level::trace;
+    }
+    if (str == "debug") {
+        return spdlog::level::debug;
+    }
+    if (str == "info") {
+        return spdlog::level::info;
+    }
+    if (str == "warn" || str == "warning") {
+        return spdlog::level::warn;
+    }
+    if (str == "error") {
+        return spdlog::level::err;
+    }
+    if (str == "critical") {
+        return spdlog::level::critical;
+    }
+    if (str == "off") {
+        return spdlog::level::off;
+    }
+    return default_level;
+}
+
+spdlog::level::level_enum verbosity_to_level(int verbosity) {
+    if (verbosity <= 0) {
+        return spdlog::level::warn;
+    }
+    switch (verbosity) {
+    case 1:
+        return spdlog::level::info;
+    case 2:
+        return spdlog::level::debug;
+    default:
+        return spdlog::level::trace;
+    }
+}
+
+int to_hv_level(spdlog::level::level_enum level) {
+    // libhv levels: VERBOSE(0) < DEBUG(1) < INFO(2) < WARN(3) < ERROR(4) < FATAL(5) < SILENT(6)
+    switch (level) {
+    case spdlog::level::trace:
+    case spdlog::level::debug:
+        return 1; // LOG_LEVEL_DEBUG (libhv has no trace, cap at debug)
+    case spdlog::level::info:
+        return 2; // LOG_LEVEL_INFO
+    case spdlog::level::warn:
+        return 3; // LOG_LEVEL_WARN
+    case spdlog::level::err:
+        return 4; // LOG_LEVEL_ERROR
+    case spdlog::level::critical:
+        return 5; // LOG_LEVEL_FATAL
+    case spdlog::level::off:
+        return 6; // LOG_LEVEL_SILENT
+    default:
+        return 3; // LOG_LEVEL_WARN
+    }
+}
+
+spdlog::level::level_enum resolve_log_level(int cli_verbosity, const std::string& config_level_str,
+                                            bool test_mode) {
+    // Precedence: CLI verbosity > config file > defaults
+
+    // CLI verbosity takes top precedence
+    if (cli_verbosity > 0) {
+        return verbosity_to_level(cli_verbosity);
+    }
+
+    // Config file level (if specified)
+    if (!config_level_str.empty()) {
+        // Use warn as fallback for invalid config strings
+        return parse_level(config_level_str, spdlog::level::warn);
+    }
+
+    // Defaults: test mode = debug, production = warn
+    return test_mode ? spdlog::level::debug : spdlog::level::warn;
+}
+
 } // namespace logging
 } // namespace helix
