@@ -23,8 +23,8 @@ void KeyboardShortcuts::process(KeyStateProvider is_key_pressed, int current_mod
 
         // Check modifier requirement
         if (binding.modifiers != 0) {
-            // All required modifiers must be present
-            if ((current_modifiers & binding.modifiers) != binding.modifiers) {
+            // Any matching modifier bit must be set (e.g., KMOD_GUI matches left OR right)
+            if ((current_modifiers & binding.modifiers) == 0) {
                 key_pressed = false;
             }
         }

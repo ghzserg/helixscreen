@@ -1609,6 +1609,12 @@ void Application::handle_keyboard_shortcuts() {
             app_request_quit();
         });
 
+        // S key - take screenshot
+        shortcuts.register_key(SDL_SCANCODE_S, []() {
+            spdlog::info("[Application] S key - taking screenshot");
+            helix::save_screenshot();
+        });
+
         // M key - toggle memory stats
         shortcuts.register_key(SDL_SCANCODE_M, []() { MemoryStatsOverlay::instance().toggle(); });
 
