@@ -16,7 +16,9 @@
       <lv_obj width="100%"
               height="content" style_bg_color="#info" style_bg_opa="25" scrollable="false" style_pad_left="#space_lg"
               style_pad_right="#space_lg" style_pad_top="#space_md" style_pad_bottom="#space_md" flex_flow="row"
-              style_flex_cross_place="center" style_pad_gap="#space_sm">
+              style_flex_cross_place="center" style_pad_gap="#space_sm"
+              style_margin_left="#space_md" style_margin_right="#space_md" style_margin_top="#space_sm"
+              style_radius="#border_radius">
         <icon src="info" size="sm" variant="info"/>
         <text_small text="Changes are temporary and reset on printer reboot" translation_tag="Changes are temporary and reset on printer reboot" style_text_color="#info"/>
       </lv_obj>
@@ -196,10 +198,10 @@
     <divider_horizontal/>
     <!-- Action buttons row - centered Reset button only (changes apply immediately) -->
     <lv_obj width="100%"
-            height="#button_height" style_pad_all="#space_md" flex_flow="row" style_flex_main_place="center"
+            height="content" style_pad_all="#space_md" flex_flow="row" style_flex_main_place="center"
             scrollable="false">
       <!-- Reset button - restores to original config values from API -->
-      <ui_button name="btn_reset" width="150" height="100%" text="Reset" translation_tag="Reset">
+      <ui_button name="btn_reset" width="150" text="Reset" translation_tag="Reset">
         <event_cb trigger="clicked" callback="on_limits_reset"/>
       </ui_button>
     </lv_obj>
