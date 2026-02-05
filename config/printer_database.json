@@ -105,6 +105,13 @@
       "image": "flashforge-adventurer-5m-pro.png",
       "heuristics": [
         {
+          "type": "led_match",
+          "field": "leds",
+          "pattern": "chamber_light",
+          "confidence": 100,
+          "reason": "LED chamber light (AD5M Pro exclusive - regular 5M doesn't have this)"
+        },
+        {
           "type": "macro_match",
           "field": "macros",
           "pattern": "SUPPORT_FORGE_X",
@@ -119,25 +126,32 @@
           "reason": "mod_params object - ForgeX settings container"
         },
         {
-          "type": "led_match",
-          "field": "leds",
-          "pattern": "chamber_light",
-          "confidence": 97,
-          "reason": "LED chamber light (AD5M Pro exclusive - regular 5M doesn't have this)"
-        },
-        {
           "type": "sensor_match",
           "field": "sensors",
           "pattern": "tvocValue",
           "confidence": 95,
-          "reason": "TVOC air quality sensor (tvocValue) unique to FlashForge AD5M"
+          "reason": "TVOC air quality sensor (FlashForge Adventurer 5M signature)"
+        },
+        {
+          "type": "sensor_match",
+          "field": "sensors",
+          "pattern": "tvoc",
+          "confidence": 95,
+          "reason": "TVOC sensor detected (FlashForge signature)"
         },
         {
           "type": "sensor_match",
           "field": "sensors",
           "pattern": "weightValue",
+          "confidence": 80,
+          "reason": "Spool weight sensor (FlashForge signature)"
+        },
+        {
+          "type": "sensor_match",
+          "field": "sensors",
+          "pattern": "weight",
           "confidence": 70,
-          "reason": "Spool weight sensor (weightValue)"
+          "reason": "Weight sensor detected (FlashForge-like)"
         },
         {
           "type": "kinematics_match",
@@ -152,6 +166,13 @@
           "pattern": "flashforge",
           "confidence": 80,
           "reason": "Hostname contains 'flashforge'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "ad5m",
+          "confidence": 90,
+          "reason": "Hostname contains 'ad5m' (Adventurer 5M)"
         },
         {
           "type": "hostname_match",
