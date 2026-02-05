@@ -20,11 +20,11 @@
             flex_flow="column" style_flex_main_place="space_between" style_pad_gap="#space_lg">
       <!-- TOP GROUP: Temperature displays -->
       <lv_obj name="temp_group"
-              width="100%" height="content" style_pad_all="0" scrollable="false"
+              width="100%" flex_grow="1" style_pad_all="0" scrollable="false"
               flex_flow="column" style_flex_main_place="start" style_pad_gap="#space_lg">
         <!-- Temperature Status Card - shows both nozzle and bed -->
         <ui_card name="temp_status_card"
-                 width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_lg"
+                 width="100%" style_pad_all="#space_lg"
                  flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start"
                  style_pad_gap="#space_md">
           <!-- Header -->
@@ -82,13 +82,13 @@
             <text_small name="status_text" bind_text="filament_status"/>
           </lv_obj>
         </ui_card>
-        <!-- Temperature Graph Card (combined nozzle + bed) -->
-        <ui_card name="temp_graph_card"
-                 width="100%" height="120" style_radius="#border_radius" style_pad_all="#space_xs">
+        <!-- Temperature Graph (combined nozzle + bed) -->
+        <lv_obj name="temp_graph_card"
+                 width="100%" flex_grow="1" style_pad_all="0" scrollable="false">
           <!-- Graph container - populated by C++ via TempControlPanel -->
           <lv_obj name="temp_graph_container"
                   width="100%" height="100%" style_pad_all="0"/>
-        </ui_card>
+        </lv_obj>
       </lv_obj>
       <!-- BOTTOM: AMS Multi-Filament Card (hidden if no AMS) -->
       <ui_card name="ams_status_card"
