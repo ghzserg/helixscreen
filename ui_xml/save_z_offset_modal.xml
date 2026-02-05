@@ -15,14 +15,14 @@
       <!-- Warning icon -->
       <icon src="alert" size="lg" variant="warning"/>
       <!-- Title -->
-      <text_heading width="100%" text="Save Z-Offset?" style_text_align="center"/>
+      <text_heading width="100%" text="Save Z-Offset?" translation_tag="Save Z-Offset?" style_text_align="center"/>
       <!-- Warning message (VERY IMPORTANT) -->
       <text_body width="100%"
-                 text="Saving will restart Klipper and CANCEL any active print!" long_mode="wrap"
+                 text="Saving will restart Klipper and CANCEL any active print!" translation_tag="Saving will restart Klipper and CANCEL any active print!" long_mode="wrap"
                  style_text_align="center" style_text_color="#warning"/>
       <!-- Info message -->
       <text_small width="100%"
-                  text="Adjustments stay active until restart. Save after print completes." long_mode="wrap"
+                  text="Adjustments stay active until restart. Save after print completes." translation_tag="Adjustments stay active until restart. Save after print completes." long_mode="wrap"
                   style_text_align="center" style_text_color="#text_muted"/>
     </lv_obj>
     <!-- Button row -->

@@ -32,12 +32,12 @@
         width="100%" height="100%" style_pad_all="#space_lg" flex_flow="column" style_flex_main_place="start"
         style_flex_cross_place="center">
     <!-- Title -->
-    <lv_label text="Step Progress Widget Test" style_text_font="montserrat_20" style_pad_bottom="20"/>
+    <lv_label text="Step Progress Widget Test" translation_tag="Step Progress Widget Test" style_text_font="montserrat_20" style_pad_bottom="20"/>
     <!-- Vertical progress demo section -->
     <lv_obj name="vertical_section"
             width="90%" height="380" style_pad_all="#space_lg" style_radius="#border_radius" flex_flow="column"
             style_flex_main_place="start" style_flex_cross_place="start">
-      <text_body text="Vertical Progress (Retract Wizard)" style_pad_bottom="16"/>
+      <text_body text="Vertical Progress (Retract Wizard)" translation_tag="Vertical Progress (Retract Wizard)" style_pad_bottom="16"/>
       <!-- Vertical progress widget container (created in C++) -->
       <lv_obj name="vertical_progress_container" width="100%" height="200" style_pad_all="0"/>
     </lv_obj>
@@ -45,7 +45,7 @@
     <lv_obj name="horizontal_section"
             width="100%" height="180" style_pad_all="#space_lg" style_radius="#border_radius" style_pad_top="20"
             flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
-      <text_body text="Horizontal Progress (Leveling Wizard)" style_pad_bottom="16"/>
+      <text_body text="Horizontal Progress (Leveling Wizard)" translation_tag="Horizontal Progress (Leveling Wizard)" style_pad_bottom="16"/>
       <!-- Horizontal progress widget container (created in C++) -->
       <lv_obj name="horizontal_progress_container" width="100%" height="120" style_pad_all="0"/>
     </lv_obj>
@@ -53,13 +53,13 @@
     <lv_obj name="button_row"
             width="90%" height="content" style_pad_top="20" style_pad_all="0" flex_flow="row"
             style_flex_main_place="space_evenly">
-      <ui_button name="btn_prev" width="140" text="Previous">
+      <ui_button name="btn_prev" width="140" text="Previous" translation_tag="Previous">
         <event_cb trigger="clicked" callback="on_step_test_prev"/>
       </ui_button>
-      <ui_button name="btn_next" width="140" text="Next">
+      <ui_button name="btn_next" width="140" text="Next" translation_tag="Next">
         <event_cb trigger="clicked" callback="on_step_test_next"/>
       </ui_button>
-      <ui_button name="btn_complete" width="140" text="Complete" variant="success">
+      <ui_button name="btn_complete" width="140" text="Complete" translation_tag="Complete" variant="success">
         <event_cb trigger="clicked" callback="on_step_test_complete"/>
       </ui_button>
     </lv_obj>

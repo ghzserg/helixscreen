@@ -9,6 +9,7 @@
 #include "ui_toast.h"
 
 #include "format_utils.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 #include "static_panel_registry.h"
@@ -459,13 +460,13 @@ void InputShaperPanel::apply_recommendation() {
             if (!alive->load())
                 return;
             spdlog::info("[InputShaper] Settings applied successfully");
-            ui_toast_show(ToastSeverity::SUCCESS, "Input shaper settings applied!", 2500);
+            ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Input shaper settings applied!"), 2500);
         },
         [alive](const std::string& err) {
             if (!alive->load())
                 return;
             spdlog::error("[InputShaper] Failed to apply settings: {}", err);
-            ui_toast_show(ToastSeverity::ERROR, "Failed to apply settings", 3000);
+            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to apply settings"), 3000);
         });
 }
 
@@ -475,7 +476,7 @@ void InputShaperPanel::save_configuration() {
     }
 
     spdlog::info("[InputShaper] Saving configuration (SAVE_CONFIG)");
-    ui_toast_show(ToastSeverity::WARNING, "Saving config... Klipper will restart.", 3000);
+    ui_toast_show(ToastSeverity::WARNING, lv_tr("Saving config... Klipper will restart."), 3000);
 
     // Capture alive for async callback safety [L012]
     auto alive = alive_;
@@ -490,7 +491,7 @@ void InputShaperPanel::save_configuration() {
             if (!alive->load())
                 return;
             spdlog::error("[InputShaper] SAVE_CONFIG failed: {}", err);
-            ui_toast_show(ToastSeverity::ERROR, "Failed to save configuration", 3000);
+            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to save configuration"), 3000);
         });
 }
 
@@ -671,7 +672,7 @@ void InputShaperPanel::handle_print_test_pattern_clicked() {
                     spdlog::info(
                         "[InputShaper] Tuning tower enabled - start a print to test calibration");
                     ui_toast_show(ToastSeverity::INFO,
-                                  "Tuning tower enabled - start a print to test", 3000);
+                                  lv_tr("Tuning tower enabled - start a print to test"), 3000);
                 }
             }
         },
@@ -679,7 +680,8 @@ void InputShaperPanel::handle_print_test_pattern_clicked() {
             if (auto alive = alive_weak.lock()) {
                 if (*alive) {
                     spdlog::error("[InputShaper] Failed to enable tuning tower: {}", err.message);
-                    ui_toast_show(ToastSeverity::ERROR, "Failed to enable tuning tower", 3000);
+                    ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to enable tuning tower"),
+                                  3000);
                 }
             }
         });

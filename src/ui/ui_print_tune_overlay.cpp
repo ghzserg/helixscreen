@@ -9,6 +9,7 @@
 #include "ui_toast.h"
 
 #include "format_utils.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
 #include "static_panel_registry.h"
@@ -514,8 +515,8 @@ void PrintTuneOverlay::handle_save_z_offset() {
                 "SAVE_CONFIG",
                 []() {
                     spdlog::info("[PrintTuneOverlay] Z-offset saved - Klipper restarting");
-                    ui_toast_show(ToastSeverity::WARNING, "Z-offset saved - Klipper restarting...",
-                                  5000);
+                    ui_toast_show(ToastSeverity::WARNING,
+                                  lv_tr("Z-offset saved - Klipper restarting..."), 5000);
                 },
                 [](const MoonrakerError& err) {
                     spdlog::error("[PrintTuneOverlay] SAVE_CONFIG failed: {}", err.message);

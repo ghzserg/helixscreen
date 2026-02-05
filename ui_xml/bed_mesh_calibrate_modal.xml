@@ -18,22 +18,22 @@
       <!-- Show only when state=1 -->
       <bind_flag_if_not_eq subject="bed_mesh_calibrate_state" flag="hidden" ref_value="1"/>
       <!-- Title -->
-      <text_heading width="100%" text="Probing Bed Mesh" style_text_align="center"/>
+      <text_heading width="100%" text="Probing Bed Mesh" translation_tag="Probing Bed Mesh" style_text_align="center"/>
       <!-- Progress text -->
       <text_muted name="probe_progress_text"
-                  width="100%" bind_text="bed_mesh_probe_text" text="Initializing..." style_text_align="center"/>
+                  width="100%" bind_text="bed_mesh_probe_text" text="Initializing..." translation_tag="Initializing..." style_text_align="center"/>
       <!-- Progress bar -->
       <lv_bar name="probe_progress_bar"
               width="90%" height="12" bind_value="bed_mesh_probe_progress" min_value="0" max_value="100"
               style_bg_color="#card_bg" style_radius="#space_xs"/>
       <!-- E-Stop button (prominent, red) -->
       <ui_button name="btn_emergency_stop"
-                 width="100%" height="#button_height_lg" variant="danger" icon="alert_octagon" text="EMERGENCY STOP"
+                 width="100%" height="#button_height_lg" variant="danger" icon="alert_octagon" text="EMERGENCY STOP" translation_tag="EMERGENCY STOP"
                  style_margin_top="#space_sm">
         <event_cb trigger="clicked" callback="on_bed_mesh_emergency_stop"/>
       </ui_button>
       <!-- Warning text -->
-      <text_small width="100%" text="Stops all motion. Requires firmware restart." style_text_align="center"/>
+      <text_small width="100%" text="Stops all motion. Requires firmware restart." translation_tag="Stops all motion. Requires firmware restart." style_text_align="center"/>
     </lv_obj>
     <!-- ============================================================ -->
     <!-- STATE: NAMING (state=2) - Success + Profile name input -->
@@ -47,12 +47,12 @@
       <!-- Success icon -->
       <icon src="check_circle" size="lg" variant="success"/>
       <!-- Title -->
-      <text_heading width="100%" text="Mesh Complete" style_text_align="center"/>
+      <text_heading width="100%" text="Mesh Complete" translation_tag="Mesh Complete" style_text_align="center"/>
       <!-- Instructions -->
-      <text_small width="100%" text="Enter a name to save this profile" style_text_align="center"/>
+      <text_small width="100%" text="Enter a name to save this profile" translation_tag="Enter a name to save this profile" style_text_align="center"/>
       <!-- Profile name input -->
       <lv_textarea name="calibrate_profile_name_input"
-                   width="100%" height="#input_height" placeholder_text="Profile name (e.g., default)"
+                   width="100%" height="#input_height" placeholder_text="Profile name (e.g., default)" placeholder_tag="Profile name (e.g., default)" translation_tag="Profile name (e.g., default)"
                    one_line="true" style_pad_all="#space_md"
                    style_text_font="#font_body" style_margin_top="#space_xs"/>
     </lv_obj>
@@ -68,10 +68,10 @@
       <!-- Error icon -->
       <icon src="alert_circle" size="lg" variant="danger"/>
       <!-- Title -->
-      <text_heading width="100%" text="Calibration Failed" style_text_align="center"/>
+      <text_heading width="100%" text="Calibration Failed" translation_tag="Calibration Failed" style_text_align="center"/>
       <!-- Error message (bound to subject) -->
       <text_muted name="error_message_label"
-                  width="100%" bind_text="bed_mesh_error_message" text="An error occurred during calibration."
+                  width="100%" bind_text="bed_mesh_error_message" text="An error occurred during calibration." translation_tag="An error occurred during calibration."
                   long_mode="wrap" style_text_align="center"/>
     </lv_obj>
     <!-- Horizontal divider above buttons -->
@@ -84,7 +84,7 @@
             scrollable="false">
       <bind_flag_if_not_eq subject="bed_mesh_calibrate_state" flag="hidden" ref_value="1"/>
       <!-- Cancel button -->
-      <ui_button name="btn_cancel_probing" height="100%" flex_grow="1" style_radius="0" text="Cancel">
+      <ui_button name="btn_cancel_probing" height="100%" flex_grow="1" style_radius="0" text="Cancel" translation_tag="Cancel">
         <event_cb trigger="clicked" callback="on_bed_mesh_calibrate_cancel"/>
       </ui_button>
     </lv_obj>
@@ -97,13 +97,13 @@
       <bind_flag_if_not_eq subject="bed_mesh_calibrate_state" flag="hidden" ref_value="2"/>
       <!-- Don't Save button -->
       <ui_button name="btn_dont_save"
-                 height="100%" flex_grow="1" style_radius="0" text="Don't Save">
+                 height="100%" flex_grow="1" style_radius="0" text="Don't Save" translation_tag="Don't Save">
         <event_cb trigger="clicked" callback="on_bed_mesh_calibrate_cancel"/>
       </ui_button>
       <!-- Vertical divider -->
       <divider_vertical/>
       <!-- Save button -->
-      <ui_button name="btn_save" height="100%" flex_grow="1" style_radius="0" text="Save">
+      <ui_button name="btn_save" height="100%" flex_grow="1" style_radius="0" text="Save" translation_tag="Save">
         <event_cb trigger="clicked" callback="on_bed_mesh_save_profile"/>
       </ui_button>
     </lv_obj>
@@ -115,7 +115,7 @@
             scrollable="false">
       <bind_flag_if_not_eq subject="bed_mesh_calibrate_state" flag="hidden" ref_value="3"/>
       <!-- Close button -->
-      <ui_button name="btn_close" height="100%" flex_grow="1" style_radius="0" text="Close">
+      <ui_button name="btn_close" height="100%" flex_grow="1" style_radius="0" text="Close" translation_tag="Close">
         <event_cb trigger="clicked" callback="on_bed_mesh_calibrate_cancel"/>
       </ui_button>
     </lv_obj>

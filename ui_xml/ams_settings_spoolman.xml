@@ -5,13 +5,13 @@
 <!-- Sub-panel for configuring Spoolman integration settings (sync, polling interval) -->
 <component>
   <view name="ams_settings_spoolman"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Spoolman" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Spoolman" title_tag="Spoolman" bg_color="#screen_bg">
     <!-- Content Area (scrollable) -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_md" scrollable="true" flex_flow="column"
             style_pad_gap="#space_sm">
       <!-- Description text -->
-      <text_small name="description" width="100%" text="Configure Spoolman integration and weight sync settings."/>
+      <text_small name="description" width="100%" text="Configure Spoolman integration and weight sync settings." translation_tag="Configure Spoolman integration and weight sync settings."/>
       <!-- ================================================================== -->
       <!-- Sync Enable Row                                                     -->
       <!-- ================================================================== -->
@@ -24,8 +24,8 @@
                 scrollable="false" flex_grow="1">
           <icon src="refresh" size="sm" variant="secondary"/>
           <lv_obj height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-            <text_body text="Sync with Spoolman"/>
-            <text_small text="Automatically poll Spoolman for weight updates"/>
+            <text_body text="Sync with Spoolman" translation_tag="Sync with Spoolman"/>
+            <text_small text="Automatically poll Spoolman for weight updates" translation_tag="Automatically poll Spoolman for weight updates"/>
           </lv_obj>
         </lv_obj>
         <!-- Right side: Switch toggle -->
@@ -46,8 +46,8 @@
                 scrollable="false" flex_grow="1">
           <icon src="clock" size="sm" variant="secondary"/>
           <lv_obj height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-            <text_body text="Refresh Interval"/>
-            <text_small text="How often to check Spoolman for weight updates"/>
+            <text_body text="Refresh Interval" translation_tag="Refresh Interval"/>
+            <text_small text="How often to check Spoolman for weight updates" translation_tag="How often to check Spoolman for weight updates"/>
           </lv_obj>
         </lv_obj>
         <!-- Right side: Dropdown for interval selection -->
@@ -69,7 +69,7 @@
         <lv_obj height="content"
                 style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false" flex_grow="1">
           <text_small width="100%"
-                      text="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete."/>
+                      text="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." translation_tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete."/>
         </lv_obj>
       </ui_card>
     </lv_obj>

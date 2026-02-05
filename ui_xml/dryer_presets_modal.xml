@@ -16,7 +16,7 @@
             height="content" style_pad_left="#space_lg" style_pad_right="#space_md" style_pad_top="#space_lg"
             style_pad_bottom="#space_sm" flex_flow="row" style_flex_main_place="space_between"
             style_flex_cross_place="center" scrollable="false">
-      <text_heading text="Dryer Control"/>
+      <text_heading text="Dryer Control" translation_tag="Dryer Control"/>
       <!-- Close button -->
       <ui_button name="btn_close" width="40" height="40" variant="ghost">
         <event_cb trigger="clicked" callback="dryer_modal_close_cb"/>
@@ -36,7 +36,7 @@
                 style_pad_all="0" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_xs"
                 scrollable="false">
           <icon src="power" size="sm"/>
-          <text_body text="Power"/>
+          <text_body text="Power" translation_tag="Power"/>
         </lv_obj>
         <ui_switch name="dryer_power_switch" size="small">
           <bind_state_if_eq subject="dryer_active" state="checked" ref_value="1"/>
@@ -46,7 +46,7 @@
       <!-- Temperature Section -->
       <lv_obj width="100%"
               height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-        <text_small text="Temperature"/>
+        <text_small text="Temperature" translation_tag="Temperature"/>
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="center"
                 style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false">
@@ -67,7 +67,7 @@
       <!-- Duration Section -->
       <lv_obj width="100%"
               height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-        <text_small text="Duration"/>
+        <text_small text="Duration" translation_tag="Duration"/>
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="center"
                 style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false">
@@ -88,7 +88,7 @@
       <!-- Presets Section -->
       <lv_obj width="100%"
               height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-        <text_small text="Presets"/>
+        <text_small text="Presets" translation_tag="Presets"/>
         <lv_dropdown name="preset_dropdown"
                      width="100%" height="#input_height" style_radius="#border_radius" style_border_width="0">
           <event_cb trigger="value_changed" callback="dryer_preset_changed_cb"/>

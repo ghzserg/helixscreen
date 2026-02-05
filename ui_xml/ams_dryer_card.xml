@@ -12,7 +12,7 @@
     <!-- Fail-safe: Start hidden (dryer unsupported). Binding clears hidden when dryer_supported != 0 -->
     <bind_flag_if_eq subject="dryer_supported" flag="hidden" ref_value="0"/>
     <!-- Inactive state: button with heat wave icon that opens modal -->
-    <ui_button name="btn_dryer_start" width="100%" icon="heat_wave" text="Dryer">
+    <ui_button name="btn_dryer_start" width="100%" icon="heat_wave" text="Dryer" translation_tag="Dryer">
       <!-- Hidden when drying IS active -->
       <bind_flag_if_eq subject="dryer_active" flag="hidden" ref_value="1"/>
       <event_cb trigger="clicked" callback="dryer_open_modal_cb"/>
@@ -49,7 +49,7 @@
         </lv_obj>
       </lv_obj>
       <!-- Stop Button -->
-      <ui_button name="btn_stop_drying" width="100%" height="content" text="Stop Drying" variant="danger">
+      <ui_button name="btn_stop_drying" width="100%" height="content" text="Stop Drying" translation_tag="Stop Drying" variant="danger">
         <event_cb trigger="clicked" callback="dryer_stop_clicked_cb"/>
       </ui_button>
     </ui_card>

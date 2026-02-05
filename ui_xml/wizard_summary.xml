@@ -6,8 +6,8 @@
   <!-- Shows all selections before saving configuration -->
   <consts>
     <!-- Step metadata (read by wizard orchestrator) -->
-    <str name="step_title" value="Printer Setup: Review"/>
-    <str name="step_subtitle" value="Review your configuration below, then click Finish to save"/>
+    <str name="step_title" value="Printer Setup: Review" value_tag="Printer Setup: Review"/>
+    <str name="step_subtitle" value="Review your configuration below, then click Finish to save" value_tag="Review your configuration below, then click Finish to save"/>
     <int name="step_order" value="10"/>
   </consts>
   <view name="wizard_summary_root"
@@ -21,28 +21,28 @@
       <lv_obj width="48%"
               height="content" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="start">
-        <text_heading text="Connection" style_pad_bottom="#space_xs"/>
+        <text_heading text="Connection" translation_tag="Connection" style_pad_bottom="#space_xs"/>
         <!-- Printer Name -->
         <lv_obj width="100%" style_pad_all="0" flex_flow="column" style_pad_gap="0">
-          <text_small text="Printer Name"/>
+          <text_small text="Printer Name" translation_tag="Printer Name"/>
           <text_body name="summary_printer_name_label" bind_text="summary_printer_name"/>
         </lv_obj>
         <!-- Printer Type -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column" style_pad_gap="0">
-          <text_small text="Printer Type"/>
+          <text_small text="Printer Type" translation_tag="Printer Type"/>
           <text_body name="summary_printer_type_label" bind_text="summary_printer_type"/>
         </lv_obj>
         <!-- WiFi -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column" style_pad_gap="0">
-          <text_small text="WiFi Network"/>
+          <text_small text="WiFi Network" translation_tag="WiFi Network"/>
           <text_body name="summary_wifi_ssid_label" bind_text="summary_wifi_ssid"/>
         </lv_obj>
         <!-- Moonraker -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column" style_pad_gap="0">
-          <text_small text="Moonraker"/>
+          <text_small text="Moonraker" translation_tag="Moonraker"/>
           <text_body name="summary_moonraker_label" bind_text="summary_moonraker_connection"/>
         </lv_obj>
       </lv_obj>
@@ -50,23 +50,23 @@
       <lv_obj width="48%"
               height="content" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="start">
-        <text_heading text="Hardware" style_pad_bottom="#space_xs"/>
+        <text_heading text="Hardware" translation_tag="Hardware" style_pad_bottom="#space_xs"/>
         <!-- Heated Bed -->
         <lv_obj width="100%" style_pad_all="0" flex_flow="column" style_pad_gap="0">
-          <text_small text="Heated Bed"/>
+          <text_small text="Heated Bed" translation_tag="Heated Bed"/>
           <text_body name="summary_bed_label" bind_text="summary_bed"/>
         </lv_obj>
         <!-- Hotend -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column" style_pad_gap="0">
-          <text_small text="Hotend"/>
+          <text_small text="Hotend" translation_tag="Hotend"/>
           <text_body name="summary_hotend_label" bind_text="summary_hotend"/>
         </lv_obj>
         <!-- Part Cooling Fan (conditionally visible) -->
         <lv_obj name="part_fan_row"
                 width="100%" height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column"
                 style_pad_gap="0">
-          <text_small text="Part Cooling Fan"/>
+          <text_small text="Part Cooling Fan" translation_tag="Part Cooling Fan"/>
           <text_body name="summary_part_fan_label" bind_text="summary_part_fan"/>
           <bind_flag_if_eq subject="summary_part_fan_visible" flag="hidden" ref_value="0"/>
         </lv_obj>
@@ -74,7 +74,7 @@
         <lv_obj name="hotend_fan_row"
                 width="100%" height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column"
                 style_pad_gap="0">
-          <text_small text="Hotend Fan"/>
+          <text_small text="Hotend Fan" translation_tag="Hotend Fan"/>
           <text_body name="summary_hotend_fan_label" bind_text="summary_hotend_fan"/>
           <bind_flag_if_eq subject="summary_hotend_fan_visible" flag="hidden" ref_value="0"/>
         </lv_obj>
@@ -82,7 +82,7 @@
         <lv_obj name="led_strip_row"
                 width="100%" height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column"
                 style_pad_gap="0">
-          <text_small text="LED Strip"/>
+          <text_small text="LED Strip" translation_tag="LED Strip"/>
           <text_body name="summary_led_strip_label" bind_text="summary_led_strip"/>
           <bind_flag_if_eq subject="summary_led_strip_visible" flag="hidden" ref_value="0"/>
         </lv_obj>
@@ -90,7 +90,7 @@
         <lv_obj name="filament_sensor_row"
                 width="100%" height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column"
                 style_pad_gap="0">
-          <text_small text="Filament Sensor"/>
+          <text_small text="Filament Sensor" translation_tag="Filament Sensor"/>
           <text_body name="summary_filament_sensor_label" bind_text="summary_filament_sensor"/>
           <bind_flag_if_eq subject="summary_filament_sensor_visible" flag="hidden" ref_value="0"/>
         </lv_obj>
@@ -98,7 +98,7 @@
         <lv_obj name="ams_row"
                 width="100%" height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="column"
                 style_pad_gap="0">
-          <text_small text="Multi-Material"/>
+          <text_small text="Multi-Material" translation_tag="Multi-Material"/>
           <text_body name="summary_ams_type_label" bind_text="summary_ams_type"/>
           <bind_flag_if_eq subject="summary_ams_visible" flag="hidden" ref_value="0"/>
         </lv_obj>

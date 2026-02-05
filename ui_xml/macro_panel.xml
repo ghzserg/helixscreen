@@ -2,7 +2,7 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
-  <view name="macro_panel" extends="overlay_panel" title="Macros">
+  <view name="macro_panel" extends="overlay_panel" title="Macros" title_tag="Macros">
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" scrollable="false" flex_flow="column"
@@ -19,8 +19,8 @@
               width="100%" flex_grow="1" flex_flow="column" style_flex_main_place="center"
               style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true" scrollable="false">
         <icon src="code_tags" size="xl" variant="secondary"/>
-        <text_heading text="No Macros Found" style_text_align="center"/>
-        <text_muted text="Define macros in your printer.cfg" style_text_align="center"/>
+        <text_heading text="No Macros Found" translation_tag="No Macros Found" style_text_align="center"/>
+        <text_muted text="Define macros in your printer.cfg" translation_tag="Define macros in your printer.cfg" style_text_align="center"/>
       </lv_obj>
     </lv_obj>
   </view>

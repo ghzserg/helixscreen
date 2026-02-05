@@ -25,6 +25,7 @@
 
 #include "app_globals.h"
 #include "format_utils.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
 #include "printer_detector.h"
@@ -832,8 +833,8 @@ void BedMeshPanel::show_delete_confirm_modal(const std::string& profile_name) {
              profile_name.c_str());
 
     delete_modal_widget_ =
-        ui_modal_show_confirmation("Delete Profile?", msg_buf, ModalSeverity::Warning, "Delete",
-                                   on_delete_confirm_cb, on_delete_cancel_cb,
+        ui_modal_show_confirmation(lv_tr("Delete Profile?"), msg_buf, ModalSeverity::Warning,
+                                   lv_tr("Delete"), on_delete_confirm_cb, on_delete_cancel_cb,
                                    nullptr); // Uses global panel reference
 
     if (!delete_modal_widget_) {

@@ -77,7 +77,7 @@
                 style_pad_right="0" style_pad_gap="#space_sm" style_flex_track_place="center" clickable="true">
           <event_cb trigger="clicked" callback="tip_text_clicked_cb"/>
           <!-- "Tip: " prefix -->
-          <text_heading text="Tip:"/>
+          <text_heading text="Tip:" translation_tag="Tip:"/>
           <!-- Tip text (bound to subject) -->
           <text_heading name="status_text_label" bind_text="status_text" flex_grow="1" long_mode="wrap"/>
           <!-- Question mark icon -->
@@ -104,7 +104,7 @@
           <bind_flag_if_not_eq subject="print_active" flag="hidden" ref_value="0"/>
           <lv_image name="print_card_thumb"
                     width="50%" height="100%" src="A:assets/images/benchy_thumbnail_white.png" inner_align="contain"/>
-          <text_body name="print_card_label" text="Print Files"/>
+          <text_body name="print_card_label" text="Print Files" translation_tag="Print Files"/>
         </lv_obj>
         <!-- PREPARING STATE: Progress + message (hidden when print_start_phase == 0/IDLE) -->
         <lv_obj name="print_card_preparing"
@@ -112,7 +112,7 @@
                 style_flex_cross_place="center" style_pad_gap="#space_sm" hidden="true" clickable="false">
           <bind_flag_if_eq subject="print_start_phase" flag="hidden" ref_value="0"/>
           <!-- "Preparing Print" heading -->
-          <text_body text="Preparing Print"/>
+          <text_body text="Preparing Print" translation_tag="Preparing Print"/>
           <!-- Progress bar -->
           <lv_bar name="print_start_bar"
                   width="90%" height="8" bind_value="print_start_progress" min_value="0" max_value="100"
@@ -339,7 +339,7 @@
                   style_flex_cross_place="center" style_flex_track_place="center">
             <bind_flag_if_eq subject="humidity_sensor_count" flag="hidden" ref_value="0"/>
             <humidity_indicator/>
-            <text_tiny text="Humidity" style_text_align="center"/>
+            <text_tiny text="Humidity" translation_tag="Humidity" style_text_align="center"/>
           </lv_obj>
 
           <!-- Vertical divider for width sensor (hidden if no sensors) -->
@@ -353,7 +353,7 @@
                   style_flex_cross_place="center" style_flex_track_place="center">
             <bind_flag_if_eq subject="width_sensor_count" flag="hidden" ref_value="0"/>
             <width_indicator/>
-            <text_tiny text="Width" style_text_align="center"/>
+            <text_tiny text="Width" translation_tag="Width" style_text_align="center"/>
           </lv_obj>
 
           <!-- Vertical divider for probe sensor (hidden if no sensors) -->
@@ -367,7 +367,7 @@
                   style_flex_cross_place="center" style_flex_track_place="center">
             <bind_flag_if_eq subject="probe_count" flag="hidden" ref_value="0"/>
             <probe_indicator/>
-            <text_tiny text="Probe" style_text_align="center"/>
+            <text_tiny text="Probe" translation_tag="Probe" style_text_align="center"/>
           </lv_obj>
 
           <!-- Vertical divider for filament sensor (hidden if no sensors) -->
@@ -381,10 +381,10 @@
                   style_flex_cross_place="center" style_flex_track_place="center">
             <bind_flag_if_eq subject="show_filament_status" flag="hidden" ref_value="0"/>
             <filament_sensor_indicator/>
-            <text_tiny text="Loaded" style_text_align="center">
+            <text_tiny text="Loaded" translation_tag="Loaded" style_text_align="center">
               <bind_flag_if_not_eq subject="filament_runout_detected" flag="hidden" ref_value="1"/>
             </text_tiny>
-            <text_tiny text="Empty" style_text_align="center">
+            <text_tiny text="Empty" translation_tag="Empty" style_text_align="center">
               <bind_flag_if_not_eq subject="filament_runout_detected" flag="hidden" ref_value="0"/>
             </text_tiny>
           </lv_obj>

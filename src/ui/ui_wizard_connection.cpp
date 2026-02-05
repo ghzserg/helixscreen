@@ -369,7 +369,8 @@ void WizardConnectionStep::on_connection_success() {
 
             // Show "discovering" status - spinner shows via XML binding
             lv_subject_set_int(&self->connection_discovering_, 1);
-            self->set_status(nullptr, StatusVariant::None, "Connected! Discovering printer...");
+            self->set_status(nullptr, StatusVariant::None,
+                             lv_tr("Connected! Discovering printer..."));
             lv_subject_set_int(&self->connection_testing_, 0);
 
             // Set HTTP base URL so discovery can make HTTP calls
@@ -474,7 +475,7 @@ void WizardConnectionStep::on_connection_success() {
                 // No client available - still show success but warn
                 lv_subject_set_int(&self->connection_discovering_, 0);
                 self->set_status("icon_check_circle", StatusVariant::Success,
-                                 "Connected (no discovery)");
+                                 lv_tr("Connected (no discovery)"));
                 self->connection_validated_ = true;
                 lv_subject_set_int(&connection_test_passed, 1);
             }
@@ -628,7 +629,7 @@ void WizardConnectionStep::attempt_auto_probe() {
         lv_subject_set_int(&connection_testing_, 0);
         // Silent failure - reset to help text
         set_status(nullptr, StatusVariant::None,
-                   "Connection must be tested successfully to continue");
+                   lv_tr("Connection must be tested successfully to continue"));
     }
 }
 
@@ -699,7 +700,7 @@ void WizardConnectionStep::on_auto_probe_success() {
 
             // Show "discovering" status - spinner shows via XML binding
             lv_subject_set_int(&self->connection_discovering_, 1);
-            self->set_status(nullptr, StatusVariant::None, "Connected, discovering...");
+            self->set_status(nullptr, StatusVariant::None, lv_tr("Connected, discovering..."));
 
             // Clear testing state
             lv_subject_set_int(&self->connection_testing_, 0);
@@ -833,7 +834,7 @@ void WizardConnectionStep::on_auto_probe_failure() {
 
             // Silent failure - reset to help text
             self->set_status(nullptr, StatusVariant::None,
-                             "Connection must be tested successfully to continue");
+                             lv_tr("Connection must be tested successfully to continue"));
             lv_subject_set_int(&self->connection_testing_, 0);
 
             // Leave fields empty - user will enter manually
@@ -860,7 +861,8 @@ void WizardConnectionStep::handle_ip_input_changed() {
     }
 
     // Reset to help text (user needs to test again after changing input)
-    set_status(nullptr, StatusVariant::None, "Connection must be tested successfully to continue");
+    set_status(nullptr, StatusVariant::None,
+               lv_tr("Connection must be tested successfully to continue"));
 
     // Clear validation state
     connection_validated_ = false;
@@ -884,7 +886,8 @@ void WizardConnectionStep::handle_port_input_changed() {
     }
 
     // Reset to help text (user needs to test again after changing input)
-    set_status(nullptr, StatusVariant::None, "Connection must be tested successfully to continue");
+    set_status(nullptr, StatusVariant::None,
+               lv_tr("Connection must be tested successfully to continue"));
 
     // Clear validation state
     connection_validated_ = false;
@@ -993,7 +996,8 @@ lv_obj_t* WizardConnectionStep::create(lv_obj_t* parent) {
     });
 
     // Set initial help text (bind_text only fires on changes, not initial value)
-    set_status(nullptr, StatusVariant::None, "Connection must be tested successfully to continue");
+    set_status(nullptr, StatusVariant::None,
+               lv_tr("Connection must be tested successfully to continue"));
 
     spdlog::debug("[{}] Screen created successfully", get_name());
     return screen_root_;
@@ -1061,7 +1065,7 @@ void WizardConnectionStep::on_printers_discovered(const std::vector<DiscoveredPr
 
     // Update status text
     if (printers.empty()) {
-        lv_subject_copy_string(&mdns_status_, "No printers found");
+        lv_subject_copy_string(&mdns_status_, lv_tr("No printers found"));
     } else if (printers.size() == 1) {
         lv_subject_copy_string(&mdns_status_, "Found 1 printer");
     } else {
@@ -1073,7 +1077,7 @@ void WizardConnectionStep::on_printers_discovered(const std::vector<DiscoveredPr
     // Update dropdown options (newline-separated for LVGL dropdown)
     std::string options;
     if (printers.empty()) {
-        options = "No printers found";
+        options = lv_tr("No printers found");
     } else {
         for (const auto& p : printers) {
             if (!options.empty()) {
@@ -1132,7 +1136,7 @@ void WizardConnectionStep::on_printer_selected_cb(lv_event_t* e) {
 
         // Reset to help text (user still needs to test)
         self->set_status(nullptr, StatusVariant::None,
-                         "Connection must be tested successfully to continue");
+                         lv_tr("Connection must be tested successfully to continue"));
 
         spdlog::info("[Wizard Connection] Selected printer: {} at {}:{}", printer.name,
                      printer.ip_address, printer.port);

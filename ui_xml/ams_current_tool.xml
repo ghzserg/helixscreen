@@ -35,7 +35,7 @@
     <!-- Filament/spool icon -->
     <icon src="filament" size="sm" variant="muted"/>
     <!-- Tool label (T0, T1, etc.) -->
-    <text_small name="tool_label" text="T0" bind_text="ams_current_tool_text"/>
+    <text_small name="tool_label" text="T0" translation_tag="T0" bind_text="ams_current_tool_text"/>
     <!-- Color swatch showing current filament color (color set via C++) -->
     <lv_obj name="color_swatch"
             width="16" height="16" style_radius="8" style_border_width="1" style_border_color="#text_muted"

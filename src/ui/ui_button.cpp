@@ -242,6 +242,9 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
         text = "";
     }
 
+    // Parse translation_tag attribute for i18n support
+    const char* translation_tag = lv_xml_get_value_of(attrs, "translation_tag");
+
     // Parse icon attribute
     const char* icon_name = lv_xml_get_value_of(attrs, "icon");
 
@@ -360,6 +363,11 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
         }
     }
     // else: No icon, no text, no layout - leave button empty for XML children
+
+    // Apply translation tag if provided (for i18n hot-reload support)
+    if (translation_tag && strlen(translation_tag) > 0 && data->label) {
+        lv_label_set_translation_tag(data->label, translation_tag);
+    }
 
     // Store user data on button
     lv_obj_set_user_data(btn, data);

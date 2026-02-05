@@ -7,7 +7,7 @@
         extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" flex_flow="column"
         style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" style_radius="0" style_border_width="0">
     <!-- Header bar with back button and title -->
-    <header_bar name="header" title="Print History"/>
+    <header_bar name="header" title="Print History" title_tag="Print History"/>
     <!-- Filter/Search Row -->
     <lv_obj name="filter_row"
             width="100%" height="content" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
@@ -15,7 +15,7 @@
             style_pad_top="#space_sm" style_pad_bottom="#space_sm">
       <!-- Search box - fills remaining space -->
       <lv_textarea name="search_box"
-                   placeholder_text="Search filename..." one_line="true" flex_grow="1" style_min_width="120"
+                   placeholder_text="Search filename..." placeholder_tag="Search filename..." translation_tag="Search filename..." one_line="true" flex_grow="1" style_min_width="120"
                    style_max_height="#input_height">
         <event_cb trigger="value_changed" callback="history_search_changed"/>
       </lv_textarea>
@@ -42,7 +42,7 @@
         <bind_flag_if_not_eq subject="history_list_panel_state" flag="hidden" ref_value="0"/>
         <!-- Loading spinner -->
         <lv_spinner name="loading_spinner" width="48" height="48"/>
-        <text_muted text="Loading history..." style_text_align="center"/>
+        <text_muted text="Loading history..." translation_tag="Loading history..." style_text_align="center"/>
       </lv_obj>
       <!-- ================================================================== -->
       <!-- STATE: EMPTY (state=1) -->
@@ -52,7 +52,7 @@
               style_flex_cross_place="center" style_pad_row="#space_md" style_pad_all="#space_xl">
         <bind_flag_if_not_eq subject="history_list_panel_state" flag="hidden" ref_value="1"/>
         <!-- Empty state icon (clock/history icon F0150) -->
-        <lv_label name="empty_icon" text="󰅐" style_text_font="mdi_icons_48" style_text_color="#text_muted"/>
+        <lv_label name="empty_icon" text="󰅐" translation_tag="󰅐" style_text_font="mdi_icons_48" style_text_color="#text_muted"/>
         <!-- Empty state message -->
         <text_muted name="empty_message" bind_text="history_empty_message" style_text_align="center"/>
         <text_small name="empty_hint"

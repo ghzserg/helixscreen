@@ -23,6 +23,7 @@
 
 #include "app_globals.h"
 #include "format_utils.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -664,10 +665,11 @@ void ControlsPanel::handle_save_z_offset() {
 
     // Show confirmation dialog - SAVE_CONFIG will restart Klipper
     save_z_offset_confirmation_dialog_ = ui_modal_show_confirmation(
-        "Save Z-Offset?",
-        "This will apply the Z-offset to your endstop and restart Klipper to save the "
-        "configuration. The printer will briefly disconnect.",
-        ModalSeverity::Warning, "Save", on_save_z_offset_confirm, on_save_z_offset_cancel, this);
+        lv_tr("Save Z-Offset?"),
+        lv_tr("This will apply the Z-offset to your endstop and restart Klipper to save the "
+              "configuration. The printer will briefly disconnect."),
+        ModalSeverity::Warning, lv_tr("Save"), on_save_z_offset_confirm, on_save_z_offset_cancel,
+        this);
 
     if (!save_z_offset_confirmation_dialog_) {
         LOG_ERROR_INTERNAL("Failed to create save Z-offset confirmation dialog");
@@ -1112,8 +1114,8 @@ void ControlsPanel::handle_motors_clicked() {
 
     // ModalGuard's operator= hides any previous dialog before assigning new one
     motors_confirmation_dialog_ = ui_modal_show_confirmation(
-        "Disable Motors?", "Release all stepper motors. Position will be lost.",
-        ModalSeverity::Warning, "Disable", on_motors_confirm, on_motors_cancel, this);
+        lv_tr("Disable Motors?"), lv_tr("Release all stepper motors. Position will be lost."),
+        ModalSeverity::Warning, lv_tr("Disable"), on_motors_confirm, on_motors_cancel, this);
 
     if (!motors_confirmation_dialog_) {
         LOG_ERROR_INTERNAL("Failed to create motors confirmation dialog");

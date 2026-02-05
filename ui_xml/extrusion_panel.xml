@@ -5,7 +5,7 @@
   <!-- Extrusion Panel: Extrude/Retract with animation, speed control, and safety checks -->
   <!-- Two-column layout: left (visualization + temp), right (controls) -->
   <!-- Compact layout: Extrude/Retract side-by-side, all 4 amounts in one row -->
-  <view name="extrusion_panel" extends="overlay_panel" title="Extrude / Retract">
+  <view name="extrusion_panel" extends="overlay_panel" title="Extrude / Retract" title_tag="Extrude / Retract">
     <!-- Content Area: Two Columns -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_md" scrollable="false" flex_flow="row"
@@ -29,7 +29,7 @@
         <ui_card name="temp_status_card"
                  width="100%" flex_grow="1" style_radius="#border_radius" flex_flow="column"
                  style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs">
-          <text_small text="Nozzle Temp" align="center"/>
+          <text_small text="Nozzle Temp" translation_tag="Nozzle Temp" align="center"/>
           <text_heading name="temp_status_display" bind_text="extrusion_temp_status" align="center"/>
         </ui_card>
       </lv_obj>
@@ -40,7 +40,7 @@
               width="60%" height="100%" style_pad_all="0" scrollable="false" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="start" style_pad_gap="#space_sm">
         <!-- Amount Selector: Single row of 4 compact buttons -->
-        <text_small width="100%" text="Amount:"/>
+        <text_small width="100%" text="Amount:" translation_tag="Amount:"/>
         <lv_obj name="amount_grid"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                 style_pad_gap="#space_xs">
@@ -53,7 +53,7 @@
         <lv_obj width="100%"
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_xs">
-          <text_small width="content" text="Speed:"/>
+          <text_small width="content" text="Speed:" translation_tag="Speed:"/>
           <text_small name="speed_display" width="content" bind_text="extrusion_speed_display"/>
         </lv_obj>
         <lv_obj name="speed_control"
@@ -71,17 +71,17 @@
           <!-- Extrude/Retract Row -->
           <lv_obj width="100%"
                   height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_pad_gap="#space_sm">
-            <ui_button name="btn_extrude" flex_grow="1" icon="arrow_down" text="Extrude">
+            <ui_button name="btn_extrude" flex_grow="1" icon="arrow_down" text="Extrude" translation_tag="Extrude">
               <bind_state_if_eq subject="extrusion_safety_warning_visible" state="disabled" ref_value="1"/>
               <event_cb trigger="clicked" callback="on_extrusion_extrude"/>
             </ui_button>
-            <ui_button name="btn_retract" flex_grow="1" icon="arrow_up" text="Retract">
+            <ui_button name="btn_retract" flex_grow="1" icon="arrow_up" text="Retract" translation_tag="Retract">
               <bind_state_if_eq subject="extrusion_safety_warning_visible" state="disabled" ref_value="1"/>
               <event_cb trigger="clicked" callback="on_extrusion_retract"/>
             </ui_button>
           </lv_obj>
           <!-- Purge Button -->
-          <ui_button name="btn_purge" width="100%" icon="water" text="Purge 50mm">
+          <ui_button name="btn_purge" width="100%" icon="water" text="Purge 50mm" translation_tag="Purge 50mm">
             <bind_state_if_eq subject="extrusion_safety_warning_visible" state="disabled" ref_value="1"/>
             <event_cb trigger="clicked" callback="on_extrusion_purge"/>
           </ui_button>
@@ -92,7 +92,7 @@
                 style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_xs">
           <bind_flag_if_eq subject="extrusion_safety_warning_visible" flag="hidden" ref_value="0"/>
           <icon src="alert" size="sm" variant="warning"/>
-          <text_small width="content" text="Heat to 170°C to extrude"/>
+          <text_small width="content" text="Heat to 170°C to extrude" translation_tag="Heat to 170°C to extrude"/>
         </lv_obj>
       </lv_obj>
     </lv_obj>

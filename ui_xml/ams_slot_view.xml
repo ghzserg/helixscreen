@@ -38,7 +38,7 @@
 
     <!-- Material label at top (PLA, PETG, etc.) -->
     <text_small name="material_label"
-                text="--"
+                text="--" translation_tag="--"
                 style_text_color="#text"
                 style_text_letter_space="1"
                 clickable="true"
@@ -73,7 +73,7 @@
               event_bubble="true">
         <!-- Slot number label (1, 2, 3, etc.) -->
         <text_small name="slot_badge_label"
-                    text="?"
+                    text="?" translation_tag="?"
                     align="center"
                     style_text_color="#text"
                     event_bubble="true"/>

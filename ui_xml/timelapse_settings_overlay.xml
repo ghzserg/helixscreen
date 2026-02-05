@@ -9,7 +9,7 @@
     <color name="overlay_bg" value="#1E1E1E"/>
   </consts>
   <view name="timelapse_settings_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Timelapse Settings" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Timelapse Settings" title_tag="Timelapse Settings" bg_color="#screen_bg">
     <!-- Content Area - no padding, rows handle their own -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="0" scrollable="true" flex_flow="column">
@@ -17,14 +17,14 @@
       <!-- ENABLE TIMELAPSE -->
       <!-- ================================================================== -->
       <setting_toggle_row name="row_timelapse_enable"
-                          label="Enable Timelapse" icon="video" description="Record timelapses of your prints"
+                          label="Enable Timelapse" label_tag="Enable Timelapse" icon="video" description="Record timelapses of your prints" description_tag="Record timelapses of your prints"
                           callback="on_timelapse_enabled_changed"/>
       <!-- ================================================================== -->
       <!-- RECORDING MODE -->
       <!-- ================================================================== -->
       <setting_dropdown_row name="row_timelapse_mode"
-                            label="Recording Mode" icon="layers"
-                            description="Choose how frames are captured during printing" options="Layer Hyperlapse"
+                            label="Recording Mode" label_tag="Recording Mode" icon="layers"
+                            description="Choose how frames are captured during printing" description_tag="Choose how frames are captured during printing" options="Layer Hyperlapse"
                             callback="on_timelapse_mode_changed"/>
       <!-- Mode info box -->
       <lv_obj name="mode_info_container"
@@ -32,20 +32,20 @@
               style_pad_all="#space_md" scrollable="false" flex_flow="column" style_pad_gap="#space_xs"
               style_margin_left="#space_lg" style_margin_right="#space_lg" style_margin_bottom="#space_md">
         <text_small name="mode_info_text"
-                    width="100%" text="Layer mode captures one frame per layer change. Best for most prints."
+                    width="100%" text="Layer mode captures one frame per layer change. Best for most prints." translation_tag="Layer mode captures one frame per layer change. Best for most prints."
                     style_text_color="#text_muted" long_mode="wrap"/>
       </lv_obj>
       <!-- ================================================================== -->
       <!-- FRAMERATE -->
       <!-- ================================================================== -->
       <setting_dropdown_row name="row_timelapse_framerate"
-                            label="Framerate" icon="animation_play" description="Video playback speed"
+                            label="Framerate" label_tag="Framerate" icon="animation_play" description="Video playback speed" description_tag="Video playback speed"
                             options="15 fps 24 fps 30 fps 60 fps" callback="on_timelapse_framerate_changed"/>
       <!-- ================================================================== -->
       <!-- AUTO-RENDER -->
       <!-- ================================================================== -->
       <setting_toggle_row name="row_timelapse_autorender"
-                          label="Auto-render video" icon="play_circle" description="Create video when print completes"
+                          label="Auto-render video" label_tag="Auto-render video" icon="play_circle" description="Create video when print completes" description_tag="Create video when print completes"
                           callback="on_timelapse_autorender_changed"/>
       <!-- ================================================================== -->
       <!-- INFO NOTE -->
@@ -55,7 +55,7 @@
               style_pad_top="#space_md" style_pad_bottom="#space_lg" flex_flow="row" style_flex_cross_place="center"
               style_flex_track_place="center" style_pad_gap="#space_sm">
         <icon src="info" size="xs" variant="secondary"/>
-        <text_small text="Requires Moonraker-Timelapse plugin"/>
+        <text_small text="Requires Moonraker-Timelapse plugin" translation_tag="Requires Moonraker-Timelapse plugin"/>
       </lv_obj>
     </lv_obj>
   </view>

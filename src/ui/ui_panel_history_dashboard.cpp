@@ -12,6 +12,7 @@
 
 #include "app_globals.h"
 #include "format_utils.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 #include "printer_state.h"
@@ -163,7 +164,7 @@ void HistoryDashboardPanel::register_callbacks() {
             overlay_root = overlay.create(screen);
             if (!overlay_root) {
                 spdlog::error("[History Dashboard] Failed to create dashboard panel");
-                ui_toast_show(ToastSeverity::ERROR, "Failed to open history", 2000);
+                ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to open history"), 2000);
                 return;
             }
             // Register with NavigationManager for lifecycle callbacks
@@ -897,7 +898,7 @@ void HistoryDashboardPanel::on_view_history_clicked(lv_event_t* e) {
         overlay_root = list_panel.create(screen);
         if (!overlay_root) {
             spdlog::error("[History Dashboard] Failed to create history list panel");
-            ui_toast_show(ToastSeverity::ERROR, "Failed to open history list", 2000);
+            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to open history list"), 2000);
             return;
         }
         // Register with NavigationManager for lifecycle callbacks

@@ -24,7 +24,7 @@ constexpr int CROSSHAIR_HALF_SIZE = CROSSHAIR_SIZE / 2;
 
 // External wizard subjects (defined in ui_wizard.cpp)
 extern lv_subject_t connection_test_passed;
-extern lv_subject_t wizard_next_button_text;
+extern lv_subject_t wizard_show_skip;
 extern lv_subject_t wizard_subtitle;
 
 // ============================================================================
@@ -125,7 +125,7 @@ WizardTouchCalibrationStep::WizardTouchCalibrationStep() {
         update_button_visibility();
 
         // Reset button text to "Skip" since we're back to calibrating
-        lv_subject_copy_string(&wizard_next_button_text, "Skip");
+        lv_subject_set_int(&wizard_show_skip, 1);
     });
 
     spdlog::debug("[{}] Instance created", get_name());
@@ -213,7 +213,7 @@ lv_obj_t* WizardTouchCalibrationStep::create(lv_obj_t* parent) {
 
     // Enable Next button and set initial text to "Skip"
     lv_subject_set_int(&connection_test_passed, 1);
-    lv_subject_copy_string(&wizard_next_button_text, "Skip");
+    lv_subject_set_int(&wizard_show_skip, 1);
 
     // Update UI for calibration state
     update_instruction_text();
@@ -232,7 +232,7 @@ void WizardTouchCalibrationStep::cleanup() {
     spdlog::debug("[{}] Cleaning up resources", get_name());
 
     // Reset button text to "Next" (in case user skipped without completing)
-    lv_subject_copy_string(&wizard_next_button_text, "Next");
+    lv_subject_set_int(&wizard_show_skip, 0);
 
     // Delete crosshair (it was reparented to screen, not part of screen_root_)
     lv_obj_safe_delete(crosshair_);
@@ -364,7 +364,7 @@ void WizardTouchCalibrationStep::handle_retry_clicked() {
     has_pending_calibration_ = false;
 
     // Reset button text back to "Skip" since calibration is starting over
-    lv_subject_copy_string(&wizard_next_button_text, "Skip");
+    lv_subject_set_int(&wizard_show_skip, 1);
 
     lv_subject_set_int(&current_step_, 0);
     lv_subject_set_int(&calibration_valid_, 0);
@@ -467,7 +467,7 @@ void WizardTouchCalibrationStep::on_calibration_complete(const helix::TouchCalib
             calibration_failed_ = true;
 
             lv_subject_set_int(&calibration_valid_, 0);
-            lv_subject_copy_string(&wizard_next_button_text, "Skip");
+            lv_subject_set_int(&wizard_show_skip, 1);
 
             panel_->start();
             update_instruction_text(); // Will concatenate error + step
@@ -502,7 +502,7 @@ void WizardTouchCalibrationStep::on_calibration_complete(const helix::TouchCalib
         lv_subject_copy_string(&wizard_subtitle, "Calibration complete! Press 'Next' to continue.");
 
         // Change button text from "Skip" to "Next" since calibration is complete
-        lv_subject_copy_string(&wizard_next_button_text, "Next");
+        lv_subject_set_int(&wizard_show_skip, 0);
     } else {
         spdlog::warn("[{}] Calibration cancelled or invalid", get_name());
         lv_subject_set_int(&calibration_valid_, 0);

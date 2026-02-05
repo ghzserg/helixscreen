@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "hardware_validator.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "printer_state.h"
 #include "static_panel_registry.h"
 
@@ -299,7 +300,7 @@ void HardwareHealthOverlay::handle_hardware_action(const char* hardware_name, bo
     if (is_ignore) {
         // "Ignore" - Mark hardware as optional (no confirmation needed)
         HardwareValidator::set_hardware_optional(config, hw_name, true);
-        ui_toast_show(ToastSeverity::SUCCESS, "Hardware marked as optional", 2000);
+        ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Hardware marked as optional"), 2000);
         spdlog::info("[{}] Marked hardware '{}' as optional", get_name(), hw_name);
 
         // Remove from cached validation result and refresh overlay
@@ -325,9 +326,9 @@ void HardwareHealthOverlay::handle_hardware_action(const char* hardware_name, bo
                  hw_name.c_str());
 
         // Show confirmation dialog
-        hardware_save_dialog_ =
-            ui_modal_show_confirmation("Save Hardware", message_buf, ModalSeverity::Info, "Save",
-                                       on_hardware_save_confirm, on_hardware_save_cancel, this);
+        hardware_save_dialog_ = ui_modal_show_confirmation(
+            lv_tr("Save Hardware"), message_buf, ModalSeverity::Info, lv_tr("Save"),
+            on_hardware_save_confirm, on_hardware_save_cancel, this);
     }
 }
 
@@ -342,7 +343,7 @@ void HardwareHealthOverlay::handle_hardware_save_confirm() {
 
     // Add to expected hardware list
     HardwareValidator::add_expected_hardware(cfg, pending_hardware_save_);
-    ui_toast_show(ToastSeverity::SUCCESS, "Hardware saved to config", 2000);
+    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Hardware saved to config"), 2000);
     spdlog::info("[{}] Added hardware '{}' to expected list", get_name(), pending_hardware_save_);
 
     // Remove from cached validation result and refresh overlay

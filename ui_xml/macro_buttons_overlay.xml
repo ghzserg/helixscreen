@@ -6,65 +6,65 @@
 <!-- Quick buttons map to macro slots; standard macros map to printer macros -->
 <component>
   <view name="macro_buttons_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Macro Buttons" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Macro Buttons" title_tag="Macro Buttons" bg_color="#screen_bg">
     <!-- Content Area - scrollable column of settings -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="0" scrollable="true" flex_flow="column">
       <!-- ================================================================== -->
       <!-- QUICK BUTTONS SECTION -->
       <!-- ================================================================== -->
-      <setting_section_header title="QUICK BUTTONS" icon="tune"/>
+      <setting_section_header title="QUICK BUTTONS" title_tag="QUICK BUTTONS" icon="tune"/>
       <!-- Quick Button 1 - assign a macro slot -->
       <setting_dropdown_row name="row_quick_button_1"
-                            label="Quick Button 1" icon="play_circle" description="Select macro for first button"
+                            label="Quick Button 1" label_tag="Quick Button 1" icon="play_circle" description="Select macro for first button" description_tag="Select macro for first button"
                             callback="on_quick_button_1_changed"/>
       <!-- Quick Button 2 - assign a macro slot -->
       <setting_dropdown_row name="row_quick_button_2"
-                            label="Quick Button 2" icon="play_circle" description="Select macro for second button"
+                            label="Quick Button 2" label_tag="Quick Button 2" icon="play_circle" description="Select macro for second button" description_tag="Select macro for second button"
                             callback="on_quick_button_2_changed"/>
       <!-- ================================================================== -->
       <!-- STANDARD MACROS SECTION -->
       <!-- ================================================================== -->
-      <setting_section_header title="STANDARD MACROS" icon="code_braces"/>
+      <setting_section_header title="STANDARD MACROS" title_tag="STANDARD MACROS" icon="code_braces"/>
       <!-- Load Filament -->
       <setting_dropdown_row name="row_load_filament"
-                            label="Load Filament" icon="arrow_down" description="Macro to load filament into extruder"
+                            label="Load Filament" label_tag="Load Filament" icon="arrow_down" description="Macro to load filament into extruder" description_tag="Macro to load filament into extruder"
                             callback="on_load_filament_changed"/>
       <!-- Unload Filament -->
       <setting_dropdown_row name="row_unload_filament"
-                            label="Unload Filament" icon="tray_arrow_up"
-                            description="Macro to unload filament from extruder" callback="on_unload_filament_changed"/>
+                            label="Unload Filament" label_tag="Unload Filament" icon="tray_arrow_up"
+                            description="Macro to unload filament from extruder" description_tag="Macro to unload filament from extruder" callback="on_unload_filament_changed"/>
       <!-- Purge -->
       <setting_dropdown_row name="row_purge"
-                            label="Purge" icon="water" description="Macro to purge/prime the nozzle"
+                            label="Purge" label_tag="Purge" icon="water" description="Macro to purge/prime the nozzle" description_tag="Macro to purge/prime the nozzle"
                             callback="on_purge_changed"/>
       <!-- Pause -->
       <setting_dropdown_row name="row_pause"
-                            label="Pause" icon="pause" description="Macro to pause an active print"
+                            label="Pause" label_tag="Pause" icon="pause" description="Macro to pause an active print" description_tag="Macro to pause an active print"
                             callback="on_pause_changed"/>
       <!-- Resume -->
       <setting_dropdown_row name="row_resume"
-                            label="Resume" icon="play" description="Macro to resume a paused print"
+                            label="Resume" label_tag="Resume" icon="play" description="Macro to resume a paused print" description_tag="Macro to resume a paused print"
                             callback="on_resume_changed"/>
       <!-- Cancel -->
       <setting_dropdown_row name="row_cancel"
-                            label="Cancel" icon="cancel" description="Macro to cancel an active print"
+                            label="Cancel" label_tag="Cancel" icon="cancel" description="Macro to cancel an active print" description_tag="Macro to cancel an active print"
                             callback="on_cancel_changed"/>
       <!-- Bed Mesh -->
       <setting_dropdown_row name="row_bed_mesh"
-                            label="Bed Mesh" icon="grid_large" description="Macro for bed mesh calibration"
+                            label="Bed Mesh" label_tag="Bed Mesh" icon="grid_large" description="Macro for bed mesh calibration" description_tag="Macro for bed mesh calibration"
                             callback="on_bed_mesh_changed"/>
       <!-- Bed Level -->
       <setting_dropdown_row name="row_bed_level"
-                            label="Bed Level" icon="axis_z_arrow"
-                            description="Macro for physical bed leveling (QGL/Z-Tilt)" callback="on_bed_level_changed"/>
+                            label="Bed Level" label_tag="Bed Level" icon="axis_z_arrow"
+                            description="Macro for physical bed leveling (QGL/Z-Tilt)" description_tag="Macro for physical bed leveling (QGL/Z-Tilt)" callback="on_bed_level_changed"/>
       <!-- Clean Nozzle -->
       <setting_dropdown_row name="row_clean_nozzle"
-                            label="Clean Nozzle" icon="refresh" description="Macro to clean/wipe the nozzle"
+                            label="Clean Nozzle" label_tag="Clean Nozzle" icon="refresh" description="Macro to clean/wipe the nozzle" description_tag="Macro to clean/wipe the nozzle"
                             callback="on_clean_nozzle_changed"/>
       <!-- Heat Soak -->
       <setting_dropdown_row name="row_heat_soak"
-                            label="Heat Soak" icon="radiator" description="Macro for chamber/bed heat soak"
+                            label="Heat Soak" label_tag="Heat Soak" icon="radiator" description="Macro for chamber/bed heat soak" description_tag="Macro for chamber/bed heat soak"
                             callback="on_heat_soak_changed"/>
       <!-- ================================================================== -->
       <!-- INFO NOTE -->
@@ -74,7 +74,7 @@
               style_pad_top="#space_md" style_pad_bottom="#space_lg" flex_flow="row" style_flex_cross_place="center"
               style_pad_gap="#space_sm">
         <icon src="info" size="xs" variant="secondary"/>
-        <text_small text="Empty slots disable the associated functionality"/>
+        <text_small text="Empty slots disable the associated functionality" translation_tag="Empty slots disable the associated functionality"/>
       </lv_obj>
     </lv_obj>
   </view>

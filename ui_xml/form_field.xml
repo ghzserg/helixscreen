@@ -2,20 +2,22 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Reusable form field component (label + textarea input wrapper) -->
-<!-- Usage: <form_field label="Network Name" input_name="ssid_input" placeholder="Enter network name"/> -->
+<!-- Usage: <form_field label="Network Name" label_tag="Network Name" input_name="ssid_input" placeholder="Enter network name"/> -->
 <!-- The textarea widget can be accessed by name for C++ integration -->
 <component>
   <api>
     <prop name="label" type="string" default=""/>
+    <prop name="label_tag" type="string" default=""/>
     <prop name="input_name" type="string" default="field_input"/>
     <prop name="placeholder" type="string" default=""/>
+    <prop name="placeholder_tag" type="string" default=""/>
     <prop name="password_mode" type="string" default="false"/>
     <prop name="label_style" type="string" default="body"/>
   </api>
   <view extends="lv_obj"
         width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
     <!-- Label text (uses text_body by default, can be overridden with label_style) -->
-    <text_body text="$label" style_text_align="left"/>
+    <text_body text="$label" translation_tag="$label_tag" style_text_align="left"/>
     <!-- Textarea input with configurable name for C++ lookup -->
     <lv_textarea name="$input_name"
                  width="100%" height="#input_height" placeholder_text="$placeholder" one_line="true"

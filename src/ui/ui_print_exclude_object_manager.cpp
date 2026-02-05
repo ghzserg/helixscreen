@@ -8,6 +8,7 @@
 #include "ui_toast.h"
 #include "ui_update_queue.h"
 
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
 
@@ -240,7 +241,7 @@ void PrintExcludeObjectManager::handle_exclude_undo() {
     pending_exclude_object_.clear();
 
     // Show confirmation that undo succeeded
-    ui_toast_show(ToastSeverity::SUCCESS, "Exclusion cancelled", 2000);
+    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Exclusion cancelled"), 2000);
 }
 
 // ============================================================================

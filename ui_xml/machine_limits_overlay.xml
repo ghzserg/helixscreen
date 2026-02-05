@@ -6,7 +6,7 @@
 <!-- Max Z values are read-only (config-defined, not runtime adjustable) -->
 <component>
   <view name="machine_limits_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Machine Limits" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Machine Limits" title_tag="Machine Limits" bg_color="#screen_bg">
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="0" scrollable="true" flex_flow="column">
@@ -18,7 +18,7 @@
               style_pad_right="#space_lg" style_pad_top="#space_md" style_pad_bottom="#space_md" flex_flow="row"
               style_flex_cross_place="center" style_pad_gap="#space_sm">
         <icon src="info" size="sm" variant="info"/>
-        <text_small text="Changes are temporary and reset on printer reboot" style_text_color="#info"/>
+        <text_small text="Changes are temporary and reset on printer reboot" translation_tag="Changes are temporary and reset on printer reboot" style_text_color="#info"/>
       </lv_obj>
       <!-- ================================================================== -->
       <!-- MAX VELOCITY -->
@@ -35,8 +35,8 @@
                   style_pad_gap="#space_sm">
             <icon src="speed" size="sm" variant="secondary"/>
             <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-              <text_body text="Max Velocity"/>
-              <text_small text="Maximum toolhead speed (mm/s)"/>
+              <text_body text="Max Velocity" translation_tag="Max Velocity"/>
+              <text_small text="Maximum toolhead speed (mm/s)" translation_tag="Maximum toolhead speed (mm/s)"/>
             </lv_obj>
           </lv_obj>
           <!-- Current value display -->
@@ -72,8 +72,8 @@
                   style_pad_gap="#space_sm">
             <icon src="speed_up" size="sm" variant="secondary"/>
             <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-              <text_body text="Max Acceleration"/>
-              <text_small text="Maximum acceleration (mm/s²)"/>
+              <text_body text="Max Acceleration" translation_tag="Max Acceleration"/>
+              <text_small text="Maximum acceleration (mm/s²)" translation_tag="Maximum acceleration (mm/s²)"/>
             </lv_obj>
           </lv_obj>
           <!-- Current value display -->
@@ -109,8 +109,8 @@
                   style_pad_gap="#space_sm">
             <icon src="speed_down" size="sm" variant="secondary"/>
             <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-              <text_body text="Accel to Decel"/>
-              <text_small text="Acceleration to deceleration limit (mm/s²)"/>
+              <text_body text="Accel to Decel" translation_tag="Accel to Decel"/>
+              <text_small text="Acceleration to deceleration limit (mm/s²)" translation_tag="Acceleration to deceleration limit (mm/s²)"/>
             </lv_obj>
           </lv_obj>
           <!-- Current value display -->
@@ -146,8 +146,8 @@
                   style_pad_gap="#space_sm">
             <icon src="cube" size="sm" variant="secondary"/>
             <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-              <text_body text="Square Corner Velocity"/>
-              <text_small text="Max speed through corners (mm/s)"/>
+              <text_body text="Square Corner Velocity" translation_tag="Square Corner Velocity"/>
+              <text_small text="Max speed through corners (mm/s)" translation_tag="Max speed through corners (mm/s)"/>
             </lv_obj>
           </lv_obj>
           <!-- Current value display -->
@@ -176,16 +176,16 @@
               style_pad_top="#space_md" style_pad_bottom="#space_xs" flex_flow="row" style_flex_cross_place="center"
               style_pad_gap="#space_sm">
         <icon src="lock" size="xs" variant="secondary"/>
-        <text_small text="Config-defined (read-only)"/>
+        <text_small text="Config-defined (read-only)" translation_tag="Config-defined (read-only)"/>
       </lv_obj>
       <!-- ================================================================== -->
       <!-- MAX Z VELOCITY (read-only) -->
       <!-- ================================================================== -->
-      <setting_info_row name="row_max_z_velocity" label="Max Z Velocity" icon="axis_z_arrow" value="--"/>
+      <setting_info_row name="row_max_z_velocity" label="Max Z Velocity" label_tag="Max Z Velocity" icon="axis_z_arrow" value="--" value_tag="--"/>
       <!-- ================================================================== -->
       <!-- MAX Z ACCEL (read-only) -->
       <!-- ================================================================== -->
-      <setting_info_row name="row_max_z_accel" label="Max Z Accel" icon="axis_z_arrow" value="--"/>
+      <setting_info_row name="row_max_z_accel" label="Max Z Accel" label_tag="Max Z Accel" icon="axis_z_arrow" value="--" value_tag="--"/>
       <!-- Spacer to push buttons to bottom -->
       <lv_obj width="100%" flex_grow="1" scrollable="false"/>
     </lv_obj>
@@ -199,7 +199,7 @@
             height="#button_height" style_pad_all="#space_md" flex_flow="row" style_flex_main_place="center"
             scrollable="false">
       <!-- Reset button - restores to original config values from API -->
-      <ui_button name="btn_reset" width="150" height="100%" text="Reset">
+      <ui_button name="btn_reset" width="150" height="100%" text="Reset" translation_tag="Reset">
         <event_cb trigger="clicked" callback="on_limits_reset"/>
       </ui_button>
     </lv_obj>

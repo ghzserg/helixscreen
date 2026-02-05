@@ -14,7 +14,7 @@
           <!-- Specular Intensity -->
           <lv_obj flex_grow="1"
                   flex_flow="row" style_pad_all="0" style_pad_top="#space_md" style_flex_cross_place="center">
-            <text_small text="Specular:" style_pad_right="#space_md"/>
+            <text_small text="Specular:" translation_tag="Specular:" style_pad_right="#space_md"/>
             <lv_slider name="specular_slider" flex_grow="1" min_value="0" max_value="20" value="5"/>
             <lv_label name="specular_value_label"
                       text="0.05" style_text_color="#text" style_text_font="#font_small" style_pad_left="#space_md"/>
@@ -22,7 +22,7 @@
           <!-- Shininess -->
           <lv_obj flex_grow="1"
                   flex_flow="row" style_pad_all="0" style_pad_top="#space_md" style_flex_cross_place="center">
-            <text_small text="Shininess:" style_pad_right="#space_md"/>
+            <text_small text="Shininess:" translation_tag="Shininess:" style_pad_right="#space_md"/>
             <lv_slider name="shininess_slider" flex_grow="1" min_value="5" max_value="50" value="5"/>
             <lv_label name="shininess_value_label"
                       text="5" style_text_color="#text" style_text_font="#font_small" style_pad_left="#space_md"/>
@@ -37,27 +37,27 @@
         <ui_card width="100%"
                  height="content" flex_flow="column" style_pad_all="#space_xs" style_pad_gap="#space_xs"
                  style_border_width="0">
-          <text_body text="View Presets"/>
+          <text_body text="View Presets" translation_tag="View Presets"/>
           <!-- Row 1 -->
           <lv_obj width="100%" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm">
-            <ui_button name="btn_travels" flex_grow="1" flag_checkable="true" text="Travels"/>
-            <ui_button name="btn_top" flex_grow="1" text="Top"/>
-            <ui_button name="btn_front" flex_grow="1" text="Front"/>
+            <ui_button name="btn_travels" flex_grow="1" flag_checkable="true" text="Travels" translation_tag="Travels"/>
+            <ui_button name="btn_top" flex_grow="1" text="Top" translation_tag="Top"/>
+            <ui_button name="btn_front" flex_grow="1" text="Front" translation_tag="Front"/>
           </lv_obj>
           <!-- Row 2 -->
           <lv_obj width="100%" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm">
-            <ui_button name="btn_side" flex_grow="1" text="Side"/>
-            <ui_button name="btn_reset" flex_grow="1" text="Reset"/>
+            <ui_button name="btn_side" flex_grow="1" text="Side" translation_tag="Side"/>
+            <ui_button name="btn_reset" flex_grow="1" text="Reset" translation_tag="Reset"/>
           </lv_obj>
         </ui_card>
         <!-- Zoom Section -->
         <ui_card width="100%"
                  height="content" flex_flow="column" style_pad_all="#space_xs" style_pad_gap="#space_xs"
                  style_border_width="0">
-          <text_body text="Zoom"/>
+          <text_body text="Zoom" translation_tag="Zoom"/>
           <lv_obj width="100%" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm">
-            <ui_button name="btn_zoom_in" flex_grow="1" text="+"/>
-            <ui_button name="btn_zoom_out" flex_grow="1" text="-"/>
+            <ui_button name="btn_zoom_in" flex_grow="1" text="+" translation_tag="+"/>
+            <ui_button name="btn_zoom_out" flex_grow="1" text="-" translation_tag="-"/>
           </lv_obj>
         </ui_card>
         <!-- Layer Progress Section (Ghost Layer Test) -->
@@ -65,7 +65,7 @@
                  height="content" flex_flow="column" style_pad_all="#space_xs" style_pad_gap="#space_xs"
                  style_border_width="0">
           <lv_obj width="100%" flex_flow="row" style_pad_all="0" style_flex_cross_place="center">
-            <text_body text="Layer:"/>
+            <text_body text="Layer:" translation_tag="Layer:"/>
             <text_small name="layer_value_label" text=" 0 / 0" style_pad_left="#space_xs"/>
           </lv_obj>
           <lv_obj width="100%"
@@ -78,7 +78,7 @@
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm"
                   style_flex_cross_place="center">
-            <text_small text="Ghost:"/>
+            <text_small text="Ghost:" translation_tag="Ghost:"/>
             <lv_dropdown name="ghost_mode_dropdown" flex_grow="1" options="Stipple Solid"/>
           </lv_obj>
         </ui_card>
@@ -86,18 +86,18 @@
         <ui_card width="100%"
                  height="content" flex_flow="column" style_pad_all="#space_xs" style_pad_gap="#space_xs"
                  style_border_width="0">
-          <text_body text="File"/>
+          <text_body text="File" translation_tag="File"/>
           <lv_obj width="100%" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm">
-            <ui_button name="btn_load_test" flex_grow="1" text="Browse"/>
-            <ui_button name="btn_clear" flex_grow="1" text="Clear"/>
+            <ui_button name="btn_load_test" flex_grow="1" text="Browse" translation_tag="Browse"/>
+            <ui_button name="btn_clear" flex_grow="1" text="Clear" translation_tag="Clear"/>
           </lv_obj>
         </ui_card>
         <!-- Statistics Section (flex_grow to fill remaining space) -->
         <ui_card width="100%"
                  flex_grow="1" flex_flow="column" style_pad_all="#space_xs" style_pad_gap="#space_xs"
                  style_border_width="0">
-          <text_body text="File Info"/>
-          <text_small name="stats_label" width="100%" flex_grow="1" text="Loading..." long_mode="wrap"/>
+          <text_body text="File Info" translation_tag="File Info"/>
+          <text_small name="stats_label" width="100%" flex_grow="1" text="Loading..." translation_tag="Loading..." long_mode="wrap"/>
         </ui_card>
       </lv_obj>
     </lv_obj>

@@ -6,7 +6,7 @@
 <!-- Uses setting_* components for consistency with main settings panel -->
 <component>
   <view name="display_settings_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Display Settings" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Display Settings" title_tag="Display Settings" bg_color="#screen_bg">
     <!-- Content Area - no padding, rows handle their own -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="0" scrollable="true" flex_flow="column">
@@ -14,7 +14,7 @@
       <!-- DARK MODE -->
       <!-- ================================================================== -->
       <setting_toggle_row name="row_dark_mode"
-                          label="Dark Mode" icon="light_off" description="Switch between light and dark themes"
+                          label="Dark Mode" label_tag="Dark Mode" icon="light_off" description="Switch between light and dark themes" description_tag="Switch between light and dark themes"
                           subject="settings_dark_mode" callback="on_dark_mode_changed">
         <bind_state_if_eq subject="settings_dark_mode_available" state="disabled" ref_value="0"/>
       </setting_toggle_row>
@@ -22,7 +22,7 @@
       <!-- THEME COLORS -->
       <!-- ================================================================== -->
       <setting_action_row name="row_theme_settings"
-                          label="Theme Colors" icon="tune" description="Explore palette and preview"
+                          label="Theme Colors" label_tag="Theme Colors" icon="tune" description="Explore palette and preview" description_tag="Explore palette and preview"
                           callback="on_theme_settings_clicked"/>
       <!-- ================================================================== -->
       <!-- BRIGHTNESS (conditional - hidden when no hardware backlight) -->
@@ -39,12 +39,12 @@
                   flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm" style_pad_all="0"
                   scrollable="false">
             <icon src="light" size="sm" variant="secondary"/>
-            <text_body text="Brightness"/>
+            <text_body text="Brightness" translation_tag="Brightness"/>
           </lv_obj>
           <text_body name="brightness_value_label" bind_text="brightness_value"/>
         </lv_obj>
         <!-- Description -->
-        <text_small text="Adjust screen brightness level"/>
+        <text_small text="Adjust screen brightness level" translation_tag="Adjust screen brightness level"/>
         <!-- Slider with min/max icons -->
         <lv_obj width="100%"
                 height="content" flex_flow="row" style_flex_cross_place="center" style_pad_left="0" style_pad_right="0"
@@ -60,44 +60,44 @@
       <!-- BED MESH RENDER MODE -->
       <!-- ================================================================== -->
       <setting_dropdown_row name="row_bed_mesh_mode"
-                            label="Bed Mesh Render" icon="grid_large"
-                            description="Choose rendering mode for bed mesh visualization"
+                            label="Bed Mesh Render" label_tag="Bed Mesh Render" icon="grid_large"
+                            description="Choose rendering mode for bed mesh visualization" description_tag="Choose rendering mode for bed mesh visualization"
                             options="Auto 3D View 2D Heatmap" callback="on_bed_mesh_mode_changed"/>
       <!-- ================================================================== -->
       <!-- G-CODE RENDER MODE (hidden until hardware-accelerated 3D is ready) -->
       <!-- ================================================================== -->
       <lv_obj width="100%" height="0" hidden="true" style_pad_all="0" scrollable="false">
         <setting_dropdown_row name="row_gcode_mode"
-                              label="G-code Preview" icon="printer_3d"
-                              description="Choose rendering mode for G-code visualization"
+                              label="G-code Preview" label_tag="G-code Preview" icon="printer_3d"
+                              description="Choose rendering mode for G-code visualization" description_tag="Choose rendering mode for G-code visualization"
                               options="Auto 3D View 2D Layers" callback="on_gcode_mode_changed"/>
       </lv_obj>
       <!-- ================================================================== -->
       <!-- DISPLAY DIM -->
       <!-- ================================================================== -->
       <setting_dropdown_row name="row_display_dim"
-                            label="Screen Dim" icon="lightbulb_on_50"
-                            description="Screen dims to lower brightness after period of inactivity"
+                            label="Screen Dim" label_tag="Screen Dim" icon="lightbulb_on_50"
+                            description="Screen dims to lower brightness after period of inactivity" description_tag="Screen dims to lower brightness after period of inactivity"
                             options="Never&#10;30 seconds&#10;1 minute&#10;2 minutes&#10;5 minutes"
                             callback="on_display_dim_changed"/>
       <!-- ================================================================== -->
       <!-- DISPLAY SLEEP -->
       <!-- ================================================================== -->
       <setting_dropdown_row name="row_display_sleep"
-                            label="Display Sleep" icon="clock"
-                            description="Screen will dim after the selected period of inactivity"
+                            label="Display Sleep" label_tag="Display Sleep" icon="clock"
+                            description="Screen will dim after the selected period of inactivity" description_tag="Screen will dim after the selected period of inactivity"
                             options="Never 1 minute 5 minutes 10 minutes 30 minutes" callback="on_display_sleep_changed"/>
       <!-- ================================================================== -->
       <!-- TIME FORMAT -->
       <!-- ================================================================== -->
       <setting_dropdown_row name="row_time_format"
-                            label="Time Format" icon="clock" description="Choose 12-hour or 24-hour time display"
+                            label="Time Format" label_tag="Time Format" icon="clock" description="Choose 12-hour or 24-hour time display" description_tag="Choose 12-hour or 24-hour time display"
                             options="12 Hour 24 Hour" callback="on_time_format_changed"/>
       <!-- ================================================================== -->
       <!-- INFO NOTE -->
       <!-- ================================================================== -->
       <info_note icon="info"
-                 text="Touch screen to wake from sleep" style_pad_left="#space_lg" style_pad_right="#space_lg"/>
+                 text="Touch screen to wake from sleep" translation_tag="Touch screen to wake from sleep" style_pad_left="#space_lg" style_pad_right="#space_lg"/>
     </lv_obj>
   </view>
 </component>

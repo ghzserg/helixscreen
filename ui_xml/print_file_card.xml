@@ -44,11 +44,11 @@
               style_translate_y="#preview_offset_y"/>
     <!-- Folder icon - shown for regular directories (folder_type=1) -->
     <lv_label name="folder_icon"
-              width="#folder_icon_size" height="#folder_icon_size" text="󰉋" style_text_font="mdi_icons_64"
+              width="#folder_icon_size" height="#folder_icon_size" text="󰉋" translation_tag="󰉋" style_text_font="mdi_icons_64"
               align="center" style_text_align="center" style_text_color="#warning" style_translate_y="-10" hidden="true"/>
     <!-- Parent directory icon - shown for ".." entries (folder_type=2) -->
     <lv_label name="parent_dir_icon"
-              width="#folder_icon_size" height="#folder_icon_size" text="󱧰" style_text_font="mdi_icons_64"
+              width="#folder_icon_size" height="#folder_icon_size" text="󱧰" translation_tag="󱧰" style_text_font="mdi_icons_64"
               align="center" style_text_align="center" style_text_color="#warning" style_translate_y="-10" hidden="true"/>
     <!-- Metadata clip container - sharp top edge, clips the inner overlay's top rounded corners -->
     <lv_obj name="metadata_clip"

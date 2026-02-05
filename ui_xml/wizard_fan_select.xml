@@ -6,8 +6,8 @@
   <!-- User selects hotend, part cooling, chamber, and exhaust fans -->
   <consts>
     <!-- Step metadata (read by wizard orchestrator) -->
-    <str name="step_title" value="Printer Setup: Fans"/>
-    <str name="step_subtitle" value="Configure your printer's cooling fans"/>
+    <str name="step_title" value="Printer Setup: Fans" value_tag="Printer Setup: Fans"/>
+    <str name="step_subtitle" value="Configure your printer's cooling fans" value_tag="Configure your printer's cooling fans"/>
     <int name="step_order" value="5"/>
   </consts>
   <view name="wizard_fan_select_root"
@@ -25,7 +25,7 @@
         <lv_obj width="48%"
                 height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
                 style_flex_cross_place="start">
-          <text_body text="Hotend Fan" style_pad_bottom="#space_sm"/>
+          <text_body text="Hotend Fan" translation_tag="Hotend Fan" style_pad_bottom="#space_sm"/>
           <lv_dropdown name="hotend_fan_dropdown"
                        width="100%" height="#header_height" options="heater_fan hotend_fan"
                        style_border_opa="100%" style_radius="#border_radius"
@@ -37,7 +37,7 @@
         <lv_obj width="48%"
                 height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
                 style_flex_cross_place="start">
-          <text_body text="Part Cooling Fan" style_pad_bottom="#space_sm"/>
+          <text_body text="Part Cooling Fan" translation_tag="Part Cooling Fan" style_pad_bottom="#space_sm"/>
           <lv_dropdown name="part_cooling_fan_dropdown"
                        width="100%" height="#header_height" options="fan"
                        style_border_opa="100%" style_radius="#border_radius" style_pad_all="#space_lg">
@@ -53,7 +53,7 @@
         <lv_obj width="48%"
                 height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
                 style_flex_cross_place="start">
-          <text_body text="Chamber Fan" style_pad_bottom="#space_sm"/>
+          <text_body text="Chamber Fan" translation_tag="Chamber Fan" style_pad_bottom="#space_sm"/>
           <lv_dropdown name="chamber_fan_dropdown"
                        width="100%" height="#header_height" options="None"
                        style_border_opa="100%" style_radius="#border_radius" style_pad_all="#space_lg">
@@ -64,7 +64,7 @@
         <lv_obj width="48%"
                 height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
                 style_flex_cross_place="start">
-          <text_body text="Exhaust Fan" style_pad_bottom="#space_sm"/>
+          <text_body text="Exhaust Fan" translation_tag="Exhaust Fan" style_pad_bottom="#space_sm"/>
           <lv_dropdown name="exhaust_fan_dropdown"
                        width="100%" height="#header_height" options="None"
                        style_border_opa="100%" style_radius="#border_radius" style_pad_all="#space_lg">

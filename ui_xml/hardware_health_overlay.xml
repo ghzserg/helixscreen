@@ -5,7 +5,7 @@
 <!-- Displays issues grouped by severity: Critical, Warning, Info -->
 <component>
   <view name="hardware_health_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Hardware Health" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Hardware Health" title_tag="Hardware Health" bg_color="#screen_bg">
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" scrollable="true" flex_flow="column"
@@ -53,7 +53,7 @@
               width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
               style_pad_gap="#space_sm">
         <bind_flag_if_eq subject="hardware_critical_count" flag="hidden" ref_value="0"/>
-        <setting_section_header title="CRITICAL" icon="alert_octagon"/>
+        <setting_section_header title="CRITICAL" title_tag="CRITICAL" icon="alert_octagon"/>
         <lv_obj name="critical_issues_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
                 style_pad_gap="#space_xs">
@@ -67,7 +67,7 @@
               width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
               style_pad_gap="#space_sm">
         <bind_flag_if_eq subject="hardware_warning_count" flag="hidden" ref_value="0"/>
-        <setting_section_header title="MISSING CONFIGURED" icon="alert"/>
+        <setting_section_header title="MISSING CONFIGURED" title_tag="MISSING CONFIGURED" icon="alert"/>
         <lv_obj name="warning_issues_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
                 style_pad_gap="#space_xs">
@@ -81,7 +81,7 @@
               width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
               style_pad_gap="#space_sm">
         <bind_flag_if_eq subject="hardware_info_count" flag="hidden" ref_value="0"/>
-        <setting_section_header title="NEWLY DISCOVERED" icon="info"/>
+        <setting_section_header title="NEWLY DISCOVERED" title_tag="NEWLY DISCOVERED" icon="info"/>
         <lv_obj name="info_issues_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
                 style_pad_gap="#space_xs">
@@ -95,7 +95,7 @@
               width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
               style_pad_gap="#space_sm">
         <bind_flag_if_eq subject="hardware_session_count" flag="hidden" ref_value="0"/>
-        <setting_section_header title="CHANGED FROM LAST SESSION" icon="refresh"/>
+        <setting_section_header title="CHANGED FROM LAST SESSION" title_tag="CHANGED FROM LAST SESSION" icon="refresh"/>
         <lv_obj name="session_issues_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
                 style_pad_gap="#space_xs">
@@ -110,7 +110,7 @@
               style_pad_bottom="#space_lg" flex_flow="row" style_flex_main_place="center"
               style_flex_cross_place="center" style_pad_gap="#space_sm">
         <icon src="info" size="xs" variant="secondary"/>
-        <text_small text="Hardware is validated on startup and reconnection"/>
+        <text_small text="Hardware is validated on startup and reconnection" translation_tag="Hardware is validated on startup and reconnection"/>
       </lv_obj>
     </lv_obj>
   </view>

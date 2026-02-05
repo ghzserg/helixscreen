@@ -14,7 +14,7 @@
             height="content" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_lg"
             style_pad_bottom="#space_sm" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
             scrollable="false">
-      <text_heading name="title" text="Action Required"/>
+      <text_heading name="title" text="Action Required" translation_tag="Action Required"/>
     </lv_obj>
     <!-- Horizontal divider below title -->
     <divider_horizontal/>

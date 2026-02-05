@@ -31,7 +31,7 @@
             style_pad_bottom="#space_md" scrollable="false">
 
       <!-- BACK BUTTON (hidden on step 0 via conditional binding) -->
-      <ui_button name="btn_back" width="#wizard_button_width" text="Back">
+      <ui_button name="btn_back" width="#wizard_button_width" text="Back" translation_tag="Back">
         <event_cb trigger="clicked" callback="on_back_clicked"/>
         <!-- Hide when wizard_back_visible == 0 (at first visible step) -->
         <bind_flag_if_eq subject="wizard_back_visible" flag="hidden" ref_value="0"/>
@@ -40,13 +40,36 @@
       <!-- make sure that the Next button is right justified -->
       <lv_obj name="wizard_footer_spacer" width="0" height="#button_height" flex_grow="1"/>
 
-      <!-- NEXT/FINISH BUTTON (text bound to subject, clickable only when connection_test_passed == 1) -->
+      <!-- NEXT BUTTON - visible when NOT on final step AND NOT showing skip -->
       <ui_button name="btn_next"
-                 width="#wizard_button_width" height="#button_height" bind_text="wizard_next_button_text">
+                 width="#wizard_button_width" height="#button_height" text="Next" translation_tag="Next">
         <event_cb trigger="clicked" callback="on_next_clicked"/>
         <!-- Button is enabled when connection_test_passed == 1 (disabled otherwise) -->
         <bind_state_if_not_eq subject="connection_test_passed" state="disabled" ref_value="1"/>
         <bind_flag_if_eq subject="connection_test_passed" flag="clickable" ref_value="1"/>
+        <!-- Hide when on final step OR when showing skip button -->
+        <bind_flag_if_eq subject="wizard_is_final_step" flag="hidden" ref_value="1"/>
+        <bind_flag_if_eq subject="wizard_show_skip" flag="hidden" ref_value="1"/>
+      </ui_button>
+
+      <!-- SKIP BUTTON - visible only when wizard_show_skip=1 (touch calibration) -->
+      <ui_button name="btn_skip"
+                 width="#wizard_button_width" height="#button_height" text="Skip" translation_tag="Skip">
+        <event_cb trigger="clicked" callback="on_next_clicked"/>
+        <!-- Always enabled when visible -->
+        <!-- Hide when NOT showing skip button -->
+        <bind_flag_if_not_eq subject="wizard_show_skip" flag="hidden" ref_value="1"/>
+      </ui_button>
+
+      <!-- FINISH BUTTON - visible ONLY on final step -->
+      <ui_button name="btn_finish"
+                 width="#wizard_button_width" height="#button_height" text="Finish" translation_tag="Finish">
+        <event_cb trigger="clicked" callback="on_next_clicked"/>
+        <!-- Button is enabled when connection_test_passed == 1 (disabled otherwise) -->
+        <bind_state_if_not_eq subject="connection_test_passed" state="disabled" ref_value="1"/>
+        <bind_flag_if_eq subject="connection_test_passed" flag="clickable" ref_value="1"/>
+        <!-- Hide when NOT on final step -->
+        <bind_flag_if_not_eq subject="wizard_is_final_step" flag="hidden" ref_value="1"/>
       </ui_button>
 
     </lv_obj>

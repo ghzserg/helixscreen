@@ -5,8 +5,8 @@
   <!-- First-Run Wizard: Language Selection -->
   <!-- Cycling "Welcome!" animation with scrollable language list -->
   <consts>
-    <str name="step_title" value="Printer Setup: Language"/>
-    <str name="step_subtitle" value="Select your preferred language"/>
+    <str name="step_title" value="Printer Setup: Language" value_tag="Printer Setup: Language"/>
+    <str name="step_subtitle" value="Select your preferred language" value_tag="Select your preferred language"/>
     <int name="step_order" value="1"/>
   </consts>
   <view name="wizard_language_chooser_root"
@@ -31,55 +31,55 @@
         <!-- Language items use lv_button for proper click handling -->
         <lv_button name="lang_item_en" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="English" width="100%" style_text_align="center"/>
+          <text_body text="English" translation_tag="English" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="0"/>
         </lv_button>
 
         <lv_button name="lang_item_de" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="Deutsch" width="100%" style_text_align="center"/>
+          <text_body text="Deutsch" translation_tag="Deutsch" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="1"/>
         </lv_button>
 
         <lv_button name="lang_item_fr" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="Français" width="100%" style_text_align="center"/>
+          <text_body text="Français" translation_tag="Français" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="2"/>
         </lv_button>
 
         <lv_button name="lang_item_es" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="Español" width="100%" style_text_align="center"/>
+          <text_body text="Español" translation_tag="Español" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="3"/>
         </lv_button>
 
         <lv_button name="lang_item_ru" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="Русский" width="100%" style_text_align="center"/>
+          <text_body text="Русский" translation_tag="Русский" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="4"/>
         </lv_button>
 
         <lv_button name="lang_item_pt" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="Português" width="100%" style_text_align="center"/>
+          <text_body text="Português" translation_tag="Português" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="5"/>
         </lv_button>
 
         <lv_button name="lang_item_it" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="Italiano" width="100%" style_text_align="center"/>
+          <text_body text="Italiano" translation_tag="Italiano" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="6"/>
         </lv_button>
 
         <lv_button name="lang_item_zh" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="中文" width="100%" style_text_align="center"/>
+          <text_body text="中文" translation_tag="中文" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="7"/>
         </lv_button>
 
         <lv_button name="lang_item_ja" width="100%" style_bg_opa="0" style_shadow_width="0" style_border_width="0"
                    style_pad_ver="#space_sm" style_pad_hor="#space_md">
-          <text_body text="日本語" width="100%" style_text_align="center"/>
+          <text_body text="日本語" translation_tag="日本語" width="100%" style_text_align="center"/>
           <event_cb trigger="clicked" callback="on_language_selected" user_data="8"/>
         </lv_button>
 

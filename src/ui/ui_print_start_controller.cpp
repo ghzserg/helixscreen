@@ -22,6 +22,7 @@
 #include "active_print_media_manager.h"
 #include "ams_state.h"
 #include "filament_sensor_manager.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
 
@@ -263,10 +264,10 @@ void PrintStartController::show_filament_warning() {
     }
 
     filament_warning_modal_ = ui_modal_show_confirmation(
-        "No Filament Detected",
-        "The runout sensor indicates no filament is loaded. "
-        "Start print anyway?",
-        ModalSeverity::Warning, "Start Print", on_filament_warning_proceed_static,
+        lv_tr("No Filament Detected"),
+        lv_tr("The runout sensor indicates no filament is loaded. "
+              "Start print anyway?"),
+        ModalSeverity::Warning, lv_tr("Start Print"), on_filament_warning_proceed_static,
         on_filament_warning_cancel_static, this);
 
     if (!filament_warning_modal_) {
@@ -407,7 +408,7 @@ void PrintStartController::show_color_mismatch_warning(const std::vector<int>& m
     snprintf(message_buffer, sizeof(message_buffer), "%s", message.c_str());
 
     color_mismatch_modal_ = ui_modal_show_confirmation(
-        "Color Mismatch", message_buffer, ModalSeverity::Warning, "Start Anyway",
+        lv_tr("Color Mismatch"), message_buffer, ModalSeverity::Warning, lv_tr("Start Anyway"),
         on_color_mismatch_proceed_static, on_color_mismatch_cancel_static, this);
 
     if (!color_mismatch_modal_) {

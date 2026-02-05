@@ -22,7 +22,7 @@
               height="content" style_pad_left="#space_lg" style_pad_right="#space_md" style_pad_top="#space_lg"
               style_pad_bottom="#space_sm" flex_flow="row" style_flex_main_place="space_between"
               style_flex_cross_place="center" scrollable="false">
-        <text_heading text="Pick Color"/>
+        <text_heading text="Pick Color" translation_tag="Pick Color"/>
         <!-- Close button -->
         <ui_button name="btn_close" width="40" height="40" icon="close" variant="ghost">
           <event_cb trigger="clicked" callback="color_picker_close_cb"/>
@@ -64,10 +64,10 @@
                 <event_cb trigger="value_changed" callback="hex_input_changed_cb"/>
                 <event_cb trigger="defocused" callback="hex_input_defocused_cb"/>
               </text_input>
-              <lv_label name="selected_name_label" width="content" text="Gray"/>
+              <lv_label name="selected_name_label" width="content" text="Gray" translation_tag="Gray"/>
             </lv_obj>
             <!-- Presets label -->
-            <text_small text="Presets"/>
+            <text_small text="Presets" translation_tag="Presets"/>
           </lv_obj>
           <!-- BOTTOM: Presets grid (pushed to bottom via space_between) -->
           <!-- Preset grid: 6 columns x 4 rows -->
@@ -250,13 +250,13 @@
       <lv_obj width="100%"
               height="#button_height" style_pad_all="0" style_pad_gap="0" flex_flow="row" scrollable="false">
         <!-- Cancel button -->
-        <ui_button name="btn_cancel" height="100%" text="Cancel" flex_grow="1" variant="ghost">
+        <ui_button name="btn_cancel" height="100%" text="Cancel" translation_tag="Cancel" flex_grow="1" variant="ghost">
           <event_cb trigger="clicked" callback="color_picker_cancel_cb"/>
         </ui_button>
         <!-- Vertical divider -->
         <divider_vertical/>
         <!-- Select button -->
-        <ui_button name="btn_select" height="100%" text="Select" flex_grow="1" variant="ghost">
+        <ui_button name="btn_select" height="100%" text="Select" translation_tag="Select" flex_grow="1" variant="ghost">
           <event_cb trigger="clicked" callback="color_picker_select_cb"/>
         </ui_button>
       </lv_obj>

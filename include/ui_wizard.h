@@ -110,6 +110,15 @@ void ui_wizard_navigate_to_step(int step);
 void ui_wizard_set_title(const char* title);
 
 /**
+ * Refresh wizard header translations
+ *
+ * Re-translates the title and subtitle for the current step using lv_tr().
+ * Should be called after language changes to update bound subjects with
+ * newly translated text.
+ */
+void ui_wizard_refresh_header_translations();
+
+/**
  * Complete wizard and transition to main UI
  *
  * Called when user clicks Finish on summary screen. Performs:

@@ -5,7 +5,7 @@
         extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_border_width="0"
         style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
     <!-- Header Bar -->
-    <header_bar name="overlay_header" title="Input Shaper"/>
+    <header_bar name="overlay_header" title="Input Shaper" title_tag="Input Shaper"/>
     <!-- Content Area -->
     <lv_obj name="panel_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" style_pad_gap="#space_md" scrollable="true"
@@ -34,23 +34,23 @@
               <event_cb trigger="clicked" callback="input_shaper_help_cb"/>
             </ui_button>
           </lv_obj>
-          <text_heading text="Reduce Ringing" style_text_align="center"/>
-          <text_small text="Calibrate resonance compensation" style_text_align="center"/>
+          <text_heading text="Reduce Ringing" translation_tag="Reduce Ringing" style_text_align="center"/>
+          <text_small text="Calibrate resonance compensation" translation_tag="Calibrate resonance compensation" style_text_align="center"/>
         </lv_obj>
         <!-- Calibration buttons - side by side -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_md" scrollable="false">
           <!-- Calibrate X Button -->
-          <ui_button name="btn_calibrate_x" height="72" flex_grow="1" icon="axis_x_arrow" text="Calibrate X">
+          <ui_button name="btn_calibrate_x" height="72" flex_grow="1" icon="axis_x_arrow" text="Calibrate X" translation_tag="Calibrate X">
             <event_cb trigger="clicked" callback="input_shaper_calibrate_x_cb"/>
           </ui_button>
           <!-- Calibrate Y Button -->
-          <ui_button name="btn_calibrate_y" height="72" flex_grow="1" icon="axis_y_arrow" text="Calibrate Y">
+          <ui_button name="btn_calibrate_y" height="72" flex_grow="1" icon="axis_y_arrow" text="Calibrate Y" translation_tag="Calibrate Y">
             <event_cb trigger="clicked" callback="input_shaper_calibrate_y_cb"/>
           </ui_button>
         </lv_obj>
         <!-- Measure Noise Button (secondary) -->
-        <ui_button name="btn_measure_noise" width="100%" variant="secondary" icon="vibrate" text="Measure Noise">
+        <ui_button name="btn_measure_noise" width="100%" variant="secondary" icon="vibrate" text="Measure Noise" translation_tag="Measure Noise">
           <event_cb trigger="clicked" callback="input_shaper_measure_noise_cb"/>
         </ui_button>
       </lv_obj>
@@ -69,11 +69,11 @@
                 scrollable="false">
           <!-- Animated spinner -->
           <spinner size="lg"/>
-          <text_heading name="status_label" text="Calibrating..." style_text_align="center"/>
-          <text_small text="This may take 1-2 minutes" style_text_align="center"/>
+          <text_heading name="status_label" text="Calibrating..." translation_tag="Calibrating..." style_text_align="center"/>
+          <text_small text="This may take 1-2 minutes" translation_tag="This may take 1-2 minutes" style_text_align="center"/>
         </lv_obj>
         <!-- Cancel button -->
-        <ui_button name="btn_cancel" width="100%" variant="secondary" icon="close" text="Cancel">
+        <ui_button name="btn_cancel" width="100%" variant="secondary" icon="close" text="Cancel" translation_tag="Cancel">
           <event_cb trigger="clicked" callback="input_shaper_cancel_cb"/>
         </ui_button>
       </lv_obj>
@@ -91,8 +91,8 @@
                 style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false">
           <icon src="check_circle" size="md" variant="success"/>
           <lv_obj flex_grow="1" style_pad_all="0" flex_flow="column" scrollable="false">
-            <text_small text="Recommended" style_text_color="#success"/>
-            <text_heading name="recommendation_label" text="mzv @ 36.7 Hz"/>
+            <text_small text="Recommended" translation_tag="Recommended" style_text_color="#success"/>
+            <text_heading name="recommendation_label" text="mzv @ 36.7 Hz" translation_tag="mzv @ 36.7 Hz"/>
           </lv_obj>
         </lv_obj>
         <!-- Frequency response chart container (populated programmatically) -->
@@ -105,9 +105,9 @@
         <lv_obj width="100%"
                 height="content" style_pad_left="#space_md" style_pad_right="#space_md" style_pad_top="0"
                 style_pad_bottom="0" flex_flow="row" scrollable="false">
-          <text_small width="40%" text="Shaper"/>
-          <text_small width="30%" text="Freq"/>
-          <text_small width="30%" text="Vibration"/>
+          <text_small width="40%" text="Shaper" translation_tag="Shaper"/>
+          <text_small width="30%" text="Freq" translation_tag="Freq"/>
+          <text_small width="30%" text="Vibration" translation_tag="Vibration"/>
         </lv_obj>
         <!-- Results rows container -->
         <lv_obj width="100%"
@@ -168,11 +168,11 @@
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_md" scrollable="false">
           <!-- Close button (secondary) -->
-          <ui_button name="btn_close" flex_grow="1" variant="secondary" text="Close">
+          <ui_button name="btn_close" flex_grow="1" variant="secondary" text="Close" translation_tag="Close">
             <event_cb trigger="clicked" callback="input_shaper_close_cb"/>
           </ui_button>
           <!-- Apply button (primary) -->
-          <ui_button name="btn_apply" flex_grow="1" variant="success" icon="check" text="Apply">
+          <ui_button name="btn_apply" flex_grow="1" variant="success" icon="check" text="Apply" translation_tag="Apply">
             <event_cb trigger="clicked" callback="input_shaper_apply_cb"/>
           </ui_button>
         </lv_obj>
@@ -182,13 +182,13 @@
                 style_border_width="1" style_border_color="#warning" style_pad_all="#space_sm" flex_flow="row"
                 style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false">
           <icon src="alert" size="sm" variant="warning"/>
-          <text_small text="Apply saves for this session only" style_text_color="#warning" flex_grow="1"/>
-          <ui_button name="btn_save_config" width="content" height="#space_2xl" variant="warning" text="Save Config">
+          <text_small text="Apply saves for this session only" translation_tag="Apply saves for this session only" style_text_color="#warning" flex_grow="1"/>
+          <ui_button name="btn_save_config" width="content" height="#space_2xl" variant="warning" text="Save Config" translation_tag="Save Config">
             <event_cb trigger="clicked" callback="input_shaper_save_config_cb"/>
           </ui_button>
         </lv_obj>
         <!-- Test Print button (enables tuning tower for visual comparison) -->
-        <ui_button name="btn_test_print" width="100%" variant="secondary" icon="printer_3d" text="Test Print">
+        <ui_button name="btn_test_print" width="100%" variant="secondary" icon="printer_3d" text="Test Print" translation_tag="Test Print">
           <event_cb trigger="clicked" callback="input_shaper_print_test_cb"/>
         </ui_button>
       </lv_obj>
@@ -206,27 +206,27 @@
                 style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_sm"
                 scrollable="false">
           <icon src="alert" size="lg" variant="danger"/>
-          <text_heading text="Calibration Failed" style_text_align="center" style_text_color="#danger"/>
-          <text_muted name="error_message" text="An error occurred during calibration." style_text_align="center"/>
+          <text_heading text="Calibration Failed" translation_tag="Calibration Failed" style_text_align="center" style_text_color="#danger"/>
+          <text_muted name="error_message" text="An error occurred during calibration." translation_tag="An error occurred during calibration." style_text_align="center"/>
         </lv_obj>
         <!-- Troubleshooting tips -->
         <lv_obj width="100%"
                 height="content" style_bg_color="#screen_bg" style_bg_opa="255" style_radius="#border_radius"
                 style_pad_all="#space_md" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-          <text_small text="Troubleshooting:"/>
-          <text_small text="- Ensure ADXL345 is connected"/>
-          <text_small text="- Check [resonance_tester] in printer.cfg"/>
-          <text_small text="- Try Measure Noise first"/>
+          <text_small text="Troubleshooting:" translation_tag="Troubleshooting:"/>
+          <text_small text="- Ensure ADXL345 is connected" translation_tag="- Ensure ADXL345 is connected"/>
+          <text_small text="- Check [resonance_tester] in printer.cfg" translation_tag="- Check [resonance_tester] in printer.cfg"/>
+          <text_small text="- Try Measure Noise first" translation_tag="- Try Measure Noise first"/>
         </lv_obj>
         <!-- Action buttons -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_md" scrollable="false">
           <!-- Back button -->
-          <ui_button name="btn_error_back" flex_grow="1" variant="secondary" text="Back">
+          <ui_button name="btn_error_back" flex_grow="1" variant="secondary" text="Back" translation_tag="Back">
             <event_cb trigger="clicked" callback="input_shaper_close_cb"/>
           </ui_button>
           <!-- Retry button -->
-          <ui_button name="btn_retry" flex_grow="1" icon="refresh" text="Retry">
+          <ui_button name="btn_retry" flex_grow="1" icon="refresh" text="Retry" translation_tag="Retry">
             <event_cb trigger="clicked" callback="input_shaper_retry_cb"/>
           </ui_button>
         </lv_obj>

@@ -11,107 +11,107 @@
     <!-- ================================================================== -->
     <!-- APPEARANCE SECTION -->
     <!-- ================================================================== -->
-    <setting_section_header title="APPEARANCE" icon="light"/>
+    <setting_section_header title="APPEARANCE" title_tag="APPEARANCE" icon="light"/>
     <!-- Animations Toggle -->
     <setting_toggle_row name="row_animations"
-                        label="Animations" icon="animation" description="Enable UI motion effects"
+                        label="Animations" label_tag="Animations" icon="animation" description="Enable UI motion effects" description_tag="Enable UI motion effects"
                         callback="on_animations_changed"/>
     <!-- 3D Preview Toggle -->
     <setting_toggle_row name="row_gcode_3d"
-                        label="3D Preview" icon="rotate_3d" description="Interactive 3D G-code during prints"
+                        label="3D Preview" label_tag="3D Preview" icon="rotate_3d" description="Interactive 3D G-code during prints" description_tag="Interactive 3D G-code during prints"
                         callback="on_gcode_3d_changed"/>
     <!-- Display Settings (opens overlay for brightness + sleep timeout) -->
     <setting_action_row name="row_display_settings"
-                        label="Display Settings" icon="light" description="Theme, brightness, and sleep settings"
+                        label="Display Settings" label_tag="Display Settings" icon="light" description="Theme, brightness, and sleep settings" description_tag="Theme, brightness, and sleep settings"
                         callback="on_display_settings_clicked"/>
     <!-- Language Dropdown -->
     <setting_dropdown_row name="row_language"
-                          label="Language" icon="translate" description="Choose display language"
+                          label="Language" label_tag="Language" icon="translate" description="Choose display language" description_tag="Choose display language"
                           callback="on_language_changed"/>
     <!-- ================================================================== -->
     <!-- PRINTER SECTION -->
     <!-- ================================================================== -->
-    <setting_section_header title="PRINTER" icon="printer_3d"/>
+    <setting_section_header title="PRINTER" title_tag="PRINTER" icon="printer_3d"/>
     <!-- Filament Sensors (hidden if no sensors detected) -->
     <lv_obj name="container_filament_sensors" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="filament_sensor_count" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_filament_sensors"
-                          label="Filament Sensors" icon="filament" description="Configure filament detection sensors"
+                          label="Filament Sensors" label_tag="Filament Sensors" icon="filament" description="Configure filament detection sensors" description_tag="Configure filament detection sensors"
                           callback="on_filament_sensors_clicked"/>
     </lv_obj>
     <!-- AMS Settings (hidden if no AMS detected) -->
     <lv_obj name="container_ams_settings" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="ams_slot_count" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_ams_settings"
-                          label="AMS Settings" icon="filament" description="Quick actions, calibration, speed"
+                          label="AMS Settings" label_tag="AMS Settings" icon="filament" description="Quick actions, calibration, speed" description_tag="Quick actions, calibration, speed"
                           callback="on_ams_settings_clicked"/>
     </lv_obj>
     <!-- Spoolman Settings (hidden if Spoolman not available) -->
     <lv_obj name="container_spoolman_settings" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_spoolman_settings"
-                          label="Spoolman" icon="database" description="Weight sync settings"
+                          label="Spoolman" label_tag="Spoolman" icon="database" description="Weight sync settings" description_tag="Weight sync settings"
                           callback="on_spoolman_settings_clicked"/>
     </lv_obj>
     <!-- LED Light Toggle (hidden if no LED capability) -->
     <lv_obj name="container_led_light" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="printer_has_led" flag="hidden" ref_value="0"/>
       <setting_toggle_row name="row_led_light"
-                          label="LED on at Start" icon="light" description="Turn on LED when printer starts"
+                          label="LED on at Start" label_tag="LED on at Start" icon="light" description="Turn on LED when printer starts" description_tag="Turn on LED when printer starts"
                           callback="on_led_light_changed"/>
     </lv_obj>
     <!-- Firmware Retraction Settings (hidden if no firmware_retraction capability) -->
     <lv_obj name="container_firmware_retraction" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="printer_has_firmware_retraction" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_firmware_retraction"
-                          label="Retraction Settings" icon="arrow_up_right"
-                          description="Configure G10/G11 firmware retraction" callback="on_retraction_row_clicked"/>
+                          label="Retraction Settings" label_tag="Retraction Settings" icon="arrow_up_right"
+                          description="Configure G10/G11 firmware retraction" description_tag="Configure G10/G11 firmware retraction" callback="on_retraction_row_clicked"/>
     </lv_obj>
     <!-- E-Stop Confirmation Toggle -->
     <setting_toggle_row name="row_estop_confirm"
-                        label="E-Stop Confirmation" icon="alert_octagon"
-                        description="Require confirmation before emergency stop" callback="on_estop_confirm_changed"/>
+                        label="E-Stop Confirmation" label_tag="E-Stop Confirmation" icon="alert_octagon"
+                        description="Require confirmation before emergency stop" description_tag="Require confirmation before emergency stop" callback="on_estop_confirm_changed"/>
     <!-- Macro Buttons (opens overlay for configuring quick buttons and standard macros) -->
     <setting_action_row name="row_macro_buttons"
-                        label="Macro Buttons" icon="script_text"
-                        description="Configure quick buttons and standard macros" callback="on_macro_buttons_clicked"/>
+                        label="Macro Buttons" label_tag="Macro Buttons" icon="script_text"
+                        description="Configure quick buttons and standard macros" description_tag="Configure quick buttons and standard macros" callback="on_macro_buttons_clicked"/>
     <!-- ================================================================== -->
     <!-- NOTIFICATIONS SECTION -->
     <!-- ================================================================== -->
-    <setting_section_header title="NOTIFICATIONS" icon="notifications"/>
+    <setting_section_header title="NOTIFICATIONS" title_tag="NOTIFICATIONS" icon="notifications"/>
     <!-- Sounds Toggle (hidden if no speaker capability) -->
     <lv_obj name="container_sounds" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="printer_has_speaker" flag="hidden" ref_value="0"/>
       <setting_toggle_row name="row_sounds"
-                          label="Sounds" icon="notifications" description="Enable audio feedback"
+                          label="Sounds" label_tag="Sounds" icon="notifications" description="Enable audio feedback" description_tag="Enable audio feedback"
                           callback="on_sounds_changed"/>
     </lv_obj>
     <!-- Completion Alert Dropdown (Off/Notification/Alert) -->
     <setting_dropdown_row name="row_completion_alert"
-                          label="Print Completion Alert" icon="notifications" description="Notify when print finishes"
+                          label="Print Completion Alert" label_tag="Print Completion Alert" icon="notifications" description="Notify when print finishes" description_tag="Notify when print finishes"
                           options="Off Notification Alert" callback="on_completion_alert_changed"/>
     <!-- ================================================================== -->
     <!-- MOTION SECTION -->
     <!-- ================================================================== -->
-    <setting_section_header title="MOTION" icon="speed"/>
+    <setting_section_header title="MOTION" title_tag="MOTION" icon="speed"/>
     <!-- Machine Limits -->
     <setting_action_row name="row_machine_limits"
-                        label="Machine Limits" icon="dashboard" description="Velocity and acceleration limits"
+                        label="Machine Limits" label_tag="Machine Limits" icon="dashboard" description="Velocity and acceleration limits" description_tag="Velocity and acceleration limits"
                         callback="on_machine_limits_clicked"/>
     <!-- ================================================================== -->
     <!-- SYSTEM SECTION -->
     <!-- ================================================================== -->
-    <setting_section_header title="SYSTEM" icon="sysinfo"/>
+    <setting_section_header title="SYSTEM" title_tag="SYSTEM" icon="sysinfo"/>
     <!-- Network Settings -->
     <setting_action_row name="row_network"
-                        label="Network Settings" icon="wifi" description="WiFi and Ethernet configuration"
+                        label="Network Settings" label_tag="Network Settings" icon="wifi" description="WiFi and Ethernet configuration" description_tag="WiFi and Ethernet configuration"
                         callback="on_network_clicked"/>
     <!-- Touch Calibration (hidden on non-touch displays unless test mode) -->
     <!-- Description is bound to touch_cal_status subject in C++ setup() -->
     <lv_obj name="container_touch_calibration" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="show_touch_calibration" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_touch_calibration"
-                          label="Touch Calibration" icon="cursor_move" description=""
+                          label="Touch Calibration" label_tag="Touch Calibration" icon="cursor_move" description=""
                           callback="on_touch_calibration_clicked"/>
     </lv_obj>
     <!-- Hardware Issues (hidden when no issues) -->
@@ -119,21 +119,21 @@
       <bind_flag_if_eq subject="hardware_has_issues" flag="hidden" ref_value="0"/>
       <!-- Label bound to hardware_issues_label subject in C++ for reactive updates -->
       <setting_action_row name="row_hardware_health"
-                          label="Hardware Issues" icon="alert" description="Review detected hardware validation issues"
+                          label="Hardware Issues" label_tag="Hardware Issues" icon="alert" description="Review detected hardware validation issues" description_tag="Review detected hardware validation issues"
                           callback="on_hardware_health_clicked"/>
     </lv_obj>
     <!-- Factory Reset -->
     <setting_action_row name="row_factory_reset"
-                        label="Factory Reset" icon="refresh" description="Reset all settings and restart wizard"
+                        label="Factory Reset" label_tag="Factory Reset" icon="refresh" description="Reset all settings and restart wizard" description_tag="Reset all settings and restart wizard"
                         callback="on_factory_reset_clicked"/>
     <!-- Plugins -->
     <setting_action_row name="row_plugins"
-                        label="Plugins" icon="puzzle_outline" description="View installed plugins and status"
+                        label="Plugins" label_tag="Plugins" icon="puzzle_outline" description="View installed plugins and status" description_tag="View installed plugins and status"
                         callback="on_plugins_clicked"/>
     <!-- ================================================================== -->
     <!-- ABOUT SECTION -->
     <!-- ================================================================== -->
-    <setting_section_header title="ABOUT" icon="info"/>
+    <setting_section_header title="ABOUT" title_tag="ABOUT" icon="info"/>
     <!-- Version Info - ui_button for native press feedback (7-tap secret to enable memory debug) -->
     <ui_button name="row_version" width="100%" height="content" variant="ghost" style_radius="0">
       <lv_obj width="100%"
@@ -143,29 +143,29 @@
               event_bubble="true">
         <icon name="row_icon" src="info" size="sm" variant="secondary" clickable="false" event_bubble="true"/>
         <text_body name="label"
-                   text="Version" style_text_color="#text" flex_grow="1" clickable="false" event_bubble="true"/>
+                   text="Version" translation_tag="Version" style_text_color="#text" flex_grow="1" clickable="false" event_bubble="true"/>
         <text_muted name="value" bind_text="version_value" clickable="false" event_bubble="true"/>
       </lv_obj>
       <event_cb trigger="clicked" callback="on_version_clicked"/>
     </ui_button>
     <!-- Printer Name -->
-    <setting_info_row name="row_printer" label="Printer" icon="printer_3d">
+    <setting_info_row name="row_printer" label="Printer" label_tag="Printer" icon="printer_3d">
       <text_muted name="value" bind_text="printer_value"/>
     </setting_info_row>
     <!-- Printer Host -->
-    <setting_info_row name="row_printer_host" label="Host" icon="lan">
+    <setting_info_row name="row_printer_host" label="Host" label_tag="Host" icon="lan">
       <text_muted name="value" bind_text="printer_host_value"/>
     </setting_info_row>
     <!-- Klipper Version -->
-    <setting_info_row name="row_klipper" label="Klipper" icon="toy_brick_outline">
-      <text_muted name="value" text="—"/>
+    <setting_info_row name="row_klipper" label="Klipper" label_tag="Klipper" icon="toy_brick_outline">
+      <text_muted name="value" text="—" translation_tag="—"/>
     </setting_info_row>
     <!-- Moonraker Version -->
-    <setting_info_row name="row_moonraker" label="Moonraker" icon="toy_brick_outline">
-      <text_muted name="value" text="—"/>
+    <setting_info_row name="row_moonraker" label="Moonraker" label_tag="Moonraker" icon="toy_brick_outline">
+      <text_muted name="value" text="—" translation_tag="—"/>
     </setting_info_row>
     <!-- Total Print Hours -->
-    <setting_info_row name="row_print_hours" label="Print Hours" icon="clock">
+    <setting_info_row name="row_print_hours" label="Print Hours" label_tag="Print Hours" icon="clock">
       <text_body name="value" bind_text="print_hours_value" style_text_color="#text_muted"/>
     </setting_info_row>
     <!-- Bottom padding for scroll -->

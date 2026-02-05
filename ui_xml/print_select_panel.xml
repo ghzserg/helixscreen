@@ -36,12 +36,12 @@
               style_pad_gap="0" scrollable="false">
 
         <!-- printer files -->
-        <ui_button name="source_printer_btn" width="content" height="#button_height_sm" text="Printer">
+        <ui_button name="source_printer_btn" width="content" height="#button_height_sm" text="Printer" translation_tag="Printer">
           <event_cb trigger="clicked" callback="on_print_select_source_printer"/>
         </ui_button>
 
         <!-- usb files (conditionally hidden) -->
-        <ui_button name="source_usb_btn" width="content" height="#button_height_sm" text="USB">
+        <ui_button name="source_usb_btn" width="content" height="#button_height_sm" text="USB" translation_tag="USB">
           <event_cb trigger="clicked" callback="on_print_select_source_usb"/>
         </ui_button>
       </lv_obj>
@@ -72,7 +72,7 @@
               style_flex_cross_place="center">
         <!-- Filename header (flex-grow) -->
         <ui_button name="header_filename"
-                   height="content" text="Filename" variant="ghost" flex_grow="1" flex_flow="row"
+                   height="content" text="Filename" translation_tag="Filename" variant="ghost" flex_grow="1" flex_flow="row"
                    style_pad_column="#space_xs" style_flex_main_place="center" style_flex_cross_place="center">
           <event_cb trigger="clicked" callback="on_print_select_header_filename"/>
           <icon name="header_filename_icon_up" src="arrow_up" size="xs" variant="primary" hidden="true"/>
@@ -82,11 +82,11 @@
         <lv_obj name="header_status"
                 width="#col_status_width" height="content" style_pad_all="#list_header_padding" flex_flow="row"
                 style_flex_main_place="center" style_flex_cross_place="center">
-          <text_body name="header_status_label" text="Status" style_text_align="center"/>
+          <text_body name="header_status_label" text="Status" translation_tag="Status" style_text_align="center"/>
         </lv_obj>
         <!-- Size header -->
         <ui_button name="header_size"
-                   width="#col_size_width" height="content" text="Size" variant="ghost" flex_flow="row"
+                   width="#col_size_width" height="content" text="Size" translation_tag="Size" variant="ghost" flex_flow="row"
                    style_pad_column="#space_xs" style_flex_main_place="center" style_flex_cross_place="center">
           <event_cb trigger="clicked" callback="on_print_select_header_size"/>
           <icon name="header_size_icon_up" src="arrow_up" size="xs" variant="primary" hidden="true"/>
@@ -94,7 +94,7 @@
         </ui_button>
         <!-- Modified header -->
         <ui_button name="header_modified"
-                   width="#col_modified_width" height="content" text="Modified" variant="ghost" flex_flow="row"
+                   width="#col_modified_width" height="content" text="Modified" translation_tag="Modified" variant="ghost" flex_flow="row"
                    style_pad_column="#space_xs" style_flex_main_place="center" style_flex_cross_place="center">
           <event_cb trigger="clicked" callback="on_print_select_header_modified"/>
           <icon name="header_modified_icon_up" src="arrow_up" size="xs" variant="primary" hidden="true"/>
@@ -102,7 +102,7 @@
         </ui_button>
         <!-- Print Time header -->
         <ui_button name="header_print_time"
-                   width="#col_time_width" height="content" text="Time" variant="ghost" flex_flow="row"
+                   width="#col_time_width" height="content" text="Time" translation_tag="Time" variant="ghost" flex_flow="row"
                    style_pad_column="#space_xs" style_flex_main_place="center" style_flex_cross_place="center">
           <event_cb trigger="clicked" callback="on_print_select_header_print_time"/>
           <icon name="header_print_time_icon_up" src="arrow_up" size="xs" variant="primary" hidden="true"/>
@@ -121,8 +121,8 @@
     <lv_obj name="empty_state_container"
             width="100%" height="100%" style_pad_all="0" align="center" flex_grow="1" hidden="true">
       <centered_column width="content" height="content" style_pad_all="#space_xl" align="center" pad_gap="#space_sm">
-        <text_heading text="No files available for printing" style_text_align="center"/>
-        <text_body text="Upload gcode files to get started" style_text_align="center"/>
+        <text_heading text="No files available for printing" translation_tag="No files available for printing" style_text_align="center"/>
+        <text_body text="Upload gcode files to get started" translation_tag="Upload gcode files to get started" style_text_align="center"/>
       </centered_column>
     </lv_obj>
   </view>

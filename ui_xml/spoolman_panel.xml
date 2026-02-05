@@ -7,7 +7,7 @@
         extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_border_width="0"
         style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
     <!-- Header Bar with back button -->
-    <header_bar name="overlay_header" title="Spoolman"/>
+    <header_bar name="overlay_header" title="Spoolman" title_tag="Spoolman"/>
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" style_pad_gap="#space_md" scrollable="false"
@@ -24,14 +24,14 @@
         <!-- Empty inbox icon -->
         <icon name="empty_icon" src="inbox_outline" size="xl" variant="secondary"/>
         <!-- Empty message -->
-        <text_heading name="empty_title" text="No Spools" style_text_align="center"/>
-        <text_small name="empty_subtitle" text="Spoolman has no spools configured" style_text_align="center"/>
+        <text_heading name="empty_title" text="No Spools" translation_tag="No Spools" style_text_align="center"/>
+        <text_small name="empty_subtitle" text="Spoolman has no spools configured" translation_tag="Spoolman has no spools configured" style_text_align="center"/>
       </centered_column>
       <!-- Loading indicator - visible when state = LOADING (0) -->
       <centered_column name="loading_state" flex_grow="1" hidden="true">
         <bind_flag_if_not_eq subject="spoolman_panel_state" flag="hidden" ref_value="0"/>
         <spinner name="loading_spinner" size="lg"/>
-        <text_small name="loading_text" text="Loading spools..." style_text_align="center"/>
+        <text_small name="loading_text" text="Loading spools..." translation_tag="Loading spools..." style_text_align="center"/>
       </centered_column>
       <!-- Status bar at bottom -->
       <lv_obj name="status_bar"

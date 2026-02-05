@@ -5,7 +5,7 @@
 <!-- Navigation: Settings → Display → Theme → Edit Colors → (this) -->
 <component>
   <view name="theme_editor_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Edit Theme Colors" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Edit Theme Colors" title_tag="Edit Theme Colors" bg_color="#screen_bg">
     <!-- Content Area - no padding, rows handle their own -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="0" scrollable="true"
@@ -13,7 +13,7 @@
       <!-- ================================================================== -->
       <!-- THEME COLORS -->
       <!-- ================================================================== -->
-      <setting_section_header title="THEME COLORS" icon="tune"/>
+      <setting_section_header title="THEME COLORS" title_tag="THEME COLORS" icon="tune"/>
       <lv_obj name="theme_swatch_list"
               width="100%" height="content" scrollable="false"
               style_pad_left="#space_md" style_pad_right="#space_md" style_pad_top="#space_xs"
@@ -294,24 +294,24 @@
       <!-- ================================================================== -->
       <!-- STYLE PROPERTIES -->
       <!-- ================================================================== -->
-      <setting_section_header title="STYLE PROPERTIES" icon="tune_variant"/>
+      <setting_section_header title="STYLE PROPERTIES" title_tag="STYLE PROPERTIES" icon="tune_variant"/>
 
       <setting_slider_row name="row_border_radius"
-                          label="Border Radius" icon="cube" description="Corner roundness (0 = sharp, 40 = very round)"
+                          label="Border Radius" label_tag="Border Radius" icon="cube" description="Corner roundness (0 = sharp, 40 = very round)" description_tag="Corner roundness (0 = sharp, 40 = very round)"
                           min="0" max="40" value="8" min_icon="minus" max_icon="plus"
                           callback="on_border_radius_changed"/>
 
       <setting_slider_row name="row_border_width"
-                          label="Border Width" icon="ruler" description="Default border thickness" min="0" max="6"
+                          label="Border Width" label_tag="Border Width" icon="ruler" description="Default border thickness" description_tag="Default border thickness" min="0" max="6"
                           value="1" min_icon="minus" max_icon="plus" callback="on_border_width_changed"/>
 
       <setting_slider_row name="row_border_opacity"
-                          label="Border Opacity" icon="layers"
-                          description="Border transparency (0 = invisible, 255 = solid)" min="0" max="255" value="128"
+                          label="Border Opacity" label_tag="Border Opacity" icon="layers"
+                          description="Border transparency (0 = invisible, 255 = solid)" description_tag="Border transparency (0 = invisible, 255 = solid)" min="0" max="255" value="128"
                           min_icon="minus" max_icon="plus" callback="on_border_opacity_changed"/>
 
       <setting_slider_row name="row_shadow_intensity"
-                          label="Shadow Intensity" icon="animation" description="Drop shadow strength (0 = disabled)"
+                          label="Shadow Intensity" label_tag="Shadow Intensity" icon="animation" description="Drop shadow strength (0 = disabled)" description_tag="Drop shadow strength (0 = disabled)"
                           min="0" max="50" value="0" min_icon="minus" max_icon="plus" callback="on_shadow_changed"/>
 
       <!-- ================================================================== -->
@@ -322,17 +322,17 @@
               style_pad_top="#space_lg" style_pad_bottom="#space_lg" flex_flow="row" style_pad_gap="#space_md"
               scrollable="false">
 
-        <ui_button name="btn_reset" text="Reset" variant="ghost"
+        <ui_button name="btn_reset" text="Reset" translation_tag="Reset" variant="ghost"
                    height="#button_height" flex_grow="1">
           <event_cb trigger="clicked" callback="on_theme_reset_clicked"/>
         </ui_button>
 
-        <ui_button name="btn_save_as" text="Save As New" variant="ghost"
+        <ui_button name="btn_save_as" text="Save As New" translation_tag="Save As New" variant="ghost"
                    height="#button_height" flex_grow="1">
           <event_cb trigger="clicked" callback="on_theme_save_as_clicked"/>
         </ui_button>
 
-        <ui_button name="btn_save" text="Save" variant="primary"
+        <ui_button name="btn_save" text="Save" translation_tag="Save" variant="primary"
                    height="#button_height" flex_grow="1"
                    state="disabled" style_bg_opa:disabled="100" style_text_opa:disabled="100">
           <event_cb trigger="clicked" callback="on_theme_save_clicked"/>
@@ -340,7 +340,7 @@
       </lv_obj>
 
       <info_note icon="info"
-                 text="Theme changes apply after restart." style_pad_left="#space_lg" style_pad_right="#space_lg"/>
+                 text="Theme changes apply after restart." translation_tag="Theme changes apply after restart." style_pad_left="#space_lg" style_pad_right="#space_lg"/>
     </lv_obj>
   </view>
 </component>

@@ -3,12 +3,14 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Reusable Settings Info Row Component -->
 <!-- Creates a read-only row showing a label and value -->
-<!-- Usage: <setting_info_row label="Version" icon="info" value="1.0.0"/> -->
+<!-- Usage: <setting_info_row label="Version" label_tag="Version" icon="info" value="1.0.0" value_tag="1.0.0"/> -->
 <component>
   <api>
     <prop name="label" type="string" default="Info"/>
+    <prop name="label_tag" type="string" default=""/>
     <prop name="icon" type="string" default=""/>
     <prop name="value" type="string" default=""/>
+    <prop name="value_tag" type="string" default=""/>
   </api>
   <view name="info_row"
         extends="lv_obj" width="100%" height="content" flex_flow="row" style_flex_main_place="start"
@@ -18,8 +20,8 @@
     <!-- Left side: Optional icon -->
     <icon name="row_icon" src="$icon" size="sm" variant="secondary"/>
     <!-- Middle: Label -->
-    <text_body name="label" text="$label" flex_grow="1"/>
+    <text_body name="label" text="$label" translation_tag="$label_tag" flex_grow="1"/>
     <!-- Right side: Value (secondary color) -->
-    <text_muted name="value" text="$value"/>
+    <text_muted name="value" text="$value" translation_tag="$value_tag"/>
   </view>
 </component>

@@ -14,11 +14,11 @@
             style_pad_gap="#space_xs">
       <!-- Material + Color Name (e.g., "PLA - Jet Black") -->
       <text_body name="spool_name"
-                 width="100%" text="PLA - Black" style_text_color="#text" long_mode="dots" style_pad_all="0"
+                 width="100%" text="PLA - Black" translation_tag="PLA - Black" style_text_color="#text" long_mode="dots" style_pad_all="0"
                  clickable="false"/>
       <!-- Vendor Name -->
       <text_small name="spool_vendor"
-                  width="100%" text="Polymaker" style_text_color="#text_muted" long_mode="dots" style_pad_all="0"
+                  width="100%" text="Polymaker" translation_tag="Polymaker" style_text_color="#text_muted" long_mode="dots" style_pad_all="0"
                   clickable="false"/>
     </lv_obj>
     <!-- RIGHT: Weight Metrics (right-aligned, fixed width) -->
@@ -27,7 +27,7 @@
             style_flex_cross_place="end" style_pad_gap="#space_xs">
       <!-- Remaining Weight (e.g., "850g") -->
       <text_body name="weight_text"
-                 width="100%" text="850g" style_text_color="#text" style_text_align="right" style_pad_all="0"
+                 width="100%" text="850g" translation_tag="850g" style_text_color="#text" style_text_align="right" style_pad_all="0"
                  clickable="false"/>
       <!-- Percentage (e.g., "85%") -->
       <text_small name="percent_text"

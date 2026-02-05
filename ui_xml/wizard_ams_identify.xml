@@ -6,8 +6,8 @@
   <!-- Displays detected AMS system type and lane count -->
   <consts>
     <!-- Step metadata (read by wizard orchestrator) -->
-    <str name="step_title" value="Multi-Material System Detected"/>
-    <str name="step_subtitle" value="Your printer has an automatic filament changer"/>
+    <str name="step_title" value="Multi-Material System Detected" value_tag="Multi-Material System Detected"/>
+    <str name="step_subtitle" value="Your printer has an automatic filament changer" value_tag="Your printer has an automatic filament changer"/>
     <int name="step_order" value="6"/>
   </consts>
   <view name="wizard_ams_identify_root"
@@ -38,7 +38,7 @@
       <!-- Integration message - static text -->
       <text_muted width="85%"
                   style_text_align="center"
-                  text="HelixScreen will integrate with your filament changer for multi-spool/color print operations."/>
+                  text="HelixScreen will integrate with your filament changer for multi-spool/color print operations." translation_tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations."/>
 
     </ui_card>
 

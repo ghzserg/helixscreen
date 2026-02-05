@@ -884,7 +884,7 @@ bool Application::init_plugins() {
                 [](void* user_data) {
                     auto* ctx = static_cast<PluginDisableContext*>(user_data);
                     if (ctx->manager && ctx->manager->disable_plugin(ctx->plugin_id)) {
-                        ui_toast_show(ToastSeverity::SUCCESS, "Plugin disabled", 3000);
+                        ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Plugin disabled"), 3000);
                     }
                     delete ctx;
                 },

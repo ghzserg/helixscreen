@@ -2,17 +2,18 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Reusable modal header component (icon + title) -->
-<!-- Usage: <modal_header icon_src="alert" icon_variant="danger" title="Factory Reset"/> -->
+<!-- Usage: <modal_header icon_src="alert" icon_variant="danger" title="Factory Reset" title_tag="Factory Reset"/> -->
 <component>
   <api>
     <prop name="icon_src" type="string" default=""/>
     <prop name="icon_variant" type="string" default="accent"/>
     <prop name="title" type="string" default=""/>
+    <prop name="title_tag" type="string" default=""/>
   </api>
   <view extends="lv_obj"
         width="100%" height="content" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_lg"
         style_pad_bottom="#space_sm" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm">
     <icon name="header_icon" src="$icon_src" size="md" variant="$icon_variant"/>
-    <text_heading name="header_title" text="$title" style_text_align="left" flex_grow="1"/>
+    <text_heading name="header_title" text="$title" translation_tag="$title_tag" style_text_align="left" flex_grow="1"/>
   </view>
 </component>

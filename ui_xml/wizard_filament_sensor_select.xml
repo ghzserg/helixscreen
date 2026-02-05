@@ -7,8 +7,8 @@
   <!-- Only shown when 2+ non-AMS sensors are detected -->
   <consts>
     <!-- Step metadata (read by wizard orchestrator) -->
-    <str name="step_title" value="Printer Setup: Filament Sensor"/>
-    <str name="step_subtitle" value="Select which sensor triggers pause on filament runout"/>
+    <str name="step_title" value="Printer Setup: Filament Sensor" value_tag="Printer Setup: Filament Sensor"/>
+    <str name="step_subtitle" value="Select which sensor triggers pause on filament runout" value_tag="Select which sensor triggers pause on filament runout"/>
     <int name="step_order" value="8"/>
   </consts>
   <view name="wizard_filament_sensor_select_root"
@@ -19,7 +19,7 @@
              flex_grow="1" style_pad_all="#space_lg" style_pad_gap="#space_sm" flex_flow="column"
              style_flex_main_place="start" style_flex_cross_place="start">
       <!-- Runout sensor selection -->
-      <text_body text="Runout Sensor"/>
+      <text_body text="Runout Sensor" translation_tag="Runout Sensor"/>
       <lv_dropdown name="runout_sensor_dropdown"
                    width="100%" height="#header_height" options="None"
                    style_border_opa="100%" style_radius="#border_radius" style_pad_all="#space_lg">
@@ -32,7 +32,7 @@
               height="content" style_pad_all="0" style_pad_top="#space_md" flex_flow="row"
               style_flex_cross_place="center" style_pad_gap="#space_sm">
         <icon src="info_outline" size="sm" variant="secondary"/>
-        <text_small text="Select 'None' if you don't have a filament sensor, or if you don't want to pause on runout."
+        <text_small text="Select 'None' if you don't have a filament sensor, or if you don't want to pause on runout." translation_tag="Select 'None' if you don't have a filament sensor, or if you don't want to pause on runout."
                     flex_grow="1"/>
       </lv_obj>
     </ui_card>

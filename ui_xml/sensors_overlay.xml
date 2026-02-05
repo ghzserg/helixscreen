@@ -6,7 +6,7 @@
 <!-- XML-First Design: Layout/styling here; C++ populates sensor lists dynamically -->
 <component>
   <view name="sensors_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Sensors" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Sensors" title_tag="Sensors" bg_color="#screen_bg">
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" scrollable="true"
@@ -23,8 +23,8 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_sm">
           <icon src="electric_switch" size="sm" variant="secondary"/>
-          <text_body text="Switch Sensors" flex_grow="1"/>
-          <text_small name="switch_sensor_count" text="(0)"/>
+          <text_body text="Switch Sensors" translation_tag="Switch Sensors" flex_grow="1"/>
+          <text_small name="switch_sensor_count" text="(0)" translation_tag="(0)"/>
         </lv_obj>
         <!-- Master Enable Toggle -->
         <lv_obj width="100%"
@@ -33,7 +33,7 @@
           <lv_obj height="content"
                   style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                   style_pad_gap="#space_sm">
-            <text_small text="Enable Monitoring"/>
+            <text_small text="Enable Monitoring" translation_tag="Enable Monitoring"/>
           </lv_obj>
           <ui_switch name="switch_master_toggle" size="small">
             <bind_state_if_eq subject="filament_master_enabled" state="checked" ref_value="1"/>
@@ -41,7 +41,7 @@
           </ui_switch>
         </lv_obj>
         <!-- Description -->
-        <text_small width="100%" text="Filament runout and motion detection sensors" style_text_align="left"/>
+        <text_small width="100%" text="Filament runout and motion detection sensors" translation_tag="Filament runout and motion detection sensors" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="switch_sensors_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
@@ -60,11 +60,11 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_sm">
           <icon src="arrow_down_bold" size="sm" variant="secondary"/>
-          <text_body text="Probe Sensors" flex_grow="1"/>
-          <text_small name="probe_sensor_count_label" text="(0)"/>
+          <text_body text="Probe Sensors" translation_tag="Probe Sensors" flex_grow="1"/>
+          <text_small name="probe_sensor_count_label" text="(0)" translation_tag="(0)"/>
         </lv_obj>
         <!-- Description -->
-        <text_small width="100%" text="Z probes for bed leveling and mesh generation" style_text_align="left"/>
+        <text_small width="100%" text="Z probes for bed leveling and mesh generation" translation_tag="Z probes for bed leveling and mesh generation" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="probe_sensors_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
@@ -83,11 +83,11 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_sm">
           <icon src="ruler" size="sm" variant="secondary"/>
-          <text_body text="Width Sensors" flex_grow="1"/>
-          <text_small name="width_sensor_count_label" text="(0)"/>
+          <text_body text="Width Sensors" translation_tag="Width Sensors" flex_grow="1"/>
+          <text_small name="width_sensor_count_label" text="(0)" translation_tag="(0)"/>
         </lv_obj>
         <!-- Description -->
-        <text_small width="100%" text="Filament diameter sensors for flow compensation" style_text_align="left"/>
+        <text_small width="100%" text="Filament diameter sensors for flow compensation" translation_tag="Filament diameter sensors for flow compensation" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="width_sensors_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
@@ -106,11 +106,11 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_sm">
           <icon src="water" size="sm" variant="secondary"/>
-          <text_body text="Humidity Sensors" flex_grow="1"/>
-          <text_small name="humidity_sensor_count_label" text="(0)"/>
+          <text_body text="Humidity Sensors" translation_tag="Humidity Sensors" flex_grow="1"/>
+          <text_small name="humidity_sensor_count_label" text="(0)" translation_tag="(0)"/>
         </lv_obj>
         <!-- Description -->
-        <text_small width="100%" text="Chamber and dryer humidity monitoring" style_text_align="left"/>
+        <text_small width="100%" text="Chamber and dryer humidity monitoring" translation_tag="Chamber and dryer humidity monitoring" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="humidity_sensors_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
@@ -129,11 +129,11 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_sm">
           <icon src="waveform" size="sm" variant="secondary"/>
-          <text_body text="Accelerometers" flex_grow="1"/>
-          <text_small name="accel_sensor_count_label" text="(0)"/>
+          <text_body text="Accelerometers" translation_tag="Accelerometers" flex_grow="1"/>
+          <text_small name="accel_sensor_count_label" text="(0)" translation_tag="(0)"/>
         </lv_obj>
         <!-- Description -->
-        <text_small width="100%" text="Input shaper calibration sensors" style_text_align="left"/>
+        <text_small width="100%" text="Input shaper calibration sensors" translation_tag="Input shaper calibration sensors" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="accel_sensors_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
@@ -152,11 +152,11 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_sm">
           <icon src="palette" size="sm" variant="secondary"/>
-          <text_body text="Color Sensors" flex_grow="1"/>
-          <text_small name="color_sensor_count_label" text="(0)"/>
+          <text_body text="Color Sensors" translation_tag="Color Sensors" flex_grow="1"/>
+          <text_small name="color_sensor_count_label" text="(0)" translation_tag="(0)"/>
         </lv_obj>
         <!-- Description -->
-        <text_small width="100%" text="TD-1 filament color detection" style_text_align="left"/>
+        <text_small width="100%" text="TD-1 filament color detection" translation_tag="TD-1 filament color detection" style_text_align="left"/>
         <!-- Sensor List Container -->
         <lv_obj name="color_sensors_list"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
@@ -171,14 +171,14 @@
            Hidden programmatically by C++ when any sensors exist. -->
       <centered_column name="no_sensors_placeholder" flex_grow="1" style_pad_all="#space_lg" hidden="true">
         <icon src="sensor" size="md" variant="secondary"/>
-        <text_small text="No sensors detected" style_margin_top="#space_sm"/>
+        <text_small text="No sensors detected" translation_tag="No sensors detected" style_margin_top="#space_sm"/>
       </centered_column>
 
       <!-- ================================================================== -->
       <!-- INFO NOTE -->
       <!-- ================================================================== -->
       <info_note icon="info"
-                 text="Assign a role to enable sensor monitoring" style_pad_left="#space_sm"
+                 text="Assign a role to enable sensor monitoring" translation_tag="Assign a role to enable sensor monitoring" style_pad_left="#space_sm"
                  style_pad_bottom="#space_md"/>
     </lv_obj>
   </view>

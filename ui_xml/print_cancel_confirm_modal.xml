@@ -15,10 +15,10 @@
       <!-- Warning icon -->
       <icon src="alert_octagon" size="lg" variant="danger"/>
       <!-- Title -->
-      <text_heading width="100%" text="Stop Print?" style_text_align="center"/>
+      <text_heading width="100%" text="Stop Print?" translation_tag="Stop Print?" style_text_align="center"/>
       <!-- Warning message -->
       <text_muted width="100%"
-                  text="Are you sure you want to cancel this print? All progress will be lost." long_mode="wrap"
+                  text="Are you sure you want to cancel this print? All progress will be lost." translation_tag="Are you sure you want to cancel this print? All progress will be lost." long_mode="wrap"
                   style_text_align="center"/>
     </lv_obj>
     <!-- Button row -->

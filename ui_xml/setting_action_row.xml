@@ -3,13 +3,15 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Reusable Settings Action Row Component -->
 <!-- Creates a clickable row that opens a sub-panel or performs an action -->
-<!-- Usage: <setting_action_row label="Network Settings" icon="lan" description="WiFi and Ethernet"/> -->
+<!-- Usage: <setting_action_row label="Network Settings" label_tag="Network Settings" icon="lan" description="WiFi and Ethernet" description_tag="WiFi and Ethernet"/> -->
 <!-- Optional: disabled="subject_name" to dim label and disable button when subject = 1 -->
 <component>
   <api>
     <prop name="label" type="string" default="Action"/>
+    <prop name="label_tag" type="string" default=""/>
     <prop name="icon" type="string" default=""/>
     <prop name="description" type="string" default=""/>
+    <prop name="description_tag" type="string" default=""/>
     <prop name="callback" type="string" default=""/>
     <prop name="disabled" type="string" default=""/>
   </api>
@@ -35,11 +37,11 @@
       <lv_obj height="content"
               style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" flex_grow="1" scrollable="false"
               clickable="false" event_bubble="true">
-        <text_body name="label" text="$label">
+        <text_body name="label" text="$label" translation_tag="$label_tag">
           <bind_style name="label_enabled" subject="$disabled" ref_value="0"/>
           <bind_style name="label_disabled" subject="$disabled" ref_value="1"/>
         </text_body>
-        <text_small name="description" text="$description"/>
+        <text_small name="description" text="$description" translation_tag="$description_tag"/>
       </lv_obj>
       <!-- Right side: Chevron icon -->
       <icon src="chevron_right" size="sm" variant="secondary" clickable="false" event_bubble="true"/>

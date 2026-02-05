@@ -6,7 +6,7 @@
 <!-- XML-First Design: All layout/styling here; C++ only provides subjects and callbacks -->
 <component>
   <view name="retraction_settings_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Retraction Settings" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Retraction Settings" title_tag="Retraction Settings" bg_color="#screen_bg">
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" scrollable="true" flex_flow="column"
@@ -23,8 +23,8 @@
                 style_pad_gap="#space_sm">
           <icon src="arrow_up_right" size="sm" variant="secondary"/>
           <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-            <text_body text="Enable Retraction"/>
-            <text_small text="Use G10/G11 firmware retraction"/>
+            <text_body text="Enable Retraction" translation_tag="Enable Retraction"/>
+            <text_small text="Use G10/G11 firmware retraction" translation_tag="Use G10/G11 firmware retraction"/>
           </lv_obj>
         </lv_obj>
         <!-- Toggle Switch -->
@@ -45,8 +45,8 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                 style_flex_main_place="space_between" style_flex_cross_place="center">
           <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-            <text_body text="Retract Length"/>
-            <text_small text="0.4-2mm direct drive, 4-6mm bowden"/>
+            <text_body text="Retract Length" translation_tag="Retract Length"/>
+            <text_small text="0.4-2mm direct drive, 4-6mm bowden" translation_tag="0.4-2mm direct drive, 4-6mm bowden"/>
           </lv_obj>
           <!-- Current value display -->
           <text_body name="retract_length_label" bind_text="retract_length_display"/>
@@ -61,7 +61,7 @@
                      style_margin_right="#space_sm">
             <event_cb trigger="value_changed" callback="on_retract_length_changed"/>
           </lv_slider>
-          <text_small width="40" text="6mm"/>
+          <text_small width="40" text="6mm" translation_tag="6mm"/>
         </lv_obj>
       </lv_obj>
       <!-- Divider -->
@@ -77,8 +77,8 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                 style_flex_main_place="space_between" style_flex_cross_place="center">
           <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-            <text_body text="Retract Speed"/>
-            <text_small text="Speed of retraction movement"/>
+            <text_body text="Retract Speed" translation_tag="Retract Speed"/>
+            <text_small text="Speed of retraction movement" translation_tag="Speed of retraction movement"/>
           </lv_obj>
           <!-- Current value display -->
           <text_body name="retract_speed_label" bind_text="retract_speed_display"/>
@@ -109,8 +109,8 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                 style_flex_main_place="space_between" style_flex_cross_place="center">
           <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-            <text_body text="Unretract Extra"/>
-            <text_small text="Extra prime to compensate ooze"/>
+            <text_body text="Unretract Extra" translation_tag="Unretract Extra"/>
+            <text_small text="Extra prime to compensate ooze" translation_tag="Extra prime to compensate ooze"/>
           </lv_obj>
           <!-- Current value display -->
           <text_body name="unretract_extra_label" bind_text="unretract_extra_display"/>
@@ -125,7 +125,7 @@
                      style_margin_right="#space_sm">
             <event_cb trigger="value_changed" callback="on_unretract_extra_changed"/>
           </lv_slider>
-          <text_small width="40" text="1mm"/>
+          <text_small width="40" text="1mm" translation_tag="1mm"/>
         </lv_obj>
       </lv_obj>
       <!-- Divider -->
@@ -141,8 +141,8 @@
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                 style_flex_main_place="space_between" style_flex_cross_place="center">
           <lv_obj height="content" style_pad_all="0" scrollable="false" flex_flow="column" style_pad_gap="#space_xxs">
-            <text_body text="Unretract Speed"/>
-            <text_small text="Speed of prime movement"/>
+            <text_body text="Unretract Speed" translation_tag="Unretract Speed"/>
+            <text_small text="Speed of prime movement" translation_tag="Speed of prime movement"/>
           </lv_obj>
           <!-- Current value display -->
           <text_body name="unretract_speed_label" bind_text="unretract_speed_display"/>
@@ -167,7 +167,7 @@
               height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
               style_pad_gap="#space_sm">
         <icon src="info" size="xs" variant="secondary"/>
-        <text_small text="Changes apply immediately. Adjust during print for tuning."/>
+        <text_small text="Changes apply immediately. Adjust during print for tuning." translation_tag="Changes apply immediately. Adjust during print for tuning."/>
       </lv_obj>
     </lv_obj>
   </view>

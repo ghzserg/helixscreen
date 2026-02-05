@@ -276,7 +276,7 @@ void WizardWifiStep::update_ethernet_status() {
 
     if (info.connected) {
         char status_buf[128];
-        snprintf(status_buf, sizeof(status_buf), "Connected (%s)", info.ip_address.c_str());
+        snprintf(status_buf, sizeof(status_buf), lv_tr("Connected (%s)"), info.ip_address.c_str());
         lv_subject_copy_string(&ethernet_status_, status_buf);
         spdlog::debug("[{}] Ethernet status: {}", get_name(), status_buf);
     } else {
@@ -844,7 +844,7 @@ void WizardWifiStep::init_wifi_manager() {
 
     if (!hw_available) {
         spdlog::info("[{}] WiFi hardware not available - controls disabled", get_name());
-        update_wifi_status("WiFi control unavailable");
+        update_wifi_status(lv_tr("WiFi control unavailable"));
         return;
     }
 
@@ -872,7 +872,7 @@ void WizardWifiStep::init_wifi_manager() {
                 spdlog::info("[{}] Already connected to '{}' with IP {}", get_name(), ssid, ip);
 
                 // Update status and IP display
-                std::string status_msg = "Connected to " + ssid;
+                std::string status_msg = std::string(lv_tr("Connected to ")) + ssid;
                 update_wifi_status(status_msg.c_str());
                 update_wifi_ip(ip.c_str());
             } else {

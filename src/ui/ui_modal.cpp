@@ -8,6 +8,7 @@
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "settings_manager.h"
 #include "theme_manager.h"
@@ -886,7 +887,7 @@ lv_obj_t* ui_modal_show_confirmation(const char* title, const char* message, Mod
     const char* attrs[] = {"title", title, "message", message, nullptr};
 
     // Configure modal with severity and button text
-    modal_configure(severity, true, confirm_text ? confirm_text : "OK", "Cancel");
+    modal_configure(severity, true, confirm_text ? confirm_text : lv_tr("OK"), lv_tr("Cancel"));
 
     // Show the modal
     lv_obj_t* dialog = Modal::show("modal_dialog", attrs);
@@ -924,7 +925,7 @@ lv_obj_t* ui_modal_show_alert(const char* title, const char* message, ModalSever
     const char* attrs[] = {"title", title, "message", message, nullptr};
 
     // Configure modal: no cancel button
-    modal_configure(severity, false, ok_text ? ok_text : "OK", nullptr);
+    modal_configure(severity, false, ok_text ? ok_text : lv_tr("OK"), nullptr);
 
     // Show the modal
     lv_obj_t* dialog = Modal::show("modal_dialog", attrs);

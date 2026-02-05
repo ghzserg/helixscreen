@@ -64,7 +64,7 @@
         style_border_width="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
     <!-- Header Bar with E-stop action button -->
     <header_bar name="overlay_header"
-                title="Motion: XYZ" hide_action_button="false" action_button_icon="alert_octagon"
+                title="Motion: XYZ" title_tag="Motion: XYZ" hide_action_button="false" action_button_icon="alert_octagon"
                 action_button_bg_color="#danger" action_button_radius="9999" action_button_width="44"
                 action_button_height="44" action_button_pad="0" hide_action_button_text="true"
                 action_button_callback="emergency_stop_clicked"/>
@@ -94,15 +94,15 @@
                 width="100%" height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
                 style_flex_cross_place="start" style_pad_gap="#space_xs">
           <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs">
-            <text_small text="X:"/>
+            <text_small text="X:" translation_tag="X:"/>
             <text_small name="pos_x" bind_text="motion_pos_x"/>
           </lv_obj>
           <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs">
-            <text_small text="Y:"/>
+            <text_small text="Y:" translation_tag="Y:"/>
             <text_small name="pos_y" bind_text="motion_pos_y"/>
           </lv_obj>
           <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs">
-            <text_small text="Z:"/>
+            <text_small text="Z:" translation_tag="Z:"/>
             <text_small name="pos_z" bind_text="motion_pos_z"/>
           </lv_obj>
         </lv_obj>
@@ -111,18 +111,18 @@
         <lv_obj name="z_controls"
                 width="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" scrollable="false" flex_flow="column"
                 style_flex_main_place="space_evenly" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <ui_button name="z_up_10" width="100%" flex_grow="1" style_max_height="80" icon="arrow_up" text="10mm">
+          <ui_button name="z_up_10" width="100%" flex_grow="1" style_max_height="80" icon="arrow_up" text="10mm" translation_tag="10mm">
             <event_cb trigger="clicked" callback="on_motion_z_up_10"/>
           </ui_button>
-          <ui_button name="z_up_1" width="100%" flex_grow="1" style_max_height="80" icon="arrow_up" text="1mm">
+          <ui_button name="z_up_1" width="100%" flex_grow="1" style_max_height="80" icon="arrow_up" text="1mm" translation_tag="1mm">
             <event_cb trigger="clicked" callback="on_motion_z_up_1"/>
           </ui_button>
           <!-- Z-Axis label - shows "Bed" or "Print Head" based on kinematics -->
           <text_body name="z_axis_label" width="100%" bind_text="motion_z_axis_label" style_text_align="center"/>
-          <ui_button name="z_down_1" width="100%" flex_grow="1" style_max_height="80" icon="arrow_down" text="1mm">
+          <ui_button name="z_down_1" width="100%" flex_grow="1" style_max_height="80" icon="arrow_down" text="1mm" translation_tag="1mm">
             <event_cb trigger="clicked" callback="on_motion_z_down_1"/>
           </ui_button>
-          <ui_button name="z_down_10" width="100%" flex_grow="1" style_max_height="80" icon="arrow_down" text="10mm">
+          <ui_button name="z_down_10" width="100%" flex_grow="1" style_max_height="80" icon="arrow_down" text="10mm" translation_tag="10mm">
             <event_cb trigger="clicked" callback="on_motion_z_down_10"/>
           </ui_button>
         </lv_obj>

@@ -9,6 +9,7 @@
 #include "ui_update_queue.h"
 
 #include "format_utils.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "static_panel_registry.h"
 
@@ -138,7 +139,7 @@ void MachineLimitsOverlay::show(lv_obj_t* parent_screen) {
 
     if (!overlay_root_) {
         spdlog::error("[{}] Failed to create overlay", get_name());
-        ui_toast_show(ToastSeverity::ERROR, "Failed to load overlay", 2000);
+        ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to load overlay"), 2000);
         return;
     }
 
@@ -223,7 +224,7 @@ void MachineLimitsOverlay::query_and_show(lv_obj_t* /*parent_screen*/) {
                 // Capture error by value and defer to main thread for LVGL calls
                 ui_queue_update([this, err]() {
                     spdlog::error("[{}] Failed to get machine limits: {}", get_name(), err.message);
-                    ui_toast_show(ToastSeverity::ERROR, "Failed to get limits", 2000);
+                    ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to get limits"), 2000);
                 });
             });
     } else {
@@ -351,7 +352,7 @@ void MachineLimitsOverlay::apply_limits() {
             // Capture error by value and defer to main thread for LVGL calls
             ui_queue_update([this, err]() {
                 spdlog::error("[{}] Failed to apply machine limits: {}", get_name(), err.message);
-                ui_toast_show(ToastSeverity::ERROR, "Failed to apply limits", 2000);
+                ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to apply limits"), 2000);
             });
         });
 }

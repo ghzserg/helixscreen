@@ -26,6 +26,7 @@
 #include "filament_sensor_manager.h"
 #include "hardware_validator.h"
 #include "lvgl/lvgl.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
@@ -42,21 +43,23 @@
 static lv_subject_t current_step;
 static lv_subject_t total_steps;
 static lv_subject_t wizard_title;
-static lv_subject_t wizard_progress;
+static lv_subject_t wizard_step_current;  // String for display, e.g., "1"
+static lv_subject_t wizard_step_total;    // String for display, e.g., "7"
+static lv_subject_t wizard_is_final_step; // Int: 0=not final, 1=final (for button visibility)
 static lv_subject_t wizard_back_visible;
 
 // Non-static: accessible from other wizard step files
-lv_subject_t connection_test_passed;  // Global: 0=connection not validated, 1=validated or N/A
-lv_subject_t wizard_next_button_text; // Global: accessible from touch calibration step
-lv_subject_t wizard_subtitle;         // Global: accessible for dynamic subtitle updates
+lv_subject_t connection_test_passed; // Global: 0=connection not validated, 1=validated or N/A
+lv_subject_t wizard_subtitle;        // Global: accessible for dynamic subtitle updates
+lv_subject_t wizard_show_skip;       // Global: 0=show Next, 1=show Skip (for touch calibration)
 
 // SubjectManager for RAII cleanup of wizard subjects
 static SubjectManager wizard_subjects_;
 
 // String buffers (must be persistent)
 static char wizard_title_buffer[64];
-static char wizard_progress_buffer[32];
-static char wizard_next_button_text_buffer[16];
+static char wizard_step_current_buffer[8];
+static char wizard_step_total_buffer[8];
 static char wizard_subtitle_buffer[128];
 
 // Wizard container instance
@@ -193,10 +196,11 @@ void ui_wizard_init_subjects() {
 
     UI_MANAGED_SUBJECT_STRING(wizard_title, wizard_title_buffer, "Welcome", "wizard_title",
                               wizard_subjects_);
-    UI_MANAGED_SUBJECT_STRING(wizard_progress, wizard_progress_buffer, "Step 1 of 10",
-                              "wizard_progress", wizard_subjects_);
-    UI_MANAGED_SUBJECT_STRING(wizard_next_button_text, wizard_next_button_text_buffer, "Next",
-                              "wizard_next_button_text", wizard_subjects_);
+    UI_MANAGED_SUBJECT_STRING(wizard_step_current, wizard_step_current_buffer, "1",
+                              "wizard_step_current", wizard_subjects_);
+    UI_MANAGED_SUBJECT_STRING(wizard_step_total, wizard_step_total_buffer, "10",
+                              "wizard_step_total", wizard_subjects_);
+    UI_MANAGED_SUBJECT_INT(wizard_is_final_step, 0, "wizard_is_final_step", wizard_subjects_);
     UI_MANAGED_SUBJECT_STRING(wizard_subtitle, wizard_subtitle_buffer, "", "wizard_subtitle",
                               wizard_subjects_);
 
@@ -207,6 +211,10 @@ void ui_wizard_init_subjects() {
     // Initialize wizard_back_visible to 1 (visible by default)
     // Step navigation will hide it when at first visible step
     UI_MANAGED_SUBJECT_INT(wizard_back_visible, 1, "wizard_back_visible", wizard_subjects_);
+
+    // Initialize wizard_show_skip to 0 (show Next by default)
+    // Touch calibration step sets to 1 to show Skip button instead
+    UI_MANAGED_SUBJECT_INT(wizard_show_skip, 0, "wizard_show_skip", wizard_subjects_);
 
     wizard_subjects_initialized = true;
     spdlog::debug("[Wizard] Subjects initialized ({} subjects registered)",
@@ -334,6 +342,44 @@ lv_obj_t* ui_wizard_create(lv_obj_t* parent) {
     return wizard_container;
 }
 
+/**
+ * Calculate display step number and total, accounting for skipped steps
+ */
+static void calculate_display_step(int internal_step, int& out_display_step,
+                                   int& out_display_total) {
+    out_display_step = internal_step + 1; // Convert internal step (0-based) to 1-based display
+    if (touch_cal_step_skipped)
+        out_display_step--;
+    if (language_step_skipped && internal_step > 1)
+        out_display_step--;
+    if (ams_step_skipped && internal_step > 7)
+        out_display_step--;
+    if (led_step_skipped && internal_step > 8)
+        out_display_step--;
+    if (filament_step_skipped && internal_step > 9)
+        out_display_step--;
+    if (probe_step_skipped && internal_step > 10)
+        out_display_step--;
+    if (input_shaper_step_skipped && internal_step > 11)
+        out_display_step--;
+
+    out_display_total = 13; // Steps 0-12 = 13 total
+    if (touch_cal_step_skipped)
+        out_display_total--;
+    if (ams_step_skipped)
+        out_display_total--;
+    if (led_step_skipped)
+        out_display_total--;
+    if (filament_step_skipped)
+        out_display_total--;
+    if (probe_step_skipped)
+        out_display_total--;
+    if (input_shaper_step_skipped)
+        out_display_total--;
+    if (language_step_skipped)
+        out_display_total--;
+}
+
 void ui_wizard_navigate_to_step(int step) {
     spdlog::debug("[Wizard] Navigating to step {}", step);
 
@@ -371,40 +417,8 @@ void ui_wizard_navigate_to_step(int step) {
     }
 
     // Calculate display step and total for progress indicator
-    // When steps are skipped, we adjust the display numbers so users see consecutive step numbers
-    // Step order: 0=touch, 1=language, 2=wifi, 3=connection, 4=printer, 5=heater, 6=fan,
-    //             7=ams, 8=led, 9=filament, 10=probe, 11=input_shaper, 12=summary
-    int display_step = step + 1; // Convert internal step (0-based) to 1-based display
-    if (touch_cal_step_skipped)
-        display_step--;
-    if (language_step_skipped && step > 1)
-        display_step--;
-    if (ams_step_skipped && step > 7)
-        display_step--;
-    if (led_step_skipped && step > 8)
-        display_step--;
-    if (filament_step_skipped && step > 9)
-        display_step--;
-    if (probe_step_skipped && step > 10)
-        display_step--;
-    if (input_shaper_step_skipped && step > 11)
-        display_step--;
-
-    int display_total = 13; // Steps 0-12 = 13 total
-    if (touch_cal_step_skipped)
-        display_total--;
-    if (ams_step_skipped)
-        display_total--;
-    if (led_step_skipped)
-        display_total--;
-    if (filament_step_skipped)
-        display_total--;
-    if (probe_step_skipped)
-        display_total--;
-    if (input_shaper_step_skipped)
-        display_total--;
-    if (language_step_skipped)
-        display_total--;
+    int display_step, display_total;
+    calculate_display_step(step, display_step, display_total);
 
     // Update current_step subject (internal step number for UI bindings)
     lv_subject_set_int(&current_step, step);
@@ -421,22 +435,17 @@ void ui_wizard_navigate_to_step(int step) {
     // Determine if this is the last step (summary is always step 12 internally)
     bool is_last_step = (step == 12);
 
-    // Update next button text based on step
-    if (is_last_step) {
-        lv_subject_copy_string(&wizard_next_button_text, "Finish");
-    } else {
-        lv_subject_copy_string(&wizard_next_button_text, "Next");
-    }
+    // Update final step flag for button visibility binding
+    lv_subject_set_int(&wizard_is_final_step, is_last_step ? 1 : 0);
 
-    // Update progress text with display values
-    // Only show total once we've connected and know what hardware exists
-    char progress_buf[32];
+    // Update progress display - step numbers as strings for bind_text
+    snprintf(wizard_step_current_buffer, sizeof(wizard_step_current_buffer), "%d", display_step);
+    lv_subject_copy_string(&wizard_step_current, wizard_step_current_buffer);
+
     if (skips_precalculated) {
-        snprintf(progress_buf, sizeof(progress_buf), "Step %d of %d", display_step, display_total);
-    } else {
-        snprintf(progress_buf, sizeof(progress_buf), "Step %d", display_step);
+        snprintf(wizard_step_total_buffer, sizeof(wizard_step_total_buffer), "%d", display_total);
+        lv_subject_copy_string(&wizard_step_total, wizard_step_total_buffer);
     }
-    lv_subject_copy_string(&wizard_progress, progress_buf);
 
     // Load screen content (uses internal step number)
     ui_wizard_load_screen(step);
@@ -446,8 +455,8 @@ void ui_wizard_navigate_to_step(int step) {
         lv_obj_update_layout(wizard_container);
     }
 
-    spdlog::debug("[Wizard] Updated to '{}' (internal: {}), button: {}", progress_buf, step,
-                  is_last_step ? "Finish" : "Next");
+    spdlog::debug("[Wizard] Updated to step {} of {} (internal: {}), final: {}", display_step,
+                  display_total, step, is_last_step);
 }
 
 void ui_wizard_set_title(const char* title) {
@@ -458,6 +467,23 @@ void ui_wizard_set_title(const char* title) {
 
     spdlog::debug("[Wizard] Setting title: {}", title);
     lv_subject_copy_string(&wizard_title, title);
+}
+
+void ui_wizard_refresh_header_translations() {
+    // Re-translate and set the title/subtitle for the current step
+    // Called after language changes to update bound subjects with new translations
+    //
+    // Note: Progress text ("Step X of Y") and buttons (Next/Finish) now use
+    // translation_tag in XML, so they auto-refresh. Only title/subtitle need
+    // manual refresh since they're step-specific and loaded from XML consts.
+    int step = lv_subject_get_int(&current_step);
+    const char* title = get_step_title_from_xml(step);
+    const char* subtitle = get_step_subtitle_from_xml(step);
+
+    lv_subject_copy_string(&wizard_title, lv_tr(title));
+    lv_subject_copy_string(&wizard_subtitle, lv_tr(subtitle));
+
+    spdlog::debug("[Wizard] Refreshed header translations for step {}", step);
 }
 
 /**
@@ -607,10 +633,11 @@ static void ui_wizard_load_screen(int step) {
     spdlog::debug("[Wizard] Cleared wizard_content container");
 
     // Set title and subtitle from XML metadata (no more hardcoded strings!)
+    // Use lv_tr() to translate the title/subtitle dynamically based on current language
     const char* title = get_step_title_from_xml(step);
-    ui_wizard_set_title(title);
+    ui_wizard_set_title(lv_tr(title));
     const char* subtitle = get_step_subtitle_from_xml(step);
-    lv_subject_copy_string(&wizard_subtitle, subtitle);
+    lv_subject_copy_string(&wizard_subtitle, lv_tr(subtitle));
 
     // Create appropriate screen based on step
     // Note: Step-specific initialization remains in switch because each step

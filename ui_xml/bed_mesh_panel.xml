@@ -20,7 +20,7 @@
         style_bg_color="#card_bg" style_pad_all="0" style_border_width="0" scrollable="false" flex_flow="column">
     <!-- Header Bar with CALIBRATE action button -->
     <header_bar name="overlay_header"
-                title="Bed Mesh" action_button_text="Probe" action_button_height="#button_height"
+                title="Bed Mesh" title_tag="Bed Mesh" action_button_text="Probe" action_button_height="#button_height"
                 action_button_pad="#space_md" hide_action_button="false"
                 action_button_callback="on_bed_mesh_calibrate_clicked"/>
     <!-- Content Area: Horizontal split (Left=Canvas, Right=Cards) -->
@@ -34,7 +34,7 @@
         <centered_column name="no_mesh_overlay" width="content" height="content" align="center">
           <bind_flag_if_eq subject="bed_mesh_available" flag="hidden" ref_value="1"/>
           <icon src="grid_off" size="lg" variant="muted"/>
-          <text_muted text="No mesh loaded" style_pad_top="#space_md"/>
+          <text_muted text="No mesh loaded" translation_tag="No mesh loaded" style_pad_top="#space_md"/>
         </centered_column>
       </lv_obj>
       <!-- Right: Info column with two cards -->
@@ -53,7 +53,7 @@
                   style_pad_right="#space_md" style_pad_top="#space_sm" style_pad_bottom="#space_sm"
                   style_pad_gap="#space_sm" scrollable="false">
             <icon src="info" size="sm" variant="success"/>
-            <text_body text="Current Mesh" flex_grow="1"/>
+            <text_body text="Current Mesh" translation_tag="Current Mesh" flex_grow="1"/>
           </lv_obj>
           <!-- Divider -->
           <divider_horizontal/>
@@ -63,14 +63,14 @@
                   scrollable="false">
             <!-- Name row -->
             <lv_obj width="100%" flex_flow="row" style_pad_all="0" scrollable="false">
-              <text_small text="Name"/>
+              <text_small text="Name" translation_tag="Name"/>
               <text_small name="mesh_name_value"
                           bind_text="bed_mesh_profile_name" flex_grow="1" style_text_align="right"
                           style_pad_left="#space_sm" style_text_color="#success"/>
             </lv_obj>
             <!-- Size row -->
             <lv_obj width="100%" flex_flow="row" style_pad_all="0" scrollable="false">
-              <text_small text="Size"/>
+              <text_small text="Size" translation_tag="Size"/>
               <text_small name="mesh_size_value"
                           bind_text="bed_mesh_dimensions" flex_grow="1" style_text_align="right"
                           style_pad_left="#space_sm" style_text_color="#text"/>
@@ -91,7 +91,7 @@
             </lv_obj>
             <!-- Z Range row -->
             <lv_obj width="100%" flex_flow="row" style_pad_all="0" scrollable="false">
-              <text_small text="Z Range"/>
+              <text_small text="Z Range" translation_tag="Z Range"/>
               <text_small name="mesh_range_value"
                           bind_text="bed_mesh_variance" flex_grow="1" style_text_align="right"
                           style_pad_left="#space_sm" style_text_color="#text"/>
@@ -110,7 +110,7 @@
                   style_pad_right="#space_md" style_pad_top="#space_sm" style_pad_bottom="#space_sm"
                   style_pad_gap="#space_sm" scrollable="false">
             <icon src="layers" size="sm" variant="success"/>
-            <text_body text="Profiles" flex_grow="1"/>
+            <text_body text="Profiles" translation_tag="Profiles" flex_grow="1"/>
           </lv_obj>
           <!-- Divider -->
           <divider_horizontal/>
@@ -257,7 +257,7 @@
             <lv_obj name="no_profiles_message"
                     width="100%" height="content" style_pad_all="#space_md" scrollable="false">
               <bind_flag_if_gt subject="bed_mesh_profile_count" flag="hidden" ref_value="0"/>
-              <text_small width="100%" text="No profiles available" style_text_align="center"/>
+              <text_small width="100%" text="No profiles available" translation_tag="No profiles available" style_text_align="center"/>
             </lv_obj>
           </lv_obj>
         </ui_card>

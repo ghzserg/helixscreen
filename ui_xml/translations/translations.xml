@@ -24,18 +24,25 @@
   <translation tag="-1mm" de="-1mm" en="-1mm" es="-1mm" fr="-1mm" it="-1mm" ja="-1mm" pt="-1mm" ru="-1мм" zh="-1mm"/>
   <translation tag="/" de="/" en="/" es="/" fr="/" it="/" ja="/" pt="/" ru="/" zh="/"/>
   <translation tag="0.4-2mm direct drive, 4-6mm bowden" de="0,4-2mm Direct Drive, 4-6mm Bowden" en="0.4-2mm direct drive, 4-6mm bowden" es="0.4-2mm extrusión directa, 4-6mm bowden" fr="0.4-2mm entraînement direct, 4-6mm bowden" it="0,4-2mm direct drive, 4-6mm bowden" ja="0.4-2mm ダイレクトドライブ、4-6mm ボーデン" pt="0.4-2mm direct drive, 4-6mm bowden" ru="0.4-2мм прямой привод, 4-6мм боуден" zh="直驱 0.4-2mm，远程挤出 4-6mm"/>
+  <translation tag="0h" de="0h" en="0h" es="0h" fr="0h" it="0h" pt="0h" ru="0ч"/>
+  <translation tag="0h 00m" de="0h 00m" en="0h 00m" es="0h 00m" fr="0h 00m" it="0h 00m" pt="0h 00m" ru="0ч 00м"/>
+  <translation tag="0m" de="0m" en="0m" es="0m" fr="0m" it="0m" pt="0m" ru="0м"/>
   <translation tag="1. Printer homes and probes the bed" de="1. Drucker referenziert und prüft das Bett" en="1. Printer homes and probes the bed" es="1. La impresora hace origen y sondea la cama" fr="1. L&apos;imprimante fait l&apos;origine et palpe le plateau" it="1. La stampante esegue homing e sonda il piano" ja="1. プリンターがホーミングしてベッドをプローブします" pt="1. A impressora faz home e sonda a mesa" ru="1. Принтер паркуется и зондирует стол" zh="1. 打印机归位并探测热床"/>
   <translation tag="1. Printer will home and probe each screw" de="1. Drucker referenziert und prüft jede Schraube" en="1. Printer will home and probe each screw" es="1. La impresora hará origen y sondeará cada tornillo" fr="1. L&apos;imprimante fera l&apos;origine et palpera chaque vis" it="1. La stampante eseguirà homing e sonderà ogni vite" ja="1. プリンターがホーミングして各ネジをプローブします" pt="1. A impressora fará home e sondará cada parafuso" ru="1. Принтер запаркуется и проверит каждый винт" zh="1. 打印机将归位并探测每个螺丝位置"/>
+  <translation tag="1.0.0" de="1.0.0" en="1.0.0" es="1.0.0" fr="1.0.0" it="1.0.0" pt="1.0.0" ru="1.0.0"/>
   <translation tag="10mm" de="10mm" en="10mm" es="10mm" fr="10mm" it="10mm" ja="10mm" pt="10mm" ru="10мм" zh="10mm"/>
+  <translation tag="127.0.0.1" de="127.0.0.1" en="127.0.0.1" es="127.0.0.1" fr="127.0.0.1" it="127.0.0.1" pt="127.0.0.1" ru="127.0.0.1"/>
   <translation tag="1mm" de="1mm" en="1mm" es="1mm" fr="1mm" it="1mm" ja="1mm" pt="1mm" ru="1мм" zh="1mm"/>
   <translation tag="2. Place paper between nozzle and bed" de="2. Papier zwischen Düse und Bett legen" en="2. Place paper between nozzle and bed" es="2. Coloque papel entre la boquilla y la cama" fr="2. Placez du papier entre la buse et le plateau" it="2. Posizionare carta tra ugello e piano" ja="2. ノズルとベッドの間に紙を置いてください" pt="2. Coloque papel entre o bico e a mesa" ru="2. Положите бумагу между соплом и столом" zh="2. 将纸张放在喷嘴和热床之间"/>
   <translation tag="2. Results show how much to turn each screw" de="2. Ergebnisse zeigen, wie viel jede Schraube gedreht werden muss" en="2. Results show how much to turn each screw" es="2. Los resultados muestran cuánto girar cada tornillo" fr="2. Les résultats indiquent combien tourner chaque vis" it="2. I risultati mostrano quanto girare ogni vite" ja="2. 各ネジをどれだけ回すか結果が表示されます" pt="2. Os resultados mostram quanto girar cada parafuso" ru="2. Результаты покажут, насколько повернуть каждый винт" zh="2. 结果显示每个螺丝需要旋转多少"/>
   <translation tag="200-230°C" de="200-230°C" en="200-230°C" es="200-230°C" fr="200-230°C" it="200-230°C" ja="200-230°C" pt="200-230°C" ru="200-230°C" zh="200-230°C"/>
+  <translation tag="200°C" de="200°C" en="200°C" es="200°C" fr="200°C" it="200°C" pt="200°C" ru="200°C"/>
   <translation tag="210°C / 60°C" de="210°C / 60°C" en="210°C / 60°C" es="210°C / 60°C" fr="210°C / 60°C" it="210°C / 60°C" ja="210°C / 60°C" pt="210°C / 60°C" ru="210°C / 60°C" zh="210°C / 60°C"/>
   <translation tag="230°C / 50°C" de="230°C / 50°C" en="230°C / 50°C" es="230°C / 50°C" fr="230°C / 50°C" it="230°C / 50°C" ja="230°C / 50°C" pt="230°C / 50°C" ru="230°C / 50°C" zh="230°C / 50°C"/>
   <translation tag="240°C / 80°C" de="240°C / 80°C" en="240°C / 80°C" es="240°C / 80°C" fr="240°C / 80°C" it="240°C / 80°C" ja="240°C / 80°C" pt="240°C / 80°C" ru="240°C / 80°C" zh="240°C / 80°C"/>
   <translation tag="250°C / 100°C" de="250°C / 100°C" en="250°C / 100°C" es="250°C / 100°C" fr="250°C / 100°C" it="250°C / 100°C" ja="250°C / 100°C" pt="250°C / 100°C" ru="250°C / 100°C" zh="250°C / 100°C"/>
   <translation tag="25mm" de="25mm" en="25mm" es="25mm" fr="25mm" it="25mm" ja="25mm" pt="25mm" ru="25мм" zh="25mm"/>
+  <translation tag="25°C / 200°C" de="25°C / 200°C" en="25°C / 200°C" es="25°C / 200°C" fr="25°C / 200°C" it="25°C / 200°C" pt="25°C / 200°C" ru="25°C / 200°C"/>
   <translation tag="3. Adjust screws, then re-probe to verify" de="3. Schrauben einstellen, dann erneut prüfen" en="3. Adjust screws, then re-probe to verify" es="3. Ajuste los tornillos, luego vuelva a sondear para verificar" fr="3. Ajustez les vis, puis re-palpez pour vérifier" it="3. Regolare le viti, poi risondare per verificare" ja="3. ネジを調整し、再度プローブして確認してください" pt="3. Ajuste os parafusos, depois sonde novamente para verificar" ru="3. Отрегулируйте винты, затем перепроверьте" zh="3. 调整螺丝，然后重新探测以验证"/>
   <translation tag="3. Lower nozzle until paper drags slightly" de="3. Düse absenken, bis das Papier leicht schleift" en="3. Lower nozzle until paper drags slightly" es="3. Baje la boquilla hasta que el papel roce ligeramente" fr="3. Abaissez la buse jusqu&apos;à ce que le papier frotte légèrement" it="3. Abbassare l&apos;ugello fino a quando la carta striscia leggermente" ja="3. 紙がわずかに引っかかるまでノズルを下げてください" pt="3. Abaixe o bico até o papel arrastar levemente" ru="3. Опустите сопло, пока бумага не начнёт слегка цепляться" zh="3. 降低喷嘴直到纸张有轻微阻力"/>
   <translation tag="3D Preview" de="3D-Vorschau" en="3D Preview" es="Vista previa 3D" fr="Aperçu 3D" it="Anteprima 3D" ja="3Dプレビュー" pt="Visualização 3D" ru="3D-просмотр" zh="3D 预览"/>
@@ -86,6 +93,7 @@
   <translation tag="Assign Spool" de="Spule zuweisen" en="Assign Spool" es="Asignar Bobina" fr="Attribuer la bobine" it="Assegna bobina" ja="スプールを割り当て" pt="Atribuir Carretel" ru="Назначить катушку" zh="分配料盘"/>
   <translation tag="Assign a role to enable sensor monitoring" de="Rolle zuweisen, um Sensorüberwachung zu aktivieren" en="Assign a role to enable sensor monitoring" es="Asigne un rol para habilitar el monitoreo del sensor" fr="Attribuez un rôle pour activer la surveillance du capteur" it="Assegna un ruolo per abilitare il monitoraggio del sensore" ja="センサー監視を有効にするには役割を割り当ててください" pt="Atribua uma função para habilitar o monitoramento do sensor" ru="Назначьте роль для мониторинга датчика" zh="分配角色以启用传感器监控"/>
   <translation tag="Assigning to Slot 1" de="Wird Slot 1 zugewiesen" en="Assigning to Slot 1" es="Asignando a Ranura 1" fr="Attribution au slot 1" it="Assegnazione allo Slot 1" ja="スロット1に割り当て中" pt="Atribuindo ao Slot 1" ru="Назначение в слот 1" zh="正在分配到料仓 1"/>
+  <translation tag="Authentication failed" de="Authentifizierung fehlgeschlagen" en="Authentication failed" es="Autenticación fallida" fr="Échec de l&apos;authentification" it="Autenticazione fallita" pt="Falha na autenticação" ru="Ошибка аутентификации"/>
   <translation tag="Auto" de="Automatisch" en="Auto" es="Automático" fr="Auto" it="Auto" ja="自動" pt="Automático" ru="Авто" zh="自动"/>
   <translation tag="Auto Bed Mesh" de="Automatisches Bettnetz" en="Auto Bed Mesh" es="Malla de Cama Automática" fr="Maillage auto du plateau" it="Mesh piano automatica" ja="自動ベッドメッシュ" pt="Malha da Mesa Automática" ru="Авто сетка стола" zh="自动热床网格"/>
   <translation tag="Auto-Heat on Load" de="Automatisches Heizen beim Laden" en="Auto-Heat on Load" es="Calentar Automáticamente al Cargar" fr="Préchauffage auto au chargement" it="Riscaldamento automatico al caricamento" ja="装填時に自動加熱" pt="Aquecer Automaticamente ao Carregar" ru="Автонагрев при загрузке" zh="加载时自动加热"/>
@@ -127,7 +135,9 @@
   <translation tag="Calibrate" de="Kalibrieren" en="Calibrate" es="Calibrar" fr="Calibrer" it="Calibra" ja="キャリブレート" pt="Calibrar" ru="Калибровать" zh="校准"/>
   <translation tag="Calibrate X" de="X kalibrieren" en="Calibrate X" es="Calibrar X" fr="Calibrer X" it="Calibra X" ja="X軸をキャリブレート" pt="Calibrar X" ru="Калибровать X" zh="校准 X 轴"/>
   <translation tag="Calibrate Y" de="Y kalibrieren" en="Calibrate Y" es="Calibrar Y" fr="Calibrer Y" it="Calibra Y" ja="Y軸をキャリブレート" pt="Calibrar Y" ru="Калибровать Y" zh="校准 Y 轴"/>
+  <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" de="Input Shaping kalibrieren, um Klingelartefakte in Drucken zu reduzieren" en="Calibrate input shaping to reduce ringing artifacts in prints" es="Calibrar el moldeado de entrada para reducir artefactos de resonancia en las impresiones" fr="Calibrer l&apos;input shaping pour réduire les artefacts d&apos;ondulation dans les impressions" it="Calibra input shaping per ridurre artefatti di ringing nelle stampe" ja="印刷物のリンギングアーティファクトを軽減するためにインプットシェーピングをキャリブレートします" pt="Calibrar input shaping para reduzir artefatos de ringing nas impressões" ru="Калибровка компенсации вибраций для уменьшения артефактов (звона) при печати" zh="校准输入整形以减少打印件中的振纹"/>
   <translation tag="Calibrate resonance compensation" de="Resonanzkompensation kalibrieren" en="Calibrate resonance compensation" es="Calibrar compensación de resonancia" fr="Calibrer la compensation de résonance" it="Calibra compensazione risonanza" ja="共振補正をキャリブレート" pt="Calibrar compensação de ressonância" ru="Калибровка компенсации резонанса" zh="校准共振补偿"/>
+  <translation tag="Calibrate your touchscreen for accurate input" de="Touchscreen für präzise Eingabe kalibrieren" en="Calibrate your touchscreen for accurate input" es="Calibre su pantalla táctil para una entrada precisa" fr="Calibrer votre écran tactile pour une saisie précise" it="Calibra il touchscreen per un input preciso" ja="正確な入力のためにタッチスクリーンをキャリブレートします" pt="Calibrar sua tela de toque para entrada precisa" ru="Калибровка сенсорного экрана для точного ввода" zh="校准触摸屏以获得准确的输入"/>
   <translation tag="Calibrating..." de="Kalibriere..." en="Calibrating..." es="Calibrando..." fr="Calibration..." it="Calibrazione in corso..." ja="キャリブレーション中..." pt="Calibrando..." ru="Калибровка..." zh="正在校准..."/>
   <translation tag="Calibration" de="Kalibrierung" en="Calibration" es="Calibración" fr="Calibration" it="Calibrazione" ja="キャリブレーション" pt="Calibração" ru="Калибровка" zh="校准"/>
   <translation tag="Calibration &amp; Tools" de="Kalibrierung &amp; Werkzeuge" en="Calibration &amp; Tools" es="Calibración y Herramientas" fr="Calibration &amp; Outils" it="Calibrazione e strumenti" ja="キャリブレーションとツール" pt="Calibração &amp; Ferramentas" ru="Калибровка и инструменты" zh="校准和工具"/>
@@ -165,18 +175,28 @@
   <translation tag="Configure G10/G11 firmware retraction" de="G10/G11 Firmware-Retraktion konfigurieren" en="Configure G10/G11 firmware retraction" es="Configurar retracción de firmware G10/G11" fr="Configurer la rétraction firmware G10/G11" it="Configura retrazione firmware G10/G11" ja="G10/G11 ファームウェアリトラクションを設定" pt="Configurar retração de firmware G10/G11" ru="Настроить аппаратный ретракт G10/G11" zh="配置 G10/G11 固件回抽"/>
   <translation tag="Configure PRINT_START" de="PRINT_START konfigurieren" en="Configure PRINT_START" es="Configurar PRINT_START" fr="Configurer PRINT_START" it="Configura PRINT_START" ja="PRINT_START を設定" pt="Configurar PRINT_START" ru="Настроить PRINT_START" zh="配置 PRINT_START"/>
   <translation tag="Configure Spoolman integration and weight sync settings." de="Spoolman-Integration und Gewichtssynchronisierung konfigurieren." en="Configure Spoolman integration and weight sync settings." es="Configurar integración de Spoolman y ajustes de sincronización de peso." fr="Configurer l&apos;intégration Spoolman et les paramètres de synchronisation du poids." it="Configura integrazione Spoolman e impostazioni sincronizzazione peso." ja="Spoolman 連携と重量同期設定を行います。" pt="Configurar integração com Spoolman e configurações de sincronização de peso." ru="Настройте интеграцию со Spoolman и синхронизацию веса." zh="配置 Spoolman 集成和重量同步设置。"/>
+  <translation tag="Configure WiFi for this device, or skip if you&apos;re using Ethernet" de="WiFi für dieses Gerät konfigurieren, oder überspringen wenn Sie Ethernet verwenden" en="Configure WiFi for this device, or skip if you&apos;re using Ethernet" es="Configure WiFi para este dispositivo, u omita si está usando Ethernet" fr="Configurer le WiFi pour cet appareil, ou passer si vous utilisez Ethernet" it="Configura WiFi per questo dispositivo, o salta se stai usando Ethernet" ja="このデバイスのWiFiを設定するか、イーサネットを使用している場合はスキップしてください" pt="Configurar WiFi para este dispositivo, ou pule se estiver usando Ethernet" ru="Настройте WiFi для этого устройства или пропустите, если используете Ethernet" zh="为此设备配置 WiFi，或者如果您使用以太网则跳过"/>
   <translation tag="Configure devices in Moonraker" de="Geräte in Moonraker konfigurieren" en="Configure devices in Moonraker" es="Configurar dispositivos en Moonraker" fr="Configurer les appareils dans Moonraker" it="Configura dispositivi in Moonraker" ja="Moonraker でデバイスを設定" pt="Configurar dispositivos no Moonraker" ru="Настроить устройства в Moonraker" zh="在 Moonraker 中配置设备"/>
   <translation tag="Configure filament detection sensors" de="Filamenterkennungssensoren konfigurieren" en="Configure filament detection sensors" es="Configurar sensores de detección de filamento" fr="Configurer les capteurs de détection de filament" it="Configura sensori rilevamento filamento" ja="フィラメント検出センサーを設定" pt="Configurar sensores de detecção de filamento" ru="Настроить датчики обнаружения филамента" zh="配置耗材检测传感器"/>
   <translation tag="Configure quick buttons and standard macros" de="Schnelltasten und Standard-Makros konfigurieren" en="Configure quick buttons and standard macros" es="Configurar botones rápidos y macros estándar" fr="Configurer les boutons rapides et les macros standard" it="Configura pulsanti rapidi e macro standard" ja="クイックボタンと標準マクロを設定" pt="Configurar botões rápidos e macros padrão" ru="Настроить быстрые кнопки и стандартные макросы" zh="配置快捷按钮和标准宏"/>
   <translation tag="Configure timelapse recording" de="Zeitrafferaufnahme konfigurieren" en="Configure timelapse recording" es="Configurar grabación de timelapse" fr="Configurer l&apos;enregistrement timelapse" it="Configura registrazione timelapse" ja="タイムラプス録画を設定" pt="Configurar gravação de timelapse" ru="Настроить запись таймлапса" zh="配置延时录像"/>
+  <translation tag="Configure your printer&apos;s cooling fans" de="Kühllüfter Ihres Druckers konfigurieren" en="Configure your printer&apos;s cooling fans" es="Configure los ventiladores de enfriamiento de su impresora" fr="Configurer les ventilateurs de refroidissement de votre imprimante" it="Configura le ventole di raffreddamento della stampante" ja="プリンターの冷却ファンを設定します" pt="Configurar as ventoinhas de resfriamento da sua impressora" ru="Настройте вентиляторы охлаждения вашего принтера" zh="配置打印机的冷却风扇"/>
   <translation tag="Connect" de="Verbinden" en="Connect" es="Conectar" fr="Connecter" it="Connetti" ja="接続" pt="Conectar" ru="Подключить" zh="连接"/>
   <translation tag="Connected" de="Verbunden" en="Connected" es="Conectado" fr="Connecté" it="Connesso" ja="接続済み" pt="Conectado" ru="Подключен" zh="已连接"/>
+  <translation tag="Connected (%s)" de="Verbunden (%s)" en="Connected (%s)" es="Conectado (%s)" fr="Connecté (%s)" it="Connesso (%s)" ja="接続済み (%s)" pt="Conectado (%s)" ru="Подключено (%s)" zh="已连接 (%s)"/>
+  <translation tag="Connected (no discovery)" de="Verbunden (keine Erkennung)" en="Connected (no discovery)" es="Conectado (sin descubrimiento)" fr="Connecté (pas de découverte)" it="Connesso (nessuna scoperta)" ja="接続済み（検出なし）" pt="Conectado (sem descoberta)" ru="Подключено (без обнаружения)" zh="已连接（无发现）"/>
+  <translation tag="Connected to " de="Verbunden mit " en="Connected to " es="Conectado a " fr="Connecté à " it="Connesso a " pt="Conectado a " ru="Подключено к "/>
+  <translation tag="Connected!" ru="Подключено!"/>
+  <translation tag="Connected! Discovering printer..." de="Verbunden! Drucker wird erkannt..." en="Connected! Discovering printer..." es="¡Conectado! Descubriendo impresora..." fr="Connecté ! Découverte de l&apos;imprimante en cours..." it="Connesso! Scoperta stampante in corso..." ja="接続完了！プリンター検出中..." pt="Conectado! Descobrindo impressora..." ru="Подключено! Обнаружение принтера..." zh="已连接！正在发现打印机..."/>
+  <translation tag="Connected, discovering..." de="Verbunden, wird erkannt..." en="Connected, discovering..." es="Conectado, descubriendo..." fr="Connecté, découverte en cours..." it="Connesso, scoperta in corso..." ja="接続済み、検出中..." pt="Conectado, descobrindo..." ru="Подключено, обнаружение..." zh="已连接，正在发现..."/>
   <translation tag="Connecting" de="Verbinde" en="Connecting" es="Conectando" fr="Connexion" it="Connessione" ja="接続中" pt="Conectando" ru="Подключение" zh="正在连接"/>
+  <translation tag="Connecting to " de="Verbinde mit " en="Connecting to " es="Conectando a " fr="Connexion à " it="Connessione a " pt="Conectando a " ru="Подключение к "/>
   <translation tag="Connecting to network..." de="Verbinde mit Netzwerk..." en="Connecting to network..." es="Conectando a la red..." fr="Connexion au réseau..." it="Connessione alla rete..." ja="ネットワークに接続中..." pt="Conectando à rede..." ru="Подключение к сети..." zh="正在连接网络..."/>
   <translation tag="Connecting..." de="Verbinde..." en="Connecting..." es="Conectando..." fr="Connexion..." it="Connessione in corso..." ja="接続中..." pt="Conectando..." ru="Подключение..." zh="正在连接..."/>
   <translation tag="Connection" de="Verbindung" en="Connection" es="Conexión" fr="Connexion" it="Connessione" ja="接続" pt="Conexão" ru="Соединение" zh="连接"/>
   <translation tag="Connection failed. Check password." de="Verbindung fehlgeschlagen. Passwort prüfen." en="Connection failed. Check password." es="Conexión fallida. Verifique la contraseña." fr="Connexion échouée. Vérifiez le mot de passe." it="Connessione fallita. Verificare la password." ja="接続に失敗しました。パスワードを確認してください。" pt="Conexão falhou. Verifique a senha." ru="Ошибка подключения. Проверьте пароль." zh="连接失败。请检查密码。"/>
   <translation tag="Connection must be tested successfully to continue" de="Verbindung muss erfolgreich getestet werden, um fortzufahren" en="Connection must be tested successfully to continue" es="La conexión debe probarse exitosamente para continuar" fr="La connexion doit être testée avec succès pour continuer" it="La connessione deve essere testata con successo per continuare" ja="続行するには接続テストに成功する必要があります" pt="A conexão deve ser testada com sucesso para continuar" ru="Для продолжения соединение должно быть успешно проверено" zh="必须成功测试连接才能继续"/>
+  <translation tag="Connection timeout" de="Verbindungs-Zeitüberschreitung" en="Connection timeout" es="Tiempo de conexión agotado" fr="Délai de connexion dépassé" it="Timeout connessione" pt="Tempo limite de conexão" ru="Таймаут соединения"/>
   <translation tag="Console" de="Konsole" en="Console" es="Consola" fr="Console" it="Console" ja="コンソール" pt="Console" ru="Консоль" zh="控制台"/>
   <translation tag="Control optional print start features" de="Optionale Druckstartfunktionen steuern" en="Control optional print start features" es="Controlar funciones opcionales de inicio de impresión" fr="Contrôler les fonctionnalités optionnelles de démarrage d&apos;impression" it="Controlla funzionalità opzionali avvio stampa" ja="オプションの印刷開始機能を制御" pt="Controlar recursos opcionais de início de impressão" ru="Управление дополнительными функциями начала печати" zh="控制可选的打印启动功能"/>
   <translation tag="Cool Down" de="Abkühlen" en="Cool Down" es="Enfriar" fr="Refroidir" it="Raffredda" ja="冷却" pt="Resfriar" ru="Охладить" zh="冷却"/>
@@ -204,6 +224,7 @@
   <translation tag="Define macros in your printer.cfg" de="Makros in Ihrer printer.cfg definieren" en="Define macros in your printer.cfg" es="Defina macros en su printer.cfg" fr="Définissez les macros dans votre printer.cfg" it="Definire le macro nel proprio printer.cfg" ja="printer.cfg でマクロを定義してください" pt="Defina macros no seu printer.cfg" ru="Определите макросы в вашем printer.cfg" zh="在 printer.cfg 中定义宏"/>
   <translation tag="Delete" de="Löschen" en="Delete" es="Eliminar" fr="Supprimer" it="Elimina" ja="削除" pt="Excluir" ru="Удалить" zh="删除"/>
   <translation tag="Delta:" de="Delta:" en="Delta:" es="Delta:" fr="Delta :" it="Delta:" ja="差分:" pt="Delta:" ru="Дельта:" zh="差值："/>
+  <translation tag="Detecting printer type..." de="Druckertyp wird erkannt..." en="Detecting printer type..." es="Detectando tipo de impresora..." fr="Détection du type d&apos;imprimante..." it="Rilevamento tipo stampante..." ja="プリンタータイプを検出中..." pt="Detectando tipo de impressora..." ru="Определение типа принтера..." zh="正在检测打印机类型..."/>
   <translation tag="Deutsch" de="Deutsch" en="Deutsch" es="Deutsch" fr="Deutsch" it="Deutsch" ja="Deutsch" pt="Deutsch" ru="Deutsch" zh="Deutsch"/>
   <translation tag="Device Operations" de="Geräteoperationen" en="Device Operations" es="Operaciones de Dispositivo" fr="Opérations de l&apos;appareil" it="Operazioni dispositivo" ja="デバイス操作" pt="Operações do Dispositivo" ru="Операции с устройством" zh="设备操作"/>
   <translation tag="Disable" de="Deaktivieren" en="Disable" es="Desactivar" fr="Désactiver" it="Disabilita" ja="無効化" pt="Desabilitar" ru="Отключить" zh="禁用"/>
@@ -249,6 +270,7 @@
   <translation tag="English" de="Englisch" en="English" es="English" fr="English" it="English" ja="English" pt="English" ru="English" zh="English"/>
   <translation tag="Enhancement Complete!" de="Verbesserung abgeschlossen!" en="Enhancement Complete!" es="¡Mejora Completa!" fr="Amélioration terminée !" it="Miglioramento completato!" ja="改善完了！" pt="Aprimoramento Concluído!" ru="Улучшение завершено!" zh="增强完成！"/>
   <translation tag="Enhancement Failed" de="Verbesserung fehlgeschlagen" en="Enhancement Failed" es="Mejora Fallida" fr="Amélioration échouée" it="Miglioramento fallito" ja="改善失敗" pt="Aprimoramento Falhou" ru="Ошибка улучшения" zh="增强失败"/>
+  <translation tag="Enter 127.0.0.1 if Moonraker is local, or the hostname/IP of a remote printer" de="127.0.0.1 wenn lokal, oder Hostname/IP" en="Use 127.0.0.1 if local, or remote hostname/IP" es="127.0.0.1 si es local, o hostname/IP remoto" fr="127.0.0.1 si local, ou hostname/IP distant" it="127.0.0.1 se locale, o hostname/IP remoto" ja="ローカルは127.0.0.1、リモートはホスト名/IP" pt="127.0.0.1 se local, ou hostname/IP remoto" ru="127.0.0.1 если локально, или hostname/IP" zh="本地用127.0.0.1，或远程主机名/IP"/>
   <translation tag="Enter G-code command..." de="G-Code-Befehl eingeben..." en="Enter G-code command..." es="Ingrese comando G-code..." fr="Entrez une commande G-code..." it="Inserisci comando G-code..." ja="G-code コマンドを入力..." pt="Digite o comando G-code..." ru="Введите G-code команду..." zh="输入 G-code 命令..."/>
   <translation tag="Enter WiFi Password" de="WiFi-Passwort eingeben" en="Enter WiFi Password" es="Ingrese Contraseña WiFi" fr="Entrez le mot de passe WiFi" it="Inserisci password WiFi" ja="WiFi パスワードを入力" pt="Digite a Senha WiFi" ru="Введите пароль WiFi" zh="输入 WiFi 密码"/>
   <translation tag="Enter a name for your custom theme:" de="Geben Sie einen Namen für Ihr benutzerdefiniertes Thema ein:" en="Enter a name for your custom theme:" es="Ingrese un nombre para su tema personalizado:" fr="Entrez un nom pour votre thème personnalisé :" it="Inserisci un nome per il tuo tema personalizzato:" ja="カスタムテーマの名前を入力してください:" pt="Digite um nome para seu tema personalizado:" ru="Введите название для вашей темы:" zh="输入自定义主题名称："/>
@@ -290,6 +312,7 @@
   <translation tag="Filename" de="Dateiname" en="Filename" es="Nombre de Archivo" fr="Nom du fichier" it="Nome file" ja="ファイル名" pt="Nome do Arquivo" ru="Имя файла" zh="文件名"/>
   <translation tag="Files" de="Dateien" en="Files" es="Archivos" fr="Fichiers" it="File" ja="ファイル" pt="Arquivos" ru="Файлы" zh="文件"/>
   <translation tag="Fill: 100% / 75% / 40% / 10%" de="Füllung: 100% / 75% / 40% / 10%" en="Fill: 100% / 75% / 40% / 10%" es="Relleno: 100% / 75% / 40% / 10%" fr="Remplissage : 100% / 75% / 40% / 10%" it="Riempimento: 100% / 75% / 40% / 10%" ja="塗りつぶし: 100% / 75% / 40% / 10%" pt="Preenchimento: 100% / 75% / 40% / 10%" ru="Заполнение: 100% / 75% / 40% / 10%" zh="填充：100% / 75% / 40% / 10%"/>
+  <translation tag="Finish" de="Fertig" en="Finish" es="Finalizar" fr="Terminer" it="Fine" ja="完了" pt="Finalizar" ru="Завершить" zh="完成"/>
   <translation tag="Firmware Restart" de="Firmware-Neustart" en="Firmware Restart" es="Reinicio de Firmware" fr="Redémarrage firmware" it="Riavvio firmware" ja="ファームウェア再起動" pt="Reiniciar Firmware" ru="Перезапуск прошивки" zh="固件重启"/>
   <translation tag="Flat Concentric Rings (existing ams_slot)" de="Flache konzentrische Ringe (bestehender ams_slot)" en="Flat Concentric Rings (existing ams_slot)" es="Anillos Concéntricos Planos (ams_slot existente)" fr="Anneaux concentriques plats (ams_slot existant)" it="Anelli concentrici piatti (ams_slot esistente)" ja="同心円リング（既存の ams_slot）" pt="Anéis Concêntricos Planos (ams_slot existente)" ru="Плоские концентрические кольца (существующий ams_slot)" zh="扁平同心环（现有 ams_slot）"/>
   <translation tag="Flow Rate" de="Flussrate" en="Flow Rate" es="Tasa de Flujo" fr="Débit" it="Flusso" ja="フローレート" pt="Taxa de Fluxo" ru="Скорость потока" zh="流量"/>
@@ -376,6 +399,7 @@
   <translation tag="Last print failed" de="Letzter Druck fehlgeschlagen" en="Last print failed" es="Última impresión fallida" fr="Dernière impression échouée" it="Ultima stampa fallita" ja="前回の印刷が失敗しました" pt="Última impressão falhou" ru="Последняя печать не удалась" zh="上次打印失败"/>
   <translation tag="Later" de="Später" en="Later" es="Más Tarde" fr="Plus tard" it="Dopo" ja="後で" pt="Depois" ru="Позже" zh="稍后"/>
   <translation tag="Layer" de="Schicht" en="Layer" es="Capa" fr="Couche" it="Layer" ja="レイヤー" pt="Camada" ru="Слой" zh="层"/>
+  <translation tag="Layer 0 / 0" de="Schicht 0 / 0" en="Layer 0 / 0" es="Capa 0 / 0" fr="Couche 0 / 0" it="Layer 0 / 0" ja="レイヤー 0 / 0" pt="Camada 0 / 0" ru="Слой 0 / 0"/>
   <translation tag="Layer Height" de="Schichthöhe" en="Layer Height" es="Altura de Capa" fr="Hauteur de couche" it="Altezza layer" ja="レイヤー高さ" pt="Altura da Camada" ru="Высота слоя" zh="层高"/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." de="Schichtmodus nimmt ein Bild pro Schichtwechsel auf. Am besten für die meisten Drucke." en="Layer mode captures one frame per layer change. Best for most prints." es="El modo de capa captura un cuadro por cambio de capa. Mejor para la mayoría de las impresiones." fr="Le mode couche capture une image par changement de couche. Idéal pour la plupart des impressions." it="La modalità layer cattura un fotogramma per cambio layer. Ideale per la maggior parte delle stampe." ja="レイヤーモードはレイヤー変更ごとに1フレームをキャプチャします。ほとんどの印刷に最適です。" pt="O modo por camada captura um quadro por mudança de camada. Melhor para a maioria das impressões." ru="Послойный режим захватывает один кадр на каждую смену слоя. Лучший выбор для большинства печатей." zh="层模式在每次换层时捕获一帧。适用于大多数打印。"/>
   <translation tag="Layer:" de="Schicht:" en="Layer:" es="Capa:" fr="Couche :" it="Layer:" ja="レイヤー:" pt="Camada:" ru="Слой:" zh="层："/>
@@ -440,6 +464,7 @@
   <translation tag="Movement speed" de="Bewegungsgeschwindigkeit" en="Movement speed" es="Velocidad de movimiento" fr="Vitesse de déplacement" it="Velocità movimento" ja="移動速度" pt="Velocidade de movimento" ru="Скорость движения" zh="移动速度"/>
   <translation tag="Multi-Filament" de="Multi-Filament" en="Multi-Filament" es="Multi-Filamento" fr="Multi-filament" it="Multi-filamento" ja="マルチフィラメント" pt="Multi-Filamento" ru="Мульти-филамент" zh="多耗材"/>
   <translation tag="Multi-Material" de="Multi-Material" en="Multi-Material" es="Multi-Material" fr="Multi-matériau" it="Multi-materiale" ja="マルチマテリアル" pt="Multi-Material" ru="Мульти-материал" zh="多材料"/>
+  <translation tag="Multi-Material System Detected" de="Multi-Material-System erkannt" en="Multi-Material System Detected" es="Sistema Multi-Material Detectado" fr="Système multi-matériau détecté" it="Sistema multi-materiale rilevato" ja="マルチマテリアルシステムを検出しました" pt="Sistema Multi-Material Detectado" ru="Обнаружена мульти-материальная система" zh="检测到多材料系统"/>
   <translation tag="My Custom Theme" de="Mein benutzerdefiniertes Thema" en="My Custom Theme" es="Mi Tema Personalizado" fr="Mon thème personnalisé" it="Il mio tema personalizzato" ja="マイカスタムテーマ" pt="Meu Tema Personalizado" ru="Моя тема" zh="我的自定义主题"/>
   <translation tag="My Panel" de="Mein Panel" en="My Panel" es="Mi Panel" fr="Mon panneau" it="Il mio pannello" ja="マイパネル" pt="Meu Painel" ru="Моя панель" zh="我的面板"/>
   <translation tag="My Printer" de="Mein Drucker" en="My Printer" es="Mi Impresora" fr="Mon imprimante" it="La mia stampante" ja="マイプリンター" pt="Minha Impressora" ru="Мой принтер" zh="我的打印机"/>
@@ -470,10 +495,12 @@
   <translation tag="No preview" de="Keine Vorschau" en="No preview" es="Sin vista previa" fr="Pas d&apos;aperçu" it="Nessuna anteprima" ja="プレビューなし" pt="Sem visualização" ru="Нет предпросмотра" zh="无预览"/>
   <translation tag="No print history yet" de="Noch kein Druckverlauf" en="No print history yet" es="Aún no hay historial de impresión" fr="Pas encore d&apos;historique d&apos;impression" it="Ancora nessuna cronologia stampa" ja="印刷履歴がありません" pt="Ainda sem histórico de impressão" ru="Истории печати пока нет" zh="暂无打印历史"/>
   <translation tag="No print start macro found" de="Kein Druckstart-Makro gefunden" en="No print start macro found" es="No se encontró macro de inicio de impresión" fr="Aucune macro de démarrage d&apos;impression trouvée" it="Nessuna macro avvio stampa trovata" ja="印刷開始マクロが見つかりません" pt="Nenhuma macro de início de impressão encontrada" ru="Макрос старта печати не найден" zh="未找到打印启动宏"/>
+  <translation tag="No printers found" de="Keine Drucker gefunden" en="No printers found" es="No se encontraron impresoras" fr="Aucune imprimante trouvée" it="Nessuna stampante trovata" ja="プリンターが見つかりません" pt="Nenhuma impressora encontrada" ru="Принтеры не найдены" zh="未找到打印机"/>
   <translation tag="No profiles available" de="Keine Profile verfügbar" en="No profiles available" es="No hay perfiles disponibles" fr="Aucun profil disponible" it="Nessun profilo disponibile" ja="利用可能なプロファイルがありません" pt="Nenhum perfil disponível" ru="Профили недоступны" zh="无可用配置"/>
   <translation tag="No sensors detected" de="Keine Sensoren erkannt" en="No sensors detected" es="No se detectaron sensores" fr="Aucun capteur détecté" it="Nessun sensore rilevato" ja="センサーが検出されませんでした" pt="Nenhum sensor detectado" ru="Датчики не обнаружены" zh="未检测到传感器"/>
   <translation tag="No spools available" de="Keine Spulen verfügbar" en="No spools available" es="No hay bobinas disponibles" fr="Aucune bobine disponible" it="Nessuna bobina disponibile" ja="利用可能なスプールがありません" pt="Nenhum carretel disponível" ru="Катушки недоступны" zh="无可用料盘"/>
   <translation tag="Not Now" de="Nicht jetzt" en="Not Now" es="Ahora No" fr="Pas maintenant" it="Non ora" ja="今はしない" pt="Agora Não" ru="Не сейчас" zh="暂不"/>
+  <translation tag="Not configured" de="Nicht konfiguriert" en="Not configured" es="No configurado" fr="Non configuré" it="Non configurato" ja="未設定" pt="Não configurado" ru="Не настроено" zh="未配置"/>
   <translation tag="Not connected" de="Nicht verbunden" en="Not connected" es="No conectado" fr="Non connecté" it="Non connesso" ja="未接続" pt="Não conectado" ru="Не подключен" zh="未连接"/>
   <translation tag="Notifications" de="Benachrichtigungen" en="Notifications" es="Notificaciones" fr="Notifications" it="Notifiche" ja="通知" pt="Notificações" ru="Уведомления" zh="通知"/>
   <translation tag="Notify when print finishes" de="Benachrichtigen wenn Druck beendet" en="Notify when print finishes" es="Notificar cuando termine la impresión" fr="Notifier à la fin de l&apos;impression" it="Notifica al termine della stampa" ja="印刷完了時に通知" pt="Notificar quando a impressão terminar" ru="Уведомить о завершении печати" zh="打印完成时通知"/>
@@ -490,6 +517,7 @@
   <translation tag="Open" de="Öffnen" en="Open" es="Abrir" fr="Ouvrir" it="Apri" ja="開く" pt="Abrir" ru="Открыть" zh="打开"/>
   <translation tag="Operations" de="Operationen" en="Operations" es="Operaciones" fr="Opérations" it="Operazioni" ja="操作" pt="Operações" ru="Операции" zh="操作"/>
   <translation tag="Optimize Your Printing" de="Optimieren Sie Ihren Druck" en="Optimize Your Printing" es="Optimice su Impresión" fr="Optimisez votre impression" it="Ottimizza la tua stampa" ja="印刷を最適化" pt="Otimize Sua Impressão" ru="Оптимизируйте вашу печать" zh="优化您的打印"/>
+  <translation tag="Optional - select your main lighting source, or skip if your printer doesn&apos;t have one" de="Optional - wählen Sie Ihre Hauptbeleuchtung, oder überspringen wenn Ihr Drucker keine hat" en="Optional - select your main lighting source, or skip if your printer doesn&apos;t have one" es="Opcional - seleccione su fuente de iluminación principal, u omita si su impresora no tiene una" fr="Optionnel - sélectionnez votre source d&apos;éclairage principale, ou passez si votre imprimante n&apos;en a pas" it="Opzionale - seleziona la tua fonte di illuminazione principale, o salta se la stampante non ne ha una" ja="オプション - メインの照明を選択するか、プリンターに照明がない場合はスキップしてください" pt="Opcional - selecione sua fonte de iluminação principal, ou pule se sua impressora não tiver uma" ru="Опционально - выберите основной источник освещения или пропустите, если у принтера его нет" zh="可选 - 选择您的主照明光源，或者如果您的打印机没有则跳过"/>
   <translation tag="Or Enter Manually" de="Oder manuell eingeben" en="Or Enter Manually" es="O Ingrese Manualmente" fr="Ou entrer manuellement" it="Oppure inserisci manualmente" ja="または手動で入力" pt="Ou Digite Manualmente" ru="Или введите вручную" zh="或手动输入"/>
   <translation tag="PETG" de="PETG" en="PETG" es="PETG" fr="PETG" it="PETG" ja="PETG" pt="PETG" ru="PETG" zh="PETG"/>
   <translation tag="PID Tuning" de="PID-Abstimmung" en="PID Tuning" es="Ajuste PID" fr="Réglage PID" it="Regolazione PID" ja="PID チューニング" pt="Ajuste PID" ru="PID-настройка" zh="PID 调优"/>
@@ -544,6 +572,18 @@
   <translation tag="Print Tuning" de="Druck-Feinabstimmung" en="Print Tuning" es="Ajuste de Impresión" fr="Réglage de l&apos;impression" it="Regolazione stampa" ja="印刷チューニング" pt="Ajuste de Impressão" ru="Настройка печати" zh="打印调优"/>
   <translation tag="Printer" de="Drucker" en="Printer" es="Impresora" fr="Imprimante" it="Stampante" ja="プリンター" pt="Impressora" ru="Принтер" zh="打印机"/>
   <translation tag="Printer Name" de="Druckername" en="Printer Name" es="Nombre de Impresora" fr="Nom de l&apos;imprimante" it="Nome stampante" ja="プリンター名" pt="Nome da Impressora" ru="Название принтера" zh="打印机名称"/>
+  <translation tag="Printer Setup: Connection" de="Druckereinrichtung: Verbindung" en="Printer Setup: Connection" es="Configuración de impresora: Conexión" fr="Configuration de l&apos;imprimante: Connexion" it="Configurazione stampante: Connessione" ja="プリンター設定：接続" pt="Configuração da Impressora: Conexão" ru="Настройка принтера: Соединение" zh="打印机设置：连接"/>
+  <translation tag="Printer Setup: Fans" de="Druckereinrichtung: Lüfter" en="Printer Setup: Fans" es="Configuración de impresora: Ventiladores" fr="Configuration de l&apos;imprimante: Ventilateurs" it="Configurazione stampante: Ventole" ja="プリンター設定：ファン" pt="Configuração da Impressora: Ventoinhas" ru="Настройка принтера: Вентиляторы" zh="打印机设置：风扇"/>
+  <translation tag="Printer Setup: Filament Sensor" de="Druckereinrichtung: Filamentsensor" en="Printer Setup: Filament Sensor" es="Configuración de impresora: Sensor de Filamento" fr="Configuration de l&apos;imprimante: Capteur de filament" it="Configurazione stampante: Sensore filamento" ja="プリンター設定：フィラメントセンサー" pt="Configuração da Impressora: Sensor de Filamento" ru="Настройка принтера: Датчик филамента" zh="打印机设置：耗材传感器"/>
+  <translation tag="Printer Setup: Heaters" de="Druckereinrichtung: Heizungen" en="Printer Setup: Heaters" es="Configuración de impresora: Calentadores" fr="Configuration de l&apos;imprimante: Chauffages" it="Configurazione stampante: Riscaldatori" ja="プリンター設定：ヒーター" pt="Configuração da Impressora: Aquecedores" ru="Настройка принтера: Нагреватели" zh="打印机设置：加热器"/>
+  <translation tag="Printer Setup: Identity" de="Druckereinrichtung: Identität" en="Printer Setup: Identity" es="Configuración de impresora: Identidad" fr="Configuration de l&apos;imprimante: Identité" it="Configurazione stampante: Identita" ja="プリンター設定：識別" pt="Configuração da Impressora: Identidade" ru="Настройка принтера: Идентификация" zh="打印机设置：身份"/>
+  <translation tag="Printer Setup: Input Shaping" de="Druckereinrichtung: Input Shaping" en="Printer Setup: Input Shaping" es="Configuración de impresora: Moldeado de Entrada" fr="Configuration de l&apos;imprimante: Input Shaping" it="Configurazione stampante: Input Shaping" ja="プリンター設定：インプットシェーピング" pt="Configuração da Impressora: Input Shaping" ru="Настройка принтера: Компенсация вибраций" zh="打印机设置：输入整形"/>
+  <translation tag="Printer Setup: LEDs" de="Druckereinrichtung: LEDs" en="Printer Setup: LEDs" es="Configuración de impresora: LEDs" fr="Configuration de l&apos;imprimante: LEDs" it="Configurazione stampante: LED" ja="プリンター設定：LED" pt="Configuração da Impressora: LEDs" ru="Настройка принтера: Светодиоды" zh="打印机设置：LED"/>
+  <translation tag="Printer Setup: Language" de="Druckereinrichtung: Sprache" en="Printer Setup: Language" es="Configuración de impresora: Idioma" fr="Configuration de l&apos;imprimante: Langue" it="Configurazione stampante: Lingua" ja="プリンター設定：言語" pt="Configuração da Impressora: Idioma" ru="Настройка принтера: Язык" zh="打印机设置：语言"/>
+  <translation tag="Printer Setup: Network" de="Druckereinrichtung: Netzwerk" en="Printer Setup: Network" es="Configuración de impresora: Red" fr="Configuration de l&apos;imprimante: Réseau" it="Configurazione stampante: Rete" ja="プリンター設定：ネットワーク" pt="Configuração da Impressora: Rede" ru="Настройка принтера: Сеть" zh="打印机设置：网络"/>
+  <translation tag="Printer Setup: Review" de="Druckereinrichtung: Überprüfung" en="Printer Setup: Review" es="Configuración de impresora: Revisión" fr="Configuration de l&apos;imprimante: Vérification" it="Configurazione stampante: Riepilogo" ja="プリンター設定：確認" pt="Configuração da Impressora: Revisão" ru="Настройка принтера: Обзор" zh="打印机设置：审核"/>
+  <translation tag="Printer Setup: Touch Calibration" de="Druckereinrichtung: Touch-Kalibrierung" en="Printer Setup: Touch Calibration" es="Configuración de impresora: Calibración Táctil" fr="Configuration de l&apos;imprimante: Calibration tactile" it="Configurazione stampante: Calibrazione touch" ja="プリンター設定：タッチキャリブレーション" pt="Configuração da Impressora: Calibração de Toque" ru="Настройка принтера: Калибровка касания" zh="打印机设置：触摸校准"/>
+  <translation tag="Printer Setup: Z Probe" de="Druckereinrichtung: Z-Sonde" en="Printer Setup: Z Probe" es="Configuración de impresora: Sonda Z" fr="Configuration de l&apos;imprimante: Sonde Z" it="Configurazione stampante: Sonda Z" ja="プリンター設定：Zプローブ" pt="Configuração da Impressora: Sonda Z" ru="Настройка принтера: Z-зонд" zh="打印机设置：Z 探针"/>
   <translation tag="Printer Shutdown" de="Drucker-Shutdown" en="Printer Shutdown" es="Apagado de Impresora" fr="Arrêt de l&apos;imprimante" it="Arresto stampante" ja="プリンターシャットダウン" pt="Desligamento da Impressora" ru="Остановка принтера" zh="打印机关机"/>
   <translation tag="Printer Type" de="Druckertyp" en="Printer Type" es="Tipo de Impresora" fr="Type d&apos;imprimante" it="Tipo stampante" ja="プリンタータイプ" pt="Tipo de Impressora" ru="Тип принтера" zh="打印机类型"/>
   <translation tag="Printing" de="Druckt" en="Printing" es="Imprimiendo" fr="Impression" it="Stampa in corso" ja="印刷中" pt="Imprimindo" ru="Печать" zh="正在打印"/>
@@ -609,6 +649,7 @@
   <translation tag="Retry" de="Wiederholen" en="Retry" es="Reintentar" fr="Réessayer" it="Riprova" ja="再試行" pt="Tentar Novamente" ru="Повторить" zh="重试"/>
   <translation tag="Review detected hardware validation issues" de="Erkannte Hardware-Validierungsprobleme überprüfen" en="Review detected hardware validation issues" es="Revisar problemas de validación de hardware detectados" fr="Examiner les problèmes de validation matérielle détectés" it="Rivedi problemi di validazione hardware rilevati" ja="検出されたハードウェア検証の問題を確認" pt="Revisar problemas de validação de hardware detectados" ru="Просмотр обнаруженных проблем валидации оборудования" zh="查看检测到的硬件验证问题"/>
   <translation tag="Review your changes" de="Ihre Änderungen überprüfen" en="Review your changes" es="Revisar sus cambios" fr="Examiner vos modifications" it="Rivedi le modifiche" ja="変更を確認" pt="Revisar suas alterações" ru="Просмотр ваших изменений" zh="查看您的更改"/>
+  <translation tag="Review your configuration below, then click Finish to save" de="Überprüfen Sie Ihre Konfiguration unten, dann klicken Sie auf Fertig zum Speichern" en="Review your configuration below, then click Finish to save" es="Revise su configuración abajo, luego haga clic en Finalizar para guardar" fr="Vérifiez votre configuration ci-dessous, puis cliquez sur Terminer pour enregistrer" it="Rivedi la configurazione qui sotto, poi clicca Fine per salvare" ja="以下の設定を確認し、「完了」をクリックして保存してください" pt="Revise sua configuração abaixo e clique em Concluir para salvar" ru="Просмотрите конфигурацию ниже, затем нажмите Готово для сохранения" zh="查看下方的配置，然后点击完成以保存"/>
   <translation tag="Role:" de="Rolle:" en="Role:" es="Rol:" fr="Rôle :" it="Ruolo:" ja="役割:" pt="Função:" ru="Роль:" zh="角色："/>
   <translation tag="Runout Sensor" de="Auslaufsensor" en="Runout Sensor" es="Sensor de Agotamiento" fr="Capteur de fin de filament" it="Sensore esaurimento" ja="フィラメント切れセンサー" pt="Sensor de Fim de Filamento" ru="Датчик окончания" zh="断料传感器"/>
   <translation tag="STANDARD MACROS" de="STANDARD-MAKROS" en="STANDARD MACROS" es="MACROS ESTÁNDAR" fr="MACROS STANDARD" it="MACRO STANDARD" ja="標準マクロ" pt="MACROS PADRÃO" ru="СТАНДАРТНЫЕ МАКРОСЫ" zh="标准宏"/>
@@ -628,6 +669,7 @@
   <translation tag="Saving Configuration..." de="Konfiguration wird gespeichert..." en="Saving Configuration..." es="Guardando Configuración..." fr="Enregistrement de la configuration..." it="Salvataggio configurazione..." ja="設定を保存中..." pt="Salvando Configuração..." ru="Сохранение конфигурации..." zh="正在保存配置..."/>
   <translation tag="Saving will restart Klipper and CANCEL any active print!" de="Speichern startet Klipper neu und BRICHT jeden aktiven Druck ab!" en="Saving will restart Klipper and CANCEL any active print!" es="¡Guardar reiniciará Klipper y CANCELARÁ cualquier impresión activa!" fr="L&apos;enregistrement redémarrera Klipper et ANNULERA toute impression active !" it="Il salvataggio riavvierà Klipper e ANNULLERÀ qualsiasi stampa attiva!" ja="保存すると Klipper が再起動し、アクティブな印刷がキャンセルされます！" pt="Salvar reiniciará o Klipper e CANCELARÁ qualquer impressão ativa!" ru="Сохранение перезапустит Klipper и ОТМЕНИТ любую активную печать!" zh="保存将重启 Klipper 并取消任何正在进行的打印！"/>
   <translation tag="Scanning for networks..." de="Suche nach Netzwerken..." en="Scanning for networks..." es="Buscando redes..." fr="Recherche de réseaux..." it="Scansione reti..." ja="ネットワークをスキャン中..." pt="Escaneando redes..." ru="Поиск сетей..." zh="正在扫描网络..."/>
+  <translation tag="Scanning..." de="Scanne..." en="Scanning..." es="Escaneando..." fr="Recherche..." it="Scansione..." ja="スキャン中..." pt="Escaneando..." ru="Сканирование..."/>
   <translation tag="Screen Dim" de="Bildschirm dimmen" en="Screen Dim" es="Atenuación de Pantalla" fr="Atténuation de l&apos;écran" it="Attenuazione schermo" ja="画面減光" pt="Escurecimento da Tela" ru="Затемнение экрана" zh="屏幕变暗"/>
   <translation tag="Screen dims to lower brightness after period of inactivity" de="Bildschirm dimmt nach Inaktivitätszeitraum auf niedrigere Helligkeit" en="Screen dims to lower brightness after period of inactivity" es="La pantalla atenúa el brillo después de un período de inactividad" fr="L&apos;écran s&apos;atténue après une période d&apos;inactivité" it="Lo schermo si attenua dopo un periodo di inattività" ja="一定時間操作がないと画面の明るさが下がります" pt="A tela escurece para menor brilho após período de inatividade" ru="Экран затемняется после периода неактивности" zh="一段时间不活动后屏幕会降低亮度"/>
   <translation tag="Screen will dim after the selected period of inactivity" de="Bildschirm dimmt nach dem gewählten Inaktivitätszeitraum" en="Screen will dim after the selected period of inactivity" es="La pantalla se atenuará después del período de inactividad seleccionado" fr="L&apos;écran s&apos;atténuera après la période d&apos;inactivité sélectionnée" it="Lo schermo si attenuerà dopo il periodo di inattività selezionato" ja="選択した時間操作がないと画面が減光します" pt="A tela escurecerá após o período selecionado de inatividade" ru="Экран затемнится после выбранного периода неактивности" zh="在选定的不活动时间后屏幕将变暗"/>
@@ -644,6 +686,9 @@
   <translation tag="Select Heater" de="Heizung auswählen" en="Select Heater" es="Seleccionar Calentador" fr="Sélectionner le chauffage" it="Seleziona riscaldatore" ja="ヒーターを選択" pt="Selecionar Aquecedor" ru="Выбрать нагреватель" zh="选择加热器"/>
   <translation tag="Select macro for first button" de="Makro für erste Taste auswählen" en="Select macro for first button" es="Seleccionar macro para el primer botón" fr="Sélectionner la macro pour le premier bouton" it="Seleziona macro per il primo pulsante" ja="最初のボタンのマクロを選択" pt="Selecionar macro para o primeiro botão" ru="Выберите макрос для первой кнопки" zh="为第一个按钮选择宏"/>
   <translation tag="Select macro for second button" de="Makro für zweite Taste auswählen" en="Select macro for second button" es="Seleccionar macro para el segundo botón" fr="Sélectionner la macro pour le deuxième bouton" it="Seleziona macro per il secondo pulsante" ja="2番目のボタンのマクロを選択" pt="Selecionar macro para o segundo botão" ru="Выберите макрос для второй кнопки" zh="为第二个按钮选择宏"/>
+  <translation tag="Select the heaters Klipper uses for your bed and hotend" de="Wählen Sie die Heizungen, die Klipper für Ihr Bett und Hotend verwendet" en="Select the heaters Klipper uses for your bed and hotend" es="Seleccione los calentadores que Klipper usa para su cama y hotend" fr="Sélectionnez les chauffages que Klipper utilise pour votre plateau et hotend" it="Seleziona i riscaldatori che Klipper usa per piano e hotend" ja="Klipperがベッドとホットエンドに使用するヒーターを選択してください" pt="Selecione os aquecedores que o Klipper usa para sua mesa e hotend" ru="Выберите нагреватели, которые Klipper использует для стола и хотенда" zh="选择 Klipper 用于热床和热端的加热器"/>
+  <translation tag="Select which sensor triggers pause on filament runout" de="Wählen Sie, welcher Sensor bei Filament-Auslauf pausiert" en="Select which sensor triggers pause on filament runout" es="Seleccione qué sensor activa la pausa al agotarse el filamento" fr="Sélectionnez quel capteur déclenche la pause en fin de filament" it="Seleziona quale sensore attiva la pausa all&apos;esaurimento filamento" ja="フィラメント切れで一時停止をトリガーするセンサーを選択してください" pt="Selecione qual sensor ativa a pausa quando o filamento acabar" ru="Выберите датчик, который вызывает паузу при окончании филамента" zh="选择断料时触发暂停的传感器"/>
+  <translation tag="Select your preferred language" de="Wählen Sie Ihre bevorzugte Sprache" en="Select your preferred language" es="Seleccione su idioma preferido" fr="Sélectionnez votre langue préférée" it="Seleziona la tua lingua preferita" ja="ご希望の言語を選択してください" pt="Selecione seu idioma preferido" ru="Выберите предпочитаемый язык" zh="选择您的首选语言"/>
   <translation tag="Selecting slot..." de="Slot wird ausgewählt..." en="Selecting slot..." es="Seleccionando ranura..." fr="Sélection du slot..." it="Selezione slot..." ja="スロットを選択中..." pt="Selecionando slot..." ru="Выбор слота..." zh="正在选择料仓..."/>
   <translation tag="Semantic Size Parameter Tests" de="Semantische Größenparameter-Tests" en="Semantic Size Parameter Tests" es="Pruebas de Parámetros de Tamaño Semántico" fr="Tests de paramètres de taille sémantique" it="Test parametri dimensione semantici" ja="セマンティックサイズパラメータテスト" pt="Testes de Parâmetros de Tamanho Semântico" ru="Тесты семантических параметров размера" zh="语义大小参数测试"/>
   <translation tag="Send commands directly to printer" de="Befehle direkt an Drucker senden" en="Send commands directly to printer" es="Enviar comandos directamente a la impresora" fr="Envoyer des commandes directement à l&apos;imprimante" it="Invia comandi direttamente alla stampante" ja="プリンターに直接コマンドを送信" pt="Enviar comandos diretamente para a impressora" ru="Отправлять команды напрямую принтеру" zh="直接向打印机发送命令"/>
@@ -656,7 +701,9 @@
   <translation tag="Show detailed print preparation status" de="Detaillierten Druckvorbereitungsstatus anzeigen" en="Show detailed print preparation status" es="Mostrar estado detallado de preparación de impresión" fr="Afficher l&apos;état détaillé de la préparation d&apos;impression" it="Mostra stato dettagliato preparazione stampa" ja="詳細な印刷準備ステータスを表示" pt="Mostrar status detalhado de preparação de impressão" ru="Показывать детальный статус подготовки к печати" zh="显示详细的打印准备状态"/>
   <translation tag="Side" de="Seite" en="Side" es="Lado" fr="Côté" it="Lato" ja="側面" pt="Lateral" ru="Сбоку" zh="侧面"/>
   <translation tag="Size" de="Größe" en="Size" es="Tamaño" fr="Taille" it="Dimensione" ja="サイズ" pt="Tamanho" ru="Размер" zh="大小"/>
+  <translation tag="Skip" de="Überspringen" en="Skip" es="Omitir" fr="Passer" it="Salta" ja="スキップ" pt="Pular" ru="Пропустить" zh="跳过"/>
   <translation tag="Skip for now" de="Vorerst überspringen" en="Skip for now" es="Omitir por ahora" fr="Passer pour l&apos;instant" it="Salta per ora" ja="今はスキップ" pt="Pular por agora" ru="Пропустить" zh="暂时跳过"/>
+  <translation tag="Skip if using dedicated probe (BLTouch, Klicky, etc.)" de="Überspringen bei dedizierter Sonde (BLTouch, Klicky, etc.)" en="Skip if using dedicated probe (BLTouch, Klicky, etc.)" es="Omita si usa una sonda dedicada (BLTouch, Klicky, etc.)" fr="Passer si vous utilisez une sonde dédiée (BLTouch, Klicky, etc.)" it="Salta se usi una sonda dedicata (BLTouch, Klicky, ecc.)" ja="専用プローブ（BLTouch、Klickyなど）を使用している場合はスキップしてください" pt="Pule se usar sonda dedicada (BLTouch, Klicky, etc.)" ru="Пропустите, если используете отдельный зонд (BLTouch, Klicky и т.д.)" zh="如果使用专用探针（BLTouch、Klicky 等）则跳过"/>
   <translation tag="Slot 1" de="Slot 1" en="Slot 1" es="Ranura 1" fr="Slot 1" it="Slot 1" ja="スロット1" pt="Slot 1" ru="Слот 1" zh="料仓 1"/>
   <translation tag="Small labels help keep controls calm and focused." de="Kleine Beschriftungen helfen, Steuerelemente ruhig und fokussiert zu halten." en="Small labels help keep controls calm and focused." es="Las etiquetas pequeñas ayudan a mantener los controles calmados y enfocados." fr="Les petites étiquettes aident à garder les contrôles calmes et concentrés." it="Le etichette piccole aiutano a mantenere i controlli ordinati e mirati." ja="小さなラベルはコントロールを落ち着いた集中した状態に保ちます。" pt="Rótulos pequenos ajudam a manter os controles calmos e focados." ru="Мелкие надписи помогают сохранять элементы управления аккуратными." zh="小标签有助于保持控件简洁专注。"/>
   <translation tag="Some settings will take effect after restart." de="Einige Einstellungen werden nach dem Neustart wirksam." en="Some settings will take effect after restart." es="Algunos ajustes tendrán efecto después de reiniciar." fr="Certains paramètres prendront effet après redémarrage." it="Alcune impostazioni avranno effetto dopo il riavvio." ja="一部の設定は再起動後に有効になります。" pt="Algumas configurações terão efeito após reiniciar." ru="Некоторые настройки вступят в силу после перезапуска." zh="某些设置将在重启后生效。"/>
@@ -693,6 +740,7 @@
   <translation tag="Sync with Spoolman" de="Mit Spoolman synchronisieren" en="Sync with Spoolman" es="Sincronizar con Spoolman" fr="Synchroniser avec Spoolman" it="Sincronizza con Spoolman" ja="Spoolman と同期" pt="Sincronizar com Spoolman" ru="Синхронизация со Spoolman" zh="与 Spoolman 同步"/>
   <translation tag="Sysfs" de="Sysfs" en="Sysfs" es="Sysfs" fr="Sysfs" it="Sysfs" ja="Sysfs" pt="Sysfs" ru="Sysfs" zh="Sysfs"/>
   <translation tag="System detected" de="System erkannt" en="System detected" es="Sistema detectado" fr="Système détecté" it="Sistema rilevato" ja="システムを検出しました" pt="Sistema detectado" ru="Обнаружена система" zh="检测到系统"/>
+  <translation tag="T0" de="T0" en="T0" es="T0" fr="T0" it="T0" pt="T0" ru="T0"/>
   <translation tag="TD-1 filament color detection" de="TD-1-Filamentfarberkennung" en="TD-1 filament color detection" es="Detección de color de filamento TD-1" fr="Détection de couleur de filament TD-1" it="Rilevamento colore filamento TD-1" ja="TD-1 フィラメント色検出" pt="Detecção de cor de filamento TD-1" ru="Определение цвета филамента TD-1" zh="TD-1 耗材颜色检测"/>
   <translation tag="THEME COLORS" de="THEMENFARBEN" en="THEME COLORS" es="COLORES DEL TEMA" fr="COULEURS DU THÈME" it="COLORI TEMA" ja="テーマカラー" pt="CORES DO TEMA" ru="ЦВЕТА ТЕМЫ" zh="主题颜色"/>
   <translation tag="TPU" de="TPU" en="TPU" es="TPU" fr="TPU" it="TPU" ja="TPU" pt="TPU" ru="TPU" zh="TPU"/>
@@ -776,6 +824,8 @@
   <translation tag="Weight sync settings" de="Gewichtssynchronisierungs-Einstellungen" en="Weight sync settings" es="Configuración de sincronización de peso" fr="Paramètres de synchronisation du poids" it="Impostazioni sincronizzazione peso" ja="重量同期設定" pt="Configurações de sincronização de peso" ru="Настройки синхронизации веса" zh="重量同步设置"/>
   <translation tag="White" de="Weiß" en="White" es="Blanco" fr="Blanc" it="Bianco" ja="ホワイト" pt="Branco" ru="Белый" zh="白色"/>
   <translation tag="WiFi" de="WiFi" en="WiFi" es="WiFi" fr="WiFi" it="WiFi" ja="WiFi" pt="WiFi" ru="WiFi" zh="WiFi"/>
+  <translation tag="WiFi Disabled" de="WiFi deaktiviert" en="WiFi Disabled" es="WiFi Desactivado" fr="WiFi désactivé" it="WiFi disabilitato" ja="WiFi 無効" pt="WiFi Desabilitado" ru="WiFi отключён"/>
+  <translation tag="WiFi Enabled" de="WiFi aktiviert" en="WiFi Enabled" es="WiFi Activado" fr="WiFi activé" it="WiFi abilitato" ja="WiFi 有効" pt="WiFi Habilitado" ru="WiFi включён"/>
   <translation tag="WiFi Network" de="WiFi-Netzwerk" en="WiFi Network" es="Red WiFi" fr="Réseau WiFi" it="Rete WiFi" ja="WiFi ネットワーク" pt="Rede WiFi" ru="Сеть WiFi" zh="WiFi 网络"/>
   <translation tag="WiFi and Ethernet" de="WiFi und Ethernet" en="WiFi and Ethernet" es="WiFi y Ethernet" fr="WiFi et Ethernet" it="WiFi ed Ethernet" ja="WiFi とイーサネット" pt="WiFi e Ethernet" ru="WiFi и Ethernet" zh="WiFi 和以太网"/>
   <translation tag="WiFi and Ethernet configuration" de="WiFi- und Ethernet-Konfiguration" en="WiFi and Ethernet configuration" es="Configuración de WiFi y Ethernet" fr="Configuration WiFi et Ethernet" it="Configurazione WiFi ed Ethernet" ja="WiFi とイーサネットの設定" pt="Configuração de WiFi e Ethernet" ru="Настройка WiFi и Ethernet" zh="WiFi 和以太网配置"/>
@@ -788,6 +838,7 @@
   <translation tag="Y:" de="Y:" en="Y:" es="Y:" fr="Y :" it="Y:" ja="Y:" pt="Y:" ru="Y:" zh="Y："/>
   <translation tag="Year" de="Jahr" en="Year" es="Año" fr="Année" it="Anno" ja="年" pt="Ano" ru="Год" zh="年"/>
   <translation tag="Your completed prints will appear here" de="Ihre abgeschlossenen Drucke werden hier angezeigt" en="Your completed prints will appear here" es="Sus impresiones completadas aparecerán aquí" fr="Vos impressions terminées apparaîtront ici" it="Le stampe completate appariranno qui" ja="完了した印刷がここに表示されます" pt="Suas impressões concluídas aparecerão aqui" ru="Ваши завершённые печати появятся здесь" zh="您完成的打印将显示在此处"/>
+  <translation tag="Your printer has an automatic filament changer" de="Ihr Drucker hat einen automatischen Filamentwechsler" en="Your printer has an automatic filament changer" es="Su impresora tiene un cambiador automático de filamento" fr="Votre imprimante dispose d&apos;un changeur de filament automatique" it="La tua stampante ha un cambia-filamento automatico" ja="お使いのプリンターには自動フィラメントチェンジャーがあります" pt="Sua impressora tem um trocador de filamento automático" ru="Ваш принтер имеет автоматический сменщик филамента" zh="您的打印机有自动耗材更换器"/>
   <translation tag="Z" de="Z" en="Z" es="Z" fr="Z" it="Z" ja="Z" pt="Z" ru="Z" zh="Z"/>
   <translation tag="Z Calibration" de="Z-Kalibrierung" en="Z Calibration" es="Calibración Z" fr="Calibration Z" it="Calibrazione Z" ja="Z キャリブレーション" pt="Calibração Z" ru="Калибровка Z" zh="Z 轴校准"/>
   <translation tag="Z Range" de="Z-Bereich" en="Z Range" es="Rango Z" fr="Plage Z" it="Intervallo Z" ja="Z 範囲" pt="Alcance Z" ru="Диапазон Z" zh="Z 范围"/>
@@ -800,32 +851,211 @@
   <translation tag="Z: 0.000" de="Z: 0,000" en="Z: 0.000" es="Z: 0.000" fr="Z : 0.000" it="Z: 0.000" ja="Z: 0.000" pt="Z: 0.000" ru="Z: 0.000" zh="Z：0.000"/>
   <translation tag="Zoom" de="Zoom" en="Zoom" es="Zoom" fr="Zoom" it="Zoom" ja="ズーム" pt="Zoom" ru="Масштаб" zh="缩放"/>
   <translation tag="^ FRONT" de="^ VORNE" en="^ FRONT" es="^ FRENTE" fr="^ AVANT" it="^ ANTERIORE" ja="^ 正面" pt="^ FRENTE" ru="^ ПЕРЕД" zh="^ 前方"/>
+  <translation tag="benchy.gcode" de="benchy.gcode" en="benchy.gcode" es="benchy.gcode" fr="benchy.gcode" it="benchy.gcode" pt="benchy.gcode" ru="benchy.gcode"/>
   <translation tag="hour" de="Stunde" en="hour" es="hora" fr="heure" it="ora" ja="時間" pt="hora" ru="час" zh="小时"/>
   <translation tag="hours" de="Stunden" en="hours" es="horas" fr="heures" it="ore" ja="時間" pt="horas" ru="часов" zh="小时"/>
   <translation tag="lg" de="lg" en="lg" es="lg" fr="lg" it="lg" ja="lg" pt="lg" ru="lg" zh="lg"/>
   <translation tag="md" de="md" en="md" es="md" fr="md" it="md" ja="md" pt="md" ru="md" zh="md"/>
+  <translation tag="mdi_icons_16" de="mdi_icons_16" en="mdi_icons_16" es="mdi_icons_16" fr="mdi_icons_16" it="mdi_icons_16" pt="mdi_icons_16" ru="mdi_icons_16"/>
+  <translation tag="mdi_icons_24" de="mdi_icons_24" en="mdi_icons_24" es="mdi_icons_24" fr="mdi_icons_24" it="mdi_icons_24" pt="mdi_icons_24" ru="mdi_icons_24"/>
+  <translation tag="mdi_icons_32" de="mdi_icons_32" en="mdi_icons_32" es="mdi_icons_32" fr="mdi_icons_32" it="mdi_icons_32" pt="mdi_icons_32" ru="mdi_icons_32"/>
+  <translation tag="mdi_icons_48" de="mdi_icons_48" en="mdi_icons_48" es="mdi_icons_48" fr="mdi_icons_48" it="mdi_icons_48" pt="mdi_icons_48" ru="mdi_icons_48"/>
+  <translation tag="mdi_icons_64" de="mdi_icons_64" en="mdi_icons_64" es="mdi_icons_64" fr="mdi_icons_64" it="mdi_icons_64" pt="mdi_icons_64" ru="mdi_icons_64"/>
   <translation tag="min_value=0, max_value=100, value=25" de="min_value=0, max_value=100, value=25" en="min_value=0, max_value=100, value=25" es="min_value=0, max_value=100, value=25" fr="min_value=0, max_value=100, value=25" it="min_value=0, max_value=100, value=25" ja="min_value=0, max_value=100, value=25" pt="min_value=0, max_value=100, value=25" ru="min_value=0, max_value=100, value=25" zh="min_value=0, max_value=100, value=25"/>
   <translation tag="minute" de="Minute" en="minute" es="minuto" fr="minute" it="minuto" ja="分" pt="minuto" ru="минута" zh="分钟"/>
   <translation tag="minutes" de="Minuten" en="minutes" es="minutos" fr="minutes" it="minuti" ja="分" pt="minutos" ru="минут" zh="分钟"/>
   <translation tag="mzv @ 36.7 Hz" de="mzv @ 36,7 Hz" en="mzv @ 36.7 Hz" es="mzv @ 36.7 Hz" fr="mzv @ 36.7 Hz" it="mzv @ 36.7 Hz" ja="mzv @ 36.7 Hz" pt="mzv @ 36.7 Hz" ru="mzv @ 36.7 Гц" zh="mzv @ 36.7 Hz"/>
+  <translation tag="noto_sans_14" de="noto_sans_14" en="noto_sans_14" es="noto_sans_14" fr="noto_sans_14" it="noto_sans_14" pt="noto_sans_14" ru="noto_sans_14"/>
+  <translation tag="noto_sans_18" de="noto_sans_18" en="noto_sans_18" es="noto_sans_18" fr="noto_sans_18" it="noto_sans_18" pt="noto_sans_18" ru="noto_sans_18"/>
+  <translation tag="noto_sans_20" de="noto_sans_20" en="noto_sans_20" es="noto_sans_20" fr="noto_sans_20" it="noto_sans_20" pt="noto_sans_20" ru="noto_sans_20"/>
+  <translation tag="noto_sans_26" de="noto_sans_26" en="noto_sans_26" es="noto_sans_26" fr="noto_sans_26" it="noto_sans_26" pt="noto_sans_26" ru="noto_sans_26"/>
+  <translation tag="noto_sans_28" de="noto_sans_28" en="noto_sans_28" es="noto_sans_28" fr="noto_sans_28" it="noto_sans_28" pt="noto_sans_28" ru="noto_sans_28"/>
+  <translation tag="noto_sans_light_10" de="noto_sans_light_10" en="noto_sans_light_10" es="noto_sans_light_10" fr="noto_sans_light_10" it="noto_sans_light_10" pt="noto_sans_light_10" ru="noto_sans_light_10"/>
+  <translation tag="noto_sans_light_12" de="noto_sans_light_12" en="noto_sans_light_12" es="noto_sans_light_12" fr="noto_sans_light_12" it="noto_sans_light_12" pt="noto_sans_light_12" ru="noto_sans_light_12"/>
+  <translation tag="noto_sans_light_14" de="noto_sans_light_14" en="noto_sans_light_14" es="noto_sans_light_14" fr="noto_sans_light_14" it="noto_sans_light_14" pt="noto_sans_light_14" ru="noto_sans_light_14"/>
+  <translation tag="noto_sans_light_16" de="noto_sans_light_16" en="noto_sans_light_16" es="noto_sans_light_16" fr="noto_sans_light_16" it="noto_sans_light_16" pt="noto_sans_light_16" ru="noto_sans_light_16"/>
+  <translation tag="noto_sans_light_18" de="noto_sans_light_18" en="noto_sans_light_18" es="noto_sans_light_18" fr="noto_sans_light_18" it="noto_sans_light_18" pt="noto_sans_light_18" ru="noto_sans_light_18"/>
+  <translation tag="of" de="von" en="of" es="de" fr="de" it="di" ja="の" pt="de" ru="из" zh="的"/>
   <translation tag="seconds" de="Sekunden" en="seconds" es="segundos" fr="secondes" it="secondi" ja="秒" pt="segundos" ru="секунд" zh="秒"/>
   <translation tag="size=&quot;large&quot;" de="size=&quot;large&quot;" en="size=&quot;large&quot;" es="size=&quot;large&quot;" fr="size=&quot;large&quot;" it="size=&quot;large&quot;" ja="size=&quot;large&quot;" pt="size=&quot;large&quot;" ru="size=&quot;large&quot;" zh="size=&quot;large&quot;"/>
   <translation tag="size=&quot;medium&quot;" de="size=&quot;medium&quot;" en="size=&quot;medium&quot;" es="size=&quot;medium&quot;" fr="size=&quot;medium&quot;" it="size=&quot;medium&quot;" ja="size=&quot;medium&quot;" pt="size=&quot;medium&quot;" ru="size=&quot;medium&quot;" zh="size=&quot;medium&quot;"/>
   <translation tag="size=&quot;medium&quot; width=&quot;100&quot;" de="size=&quot;medium&quot; width=&quot;100&quot;" en="size=&quot;medium&quot; width=&quot;100&quot;" es="size=&quot;medium&quot; width=&quot;100&quot;" fr="size=&quot;medium&quot; width=&quot;100&quot;" it="size=&quot;medium&quot; width=&quot;100&quot;" ja="size=&quot;medium&quot; width=&quot;100&quot;" pt="size=&quot;medium&quot; width=&quot;100&quot;" ru="size=&quot;medium&quot; width=&quot;100&quot;" zh="size=&quot;medium&quot; width=&quot;100&quot;"/>
   <translation tag="size=&quot;small&quot;" de="size=&quot;small&quot;" en="size=&quot;small&quot;" es="size=&quot;small&quot;" fr="size=&quot;small&quot;" it="size=&quot;small&quot;" ja="size=&quot;small&quot;" pt="size=&quot;small&quot;" ru="size=&quot;small&quot;" zh="size=&quot;small&quot;"/>
   <translation tag="size=&quot;tiny&quot;" de="size=&quot;tiny&quot;" en="size=&quot;tiny&quot;" es="size=&quot;tiny&quot;" fr="size=&quot;tiny&quot;" it="size=&quot;tiny&quot;" ja="size=&quot;tiny&quot;" pt="size=&quot;tiny&quot;" ru="size=&quot;tiny&quot;" zh="size=&quot;tiny&quot;"/>
+  <translation tag="size=&amp;quot;large&amp;quot;" de="size=&amp;quot;large&amp;quot;" en="size=&amp;quot;large&amp;quot;" fr="size=&amp;quot;large&amp;quot;" it="size=&amp;quot;large&amp;quot;" pt="size=&amp;quot;large&amp;quot;" ru="size=&amp;quot;large&amp;quot;"/>
+  <translation tag="size=&amp;quot;medium&amp;quot;" de="size=&amp;quot;medium&amp;quot;" en="size=&amp;quot;medium&amp;quot;" fr="size=&amp;quot;medium&amp;quot;" it="size=&amp;quot;medium&amp;quot;" pt="size=&amp;quot;medium&amp;quot;" ru="size=&amp;quot;medium&amp;quot;"/>
+  <translation tag="size=&amp;quot;medium&amp;quot; width=&amp;quot;100&amp;quot;" de="size=&amp;quot;medium&amp;quot; width=&amp;quot;100&amp;quot;" en="size=&amp;quot;medium&amp;quot; width=&amp;quot;100&amp;quot;" fr="size=&amp;quot;medium&amp;quot; width=&amp;quot;100&amp;quot;" it="size=&amp;quot;medium&amp;quot; width=&amp;quot;100&amp;quot;" pt="size=&amp;quot;medium&amp;quot; width=&amp;quot;100&amp;quot;" ru="size=&amp;quot;medium&amp;quot; width=&amp;quot;100&amp;quot;"/>
+  <translation tag="size=&amp;quot;small&amp;quot;" de="size=&amp;quot;small&amp;quot;" en="size=&amp;quot;small&amp;quot;" fr="size=&amp;quot;small&amp;quot;" it="size=&amp;quot;small&amp;quot;" pt="size=&amp;quot;small&amp;quot;" ru="size=&amp;quot;small&amp;quot;"/>
+  <translation tag="size=&amp;quot;tiny&amp;quot;" de="size=&amp;quot;tiny&amp;quot;" en="size=&amp;quot;tiny&amp;quot;" fr="size=&amp;quot;tiny&amp;quot;" it="size=&amp;quot;tiny&amp;quot;" pt="size=&amp;quot;tiny&amp;quot;" ru="size=&amp;quot;tiny&amp;quot;"/>
   <translation tag="sm" de="sm" en="sm" es="sm" fr="sm" it="sm" ja="sm" pt="sm" ru="sm" zh="sm"/>
   <translation tag="true" de="true" en="true" es="true" fr="true" it="true" ja="true" pt="verdadeiro" ru="true" zh="true"/>
   <translation tag="value=0 (shows FULL - BUG!)" de="value=0 (zeigt VOLL - FEHLER!)" en="value=0 (shows FULL - BUG!)" es="value=0 (muestra LLENO - ¡ERROR!)" fr="value=0 (shows FULL - BUG!)" it="value=0 (mostra PIENO - BUG!)" ja="value=0 (shows FULL - BUG!)" pt="value=0 (mostra CHEIO - BUG!)" ru="value=0 (показывает ПОЛНЫЙ - БАГ!)" zh="value=0 (shows FULL - BUG!)"/>
   <translation tag="value=1 (tiny sliver?)" de="value=1 (kleiner Splitter?)" en="value=1 (tiny sliver?)" es="value=1 (¿pequeño fragmento?)" fr="value=1 (tiny sliver?)" it="value=1 (frammento piccolo?)" ja="value=1 (tiny sliver?)" pt="value=1 (fatia pequena?)" ru="value=1 (крошечная полоска?)" zh="value=1 (tiny sliver?)"/>
   <translation tag="value=100 (should be full)" de="value=100 (sollte voll sein)" en="value=100 (should be full)" es="value=100 (debería estar lleno)" fr="value=100 (should be full)" it="value=100 (dovrebbe essere pieno)" ja="value=100 (should be full)" pt="value=100 (deveria estar cheio)" ru="value=100 (должен быть полным)" zh="value=100 (should be full)"/>
+  <translation tag="xl" de="xl" en="xl" es="xl" fr="xl" it="xl" pt="xl" ru="xl"/>
   <translation tag="xs" de="xs" en="xs" es="xs" fr="xs" it="xs" ja="xs" pt="xs" ru="xs" zh="xs"/>
   <translation tag="Русский" de="Russisch" en="Русский" es="Русский" fr="Русский" it="Русский" ja="Русский" pt="Русский" ru="Русский" zh="Русский"/>
   <translation tag="—" de="—" en="—" es="—" fr="—" it="—" ja="—" pt="—" ru="—" zh="—"/>
   <translation tag="•" de="•" en="•" es="•" fr="•" it="•" ja="•" pt="•" ru="•" zh="•"/>
   <translation tag="中文" de="Chinesisch" en="中文" es="中文" fr="中文" it="中文" ja="中文" pt="中文" ru="中文" zh="中文"/>
   <translation tag="日本語" de="Japanisch" en="日本語" es="日本語" fr="日本語" it="日本語" ja="日本語" pt="日本語" ru="日本語" zh="日本語"/>
+  <translation tag="󰀦" de="󰀦" en="󰀦" es="󰀦" fr="󰀦" it="󰀦" pt="󰀦" ru="󰀦"/>
+  <translation tag="󰀩" de="󰀩" en="󰀩" es="󰀩" fr="󰀩" it="󰀩" pt="󰀩" ru="󰀩"/>
+  <translation tag="󰁅" de="󰁅" en="󰁅" es="󰁅" fr="󰁅" it="󰁅" pt="󰁅" ru="󰁅"/>
+  <translation tag="󰁌" de="󰁌" en="󰁌" es="󰁌" fr="󰁌" it="󰁌" pt="󰁌" ru="󰁌"/>
+  <translation tag="󰁍" de="󰁍" en="󰁍" es="󰁍" fr="󰁍" it="󰁍" pt="󰁍" ru="󰁍"/>
+  <translation tag="󰁎" de="󰁎" en="󰁎" es="󰁎" fr="󰁎" it="󰁎" pt="󰁎" ru="󰁎"/>
+  <translation tag="󰁔" de="󰁔" en="󰁔" es="󰁔" fr="󰁔" it="󰁔" pt="󰁔" ru="󰁔"/>
+  <translation tag="󰁝" de="󰁝" en="󰁝" es="󰁝" fr="󰁝" it="󰁝" pt="󰁝" ru="󰁝"/>
+  <translation tag="󰁟" de="󰁟" en="󰁟" es="󰁟" fr="󰁟" it="󰁟" pt="󰁟" ru="󰁟"/>
+  <translation tag="󰂚" de="󰂚" en="󰂚" es="󰂚" fr="󰂚" it="󰂚" pt="󰂚" ru="󰂚"/>
+  <translation tag="󰂭" de="󰂭" en="󰂭" es="󰂭" fr="󰂭" it="󰂭" pt="󰂭" ru="󰂭"/>
+  <translation tag="󰄉" de="󰄉" en="󰄉" es="󰄉" fr="󰄉" it="󰄉" pt="󰄉" ru="󰄉"/>
+  <translation tag="󰄝" de="󰄝" en="󰄝" es="󰄝" fr="󰄝" it="󰄝" pt="󰄝" ru="󰄝"/>
+  <translation tag="󰄪" de="󰄪" en="󰄪" es="󰄪" fr="󰄪" it="󰄪" pt="󰄪" ru="󰄪"/>
+  <translation tag="󰄬" de="󰄬" en="󰄬" es="󰄬" fr="󰄬" it="󰄬" pt="󰄬" ru="󰄬"/>
+  <translation tag="󰅀" de="󰅀" en="󰅀" es="󰅀" fr="󰅀" it="󰅀" pt="󰅀" ru="󰅀"/>
+  <translation tag="󰅁" de="󰅁" en="󰅁" es="󰅁" fr="󰅁" it="󰅁" pt="󰅁" ru="󰅁"/>
+  <translation tag="󰅂" de="󰅂" en="󰅂" es="󰅂" fr="󰅂" it="󰅂" pt="󰅂" ru="󰅂"/>
+  <translation tag="󰅃" de="󰅃" en="󰅃" es="󰅃" fr="󰅃" it="󰅃" pt="󰅃" ru="󰅃"/>
   <translation tag="󰅐" de="󰅐" en="󰅐" es="󰅐" fr="󰅐" it="󰅐" ja="󰅐" pt="󰅐" ru="󰅐" zh="󰅐"/>
+  <translation tag="󰅖" de="󰅖" en="󰅖" es="󰅖" fr="󰅖" it="󰅖" pt="󰅖" ru="󰅖"/>
+  <translation tag="󰅙" de="󰅙" en="󰅙" es="󰅙" fr="󰅙" it="󰅙" pt="󰅙" ru="󰅙"/>
+  <translation tag="󰅩" de="󰅩" en="󰅩" es="󰅩" fr="󰅩" it="󰅩" pt="󰅩" ru="󰅩"/>
+  <translation tag="󰅴" de="󰅴" en="󰅴" es="󰅴" fr="󰅴" it="󰅴" pt="󰅴" ru="󰅴"/>
+  <translation tag="󰆍" de="󰆍" en="󰆍" es="󰆍" fr="󰆍" it="󰆍" pt="󰆍" ru="󰆍"/>
+  <translation tag="󰆧" de="󰆧" en="󰆧" es="󰆧" fr="󰆧" it="󰆧" pt="󰆧" ru="󰆧"/>
+  <translation tag="󰆴" de="󰆴" en="󰆴" es="󰆴" fr="󰆴" it="󰆴" pt="󰆴" ru="󰆴"/>
+  <translation tag="󰆾" de="󰆾" en="󰆾" es="󰆾" fr="󰆾" it="󰆾" pt="󰆾" ru="󰆾"/>
+  <translation tag="󰇙" de="󰇙" en="󰇙" es="󰇙" fr="󰇙" it="󰇙" pt="󰇙" ru="󰇙"/>
+  <translation tag="󰇚" de="󰇚" en="󰇚" es="󰇚" fr="󰇚" it="󰇚" pt="󰇚" ru="󰇚"/>
+  <translation tag="󰇺" de="󰇺" en="󰇺" es="󰇺" fr="󰇺" it="󰇺" pt="󰇺" ru="󰇺"/>
+  <translation tag="󰈀" de="󰈀" en="󰈀" es="󰈀" fr="󰈀" it="󰈀" pt="󰈀" ru="󰈀"/>
+  <translation tag="󰈐" de="󰈐" en="󰈐" es="󰈐" fr="󰈐" it="󰈐" pt="󰈐" ru="󰈐"/>
+  <translation tag="󰈯" de="󰈯" en="󰈯" es="󰈯" fr="󰈯" it="󰈯" pt="󰈯" ru="󰈯"/>
+  <translation tag="󰈸" de="󰈸" en="󰈸" es="󰈸" fr="󰈸" it="󰈸" pt="󰈸" ru="󰈸"/>
   <translation tag="󰉋" de="󰉋" en="󰉋" es="󰉋" fr="󰉋" it="󰉋" ja="󰉋" pt="󰉋" ru="󰉋" zh="󰉋"/>
+  <translation tag="󰉙" de="󰉙" en="󰉙" es="󰉙" fr="󰉙" it="󰉙" pt="󰉙" ru="󰉙"/>
+  <translation tag="󰉹" de="󰉹" en="󰉹" es="󰉹" fr="󰉹" it="󰉹" pt="󰉹" ru="󰉹"/>
+  <translation tag="󰋗" de="󰋗" en="󰋗" es="󰋗" fr="󰋗" it="󰋗" pt="󰋗" ru="󰋗"/>
+  <translation tag="󰋜" de="󰋜" en="󰋜" es="󰋜" fr="󰋜" it="󰋜" pt="󰋜" ru="󰋜"/>
+  <translation tag="󰋣" de="󰋣" en="󰋣" es="󰋣" fr="󰋣" it="󰋣" pt="󰋣" ru="󰋣"/>
+  <translation tag="󰋮" de="󰋮" en="󰋮" es="󰋮" fr="󰋮" it="󰋮" pt="󰋮" ru="󰋮"/>
+  <translation tag="󰋼" de="󰋼" en="󰋼" es="󰋼" fr="󰋼" it="󰋼" pt="󰋼" ru="󰋼"/>
+  <translation tag="󰋽" de="󰋽" en="󰋽" es="󰋽" fr="󰋽" it="󰋽" pt="󰋽" ru="󰋽"/>
+  <translation tag="󰌗" de="󰌗" en="󰌗" es="󰌗" fr="󰌗" it="󰌗" pt="󰌗" ru="󰌗"/>
+  <translation tag="󰌨" de="󰌨" en="󰌨" es="󰌨" fr="󰌨" it="󰌨" pt="󰌨" ru="󰌨"/>
+  <translation tag="󰌪" de="󰌪" en="󰌪" es="󰌪" fr="󰌪" it="󰌪" pt="󰌪" ru="󰌪"/>
+  <translation tag="󰌵" de="󰌵" en="󰌵" es="󰌵" fr="󰌵" it="󰌵" pt="󰌵" ru="󰌵"/>
+  <translation tag="󰌶" de="󰌶" en="󰌶" es="󰌶" fr="󰌶" it="󰌶" pt="󰌶" ru="󰌶"/>
+  <translation tag="󰌾" de="󰌾" en="󰌾" es="󰌾" fr="󰌾" it="󰌾" pt="󰌾" ru="󰌾"/>
+  <translation tag="󰍴" de="󰍴" en="󰍴" es="󰍴" fr="󰍴" it="󰍴" pt="󰍴" ru="󰍴"/>
+  <translation tag="󰏖" de="󰏖" en="󰏖" es="󰏖" fr="󰏖" it="󰏖" pt="󰏖" ru="󰏖"/>
+  <translation tag="󰏤" de="󰏤" en="󰏤" es="󰏤" fr="󰏤" it="󰏤" pt="󰏤" ru="󰏤"/>
+  <translation tag="󰏫" de="󰏫" en="󰏫" es="󰏫" fr="󰏫" it="󰏫" pt="󰏫" ru="󰏫"/>
+  <translation tag="󰐊" de="󰐊" en="󰐊" es="󰐊" fr="󰐊" it="󰐊" pt="󰐊" ru="󰐊"/>
+  <translation tag="󰐌" de="󰐌" en="󰐌" es="󰐌" fr="󰐌" it="󰐌" pt="󰐌" ru="󰐌"/>
+  <translation tag="󰐕" de="󰐕" en="󰐕" es="󰐕" fr="󰐕" it="󰐕" pt="󰐕" ru="󰐕"/>
+  <translation tag="󰐥" de="󰐥" en="󰐥" es="󰐥" fr="󰐥" it="󰐥" pt="󰐥" ru="󰐥"/>
+  <translation tag="󰐪" de="󰐪" en="󰐪" es="󰐪" fr="󰐪" it="󰐪" pt="󰐪" ru="󰐪"/>
+  <translation tag="󰐫" de="󰐫" en="󰐫" es="󰐫" fr="󰐫" it="󰐫" pt="󰐫" ru="󰐫"/>
+  <translation tag="󰐸" de="󰐸" en="󰐸" es="󰐸" fr="󰐸" it="󰐸" pt="󰐸" ru="󰐸"/>
+  <translation tag="󰑎" de="󰑎" en="󰑎" es="󰑎" fr="󰑎" it="󰑎" pt="󰑎" ru="󰑎"/>
+  <translation tag="󰑐" de="󰑐" en="󰑐" es="󰑐" fr="󰑐" it="󰑐" pt="󰑐" ru="󰑐"/>
+  <translation tag="󰑥" de="󰑥" en="󰑥" es="󰑥" fr="󰑥" it="󰑥" pt="󰑥" ru="󰑥"/>
+  <translation tag="󰑧" de="󰑧" en="󰑧" es="󰑧" fr="󰑧" it="󰑧" pt="󰑧" ru="󰑧"/>
+  <translation tag="󰑩" de="󰑩" en="󰑩" es="󰑩" fr="󰑩" it="󰑩" pt="󰑩" ru="󰑩"/>
+  <translation tag="󰑭" de="󰑭" en="󰑭" es="󰑭" fr="󰑭" it="󰑭" pt="󰑭" ru="󰑭"/>
+  <translation tag="󰑹" de="󰑹" en="󰑹" es="󰑹" fr="󰑹" it="󰑹" pt="󰑹" ru="󰑹"/>
+  <translation tag="󰒊" de="󰒊" en="󰒊" es="󰒊" fr="󰒊" it="󰒊" pt="󰒊" ru="󰒊"/>
+  <translation tag="󰒓" de="󰒓" en="󰒓" es="󰒓" fr="󰒓" it="󰒓" pt="󰒓" ru="󰒓"/>
+  <translation tag="󰓅" de="󰓅" en="󰓅" es="󰓅" fr="󰓅" it="󰓅" pt="󰓅" ru="󰓅"/>
+  <translation tag="󰓛" de="󰓛" en="󰓛" es="󰓛" fr="󰓛" it="󰓛" pt="󰓛" ru="󰓛"/>
+  <translation tag="󰓾" de="󰓾" en="󰓾" es="󰓾" fr="󰓾" it="󰓾" pt="󰓾" ru="󰓾"/>
+  <translation tag="󰔏" de="󰔏" en="󰔏" es="󰔏" fr="󰔏" it="󰔏" pt="󰔏" ru="󰔏"/>
+  <translation tag="󰔟" de="󰔟" en="󰔟" es="󰔟" fr="󰔟" it="󰔟" pt="󰔟" ru="󰔟"/>
+  <translation tag="󰕌" de="󰕌" en="󰕌" es="󰕌" fr="󰕌" it="󰕌" pt="󰕌" ru="󰕌"/>
+  <translation tag="󰕦" de="󰕦" en="󰕦" es="󰕦" fr="󰕦" it="󰕦" pt="󰕦" ru="󰕦"/>
+  <translation tag="󰕧" de="󰕧" en="󰕧" es="󰕧" fr="󰕧" it="󰕧" pt="󰕧" ru="󰕧"/>
+  <translation tag="󰕮" de="󰕮" en="󰕮" es="󰕮" fr="󰕮" it="󰕮" pt="󰕮" ru="󰕮"/>
+  <translation tag="󰕰" de="󰕰" en="󰕰" es="󰕰" fr="󰕰" it="󰕰" pt="󰕰" ru="󰕰"/>
+  <translation tag="󰕲" de="󰕲" en="󰕲" es="󰕲" fr="󰕲" it="󰕲" pt="󰕲" ru="󰕲"/>
+  <translation tag="󰖌" de="󰖌" en="󰖌" es="󰖌" fr="󰖌" it="󰖌" pt="󰖌" ru="󰖌"/>
+  <translation tag="󰖡" de="󰖡" en="󰖡" es="󰖡" fr="󰖡" it="󰖡" pt="󰖡" ru="󰖡"/>
+  <translation tag="󰖩" de="󰖩" en="󰖩" es="󰖩" fr="󰖩" it="󰖩" pt="󰖩" ru="󰖩"/>
+  <translation tag="󰖪" de="󰖪" en="󰖪" es="󰖪" fr="󰖪" it="󰖪" pt="󰖪" ru="󰖪"/>
+  <translation tag="󰗘" de="󰗘" en="󰗘" es="󰗘" fr="󰗘" it="󰗘" pt="󰗘" ru="󰗘"/>
+  <translation tag="󰗡" de="󰗡" en="󰗡" es="󰗡" fr="󰗡" it="󰗡" pt="󰗡" ru="󰗡"/>
+  <translation tag="󰘬" de="󰘬" en="󰘬" es="󰘬" fr="󰘬" it="󰘬" pt="󰘬" ru="󰘬"/>
+  <translation tag="󰘮" de="󰘮" en="󰘮" es="󰘮" fr="󰘮" it="󰘮" pt="󰘮" ru="󰘮"/>
+  <translation tag="󰚥" de="󰚥" en="󰚥" es="󰚥" fr="󰚥" it="󰚥" pt="󰚥" ru="󰚥"/>
+  <translation tag="󰚩" de="󰚩" en="󰚩" es="󰚩" fr="󰚩" it="󰚩" pt="󰚩" ru="󰚩"/>
+  <translation tag="󰚰" de="󰚰" en="󰚰" es="󰚰" fr="󰚰" it="󰚰" pt="󰚰" ru="󰚰"/>
+  <translation tag="󰛨" de="󰛨" en="󰛨" es="󰛨" fr="󰛨" it="󰛨" pt="󰛨" ru="󰛨"/>
+  <translation tag="󰜗" de="󰜗" en="󰜗" es="󰜗" fr="󰜗" it="󰜗" pt="󰜗" ru="󰜗"/>
+  <translation tag="󰜮" de="󰜮" en="󰜮" es="󰜮" fr="󰜮" it="󰜮" pt="󰜮" ru="󰜮"/>
+  <translation tag="󰜱" de="󰜱" en="󰜱" es="󰜱" fr="󰜱" it="󰜱" pt="󰜱" ru="󰜱"/>
+  <translation tag="󰜴" de="󰜴" en="󰜴" es="󰜴" fr="󰜴" it="󰜴" pt="󰜴" ru="󰜴"/>
+  <translation tag="󰜷" de="󰜷" en="󰜷" es="󰜷" fr="󰜷" it="󰜷" pt="󰜷" ru="󰜷"/>
+  <translation tag="󰜺" de="󰜺" en="󰜺" es="󰜺" fr="󰜺" it="󰜺" pt="󰜺" ru="󰜺"/>
+  <translation tag="󰝘" de="󰝘" en="󰝘" es="󰝘" fr="󰝘" it="󰝘" pt="󰝘" ru="󰝘"/>
+  <translation tag="󰝰" de="󰝰" en="󰝰" es="󰝰" fr="󰝰" it="󰝰" pt="󰝰" ru="󰝰"/>
+  <translation tag="󰞖" de="󰞖" en="󰞖" es="󰞖" fr="󰞖" it="󰞖" pt="󰞖" ru="󰞖"/>
+  <translation tag="󰞙" de="󰞙" en="󰞙" es="󰞙" fr="󰞙" it="󰞙" pt="󰞙" ru="󰞙"/>
+  <translation tag="󰠝" de="󰠝" en="󰠝" es="󰠝" fr="󰠝" it="󰠝" pt="󰠝" ru="󰠝"/>
+  <translation tag="󰤇" de="󰤇" en="󰤇" es="󰤇" fr="󰤇" it="󰤇" pt="󰤇" ru="󰤇"/>
+  <translation tag="󰤟" de="󰤟" en="󰤟" es="󰤟" fr="󰤟" it="󰤟" pt="󰤟" ru="󰤟"/>
+  <translation tag="󰤠" de="󰤠" en="󰤠" es="󰤠" fr="󰤠" it="󰤠" pt="󰤠" ru="󰤠"/>
+  <translation tag="󰤡" de="󰤡" en="󰤡" es="󰤡" fr="󰤡" it="󰤡" pt="󰤡" ru="󰤡"/>
+  <translation tag="󰤢" de="󰤢" en="󰤢" es="󰤢" fr="󰤢" it="󰤢" pt="󰤢" ru="󰤢"/>
+  <translation tag="󰤤" de="󰤤" en="󰤤" es="󰤤" fr="󰤤" it="󰤤" pt="󰤤" ru="󰤤"/>
+  <translation tag="󰤥" de="󰤥" en="󰤥" es="󰤥" fr="󰤥" it="󰤥" pt="󰤥" ru="󰤥"/>
+  <translation tag="󰤧" de="󰤧" en="󰤧" es="󰤧" fr="󰤧" it="󰤧" pt="󰤧" ru="󰤧"/>
+  <translation tag="󰤨" de="󰤨" en="󰤨" es="󰤨" fr="󰤨" it="󰤨" pt="󰤨" ru="󰤨"/>
+  <translation tag="󰤪" de="󰤪" en="󰤪" es="󰤪" fr="󰤪" it="󰤪" pt="󰤪" ru="󰤪"/>
+  <translation tag="󰤺" de="󰤺" en="󰤺" es="󰤺" fr="󰤺" it="󰤺" pt="󰤺" ru="󰤺"/>
+  <translation tag="󰥛" de="󰥛" en="󰥛" es="󰥛" fr="󰥛" it="󰥛" pt="󰥛" ru="󰥛"/>
+  <translation tag="󰦖" de="󰦖" en="󰦖" es="󰦖" fr="󰦖" it="󰦖" pt="󰦖" ru="󰦖"/>
+  <translation tag="󰩆" de="󰩆" en="󰩆" es="󰩆" fr="󰩆" it="󰩆" pt="󰩆" ru="󰩆"/>
+  <translation tag="󰩦" de="󰩦" en="󰩦" es="󰩦" fr="󰩦" it="󰩦" pt="󰩦" ru="󰩦"/>
+  <translation tag="󰩺" de="󰩺" en="󰩺" es="󰩺" fr="󰩺" it="󰩺" pt="󰩺" ru="󰩺"/>
+  <translation tag="󰭜" de="󰭜" en="󰭜" es="󰭜" fr="󰭜" it="󰭜" pt="󰭜" ru="󰭜"/>
+  <translation tag="󰯂" de="󰯂" en="󰯂" es="󰯂" fr="󰯂" it="󰯂" pt="󰯂" ru="󰯂"/>
+  <translation tag="󰳡" de="󰳡" en="󰳡" es="󰳡" fr="󰳡" it="󰳡" pt="󰳡" ru="󰳡"/>
+  <translation tag="󰴻" de="󰴻" en="󰴻" es="󰴻" fr="󰴻" it="󰴻" pt="󰴻" ru="󰴻"/>
+  <translation tag="󰵉" de="󰵉" en="󰵉" es="󰵉" fr="󰵉" it="󰵉" pt="󰵉" ru="󰵉"/>
+  <translation tag="󰵌" de="󰵌" en="󰵌" es="󰵌" fr="󰵌" it="󰵌" pt="󰵌" ru="󰵌"/>
+  <translation tag="󰵑" de="󰵑" en="󰵑" es="󰵑" fr="󰵑" it="󰵑" pt="󰵑" ru="󰵑"/>
+  <translation tag="󰵕" de="󰵕" en="󰵕" es="󰵕" fr="󰵕" it="󰵕" pt="󰵕" ru="󰵕"/>
+  <translation tag="󰸄" de="󰸄" en="󰸄" es="󰸄" fr="󰸄" it="󰸄" pt="󰸄" ru="󰸄"/>
+  <translation tag="󰸅" de="󰸅" en="󰸅" es="󰸅" fr="󰸅" it="󰸅" pt="󰸅" ru="󰸅"/>
+  <translation tag="󰹏" de="󰹏" en="󰹏" es="󰹏" fr="󰹏" it="󰹏" pt="󰹏" ru="󰹏"/>
+  <translation tag="󰹛" de="󰹛" en="󰹛" es="󰹛" fr="󰹛" it="󰹛" pt="󰹛" ru="󰹛"/>
+  <translation tag="󰹳" de="󰹳" en="󰹳" es="󰹳" fr="󰹳" it="󰹳" pt="󰹳" ru="󰹳"/>
+  <translation tag="󰹹" de="󰹹" en="󰹹" es="󰹹" fr="󰹹" it="󰹹" pt="󰹹" ru="󰹹"/>
+  <translation tag="󰻇" de="󰻇" en="󰻇" es="󰻇" fr="󰻇" it="󰻇" pt="󰻇" ru="󰻇"/>
+  <translation tag="󰾅" de="󰾅" en="󰾅" es="󰾅" fr="󰾅" it="󰾅" pt="󰾅" ru="󰾅"/>
+  <translation tag="󰾆" de="󰾆" en="󰾆" es="󰾆" fr="󰾆" it="󰾆" pt="󰾆" ru="󰾆"/>
+  <translation tag="󰾜" de="󰾜" en="󰾜" es="󰾜" fr="󰾜" it="󰾜" pt="󰾜" ru="󰾜"/>
+  <translation tag="󱊍" de="󱊍" en="󱊍" es="󱊍" fr="󱊍" it="󱊍" pt="󱊍" ru="󱊍"/>
+  <translation tag="󱌣" de="󱌣" en="󱌣" es="󱌣" fr="󱌣" it="󱌣" pt="󱌣" ru="󱌣"/>
+  <translation tag="󱕂" de="󱕂" en="󱕂" es="󱕂" fr="󱕂" it="󱕂" pt="󱕂" ru="󱕂"/>
+  <translation tag="󱕃" de="󱕃" en="󱕃" es="󱕃" fr="󱕃" it="󱕃" pt="󱕃" ru="󱕃"/>
+  <translation tag="󱚵" de="󱚵" en="󱚵" es="󱚵" fr="󱚵" it="󱚵" pt="󱚵" ru="󱚵"/>
+  <translation tag="󱚽" de="󱚽" en="󱚽" es="󱚽" fr="󱚽" it="󱚽" pt="󱚽" ru="󱚽"/>
+  <translation tag="󱚿" de="󱚿" en="󱚿" es="󱚿" fr="󱚿" it="󱚿" pt="󱚿" ru="󱚿"/>
+  <translation tag="󱞿" de="󱞿" en="󱞿" es="󱞿" fr="󱞿" it="󱞿" pt="󱞿" ru="󱞿"/>
+  <translation tag="󱢸" de="󱢸" en="󱢸" es="󱢸" fr="󱢸" it="󱢸" pt="󱢸" ru="󱢸"/>
   <translation tag="󱧰" de="󱧰" en="󱧰" es="󱧰" fr="󱧰" it="󱧰" ja="󱧰" pt="󱧰" ru="󱧰" zh="󱧰"/>
+  <translation tag="󱩅" de="󱩅" en="󱩅" es="󱩅" fr="󱩅" it="󱩅" pt="󱩅" ru="󱩅"/>
+  <translation tag="󱩎" de="󱩎" en="󱩎" es="󱩎" fr="󱩎" it="󱩎" pt="󱩎" ru="󱩎"/>
+  <translation tag="󱩏" de="󱩏" en="󱩏" es="󱩏" fr="󱩏" it="󱩏" pt="󱩏" ru="󱩏"/>
+  <translation tag="󱩐" de="󱩐" en="󱩐" es="󱩐" fr="󱩐" it="󱩐" pt="󱩐" ru="󱩐"/>
+  <translation tag="󱩑" de="󱩑" en="󱩑" es="󱩑" fr="󱩑" it="󱩑" pt="󱩑" ru="󱩑"/>
+  <translation tag="󱩒" de="󱩒" en="󱩒" es="󱩒" fr="󱩒" it="󱩒" pt="󱩒" ru="󱩒"/>
+  <translation tag="󱩓" de="󱩓" en="󱩓" es="󱩓" fr="󱩓" it="󱩓" pt="󱩓" ru="󱩓"/>
+  <translation tag="󱩔" de="󱩔" en="󱩔" es="󱩔" fr="󱩔" it="󱩔" pt="󱩔" ru="󱩔"/>
+  <translation tag="󱩕" de="󱩕" en="󱩕" es="󱩕" fr="󱩕" it="󱩕" pt="󱩕" ru="󱩕"/>
+  <translation tag="󱩖" de="󱩖" en="󱩖" es="󱩖" fr="󱩖" it="󱩖" pt="󱩖" ru="󱩖"/>
+  <translation tag="󱬵" de="󱬵" en="󱬵" es="󱬵" fr="󱬵" it="󱬵" pt="󱬵" ru="󱬵"/>
 </translations>

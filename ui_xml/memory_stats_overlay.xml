@@ -9,39 +9,39 @@
         style_shadow_color="#screen_bg" style_layout="flex" style_flex_flow="column">
     <!-- Title -->
     <lv_label name="memory_title"
-              width="100%" text="Memory (MB)" style_text_font="noto_sans_12" style_text_color="#text_muted"
+              width="100%" text="Memory (MB)" translation_tag="Memory (MB)" style_text_font="noto_sans_12" style_text_color="#text_muted"
               style_text_align="center"/>
     <!-- RSS row -->
     <lv_obj width="100%"
             height="content" style_pad_all="0" style_layout="flex" style_flex_flow="row"
             style_flex_main_place="space_between">
-      <lv_label text="RSS:" style_text_font="noto_sans_14" style_text_color="#text_muted"/>
-      <lv_label name="rss_value" text="--" style_text_font="noto_sans_14" style_text_color="#text"/>
+      <lv_label text="RSS:" translation_tag="RSS:" style_text_font="noto_sans_14" style_text_color="#text_muted"/>
+      <lv_label name="rss_value" text="--" translation_tag="--" style_text_font="noto_sans_14" style_text_color="#text"/>
     </lv_obj>
     <!-- Peak row -->
     <lv_obj width="100%"
             height="content" style_pad_all="0" style_layout="flex" style_flex_flow="row"
             style_flex_main_place="space_between">
-      <lv_label text="Peak:" style_text_font="noto_sans_14" style_text_color="#text_muted"/>
-      <lv_label name="hwm_value" text="--" style_text_font="noto_sans_14" style_text_color="#text"/>
+      <lv_label text="Peak:" translation_tag="Peak:" style_text_font="noto_sans_14" style_text_color="#text_muted"/>
+      <lv_label name="hwm_value" text="--" translation_tag="--" style_text_font="noto_sans_14" style_text_color="#text"/>
     </lv_obj>
     <!-- Private row -->
     <lv_obj width="100%"
             height="content" style_pad_all="0" style_layout="flex" style_flex_flow="row"
             style_flex_main_place="space_between">
-      <lv_label text="Private:" style_text_font="noto_sans_14" style_text_color="#text_muted"/>
-      <lv_label name="private_value" text="--" style_text_font="noto_sans_14" style_text_color="#text"/>
+      <lv_label text="Private:" translation_tag="Private:" style_text_font="noto_sans_14" style_text_color="#text_muted"/>
+      <lv_label name="private_value" text="--" translation_tag="--" style_text_font="noto_sans_14" style_text_color="#text"/>
     </lv_obj>
     <!-- Delta row -->
     <lv_obj width="100%"
             height="content" style_pad_all="0" style_layout="flex" style_flex_flow="row"
             style_flex_main_place="space_between">
-      <lv_label text="Delta:" style_text_font="noto_sans_14" style_text_color="#text_muted"/>
-      <lv_label name="delta_value" text="--" style_text_font="noto_sans_14" style_text_color="#success"/>
+      <lv_label text="Delta:" translation_tag="Delta:" style_text_font="noto_sans_14" style_text_color="#text_muted"/>
+      <lv_label name="delta_value" text="--" translation_tag="--" style_text_font="noto_sans_14" style_text_color="#success"/>
     </lv_obj>
     <!-- Hint -->
     <lv_label name="memory_hint"
-              width="100%" text="M to toggle" style_text_font="noto_sans_10" style_text_color="#text_subtle"
+              width="100%" text="M to toggle" translation_tag="M to toggle" style_text_font="noto_sans_10" style_text_color="#text_subtle"
               style_text_align="center" style_margin_top="#space_xs"/>
   </view>
 </component>

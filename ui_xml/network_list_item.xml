@@ -9,7 +9,7 @@
         style_pad_all="#space_xs" style_pad_gap="#space_xs" flex_flow="row" clickable="true"
         style_flex_main_place="space_between" style_flex_cross_place="center">
     <!-- Left: SSID -->
-    <text_body name="network_ssid" text="Network Name" flex_grow="1"/>
+    <text_body name="network_ssid" text="Network Name" translation_tag="Network Name" flex_grow="1"/>
     <!-- Right: Connected indicator + Signal icon -->
     <lv_obj width="60"
             height="#space_2xl" style_pad_all="0" style_pad_gap="#space_sm" flex_flow="row" style_flex_main_place="end"

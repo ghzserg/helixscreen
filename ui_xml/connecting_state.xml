@@ -2,7 +2,7 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Reusable connecting state component (spinner + text) -->
-<!-- Usage: <connecting_state text="Connecting to network..."/> -->
+<!-- Usage: <connecting_state text="Connecting to network..." translation_tag="Connecting to network..."/> -->
 <component>
   <api>
     <prop name="text" type="string" default="Connecting..."/>

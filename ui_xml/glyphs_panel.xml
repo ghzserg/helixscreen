@@ -9,7 +9,7 @@
       <lv_obj width="100%"
               height="#header_height" style_bg_color="#card_bg" style_pad_all="#space_lg" flex_flow="row"
               style_flex_main_place="space_between" style_flex_cross_place="center">
-        <text_heading text="MDI Icons"/>
+        <text_heading text="MDI Icons" translation_tag="MDI Icons"/>
         <text_small name="glyph_count_label"/>
       </lv_obj>
       <!-- Scrollable content area -->

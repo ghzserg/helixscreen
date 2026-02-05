@@ -11,6 +11,7 @@
 #include "ui_print_preparation_manager.h"
 #include "ui_utils.h"
 
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -346,9 +347,9 @@ void PrintSelectDetailView::show_delete_confirmation(const std::string& filename
              "Are you sure you want to delete '%s'? This action cannot be undone.",
              filename.c_str());
 
-    confirmation_dialog_widget_ =
-        ui_modal_show_confirmation("Delete File?", msg_buf, ModalSeverity::Warning, "Delete",
-                                   on_confirm_delete_static, on_cancel_delete_static, this);
+    confirmation_dialog_widget_ = ui_modal_show_confirmation(
+        lv_tr("Delete File?"), msg_buf, ModalSeverity::Warning, lv_tr("Delete"),
+        on_confirm_delete_static, on_cancel_delete_static, this);
 
     if (!confirmation_dialog_widget_) {
         spdlog::error("[DetailView] Failed to create confirmation dialog");

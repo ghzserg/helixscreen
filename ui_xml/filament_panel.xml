@@ -28,13 +28,13 @@
                  flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start"
                  style_pad_gap="#space_md">
           <!-- Header -->
-          <text_body text="Temperature" align="left_mid"/>
+          <text_body text="Temperature" translation_tag="Temperature" align="left_mid"/>
           <!-- Nozzle Row: Current / Target (entire row tappable) -->
           <lv_obj width="100%"
                   height="content" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" clickable="true">
             <event_cb trigger="clicked" callback="on_filament_nozzle_target_tap"/>
-            <text_small text="Nozzle" clickable="false" event_bubble="true"/>
+            <text_small text="Nozzle" translation_tag="Nozzle" clickable="false" event_bubble="true"/>
             <lv_obj
                     height="content" flex_flow="row" style_pad_all="0"
                     scrollable="false" style_flex_cross_place="center" style_pad_gap="#space_xs" clickable="false"
@@ -57,7 +57,7 @@
                   height="content" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" clickable="true">
             <event_cb trigger="clicked" callback="on_filament_bed_target_tap"/>
-            <text_small text="Bed" clickable="false" event_bubble="true"/>
+            <text_small text="Bed" translation_tag="Bed" clickable="false" event_bubble="true"/>
             <lv_obj
                     height="content" flex_flow="row" style_pad_all="0"
                     scrollable="false" style_flex_cross_place="center" style_pad_gap="#space_xs" clickable="false"
@@ -100,7 +100,7 @@
                 height="content" style_pad_all="0" scrollable="false"
                 flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
           <icon src="filament" size="sm" variant="secondary"/>
-          <text_body text="Multi-Filament" style_translate_y="2"/>
+          <text_body text="Multi-Filament" translation_tag="Multi-Filament" style_translate_y="2"/>
         </lv_obj>
         <!-- AMS mini status + Manage button row -->
         <lv_obj width="100%"
@@ -111,7 +111,7 @@
           <ams_mini_status flex_grow="1"/>
           <!-- Manage Button -->
           <ui_button name="btn_manage_slots"
-                     width="content" text="Manage"
+                     width="content" text="Manage" translation_tag="Manage"
                      style_pad_left="#space_md" style_pad_right="#space_md">
             <event_cb trigger="clicked" callback="filament_manage_slots_cb"/>
           </ui_button>
@@ -129,7 +129,7 @@
               width="100%" height="content" style_pad_all="0" scrollable="false"
               flex_flow="column" style_pad_gap="#space_md">
         <!-- Material Selection Header -->
-        <text_body text="Material" align="left_mid"/>
+        <text_body text="Material" translation_tag="Material" align="left_mid"/>
         <!-- Material Preset Buttons (2x2 Grid: PLA, PETG, ABS, TPU) -->
         <lv_obj name="preset_grid"
                 width="100%" height="content" style_pad_all="0"
@@ -143,15 +143,15 @@
             <ui_button name="preset_pla" height="content" flex_grow="1" layout="column"
                        state_trickle="true" style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_pla"/>
-              <text_body text="PLA" style_text_color:checked="#text"/>
-              <text_small text="210°C / 60°C" style_text_align="center"
+              <text_body text="PLA" translation_tag="PLA" style_text_color:checked="#text"/>
+              <text_small text="210°C / 60°C" translation_tag="210°C / 60°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
             <ui_button name="preset_petg" height="content" flex_grow="1" layout="column"
                        state_trickle="true" style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_petg"/>
-              <text_body text="PETG" style_text_color:checked="#text"/>
-              <text_small text="240°C / 80°C" style_text_align="center"
+              <text_body text="PETG" translation_tag="PETG" style_text_color:checked="#text"/>
+              <text_small text="240°C / 80°C" translation_tag="240°C / 80°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
           </lv_obj>
@@ -163,15 +163,15 @@
             <ui_button name="preset_abs" height="content" flex_grow="1" layout="column"
                        state_trickle="true" style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_abs"/>
-              <text_body text="ABS" style_text_color:checked="#text"/>
-              <text_small text="250°C / 100°C" style_text_align="center"
+              <text_body text="ABS" translation_tag="ABS" style_text_color:checked="#text"/>
+              <text_small text="250°C / 100°C" translation_tag="250°C / 100°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
             <ui_button name="preset_tpu" height="content" flex_grow="1" layout="column"
                        state_trickle="true" style_pad_ver="#space_sm">
               <event_cb trigger="clicked" callback="on_filament_preset_tpu"/>
-              <text_body text="TPU" style_text_color:checked="#text"/>
-              <text_small text="230°C / 50°C" style_text_align="center"
+              <text_body text="TPU" translation_tag="TPU" style_text_color:checked="#text"/>
+              <text_small text="230°C / 50°C" translation_tag="230°C / 50°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
           </lv_obj>
@@ -179,7 +179,7 @@
         <!-- Cooldown Button (visible when heating) -->
         <ui_button name="btn_cooldown"
                    width="100%" height="#button_height"
-                   style_bg_color="#temp_gradient_cold" icon="cooldown" text="Cool Down">
+                   style_bg_color="#temp_gradient_cold" icon="cooldown" text="Cool Down" translation_tag="Cool Down">
           <bind_flag_if_eq subject="filament_nozzle_heating" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="on_filament_cooldown"/>
         </ui_button>
@@ -189,29 +189,29 @@
               width="100%" height="content" style_pad_all="0" scrollable="false"
               flex_flow="column" style_pad_gap="#space_sm">
         <!-- Filament Operations Header -->
-        <text_body text="Operations" align="left_mid"/>
+        <text_body text="Operations" translation_tag="Operations" align="left_mid"/>
         <!-- Purge Amount Selector -->
         <lv_obj name="purge_amount_row"
                 width="100%" height="content" style_pad_all="0"
                 scrollable="false" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
                 style_pad_gap="#space_sm">
-          <text_small text="Length:"/>
+          <text_small text="Length:" translation_tag="Length:"/>
           <ui_button name="purge_5mm"
-                     height="#button_height_sm" flex_grow="1" text="5mm">
+                     height="#button_height_sm" flex_grow="1" text="5mm" translation_tag="5mm">
             <!-- L040: TWO bind_styles (selected/unselected) with boolean subject -->
             <bind_style name="purge_btn_selected" subject="filament_purge_5mm_active" ref_value="1"/>
             <bind_style name="purge_btn_unselected" subject="filament_purge_5mm_active" ref_value="0"/>
             <event_cb trigger="clicked" callback="on_filament_purge_5mm"/>
           </ui_button>
           <ui_button name="purge_10mm"
-                     height="#button_height_sm" flex_grow="1" text="10mm">
+                     height="#button_height_sm" flex_grow="1" text="10mm" translation_tag="10mm">
             <!-- L040: TWO bind_styles (selected/unselected) with boolean subject -->
             <bind_style name="purge_btn_selected" subject="filament_purge_10mm_active" ref_value="1"/>
             <bind_style name="purge_btn_unselected" subject="filament_purge_10mm_active" ref_value="0"/>
             <event_cb trigger="clicked" callback="on_filament_purge_10mm"/>
           </ui_button>
           <ui_button name="purge_25mm"
-                     height="#button_height_sm" flex_grow="1" text="25mm">
+                     height="#button_height_sm" flex_grow="1" text="25mm" translation_tag="25mm">
             <!-- L040: TWO bind_styles (selected/unselected) with boolean subject -->
             <bind_style name="purge_btn_selected" subject="filament_purge_25mm_active" ref_value="1"/>
             <bind_style name="purge_btn_unselected" subject="filament_purge_25mm_active" ref_value="0"/>
@@ -229,19 +229,19 @@
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_gap="#space_sm">
             <ui_button name="btn_load"
-                       height="#button_height" flex_grow="1" icon="arrow_down" text="Load">
+                       height="#button_height" flex_grow="1" icon="arrow_down" text="Load" translation_tag="Load">
               <bind_state_if_eq subject="filament_safety_warning_visible" state="disabled" ref_value="1"/>
               <event_cb trigger="clicked" callback="on_filament_load"/>
             </ui_button>
             <ui_button name="btn_unload"
-                       height="#button_height" flex_grow="1" icon="arrow_up" text="Unload">
+                       height="#button_height" flex_grow="1" icon="arrow_up" text="Unload" translation_tag="Unload">
               <bind_state_if_eq subject="filament_safety_warning_visible" state="disabled" ref_value="1"/>
               <event_cb trigger="clicked" callback="on_filament_unload"/>
             </ui_button>
           </lv_obj>
           <!-- Purge Button -->
           <ui_button name="btn_purge"
-                     width="100%" height="#button_height" icon="filament" text="Purge">
+                     width="100%" height="#button_height" icon="filament" text="Purge" translation_tag="Purge">
             <bind_state_if_eq subject="filament_safety_warning_visible" state="disabled" ref_value="1"/>
             <event_cb trigger="clicked" callback="on_filament_purge"/>
           </ui_button>

@@ -8,7 +8,7 @@
     <style name="z_amount_unselected" bg_color="#primary" bg_opa="40"/>
   </styles>
   <!-- Print Tuning Panel: Speed and Flow adjustment during active print -->
-  <view name="print_tune_panel" extends="overlay_panel" title="Print Tuning">
+  <view name="print_tune_panel" extends="overlay_panel" title="Print Tuning" title_tag="Print Tuning">
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" scrollable="false" flex_flow="column"
@@ -21,7 +21,7 @@
         <lv_obj name="speed_section"
                 height="content" flex_grow="1" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm"
                 flag_overflow_visible="true" scrollable="false">
-          <text_small text="Print Speed"/>
+          <text_small text="Print Speed" translation_tag="Print Speed"/>
           <text_heading name="speed_display" bind_text="tune_speed_display"/>
           <lv_slider name="speed_slider"
                      width="100%" height="#space_lg" min_value="50" max_value="200" value="100"
@@ -29,13 +29,13 @@
             <event_cb trigger="value_changed" callback="on_tune_speed_display"/>
             <event_cb trigger="released" callback="on_tune_speed_send"/>
           </lv_slider>
-          <text_small text="Movement speed"/>
+          <text_small text="Movement speed" translation_tag="Movement speed"/>
         </lv_obj>
         <!-- Flow Control (right) -->
         <lv_obj name="flow_section"
                 height="content" flex_grow="1" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm"
                 flag_overflow_visible="true" scrollable="false">
-          <text_small text="Flow Rate"/>
+          <text_small text="Flow Rate" translation_tag="Flow Rate"/>
           <text_heading name="flow_display" bind_text="tune_flow_display"/>
           <lv_slider name="flow_slider"
                      width="100%" height="#space_lg" min_value="75" max_value="125" value="100"
@@ -43,11 +43,11 @@
             <event_cb trigger="value_changed" callback="on_tune_flow_display"/>
             <event_cb trigger="released" callback="on_tune_flow_send"/>
           </lv_slider>
-          <text_small text="Extrusion rate"/>
+          <text_small text="Extrusion rate" translation_tag="Extrusion rate"/>
         </lv_obj>
       </lv_obj>
       <!-- Reset Speed & Flow Button (under sliders) -->
-      <ui_button name="btn_reset" width="100%" icon="refresh" text="Reset Speed &amp; Flow to 100%">
+      <ui_button name="btn_reset" width="100%" icon="refresh" text="Reset Speed &amp; Flow to 100%" translation_tag="Reset Speed &amp; Flow to 100%">
         <event_cb trigger="clicked" callback="on_tune_reset_clicked"/>
       </ui_button>
       <!-- Spacer to push Z-offset to bottom -->
@@ -60,7 +60,7 @@
         <lv_obj width="100%"
                 height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                 style_flex_main_place="space_between" style_flex_cross_place="center">
-          <text_body text="Z-Offset"/>
+          <text_body text="Z-Offset" translation_tag="Z-Offset"/>
           <text_heading name="z_offset_display" bind_text="tune_z_offset_display"/>
         </lv_obj>
 
@@ -123,8 +123,8 @@
             </ui_button>
           </lv_obj>
         </lv_obj>
-        <text_small text="Closer = more squish | Farther = less squish"/>
-        <text_small name="z_offset_help_text" text="Temporary adjustment for this print, unless saved on Controls panel"/>
+        <text_small text="Closer = more squish | Farther = less squish" translation_tag="Closer = more squish | Farther = less squish"/>
+        <text_small name="z_offset_help_text" text="Temporary adjustment for this print, unless saved on Controls panel" translation_tag="Temporary adjustment for this print, unless saved on Controls panel"/>
       </lv_obj>
     </lv_obj>
   </view>

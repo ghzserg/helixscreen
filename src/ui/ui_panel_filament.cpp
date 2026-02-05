@@ -20,6 +20,7 @@
 #include "app_globals.h"
 #include "filament_database.h"
 #include "filament_sensor_manager.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -984,10 +985,11 @@ void FilamentPanel::show_load_warning() {
     }
 
     load_warning_dialog_ = ui_modal_show_confirmation(
-        "Filament Detected",
-        "The toolhead sensor indicates filament is already loaded. "
-        "Proceed with load anyway?",
-        ModalSeverity::Warning, "Proceed", on_load_warning_proceed, on_load_warning_cancel, this);
+        lv_tr("Filament Detected"),
+        lv_tr("The toolhead sensor indicates filament is already loaded. "
+              "Proceed with load anyway?"),
+        ModalSeverity::Warning, lv_tr("Proceed"), on_load_warning_proceed, on_load_warning_cancel,
+        this);
 
     if (!load_warning_dialog_) {
         spdlog::error("[{}] Failed to create load warning dialog", get_name());
@@ -1005,11 +1007,11 @@ void FilamentPanel::show_unload_warning() {
     }
 
     unload_warning_dialog_ =
-        ui_modal_show_confirmation("No Filament Detected",
-                                   "The toolhead sensor indicates no filament is present. "
-                                   "Proceed with unload anyway?",
-                                   ModalSeverity::Warning, "Proceed", on_unload_warning_proceed,
-                                   on_unload_warning_cancel, this);
+        ui_modal_show_confirmation(lv_tr("No Filament Detected"),
+                                   lv_tr("The toolhead sensor indicates no filament is present. "
+                                         "Proceed with unload anyway?"),
+                                   ModalSeverity::Warning, lv_tr("Proceed"),
+                                   on_unload_warning_proceed, on_unload_warning_cancel, this);
 
     if (!unload_warning_dialog_) {
         spdlog::error("[{}] Failed to create unload warning dialog", get_name());

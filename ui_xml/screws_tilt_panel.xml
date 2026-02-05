@@ -28,7 +28,7 @@
         extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_bg_opa="255"
         style_bg_color="#card_bg" style_pad_all="0" style_border_width="0" scrollable="false" flex_flow="column">
     <!-- Header Bar -->
-    <header_bar name="overlay_header" title="Bed Screw Adjustment"/>
+    <header_bar name="overlay_header" title="Bed Screw Adjustment" title_tag="Bed Screw Adjustment"/>
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_md"
@@ -42,25 +42,25 @@
         <bind_flag_if_not_eq subject="screws_tilt_state" flag="hidden" ref_value="0"/>
         <!-- Instructions -->
         <lv_obj width="100%" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm">
-          <text_heading width="100%" text="Manual Bed Leveling" style_text_align="center"/>
+          <text_heading width="100%" text="Manual Bed Leveling" translation_tag="Manual Bed Leveling" style_text_align="center"/>
           <text_small width="100%"
-                      text="This tool probes each bed screw and tells you how much to adjust." style_text_align="center"/>
+                      text="This tool probes each bed screw and tells you how much to adjust." translation_tag="This tool probes each bed screw and tells you how much to adjust." style_text_align="center"/>
           <!-- Generic text - not hex-key specific -->
           <text_small width="100%"
-                      text="Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't adjusted with                              thumb wheels or some other built-in mechanism."
+                      text="Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't adjusted with                              thumb wheels or some other built-in mechanism." translation_tag="Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't adjusted with                              thumb wheels or some other built-in mechanism."
                       style_text_align="center"/>
         </lv_obj>
         <!-- Steps Preview -->
         <lv_obj width="90%"
                 height="content" style_bg_color="#section_bg_color" style_radius="#border_radius"
                 style_pad_all="#space_lg" flex_flow="column" style_pad_gap="#space_xs">
-          <text_small width="100%" text="1. Printer will home and probe each screw"/>
-          <text_small width="100%" text="2. Results show how much to turn each screw"/>
-          <text_small width="100%" text="3. Adjust screws, then re-probe to verify"/>
-          <text_small width="100%" text="4. Repeat until bed is level"/>
+          <text_small width="100%" text="1. Printer will home and probe each screw" translation_tag="1. Printer will home and probe each screw"/>
+          <text_small width="100%" text="2. Results show how much to turn each screw" translation_tag="2. Results show how much to turn each screw"/>
+          <text_small width="100%" text="3. Adjust screws, then re-probe to verify" translation_tag="3. Adjust screws, then re-probe to verify"/>
+          <text_small width="100%" text="4. Repeat until bed is level" translation_tag="4. Repeat until bed is level"/>
         </lv_obj>
         <!-- Start Button -->
-        <ui_button name="btn_start" width="#panel_button_width" text="Start Probing">
+        <ui_button name="btn_start" width="#panel_button_width" text="Start Probing" translation_tag="Start Probing">
           <event_cb trigger="clicked" callback="screws_tilt_start_cb"/>
         </ui_button>
       </lv_obj>
@@ -72,11 +72,11 @@
               style_flex_cross_place="center" style_pad_gap="#space_lg" scrollable="false">
         <bind_flag_if_not_eq subject="screws_tilt_state" flag="hidden" ref_value="1"/>
         <spinner size="lg"/>
-        <text_heading text="Probing Bed Screws..." style_text_align="center"/>
+        <text_heading text="Probing Bed Screws..." translation_tag="Probing Bed Screws..." style_text_align="center"/>
         <text_small width="80%"
-                    text="Please wait while the printer probes each screw position." style_text_align="center"/>
+                    text="Please wait while the printer probes each screw position." translation_tag="Please wait while the printer probes each screw position." style_text_align="center"/>
         <!-- Cancel Button -->
-        <ui_button name="btn_cancel_probing" width="#panel_button_width" text="Cancel" variant="danger">
+        <ui_button name="btn_cancel_probing" width="#panel_button_width" text="Cancel" translation_tag="Cancel" variant="danger">
           <event_cb trigger="clicked" callback="screws_tilt_cancel_cb"/>
         </ui_button>
       </lv_obj>
@@ -97,7 +97,7 @@
             <!-- Screw indicators positioned dynamically by C++ code using LVGL alignment -->
           </lv_obj>
           <!-- FRONT label below diagram -->
-          <text_xs text="^ FRONT"/>
+          <text_xs text="^ FRONT" translation_tag="^ FRONT"/>
         </lv_obj>
         <!-- RIGHT: Screw List + Buttons (takes ~55% width) -->
         <lv_obj name="results_right_column"
@@ -105,7 +105,7 @@
                 scrollable="false">
           <!-- Instruction text -->
           <text_small name="results_instruction"
-                      width="100%" text="Adjust screws, then re-probe." style_text_align="center"/>
+                      width="100%" text="Adjust screws, then re-probe." translation_tag="Adjust screws, then re-probe." style_text_align="center"/>
           <!-- Legend for rotation icons -->
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="center"
@@ -114,13 +114,13 @@
                     style_pad_all="0" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_xs"
                     scrollable="false">
               <icon src="rotate_right" size="xs" variant="secondary"/>
-              <text_xs text="= Tighten"/>
+              <text_xs text="= Tighten" translation_tag="= Tighten"/>
             </lv_obj>
             <lv_obj height="content"
                     style_pad_all="0" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_xs"
                     scrollable="false">
               <icon src="rotate_left" size="xs" variant="secondary"/>
-              <text_xs text="= Loosen"/>
+              <text_xs text="= Loosen" translation_tag="= Loosen"/>
             </lv_obj>
           </lv_obj>
           <!-- Screw List - 4 pre-defined rows with subject bindings -->
@@ -172,10 +172,10 @@
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="center"
                   style_pad_gap="#space_sm" scrollable="false">
-            <ui_button name="btn_done_results" width="100" height="#button_height_sm" text="Done">
+            <ui_button name="btn_done_results" width="100" height="#button_height_sm" text="Done" translation_tag="Done">
               <event_cb trigger="clicked" callback="screws_tilt_done_cb"/>
             </ui_button>
-            <ui_button name="btn_reprobe" width="120" height="#button_height_sm" text="Re-probe">
+            <ui_button name="btn_reprobe" width="120" height="#button_height_sm" text="Re-probe" translation_tag="Re-probe">
               <event_cb trigger="clicked" callback="screws_tilt_reprobe_cb"/>
             </ui_button>
           </lv_obj>
@@ -189,10 +189,10 @@
               style_flex_cross_place="center" style_pad_gap="#space_lg" scrollable="false">
         <bind_flag_if_not_eq subject="screws_tilt_state" flag="hidden" ref_value="3"/>
         <lv_label text="#icon_check_circle" style_text_font="mdi_icons_48" style_text_color="#success"/>
-        <text_heading text="Bed is Level!" style_text_align="center"/>
-        <text_muted text="All screws are within tolerance."/>
-        <text_small name="probe_count_label" text="Completed in 3 probes"/>
-        <ui_button name="btn_done_leveled" width="#panel_button_width" text="Done">
+        <text_heading text="Bed is Level!" translation_tag="Bed is Level!" style_text_align="center"/>
+        <text_muted text="All screws are within tolerance." translation_tag="All screws are within tolerance."/>
+        <text_small name="probe_count_label" text="Completed in 3 probes" translation_tag="Completed in 3 probes"/>
+        <ui_button name="btn_done_leveled" width="#panel_button_width" text="Done" translation_tag="Done">
           <event_cb trigger="clicked" callback="screws_tilt_done_cb"/>
         </ui_button>
       </lv_obj>
@@ -204,16 +204,16 @@
               style_flex_cross_place="center" style_pad_gap="#space_lg" scrollable="false">
         <bind_flag_if_not_eq subject="screws_tilt_state" flag="hidden" ref_value="4"/>
         <lv_label text="#icon_xmark_circle" style_text_font="mdi_icons_48" style_text_color="#danger"/>
-        <text_heading text="Probing Failed" style_text_align="center"/>
+        <text_heading text="Probing Failed" translation_tag="Probing Failed" style_text_align="center"/>
         <text_muted name="error_message"
-                    width="80%" text="An error occurred during probing." style_text_align="center" long_mode="wrap"/>
+                    width="80%" text="An error occurred during probing." translation_tag="An error occurred during probing." style_text_align="center" long_mode="wrap"/>
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="center"
                 style_pad_gap="#space_md" scrollable="false">
-          <ui_button name="btn_close_error" width="#panel_button_width" text="Close">
+          <ui_button name="btn_close_error" width="#panel_button_width" text="Close" translation_tag="Close">
             <event_cb trigger="clicked" callback="screws_tilt_done_cb"/>
           </ui_button>
-          <ui_button name="btn_retry" width="#panel_button_width" text="Retry">
+          <ui_button name="btn_retry" width="#panel_button_width" text="Retry" translation_tag="Retry">
             <event_cb trigger="clicked" callback="screws_tilt_retry_cb"/>
           </ui_button>
         </lv_obj>

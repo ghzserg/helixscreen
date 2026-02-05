@@ -9,6 +9,7 @@
 #include "ui_utils.h"
 
 #include "abort_manager.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
 
 #include <spdlog/spdlog.h>
@@ -135,7 +136,7 @@ void EmergencyStopOverlay::create() {
                             spdlog::info(
                                 "[KlipperRecovery] Klipper is READY, dismissing recovery dialog");
                             inst.dismiss_recovery_dialog();
-                            ui_toast_show(ToastSeverity::SUCCESS, "Printer ready", 3000);
+                            ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Printer ready"), 3000);
                         }
                     },
                     nullptr);
@@ -181,7 +182,7 @@ void EmergencyStopOverlay::handle_click() {
 void EmergencyStopOverlay::execute_emergency_stop() {
     if (!api_) {
         spdlog::error("[EmergencyStop] Cannot execute: API not available");
-        ui_toast_show(ToastSeverity::ERROR, "Emergency stop failed: not connected", 4000);
+        ui_toast_show(ToastSeverity::ERROR, lv_tr("Emergency stop failed: not connected"), 4000);
         return;
     }
 
@@ -190,7 +191,7 @@ void EmergencyStopOverlay::execute_emergency_stop() {
     api_->emergency_stop(
         []() {
             spdlog::info("[EmergencyStop] Emergency stop command sent successfully");
-            ui_toast_show(ToastSeverity::WARNING, "Emergency stop activated", 5000);
+            ui_toast_show(ToastSeverity::WARNING, lv_tr("Emergency stop activated"), 5000);
 
             // Proactively show recovery dialog after E-stop
             // We know Klipper will be in SHUTDOWN state - don't wait for notification
@@ -281,7 +282,7 @@ void EmergencyStopOverlay::dismiss_recovery_dialog() {
 void EmergencyStopOverlay::restart_klipper() {
     if (!api_) {
         spdlog::error("[KlipperRecovery] Cannot restart: API not available");
-        ui_toast_show(ToastSeverity::ERROR, "Restart failed: not connected", 4000);
+        ui_toast_show(ToastSeverity::ERROR, lv_tr("Restart failed: not connected"), 4000);
         return;
     }
 
@@ -289,7 +290,7 @@ void EmergencyStopOverlay::restart_klipper() {
     restart_in_progress_ = true;
 
     spdlog::info("[KlipperRecovery] Restarting Klipper...");
-    ui_toast_show(ToastSeverity::INFO, "Restarting Klipper...", 3000);
+    ui_toast_show(ToastSeverity::INFO, lv_tr("Restarting Klipper..."), 3000);
 
     api_->restart_klipper(
         []() {
@@ -306,7 +307,7 @@ void EmergencyStopOverlay::restart_klipper() {
 void EmergencyStopOverlay::firmware_restart() {
     if (!api_) {
         spdlog::error("[KlipperRecovery] Cannot firmware restart: API not available");
-        ui_toast_show(ToastSeverity::ERROR, "Restart failed: not connected", 4000);
+        ui_toast_show(ToastSeverity::ERROR, lv_tr("Restart failed: not connected"), 4000);
         return;
     }
 
@@ -314,7 +315,7 @@ void EmergencyStopOverlay::firmware_restart() {
     restart_in_progress_ = true;
 
     spdlog::info("[KlipperRecovery] Firmware restarting...");
-    ui_toast_show(ToastSeverity::INFO, "Firmware restarting...", 3000);
+    ui_toast_show(ToastSeverity::INFO, lv_tr("Firmware restarting..."), 3000);
 
     api_->restart_firmware(
         []() {

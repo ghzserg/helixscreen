@@ -7,7 +7,7 @@
 <!-- Subjects are registered in C++ (init_subjects) - do not define here to avoid shadowing -->
 <component>
   <view name="touch_calibration_overlay"
-        extends="overlay_panel" width="#overlay_panel_width_full" title="Touch Calibration" bg_color="#screen_bg">
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Touch Calibration" title_tag="Touch Calibration" bg_color="#screen_bg">
 
     <!-- Main content area - full screen for touch capture -->
     <lv_obj name="calibration_content" width="100%" flex_grow="1" style_pad_all="0" scrollable="false">
@@ -48,19 +48,19 @@
               scrollable="false">
 
         <!-- Start button - visible only in IDLE (state=0) -->
-        <ui_button name="btn_start" width="200" text="Start Calibration">
+        <ui_button name="btn_start" width="200" text="Start Calibration" translation_tag="Start Calibration">
           <event_cb trigger="clicked" callback="on_touch_cal_start_clicked"/>
           <bind_flag_if_not_eq subject="touch_cal_state" flag="hidden" ref_value="0"/>
         </ui_button>
 
         <!-- Accept button - visible only in VERIFY (state=4) -->
-        <ui_button name="btn_accept" width="150" text="Accept">
+        <ui_button name="btn_accept" width="150" text="Accept" translation_tag="Accept">
           <event_cb trigger="clicked" callback="on_touch_cal_accept_clicked"/>
           <bind_flag_if_not_eq subject="touch_cal_state" flag="hidden" ref_value="4"/>
         </ui_button>
 
         <!-- Retry button - visible only in VERIFY (state=4) -->
-        <ui_button name="btn_retry" width="150" variant="secondary" text="Retry">
+        <ui_button name="btn_retry" width="150" variant="secondary" text="Retry" translation_tag="Retry">
           <event_cb trigger="clicked" callback="on_touch_cal_retry_clicked"/>
           <bind_flag_if_not_eq subject="touch_cal_state" flag="hidden" ref_value="4"/>
         </ui_button>

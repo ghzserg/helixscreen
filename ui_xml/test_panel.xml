@@ -9,25 +9,25 @@
     <!-- ============================================================ -->
     <!-- SPINNER TEST - Material Design Indeterminate Animation       -->
     <!-- ============================================================ -->
-    <lv_label text="Material Design Spinner" style_text_font="#font_heading" style_margin_bottom="5"/>
+    <lv_label text="Material Design Spinner" translation_tag="Material Design Spinner" style_text_font="#font_heading" style_margin_bottom="5"/>
     <ui_card width="100%"
              height="120" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_evenly" style_flex_cross_place="center">
       <lv_obj flex_flow="column" style_flex_cross_place="center" style_pad_gap="8">
         <spinner size="lg"/>
-        <text_small text="lg"/>
+        <text_small text="lg" translation_tag="lg"/>
       </lv_obj>
       <lv_obj flex_flow="column" style_flex_cross_place="center" style_pad_gap="8">
         <spinner size="md"/>
-        <text_small text="md"/>
+        <text_small text="md" translation_tag="md"/>
       </lv_obj>
       <lv_obj flex_flow="column" style_flex_cross_place="center" style_pad_gap="8">
         <spinner size="sm"/>
-        <text_small text="sm"/>
+        <text_small text="sm" translation_tag="sm"/>
       </lv_obj>
       <lv_obj flex_flow="column" style_flex_cross_place="center" style_pad_gap="8">
         <spinner size="xs"/>
-        <text_small text="xs"/>
+        <text_small text="xs" translation_tag="xs"/>
       </lv_obj>
     </ui_card>
     <!-- Separator -->
@@ -35,7 +35,7 @@
     <!-- ============================================================ -->
     <!-- SPOOL VISUALIZATION TESTS - Pseudo-3D Canvas vs Flat Ring    -->
     <!-- ============================================================ -->
-    <lv_label text="Spool Visualization (Pseudo-3D Canvas)" style_text_font="#font_heading" style_margin_bottom="5"/>
+    <lv_label text="Spool Visualization (Pseudo-3D Canvas)" translation_tag="Spool Visualization (Pseudo-3D Canvas)" style_text_font="#font_heading" style_margin_bottom="5"/>
     <ui_card width="100%"
              height="100" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_evenly" style_flex_cross_place="center">
@@ -44,9 +44,9 @@
       <spool_canvas color="0x43A047" fill_level="0.40" size="64"/>
       <spool_canvas color="0xFDD835" fill_level="0.10" size="64"/>
     </ui_card>
-    <text_small text="Fill: 100% / 75% / 40% / 10%"/>
+    <text_small text="Fill: 100% / 75% / 40% / 10%" translation_tag="Fill: 100% / 75% / 40% / 10%"/>
     <!-- Flat Concentric Rings (existing ams_slot) for comparison -->
-    <lv_label text="Flat Concentric Rings (existing ams_slot)"
+    <lv_label text="Flat Concentric Rings (existing ams_slot)" translation_tag="Flat Concentric Rings (existing ams_slot)"
               style_text_font="#font_heading" style_margin_top="10" style_margin_bottom="5"/>
     <ui_card width="100%"
              height="100" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
@@ -56,60 +56,60 @@
       <ams_slot slot_index="2" fill_level="0.40"/>
       <ams_slot slot_index="3" fill_level="0.10"/>
     </ui_card>
-    <text_small text="Fill: 100% / 75% / 40% / 10%"/>
+    <text_small text="Fill: 100% / 75% / 40% / 10%" translation_tag="Fill: 100% / 75% / 40% / 10%"/>
     <!-- Separator -->
     <lv_obj width="100%" height="2" style_bg_opa="100" style_bg_color="#text_muted"/>
     <!-- ============================================================ -->
     <!-- PROGRESS BAR TESTS - Understanding lv_bar behavior           -->
     <!-- ============================================================ -->
-    <lv_label text="Progress Bar Tests" style_text_font="#font_heading" style_margin_bottom="5"/>
+    <lv_label text="Progress Bar Tests" translation_tag="Progress Bar Tests" style_text_font="#font_heading" style_margin_bottom="5"/>
     <!-- Test 1: Minimal bar - no styling, default theme -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="Default (value=50)" style_text_font="#font_small"/>
+      <lv_label text="Default (value=50)" translation_tag="Default (value=50)" style_text_font="#font_small"/>
       <lv_bar name="test_bar_default" width="60%" height="12" value="50"/>
     </ui_card>
     <!-- Test 2: With explicit min_value/max_value (NOT range_min/range_max!) -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="min_value=0, max_value=100, value=25" style_text_font="#font_small"/>
+      <lv_label text="min_value=0, max_value=100, value=25" translation_tag="min_value=0, max_value=100, value=25" style_text_font="#font_small"/>
       <lv_bar name="test_bar_explicit_range" width="60%" height="12" min_value="0" max_value="100" value="25"/>
     </ui_card>
     <!-- Test 3: value=0 - should show empty -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="value=0 (shows FULL - BUG!)" style_text_font="#font_small"/>
+      <lv_label text="value=0 (shows FULL - BUG!)" translation_tag="value=0 (shows FULL - BUG!)" style_text_font="#font_small"/>
       <lv_bar name="test_bar_zero" width="60%" height="12" min_value="0" max_value="100" value="0"/>
     </ui_card>
     <!-- Test 3b: value=1 - should show tiny sliver -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="value=1 (tiny sliver?)" style_text_font="#font_small"/>
+      <lv_label text="value=1 (tiny sliver?)" translation_tag="value=1 (tiny sliver?)" style_text_font="#font_small"/>
       <lv_bar name="test_bar_one" width="60%" height="12" min_value="0" max_value="100" value="1"/>
     </ui_card>
     <!-- Test 4: value=100 - should show full -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="value=100 (should be full)" style_text_font="#font_small"/>
+      <lv_label text="value=100 (should be full)" translation_tag="value=100 (should be full)" style_text_font="#font_small"/>
       <lv_bar name="test_bar_full" width="60%" height="12" min_value="0" max_value="100" value="100"/>
     </ui_card>
     <!-- Test 5: Styled bar (no part-specific styling possible in XML, use theme) -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="Styled (value=75)" style_text_font="#font_small"/>
+      <lv_label text="Styled (value=75)" translation_tag="Styled (value=75)" style_text_font="#font_small"/>
       <lv_bar name="test_bar_styled" width="60%" height="12" min_value="0" max_value="100" value="75" style_radius="4"/>
     </ui_card>
     <!-- Test 6: Different heights -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="Thin bar (height=8)" style_text_font="#font_small"/>
+      <lv_label text="Thin bar (height=8)" translation_tag="Thin bar (height=8)" style_text_font="#font_small"/>
       <lv_bar name="test_bar_thin" width="60%" height="8" min_value="0" max_value="100" value="50" style_radius="4"/>
     </ui_card>
     <!-- Separator -->
@@ -118,67 +118,67 @@
     <ui_card width="100%"
              height="56" style_radius="#border_radius" style_pad_all="#space_lg" style_pad_gap="#space_md"
              flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="Toggle Feature" style_text_font="#font_body"/>
+      <lv_label text="Toggle Feature" translation_tag="Toggle Feature" style_text_font="#font_body"/>
       <ui_switch name="test_switch_1" width="44" height="24"/>
     </ui_card>
     <!-- Test Row 2: Large Label + Switch -->
     <ui_card width="100%"
              height="72" style_radius="#border_radius" style_pad_all="#space_lg" style_pad_gap="#space_md"
              flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="Advanced Setting" style_text_font="#font_heading"/>
+      <lv_label text="Advanced Setting" translation_tag="Advanced Setting" style_text_font="#font_heading"/>
       <ui_switch name="test_switch_2" width="56" height="32" checked="true"/>
     </ui_card>
     <!-- Test Row 3: Compact Row with Two Switches -->
     <ui_card width="100%"
              height="56" style_radius="#border_radius" style_pad_all="#space_lg" style_pad_gap="#space_md"
              flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center">
-      <lv_label text="WiFi" style_text_font="#font_body" style_margin_right="10"/>
+      <lv_label text="WiFi" translation_tag="WiFi" style_text_font="#font_body" style_margin_right="10"/>
       <ui_switch name="test_switch_3" width="44" height="24" style_margin_right="20"/>
-      <lv_label text="Bluetooth" style_text_font="#font_body" style_margin_right="10"/>
+      <lv_label text="Bluetooth" translation_tag="Bluetooth" style_text_font="#font_body" style_margin_right="10"/>
       <ui_switch name="test_switch_4" width="44" height="24" checked="true"/>
     </ui_card>
     <!-- NEW: Test semantic size parameter -->
-    <lv_label text="Semantic Size Parameter Tests" style_text_font="#font_heading" style_margin_top="10"/>
+    <lv_label text="Semantic Size Parameter Tests" translation_tag="Semantic Size Parameter Tests" style_text_font="#font_heading" style_margin_top="10"/>
     <!-- Size: tiny -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="size=&quot;tiny&quot;" style_text_font="#font_body"/>
+      <lv_label text="size=&quot;tiny&quot;" translation_tag="size=&quot;tiny&quot;" style_text_font="#font_body"/>
       <ui_switch name="test_switch_tiny" size="tiny"/>
     </ui_card>
     <!-- Size: small -->
     <ui_card width="100%"
              height="60" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="size=&quot;small&quot;" style_text_font="#font_body"/>
+      <lv_label text="size=&quot;small&quot;" translation_tag="size=&quot;small&quot;" style_text_font="#font_body"/>
       <ui_switch name="test_switch_small" size="small" checked="true"/>
     </ui_card>
     <!-- Size: medium -->
     <ui_card width="100%"
              height="70" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="size=&quot;medium&quot;" style_text_font="#font_body"/>
+      <lv_label text="size=&quot;medium&quot;" translation_tag="size=&quot;medium&quot;" style_text_font="#font_body"/>
       <ui_switch name="test_switch_medium" size="medium"/>
     </ui_card>
     <!-- Size: large -->
     <ui_card width="100%"
              height="80" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="size=&quot;large&quot;" style_text_font="#font_body"/>
+      <lv_label text="size=&quot;large&quot;" translation_tag="size=&quot;large&quot;" style_text_font="#font_body"/>
       <ui_switch name="test_switch_large" size="large" checked="true"/>
     </ui_card>
     <!-- Size: medium with width override -->
     <ui_card width="100%"
              height="70" style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="row"
              style_flex_main_place="space_between" style_flex_cross_place="center">
-      <lv_label text="size=&quot;medium&quot; width=&quot;100&quot;" style_text_font="#font_body"/>
+      <lv_label text="size=&quot;medium&quot; width=&quot;100&quot;" translation_tag="size=&quot;medium&quot; width=&quot;100&quot;" style_text_font="#font_body"/>
       <ui_switch name="test_switch_override" width="100" size="medium"/>
     </ui_card>
     <!-- NEW: Keyboard test -->
-    <lv_label text="Keyboard Test (Gboard-style)" style_text_font="#font_heading" style_margin_top="10"/>
+    <lv_label text="Keyboard Test (Gboard-style)" translation_tag="Keyboard Test (Gboard-style)" style_text_font="#font_heading" style_margin_top="10"/>
     <ui_card width="100%" height="120" style_pad_all="#space_lg">
       <lv_textarea name="keyboard_test_textarea"
-                   width="100%" height="100%" placeholder_text="Tap to show keyboard..." one_line="false"/>
+                   width="100%" height="100%" placeholder_text="Tap to show keyboard..." placeholder_tag="Tap to show keyboard..." translation_tag="Tap to show keyboard..." one_line="false"/>
     </ui_card>
   </view>
 </component>

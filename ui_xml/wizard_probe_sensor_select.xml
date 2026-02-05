@@ -7,8 +7,8 @@
   <!-- Only shown when unassigned switch sensors are available -->
   <consts>
     <!-- Step metadata (read by wizard orchestrator) -->
-    <str name="step_title" value="Printer Setup: Z Probe"/>
-    <str name="step_subtitle" value="Skip if using dedicated probe (BLTouch, Klicky, etc.)"/>
+    <str name="step_title" value="Printer Setup: Z Probe" value_tag="Printer Setup: Z Probe"/>
+    <str name="step_subtitle" value="Skip if using dedicated probe (BLTouch, Klicky, etc.)" value_tag="Skip if using dedicated probe (BLTouch, Klicky, etc.)"/>
     <int name="step_order" value="9"/>
   </consts>
   <view name="wizard_probe_sensor_select_root"
@@ -19,7 +19,7 @@
              flex_grow="1" style_pad_all="#space_lg" style_pad_gap="#space_sm" flex_flow="column"
              style_flex_main_place="start" style_flex_cross_place="start">
       <!-- Probe sensor selection -->
-      <text_body text="Probe Sensor"/>
+      <text_body text="Probe Sensor" translation_tag="Probe Sensor"/>
       <lv_dropdown name="probe_sensor_dropdown"
                    width="100%" height="#header_height" options="None"
                    style_border_opa="100%" style_radius="#border_radius" style_pad_all="#space_lg">
@@ -32,7 +32,7 @@
               height="content" style_pad_all="0" style_pad_top="#space_md" flex_flow="row"
               style_flex_cross_place="center" style_pad_gap="#space_sm">
         <icon src="info_outline" size="sm" variant="secondary"/>
-        <text_small text="Select 'None' if you have a dedicated probe, or don't use bed mesh leveling." flex_grow="1"/>
+        <text_small text="Select 'None' if you have a dedicated probe, or don't use bed mesh leveling." translation_tag="Select 'None' if you have a dedicated probe, or don't use bed mesh leveling." flex_grow="1"/>
       </lv_obj>
     </ui_card>
   </view>

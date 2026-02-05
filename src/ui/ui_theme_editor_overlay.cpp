@@ -11,6 +11,7 @@
 #include "ui_nav.h"
 #include "ui_toast_manager.h"
 
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "settings_manager.h"
 #include "theme_loader.h"
@@ -778,8 +779,9 @@ void ThemeEditorOverlay::show_restart_dialog() {
 
     // Show restart prompt using confirmation dialog
     restart_dialog_ = ui_modal_show_confirmation(
-        "Theme Saved", "Theme changes require an app restart to fully apply. Restart now?",
-        ModalSeverity::Info, "Restart Now", on_restart_now, on_restart_later, nullptr);
+        lv_tr("Theme Saved"),
+        lv_tr("Theme changes require an app restart to fully apply. Restart now?"),
+        ModalSeverity::Info, lv_tr("Restart Now"), on_restart_now, on_restart_later, nullptr);
 
     if (!restart_dialog_) {
         spdlog::error("[{}] Failed to show restart dialog", get_name());
@@ -794,8 +796,8 @@ void ThemeEditorOverlay::show_discard_confirmation(std::function<void()> on_disc
 
     // Show confirmation dialog using modal system
     discard_dialog_ = ui_modal_show_confirmation(
-        "Discard Changes?", "You have unsaved changes. Discard them?", ModalSeverity::Warning,
-        "Discard", on_discard_confirm, on_discard_cancel, nullptr);
+        lv_tr("Discard Changes?"), lv_tr("You have unsaved changes. Discard them?"),
+        ModalSeverity::Warning, lv_tr("Discard"), on_discard_confirm, on_discard_cancel, nullptr);
 
     if (!discard_dialog_) {
         spdlog::error("[{}] Failed to show discard confirmation dialog", get_name());

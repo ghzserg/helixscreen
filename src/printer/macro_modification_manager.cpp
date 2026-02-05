@@ -8,6 +8,7 @@
 
 #include "app_globals.h"
 #include "config.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
 
@@ -179,7 +180,7 @@ void MacroModificationManager::check_and_notify() {
 void MacroModificationManager::analyze_and_launch_wizard() {
     if (!api_) {
         spdlog::warn("[MacroModificationManager] No API, cannot launch wizard");
-        ui_toast_show(ToastSeverity::ERROR, "Not connected to printer", 3000);
+        ui_toast_show(ToastSeverity::ERROR, lv_tr("Not connected to printer"), 3000);
         return;
     }
 
@@ -199,7 +200,7 @@ void MacroModificationManager::analyze_and_launch_wizard() {
             cached_analysis_ = analysis;
 
             if (!analysis.found) {
-                ui_toast_show(ToastSeverity::INFO, "No PRINT_START macro found", 3000);
+                ui_toast_show(ToastSeverity::INFO, lv_tr("No PRINT_START macro found"), 3000);
                 return;
             }
 
@@ -214,7 +215,7 @@ void MacroModificationManager::analyze_and_launch_wizard() {
 
             if (uncontrollable == 0) {
                 ui_toast_show(ToastSeverity::SUCCESS,
-                              "Your print start is already fully configured!", 3000);
+                              lv_tr("Your print start is already fully configured!"), 3000);
 
                 // Mark as configured since it's already good
                 auto cfg = load_config();
@@ -234,7 +235,7 @@ void MacroModificationManager::analyze_and_launch_wizard() {
 
             analyzing_ = false;
             spdlog::warn("[MacroModificationManager] Analysis failed: {}", error.message);
-            ui_toast_show(ToastSeverity::ERROR, "Failed to analyze PRINT_START macro", 3000);
+            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to analyze PRINT_START macro"), 3000);
         });
 }
 
@@ -373,7 +374,7 @@ void MacroModificationManager::launch_wizard() {
     if (!wizard_->show(lv_screen_active())) {
         spdlog::warn("[MacroModificationManager] Failed to show wizard");
         wizard_.reset();
-        ui_toast_show(ToastSeverity::ERROR, "Failed to open wizard", 3000);
+        ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to open wizard"), 3000);
     }
 }
 

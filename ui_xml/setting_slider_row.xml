@@ -3,13 +3,15 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Reusable Settings Slider Row Component -->
 <!-- Creates a settings row with label, description, and an inline slider -->
-<!-- Usage: <setting_slider_row label="Scroll Speed" icon="tune" description="Higher = faster" min="1" max="100" value="50"/> -->
+<!-- Usage: <setting_slider_row label="Scroll Speed" label_tag="Scroll Speed" icon="tune" description="Higher = faster" description_tag="Higher = faster" min="1" max="100" value="50"/> -->
 <!-- Optional: disabled="subject_name" to dim label and disable slider when subject = 1 -->
 <component>
   <api>
     <prop name="label" type="string" default="Setting"/>
+    <prop name="label_tag" type="string" default=""/>
     <prop name="icon" type="string" default=""/>
     <prop name="description" type="string" default=""/>
+    <prop name="description_tag" type="string" default=""/>
     <prop name="min" type="string" default="0"/>
     <prop name="max" type="string" default="100"/>
     <prop name="value" type="string" default="50"/>
@@ -36,7 +38,7 @@
               flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm" style_pad_all="0"
               scrollable="false">
         <icon name="row_icon" src="$icon" size="sm" variant="secondary"/>
-        <text_body name="label" text="$label">
+        <text_body name="label" text="$label" translation_tag="$label_tag">
           <bind_style name="label_enabled" subject="$disabled" ref_value="0"/>
           <bind_style name="label_disabled" subject="$disabled" ref_value="1"/>
         </text_body>
@@ -45,7 +47,7 @@
       <text_muted name="value_label" text="$value"/>
     </lv_obj>
     <!-- Description (if provided) -->
-    <text_small name="description" text="$description"/>
+    <text_small name="description" text="$description" translation_tag="$description_tag"/>
     <!-- Slider with optional min/max icons - vertical padding for knob clearance -->
     <lv_obj width="100%"
             height="content" flex_flow="row" style_flex_cross_place="center" style_pad_left="0" style_pad_right="0"

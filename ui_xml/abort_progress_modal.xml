@@ -22,7 +22,7 @@
         <spinner size="lg"/>
         <!-- Progress message (dynamically bound to abort_progress_message subject) -->
         <text_muted name="abort_message_label"
-                    width="100%" bind_text="abort_progress_message" text="Processing..." long_mode="wrap"
+                    width="100%" bind_text="abort_progress_message" text="Processing..." translation_tag="Processing..." long_mode="wrap"
                     style_text_align="center"/>
       </lv_obj>
     </ui_dialog>

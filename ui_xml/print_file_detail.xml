@@ -9,7 +9,7 @@
         style_border_width="0" style_pad_all="0" style_pad_gap="0" flex_flow="column" clickable="true">
     <event_cb trigger="clicked" callback="on_print_select_detail_backdrop"/>
     <!-- HEADER BAR (full width at top) -->
-    <header_bar name="detail_header" title="Print File" back_button_callback="on_print_detail_back_clicked"/>
+    <header_bar name="detail_header" title="Print File" title_tag="Print File" back_button_callback="on_print_detail_back_clicked"/>
     <!-- CONTENT AREA (two columns) -->
     <lv_obj name="content_container"
             width="100%" flex_grow="1" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="0"
@@ -121,14 +121,14 @@
         <lv_obj name="preprint_steps_section"
                 width="100%" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs">
           <bind_flag_if_eq subject="selected_preprint_steps_visible" flag="hidden" ref_value="0"/>
-          <text_small text="PRE-PRINT STEPS"/>
+          <text_small text="PRE-PRINT STEPS" translation_tag="PRE-PRINT STEPS"/>
           <text_body name="preprint_steps_label"
                      bind_text="selected_preprint_steps" long_mode="wrap" style_text_color="#text"/>
         </lv_obj>
 
         <!-- Color requirements card (hidden by default, shown for multi-color prints) -->
         <ui_card name="color_requirements_card" width="100%" style_pad_all="0" flex_flow="column" flag_hidden="true">
-          <text_small text="COLORS REQUIRED"/>
+          <text_small text="COLORS REQUIRED" translation_tag="COLORS REQUIRED"/>
           <lv_obj name="color_swatches_row"
                   width="100%" height="32" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="row"
                   style_pad_top="#space_xs" scrollable="false">
@@ -145,7 +145,7 @@
                   width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_ver="#space_xs">
             <bind_flag_if_eq subject="can_show_bed_mesh" flag="hidden" ref_value="0"/>
-            <text_body text="Auto Bed Mesh"/>
+            <text_body text="Auto Bed Mesh" translation_tag="Auto Bed Mesh"/>
             <ui_switch name="bed_mesh_checkbox" size="small">
               <bind_state_if_eq subject="preprint_bed_mesh" state="checked" ref_value="1"/>
               <event_cb trigger="value_changed" callback="on_preprint_bed_mesh_toggled"/>
@@ -155,7 +155,7 @@
                   width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_ver="#space_xs">
             <bind_flag_if_eq subject="can_show_qgl" flag="hidden" ref_value="0"/>
-            <text_body text="Quad Gantry Level"/>
+            <text_body text="Quad Gantry Level" translation_tag="Quad Gantry Level"/>
             <ui_switch name="qgl_checkbox" size="small">
               <bind_state_if_eq subject="preprint_qgl" state="checked" ref_value="1"/>
               <event_cb trigger="value_changed" callback="on_preprint_qgl_toggled"/>
@@ -165,7 +165,7 @@
                   width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_ver="#space_xs">
             <bind_flag_if_eq subject="can_show_z_tilt" flag="hidden" ref_value="0"/>
-            <text_body text="Z-Tilt Adjust"/>
+            <text_body text="Z-Tilt Adjust" translation_tag="Z-Tilt Adjust"/>
             <ui_switch name="z_tilt_checkbox" size="small">
               <bind_state_if_eq subject="preprint_z_tilt" state="checked" ref_value="1"/>
               <event_cb trigger="value_changed" callback="on_preprint_z_tilt_toggled"/>
@@ -175,7 +175,7 @@
                   width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_ver="#space_xs">
             <bind_flag_if_eq subject="can_show_nozzle_clean" flag="hidden" ref_value="0"/>
-            <text_body text="Clean Nozzle"/>
+            <text_body text="Clean Nozzle" translation_tag="Clean Nozzle"/>
             <ui_switch name="nozzle_clean_checkbox" size="small">
               <bind_state_if_eq subject="preprint_nozzle_clean" state="checked" ref_value="1"/>
               <event_cb trigger="value_changed" callback="on_preprint_nozzle_clean_toggled"/>
@@ -185,7 +185,7 @@
                   width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_ver="#space_xs">
             <bind_flag_if_eq subject="can_show_purge_line" flag="hidden" ref_value="0"/>
-            <text_body text="Nozzle Priming"/>
+            <text_body text="Nozzle Priming" translation_tag="Nozzle Priming"/>
             <ui_switch name="purge_line_checkbox" size="small">
               <bind_state_if_eq subject="preprint_purge_line" state="checked" ref_value="1"/>
               <event_cb trigger="value_changed" callback="on_preprint_purge_line_toggled"/>
@@ -196,7 +196,7 @@
                   width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_ver="#space_xs">
             <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="0"/>
-            <text_body text="Record Timelapse"/>
+            <text_body text="Record Timelapse" translation_tag="Record Timelapse"/>
             <ui_switch name="timelapse_checkbox" size="small">
               <bind_state_if_eq subject="preprint_timelapse" state="checked" ref_value="1"/>
               <event_cb trigger="value_changed" callback="on_preprint_timelapse_toggled"/>
@@ -208,11 +208,11 @@
         <lv_obj name="button_row"
                 width="100%" height="content" style_pad_all="0" style_pad_gap="#button_padding" flex_flow="row">
           <!-- Delete button -->
-          <ui_button name="delete_button" height="#button_height_lg" text="Delete" variant="secondary" flex_grow="1">
+          <ui_button name="delete_button" height="#button_height_lg" text="Delete" translation_tag="Delete" variant="secondary" flex_grow="1">
             <event_cb trigger="clicked" callback="on_print_select_delete_button"/>
           </ui_button>
           <!-- Print button - primary action styling (disabled when print in progress) -->
-          <ui_button name="print_button" height="#button_height_lg" text="Print" flex_grow="1">
+          <ui_button name="print_button" height="#button_height_lg" text="Print" translation_tag="Print" flex_grow="1">
             <event_cb trigger="clicked" callback="on_print_select_print_button"/>
             <bind_state_if_eq subject="print_select_can_print" state="disabled" ref_value="0"/>
           </ui_button>

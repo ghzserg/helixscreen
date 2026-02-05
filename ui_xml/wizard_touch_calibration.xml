@@ -6,8 +6,8 @@
   <!-- 3-point touchscreen calibration for framebuffer displays -->
   <consts>
     <!-- Step metadata (read by wizard orchestrator) -->
-    <str name="step_title" value="Printer Setup: Touch Calibration"/>
-    <str name="step_subtitle" value="Calibrate your touchscreen for accurate input"/>
+    <str name="step_title" value="Printer Setup: Touch Calibration" value_tag="Printer Setup: Touch Calibration"/>
+    <str name="step_subtitle" value="Calibrate your touchscreen for accurate input" value_tag="Calibrate your touchscreen for accurate input"/>
     <int name="step_order" value="0"/>
   </consts>
   <view name="wizard_touch_calibration_root"
@@ -39,14 +39,14 @@
               style_border_color="#border_color" style_radius="#radius_md" flag_clickable="true" scrollable="false">
         <event_cb trigger="pressed" callback="on_touch_cal_test_area_touched"/>
         <!-- Instruction label centered -->
-        <text_body text="Touch anywhere to test calibration" align="center"/>
+        <text_body text="Touch anywhere to test calibration" translation_tag="Touch anywhere to test calibration" align="center"/>
       </lv_obj>
 
       <!-- Button column on right - flex_grow=0 to prevent expansion -->
       <lv_obj width="120"
               height="100%" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
               flex_grow="0" scrollable="false">
-        <ui_button name="btn_retry" width="100" text="Retry">
+        <ui_button name="btn_retry" width="100" text="Retry" translation_tag="Retry">
           <event_cb trigger="clicked" callback="on_touch_cal_retry_clicked"/>
         </ui_button>
       </lv_obj>

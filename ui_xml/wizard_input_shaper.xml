@@ -6,8 +6,8 @@
   <!-- Offers accelerometer-based input shaper calibration when available -->
   <consts>
     <!-- Step metadata (read by wizard orchestrator) -->
-    <str name="step_title" value="Printer Setup: Input Shaping"/>
-    <str name="step_subtitle" value="Calibrate input shaping to reduce ringing artifacts in prints"/>
+    <str name="step_title" value="Printer Setup: Input Shaping" value_tag="Printer Setup: Input Shaping"/>
+    <str name="step_subtitle" value="Calibrate input shaping to reduce ringing artifacts in prints" value_tag="Calibrate input shaping to reduce ringing artifacts in prints"/>
     <int name="step_order" value="9"/>
   </consts>
   <view name="wizard_input_shaper_root"
@@ -22,9 +22,9 @@
       <!-- Info section -->
       <lv_obj width="100%" flex_flow="column" style_pad_gap="#space_sm">
         <text_body width="100%"
-                   text="Input shaping reduces vibration artifacts (ringing) in your prints." style_text_align="center"/>
+                   text="Input shaping reduces vibration artifacts (ringing) in your prints." translation_tag="Input shaping reduces vibration artifacts (ringing) in your prints." style_text_align="center"/>
         <text_small width="100%"
-                    text="An accelerometer was detected on your printer." style_text_align="center"
+                    text="An accelerometer was detected on your printer." translation_tag="An accelerometer was detected on your printer." style_text_align="center"
                     style_text_color="#text_muted"/>
       </lv_obj>
 
@@ -48,13 +48,13 @@
 
         <!-- Skip button -->
         <ui_button name="skip_calibration_btn"
-                   width="#wizard_button_width" height="#button_height" text="Skip for now" variant="ghost">
+                   width="#wizard_button_width" height="#button_height" text="Skip for now" translation_tag="Skip for now" variant="ghost">
           <event_cb trigger="clicked" callback="on_skip_is_calibration"/>
         </ui_button>
 
         <!-- Start calibration button -->
         <ui_button name="start_calibration_btn"
-                   width="#wizard_button_width" height="#button_height" text="Start Calibration">
+                   width="#wizard_button_width" height="#button_height" text="Start Calibration" translation_tag="Start Calibration">
           <event_cb trigger="clicked" callback="on_start_is_calibration"/>
         </ui_button>
 

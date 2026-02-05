@@ -27,12 +27,12 @@
       <!-- Hide form when hidden_connecting == 1 -->
       <bind_flag_if_eq subject="hidden_connecting" flag="hidden" ref_value="1"/>
       <!-- Title -->
-      <text_heading name="modal_title" width="100%" text="Add Hidden Network" style_text_align="center"/>
+      <text_heading name="modal_title" width="100%" text="Add Hidden Network" translation_tag="Add Hidden Network" style_text_align="center"/>
       <!-- SSID Input -->
-      <form_field label="Network Name (SSID)" input_name="ssid_input" placeholder="Enter network name"/>
+      <form_field label="Network Name (SSID)" label_tag="Network Name (SSID)" input_name="ssid_input" placeholder="Enter network name"/>
       <!-- Security Dropdown -->
       <lv_obj width="100%" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs">
-        <text_body width="100%" text="Security" style_text_align="left"/>
+        <text_body width="100%" text="Security" translation_tag="Security" style_text_align="left"/>
         <lv_dropdown name="security_dropdown"
                      width="100%" height="#input_height" options="None WPA/WPA2 WPA3"
                      style_radius="#border_radius" style_pad_all="#space_md"
@@ -45,9 +45,9 @@
               width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs">
         <!-- Hide password field when security == 0 (None) -->
         <bind_flag_if_eq subject="hidden_security" flag="hidden" ref_value="0"/>
-        <text_body width="100%" text="Password" style_text_align="left"/>
+        <text_body width="100%" text="Password" translation_tag="Password" style_text_align="left"/>
         <lv_textarea name="password_input"
-                     width="100%" height="#input_height" placeholder_text="Enter password" password_mode="true"
+                     width="100%" height="#input_height" placeholder_text="Enter password" placeholder_tag="Enter password" translation_tag="Enter password" password_mode="true"
                      one_line="true" style_pad_all="#space_md"
                      style_text_font="#font_body"/>
       </lv_obj>
@@ -62,7 +62,7 @@
             width="100%" height="content" style_min_height="280" style_pad_all="0" hidden="true">
       <!-- Show spinner when hidden_connecting == 1 -->
       <bind_flag_if_eq subject="hidden_connecting" flag="hidden" ref_value="0"/>
-      <connecting_state text="Connecting..."/>
+      <connecting_state text="Connecting..." translation_tag="Connecting..."/>
     </lv_obj>
     <!-- Horizontal divider above buttons -->
     <divider_horizontal/>
@@ -71,7 +71,7 @@
     <!-- ============================================================ -->
     <lv_obj width="100%" height="#button_height" style_pad_all="0" style_pad_gap="0" flex_flow="row">
       <!-- Cancel button (always visible) -->
-      <ui_button name="cancel_btn" height="100%" flex_grow="1" style_radius="0" text="Cancel">
+      <ui_button name="cancel_btn" height="100%" flex_grow="1" style_radius="0" text="Cancel" translation_tag="Cancel">
         <event_cb trigger="clicked" callback="on_hidden_cancel_clicked"/>
       </ui_button>
       <!-- Vertical divider between buttons (hidden when connecting) -->
@@ -80,7 +80,7 @@
         <bind_flag_if_eq subject="hidden_connecting" flag="hidden" ref_value="1"/>
       </divider_vertical>
       <!-- Connect button (hidden while connecting) -->
-      <ui_button name="connect_btn" height="100%" flex_grow="1" style_radius="0" text="Connect">
+      <ui_button name="connect_btn" height="100%" flex_grow="1" style_radius="0" text="Connect" translation_tag="Connect">
         <!-- Hide button while connecting (hidden_connecting == 1) -->
         <bind_flag_if_eq subject="hidden_connecting" flag="hidden" ref_value="1"/>
         <event_cb trigger="clicked" callback="on_hidden_connect_clicked"/>

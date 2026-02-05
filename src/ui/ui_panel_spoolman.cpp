@@ -14,6 +14,7 @@
 #include "ams_state.h"
 #include "app_globals.h"
 #include "format_utils.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "printer_state.h"
 #include "theme_manager.h"
@@ -184,7 +185,7 @@ void SpoolmanPanel::refresh_spools() {
             spdlog::error("[{}] Failed to fetch spools: {}", get_name(), err.message);
             cached_spools_.clear();
             show_empty_state();
-            ui_toast_show(ToastSeverity::ERROR, "Failed to load spools", 3000);
+            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to load spools"), 3000);
         });
 }
 
@@ -382,7 +383,7 @@ void SpoolmanPanel::set_active_spool(int spool_id) {
         [this, spool_id](const MoonrakerError& err) {
             spdlog::error("[{}] Failed to set active spool {}: {}", get_name(), spool_id,
                           err.message);
-            ui_toast_show(ToastSeverity::ERROR, "Failed to set active spool", 3000);
+            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to set active spool"), 3000);
         });
 }
 

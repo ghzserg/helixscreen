@@ -34,8 +34,8 @@
     <lv_obj flex_grow="1"
             style_pad_all="0" style_pad_right="#space_md" scrollable="false" flex_flow="column"
             style_pad_gap="#space_xxs">
-      <text_body name="hardware_name" width="100%" text="Hardware Name" long_mode="wrap"/>
-      <text_small name="issue_message" width="100%" text="Issue description" long_mode="wrap"/>
+      <text_body name="hardware_name" width="100%" text="Hardware Name" translation_tag="Hardware Name" long_mode="wrap"/>
+      <text_small name="issue_message" width="100%" text="Issue description" translation_tag="Issue description" long_mode="wrap"/>
     </lv_obj>
     <!-- Action buttons container (hidden by default, shown by C++ for non-critical issues) -->
     <lv_obj name="action_buttons"
@@ -43,11 +43,11 @@
             scrollable="false" style_flex_cross_place="center">
       <!-- Ignore button (mark as optional) -->
       <ui_button name="ignore_btn"
-                 width="content" height="#button_height" style_min_width="64" variant="ghost" text="Ignore"/>
+                 width="content" height="#button_height" style_min_width="64" variant="ghost" text="Ignore" translation_tag="Ignore"/>
       <!-- Save button (add to expected list) - only for INFO severity -->
       <ui_button name="save_btn"
                  width="content" height="#button_height" hidden="true" style_min_width="64" variant="success"
-                 text="Save"/>
+                 text="Save" translation_tag="Save"/>
     </lv_obj>
   </view>
 </component>

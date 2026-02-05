@@ -16,7 +16,7 @@
             height="content" style_pad_left="#space_lg" style_pad_right="#space_md" style_pad_top="#space_lg"
             style_pad_bottom="#space_sm" flex_flow="row" style_flex_main_place="space_between"
             style_flex_cross_place="center" scrollable="false">
-      <text_heading name="modal_title" text="Edit Preset"/>
+      <text_heading name="modal_title" text="Edit Preset" translation_tag="Edit Preset"/>
       <!-- Close button -->
       <ui_button name="btn_close" width="40" height="40" variant="ghost" icon="close">
         <event_cb trigger="clicked" callback="filament_preset_edit_close_cb"/>
@@ -28,14 +28,14 @@
     <lv_obj width="100%"
             height="content" style_pad_all="#space_md" flex_flow="column" style_pad_gap="#space_md" scrollable="false">
       <!-- Name field -->
-      <form_field label="Name" input_name="name_input" placeholder="PLA"/>
+      <form_field label="Name" label_tag="Name" input_name="name_input" placeholder="PLA"/>
       <!-- Temperature row -->
       <lv_obj width="100%"
               height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="space_between"
               style_pad_gap="#space_md" scrollable="false">
         <!-- Nozzle temp -->
         <lv_obj height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-          <text_small text="Nozzle °C"/>
+          <text_small text="Nozzle °C" translation_tag="Nozzle °C"/>
           <lv_spinbox name="nozzle_spinbox"
                       width="#input_width" height="40" style_radius="#border_radius" style_bg_color="#card_bg"
                       style_border_width="1" style_border_color="#text_muted" value="210" min_value="150" max_value="300" step="5"
@@ -43,7 +43,7 @@
         </lv_obj>
         <!-- Bed temp -->
         <lv_obj height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-          <text_small text="Bed °C"/>
+          <text_small text="Bed °C" translation_tag="Bed °C"/>
           <lv_spinbox name="bed_spinbox"
                       width="#input_width" height="40" style_radius="#border_radius" style_bg_color="#card_bg"
                       style_border_width="1" style_border_color="#text_muted" value="60" min_value="0" max_value="120" step="5"

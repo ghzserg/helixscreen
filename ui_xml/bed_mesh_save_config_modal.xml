@@ -16,11 +16,11 @@
       <!-- Info icon -->
       <icon src="info" size="lg" variant="success"/>
       <!-- Title -->
-      <text_heading width="100%" text="Save Printer Configuration" style_text_align="center"/>
+      <text_heading width="100%" text="Save Printer Configuration" translation_tag="Save Printer Configuration" style_text_align="center"/>
       <!-- Message -->
-      <text_small width="100%" text="Save changes to persist them across restarts?" style_text_align="center"/>
+      <text_small width="100%" text="Save changes to persist them across restarts?" translation_tag="Save changes to persist them across restarts?" style_text_align="center"/>
       <!-- Warning about restart -->
-      <text_small width="100%" text="This will restart Klipper." style_text_align="center" style_text_color="#warning"/>
+      <text_small width="100%" text="This will restart Klipper." translation_tag="This will restart Klipper." style_text_align="center" style_text_color="#warning"/>
     </lv_obj>
     <modal_button_row primary_text="Save"
                       secondary_text="Don't Save" primary_callback="on_bed_mesh_save_config_yes"

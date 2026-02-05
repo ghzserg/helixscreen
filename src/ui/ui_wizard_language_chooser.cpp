@@ -2,6 +2,8 @@
 
 #include "ui_wizard_language_chooser.h"
 
+#include "ui_wizard.h"
+
 #include "config.h"
 #include "settings_manager.h"
 #include "static_panel_registry.h"
@@ -224,6 +226,9 @@ static void on_language_selected(lv_event_t* e) {
     // This updates the subject, calls lv_translation_set_language(), and persists to config
     SettingsManager::instance().set_language(LANGUAGE_CODES[index]);
 
+    // Refresh the wizard header with new translations
+    ui_wizard_refresh_header_translations();
+
     // Update step state
     WizardLanguageChooserStep* step = get_wizard_language_chooser_step();
     if (step) {
@@ -395,15 +400,6 @@ bool WizardLanguageChooserStep::is_validated() const {
 // ============================================================================
 
 bool WizardLanguageChooserStep::should_skip() const {
-    // TODO: Language selection is disabled until translation hot-reload is complete.
-    // The infrastructure exists (SettingsManager::set_language calls lv_translation_set_language)
-    // but not all UI strings have translation bindings yet.
-    // Re-enable by removing this block when Phase 4 of i18n is complete.
-    if (!g_force_language_step) {
-        spdlog::debug("[{}] Skipping: language selection feature not yet complete", get_name());
-        return true;
-    }
-
     // Force show if explicitly requested (for visual testing with --wizard-step 1)
     if (g_force_language_step) {
         spdlog::debug("[{}] Force-showing: --wizard-step 1 requested", get_name());

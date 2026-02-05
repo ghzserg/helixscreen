@@ -11,7 +11,7 @@
     <const name="temp_graph_bed_dark" value="#33E5E8"/>
   </consts>
   <!-- Uses shared backdrop from navigation system -->
-  <view name="bed_temp_panel" extends="overlay_panel" title="Heatbed Temperature">
+  <view name="bed_temp_panel" extends="overlay_panel" title="Heatbed Temperature" title_tag="Heatbed Temperature">
     <!-- Content Area: Two Columns -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" scrollable="false" style_border_opa="0" flex_flow="row"
@@ -46,7 +46,7 @@
               <lv_obj style_pad_all="0"
                       scrollable="false" flex_flow="column" style_flex_main_place="center"
                       style_flex_cross_place="start" style_pad_gap="#space_xxs">
-                <text_small text="Current / Target"/>
+                <text_small text="Current / Target" translation_tag="Current / Target"/>
                 <temp_display name="bed_temp_display"
                               size="lg" show_target="true" bind_current="bed_temp" bind_target="bed_target"/>
               </lv_obj>
@@ -63,20 +63,20 @@
         <lv_obj name="preset_grid"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="row_wrap"
                 style_flex_main_place="space_between" style_pad_gap="#space_xs">
-          <ui_button name="preset_off" width="48%" text="Off" variant="ghost">
+          <ui_button name="preset_off" width="48%" text="Off" translation_tag="Off" variant="ghost">
             <event_cb trigger="clicked" callback="on_bed_preset_off_clicked"/>
           </ui_button>
-          <ui_button name="preset_pla" width="48%" text="PLA">
+          <ui_button name="preset_pla" width="48%" text="PLA" translation_tag="PLA">
             <event_cb trigger="clicked" callback="on_bed_preset_pla_clicked"/>
           </ui_button>
-          <ui_button name="preset_petg" width="48%" text="PETG">
+          <ui_button name="preset_petg" width="48%" text="PETG" translation_tag="PETG">
             <event_cb trigger="clicked" callback="on_bed_preset_petg_clicked"/>
           </ui_button>
-          <ui_button name="preset_abs" width="48%" text="ABS">
+          <ui_button name="preset_abs" width="48%" text="ABS" translation_tag="ABS">
             <event_cb trigger="clicked" callback="on_bed_preset_abs_clicked"/>
           </ui_button>
         </lv_obj>
-        <ui_button name="btn_custom" width="100%" text="Custom..." variant="secondary">
+        <ui_button name="btn_custom" width="100%" text="Custom..." translation_tag="Custom..." variant="secondary">
           <event_cb trigger="clicked" callback="on_bed_custom_clicked"/>
         </ui_button>
       </lv_obj>

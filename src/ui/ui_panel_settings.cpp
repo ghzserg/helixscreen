@@ -30,6 +30,7 @@
 #include "format_utils.h"
 #include "hardware_validator.h"
 #include "helix_version.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 #include "printer_state.h"
@@ -181,8 +182,8 @@ static void on_version_clicked(lv_event_t*) {
         // Toggle memory debug
         MemoryStatsOverlay::instance().toggle();
         bool is_visible = MemoryStatsOverlay::instance().is_visible();
-        ui_toast_show(ToastSeverity::SUCCESS, is_visible ? "Memory debug: ON" : "Memory debug: OFF",
-                      1500);
+        ui_toast_show(ToastSeverity::SUCCESS,
+                      is_visible ? lv_tr("Memory debug: ON") : lv_tr("Memory debug: OFF"), 1500);
         spdlog::info("[SettingsPanel] Memory debug toggled via 7-tap secret: {}",
                      is_visible ? "ON" : "OFF");
         tap_count = 0; // Reset for next time
@@ -921,7 +922,7 @@ void SettingsPanel::perform_factory_reset() {
     }
 
     // Show confirmation toast
-    ui_toast_show(ToastSeverity::SUCCESS, "Settings reset to defaults", 2000);
+    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Settings reset to defaults"), 2000);
 
     // TODO: In production, this would restart the application
     // or transition to the setup wizard. For now, just log.

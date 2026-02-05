@@ -6,7 +6,7 @@
   <!-- Provides consistent positioning and header for all overlay panels -->
   <!-- Uses shared backdrop from navigation system (ui_nav.cpp) -->
   <!-- Usage Pattern:
-       <overlay_panel name="my_panel" title="My Panel">
+       <overlay_panel name="my_panel" title="My Panel" title_tag="My Panel">
          <lv_obj name="overlay_content" width="100%" flex_grow="1"
                  style_pad_all="#space_lg" flex_flow="column">
            [panel-specific controls]

@@ -11,6 +11,7 @@
 
 #include "config.h"
 #include "display_manager.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "static_panel_registry.h"
 #include "touch_calibration.h"
 
@@ -448,8 +449,8 @@ void TouchCalibrationOverlay::handle_accept_clicked() {
     } else {
 #ifndef HELIX_DISPLAY_FBDEV
         // Show warning on SDL that calibration cannot be applied at runtime
-        ui_toast_show(ToastSeverity::WARNING, "Calibration saved but cannot apply on SDL display",
-                      3000);
+        ui_toast_show(ToastSeverity::WARNING,
+                      lv_tr("Calibration saved but cannot apply on SDL display"), 3000);
 #endif
         spdlog::debug("[{}] Could not apply calibration immediately (may require restart)",
                       get_name());
