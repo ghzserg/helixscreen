@@ -121,23 +121,9 @@
         {
           "type": "led_match",
           "field": "leds",
-          "pattern": "chamber_led",
+          "pattern": "chamber_light",
           "confidence": 97,
           "reason": "LED chamber light (AD5M Pro exclusive - regular 5M doesn't have this)"
-        },
-        {
-          "type": "led_match",
-          "field": "leds",
-          "pattern": "led_strip",
-          "confidence": 97,
-          "reason": "LED strip chamber light (AD5M Pro exclusive)"
-        },
-        {
-          "type": "led_match",
-          "field": "leds",
-          "pattern": "neopixel",
-          "confidence": 92,
-          "reason": "Neopixel chamber LEDs (AD5M Pro has chamber lighting)"
         },
         {
           "type": "sensor_match",

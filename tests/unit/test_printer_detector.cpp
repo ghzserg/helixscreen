@@ -25,7 +25,7 @@ class PrinterDetectorFixture {
             .heaters = {"extruder", "heater_bed"},
             .sensors = {"tvocValue", "weightValue", "temperature_sensor chamber_temp"},
             .fans = {"fan", "fan_generic exhaust_fan"},
-            .leds = {"neopixel led_strip"},
+            .leds = {"led chamber_light"},
             .hostname = "flashforge-ad5m-pro"};
     }
 
@@ -236,7 +236,7 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Case-insensitive sens
         .heaters = {"extruder"},
         .sensors = {"TVOCVALUE", "temperature_sensor chamber"}, // Uppercase
         .fans = {},
-        .leds = {"led_strip"}, // LED distinguishes AD5M Pro from Adventurer 5M
+        .leds = {"led chamber_light"}, // LED distinguishes AD5M Pro from Adventurer 5M
         .hostname = "test"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -291,7 +291,7 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: sensor_match heuristi
         .heaters = {"extruder"},
         .sensors = {"weightValue"}, // Medium confidence
         .fans = {},
-        .leds = {"led_strip"}, // LED distinguishes AD5M Pro from Adventurer 5M
+        .leds = {"led chamber_light"}, // LED distinguishes AD5M Pro from Adventurer 5M
         .hostname = "test"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -375,7 +375,7 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Real FlashForge AD5M 
         .sensors = {"tvocValue", "weightValue", "temperature_sensor chamber_temp",
                     "temperature_sensor mcu_temp"},
         .fans = {"fan", "fan_generic exhaust_fan", "heater_fan hotend_fan"},
-        .leds = {"neopixel led_strip"},
+        .leds = {"led chamber_light"},
         .hostname = "flashforge-ad5m-pro"};
 
     auto result = PrinterDetector::detect(hardware);
@@ -1093,15 +1093,16 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                  "PrinterDetector: AD5M Pro distinguished by LED chamber light",
                  "[printer][led_match]") {
     // AD5M Pro has LED chamber light - this is the key differentiator from regular AD5M
-    PrinterHardwareData hardware{.heaters = {"extruder", "heater_bed"},
-                                 .sensors = {"tvocValue", "temperature_sensor chamber_temp"},
-                                 .fans = {"fan", "fan_generic exhaust_fan"},
-                                 .leds = {"led_strip"}, // LED chamber light - AD5M Pro exclusive
-                                 .hostname = "flashforge-ad5m", // Generic AD5M hostname
-                                 .printer_objects = {},
-                                 .steppers = {},
+    PrinterHardwareData hardware{
+        .heaters = {"extruder", "heater_bed"},
+        .sensors = {"tvocValue", "temperature_sensor chamber_temp"},
+        .fans = {"fan", "fan_generic exhaust_fan"},
+        .leds = {"led chamber_light"}, // LED chamber light - AD5M Pro exclusive
+        .hostname = "flashforge-ad5m", // Generic AD5M hostname
+        .printer_objects = {},
+        .steppers = {},
 
-                                 .kinematics = "cartesian"};
+        .kinematics = "cartesian"};
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -1134,25 +1135,24 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Regular AD5M without 
     REQUIRE(result.confidence >= 90);
 }
 
-TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: AD5M Pro with neopixel LEDs",
+TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: AD5M Pro with chamber_light LED",
                  "[printer][led_match]") {
-    // Some AD5M Pro setups use neopixel instead of led_strip
-    PrinterHardwareData hardware{
-        .heaters = {"extruder", "heater_bed"},
-        .sensors = {"tvocValue"},
-        .fans = {"fan"},
-        .leds = {"neopixel led_strip"}, // Neopixel variant with led_strip name
-        .hostname = "ad5m",
-        .printer_objects = {},
-        .steppers = {},
+    // AD5M Pro has "led chamber_light" - the key differentiator
+    PrinterHardwareData hardware{.heaters = {"extruder", "heater_bed"},
+                                 .sensors = {"tvocValue"},
+                                 .fans = {"fan"},
+                                 .leds = {"led chamber_light"}, // AD5M Pro chamber LED
+                                 .hostname = "ad5m",
+                                 .printer_objects = {},
+                                 .steppers = {},
 
-        .kinematics = "cartesian"};
+                                 .kinematics = "cartesian"};
 
     auto result = PrinterDetector::detect(hardware);
 
     REQUIRE(result.detected());
     REQUIRE(result.type_name == "FlashForge Adventurer 5M Pro");
-    // Neopixel LED + tvocValue + hostname = very high confidence
+    // chamber_light LED + tvocValue + hostname = very high confidence
     REQUIRE(result.confidence >= 90);
 }
 
