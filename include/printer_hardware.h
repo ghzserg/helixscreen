@@ -110,6 +110,22 @@ class PrinterHardware {
     // ========================================================================
 
     /**
+     * @brief Guess the most likely hotend/heater fan
+     *
+     * In Klipper, the [heater_fan] section defines fans that turn on when
+     * the hotend is heated (for cooling the heatsink/heatbreak).
+     *
+     * Priority order:
+     * 1. Exact match: "heater_fan hotend_fan" or "heater_fan heat_fan"
+     * 2. Substring match: any fan containing "heater_fan" or "hotend_fan"
+     * 3. Substring match: any fan containing "heat_fan" or "heatbreak"
+     * 4. Return empty if no match (will default to None in wizard)
+     *
+     * @return Hotend fan name or empty string if none found
+     */
+    std::string guess_hotend_fan() const;
+
+    /**
      * @brief Guess the most likely part cooling fan
      *
      * In Klipper, the [fan] section (without any suffix) is the canonical

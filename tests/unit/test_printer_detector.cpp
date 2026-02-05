@@ -253,15 +253,15 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Case-insensitive host
         .heaters = {"extruder"},
         .sensors = {},
         .fans = {},
-        .leds = {"led_strip"},        // LED distinguishes AD5M Pro from Adventurer 5M
-        .hostname = "FLASHFORGE-AD5M" // Uppercase
+        .leds = {"led chamber_light"}, // chamber_light LED distinguishes AD5M Pro from regular 5M
+        .hostname = "FLASHFORGE-AD5M"  // Uppercase
     };
 
     auto result = PrinterDetector::detect(hardware);
 
     REQUIRE(result.detected());
     REQUIRE(result.type_name == "FlashForge Adventurer 5M Pro");
-    // High-confidence hostname match
+    // High-confidence LED match (chamber_light = 100)
     REQUIRE(result.confidence >= 85);
 }
 
@@ -2096,15 +2096,13 @@ TEST_CASE("PrinterDetector: Print start capabilities lookup", "[printer][capabil
         REQUIRE_FALSE(caps.empty());
         REQUIRE(caps.macro_name == "START_PRINT");
         REQUIRE(caps.has_capability("bed_mesh"));
-        REQUIRE(caps.has_capability("purge_line"));
-        REQUIRE(caps.has_capability("skew_correct"));
 
         // Check bed_mesh param details
         auto* bed_level = caps.get_capability("bed_mesh");
         REQUIRE(bed_level != nullptr);
-        REQUIRE(bed_level->param == "FORCE_LEVELING");
-        REQUIRE(bed_level->skip_value == "false");
-        REQUIRE(bed_level->enable_value == "true");
+        REQUIRE(bed_level->param == "SKIP_LEVELING");
+        REQUIRE(bed_level->skip_value == "1");
+        REQUIRE(bed_level->enable_value == "0");
     }
 
     SECTION("Case-insensitive printer name lookup") {

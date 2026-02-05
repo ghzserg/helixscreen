@@ -183,6 +183,55 @@ std::string PrinterHardware::guess_hotend_sensor() const {
 // Fan Guessing
 // ============================================================================
 
+std::string PrinterHardware::guess_hotend_fan() const {
+    if (fans_.empty()) {
+        spdlog::debug("[PrinterHardware] guess_hotend_fan() -> no fans discovered");
+        return "";
+    }
+
+    // Priority 1: Exact matches for common heater fan names
+    if (has_exact(fans_, "heater_fan hotend_fan")) {
+        spdlog::debug("[PrinterHardware] guess_hotend_fan() -> 'heater_fan hotend_fan' (exact)");
+        return "heater_fan hotend_fan";
+    }
+    if (has_exact(fans_, "heater_fan heat_fan")) {
+        spdlog::debug("[PrinterHardware] guess_hotend_fan() -> 'heater_fan heat_fan' (exact)");
+        return "heater_fan heat_fan";
+    }
+
+    // Priority 2: Any fan containing "heater_fan" (Klipper's [heater_fan] section)
+    std::string match = find_containing(fans_, "heater_fan");
+    if (!match.empty()) {
+        spdlog::debug("[PrinterHardware] guess_hotend_fan() -> '{}' (contains 'heater_fan')",
+                      match);
+        return match;
+    }
+
+    // Priority 3: Any fan containing "hotend_fan"
+    match = find_containing(fans_, "hotend_fan");
+    if (!match.empty()) {
+        spdlog::debug("[PrinterHardware] guess_hotend_fan() -> '{}' (contains 'hotend_fan')",
+                      match);
+        return match;
+    }
+
+    // Priority 4: Any fan containing "heat_fan" or "heatbreak"
+    match = find_containing(fans_, "heat_fan");
+    if (!match.empty()) {
+        spdlog::debug("[PrinterHardware] guess_hotend_fan() -> '{}' (contains 'heat_fan')", match);
+        return match;
+    }
+    match = find_containing(fans_, "heatbreak");
+    if (!match.empty()) {
+        spdlog::debug("[PrinterHardware] guess_hotend_fan() -> '{}' (contains 'heatbreak')", match);
+        return match;
+    }
+
+    // No match - hotend fan is required hardware, but not all printers expose it
+    spdlog::debug("[PrinterHardware] guess_hotend_fan() -> no match found");
+    return "";
+}
+
 std::string PrinterHardware::guess_part_cooling_fan() const {
     if (fans_.empty()) {
         spdlog::debug("[PrinterHardware] guess_part_cooling_fan() -> no fans discovered");
@@ -196,8 +245,20 @@ std::string PrinterHardware::guess_part_cooling_fan() const {
         return "fan";
     }
 
-    // Priority 2: Any fan containing "part" (e.g., "fan_generic part_cooling")
-    std::string match = find_containing(fans_, "part");
+    // Priority 2: Any fan containing "M106" or "m106" - common naming for M106-controlled fans
+    // (e.g., "fan_generic fanM106" on FlashForge printers)
+    std::string match = find_containing(fans_, "M106");
+    if (match.empty()) {
+        match = find_containing(fans_, "m106");
+    }
+    if (!match.empty()) {
+        spdlog::debug("[PrinterHardware] guess_part_cooling_fan() -> '{}' (contains 'M106')",
+                      match);
+        return match;
+    }
+
+    // Priority 3: Any fan containing "part" (e.g., "fan_generic part_cooling")
+    match = find_containing(fans_, "part");
     if (!match.empty()) {
         spdlog::debug("[PrinterHardware] guess_part_cooling_fan() -> '{}' (contains 'part')",
                       match);

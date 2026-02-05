@@ -85,8 +85,16 @@ int restore_dropdown_selection(lv_obj_t* dropdown, lv_subject_t* subject,
 
     // Priority 1: If only ONE real hardware option, auto-select it
     // (handles non-standard names like "bed_heater" instead of "heater_bed")
-    if (real_item_count == 1 && !items.empty() && items[0] != "None") {
-        spdlog::debug("{} Single option available, auto-selecting: {}", log_prefix, items[0]);
+    if (real_item_count == 1) {
+        // Find the single non-None item
+        for (size_t i = 0; i < items.size(); ++i) {
+            if (items[i] != "None") {
+                selected_index = static_cast<int>(i);
+                spdlog::debug("{} Single option available, auto-selecting: {}", log_prefix,
+                              items[i]);
+                break;
+            }
+        }
     }
     // Priority 2: Try to restore from saved config
     else if (Config* config = Config::get_instance()) {

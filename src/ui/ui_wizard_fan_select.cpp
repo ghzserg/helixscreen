@@ -280,9 +280,10 @@ lv_obj_t* WizardFanSelectStep::create(lv_obj_t* parent) {
     lv_obj_t* hotend_dropdown = lv_obj_find_by_name(screen_root_, "hotend_fan_dropdown");
     if (hotend_dropdown) {
         lv_dropdown_set_options(hotend_dropdown, hotend_options_str.c_str());
-        helix::ui::wizard::restore_dropdown_selection(hotend_dropdown, &hotend_fan_selected_,
-                                                      hotend_fan_items_, helix::wizard::HOTEND_FAN,
-                                                      hw.get(), nullptr, "[Wizard Fan]");
+        helix::ui::wizard::restore_dropdown_selection(
+            hotend_dropdown, &hotend_fan_selected_, hotend_fan_items_, helix::wizard::HOTEND_FAN,
+            hw.get(), [](const PrinterHardware& h) { return h.guess_hotend_fan(); },
+            "[Wizard Fan]");
     }
 
     // Find and configure part fan dropdown
