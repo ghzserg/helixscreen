@@ -42,6 +42,8 @@ ExecStart=/opt/helixscreen/bin/helix-launcher.sh
 # Environment variables
 Environment="HELIX_SCREEN_WIDTH=800"
 Environment="HELIX_SCREEN_HEIGHT=480"
+# Override asset directory if ui_xml/assets/config are not under WorkingDirectory
+# Environment="HELIX_DATA_DIR=/usr/share/helixscreen"
 # Logging: auto-detects journal on systemd systems (can override with HELIX_LOG_DEST)
 # Environment="HELIX_LOG_DEST=journal"
 

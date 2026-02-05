@@ -17,6 +17,7 @@
 #   --log-file=<path>    Log file path (when --log-dest=file)
 #
 # Environment variables:
+#   HELIX_DATA_DIR=<d>   Override asset directory (ui_xml/, assets/, config/)
 #   HELIX_DEBUG=1        Same as --debug
 #   HELIX_LOG_DEST=<d>   Same as --log-dest (auto|journal|syslog|file|console)
 #   HELIX_LOG_FILE=<f>   Same as --log-file

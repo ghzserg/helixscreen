@@ -30,6 +30,11 @@ LOGFILE="/tmp/helixscreen.log"
 SCREEN_WIDTH="${HELIX_SCREEN_WIDTH:-800}"
 SCREEN_HEIGHT="${HELIX_SCREEN_HEIGHT:-480}"
 
+# Override asset directory if ui_xml/assets/config are not under DAEMON_DIR
+# Export so helix-screen picks it up at startup
+# HELIX_DATA_DIR="/mnt/data/helixscreen"
+# export HELIX_DATA_DIR
+
 # ForgeX backlight control paths (AD5M with ForgeX firmware)
 FORGEX_BACKLIGHT="/root/printer_data/py/backlight.py"
 

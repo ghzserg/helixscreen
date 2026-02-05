@@ -118,6 +118,18 @@ class EnvironmentConfig {
      * @return true if HELIX_BENCHMARK exists (any value)
      */
     static bool get_benchmark_mode();
+
+    /**
+     * @brief Get data directory override from HELIX_DATA_DIR
+     *
+     * When set, the application uses this directory as the root for
+     * runtime assets (ui_xml/, assets/, config/) instead of auto-detecting
+     * from the executable path. Required for standalone deployment where
+     * the binary isn't at <project>/build/bin/.
+     *
+     * @return Directory path, or nullopt if not set
+     */
+    static std::optional<std::string> get_data_dir();
 };
 
 } // namespace helix::config

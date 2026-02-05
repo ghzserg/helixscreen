@@ -339,6 +339,18 @@ int Application::run(int argc, char** argv) {
 }
 
 void Application::ensure_project_root_cwd() {
+    using EnvConfig = helix::config::EnvironmentConfig;
+
+    // HELIX_DATA_DIR takes priority - allows standalone deployment
+    if (auto data_dir = EnvConfig::get_data_dir()) {
+        if (chdir(data_dir->c_str()) == 0) {
+            spdlog::info("[Application] Using HELIX_DATA_DIR: {}", *data_dir);
+            return;
+        }
+        spdlog::warn("[Application] HELIX_DATA_DIR set to '{}' but chdir failed", *data_dir);
+    }
+
+    // Fall back to auto-detection from executable path
     char exe_path[PATH_MAX];
 
 #ifdef __APPLE__

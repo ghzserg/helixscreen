@@ -14,6 +14,7 @@ This document provides a comprehensive reference for all environment variables u
 | [UI Automation](#ui-automation) | 3 | `HELIX_AUTO_*` |
 | [Calibration](#calibration-auto-start) | 2 | `*_AUTO_START` |
 | [Debugging](#debugging) | 1 | `HELIX_DEBUG_*` |
+| [Deployment](#deployment) | 1 | `HELIX_` |
 | [Logging & Paths](#logging--data-paths) | 2 | Standard Unix |
 
 ---
@@ -580,6 +581,41 @@ HELIX_DEBUG_SUBJECTS=1 ./build/bin/helix-screen -vv
 - Debugging XML binding issues (e.g., `bind_text` on an INT subject)
 - Finding subject initialization order problems
 - Tracing observer callbacks that fire before subjects are ready
+
+---
+
+## Deployment
+
+### `HELIX_DATA_DIR`
+
+Override the runtime asset directory. When set, the application `chdir()`s to this path at startup so that all relative asset paths (`ui_xml/`, `assets/`, `config/`) resolve correctly. Use this when assets are installed to a different location than the default (e.g., due to storage constraints on embedded devices, or a custom filesystem layout).
+
+| Property | Value |
+|----------|-------|
+| **Values** | Absolute path to directory containing `ui_xml/`, `assets/`, `config/` |
+| **Default** | Auto-detect from executable path |
+| **File** | `src/application/application.cpp` |
+
+```bash
+# Assets on a separate partition
+HELIX_DATA_DIR=/mnt/data/helixscreen /usr/bin/helix-screen
+
+# FHS-style installation with split layout
+HELIX_DATA_DIR=/usr/share/helixscreen /usr/bin/helix-screen
+
+# Systemd service
+Environment="HELIX_DATA_DIR=/opt/helixscreen"
+```
+
+**Required directory structure:**
+```
+$HELIX_DATA_DIR/
+  ├── ui_xml/          # XML layout files
+  ├── assets/          # Images (runtime-loaded only)
+  └── config/          # Default configuration
+```
+
+**Note:** Fonts compiled into the binary (e.g., `mdi_icons_64`, `noto_sans_*`) work regardless of this setting. Only runtime-loaded files (XML, images) require the data directory.
 
 ---
 
