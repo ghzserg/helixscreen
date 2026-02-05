@@ -261,8 +261,16 @@ static void init_extra_styles(const theme_palette_t* palette, int border_radius)
     lv_style_set_radius(&checkbox_box_style, 4);
 
     lv_style_init(&checkbox_indicator_style);
+    lv_style_set_bg_color(&checkbox_indicator_style, palette->primary);
+    lv_style_set_bg_opa(&checkbox_indicator_style, LV_OPA_COVER);
+    lv_style_set_border_color(&checkbox_indicator_style, palette->primary);
+    // Checkmark: set bg_image_src to bold check symbol, rendered via text_font
+    lv_style_set_bg_image_src(&checkbox_indicator_style, LV_SYMBOL_OK);
     lv_style_set_text_font(&checkbox_indicator_style, &mdi_icons_16);
-    lv_style_set_text_color(&checkbox_indicator_style, palette->primary);
+    // Contrast text color based on primary luminance (same pattern as ui_button)
+    uint8_t cb_lum = lv_color_luminance(palette->primary);
+    lv_style_set_text_color(&checkbox_indicator_style,
+                            (cb_lum > 140) ? lv_color_black() : lv_color_white());
 
     // Switch styles
     lv_style_init(&switch_track_style);

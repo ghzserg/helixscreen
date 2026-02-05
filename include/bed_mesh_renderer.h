@@ -444,6 +444,17 @@ void bed_mesh_renderer_set_zero_plane_offset(bed_mesh_renderer_t* renderer, doub
  */
 double bed_mesh_renderer_get_zero_plane_offset(bed_mesh_renderer_t* renderer);
 
+/**
+ * @brief Set Z display offset for axis labels
+ *
+ * When mesh data is normalized (mean-subtracted), this offset is added back
+ * to Z values in axis labels so they show the original probe heights.
+ *
+ * @param renderer Renderer instance
+ * @param offset_mm The mean Z value subtracted during normalization
+ */
+void bed_mesh_renderer_set_z_display_offset(bed_mesh_renderer_t* renderer, double offset_mm);
+
 #ifdef __cplusplus
 }
 #endif

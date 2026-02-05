@@ -186,8 +186,8 @@ void generate_mesh_quads(bed_mesh_renderer_t* renderer) {
         double plane_world_z = helix::mesh::mesh_z_to_world_z(
             renderer->zero_plane_z_offset, renderer->cached_z_center, renderer->view_state.z_scale);
 
-        // Zero plane color: grayish-white (matches Mainsail style)
-        lv_color_t plane_color = lv_color_make(200, 200, 210); // Slightly blue-tinted gray
+        // Zero plane color: subtle neutral gray
+        lv_color_t plane_color = lv_color_make(160, 160, 170);
 
         // Determine plane bounds and grid spacing
         double plane_min_x, plane_max_x, plane_min_y, plane_max_y;

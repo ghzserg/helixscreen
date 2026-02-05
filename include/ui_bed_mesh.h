@@ -133,6 +133,17 @@ void ui_bed_mesh_set_render_mode(lv_obj_t* canvas, bed_mesh_render_mode_t mode);
  */
 void ui_bed_mesh_set_zero_plane_visible(lv_obj_t* canvas, bool visible);
 
+/**
+ * @brief Set Z display offset for axis labels and tooltips
+ *
+ * When mesh data is normalized, this offset is added back so displayed Z values
+ * match the original probe heights.
+ *
+ * @param canvas The bed_mesh canvas widget
+ * @param offset_mm The mean Z value that was subtracted during normalization
+ */
+void ui_bed_mesh_set_z_display_offset(lv_obj_t* canvas, double offset_mm);
+
 #ifdef __cplusplus
 }
 #endif

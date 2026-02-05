@@ -602,15 +602,19 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
     std::snprintf(dimensions_buf_, sizeof(dimensions_buf_), "%dx%d", mesh.x_count, mesh.y_count);
     lv_subject_copy_string(&bed_mesh_dimensions_, dimensions_buf_);
 
-    // Calculate Z range with coordinates
+    // Calculate Z range, mean, and coordinates of min/max points
     float min_z = std::numeric_limits<float>::max();
     float max_z = std::numeric_limits<float>::lowest();
+    double z_sum = 0.0;
+    int z_count = 0;
     int min_row = 0, min_col = 0;
     int max_row = 0, max_col = 0;
 
     for (size_t row = 0; row < mesh.probed_matrix.size(); row++) {
         for (size_t col = 0; col < mesh.probed_matrix[row].size(); col++) {
             float z = mesh.probed_matrix[row][col];
+            z_sum += z;
+            z_count++;
             if (z < min_z) {
                 min_z = z;
                 min_row = static_cast<int>(row);
@@ -624,6 +628,28 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
         }
     }
 
+    // Normalize mesh data: subtract mean so deviations are centered around zero.
+    // This makes the 3D visualization show bed flatness (what users care about)
+    // rather than absolute probe heights (which depend on Z calibration).
+    float z_mean = (z_count > 0) ? static_cast<float>(z_sum / z_count) : 0.0f;
+    float norm_min_z = min_z - z_mean;
+    float norm_max_z = max_z - z_mean;
+
+    std::vector<std::vector<float>> normalized_matrix;
+    normalized_matrix.reserve(mesh.probed_matrix.size());
+    for (const auto& row : mesh.probed_matrix) {
+        std::vector<float> norm_row;
+        norm_row.reserve(row.size());
+        for (float z : row) {
+            norm_row.push_back(z - z_mean);
+        }
+        normalized_matrix.push_back(std::move(norm_row));
+    }
+
+    spdlog::debug(
+        "[{}] Normalized mesh: mean={:.4f}, raw range [{:.3f}, {:.3f}] -> [{:.3f}, {:.3f}]",
+        get_name(), z_mean, min_z, max_z, norm_min_z, norm_max_z);
+
     // Convert mesh indices to actual printer coordinates using mesh_min/mesh_max
     // Klipper's probed_matrix: row 0 = mesh_min[1], row N-1 = mesh_max[1]
     float x_step =
@@ -635,19 +661,18 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
     float max_x = mesh.mesh_min[0] + max_col * x_step;
     float max_y = mesh.mesh_min[1] + max_row * y_step;
 
-    // Update max label and value
+    // Display raw Z values in stats (what Klipper actually measured)
     std::snprintf(max_label_buf_, sizeof(max_label_buf_), "Max [%.1f, %.1f]", max_x, max_y);
     lv_subject_copy_string(&bed_mesh_max_label_, max_label_buf_);
     helix::fmt::format_distance_mm(max_z, 3, max_value_buf_, sizeof(max_value_buf_));
     lv_subject_copy_string(&bed_mesh_max_value_, max_value_buf_);
 
-    // Update min label and value
     std::snprintf(min_label_buf_, sizeof(min_label_buf_), "Min [%.1f, %.1f]", min_x, min_y);
     lv_subject_copy_string(&bed_mesh_min_label_, min_label_buf_);
     helix::fmt::format_distance_mm(min_z, 3, min_value_buf_, sizeof(min_value_buf_));
     lv_subject_copy_string(&bed_mesh_min_value_, min_value_buf_);
 
-    // Update variance (range)
+    // Variance (range) is the same whether normalized or not
     float variance = max_z - min_z;
     helix::fmt::format_distance_mm(variance, 3, variance_buf_, sizeof(variance_buf_));
     lv_subject_copy_string(&bed_mesh_variance_, variance_buf_);
@@ -661,6 +686,12 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
         has_cached_mesh_bounds_ = true;
     }
 
+    // Tell the renderer to add back the mean when displaying Z values
+    // so axis labels and tooltips show original probe heights
+    if (canvas_) {
+        ui_bed_mesh_set_z_display_offset(canvas_, static_cast<double>(z_mean));
+    }
+
     // Check if build_volume is available
     MoonrakerAPI* api = get_moonraker_api();
     const auto& bed = api ? api->hardware().build_volume() : BuildVolume{};
@@ -669,16 +700,18 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
     if (has_valid_build_volume) {
         // Build volume available - set bounds and render immediately
         refresh_bed_bounds();
-        set_mesh_data(mesh.probed_matrix);
+        set_mesh_data(normalized_matrix);
     } else {
         // Build volume not yet available - defer rendering until it arrives
-        pending_mesh_data_ = mesh.probed_matrix;
+        pending_mesh_data_ = std::move(normalized_matrix);
         has_pending_mesh_data_ = true;
         spdlog::debug("[{}] Deferring mesh render until build_volume is available", get_name());
     }
 
-    spdlog::info("[{}] Mesh updated: {} ({}x{}, Z: {:.3f} to {:.3f})", get_name(), mesh.name,
-                 mesh.x_count, mesh.y_count, min_z, max_z);
+    spdlog::info("[{}] Mesh updated: {} ({}x{}, raw Z: [{:.3f}, {:.3f}], normalized: [{:.3f}, "
+                 "{:.3f}])",
+                 get_name(), mesh.name, mesh.x_count, mesh.y_count, min_z, max_z, norm_min_z,
+                 norm_max_z);
 }
 
 void BedMeshPanel::update_info_subjects(const std::vector<std::vector<float>>& mesh_data, int cols,

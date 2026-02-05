@@ -113,9 +113,14 @@ struct bed_mesh_renderer {
     // Initial calibration state (prevents recalculating on subsequent frames)
     bool initial_centering_computed = false; // True after first centering offset computation
 
+    // ===== Z Display Offset =====
+    // When mesh data is normalized (mean-subtracted) for visualization, this offset
+    // is added back to Z values for axis labels so they show real probe heights.
+    double z_display_offset = 0.0;
+
     // ===== Zero Plane Feature =====
     // Translucent reference plane at Z=0 (or Z-offset) showing where nozzle touches bed
     bool show_zero_plane = true;             // Enable/disable the zero plane visualization
     double zero_plane_z_offset = 0.0;        // Offset from Z=0 in mm (e.g., printer's Z-offset)
-    lv_opa_t zero_plane_opacity = LV_OPA_40; // Opacity of the zero plane (40% default)
+    lv_opa_t zero_plane_opacity = LV_OPA_20; // Opacity of the zero plane (20% default)
 };

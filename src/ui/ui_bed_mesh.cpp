@@ -594,3 +594,22 @@ void ui_bed_mesh_set_zero_plane_visible(lv_obj_t* widget, bool visible) {
     bed_mesh_renderer_set_zero_plane_visible(data->renderer, visible);
     lv_obj_invalidate(widget); // Redraw with updated plane visibility
 }
+
+/**
+ * Set Z display offset for axis labels
+ *
+ * When mesh data is normalized (mean-subtracted), this offset is added back
+ * so axis labels and tooltips show original probe heights.
+ */
+void ui_bed_mesh_set_z_display_offset(lv_obj_t* widget, double offset_mm) {
+    if (!widget) {
+        return;
+    }
+
+    bed_mesh_widget_data_t* data = (bed_mesh_widget_data_t*)lv_obj_get_user_data(widget);
+    if (!data || !data->renderer) {
+        return;
+    }
+
+    bed_mesh_renderer_set_z_display_offset(data->renderer, offset_mm);
+}

@@ -577,9 +577,11 @@ void render_numeric_axis_ticks(lv_layer_t* layer, const bed_mesh_renderer_t* ren
         double t = static_cast<double>(i) / (NUM_Z_LABELS - 1);
         double z_world = bounds.floor_z + t * (bounds.ceiling_z - bounds.floor_z);
 
-        // Convert world Z back to mesh Z for display
+        // Convert world Z back to mesh Z for display, adding back the normalization
+        // offset so labels show original probe heights (not mean-subtracted values)
         double z_mm = helix::mesh::world_z_to_mesh_z(z_world, renderer->cached_z_center,
-                                                     renderer->view_state.z_scale);
+                                                     renderer->view_state.z_scale) +
+                      renderer->z_display_offset;
 
         bed_mesh_point_3d_t tick = bed_mesh_projection_project_3d_to_2d(
             x_min_world, y_max_world, z_world, canvas_width, canvas_height, &renderer->view_state);

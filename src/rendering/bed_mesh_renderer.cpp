@@ -1524,9 +1524,10 @@ static void render_2d_heatmap(lv_layer_t* layer, bed_mesh_renderer_t* renderer, 
         highlight_area.y2 = static_cast<int16_t>(highlight_area.y1 + cell_h - 1);
         lv_draw_rect(layer, &highlight_dsc, &highlight_area);
 
-        // Draw Z value tooltip
+        // Draw Z value tooltip (add display offset to show original probe height)
         char z_text[32];
-        snprintf(z_text, sizeof(z_text), "%.3f mm", static_cast<double>(renderer->touched_z));
+        snprintf(z_text, sizeof(z_text), "%.3f mm",
+                 static_cast<double>(renderer->touched_z) + renderer->z_display_offset);
 
         // Position tooltip above the cell (or below if near top)
         int tooltip_x = highlight_area.x1 + cell_w / 2 - 30;
@@ -1766,4 +1767,11 @@ double bed_mesh_renderer_get_zero_plane_offset(bed_mesh_renderer_t* renderer) {
     if (!renderer)
         return 0.0;
     return renderer->zero_plane_z_offset;
+}
+
+void bed_mesh_renderer_set_z_display_offset(bed_mesh_renderer_t* renderer, double offset_mm) {
+    if (!renderer)
+        return;
+    renderer->z_display_offset = offset_mm;
+    spdlog::debug("[Bed Mesh Renderer] Z display offset set to {:.4f}mm", offset_mm);
 }

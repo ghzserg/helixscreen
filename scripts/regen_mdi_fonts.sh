@@ -65,6 +65,7 @@ MDI_ICONS+=",0xF0109"    # camera-timer (timelapse)
 MDI_ICONS+=",0xF011D"    # tray-arrow-up (unload)
 MDI_ICONS+=",0xF012A"    # chart-line
 MDI_ICONS+=",0xF012C"    # check
+MDI_ICONS+=",0xF0E1E"    # check-bold
 MDI_ICONS+=",0xF0140"    # chevron-down
 MDI_ICONS+=",0xF0141"    # chevron-left
 MDI_ICONS+=",0xF0142"    # chevron-right

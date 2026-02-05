@@ -72,6 +72,7 @@ static const IconMapping ICON_MAP[] = {
     {"cancel",             "\xF3\xB0\x9C\xBA"},  // F073A cancel
     {"chart_line",         "\xF3\xB0\x84\xAA"},  // F012A chart-line
     {"check",              "\xF3\xB0\x84\xAC"},  // F012C check
+    {"check_bold",         "\xF3\xB0\xB8\x9E"},  // F0E1E check-bold
     {"check_circle",       "\xF3\xB0\x97\xA1"},  // F05E1 check-circle-outline
     {"chevron_down",       "\xF3\xB0\x85\x80"},  // F0140 chevron-down
     {"chevron_left",       "\xF3\xB0\x85\x81"},  // F0141 chevron-left
