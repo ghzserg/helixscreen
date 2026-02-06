@@ -303,8 +303,16 @@ int main(int argc, char** argv) {
     // Initialize LVGL
     lv_init();
 
-    // Create display backend using shared library
-    auto backend = DisplayBackend::create();
+    // Create display backend — force fbdev for splash to avoid DRM master contention.
+    // On DRM systems, only one process can hold the master lease. If splash takes it,
+    // helix-screen can't flush frames until splash dies. Using fbdev for splash avoids
+    // this entirely since fbdev has no master concept. DRM is still used for resolution
+    // detection (read-only, no master needed).
+    auto backend = DisplayBackend::create(DisplayBackendType::FBDEV);
+    if (!backend) {
+        // Fallback to auto-detect if fbdev isn't available (e.g. desktop/SDL)
+        backend = DisplayBackend::create();
+    }
     if (!backend) {
         fprintf(stderr, "helix-splash: Failed to create display backend\n");
         return 1;
