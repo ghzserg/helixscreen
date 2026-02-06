@@ -36,6 +36,9 @@
 
 set -e
 
+# Hide the Linux console text cursor (visible as a blinking block on fbdev)
+setterm --cursor off 2>/dev/null || printf '\033[?25l' > /dev/tty1 2>/dev/null || true
+
 # Debug/verbose mode - pass -vv to helix-screen for debug-level logging
 DEBUG_MODE="${HELIX_DEBUG:-0}"
 LOG_DEST="${HELIX_LOG_DEST:-auto}"
