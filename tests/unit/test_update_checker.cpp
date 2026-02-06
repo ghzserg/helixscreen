@@ -723,3 +723,64 @@ TEST_CASE("JSON edge cases", "[update_checker][json][edge]") {
         REQUIRE_FALSE(release.download_url.empty());
     }
 }
+
+// ============================================================================
+// Download Status Types and Subjects
+// ============================================================================
+
+TEST_CASE("UpdateChecker download status enum values", "[update_checker]") {
+    REQUIRE(static_cast<int>(UpdateChecker::DownloadStatus::Idle) == 0);
+    REQUIRE(static_cast<int>(UpdateChecker::DownloadStatus::Confirming) == 1);
+    REQUIRE(static_cast<int>(UpdateChecker::DownloadStatus::Downloading) == 2);
+    REQUIRE(static_cast<int>(UpdateChecker::DownloadStatus::Verifying) == 3);
+    REQUIRE(static_cast<int>(UpdateChecker::DownloadStatus::Installing) == 4);
+    REQUIRE(static_cast<int>(UpdateChecker::DownloadStatus::Complete) == 5);
+    REQUIRE(static_cast<int>(UpdateChecker::DownloadStatus::Error) == 6);
+}
+
+TEST_CASE("UpdateChecker download state initial values", "[update_checker]") {
+    auto& checker = UpdateChecker::instance();
+    checker.init();
+
+    REQUIRE(checker.get_download_status() == UpdateChecker::DownloadStatus::Idle);
+    REQUIRE(checker.get_download_progress() == 0);
+    REQUIRE(checker.get_download_error().empty());
+
+    checker.shutdown();
+}
+
+TEST_CASE("UpdateChecker download subjects exist after init", "[update_checker]") {
+    auto& checker = UpdateChecker::instance();
+    checker.init();
+
+    REQUIRE(checker.download_status_subject() != nullptr);
+    REQUIRE(checker.download_progress_subject() != nullptr);
+    REQUIRE(checker.download_text_subject() != nullptr);
+
+    REQUIRE(lv_subject_get_int(checker.download_status_subject()) == 0);
+    REQUIRE(lv_subject_get_int(checker.download_progress_subject()) == 0);
+
+    checker.shutdown();
+}
+
+TEST_CASE("UpdateChecker get_download_path returns valid path", "[update_checker]") {
+    auto& checker = UpdateChecker::instance();
+    checker.init();
+
+    auto path = checker.get_download_path();
+    REQUIRE(!path.empty());
+    REQUIRE(path.find("helixscreen-update.tar.gz") != std::string::npos);
+
+    checker.shutdown();
+}
+
+TEST_CASE("UpdateChecker get_platform_asset_name format", "[update_checker]") {
+    auto& checker = UpdateChecker::instance();
+    checker.init();
+
+    auto name = checker.get_platform_asset_name();
+    REQUIRE(name.find("helixscreen-") != std::string::npos);
+    REQUIRE(name.find(".tar.gz") != std::string::npos);
+
+    checker.shutdown();
+}

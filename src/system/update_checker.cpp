@@ -150,15 +150,19 @@ UpdateChecker::~UpdateChecker() {
     // NOTE: Don't use spdlog here - during exit(), spdlog may already be destroyed
     // which causes a crash. Just silently clean up.
 
-    // Signal cancellation to any running check
+    // Signal cancellation to any running threads
     cancelled_ = true;
+    download_cancelled_ = true;
     shutting_down_ = true;
 
-    // MUST join thread if joinable, regardless of status.
+    // MUST join threads if joinable, regardless of status.
     // A completed check still has a joinable thread.
     // Destroying a joinable std::thread without join() calls std::terminate()!
     if (worker_thread_.joinable()) {
         worker_thread_.join();
+    }
+    if (download_thread_.joinable()) {
+        download_thread_.join();
     }
 }
 
@@ -186,12 +190,19 @@ void UpdateChecker::shutdown() {
 
     // Signal cancellation
     cancelled_ = true;
+    download_cancelled_ = true;
     shutting_down_ = true;
 
     // Wait for worker thread to finish
     if (worker_thread_.joinable()) {
         spdlog::debug("[UpdateChecker] Joining worker thread");
         worker_thread_.join();
+    }
+
+    // Wait for download thread to finish
+    if (download_thread_.joinable()) {
+        spdlog::debug("[UpdateChecker] Joining download thread");
+        download_thread_.join();
     }
 
     // Clear callback to prevent stale references
@@ -222,6 +233,13 @@ void UpdateChecker::init_subjects() {
     UI_MANAGED_SUBJECT_STRING(new_version_subject_, new_version_buf_, "", "update_new_version",
                               subjects_);
 
+    // Download subjects
+    UI_MANAGED_SUBJECT_INT(download_status_subject_, static_cast<int>(DownloadStatus::Idle),
+                           "download_status", subjects_);
+    UI_MANAGED_SUBJECT_INT(download_progress_subject_, 0, "download_progress", subjects_);
+    UI_MANAGED_SUBJECT_STRING(download_text_subject_, download_text_buf_, "", "download_text",
+                              subjects_);
+
     subjects_initialized_ = true;
     spdlog::debug("[UpdateChecker] LVGL subjects initialized");
 }
@@ -241,6 +259,96 @@ lv_subject_t* UpdateChecker::version_text_subject() {
 }
 lv_subject_t* UpdateChecker::new_version_subject() {
     return &new_version_subject_;
+}
+lv_subject_t* UpdateChecker::download_status_subject() {
+    return &download_status_subject_;
+}
+lv_subject_t* UpdateChecker::download_progress_subject() {
+    return &download_progress_subject_;
+}
+lv_subject_t* UpdateChecker::download_text_subject() {
+    return &download_text_subject_;
+}
+
+// ============================================================================
+// Download Getters
+// ============================================================================
+
+UpdateChecker::DownloadStatus UpdateChecker::get_download_status() const {
+    return download_status_.load();
+}
+
+int UpdateChecker::get_download_progress() const {
+    return download_progress_.load();
+}
+
+std::string UpdateChecker::get_download_error() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return download_error_;
+}
+
+std::string UpdateChecker::get_download_path() const {
+#ifdef HELIX_PLATFORM_AD5M
+    return "/data/helixscreen-update.tar.gz";
+#else
+    return "/tmp/helixscreen-update.tar.gz";
+#endif
+}
+
+std::string UpdateChecker::get_platform_asset_name() const {
+    std::string version;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        version = cached_info_ ? cached_info_->tag_name : "";
+    }
+#ifdef HELIX_PLATFORM_AD5M
+    return "helixscreen-ad5m-" + version + ".tar.gz";
+#elif defined(HELIX_PLATFORM_K1)
+    return "helixscreen-k1-" + version + ".tar.gz";
+#else
+    return "helixscreen-pi-" + version + ".tar.gz";
+#endif
+}
+
+void UpdateChecker::report_download_status(DownloadStatus status, int progress,
+                                           const std::string& text, const std::string& error) {
+    if (shutting_down_.load())
+        return;
+
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        download_status_ = status;
+        download_progress_ = progress;
+        download_error_ = error;
+    }
+
+    ui_queue_update([this, status, progress, text]() {
+        if (subjects_initialized_) {
+            lv_subject_set_int(&download_status_subject_, static_cast<int>(status));
+            lv_subject_set_int(&download_progress_subject_, progress);
+            lv_subject_copy_string(&download_text_subject_, text.c_str());
+        }
+    });
+}
+
+// ============================================================================
+// Download Stubs (implementation in future task)
+// ============================================================================
+
+void UpdateChecker::start_download() {
+    spdlog::warn("[UpdateChecker] start_download() not yet implemented");
+}
+
+void UpdateChecker::cancel_download() {
+    download_cancelled_ = true;
+}
+
+void UpdateChecker::do_download() {
+    // Will be implemented in future task
+}
+
+void UpdateChecker::do_install(const std::string& /*tarball_path*/) {
+    // Will be implemented in future task
 }
 
 // ============================================================================

@@ -70,6 +70,19 @@ class UpdateChecker {
     };
 
     /**
+     * @brief Download and install status
+     */
+    enum class DownloadStatus {
+        Idle = 0,        ///< No download in progress
+        Confirming = 1,  ///< User confirming download
+        Downloading = 2, ///< Download in progress
+        Verifying = 3,   ///< Verifying tarball integrity
+        Installing = 4,  ///< Running install.sh
+        Complete = 5,    ///< Install succeeded
+        Error = 6        ///< Download/install failed
+    };
+
+    /**
      * @brief Get singleton instance
      */
     static UpdateChecker& instance();
@@ -142,11 +155,29 @@ class UpdateChecker {
      */
     void shutdown();
 
-    // LVGL subjects for UI binding
+    // LVGL subjects for UI binding (update check)
     lv_subject_t* status_subject();
     lv_subject_t* checking_subject();
     lv_subject_t* version_text_subject();
     lv_subject_t* new_version_subject();
+
+    // Download and install
+    void start_download();
+    void cancel_download();
+    DownloadStatus get_download_status() const;
+    int get_download_progress() const;
+    std::string get_download_error() const;
+
+    // LVGL subjects for download UI
+    lv_subject_t* download_status_subject();
+    lv_subject_t* download_progress_subject();
+    lv_subject_t* download_text_subject();
+
+    // Download state reporting (public for tests and SettingsPanel)
+    void report_download_status(DownloadStatus status, int progress, const std::string& text,
+                                const std::string& error = "");
+    std::string get_download_path() const;
+    std::string get_platform_asset_name() const;
 
   private:
     UpdateChecker() = default;
@@ -188,7 +219,7 @@ class UpdateChecker {
     std::atomic<bool> initialized_{false};
     Callback pending_callback_;
 
-    // LVGL subjects for UI binding
+    // LVGL subjects for UI binding (update check)
     lv_subject_t status_subject_{};
     lv_subject_t checking_subject_{};
     lv_subject_t version_text_subject_{};
@@ -197,6 +228,23 @@ class UpdateChecker {
     // String buffers for string subjects (must outlive subjects)
     char version_text_buf_[256]{};
     char new_version_buf_[64]{};
+
+    // Download state
+    std::atomic<DownloadStatus> download_status_{DownloadStatus::Idle};
+    std::atomic<int> download_progress_{0};
+    std::string download_error_;
+    std::thread download_thread_;
+    std::atomic<bool> download_cancelled_{false};
+
+    // Download LVGL subjects
+    lv_subject_t download_status_subject_{};
+    lv_subject_t download_progress_subject_{};
+    lv_subject_t download_text_subject_{};
+    char download_text_buf_[256]{};
+
+    // Download internals
+    void do_download();
+    void do_install(const std::string& tarball_path);
 
     SubjectManager subjects_;
     bool subjects_initialized_{false};
