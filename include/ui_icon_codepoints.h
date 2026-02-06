@@ -104,6 +104,8 @@ static const IconMapping ICON_MAP[] = {
     {"engine_off",         "\xF3\xB0\xA9\x86"},  // F0A46 engine-off/motor-off
     {"ethernet",           "\xF3\xB0\x88\x80"},  // F0200 ethernet
     {"expand_all",         "\xF3\xB0\x81\x8C"},  // F004C arrow-expand-all/move
+    {"eye",                "\xF3\xB0\x88\x88"},  // F0208 eye
+    {"eye_off",            "\xF3\xB0\x88\x89"},  // F0209 eye-off
 
     // Fan icons
     {"fan",                "\xF3\xB0\x88\x90"},  // F0210 fan

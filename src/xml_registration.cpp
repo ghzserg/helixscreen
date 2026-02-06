@@ -11,6 +11,7 @@
 #include "ui_fonts.h"
 #include "ui_gcode_viewer.h"
 #include "ui_hsv_picker.h"
+#include "ui_icon_codepoints.h"
 #include "ui_notification_badge.h"
 #include "ui_panel_settings.h"
 #include "ui_spinner.h"
@@ -85,6 +86,33 @@ static void register_color_picker_responsive_constants() {
     }
 }
 
+/**
+ * Toggle password visibility on a sibling textarea.
+ * Finds "password_input" by walking up to the shared parent container,
+ * then swaps the eye/eye_off icon on the button.
+ */
+static void on_toggle_password_visibility(lv_event_t* e) {
+    auto* btn = (lv_obj_t*)lv_event_get_target(e);
+    auto* container = lv_obj_get_parent(btn);
+    if (!container)
+        return;
+
+    auto* textarea = (lv_obj_t*)lv_obj_find_by_name(container, "password_input");
+    if (!textarea)
+        return;
+
+    bool was_password = lv_textarea_get_password_mode(textarea);
+    lv_textarea_set_password_mode(textarea, !was_password);
+
+    // Swap icon: eye_off when hidden (password mode), eye when visible
+    auto* icon = (lv_obj_t*)lv_obj_find_by_name(btn, "eye_toggle_icon");
+    if (icon) {
+        const char* cp = ui_icon::lookup_codepoint(was_password ? "eye" : "eye_off");
+        if (cp)
+            lv_label_set_text(icon, cp);
+    }
+}
+
 void register_xml_components() {
     spdlog::trace("[XML Registration] Registering XML components...");
 
@@ -103,6 +131,10 @@ void register_xml_components() {
     // Register no-op callback and subject for optional handlers in XML components
     // This silences warnings when components use callback/subject props with default=""
     lv_xml_register_event_cb(nullptr, "", noop_event_callback);
+
+    // Global utility callbacks used by multiple components
+    lv_xml_register_event_cb(nullptr, "on_toggle_password_visibility",
+                             on_toggle_password_visibility);
     lv_subject_init_int(&s_noop_subject, 0);
     lv_xml_register_subject(nullptr, "", &s_noop_subject);
     s_noop_subject_initialized = true;

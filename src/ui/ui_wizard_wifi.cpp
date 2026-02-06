@@ -254,6 +254,7 @@ void WizardWifiStep::update_wifi_ip(const char* ip) {
     // Update WiFi MAC when we have an IP (connected)
     if (ip && ip[0] != '\0' && wifi_manager_) {
         std::string mac = wifi_manager_->get_mac_address();
+        spdlog::debug("[{}] WiFi MAC from backend: '{}' (len={})", get_name(), mac, mac.size());
         if (!mac.empty()) {
             char mac_buf[32];
             snprintf(mac_buf, sizeof(mac_buf), "MAC: %s", mac.c_str());

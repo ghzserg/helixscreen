@@ -83,8 +83,10 @@ MDI_ICONS+=",0xF01DA"    # download
 MDI_ICONS+=",0xF0E9F"    # electric-switch (switch sensors)
 MDI_ICONS+=",0xF01FA"    # engine (motor)
 
-# Ethernet/Network
+# Ethernet/Network/Eye
 MDI_ICONS+=",0xF0200"    # ethernet
+MDI_ICONS+=",0xF0208"    # eye (password visibility toggle)
+MDI_ICONS+=",0xF0209"    # eye-off (password visibility toggle)
 MDI_ICONS+=",0xF0210"    # fan
 MDI_ICONS+=",0xF0238"    # fire
 MDI_ICONS+=",0xF0241"    # flash (lightning bolt - heating indicator)

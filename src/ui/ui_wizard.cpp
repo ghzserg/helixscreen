@@ -93,6 +93,9 @@ static bool input_shaper_step_skipped = false;
 // Track if we've calculated the actual step total (happens after connection step)
 static bool skips_precalculated = false;
 
+// Guard against rapid double-clicks during navigation
+static bool navigating = false;
+
 // Forward declarations
 static void on_back_clicked(lv_event_t* e);
 static void on_next_clicked(lv_event_t* e);
@@ -477,6 +480,9 @@ void ui_wizard_navigate_to_step(int step) {
         lv_obj_update_layout(wizard_container);
     }
 
+    // Allow next navigation click
+    navigating = false;
+
     spdlog::debug("[Wizard] Updated to step {} of {} (internal: {}), final: {}", display_step,
                   display_total, step, is_last_step);
 }
@@ -661,14 +667,16 @@ static void ui_wizard_load_screen(int step) {
     const char* subtitle = get_step_subtitle_from_xml(step);
     lv_subject_copy_string(&wizard_subtitle, lv_tr(subtitle));
 
+    // Default Next button to enabled - steps that gate on validation (language,
+    // connection, printer identify, fan select) will set it to 0 in their init
+    lv_subject_set_int(&connection_test_passed, 1);
+
     // Create appropriate screen based on step
     // Note: Step-specific initialization remains in switch because each step
     // has unique logic (WiFi needs init_wifi_manager, etc.)
     switch (step) {
     case 0: // Touch Calibration
         spdlog::debug("[Wizard] Creating touch calibration screen");
-        // Reset Next button to enabled - touch cal uses its own completion logic
-        lv_subject_set_int(&connection_test_passed, 1);
         get_wizard_touch_calibration_step()->init_subjects();
         get_wizard_touch_calibration_step()->register_callbacks();
         get_wizard_touch_calibration_step()->create(content);
@@ -687,8 +695,6 @@ static void ui_wizard_load_screen(int step) {
 
     case 2: // WiFi Setup
         spdlog::debug("[Wizard] Creating WiFi setup screen");
-        // Reset Next button to enabled - WiFi step has no connection test requirement
-        lv_subject_set_int(&connection_test_passed, 1);
         get_wizard_wifi_step()->init_subjects();
         get_wizard_wifi_step()->register_callbacks();
         get_wizard_wifi_step()->create(content);
@@ -945,6 +951,9 @@ void ui_wizard_complete() {
 
 static void on_back_clicked(lv_event_t* e) {
     (void)e;
+    if (navigating)
+        return;
+    navigating = true;
     int current = lv_subject_get_int(&current_step);
 
     // Find minimum step (first non-skipped step)
@@ -990,16 +999,22 @@ static void on_back_clicked(lv_event_t* e) {
         // Skip touch calibration step (0) when going back if it was skipped
         if (prev_step == 0 && touch_cal_step_skipped) {
             // Can't go back further - touch cal was skipped
+            navigating = false;
             return;
         }
 
         ui_wizard_navigate_to_step(prev_step);
         spdlog::debug("[Wizard] Back button clicked, step: {}", prev_step);
+    } else {
+        navigating = false;
     }
 }
 
 static void on_next_clicked(lv_event_t* e) {
     (void)e;
+    if (navigating)
+        return;
+    navigating = true;
     int current = lv_subject_get_int(&current_step);
 
     // Summary (step 12) is the last step
