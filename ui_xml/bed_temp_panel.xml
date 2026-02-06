@@ -63,7 +63,9 @@
         <lv_obj name="preset_grid"
                 width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="row_wrap"
                 style_flex_main_place="space_between" style_pad_gap="#space_xs">
-          <ui_button name="preset_off" width="48%" text="Off" translation_tag="Off" variant="ghost">
+          <ui_button name="preset_off"
+                     width="48%" text="Off" translation_tag="Off" variant="ghost" style_border_width="#border_width"
+                     style_border_color="#border" style_border_opa="255">
             <event_cb trigger="clicked" callback="on_bed_preset_off_clicked"/>
           </ui_button>
           <ui_button name="preset_pla" width="48%" text="PLA" translation_tag="PLA">
