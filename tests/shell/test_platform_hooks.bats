@@ -155,3 +155,39 @@ INIT_SCRIPT="config/helixscreen.init"
 @test "bundled installer contains fix_install_ownership" {
     grep -q 'fix_install_ownership' scripts/install.sh
 }
+
+@test "bundled installer contains detect_pi_install_dir function" {
+    grep -q 'detect_pi_install_dir()' scripts/install.sh
+}
+
+@test "bundled installer calls detect_pi_install_dir in Pi branch" {
+    # The Pi branch of set_install_paths must call detect_pi_install_dir
+    grep -A5 'detect_klipper_user' scripts/install.sh | grep -q 'detect_pi_install_dir'
+}
+
+@test "bundled installer captures _USER_INSTALL_DIR" {
+    grep -q '_USER_INSTALL_DIR=' scripts/install.sh
+}
+
+# --- Parity tests: platform.sh functions must exist in bundled install.sh ---
+# These catch the case where a function is added to platform.sh but not
+# to the bundled installer (which is a separate copy of the modules).
+
+@test "parity: all platform.sh functions exist in bundled installer" {
+    # Extract function names from platform.sh
+    local funcs
+    funcs=$(grep -E '^[a-z_]+\(\)' scripts/lib/installer/platform.sh | sed 's/().*//')
+    for func in $funcs; do
+        if ! grep -q "${func}()" scripts/install.sh; then
+            echo "MISSING in install.sh: ${func}()"
+            return 1
+        fi
+    done
+}
+
+@test "parity: Pi branch in install.sh matches platform.sh" {
+    # Both files should call detect_pi_install_dir (not hardcode /opt/helixscreen)
+    # in their Pi/else branch of set_install_paths
+    ! grep -A3 'Pi and other platforms' scripts/install.sh | grep -q 'INSTALL_DIR="/opt/helixscreen"'
+    ! grep -A3 'Pi and other platforms' scripts/lib/installer/platform.sh | grep -q 'INSTALL_DIR="/opt/helixscreen"'
+}
