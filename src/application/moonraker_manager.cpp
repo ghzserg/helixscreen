@@ -299,6 +299,13 @@ void MoonrakerManager::register_callbacks() {
                 NOTIFY_ERROR_T(title, "{}", evt.message);
             }
         } else {
+            // Suppress non-error toasts during wizard (first connection, not a "reconnection")
+            if (is_wizard_active()) {
+                spdlog::debug("[MoonrakerManager] Suppressing '{}' toast during wizard",
+                              evt.message);
+                return;
+            }
+
             // Suppress "Klipper ready" toast during startup (expected at boot)
             auto now = std::chrono::steady_clock::now();
             bool within_grace_period =
