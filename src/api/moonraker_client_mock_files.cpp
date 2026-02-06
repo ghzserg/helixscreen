@@ -186,7 +186,7 @@ static json build_mock_file_metadata_response(const std::string& filename) {
 
     json response = {{"result", result}};
 
-    spdlog::debug("[MoonrakerClientMock] Built metadata for '{}': {}s, {}g filament", filename,
+    spdlog::trace("[MoonrakerClientMock] Built metadata for '{}': {}s, {}g filament", filename,
                   header_meta.estimated_time_seconds, header_meta.filament_used_g);
     return response;
 }
@@ -248,7 +248,7 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         if (!filename.empty()) {
             if (success_cb) {
                 json response = build_mock_file_metadata_response(filename);
-                spdlog::debug("[MoonrakerClientMock] Returning mock metadata for: {}", filename);
+                spdlog::trace("[MoonrakerClientMock] Returning mock metadata for: {}", filename);
                 success_cb(response);
             }
         } else if (error_cb) {

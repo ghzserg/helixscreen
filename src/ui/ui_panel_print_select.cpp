@@ -1441,7 +1441,7 @@ CardDimensions PrintSelectPanel::calculate_card_dimensions() {
     lv_coord_t container_padding = container_pad_top + container_pad_bottom;
     lv_coord_t available_height = panel_height - top_bar_height - container_padding - panel_gap;
 
-    spdlog::debug("[{}] Height calc: panel={} - top_bar={} - container_pad({}+{})={} - "
+    spdlog::trace("[{}] Height calc: panel={} - top_bar={} - container_pad({}+{})={} - "
                   "panel_gap={} = available={}",
                   get_name(), panel_height, top_bar_height, container_pad_top, container_pad_bottom,
                   container_padding, panel_gap, available_height);
@@ -1460,7 +1460,7 @@ CardDimensions PrintSelectPanel::calculate_card_dimensions() {
 
     int total_row_gaps = dims.num_rows * card_gap;
     int total_used = (dims.num_rows * dims.card_height) + total_row_gaps;
-    spdlog::debug("[{}] Card height: row_height={} - gap={} = {}, total_used={}, remainder={}",
+    spdlog::trace("[{}] Card height: row_height={} - gap={} = {}, total_used={}, remainder={}",
                   get_name(), row_height, card_gap, dims.card_height, total_used,
                   available_height - total_used);
 
@@ -1519,7 +1519,7 @@ void PrintSelectPanel::schedule_view_refresh() {
                         return;
                     }
 
-                    spdlog::debug("[{}] Debounced metadata refresh - updating visible cards only",
+                    spdlog::trace("[{}] Debounced metadata refresh - updating visible cards only",
                                   panel->get_name());
 
                     // Only refresh CONTENT of currently visible cards - don't reset

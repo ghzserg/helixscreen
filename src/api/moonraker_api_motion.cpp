@@ -254,7 +254,7 @@ void MoonrakerAPI::set_fan_speed(const std::string& fan, double speed, SuccessCa
         gcode << "SET_FAN_SPEED FAN=" << fan_name << " SPEED=" << (speed / 100.0);
     }
 
-    spdlog::info("[Moonraker API] Setting {} speed to {}%", fan, speed);
+    spdlog::trace("[Moonraker API] Setting {} speed to {}%", fan, speed);
 
     execute_gcode(gcode.str(), on_success, on_error);
 }
@@ -467,7 +467,7 @@ void MoonrakerAPI::execute_gcode(const std::string& gcode, SuccessCallback on_su
     std::string annotated = annotate_gcode(gcode);
     json params = {{"script", annotated}};
 
-    spdlog::debug("[Moonraker API] Executing G-code: {}", annotated);
+    spdlog::trace("[Moonraker API] Executing G-code: {}", annotated);
 
     client_.send_jsonrpc(
         "printer.gcode.script", params, [on_success](json) { on_success(); }, on_error);

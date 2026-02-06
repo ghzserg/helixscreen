@@ -237,13 +237,13 @@ template <typename T> class AnimatedValue {
         // Skip animation for initial value (display is 0 or uninitialized)
         // This handles startup where many values arrive rapidly
         if (display_value_ == 0) {
-            spdlog::debug("[AnimatedValue] Initial value, setting directly: {}", target_value_);
+            spdlog::trace("[AnimatedValue] Initial value, setting directly: {}", target_value_);
             display_value_ = target_value_;
             display_callback_(display_value_);
             return;
         }
 
-        spdlog::debug("[AnimatedValue] Starting animation: {} -> {} ({}ms)", display_value_,
+        spdlog::trace("[AnimatedValue] Starting animation: {} -> {} ({}ms)", display_value_,
                       target_value_, config_.duration_ms);
         // Start animation from current display value to new target
         start_animation();
@@ -315,7 +315,7 @@ template <typename T> class AnimatedValue {
             // If target changed during animation, start new animation toward it
             if (self->target_value_ != anim_end) {
                 self->display_value_ = anim_end; // Current position
-                spdlog::debug("[AnimatedValue] Chaining animation: {} -> {}", self->display_value_,
+                spdlog::trace("[AnimatedValue] Chaining animation: {} -> {}", self->display_value_,
                               self->target_value_);
                 self->start_animation();
             } else {

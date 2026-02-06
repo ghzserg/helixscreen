@@ -263,7 +263,7 @@ void FanControlOverlay::send_fan_speed(const std::string& object_name, int speed
         return;
     }
 
-    spdlog::debug("[{}] Setting '{}' to {}%", get_name(), object_name, speed_percent);
+    spdlog::trace("[{}] Setting '{}' to {}%", get_name(), object_name, speed_percent);
 
     // Optimistic update: immediately reflect the new speed in PrinterState so
     // other UI (e.g. controls card secondary fan rows) updates without waiting

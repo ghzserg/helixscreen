@@ -952,7 +952,7 @@ std::string MoonrakerClientMock::get_last_gcode_error() const {
 }
 
 int MoonrakerClientMock::gcode_script(const std::string& gcode) {
-    spdlog::debug("[MoonrakerClientMock] Mock gcode_script: {}", gcode);
+    spdlog::trace("[MoonrakerClientMock] Mock gcode_script: {}", gcode);
 
     // Clear previous error at start
     {
@@ -1262,8 +1262,8 @@ int MoonrakerClientMock::gcode_script(const std::string& gcode) {
         std::string fan_name = (fan_index == 0) ? "fan" : ("fan" + std::to_string(fan_index));
         set_fan_speed_internal(fan_name, normalized_speed);
 
-        spdlog::info("[MoonrakerClientMock] M106 P{} S{} -> {} speed={:.2f}", fan_index,
-                     speed_value, fan_name, normalized_speed);
+        spdlog::trace("[MoonrakerClientMock] M106 P{} S{} -> {} speed={:.2f}", fan_index,
+                      speed_value, fan_name, normalized_speed);
     }
     // M107 - Turn off fan
     else if (gcode.find("M107") != std::string::npos) {

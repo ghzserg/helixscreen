@@ -812,7 +812,7 @@ void MoonrakerClient::dispatch_status_update(const json& status) {
         }
     }
 
-    spdlog::info(
+    spdlog::trace(
         "[Moonraker Client] Dispatched status update to {} callbacks (has print_stats: {})",
         callbacks_copy.size(), status.contains("print_stats"));
 }

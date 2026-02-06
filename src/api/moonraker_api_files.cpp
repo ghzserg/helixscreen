@@ -779,7 +779,7 @@ FileMetadata MoonrakerAPI::parse_file_metadata(const json& response) {
             }
         }
         if (!metadata.filament_colors.empty()) {
-            spdlog::debug("[Moonraker API] Found {} filament colors",
+            spdlog::trace("[Moonraker API] Found {} filament colors",
                           metadata.filament_colors.size());
         }
     }
