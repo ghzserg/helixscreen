@@ -537,9 +537,11 @@ deploy-pi:
 	$(call deploy-common,$(PI_SSH_TARGET),$(PI_DEPLOY_DIR),build/pi/bin)
 	@echo "$(GREEN)✓ Deployed to $(PI_HOST):$(PI_DEPLOY_DIR)$(RESET)"
 	@echo "$(CYAN)Restarting helix-screen on $(PI_HOST)...$(RESET)"
-	ssh $(PI_SSH_TARGET) "cd $(PI_DEPLOY_DIR) && setsid ./bin/helix-launcher.sh </dev/null >/dev/null 2>&1 &"
-	@echo "$(GREEN)✓ helix-screen restarted in background$(RESET)"
-	@echo "$(DIM)Logs: ssh $(PI_SSH_TARGET) 'journalctl -t helix-screen -f'$(RESET)"
+	@# Prefer systemd restart (picks up Environment= vars like HELIX_DISPLAY_BACKEND)
+	@ssh $(PI_SSH_TARGET) "sudo systemctl restart helixscreen 2>/dev/null" \
+		|| ssh $(PI_SSH_TARGET) "cd $(PI_DEPLOY_DIR) && setsid ./bin/helix-launcher.sh </dev/null >/dev/null 2>&1 &"
+	@echo "$(GREEN)✓ helix-screen restarted$(RESET)"
+	@echo "$(DIM)Logs: ssh $(PI_SSH_TARGET) 'journalctl -u helixscreen -f'$(RESET)"
 
 # Deploy and run in foreground with debug logging (for interactive debugging)
 deploy-pi-fg:
