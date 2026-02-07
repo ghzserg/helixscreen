@@ -869,6 +869,8 @@ k1-test: k1-docker deploy-k1-fg
 
 RELEASE_DIR := releases
 VERSION := $(shell cat VERSION.txt 2>/dev/null || echo "dev")
+# Release filenames include 'v' prefix to match git tag convention (v0.9.3)
+RELEASE_VERSION := v$(VERSION)
 
 # Assets to include (exclude test_gcodes, gcode test files)
 RELEASE_ASSETS := assets/fonts assets/images
@@ -902,10 +904,10 @@ release-pi: | build/pi/bin/helix-screen build/pi/bin/helix-splash
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
-	@cd $(RELEASE_DIR) && COPYFILE_DISABLE=1 tar -czvf helixscreen-pi-$(VERSION).tar.gz helixscreen
+	@cd $(RELEASE_DIR) && COPYFILE_DISABLE=1 tar -czvf helixscreen-pi-$(RELEASE_VERSION).tar.gz helixscreen
 	@rm -rf $(RELEASE_DIR)/helixscreen
-	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-pi-$(VERSION).tar.gz$(RESET)"
-	@ls -lh $(RELEASE_DIR)/helixscreen-pi-$(VERSION).tar.gz
+	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-pi-$(RELEASE_VERSION).tar.gz$(RESET)"
+	@ls -lh $(RELEASE_DIR)/helixscreen-pi-$(RELEASE_VERSION).tar.gz
 
 # Package AD5M release
 # Note: AD5M uses BusyBox which doesn't support tar -z, so we create uncompressed tar + gzip separately
@@ -937,10 +939,10 @@ release-ad5m: | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
-	@cd $(RELEASE_DIR) && COPYFILE_DISABLE=1 tar -czvf helixscreen-ad5m-$(VERSION).tar.gz helixscreen
+	@cd $(RELEASE_DIR) && COPYFILE_DISABLE=1 tar -czvf helixscreen-ad5m-$(RELEASE_VERSION).tar.gz helixscreen
 	@rm -rf $(RELEASE_DIR)/helixscreen
-	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-ad5m-$(VERSION).tar.gz$(RESET)"
-	@ls -lh $(RELEASE_DIR)/helixscreen-ad5m-$(VERSION).tar.gz
+	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-ad5m-$(RELEASE_VERSION).tar.gz$(RESET)"
+	@ls -lh $(RELEASE_DIR)/helixscreen-ad5m-$(RELEASE_VERSION).tar.gz
 
 # Package K1 release
 release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
@@ -968,10 +970,10 @@ release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
-	@cd $(RELEASE_DIR) && COPYFILE_DISABLE=1 tar -czvf helixscreen-k1-$(VERSION).tar.gz helixscreen
+	@cd $(RELEASE_DIR) && COPYFILE_DISABLE=1 tar -czvf helixscreen-k1-$(RELEASE_VERSION).tar.gz helixscreen
 	@rm -rf $(RELEASE_DIR)/helixscreen
-	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-k1-$(VERSION).tar.gz$(RESET)"
-	@ls -lh $(RELEASE_DIR)/helixscreen-k1-$(VERSION).tar.gz
+	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-k1-$(RELEASE_VERSION).tar.gz$(RESET)"
+	@ls -lh $(RELEASE_DIR)/helixscreen-k1-$(RELEASE_VERSION).tar.gz
 
 # Package all releases
 release-all: release-pi release-ad5m release-k1

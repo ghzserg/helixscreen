@@ -90,9 +90,9 @@ git push origin v1.2.0
 
 | Platform | Artifact Name | Contents |
 |----------|---------------|----------|
-| Raspberry Pi | `helixscreen-pi-{version}.tar.gz` | aarch64 binary, assets, configs |
-| AD5M | `helixscreen-ad5m-{version}.tar.gz` | armv7l binary (static), assets, configs |
-| K1/Simple AF | `helixscreen-k1-{version}.tar.gz` | MIPS32 binary (static, musl), assets, configs |
+| Raspberry Pi | `helixscreen-pi-v{version}.tar.gz` | aarch64 binary, assets, configs |
+| AD5M | `helixscreen-ad5m-v{version}.tar.gz` | armv7l binary (static), assets, configs |
+| K1/Simple AF | `helixscreen-k1-v{version}.tar.gz` | MIPS32 binary (static, musl), assets, configs |
 
 > **Note:** K1 builds use Docker (`make k1-docker`) with the musl MIPS32 toolchain. CI integration is in progress.
 

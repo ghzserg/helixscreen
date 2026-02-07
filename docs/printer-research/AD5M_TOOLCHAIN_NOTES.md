@@ -160,7 +160,7 @@ make ad5m-docker
 
 # Package release tarball (includes binaries + assets + ui_xml + config)
 make release-ad5m
-# Creates: releases/helixscreen-ad5m-<version>.tar.gz
+# Creates: releases/helixscreen-ad5m-v<version>.tar.gz
 
 # Copy to AD5M
 scp releases/helixscreen-ad5m-*.tar.gz root@192.168.1.67:/tmp/

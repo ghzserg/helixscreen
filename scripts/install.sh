@@ -1243,7 +1243,7 @@ show_manual_install_instructions() {
         echo "     ${CYAN}https://github.com/${GITHUB_REPO}/releases/tag/${version}${NC}"
     fi
     echo ""
-    echo "  2. Download: ${BOLD}helixscreen-${platform}.tar.gz${NC}"
+    echo "  2. Download: ${BOLD}helixscreen-${platform}-${version}.tar.gz${NC}"
     echo ""
     echo "  3. Copy to this device (note: AD5M needs -O flag):"
     if [ "$platform" = "ad5m" ]; then
@@ -1263,6 +1263,7 @@ show_manual_install_instructions() {
 }
 
 # Get latest release version from GitHub
+# Returns the tag name as-is (e.g., "v0.9.3")
 # Args: platform (for error message if HTTPS unavailable)
 get_latest_version() {
     local platform=${1:-unknown}

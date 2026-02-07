@@ -232,8 +232,9 @@ jobs:
     - name: Extract version from tag
       id: version
       run: |
-        # Extract version from tag (v1.2.3 -> 1.2.3)
-        VERSION="${GITHUB_REF_NAME#v}"
+        # Tag name is the full version with 'v' prefix (e.g., v1.2.3)
+        # Used for release title and filename references
+        VERSION="${GITHUB_REF_NAME}"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Version: $VERSION"
 
