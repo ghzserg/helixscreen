@@ -7,15 +7,11 @@
 
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstring>
 
 namespace helix::gcode {
-
-// Padding around the rendered object in pixels
-static constexpr int kThumbnailPadding = 2;
 
 // Check cancellation every N layers to avoid overhead
 static constexpr int kCancelCheckInterval = 10;
@@ -137,10 +133,10 @@ GCodeObjectThumbnailRenderer::render_impl(const ParsedGCodeFile* gcode, int thum
 
             auto& ctx = it->second;
 
-            // Convert world coordinates to pixel coordinates
+            // Convert world coordinates to pixel coordinates (FRONT view with Z)
             int px0, py0, px1, py1;
-            world_to_pixel(ctx, seg.start.x, seg.start.y, px0, py0);
-            world_to_pixel(ctx, seg.end.x, seg.end.y, px1, py1);
+            world_to_pixel(ctx, seg.start.x, seg.start.y, seg.start.z, px0, py0);
+            world_to_pixel(ctx, seg.end.x, seg.end.y, seg.end.z, px1, py1);
 
             // Draw the line
             draw_line(ctx, px0, py0, px1, py1, color);
@@ -172,12 +168,12 @@ GCodeObjectThumbnailRenderer::build_contexts(const ParsedGCodeFile* gcode, int t
                                              int thumb_height) {
     std::unordered_map<std::string, ObjectRenderContext> contexts;
 
-    const int effective_size_w = thumb_width - 2 * kThumbnailPadding;
-    const int effective_size_h = thumb_height - 2 * kThumbnailPadding;
-
-    if (effective_size_w <= 0 || effective_size_h <= 0) {
+    if (thumb_width <= 0 || thumb_height <= 0) {
         return contexts;
     }
+
+    // Padding factor for auto-fit (5% each side, matching layer renderer)
+    constexpr float kPadding = 0.05f;
 
     for (const auto& [name, obj] : gcode->objects) {
         const auto& bbox = obj.bounding_box;
@@ -187,34 +183,23 @@ GCodeObjectThumbnailRenderer::build_contexts(const ParsedGCodeFile* gcode, int t
             continue;
         }
 
-        float bbox_width = bbox.max.x - bbox.min.x;
-        float bbox_height = bbox.max.y - bbox.min.y;
-
-        // Handle degenerate dimensions (line objects)
-        if (bbox_width < 0.01f)
-            bbox_width = 0.01f;
-        if (bbox_height < 0.01f)
-            bbox_height = 0.01f;
-
-        // Compute uniform scale to fit within effective area
-        float scale_x = static_cast<float>(effective_size_w) / bbox_width;
-        float scale_y = static_cast<float>(effective_size_h) / bbox_height;
-        float scale = std::min(scale_x, scale_y);
-
-        // Center within the effective area
-        float offset_x = kThumbnailPadding + (effective_size_w - bbox_width * scale) / 2.0f;
-        float offset_y = kThumbnailPadding + (effective_size_h - bbox_height * scale) / 2.0f;
+        // Use shared auto-fit with FRONT projection (isometric view)
+        auto fit = compute_auto_fit(bbox, ViewMode::FRONT, thumb_width, thumb_height, kPadding);
 
         ObjectRenderContext ctx;
         ctx.name = name;
         ctx.width = thumb_width;
         ctx.height = thumb_height;
         ctx.stride = thumb_width * 4;
-        ctx.scale = scale;
-        ctx.offset_x = offset_x;
-        ctx.offset_y = offset_y;
-        ctx.min_x = bbox.min.x;
-        ctx.max_y = bbox.max.y;
+
+        // Store projection params for world_to_pixel
+        ctx.projection.view_mode = ViewMode::FRONT;
+        ctx.projection.scale = fit.scale;
+        ctx.projection.offset_x = fit.offset_x;
+        ctx.projection.offset_y = fit.offset_y;
+        ctx.projection.offset_z = fit.offset_z;
+        ctx.projection.canvas_width = thumb_width;
+        ctx.projection.canvas_height = thumb_height;
 
         // Allocate and zero-fill pixel buffer (transparent black)
         size_t buf_size = static_cast<size_t>(ctx.height) * ctx.stride;
@@ -232,10 +217,11 @@ GCodeObjectThumbnailRenderer::build_contexts(const ParsedGCodeFile* gcode, int t
 // ============================================================================
 
 void GCodeObjectThumbnailRenderer::world_to_pixel(const ObjectRenderContext& ctx, float wx,
-                                                  float wy, int& px, int& py) {
-    // Top-down view: X maps to pixel X, Y is flipped (max_y at top)
-    px = static_cast<int>((wx - ctx.min_x) * ctx.scale + ctx.offset_x);
-    py = static_cast<int>((ctx.max_y - wy) * ctx.scale + ctx.offset_y);
+                                                  float wy, float wz, int& px, int& py) {
+    // Use shared projection (FRONT view: isometric with Z)
+    auto p = project(ctx.projection, wx, wy, wz);
+    px = p.x;
+    py = p.y;
 }
 
 void GCodeObjectThumbnailRenderer::put_pixel(ObjectRenderContext& ctx, int x, int y,

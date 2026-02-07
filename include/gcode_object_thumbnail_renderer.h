@@ -4,6 +4,7 @@
 #pragma once
 
 #include "gcode_parser.h"
+#include "gcode_projection.h"
 
 #include <atomic>
 #include <cstdint>
@@ -20,7 +21,7 @@ namespace helix::gcode {
  * @brief Per-object rendered toolpath thumbnail
  *
  * Contains an ARGB8888 raw pixel buffer of a single object's toolpath,
- * rendered top-down and scaled to fit within the thumbnail dimensions.
+ * rendered with isometric FRONT projection and scaled to fit within the thumbnail.
  */
 struct ObjectThumbnail {
     std::string object_name;
@@ -140,12 +141,8 @@ class GCodeObjectThumbnailRenderer {
         int height{0};
         int stride{0};
 
-        // Coordinate transform: object AABB → pixel coordinates
-        float scale{1.0f};
-        float offset_x{0.0f};
-        float offset_y{0.0f};
-        float min_x{0.0f};
-        float max_y{0.0f}; ///< For Y-flip (top-down view)
+        // Shared projection params (FRONT view by default)
+        ProjectionParams projection;
     };
 
     /**
@@ -174,10 +171,12 @@ class GCodeObjectThumbnailRenderer {
     static void put_pixel(ObjectRenderContext& ctx, int x, int y, uint32_t color);
 
     /**
-     * @brief Convert world XY coordinates to pixel coordinates for an object
+     * @brief Convert world coordinates to pixel coordinates for an object
+     *
+     * Uses shared projection from gcode_projection.h (FRONT view).
      */
-    static void world_to_pixel(const ObjectRenderContext& ctx, float wx, float wy, int& px,
-                               int& py);
+    static void world_to_pixel(const ObjectRenderContext& ctx, float wx, float wy, float wz,
+                               int& px, int& py);
 
     std::thread thread_;
     std::atomic<bool> cancel_{false};

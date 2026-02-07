@@ -237,74 +237,12 @@ void GCodeLayerRenderer::auto_fit() {
         return;
     }
 
-    float range_x, range_y;
-    float center_x, center_y;
-
-    switch (view_mode_) {
-    case ViewMode::FRONT: {
-        // Isometric-style: -45° horizontal + 30° elevation
-        float xy_range_x = bb.max.x - bb.min.x;
-        float xy_range_y = bb.max.y - bb.min.y;
-        float z_range = bb.max.z - bb.min.z;
-
-        // Horizontal extent after 45° rotation
-        constexpr float COS_45 = 0.7071f;
-        range_x = (xy_range_x + xy_range_y) * COS_45;
-
-        // Vertical extent: Z * cos(30°) + Y_depth * sin(30°)
-        constexpr float COS_30 = 0.866f;
-        constexpr float SIN_30 = 0.5f;
-        float y_depth = (xy_range_x + xy_range_y) * COS_45; // rotated Y range
-        range_y = z_range * COS_30 + y_depth * SIN_30;
-
-        center_x = (bb.min.x + bb.max.x) / 2.0f;
-        center_y = (bb.min.y + bb.max.y) / 2.0f;
-        offset_z_ = (bb.min.z + bb.max.z) / 2.0f;
-        break;
-    }
-
-    case ViewMode::ISOMETRIC: {
-        // Isometric: rotated X/Y view
-        float xy_range_x = bb.max.x - bb.min.x;
-        float xy_range_y = bb.max.y - bb.min.y;
-        constexpr float ISO_ANGLE = 0.7071f;
-        constexpr float ISO_Y_SCALE = 0.5f;
-        range_x = (xy_range_x + xy_range_y) * ISO_ANGLE;
-        range_y = (xy_range_x + xy_range_y) * ISO_ANGLE * ISO_Y_SCALE;
-        center_x = (bb.min.x + bb.max.x) / 2.0f;
-        center_y = (bb.min.y + bb.max.y) / 2.0f;
-        break;
-    }
-
-    case ViewMode::TOP_DOWN:
-    default:
-        // Top-down: X/Y plane from above
-        range_x = bb.max.x - bb.min.x;
-        range_y = bb.max.y - bb.min.y;
-        center_x = (bb.min.x + bb.max.x) / 2.0f;
-        center_y = (bb.min.y + bb.max.y) / 2.0f;
-        break;
-    }
-
-    // Handle degenerate cases
-    if (range_x < 0.001f)
-        range_x = 1.0f;
-    if (range_y < 0.001f)
-        range_y = 1.0f;
-
-    // Add padding for visual breathing room
-    constexpr float padding = 0.05f;
-    range_x *= (1.0f + 2 * padding);
-    range_y *= (1.0f + 2 * padding);
-
-    // Scale to fit canvas (maintain aspect ratio)
-    float scale_x = static_cast<float>(canvas_width_) / range_x;
-    float scale_y = static_cast<float>(canvas_height_) / range_y;
-    scale_ = std::min(scale_x, scale_y);
-
-    // Store center for world_to_screen
-    offset_x_ = center_x;
-    offset_y_ = center_y;
+    // Use shared auto-fit computation
+    auto fit = helix::gcode::compute_auto_fit(bb, view_mode_, canvas_width_, canvas_height_);
+    scale_ = fit.scale;
+    offset_x_ = fit.offset_x;
+    offset_y_ = fit.offset_y;
+    offset_z_ = fit.offset_z;
 
     // Store bounds for reference (including Z for depth shading)
     bounds_min_x_ = bb.min.x;
@@ -316,10 +254,10 @@ void GCodeLayerRenderer::auto_fit() {
 
     bounds_valid_ = true;
 
-    spdlog::debug("[GCodeLayerRenderer] auto_fit: canvas={}x{}, mode={}, range=({:.1f},{:.1f}), "
+    spdlog::debug("[GCodeLayerRenderer] auto_fit: canvas={}x{}, mode={}, "
                   "scale={:.2f}, center=({:.1f},{:.1f},{:.1f})",
-                  canvas_width_, canvas_height_, static_cast<int>(view_mode_), range_x, range_y,
-                  scale_, offset_x_, offset_y_, offset_z_);
+                  canvas_width_, canvas_height_, static_cast<int>(view_mode_), scale_, offset_x_,
+                  offset_y_, offset_z_);
 }
 
 void GCodeLayerRenderer::fit_layer() {
@@ -334,7 +272,7 @@ void GCodeLayerRenderer::fit_layer() {
         return;
     }
 
-    // Use current layer's bounding box
+    // Use current layer's bounding box with shared auto-fit (always top-down for single layer)
     const auto& bb = gcode_->layers[current_layer_].bounding_box;
 
     bounds_min_x_ = bb.min.x;
@@ -342,28 +280,11 @@ void GCodeLayerRenderer::fit_layer() {
     bounds_min_y_ = bb.min.y;
     bounds_max_y_ = bb.max.y;
 
-    float range_x = bounds_max_x_ - bounds_min_x_;
-    float range_y = bounds_max_y_ - bounds_min_y_;
-
-    // Handle degenerate cases
-    if (range_x < 0.001f)
-        range_x = 1.0f;
-    if (range_y < 0.001f)
-        range_y = 1.0f;
-
-    // Add padding
-    constexpr float padding = 0.05f;
-    range_x *= (1.0f + 2 * padding);
-    range_y *= (1.0f + 2 * padding);
-
-    // Scale to fit
-    float scale_x = static_cast<float>(canvas_width_) / range_x;
-    float scale_y = static_cast<float>(canvas_height_) / range_y;
-    scale_ = std::min(scale_x, scale_y);
-
-    // Center on layer
-    offset_x_ = (bounds_min_x_ + bounds_max_x_) / 2.0f;
-    offset_y_ = (bounds_min_y_ + bounds_max_y_) / 2.0f;
+    auto fit =
+        helix::gcode::compute_auto_fit(bb, ViewMode::TOP_DOWN, canvas_width_, canvas_height_);
+    scale_ = fit.scale;
+    offset_x_ = fit.offset_x;
+    offset_y_ = fit.offset_y;
 
     bounds_valid_ = true;
 }
@@ -1062,80 +983,6 @@ GCodeLayerRenderer::TransformParams GCodeLayerRenderer::capture_transform_params
         .canvas_height = canvas_height_,
         .content_offset_y_percent = content_offset_y_percent_,
     };
-}
-
-glm::ivec2 GCodeLayerRenderer::world_to_screen_raw(const TransformParams& params, float x, float y,
-                                                   float z) {
-    float sx, sy;
-
-    switch (params.view_mode) {
-    case ViewMode::FRONT: {
-        // Isometric-style view: 45° horizontal rotation + 30° elevation
-        // This creates a "corner view looking down" perspective
-        //
-        // First apply 90° CCW rotation around Z to match thumbnail orientation
-        // (thumbnails show models from a different default angle)
-        float raw_dx = x - params.offset_x;
-        float raw_dy = y - params.offset_y;
-        float dx = -raw_dy; // 90° CCW: new_x = -old_y
-        float dy = raw_dx;  // 90° CCW: new_y = old_x
-        float dz = z - params.offset_z;
-
-        // Horizontal rotation: -45° (negative = view from front-right corner)
-        // sin(-45°) = -0.7071, cos(-45°) = 0.7071
-        constexpr float COS_H = 0.7071f;  // cos(45°)
-        constexpr float SIN_H = -0.7071f; // sin(-45°) - negative for other corner
-
-        // Elevation angle: 30° looking down
-        // sin(30°) = 0.5, cos(30°) = 0.866
-        constexpr float COS_E = 0.866f; // cos(30°)
-        constexpr float SIN_E = 0.5f;   // sin(30°)
-
-        // Apply horizontal rotation first (around Z axis)
-        float rx = dx * COS_H - dy * SIN_H;
-        float ry = dx * SIN_H + dy * COS_H;
-
-        // Then apply elevation (tilt camera down)
-        // Screen X = rotated X
-        // Screen Y = -Z * cos(elev) + rotated_Y * sin(elev)
-        sx = rx * params.scale + static_cast<float>(params.canvas_width) / 2.0f;
-        sy = static_cast<float>(params.canvas_height) / 2.0f -
-             (dz * COS_E + ry * SIN_E) * params.scale;
-        break;
-    }
-
-    case ViewMode::ISOMETRIC: {
-        // Isometric projection (45° rotation with Y compression)
-        float dx = x - params.offset_x;
-        float dy = y - params.offset_y;
-        constexpr float ISO_ANGLE = 0.7071f;
-        constexpr float ISO_Y_SCALE = 0.5f;
-
-        float iso_x = (dx - dy) * ISO_ANGLE;
-        float iso_y = (dx + dy) * ISO_ANGLE * ISO_Y_SCALE;
-
-        sx = iso_x * params.scale + static_cast<float>(params.canvas_width) / 2.0f;
-        sy = static_cast<float>(params.canvas_height) / 2.0f - iso_y * params.scale;
-        break;
-    }
-
-    case ViewMode::TOP_DOWN:
-    default: {
-        // Top-down: X → screen X, Y → screen Y (flipped)
-        float dx = x - params.offset_x;
-        float dy = y - params.offset_y;
-        sx = dx * params.scale + static_cast<float>(params.canvas_width) / 2.0f;
-        sy = static_cast<float>(params.canvas_height) / 2.0f - dy * params.scale;
-        break;
-    }
-    }
-
-    // Apply content offset (shifts render center for UI overlapping elements)
-    // Negative offset_percent shifts content UP (toward top of canvas)
-    // CRITICAL: This must match for both solid and ghost layers!
-    sy += params.content_offset_y_percent * static_cast<float>(params.canvas_height);
-
-    return {static_cast<int>(sx), static_cast<int>(sy)};
 }
 
 glm::ivec2 GCodeLayerRenderer::world_to_screen(float x, float y, float z) const {

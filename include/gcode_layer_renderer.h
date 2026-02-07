@@ -4,6 +4,7 @@
 #pragma once
 
 #include "gcode_parser.h"
+#include "gcode_projection.h"
 #include "gcode_streaming_controller.h"
 
 #include <lvgl/lvgl.h>
@@ -251,14 +252,8 @@ class GCodeLayerRenderer {
      */
     bool is_ghost_build_running() const;
 
-    /**
-     * @brief View mode for 2D layer renderer
-     */
-    enum class ViewMode {
-        TOP_DOWN, ///< X/Y plane from above (default)
-        FRONT,    ///< X/Z plane - side profile showing all layers
-        ISOMETRIC ///< X/Y plane with isometric projection
-    };
+    /// View mode alias — uses shared enum from gcode_projection.h
+    using ViewMode = helix::gcode::ViewMode;
 
     /**
      * @brief Set view mode
@@ -420,23 +415,8 @@ class GCodeLayerRenderer {
     // Transformation Parameters (for thread-safe coordinate conversion)
     // =========================================================================
 
-    /**
-     * @brief Captured transformation state for thread-safe rendering
-     *
-     * This struct captures all parameters needed for world_to_screen conversion.
-     * Background threads capture this at start to ensure consistent rendering
-     * even if main thread modifies renderer state during the operation.
-     */
-    struct TransformParams {
-        ViewMode view_mode;
-        float scale;
-        float offset_x;
-        float offset_y;
-        float offset_z;
-        int canvas_width;
-        int canvas_height;
-        float content_offset_y_percent; // CRITICAL: must be included for alignment!
-    };
+    /// Transform params alias — uses shared struct from gcode_projection.h
+    using TransformParams = helix::gcode::ProjectionParams;
 
     /**
      * @brief Capture current transformation parameters (thread-safe snapshot)
@@ -447,9 +427,8 @@ class GCodeLayerRenderer {
     /**
      * @brief Convert world coordinates to screen using captured parameters
      *
-     * This is the single source of truth for coordinate conversion. Both
-     * world_to_screen() and background ghost rendering use this method
-     * to ensure perfect alignment between solid and ghost layers.
+     * Delegates to shared helix::gcode::project() — the single source of truth
+     * for coordinate conversion across all renderers.
      *
      * @param params Captured transformation parameters
      * @param x World X coordinate (mm)
@@ -458,7 +437,9 @@ class GCodeLayerRenderer {
      * @return Screen coordinates (pixels, no widget offset applied)
      */
     static glm::ivec2 world_to_screen_raw(const TransformParams& params, float x, float y,
-                                          float z = 0.0f);
+                                          float z = 0.0f) {
+        return helix::gcode::project(params, x, y, z);
+    }
 
     /**
      * @brief Check if a segment is a support structure
