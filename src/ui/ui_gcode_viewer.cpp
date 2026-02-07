@@ -1938,6 +1938,18 @@ float ui_gcode_viewer_get_nozzle_diameter_mm(lv_obj_t* obj) {
 }
 
 // ==============================================
+// Parsed Data Access
+// ==============================================
+
+const helix::gcode::ParsedGCodeFile* ui_gcode_viewer_get_parsed_file(lv_obj_t* obj) {
+    gcode_viewer_state_t* st = get_state(obj);
+    if (!st || !st->gcode_file)
+        return nullptr;
+
+    return st->gcode_file.get();
+}
+
+// ==============================================
 // Object Picking
 // ==============================================
 

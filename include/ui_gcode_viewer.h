@@ -670,4 +670,22 @@ typedef void (*gcode_viewer_object_long_press_callback_t)(lv_obj_t* viewer, cons
 void ui_gcode_viewer_set_object_long_press_callback(
     lv_obj_t* obj, gcode_viewer_object_long_press_callback_t callback, void* user_data);
 
+// ==============================================
+// Parsed Data Access
+// ==============================================
+
+namespace helix::gcode {
+struct ParsedGCodeFile;
+} // namespace helix::gcode
+
+/**
+ * @brief Get the parsed G-code file data from the viewer
+ * @param obj Viewer widget
+ * @return Pointer to parsed G-code file, or nullptr if no data loaded or segments cleared
+ *
+ * The returned pointer is valid as long as the viewer widget exists and has data loaded.
+ * In streaming mode, this returns nullptr (streaming mode doesn't hold the full file).
+ */
+const helix::gcode::ParsedGCodeFile* ui_gcode_viewer_get_parsed_file(lv_obj_t* obj);
+
 #endif

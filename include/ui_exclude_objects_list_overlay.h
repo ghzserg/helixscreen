@@ -5,12 +5,19 @@
 
 #include "overlay_base.h"
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // Forward declarations
 class MoonrakerAPI;
 class PrinterState;
+
+namespace helix::gcode {
+class GCodeObjectThumbnailRenderer;
+struct ObjectThumbnailSet;
+} // namespace helix::gcode
 
 namespace helix::ui {
 class PrintExcludeObjectManager;
@@ -56,14 +63,18 @@ class ExcludeObjectsListOverlay : public OverlayBase {
      * @param api MoonrakerAPI pointer (for exclude commands)
      * @param printer_state Reference to PrinterState for object lists
      * @param manager Exclude object manager for confirmation flow
+     * @param gcode_viewer Optional gcode viewer widget for thumbnail rendering
      */
     void show(lv_obj_t* parent_screen, MoonrakerAPI* api, PrinterState& printer_state,
-              PrintExcludeObjectManager* manager);
+              PrintExcludeObjectManager* manager, lv_obj_t* gcode_viewer = nullptr);
 
   private:
     void populate_list();
     lv_obj_t* create_object_row(lv_obj_t* parent, const std::string& name, bool is_excluded,
                                 bool is_current);
+    void start_thumbnail_render();
+    void apply_thumbnails();
+    void cleanup_thumbnails();
 
     lv_obj_t* objects_list_{nullptr};
     MoonrakerAPI* api_{nullptr};
@@ -71,6 +82,12 @@ class ExcludeObjectsListOverlay : public OverlayBase {
     PrintExcludeObjectManager* manager_{nullptr};
     ObserverGuard excluded_observer_;
     ObserverGuard defined_observer_;
+
+    // Thumbnail rendering
+    lv_obj_t* gcode_viewer_{nullptr};
+    std::unique_ptr<helix::gcode::GCodeObjectThumbnailRenderer> thumbnail_renderer_;
+    std::unordered_map<std::string, lv_draw_buf_t*> object_thumbnails_;
+    bool thumbnails_available_{false};
 };
 
 /**

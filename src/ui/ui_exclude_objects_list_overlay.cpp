@@ -2,10 +2,12 @@
 
 #include "ui_exclude_objects_list_overlay.h"
 
+#include "ui_gcode_viewer.h"
 #include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_print_exclude_object_manager.h"
 
+#include "gcode_object_thumbnail_renderer.h"
 #include "observer_factory.h"
 #include "printer_state.h"
 #include "static_panel_registry.h"
@@ -17,6 +19,9 @@
 #include <memory>
 
 namespace helix::ui {
+
+// Thumbnail dimensions in pixels
+static constexpr int kThumbnailSize = 40;
 
 // ============================================================================
 // SINGLETON ACCESSOR
@@ -42,6 +47,7 @@ ExcludeObjectsListOverlay::ExcludeObjectsListOverlay() {
 }
 
 ExcludeObjectsListOverlay::~ExcludeObjectsListOverlay() {
+    cleanup_thumbnails();
     spdlog::trace("[{}] Destroyed", get_name());
 }
 
@@ -89,12 +95,13 @@ lv_obj_t* ExcludeObjectsListOverlay::create(lv_obj_t* parent) {
 
 void ExcludeObjectsListOverlay::show(lv_obj_t* parent_screen, MoonrakerAPI* api,
                                      PrinterState& printer_state,
-                                     PrintExcludeObjectManager* manager) {
+                                     PrintExcludeObjectManager* manager, lv_obj_t* gcode_viewer) {
     spdlog::debug("[{}] show() called", get_name());
 
     api_ = api;
     printer_state_ = &printer_state;
     manager_ = manager;
+    gcode_viewer_ = gcode_viewer;
 
     // Lazy create
     if (!overlay_root_ && parent_screen) {
@@ -151,6 +158,9 @@ void ExcludeObjectsListOverlay::on_activate() {
 
     // Repopulate to get fresh data
     populate_list();
+
+    // Start async thumbnail rendering (if gcode data is available)
+    start_thumbnail_render();
 }
 
 void ExcludeObjectsListOverlay::on_deactivate() {
@@ -159,6 +169,111 @@ void ExcludeObjectsListOverlay::on_deactivate() {
     // Release observers when not visible
     excluded_observer_.reset();
     defined_observer_.reset();
+
+    // Cancel any in-progress thumbnail render and free buffers
+    cleanup_thumbnails();
+}
+
+// ============================================================================
+// THUMBNAIL RENDERING
+// ============================================================================
+
+void ExcludeObjectsListOverlay::start_thumbnail_render() {
+    if (!gcode_viewer_) {
+        spdlog::debug("[{}] No gcode viewer - skipping thumbnails", get_name());
+        return;
+    }
+
+    const auto* parsed = ui_gcode_viewer_get_parsed_file(gcode_viewer_);
+    if (!parsed || parsed->layers.empty()) {
+        spdlog::debug("[{}] No parsed gcode data - skipping thumbnails", get_name());
+        return;
+    }
+
+    // Check if segments are available (they get cleared after geometry build)
+    bool has_segments = false;
+    for (const auto& layer : parsed->layers) {
+        if (!layer.segments.empty()) {
+            has_segments = true;
+            break;
+        }
+    }
+    if (!has_segments) {
+        spdlog::debug("[{}] Segments cleared - skipping thumbnails", get_name());
+        return;
+    }
+
+    // Determine filament color for rendering
+    uint32_t color = 0xFF26A69A; // Default teal
+    const char* color_hex = ui_gcode_viewer_get_filament_color(gcode_viewer_);
+    if (color_hex && color_hex[0] == '#' && strlen(color_hex) >= 7) {
+        uint32_t rgb = static_cast<uint32_t>(strtol(color_hex + 1, nullptr, 16));
+        // Convert RGB to ARGB8888
+        color = 0xFF000000 | rgb;
+    }
+
+    spdlog::debug("[{}] Starting async thumbnail render for {} objects", get_name(),
+                  parsed->objects.size());
+
+    thumbnail_renderer_ = std::make_unique<helix::gcode::GCodeObjectThumbnailRenderer>();
+    thumbnail_renderer_->render_async(
+        parsed, kThumbnailSize, kThumbnailSize, color,
+        [this](std::unique_ptr<helix::gcode::ObjectThumbnailSet> result) {
+            if (!result || !is_visible()) {
+                return;
+            }
+
+            spdlog::debug("[{}] Thumbnails ready: {} objects", get_name(),
+                          result->thumbnails.size());
+
+            // Convert raw pixel buffers to LVGL draw buffers
+            for (auto& thumb : result->thumbnails) {
+                if (!thumb.is_valid())
+                    continue;
+
+                auto* buf = lv_draw_buf_create(thumb.width, thumb.height, LV_COLOR_FORMAT_ARGB8888,
+                                               LV_STRIDE_AUTO);
+                if (!buf)
+                    continue;
+
+                // Copy raw pixels into LVGL draw buffer
+                const int lvgl_stride = buf->header.stride;
+                for (int y = 0; y < thumb.height; ++y) {
+                    memcpy(buf->data + y * lvgl_stride, thumb.pixels.get() + y * thumb.stride,
+                           static_cast<size_t>(thumb.width) * 4);
+                }
+                lv_draw_buf_invalidate_cache(buf, nullptr);
+
+                object_thumbnails_[thumb.object_name] = buf;
+            }
+
+            thumbnails_available_ = true;
+
+            // Re-populate list to show thumbnails
+            populate_list();
+        });
+}
+
+void ExcludeObjectsListOverlay::apply_thumbnails() {
+    // Called during populate_list when thumbnails are available
+    // Thumbnails are applied inline in create_object_row
+}
+
+void ExcludeObjectsListOverlay::cleanup_thumbnails() {
+    // Cancel any in-progress render
+    if (thumbnail_renderer_) {
+        thumbnail_renderer_->cancel();
+        thumbnail_renderer_.reset();
+    }
+
+    // Free all LVGL draw buffers
+    for (auto& [name, buf] : object_thumbnails_) {
+        if (buf) {
+            lv_draw_buf_destroy(buf);
+        }
+    }
+    object_thumbnails_.clear();
+    thumbnails_available_ = false;
 }
 
 // ============================================================================
@@ -193,14 +308,36 @@ lv_obj_t* ExcludeObjectsListOverlay::create_object_row(lv_obj_t* parent, const s
     lv_obj_t* row = lv_obj_create(parent);
     lv_obj_set_width(row, lv_pct(100));
     lv_obj_set_height(row, LV_SIZE_CONTENT);
-    lv_obj_set_style_pad_all(row, theme_manager_get_spacing("space_md"), 0);
-    lv_obj_set_style_pad_gap(row, theme_manager_get_spacing("space_md"), 0);
+    lv_obj_set_style_pad_all(row, theme_manager_get_spacing("space_sm"), 0);
+    lv_obj_set_style_pad_gap(row, theme_manager_get_spacing("space_sm"), 0);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_radius(row, 8, 0);
     lv_obj_set_style_bg_color(row, theme_manager_get_color("card_bg"), 0);
     lv_obj_set_style_bg_opa(row, LV_OPA_COVER, 0);
     lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Thumbnail image (if available)
+    auto thumb_it = object_thumbnails_.find(name);
+    if (thumb_it != object_thumbnails_.end() && thumb_it->second) {
+        // Thumbnail container with dark background for contrast
+        lv_obj_t* thumb_container = lv_obj_create(row);
+        lv_obj_set_size(thumb_container, kThumbnailSize, kThumbnailSize);
+        lv_obj_set_style_radius(thumb_container, 4, 0);
+        lv_obj_set_style_bg_color(thumb_container, lv_color_hex(0x1A1A1A), 0);
+        lv_obj_set_style_bg_opa(thumb_container, LV_OPA_COVER, 0);
+        lv_obj_set_style_pad_all(thumb_container, 0, 0);
+        lv_obj_remove_flag(thumb_container, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_remove_flag(thumb_container, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_flag(thumb_container, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        // Thumbnail image
+        lv_obj_t* img = lv_image_create(thumb_container);
+        lv_image_set_src(img, thumb_it->second);
+        lv_obj_center(img);
+        lv_obj_remove_flag(img, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_flag(img, LV_OBJ_FLAG_EVENT_BUBBLE);
+    }
 
     // Status indicator dot (12x12 circle)
     lv_obj_t* dot = lv_obj_create(row);

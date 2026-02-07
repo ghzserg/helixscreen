@@ -1036,7 +1036,8 @@ void PrintStatusPanel::on_objects_clicked(lv_event_t* e) {
     auto& panel = get_global_print_status_panel();
     if (panel.exclude_manager_ && panel.parent_screen_) {
         helix::ui::get_exclude_objects_list_overlay().show(
-            panel.parent_screen_, panel.api_, panel.printer_state_, panel.exclude_manager_.get());
+            panel.parent_screen_, panel.api_, panel.printer_state_, panel.exclude_manager_.get(),
+            panel.gcode_viewer_);
     }
     LVGL_SAFE_EVENT_CB_END();
 }
