@@ -146,6 +146,16 @@ void GCodeLayerRenderer::reset_colors() {
     use_custom_support_color_ = false;
 }
 
+void GCodeLayerRenderer::set_excluded_objects(const std::unordered_set<std::string>& names) {
+    excluded_objects_ = names;
+    invalidate_cache();
+}
+
+void GCodeLayerRenderer::set_highlighted_objects(const std::unordered_set<std::string>& names) {
+    highlighted_objects_ = names;
+    invalidate_cache();
+}
+
 // ============================================================================
 // Viewport Control
 // ============================================================================
@@ -580,6 +590,26 @@ void GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
                 b = static_cast<uint8_t>(base_b * brightness);
             }
 
+            // Override color for excluded/highlighted objects
+            if (!seg.object_name.empty()) {
+                if (excluded_objects_.count(seg.object_name) > 0) {
+                    // Excluded: orange-red with reduced alpha
+                    r = 0xFF;
+                    g = 0x6B;
+                    b = 0x35;
+                    uint32_t color = (153u << 24) | (r << 16) | (g << 8) | b; // 60% alpha
+                    draw_line_bresenham_solid(p1.x, p1.y, p2.x, p2.y, color);
+                    ++segments_rendered;
+                    continue;
+                }
+                if (highlighted_objects_.count(seg.object_name) > 0) {
+                    // Highlighted: selection blue, full alpha
+                    r = 0x42;
+                    g = 0xA5;
+                    b = 0xF5;
+                }
+            }
+
             // Build ARGB8888 color (full alpha for solid layers)
             uint32_t color = (255u << 24) | (r << 16) | (g << 8) | b;
 
@@ -860,6 +890,9 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
         }
     }
 
+    // Draw selection brackets on top of everything
+    render_selection_brackets(layer);
+
     // Track render time for diagnostics
     last_render_time_ms_ = lv_tick_get() - start_time;
     last_frame_render_ms_ = last_render_time_ms_;
@@ -977,9 +1010,18 @@ void GCodeLayerRenderer::render_segment(lv_layer_t* layer, const ToolpathSegment
         dsc.color = base_color;
     }
 
-    // Extrusion moves: thicker, fully opaque
-    // Travel moves: thinner, semi-transparent
-    if (seg.is_extrusion) {
+    // Check excluded/highlighted state for width/opacity
+    bool is_excluded = !seg.object_name.empty() && excluded_objects_.count(seg.object_name) > 0;
+    bool is_highlighted =
+        !seg.object_name.empty() && highlighted_objects_.count(seg.object_name) > 0;
+
+    if (is_excluded) {
+        dsc.width = 1;
+        dsc.opa = LV_OPA_60;
+    } else if (is_highlighted) {
+        dsc.width = 3;
+        dsc.opa = LV_OPA_COVER;
+    } else if (seg.is_extrusion) {
         dsc.width = 2;
         dsc.opa = LV_OPA_COVER;
     } else {
@@ -1115,19 +1157,184 @@ bool GCodeLayerRenderer::is_support_segment(const ToolpathSegment& seg) const {
     return lower_name.find("support") != std::string::npos;
 }
 
-lv_color_t GCodeLayerRenderer::get_segment_color(const ToolpathSegment& seg) const {
-    if (!seg.is_extrusion) {
-        // Travel move
-        return color_travel_;
+std::optional<std::string> GCodeLayerRenderer::pick_object_at(int screen_x, int screen_y) const {
+    // Need data source
+    if (!gcode_ && !streaming_controller_)
+        return std::nullopt;
+
+    int layer_count = get_layer_count();
+    if (current_layer_ < 0 || current_layer_ >= layer_count)
+        return std::nullopt;
+
+    // Capture transform params (no widget offset for cache coords)
+    TransformParams transform = capture_transform_params();
+
+    const float PICK_THRESHOLD = 15.0f; // pixels
+    float closest_distance = std::numeric_limits<float>::max();
+    std::optional<std::string> picked_object;
+
+    // Get segments for current layer
+    std::shared_ptr<const std::vector<ToolpathSegment>> segments_holder;
+    const std::vector<ToolpathSegment>* segments = nullptr;
+
+    if (streaming_controller_) {
+        segments_holder =
+            streaming_controller_->get_layer_segments(static_cast<size_t>(current_layer_));
+        segments = segments_holder.get();
+    } else if (gcode_) {
+        segments = &gcode_->layers[static_cast<size_t>(current_layer_)].segments;
     }
 
-    // Check if this is a support segment
+    if (!segments)
+        return std::nullopt;
+
+    glm::vec2 click_pos(static_cast<float>(screen_x), static_cast<float>(screen_y));
+
+    for (const auto& seg : *segments) {
+        if (!should_render_segment(seg))
+            continue;
+
+        if (seg.object_name.empty())
+            continue;
+
+        // Project segment endpoints to screen space
+        glm::ivec2 p1 = world_to_screen_raw(transform, seg.start.x, seg.start.y, seg.start.z);
+        glm::ivec2 p2 = world_to_screen_raw(transform, seg.end.x, seg.end.y, seg.end.z);
+
+        // Calculate distance from click to line segment
+        glm::vec2 v(static_cast<float>(p2.x - p1.x), static_cast<float>(p2.y - p1.y));
+        glm::vec2 w(click_pos.x - static_cast<float>(p1.x), click_pos.y - static_cast<float>(p1.y));
+
+        float segment_length_sq = glm::dot(v, v);
+        float t = (segment_length_sq > 0.0001f)
+                      ? std::clamp(glm::dot(w, v) / segment_length_sq, 0.0f, 1.0f)
+                      : 0.0f;
+
+        glm::vec2 closest_point(static_cast<float>(p1.x) + t * v.x,
+                                static_cast<float>(p1.y) + t * v.y);
+        float dist = glm::length(click_pos - closest_point);
+
+        if (dist < PICK_THRESHOLD && dist < closest_distance) {
+            closest_distance = dist;
+            picked_object = seg.object_name;
+        }
+    }
+
+    return picked_object;
+}
+
+lv_color_t GCodeLayerRenderer::get_segment_color(const ToolpathSegment& seg) const {
+    // Check excluded/highlighted state first
+    if (!seg.object_name.empty()) {
+        if (excluded_objects_.count(seg.object_name) > 0) {
+            return lv_color_hex(0xFF6B35); // Orange-red for excluded
+        }
+        if (highlighted_objects_.count(seg.object_name) > 0) {
+            return lv_color_hex(0x42A5F5); // Selection blue for highlighted
+        }
+    }
+
+    // Existing logic below
+    if (!seg.is_extrusion) {
+        return color_travel_;
+    }
     if (is_support_segment(seg)) {
         return color_support_;
     }
-
-    // Regular extrusion
     return color_extrusion_;
+}
+
+void GCodeLayerRenderer::render_selection_brackets(lv_layer_t* layer) {
+    // Only render if we have highlighted objects and full gcode data
+    if (highlighted_objects_.empty() || !gcode_) {
+        return;
+    }
+
+    for (const auto& object_name : highlighted_objects_) {
+        auto it = gcode_->objects.find(object_name);
+        if (it == gcode_->objects.end()) {
+            continue;
+        }
+
+        const AABB& bbox = it->second.bounding_box;
+
+        // Calculate corner bracket length (20% of shortest edge, capped at 5mm)
+        // Same formula as TinyGL renderer
+        float dx = bbox.max.x - bbox.min.x;
+        float dy = bbox.max.y - bbox.min.y;
+        float dz = bbox.max.z - bbox.min.z;
+        float min_edge = std::min({dx, dy, dz});
+        float bracket_len = std::min(min_edge * 0.2f, 5.0f);
+
+        // If bounding box is degenerate, skip
+        if (bracket_len < 0.01f) {
+            continue;
+        }
+
+        // Set up line drawing style
+        lv_draw_line_dsc_t dsc;
+        lv_draw_line_dsc_init(&dsc);
+        dsc.color = lv_color_hex(0xC0C0C0); // Light grey - visible against dark background
+        dsc.width = 2;
+        dsc.opa = LV_OPA_COVER;
+
+        // Define all 8 corners of the AABB
+        const glm::vec3 corners[8] = {
+            {bbox.min.x, bbox.min.y, bbox.min.z}, // 0: min,min,min
+            {bbox.max.x, bbox.min.y, bbox.min.z}, // 1: max,min,min
+            {bbox.max.x, bbox.max.y, bbox.min.z}, // 2: max,max,min
+            {bbox.min.x, bbox.max.y, bbox.min.z}, // 3: min,max,min
+            {bbox.min.x, bbox.min.y, bbox.max.z}, // 4: min,min,max
+            {bbox.max.x, bbox.min.y, bbox.max.z}, // 5: max,min,max
+            {bbox.max.x, bbox.max.y, bbox.max.z}, // 6: max,max,max
+            {bbox.min.x, bbox.max.y, bbox.max.z}, // 7: min,max,max
+        };
+
+        // For each corner, define 3 bracket directions (along X, Y, Z axes)
+        // Sign: +1 if bracket goes toward max, -1 if toward min
+        const float signs[8][3] = {
+            {+1, +1, +1}, // corner 0: min,min,min -> bracket toward max
+            {-1, +1, +1}, // corner 1: max,min,min
+            {-1, -1, +1}, // corner 2: max,max,min
+            {+1, -1, +1}, // corner 3: min,max,min
+            {+1, +1, -1}, // corner 4: min,min,max
+            {-1, +1, -1}, // corner 5: max,min,max
+            {-1, -1, -1}, // corner 6: max,max,max
+            {+1, -1, -1}, // corner 7: min,max,max
+        };
+
+        for (int c = 0; c < 8; ++c) {
+            glm::ivec2 corner_screen = world_to_screen(corners[c].x, corners[c].y, corners[c].z);
+
+            // Draw bracket line along X axis
+            glm::ivec2 bx = world_to_screen(corners[c].x + signs[c][0] * bracket_len, corners[c].y,
+                                            corners[c].z);
+
+            dsc.p1.x = static_cast<lv_value_precise_t>(corner_screen.x);
+            dsc.p1.y = static_cast<lv_value_precise_t>(corner_screen.y);
+            dsc.p2.x = static_cast<lv_value_precise_t>(bx.x);
+            dsc.p2.y = static_cast<lv_value_precise_t>(bx.y);
+            lv_draw_line(layer, &dsc);
+
+            // Draw bracket line along Y axis
+            glm::ivec2 by = world_to_screen(corners[c].x, corners[c].y + signs[c][1] * bracket_len,
+                                            corners[c].z);
+
+            dsc.p2.x = static_cast<lv_value_precise_t>(by.x);
+            dsc.p2.y = static_cast<lv_value_precise_t>(by.y);
+            lv_draw_line(layer, &dsc);
+
+            // Draw bracket line along Z axis
+            glm::ivec2 bz = world_to_screen(corners[c].x, corners[c].y,
+                                            corners[c].z + signs[c][2] * bracket_len);
+
+            dsc.p2.x = static_cast<lv_value_precise_t>(bz.x);
+            dsc.p2.y = static_cast<lv_value_precise_t>(bz.y);
+            lv_draw_line(layer, &dsc);
+        }
+
+        spdlog::debug("[GCodeLayerRenderer] Selection brackets rendered for '{}'", object_name);
+    }
 }
 
 // ============================================================================
@@ -1240,6 +1447,9 @@ void GCodeLayerRenderer::background_ghost_render_thread() {
     // Color (can be changed via set_extrusion_color() on main thread)
     const lv_color_t local_color_extrusion = color_extrusion_;
 
+    // Capture excluded objects for ghost rendering (thread-safe copy)
+    const auto local_excluded = excluded_objects_;
+
     // Local version of should_render_segment using captured flags
     auto local_should_render = [&](const ToolpathSegment& seg) -> bool {
         if (seg.is_extrusion) {
@@ -1299,8 +1509,18 @@ void GCodeLayerRenderer::background_ghost_render_thread() {
             if (p1.x == p2.x && p1.y == p2.y)
                 continue;
 
+            // Use excluded color for excluded objects even in ghost
+            uint32_t seg_color = ghost_color;
+            if (!seg.object_name.empty() && local_excluded.count(seg.object_name) > 0) {
+                // Excluded: dim orange-red
+                uint8_t ex_r = 0xFF * 40 / 100;
+                uint8_t ex_g = 0x6B * 40 / 100;
+                uint8_t ex_b = 0x35 * 40 / 100;
+                seg_color = (255u << 24) | (ex_r << 16) | (ex_g << 8) | ex_b;
+            }
+
             // Draw line using Bresenham algorithm
-            draw_line_bresenham(p1.x, p1.y, p2.x, p2.y, ghost_color);
+            draw_line_bresenham(p1.x, p1.y, p2.x, p2.y, seg_color);
             ++segments_rendered;
         }
     }
