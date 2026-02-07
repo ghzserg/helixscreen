@@ -5,6 +5,24 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2026-02-07
+
+### Added
+- Pre-print time predictions based on historical heating/homing data
+- Heater status text on temperature cards (Heating, Cooling, At Target)
+- Slicer estimated time fallback for remaining time
+- Seconds in duration display under 5 minutes
+
+### Fixed
+- Crash on 16bpp HDMI screens from forced 32-bit color format
+- Elapsed time using wall-clock duration instead of print-only time
+- Pre-print overlay showing when it shouldn't
+- Backlight not turning off on AD5M
+- Heater status colors (heating=red, added cooling state)
+- AMS row hidden when no AMS connected
+- Modal button alignment
+- Install script version detection on Pi (#6)
+
 ## [0.9.3] - 2026-02-06
 
 First public beta release. Core features are complete — we're looking for early
@@ -102,6 +120,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.9.4]: https://github.com/prestonbrown/helixscreen/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/prestonbrown/helixscreen/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/prestonbrown/helixscreen/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/prestonbrown/helixscreen/releases/tag/v0.9.1
