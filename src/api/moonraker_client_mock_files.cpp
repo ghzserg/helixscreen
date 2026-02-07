@@ -180,6 +180,9 @@ static json build_mock_file_metadata_response(const std::string& filename) {
                    {"filament_type", header_meta.filament_type},
                    {"filament_colors", filament_colors},
                    {"layer_count", header_meta.layer_count},
+                   {"layer_height", header_meta.layer_height},
+                   {"first_layer_height", header_meta.first_layer_height},
+                   {"object_height", header_meta.object_height},
                    {"first_layer_bed_temp", header_meta.first_layer_bed_temp},
                    {"first_layer_extr_temp", header_meta.first_layer_nozzle_temp},
                    {"thumbnails", thumbnails}};

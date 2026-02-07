@@ -520,6 +520,9 @@ struct GCodeHeaderMetadata {
     double filament_used_g = 0.0;
     std::string filament_type; ///< e.g., "PLA", "PETG", "ABS", "TPU", "ASA"
     uint32_t layer_count = 0;
+    double layer_height = 0.0;       ///< mm per layer (e.g. 0.2)
+    double first_layer_height = 0.0; ///< mm first layer (e.g. 0.3)
+    double object_height = 0.0;      ///< mm max Z height of the print
     double first_layer_bed_temp = 0.0;
     double first_layer_nozzle_temp = 0.0;
     std::vector<std::string> tool_colors; ///< Hex colors per tool (e.g., ["#ED1C24", "#00C1AE"])

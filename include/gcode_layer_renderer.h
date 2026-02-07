@@ -11,7 +11,10 @@
 #include <atomic>
 #include <glm/glm.hpp>
 #include <memory>
+#include <optional>
+#include <string>
 #include <thread>
+#include <unordered_set>
 
 namespace helix {
 namespace gcode {
@@ -299,6 +302,30 @@ class GCodeLayerRenderer {
     void reset_colors();
 
     // =========================================================================
+    // Object Selection & Exclusion
+    // =========================================================================
+
+    /**
+     * @brief Set excluded objects (rendered with strikethrough style)
+     * @param names Set of object names that are excluded from print
+     */
+    void set_excluded_objects(const std::unordered_set<std::string>& names);
+
+    /**
+     * @brief Set highlighted objects (rendered with selection highlight)
+     * @param names Set of object names to highlight
+     */
+    void set_highlighted_objects(const std::unordered_set<std::string>& names);
+
+    /**
+     * @brief Pick the object under a screen coordinate
+     * @param screen_x X in widget-local coordinates
+     * @param screen_y Y in widget-local coordinates
+     * @return Object name if found within threshold, nullopt otherwise
+     */
+    std::optional<std::string> pick_object_at(int screen_x, int screen_y) const;
+
+    // =========================================================================
     // Viewport Control
     // =========================================================================
 
@@ -370,6 +397,15 @@ class GCodeLayerRenderer {
      * @param ghost If true, render in ghost style (grey, for preview)
      */
     void render_segment(lv_layer_t* layer, const ToolpathSegment& seg, bool ghost = false);
+
+    /**
+     * @brief Render L-shaped corner brackets around highlighted objects' bounding boxes
+     * @param layer LVGL draw layer
+     *
+     * Draws wireframe corner brackets at all 8 projected corners of each
+     * highlighted object's AABB. Ported from TinyGL renderer's render_bounding_box().
+     */
+    void render_selection_brackets(lv_layer_t* layer);
 
     /**
      * @brief Convert world coordinates to screen coordinates
@@ -475,6 +511,10 @@ class GCodeLayerRenderer {
     bool use_custom_extrusion_color_ = false;
     bool use_custom_travel_color_ = false;
     bool use_custom_support_color_ = false;
+
+    // Object exclusion/highlight state
+    std::unordered_set<std::string> excluded_objects_;
+    std::unordered_set<std::string> highlighted_objects_;
 
     // Cached bounds
     float bounds_min_x_ = 0.0f;

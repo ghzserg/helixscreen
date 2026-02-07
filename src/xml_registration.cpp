@@ -185,6 +185,7 @@ void register_xml_components() {
     lv_xml_register_component_from_file("A:ui_xml/print_cancel_confirm_modal.xml");
     lv_xml_register_component_from_file("A:ui_xml/print_completion_modal.xml");
     lv_xml_register_component_from_file("A:ui_xml/save_z_offset_modal.xml");
+    lv_xml_register_component_from_file("A:ui_xml/exclude_object_modal.xml");
 
     // Notification history
     lv_xml_register_component_from_file("A:ui_xml/notification_history_panel.xml");

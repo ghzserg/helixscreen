@@ -34,6 +34,7 @@ constexpr size_t GCODE_FPS_WINDOW_SIZE = 10; // Rolling window of frame times
 #include <cstring>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <thread>
 #include <unordered_set>
 
@@ -284,6 +285,11 @@ static gcode_viewer_state_t* get_state(lv_obj_t* obj) {
     return static_cast<gcode_viewer_state_t*>(lv_obj_get_user_data(obj));
 }
 
+// Helper: Check if viewer has any G-code data (full file or streaming)
+static bool has_gcode_data(const gcode_viewer_state_t* st) {
+    return st->gcode_file || (st->streaming_controller_ && st->streaming_controller_->is_open());
+}
+
 // ==============================================
 // Event Callbacks
 // ==============================================
@@ -499,7 +505,7 @@ static void long_press_timer_cb(lv_timer_t* timer) {
     lv_obj_t* obj = static_cast<lv_obj_t*>(lv_timer_get_user_data(timer));
     gcode_viewer_state_t* st = get_state(obj);
 
-    if (!st || !st->gcode_file)
+    if (!st || !has_gcode_data(st))
         return;
 
     // Timer fired - this is a long-press
@@ -570,7 +576,7 @@ static void gcode_viewer_press_cb(lv_event_t* e) {
     }
 
     // Start long-press timer if callback is registered
-    if (st->object_long_press_callback && st->gcode_file) {
+    if (st->object_long_press_callback && has_gcode_data(st)) {
         // Cancel any existing timer
         if (st->long_press_timer_) {
             lv_timer_delete(st->long_press_timer_);
@@ -596,6 +602,11 @@ static void gcode_viewer_pressing_cb(lv_event_t* e) {
     gcode_viewer_state_t* st = get_state(obj);
 
     if (!st || !st->is_dragging)
+        return;
+
+    // In 2D mode, no camera rotation - skip drag handling entirely.
+    // This also prevents mouse micro-jitter from cancelling the long-press timer.
+    if (st->is_using_2d_mode())
         return;
 
     lv_indev_t* indev = lv_indev_active();
@@ -690,23 +701,23 @@ static void gcode_viewer_release_cb(lv_event_t* e) {
     }
 
     // If movement was minimal, treat as click and try to pick object
-    if (dx < CLICK_THRESHOLD && dy < CLICK_THRESHOLD && st->gcode_file) {
+    if (dx < CLICK_THRESHOLD && dy < CLICK_THRESHOLD && has_gcode_data(st)) {
         spdlog::debug("[GCode Viewer] Click detected at ({}, {})", point.x, point.y);
         const char* picked = ui_gcode_viewer_pick_object(obj, point.x, point.y);
 
         if (picked && picked[0] != '\0') {
-            // Object clicked - toggle selection
+            // Object clicked - toggle selection (single-select)
             std::string picked_name(picked);
 
             if (st->selected_objects.count(picked_name) > 0) {
                 // Already selected - deselect
-                st->selected_objects.erase(picked_name);
+                st->selected_objects.clear();
                 spdlog::info("[GCode Viewer] Deselected object '{}'", picked_name);
             } else {
-                // Not selected - add to selection (multi-select mode)
+                // Select this object (replacing any previous selection)
+                st->selected_objects.clear();
                 st->selected_objects.insert(picked_name);
-                spdlog::info("[GCode Viewer] Selected object '{}' ({} total selected)", picked_name,
-                             st->selected_objects.size());
+                spdlog::info("[GCode Viewer] Selected object '{}'", picked_name);
             }
 
             // Update highlighting to show all selected objects
@@ -1645,6 +1656,9 @@ void ui_gcode_viewer_set_highlighted_objects(lv_obj_t* obj,
         return;
 
     st->renderer_->set_highlighted_objects(object_names);
+    if (st->layer_renderer_2d_) {
+        st->layer_renderer_2d_->set_highlighted_objects(object_names);
+    }
     lv_obj_invalidate(obj);
 }
 
@@ -1656,6 +1670,9 @@ void ui_gcode_viewer_set_excluded_objects(lv_obj_t* obj,
 
     st->excluded_objects = object_names;
     st->renderer_->set_excluded_objects(object_names);
+    if (st->layer_renderer_2d_) {
+        st->layer_renderer_2d_->set_excluded_objects(object_names);
+    }
     lv_obj_invalidate(obj);
 
     spdlog::debug("[GCode Viewer] Excluded objects updated ({} objects)", object_names.size());
@@ -1925,11 +1942,10 @@ float ui_gcode_viewer_get_nozzle_diameter_mm(lv_obj_t* obj) {
 
 const char* ui_gcode_viewer_pick_object(lv_obj_t* obj, int x, int y) {
     gcode_viewer_state_t* st = get_state(obj);
-    if (!st || !st->gcode_file)
+    if (!st || !has_gcode_data(st))
         return nullptr;
 
     // Convert screen coordinates to widget-local coordinates
-    // The renderer expects coordinates relative to the widget's top-left corner
     lv_area_t widget_coords;
     lv_obj_get_coords(obj, &widget_coords);
     int local_x = x - widget_coords.x1;
@@ -1938,8 +1954,16 @@ const char* ui_gcode_viewer_pick_object(lv_obj_t* obj, int x, int y) {
     spdlog::debug("[GCode Viewer] pick_object screen=({}, {}), widget_pos=({}, {}), local=({}, {})",
                   x, y, widget_coords.x1, widget_coords.y1, local_x, local_y);
 
-    auto result =
-        st->renderer_->pick_object(glm::vec2(local_x, local_y), *st->gcode_file, *st->camera_);
+    std::optional<std::string> result;
+
+    // Use 2D renderer's pick_object_at in 2D mode
+    if (st->is_using_2d_mode() && st->layer_renderer_2d_) {
+        result = st->layer_renderer_2d_->pick_object_at(local_x, local_y);
+    } else if (st->renderer_ && st->gcode_file) {
+        // 3D renderer path (requires full gcode file)
+        result =
+            st->renderer_->pick_object(glm::vec2(local_x, local_y), *st->gcode_file, *st->camera_);
+    }
 
     if (result) {
         // Store in static buffer (safe for single-threaded LVGL)

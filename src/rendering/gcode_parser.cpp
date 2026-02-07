@@ -1249,7 +1249,10 @@ bool parse_metadata_line(const std::string& line, GCodeHeaderMetadata& metadata)
     // ====================
     const std::string cura_layer_height = ";Layer height: ";
     if (line.rfind(cura_layer_height, 0) == 0) {
-        // Could store layer height if needed
+        try {
+            metadata.layer_height = std::stod(line.substr(cura_layer_height.length()));
+        } catch (...) {
+        }
         return true;
     }
 
@@ -1354,6 +1357,21 @@ bool parse_metadata_line(const std::string& line, GCodeHeaderMetadata& metadata)
     } else if (key == "first_layer_temperature" || key == "nozzle_temperature") {
         try {
             metadata.first_layer_nozzle_temp = std::stod(value);
+        } catch (...) {
+        }
+    } else if (key == "layer_height") {
+        try {
+            metadata.layer_height = std::stod(value);
+        } catch (...) {
+        }
+    } else if (key == "first_layer_height") {
+        try {
+            metadata.first_layer_height = std::stod(value);
+        } catch (...) {
+        }
+    } else if (key == "max_z_height") {
+        try {
+            metadata.object_height = std::stod(value);
         } catch (...) {
         }
     } else if (key == "filament_type") {
