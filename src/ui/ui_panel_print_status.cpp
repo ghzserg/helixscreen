@@ -29,6 +29,7 @@
 #include "memory_utils.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
+#include "preprint_predictor.h"
 #include "printer_state.h"
 #include "runtime_config.h"
 #include "settings_manager.h"
@@ -1346,6 +1347,13 @@ void PrintStatusPanel::on_print_duration_changed(int seconds) {
         return;
     }
 
+    // During pre-print, the preprint elapsed observer owns the elapsed display.
+    // Moonraker's print_duration is 0 during preparation and would overwrite
+    // the preprint elapsed time, causing flickering.
+    if (current_state_ == PrintState::Preparing) {
+        return;
+    }
+
     // Include preprint time so elapsed reflects total wall-clock time
     int total_elapsed = preprint_elapsed_seconds_ + elapsed_seconds_;
     format_time(total_elapsed, elapsed_buf_, sizeof(elapsed_buf_));
@@ -1397,6 +1405,18 @@ void PrintStatusPanel::on_print_start_phase_changed(int phase) {
         current_state_ = PrintState::Preparing;
         preprint_elapsed_seconds_ = 0;
         preprint_remaining_seconds_ = 0;
+
+        // Initialize elapsed display to 0m (preprint observer will update it)
+        format_time(0, elapsed_buf_, sizeof(elapsed_buf_));
+        lv_subject_copy_string(&elapsed_subject_, elapsed_buf_);
+
+        // Show predicted total as initial remaining estimate (preprint observer refines it)
+        int predicted = helix::PreprintPredictor::predicted_total_from_config();
+        if (predicted > 0) {
+            int total_remaining = remaining_seconds_ + predicted;
+            format_time(total_remaining, remaining_buf_, sizeof(remaining_buf_));
+            lv_subject_copy_string(&remaining_subject_, remaining_buf_);
+        }
     }
     spdlog::debug("[{}] Print start phase changed: {} (visible={})", get_name(), phase, preparing);
 }
