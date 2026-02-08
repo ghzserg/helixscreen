@@ -80,7 +80,7 @@ bool PluginManager::discover_plugins(const std::string& plugins_dir) {
     int error_count = 0;
 
     for (const auto& entry : fs::directory_iterator(plugins_dir)) {
-        if (!entry.is_directory()) {
+        if (!fs::is_directory(entry.path())) {
             continue;
         }
 
@@ -684,7 +684,7 @@ std::string PluginManager::find_library(const std::string& plugin_dir,
 
     // Fall back to scanning directory for any .so/.dylib
     for (const auto& entry : fs::directory_iterator(plugin_dir)) {
-        if (!entry.is_regular_file()) {
+        if (!fs::is_regular_file(entry.path())) {
             continue;
         }
 

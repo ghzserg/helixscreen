@@ -87,7 +87,8 @@ size_t BackgroundGhostBuilder::total_layers() const {
 }
 
 void BackgroundGhostBuilder::notify_user_request() {
-    last_user_request_.store(std::chrono::steady_clock::now());
+    auto now = std::chrono::steady_clock::now();
+    last_user_request_ns_.store(now.time_since_epoch().count());
 }
 
 void BackgroundGhostBuilder::worker_thread() {
@@ -98,11 +99,15 @@ void BackgroundGhostBuilder::worker_thread() {
     for (size_t i = 0; i < total && !cancelled_.load(); ++i) {
         // Yield to UI: pause if user recently navigated layers
         auto now = std::chrono::steady_clock::now();
-        auto last_request = last_user_request_.load();
+        auto last_ns = last_user_request_ns_.load();
+        auto last_request =
+            std::chrono::steady_clock::time_point(std::chrono::steady_clock::duration(last_ns));
         while ((now - last_request) < YIELD_DURATION && !cancelled_.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             now = std::chrono::steady_clock::now();
-            last_request = last_user_request_.load();
+            last_ns = last_user_request_ns_.load();
+            last_request =
+                std::chrono::steady_clock::time_point(std::chrono::steady_clock::duration(last_ns));
         }
 
         if (cancelled_.load()) {

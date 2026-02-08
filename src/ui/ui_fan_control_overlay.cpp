@@ -301,10 +301,12 @@ void FanControlOverlay::subscribe_to_fan_speeds() {
     for (auto& afd : animated_fan_dials_) {
         if (auto* subject = printer_state_.get_fan_speed_subject(afd.object_name)) {
             FanDial* dial_ptr = afd.dial.get();
-            afd.animation.bind(subject, [dial_ptr](int percent) { dial_ptr->set_speed(percent); },
-                               {.duration_ms = 300, .threshold = 2}
-                               // 2% threshold to avoid micro-updates
-            );
+            // 2% threshold to avoid micro-updates
+            helix::ui::AnimatedValueConfig anim_config;
+            anim_config.duration_ms = 300;
+            anim_config.threshold = 2;
+            afd.animation.bind(
+                subject, [dial_ptr](int percent) { dial_ptr->set_speed(percent); }, anim_config);
             spdlog::trace("[{}] Bound AnimatedValue for '{}'", get_name(), afd.object_name);
         }
     }

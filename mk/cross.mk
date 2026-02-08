@@ -162,6 +162,39 @@ else ifeq ($(PLATFORM_TARGET),k1)
     # Strip binary for size on memory-constrained device
     STRIP_BINARY := yes
 
+else ifeq ($(PLATFORM_TARGET),k1-dynamic)
+    # -------------------------------------------------------------------------
+    # Creality K1 Series - Dynamic Linking (Ingenic X2000E MIPS32r2)
+    # Specs: 480x400 display (K1/K1C/K1Max), 480x800 (K2), 256MB RAM, glibc 2.29
+    # -------------------------------------------------------------------------
+    # DYNAMIC BUILD: Links against K1's native glibc 2.29 system libraries.
+    # Requires custom NaN2008+FP64 toolchain (built via crosstool-NG).
+    # Project-specific libraries (libhv, libnl, wpa) are statically linked.
+    # System libraries (libc, libstdc++, libm, etc.) are dynamically linked.
+    CROSS_COMPILE ?= mipsel-k1-linux-gnu-
+    TARGET_ARCH := mips32r2
+    TARGET_TRIPLE := mipsel-k1-linux-gnu
+    # NaN2008 + FP64 flags are critical for ABI compatibility with K1 firmware
+    # No LTO: GCC 7.5 static toolchain doesn't ship liblto_plugin.so
+    # -isystem include/compat: Filesystem shim — GCC 7 only has <experimental/filesystem>
+    TARGET_CFLAGS := -march=mips32r2 -mtune=mips32r2 -mnan=2008 -mfp64 \
+        -Os -ffunction-sections -fdata-sections \
+        -fomit-frame-pointer \
+        -isystem include/compat \
+        -Wno-error=conversion -Wno-error=sign-conversion \
+        -DHELIX_RELEASE_BUILD -DHELIX_PLATFORM_K1
+    # Dynamic linking with NaN2008 dynamic linker
+    # NO -static flag! System libs resolved at runtime on the K1.
+    TARGET_LDFLAGS := -Wl,--gc-sections -Wl,-O2 -Wl,--as-needed \
+        -Wl,--dynamic-linker=/lib/ld-linux-mipsn8.so.1
+    ENABLE_SSL := no
+    DISPLAY_BACKEND := fbdev
+    ENABLE_SDL := no
+    ENABLE_TINYGL_3D := no
+    ENABLE_EVDEV := yes
+    BUILD_SUBDIR := k1-dynamic
+    STRIP_BINARY := yes
+
 else ifeq ($(PLATFORM_TARGET),native)
     # -------------------------------------------------------------------------
     # Native desktop build (macOS / Linux)
@@ -177,7 +210,7 @@ else ifeq ($(PLATFORM_TARGET),native)
     BUILD_SUBDIR :=
 
 else
-    $(error Unknown PLATFORM_TARGET: $(PLATFORM_TARGET). Valid options: native, pi, pi32, ad5m, k1)
+    $(error Unknown PLATFORM_TARGET: $(PLATFORM_TARGET). Valid options: native, pi, pi32, ad5m, k1, k1-dynamic)
 endif
 
 # =============================================================================
@@ -193,6 +226,13 @@ ifneq ($(CROSS_COMPILE),)
     STRIP := $(CROSS_COMPILE)strip
     RANLIB := $(CROSS_COMPILE)gcc-ranlib
     LD := $(CROSS_COMPILE)ld
+
+    # k1-dynamic: GCC 7.5 static toolchain doesn't ship liblto_plugin.so,
+    # so gcc-ar/gcc-ranlib fail. Use plain ar/ranlib (LTO is disabled anyway).
+    ifeq ($(PLATFORM_TARGET),k1-dynamic)
+        AR := $(CROSS_COMPILE)ar
+        RANLIB := $(CROSS_COMPILE)ranlib
+    endif
 
     # Override build directories for cross-compilation
     ifneq ($(BUILD_SUBDIR),)
@@ -239,6 +279,13 @@ ifeq ($(PLATFORM_TARGET),k1)
     SUBMODULE_CXXFLAGS := $(subst -O2,-Os,$(SUBMODULE_CXXFLAGS))
 endif
 
+ifeq ($(PLATFORM_TARGET),k1-dynamic)
+    CFLAGS := $(subst -O2,-Os,$(CFLAGS))
+    CXXFLAGS := $(subst -O2,-Os,$(CXXFLAGS))
+    SUBMODULE_CFLAGS := $(subst -O2,-Os,$(SUBMODULE_CFLAGS))
+    SUBMODULE_CXXFLAGS := $(subst -O2,-Os,$(SUBMODULE_CXXFLAGS))
+endif
+
 ifdef TARGET_LDFLAGS
     LDFLAGS += $(TARGET_LDFLAGS)
 endif
@@ -278,7 +325,7 @@ endif
 # Cross-Compilation Build Targets
 # =============================================================================
 
-.PHONY: pi pi32 ad5m k1 pi-docker pi32-docker ad5m-docker k1-docker docker-toolchains cross-info ensure-docker ensure-buildx maybe-stop-colima
+.PHONY: pi pi32 ad5m k1 k1-dynamic pi-docker pi32-docker ad5m-docker k1-docker k1-dynamic-docker docker-toolchains cross-info ensure-docker ensure-buildx maybe-stop-colima
 
 # Direct cross-compilation (requires toolchain installed)
 pi:
@@ -296,6 +343,10 @@ ad5m:
 k1:
 	@echo "$(CYAN)$(BOLD)Cross-compiling for Creality K1 series (MIPS32)...$(RESET)"
 	$(Q)$(MAKE) PLATFORM_TARGET=k1 -j$(NPROC) all
+
+k1-dynamic:
+	@echo "$(CYAN)$(BOLD)Cross-compiling for Creality K1 series (MIPS32, dynamic linking)...$(RESET)"
+	$(Q)$(MAKE) PLATFORM_TARGET=k1-dynamic -j$(NPROC) all
 
 # Docker-based cross-compilation (recommended)
 # SKIP_OPTIONAL_DEPS=1 skips npm, clang-format, python venv, and other development tools
@@ -420,6 +471,16 @@ k1-docker: ensure-docker
 		make PLATFORM_TARGET=k1 SKIP_OPTIONAL_DEPS=1 -j$$(nproc)
 	@$(MAKE) --no-print-directory maybe-stop-colima
 
+k1-dynamic-docker: ensure-docker
+	@echo "$(CYAN)$(BOLD)Cross-compiling for Creality K1 series (dynamic) via Docker...$(RESET)"
+	@if ! docker image inspect helixscreen/toolchain-k1-dynamic >/dev/null 2>&1; then \
+		echo "$(YELLOW)Docker image not found. Building toolchain first...$(RESET)"; \
+		$(MAKE) docker-toolchain-k1-dynamic; \
+	fi
+	$(Q)docker run --rm --user $$(id -u):$$(id -g) -v "$(PWD)":/src -w /src helixscreen/toolchain-k1-dynamic \
+		make PLATFORM_TARGET=k1-dynamic SKIP_OPTIONAL_DEPS=1 -j$$(nproc)
+	@$(MAKE) --no-print-directory maybe-stop-colima
+
 # Stop Colima after build to free up RAM (macOS only)
 # Only stops if Colima is running and we're on macOS
 .PHONY: maybe-stop-colima
@@ -432,7 +493,7 @@ maybe-stop-colima:
 	fi
 
 # Build Docker toolchain images
-docker-toolchains: docker-toolchain-pi docker-toolchain-pi32 docker-toolchain-ad5m docker-toolchain-k1
+docker-toolchains: docker-toolchain-pi docker-toolchain-pi32 docker-toolchain-ad5m docker-toolchain-k1 docker-toolchain-k1-dynamic
 	@echo "$(GREEN)$(BOLD)All Docker toolchains built successfully$(RESET)"
 
 docker-toolchain-pi: ensure-buildx
@@ -451,6 +512,10 @@ docker-toolchain-k1: ensure-buildx
 	@echo "$(CYAN)Building Creality K1 series toolchain Docker image...$(RESET)"
 	$(Q)docker buildx build -t helixscreen/toolchain-k1 -f docker/Dockerfile.k1 docker/
 
+docker-toolchain-k1-dynamic: ensure-buildx
+	@echo "$(CYAN)Building Creality K1 series (dynamic) toolchain Docker image...$(RESET)"
+	$(Q)docker buildx build -t helixscreen/toolchain-k1-dynamic -f docker/Dockerfile.k1-dynamic docker/
+
 # Display cross-compilation info (alias for help-cross)
 cross-info: help-cross
 
@@ -468,18 +533,21 @@ help-cross:
 	echo "  $${G}pi-docker$${X}            - Build for Raspberry Pi (aarch64) via Docker"; \
 	echo "  $${G}pi32-docker$${X}          - Build for Raspberry Pi 32-bit (armhf) via Docker"; \
 	echo "  $${G}ad5m-docker$${X}          - Build for Adventurer 5M (armv7-a) via Docker"; \
-	echo "  $${G}k1-docker$${X}            - Build for Creality K1 series (MIPS32) via Docker"; \
+	echo "  $${G}k1-docker$${X}            - Build for Creality K1 series (MIPS32, static) via Docker"; \
+	echo "  $${G}k1-dynamic-docker$${X}    - Build for Creality K1 series (MIPS32, dynamic) via Docker"; \
 	echo "  $${G}docker-toolchains$${X}    - Build all Docker toolchain images"; \
 	echo "  $${G}docker-toolchain-pi$${X}  - Build Pi toolchain image only"; \
 	echo "  $${G}docker-toolchain-pi32$${X} - Build Pi 32-bit toolchain image only"; \
 	echo "  $${G}docker-toolchain-ad5m$${X} - Build AD5M toolchain image only"; \
-	echo "  $${G}docker-toolchain-k1$${X}  - Build K1 toolchain image only"; \
+	echo "  $${G}docker-toolchain-k1$${X}  - Build K1 static toolchain image only"; \
+	echo "  $${G}docker-toolchain-k1-dynamic$${X} - Build K1 dynamic toolchain image only"; \
 	echo ""; \
 	echo "$${C}Direct Cross-Compilation (requires local toolchain):$${X}"; \
 	echo "  $${G}pi$${X}                   - Cross-compile for Raspberry Pi (64-bit)"; \
 	echo "  $${G}pi32$${X}                 - Cross-compile for Raspberry Pi (32-bit)"; \
 	echo "  $${G}ad5m$${X}                 - Cross-compile for Adventurer 5M"; \
-	echo "  $${G}k1$${X}                   - Cross-compile for Creality K1 series"; \
+	echo "  $${G}k1$${X}                   - Cross-compile for Creality K1 series (static)"; \
+	echo "  $${G}k1-dynamic$${X}           - Cross-compile for Creality K1 series (dynamic)"; \
 	echo ""; \
 	echo "$${C}Pi Deployment (64-bit):$${X}"; \
 	echo "  $${G}deploy-pi$${X}            - Deploy and restart in background (default)"; \
@@ -500,12 +568,18 @@ help-cross:
 	echo "  $${G}ad5m-test$${X}            - Full cycle: remote build + deploy + run (fg)"; \
 	echo "  $${G}ad5m-ssh$${X}             - SSH into the AD5M"; \
 	echo ""; \
-	echo "$${C}K1 Deployment (UNTESTED):$${X}"; \
+	echo "$${C}K1 Deployment - Static (UNTESTED):$${X}"; \
 	echo "  $${G}deploy-k1$${X}            - Deploy and restart in background"; \
 	echo "  $${G}deploy-k1-fg$${X}         - Deploy and run in foreground (debug)"; \
 	echo "  $${G}deploy-k1-bin$${X}        - Deploy binaries only (fast iteration)"; \
 	echo "  $${G}k1-test$${X}              - Full cycle: docker build + deploy + run (fg)"; \
 	echo "  $${G}k1-ssh$${X}               - SSH into the K1"; \
+	echo ""; \
+	echo "$${C}K1 Deployment - Dynamic (UNTESTED):$${X}"; \
+	echo "  $${G}deploy-k1-dynamic$${X}    - Deploy and restart in background"; \
+	echo "  $${G}deploy-k1-dynamic-fg$${X} - Deploy and run in foreground (debug)"; \
+	echo "  $${G}deploy-k1-dynamic-bin$${X} - Deploy binaries only (fast iteration)"; \
+	echo "  $${G}k1-dynamic-test$${X}      - Full cycle: docker build + deploy + run (fg)"; \
 	echo ""; \
 	echo "$${C}Deployment Options:$${X}"; \
 	echo "  $${Y}PI_HOST$${X}=hostname     - Pi hostname (default: helixpi.local)"; \
@@ -967,6 +1041,85 @@ k1-ssh:
 k1-test: k1-docker deploy-k1-fg
 
 # =============================================================================
+# K1 Dynamic Deployment Targets
+# =============================================================================
+# Same as K1 static targets but using build/k1-dynamic/ paths
+
+.PHONY: deploy-k1-dynamic deploy-k1-dynamic-fg deploy-k1-dynamic-bin k1-dynamic-test
+
+# Deploy full application to K1 (dynamic build) using tar/ssh
+deploy-k1-dynamic:
+	@test -f build/k1-dynamic/bin/helix-screen || { echo "$(RED)Error: build/k1-dynamic/bin/helix-screen not found. Run 'make k1-dynamic-docker' first.$(RESET)"; exit 1; }
+	@test -f build/k1-dynamic/bin/helix-splash || { echo "$(RED)Error: build/k1-dynamic/bin/helix-splash not found. Run 'make k1-dynamic-docker' first.$(RESET)"; exit 1; }
+	@echo "$(CYAN)Deploying HelixScreen (dynamic) to $(K1_SSH_TARGET):$(K1_DEPLOY_DIR)...$(RESET)"
+	@# Generate pre-rendered images if missing
+	@if [ ! -f build/assets/images/prerendered/splash-logo-small.bin ]; then \
+		echo "$(DIM)Generating pre-rendered splash images...$(RESET)"; \
+		$(MAKE) gen-images; \
+	fi
+	@if [ ! -d build/assets/images/printers/prerendered ]; then \
+		echo "$(DIM)Generating pre-rendered printer images...$(RESET)"; \
+		$(MAKE) gen-printer-images; \
+	fi
+	@if [ ! -f build/assets/images/prerendered/splash-3d-dark-tiny_alt.bin ]; then \
+		echo "$(DIM)Generating 3D splash images for K1...$(RESET)"; \
+		$(MAKE) gen-splash-3d-k1; \
+	fi
+	@# Stop running processes and prepare directory
+	ssh $(K1_SSH_TARGET) "killall helix-watchdog helix-screen helix-splash 2>/dev/null || true; mkdir -p $(K1_DEPLOY_DIR)/bin"
+	@# Transfer binaries via cat/ssh
+	@echo "$(DIM)Transferring binaries...$(RESET)"
+	cat build/k1-dynamic/bin/helix-screen | ssh $(K1_SSH_TARGET) "cat > $(K1_DEPLOY_DIR)/bin/helix-screen && chmod +x $(K1_DEPLOY_DIR)/bin/helix-screen"
+	cat build/k1-dynamic/bin/helix-splash | ssh $(K1_SSH_TARGET) "cat > $(K1_DEPLOY_DIR)/bin/helix-splash && chmod +x $(K1_DEPLOY_DIR)/bin/helix-splash"
+	@if [ -f build/k1-dynamic/bin/helix-watchdog ]; then \
+		cat build/k1-dynamic/bin/helix-watchdog | ssh $(K1_SSH_TARGET) "cat > $(K1_DEPLOY_DIR)/bin/helix-watchdog && chmod +x $(K1_DEPLOY_DIR)/bin/helix-watchdog"; \
+	fi
+	cat scripts/helix-launcher.sh | ssh $(K1_SSH_TARGET) "cat > $(K1_DEPLOY_DIR)/bin/helix-launcher.sh && chmod +x $(K1_DEPLOY_DIR)/bin/helix-launcher.sh"
+	@# Transfer assets via tar
+	@echo "$(DIM)Transferring assets...$(RESET)"
+	COPYFILE_DISABLE=1 tar -cf - $(DEPLOY_TAR_EXCLUDES) $(DEPLOY_ASSET_DIRS) | ssh $(K1_SSH_TARGET) "cd $(K1_DEPLOY_DIR) && tar -xf -"
+	@# Transfer pre-rendered images
+	@if [ -d build/assets/images/prerendered ] && ls build/assets/images/prerendered/*.bin >/dev/null 2>&1; then \
+		echo "$(DIM)Transferring pre-rendered images...$(RESET)"; \
+		ssh $(K1_SSH_TARGET) "mkdir -p $(K1_DEPLOY_DIR)/assets/images/prerendered $(K1_DEPLOY_DIR)/assets/images/printers/prerendered"; \
+		COPYFILE_DISABLE=1 tar -cf - -C build/assets/images prerendered | ssh $(K1_SSH_TARGET) "cd $(K1_DEPLOY_DIR)/assets/images && tar -xf -"; \
+	fi
+	@if [ -d build/assets/images/printers/prerendered ] && ls build/assets/images/printers/prerendered/*.bin >/dev/null 2>&1; then \
+		COPYFILE_DISABLE=1 tar -cf - -C build/assets/images/printers prerendered | ssh $(K1_SSH_TARGET) "cd $(K1_DEPLOY_DIR)/assets/images/printers && tar -xf -"; \
+	fi
+	@echo "$(GREEN)✓ Deployed to $(K1_HOST):$(K1_DEPLOY_DIR)$(RESET)"
+	@echo "$(CYAN)Starting helix-screen on $(K1_HOST)...$(RESET)"
+	ssh $(K1_SSH_TARGET) "cd $(K1_DEPLOY_DIR) && ./bin/helix-launcher.sh >/dev/null 2>&1 &"
+	@echo "$(GREEN)✓ helix-screen started in background$(RESET)"
+	@echo "$(DIM)Logs: ssh $(K1_SSH_TARGET) 'tail -f /var/log/messages | grep helix'$(RESET)"
+
+# Deploy and run in foreground with verbose logging (for interactive debugging)
+deploy-k1-dynamic-fg:
+	@test -f build/k1-dynamic/bin/helix-screen || { echo "$(RED)Error: build/k1-dynamic/bin/helix-screen not found. Run 'make k1-dynamic-docker' first.$(RESET)"; exit 1; }
+	@test -f build/k1-dynamic/bin/helix-splash || { echo "$(RED)Error: build/k1-dynamic/bin/helix-splash not found. Run 'make k1-dynamic-docker' first.$(RESET)"; exit 1; }
+	$(call deploy-common,$(K1_SSH_TARGET),$(K1_DEPLOY_DIR),build/k1-dynamic/bin)
+	@echo "$(CYAN)Starting helix-screen on $(K1_HOST) (foreground, verbose)...$(RESET)"
+	ssh -t $(K1_SSH_TARGET) "cd $(K1_DEPLOY_DIR) && ./bin/helix-launcher.sh --debug"
+
+# Deploy binaries only (fast, for quick iteration)
+deploy-k1-dynamic-bin:
+	@test -f build/k1-dynamic/bin/helix-screen || { echo "$(RED)Error: build/k1-dynamic/bin/helix-screen not found. Run 'make k1-dynamic-docker' first.$(RESET)"; exit 1; }
+	@echo "$(CYAN)Deploying binaries only to $(K1_SSH_TARGET):$(K1_DEPLOY_DIR)/bin...$(RESET)"
+	ssh $(K1_SSH_TARGET) "killall helix-watchdog helix-screen helix-splash 2>/dev/null || true; mkdir -p $(K1_DEPLOY_DIR)/bin"
+	cat build/k1-dynamic/bin/helix-screen | ssh $(K1_SSH_TARGET) "cat > $(K1_DEPLOY_DIR)/bin/helix-screen && chmod +x $(K1_DEPLOY_DIR)/bin/helix-screen"
+	cat build/k1-dynamic/bin/helix-splash | ssh $(K1_SSH_TARGET) "cat > $(K1_DEPLOY_DIR)/bin/helix-splash && chmod +x $(K1_DEPLOY_DIR)/bin/helix-splash"
+	@if [ -f build/k1-dynamic/bin/helix-watchdog ]; then \
+		cat build/k1-dynamic/bin/helix-watchdog | ssh $(K1_SSH_TARGET) "cat > $(K1_DEPLOY_DIR)/bin/helix-watchdog && chmod +x $(K1_DEPLOY_DIR)/bin/helix-watchdog"; \
+	fi
+	@echo "$(GREEN)✓ Binaries deployed$(RESET)"
+	@echo "$(CYAN)Restarting helix-screen on $(K1_HOST)...$(RESET)"
+	ssh $(K1_SSH_TARGET) "killall helix-watchdog helix-screen helix-splash 2>/dev/null || true; sleep 1; cd $(K1_DEPLOY_DIR) && ./bin/helix-launcher.sh >/dev/null 2>&1 &"
+	@echo "$(GREEN)✓ helix-screen restarted$(RESET)"
+
+# Full cycle: docker build + deploy + run in foreground
+k1-dynamic-test: k1-dynamic-docker deploy-k1-dynamic-fg
+
+# =============================================================================
 # Release Packaging
 # =============================================================================
 # Creates distributable tar.gz archives for each platform
@@ -980,7 +1133,7 @@ RELEASE_VERSION := v$(VERSION)
 # Assets to include (exclude test_gcodes, gcode test files)
 RELEASE_ASSETS := assets/fonts assets/images
 
-.PHONY: release-pi release-pi32 release-ad5m release-k1 release-all release-clean
+.PHONY: release-pi release-pi32 release-ad5m release-k1 release-k1-dynamic release-all release-clean
 
 # Package Pi release
 release-pi: | build/pi/bin/helix-screen build/pi/bin/helix-splash
@@ -1118,8 +1271,39 @@ release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
 	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-k1-$(RELEASE_VERSION).tar.gz$(RESET)"
 	@ls -lh $(RELEASE_DIR)/helixscreen-k1-$(RELEASE_VERSION).tar.gz
 
+# Package K1 Dynamic release
+release-k1-dynamic: | build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/helix-splash
+	@echo "$(CYAN)$(BOLD)Packaging K1 Dynamic release v$(VERSION)...$(RESET)"
+	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
+	@cp build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/
+	@if [ -f build/k1-dynamic/bin/helix-watchdog ]; then cp build/k1-dynamic/bin/helix-watchdog $(RELEASE_DIR)/helixscreen/bin/; fi
+	@cp scripts/helix-launcher.sh $(RELEASE_DIR)/helixscreen/bin/
+	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
+	@# Remove any personal config — release ships template only (installer copies it on first run)
+	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
+	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
+	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
+	@for asset in $(RELEASE_ASSETS); do \
+		if [ -d "$$asset" ]; then cp -r "$$asset" $(RELEASE_DIR)/helixscreen/assets/; fi; \
+	done
+	@if [ -d "build/assets/images/prerendered" ]; then \
+		mkdir -p $(RELEASE_DIR)/helixscreen/assets/images/prerendered; \
+		cp -r build/assets/images/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/prerendered/; \
+	fi
+	@if [ -d "build/assets/images/printers/prerendered" ]; then \
+		mkdir -p $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered; \
+		cp -r build/assets/images/printers/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered/; \
+	fi
+	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
+	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
+	@cd $(RELEASE_DIR) && COPYFILE_DISABLE=1 tar -czvf helixscreen-k1-dynamic-$(RELEASE_VERSION).tar.gz helixscreen
+	@rm -rf $(RELEASE_DIR)/helixscreen
+	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-k1-dynamic-$(RELEASE_VERSION).tar.gz$(RESET)"
+	@ls -lh $(RELEASE_DIR)/helixscreen-k1-dynamic-$(RELEASE_VERSION).tar.gz
+
 # Package all releases
-release-all: release-pi release-pi32 release-ad5m release-k1
+release-all: release-pi release-pi32 release-ad5m release-k1 release-k1-dynamic
 	@echo "$(GREEN)$(BOLD)✓ All releases packaged in $(RELEASE_DIR)/$(RESET)"
 	@ls -lh $(RELEASE_DIR)/*.tar.gz
 
@@ -1130,11 +1314,12 @@ release-clean:
 
 # Aliases for package-* (matches scripts/package.sh naming)
 # These trigger the full build + package workflow
-.PHONY: package-ad5m package-pi package-pi32 package-all package-clean
+.PHONY: package-ad5m package-pi package-pi32 package-k1-dynamic package-all package-clean
 package-ad5m: ad5m-docker gen-images-ad5m gen-splash-3d-ad5m gen-printer-images release-ad5m
 package-pi: pi-docker gen-images gen-splash-3d gen-printer-images release-pi
 package-pi32: pi32-docker gen-images gen-splash-3d gen-printer-images release-pi32
-package-all: package-ad5m package-pi package-pi32
+package-k1-dynamic: k1-dynamic-docker gen-images gen-splash-3d-k1 gen-printer-images release-k1-dynamic
+package-all: package-ad5m package-pi package-pi32 package-k1-dynamic
 package-clean: release-clean
 
 # Convenience aliases (verb-target → target-verb)

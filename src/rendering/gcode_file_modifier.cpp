@@ -614,7 +614,7 @@ size_t GCodeFileModifier::cleanup_temp_files(int max_age_seconds) {
         auto now = std::chrono::system_clock::now();
 
         for (const auto& entry : std::filesystem::directory_iterator(cache_dir)) {
-            if (!entry.is_regular_file()) {
+            if (!std::filesystem::is_regular_file(entry.path())) {
                 continue;
             }
 

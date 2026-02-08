@@ -386,6 +386,8 @@ ifneq ($(CROSS_COMPILE),)
 	fi
 	$(Q)cd $(LIBNL_DIR) && \
 		CC="$(CC)" \
+		AR="$(AR)" \
+		RANLIB="$(RANLIB)" \
 		CFLAGS="$(TARGET_CFLAGS)" \
 		./configure \
 			--host=$(patsubst %-,%,$(CROSS_COMPILE)) \

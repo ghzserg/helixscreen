@@ -432,7 +432,15 @@ ifneq ($(CROSS_COMPILE),)
     # SSL is optional - only needed if connecting to remote Moonraker over HTTPS
     # Note: libnl must come AFTER wpa_client (static linking order matters)
     # Note: -L path only for glibc targets (Pi, AD5M) - musl targets (K1) are self-contained
-    ifeq ($(PLATFORM_TARGET),k1)
+    ifeq ($(PLATFORM_TARGET),k1-dynamic)
+        # K1 Dynamic: Mixed static/dynamic linking
+        # Project libraries linked statically, system libraries linked dynamically
+        # -lstdc++fs: GCC 7.5 requires separate library for <experimental/filesystem>
+        LDFLAGS := -Wl,-Bstatic \
+            $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) -lstdc++fs \
+            -Wl,-Bdynamic \
+            -lstdc++ -lm -lpthread -lrt -ldl -latomic -lgcc_s
+    else ifeq ($(PLATFORM_TARGET),k1)
         # K1 uses musl - fully static, no system library paths needed
         # -latomic: Required for 64-bit atomics on 32-bit MIPS (std::atomic<int64_t>)
         LDFLAGS := $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) -latomic -ldl -lm -lpthread

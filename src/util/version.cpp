@@ -5,7 +5,7 @@
 
 #include "spdlog/spdlog.h"
 
-#include <charconv>
+#include <cstdlib>
 #include <cstring>
 
 namespace helix::version {
@@ -42,23 +42,24 @@ std::optional<Version> parse_version(const std::string& version_str) {
             break;
         }
 
-        // Parse the number
-        int value = 0;
-        auto [ptr, ec] = std::from_chars(start, end, value);
+        // Parse the number (strtol instead of from_chars for GCC 7 compat)
+        char* parse_end = nullptr;
+        long value = std::strtol(start, &parse_end, 10);
 
-        if (ec != std::errc{}) {
+        if (parse_end == start) {
             // Failed to parse - if we got at least major, that's ok
             if (component_idx == 0) {
                 return std::nullopt;
             }
             break;
         }
+        const char* ptr = parse_end;
 
         if (value < 0) {
             return std::nullopt; // Negative versions not allowed
         }
 
-        *components[component_idx] = value;
+        *components[component_idx] = static_cast<int>(value);
         component_idx++;
         start = ptr;
 

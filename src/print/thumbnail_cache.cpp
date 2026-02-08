@@ -380,8 +380,9 @@ void ThumbnailCache::evict_if_needed() {
 
     try {
         for (const auto& entry : std::filesystem::directory_iterator(cache_dir_)) {
-            if (entry.is_regular_file()) {
-                entries.push_back({entry.path(), entry.last_write_time(), entry.file_size()});
+            if (std::filesystem::is_regular_file(entry.path())) {
+                entries.push_back({entry.path(), std::filesystem::last_write_time(entry.path()),
+                                   std::filesystem::file_size(entry.path())});
             }
         }
     } catch (const std::filesystem::filesystem_error& e) {
@@ -564,7 +565,7 @@ size_t ThumbnailCache::clear_cache() {
     size_t count = 0;
     try {
         for (const auto& entry : std::filesystem::directory_iterator(cache_dir_)) {
-            if (entry.is_regular_file()) {
+            if (std::filesystem::is_regular_file(entry.path())) {
                 std::filesystem::remove(entry.path());
                 ++count;
             }
@@ -595,7 +596,7 @@ size_t ThumbnailCache::invalidate(const std::string& relative_path) {
 
         // Delete all pre-scaled .bin variants (e.g., {hash}_120x120_RGB565.bin)
         for (const auto& entry : std::filesystem::directory_iterator(cache_dir_)) {
-            if (!entry.is_regular_file()) {
+            if (!std::filesystem::is_regular_file(entry.path())) {
                 continue;
             }
             std::string filename = entry.path().filename().string();
@@ -628,8 +629,8 @@ size_t ThumbnailCache::get_cache_size() const {
     size_t total = 0;
     try {
         for (const auto& entry : std::filesystem::directory_iterator(cache_dir_)) {
-            if (entry.is_regular_file()) {
-                total += entry.file_size();
+            if (std::filesystem::is_regular_file(entry.path())) {
+                total += std::filesystem::file_size(entry.path());
             }
         }
     } catch (const std::filesystem::filesystem_error& e) {

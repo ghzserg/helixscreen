@@ -26,14 +26,17 @@ TRANS_OBJS := $(patsubst $(TRANS_GEN_DIR)/%.c,$(OBJ_DIR)/generated/%.o,$(TRANS_S
 $(TRANS_GEN_C) $(TRANS_GEN_H) $(TRANS_XML): $(TRANS_YAML) $(TRANS_SCRIPT)
 	$(ECHO) "$(CYAN)Generating translations from YAML...$(RESET)"
 	$(Q)mkdir -p $(TRANS_GEN_DIR)
-	$(Q)if [ -x "$(VENV_PYTHON_TRANS)" ]; then \
+	$(Q)if [ -x "$(VENV_PYTHON_TRANS)" ] && $(VENV_PYTHON_TRANS) -c "import yaml" 2>/dev/null; then \
 		$(VENV_PYTHON_TRANS) $(TRANS_SCRIPT); \
 		echo "$(GREEN)✓ Translations generated$(RESET)"; \
+	elif python3 -c "import yaml" 2>/dev/null; then \
+		python3 $(TRANS_SCRIPT); \
+		echo "$(GREEN)✓ Translations generated (system python3)$(RESET)"; \
 	elif [ -f "$(TRANS_GEN_C)" ] && [ -f "$(TRANS_GEN_H)" ]; then \
 		echo "$(YELLOW)⚠ Python venv not available - using existing generated translations$(RESET)"; \
 		touch $(TRANS_GEN_C) $(TRANS_GEN_H) $(TRANS_XML); \
 	else \
-		echo "$(RED)✗ Python venv not available and no generated files - run 'make venv-setup'$(RESET)"; \
+		echo "$(RED)✗ Python with yaml not available and no generated files - run 'make venv-setup'$(RESET)"; \
 		exit 1; \
 	fi
 

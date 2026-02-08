@@ -129,8 +129,9 @@ class BackgroundGhostBuilder {
     std::atomic<bool> cancelled_{false};
     std::atomic<bool> running_{false};
 
-    // UI yielding: timestamp of last user navigation
-    std::atomic<std::chrono::steady_clock::time_point> last_user_request_{};
+    // UI yielding: timestamp of last user navigation (nanoseconds since steady_clock epoch)
+    // Stored as int64_t because GCC 7 doesn't support atomic<time_point>
+    std::atomic<int64_t> last_user_request_ns_{0};
     static constexpr std::chrono::milliseconds YIELD_DURATION{50};
 };
 
