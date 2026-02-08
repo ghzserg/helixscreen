@@ -322,12 +322,12 @@
               style_pad_top="#space_lg" style_pad_bottom="#space_lg" flex_flow="row" style_pad_gap="#space_md"
               scrollable="false">
 
-        <ui_button name="btn_reset" text="Reset" translation_tag="Reset" variant="ghost"
+        <ui_button name="btn_reset" text="Reset" translation_tag="Reset" variant="secondary"
                    height="#button_height" flex_grow="1">
           <event_cb trigger="clicked" callback="on_theme_reset_clicked"/>
         </ui_button>
 
-        <ui_button name="btn_save_as" text="Save As New" translation_tag="Save As New" variant="ghost"
+        <ui_button name="btn_save_as" text="Save As New" translation_tag="Save As New" variant="secondary"
                    height="#button_height" flex_grow="1">
           <event_cb trigger="clicked" callback="on_theme_save_as_clicked"/>
         </ui_button>

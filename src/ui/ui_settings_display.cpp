@@ -10,8 +10,10 @@
 
 #include "ui_event_safety.h"
 #include "ui_modal.h"
+#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_theme_editor_overlay.h"
+#include "ui_toast_manager.h"
 #include "ui_utils.h"
 
 #include "format_utils.h"
@@ -485,16 +487,28 @@ void DisplaySettingsOverlay::handle_apply_theme_clicked() {
 
     // Persist theme selection
     SettingsManager::instance().set_theme_by_index(selected_index);
+    std::string theme_name = SettingsManager::instance().get_theme_name();
 
-    // Apply theme live (no restart needed) - preview already loaded the theme data,
-    // so theme_manager_apply_theme was called via preview. Just persist the choice.
-    spdlog::info("[{}] Theme applied live - index {}", get_name(), selected_index);
+    // Commit the previewed theme as the new active theme.
+    // Preview already called theme_manager_preview(), so apply it permanently.
+    theme_manager_apply_theme(theme_manager_get_active_theme(), theme_manager_is_dark_mode());
 
-    // Update original index since theme is now applied
+    // Update original theme so the close callback won't revert
     original_theme_index_ = selected_index;
+    original_theme_ = theme_manager_get_active_theme();
 
-    // Disable Apply button since changes are now saved - reactive via subject
-    lv_subject_set_int(&theme_apply_disabled_subject_, 1);
+    spdlog::info("[{}] Theme '{}' applied (index {})", get_name(), theme_name, selected_index);
+
+    // Get display name for toast (use cached theme list if available)
+    std::string display_name = theme_name;
+    if (selected_index >= 0 && selected_index < static_cast<int>(cached_themes_.size())) {
+        display_name = cached_themes_[selected_index].name;
+    }
+    ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                  "Theme set to " + display_name);
+
+    // Close the theme explorer overlay
+    ui_nav_go_back();
 }
 
 void DisplaySettingsOverlay::handle_edit_colors_clicked() {

@@ -470,6 +470,26 @@ void ui_create_ripple(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, int start_si
 }
 
 // ============================================================================
+// Focus Group Utilities
+// ============================================================================
+
+void ui_defocus_tree(lv_obj_t* obj) {
+    if (!obj) {
+        return;
+    }
+    lv_group_t* group = lv_group_get_default();
+    if (!group) {
+        return;
+    }
+    // Remove children first (bottom-up) to avoid focus shifts during traversal
+    uint32_t count = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < count; i++) {
+        ui_defocus_tree(lv_obj_get_child(obj, i));
+    }
+    lv_group_remove_obj(obj);
+}
+
+// ============================================================================
 // Backdrop Utilities
 // ============================================================================
 

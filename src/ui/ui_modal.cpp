@@ -304,13 +304,8 @@ Modal::~Modal() {
     // RAII: auto-hide if still visible
     // Use safe delete to handle shutdown race conditions
     if (backdrop_) {
-        // Remove backdrop from focus group BEFORE deletion to prevent LVGL from
-        // auto-focusing the next element (which triggers scroll-on-focus)
-        lv_group_t* group = lv_group_get_default();
-        if (group) {
-            lv_group_remove_obj(backdrop_);
-        }
         // Hide immediately without calling virtual on_hide() - derived class already destroyed
+        // Note: lv_obj_safe_delete handles focus group cleanup (ui_defocus_tree)
         ModalStack::instance().remove(backdrop_);
         lv_obj_safe_delete(backdrop_);
         // dialog_ is a child of backdrop_ and was destroyed with it
@@ -337,12 +332,7 @@ Modal& Modal::operator=(Modal&& other) noexcept {
         // functions during move operations. Callers should call hide() before
         // move-assigning if they need lifecycle hooks.
         if (backdrop_) {
-            // Remove backdrop from focus group BEFORE deletion to prevent LVGL from
-            // auto-focusing the next element (which triggers scroll-on-focus)
-            lv_group_t* group = lv_group_get_default();
-            if (group) {
-                lv_group_remove_obj(backdrop_);
-            }
+            // Note: lv_obj_safe_delete handles focus group cleanup (ui_defocus_tree)
             ModalStack::instance().remove(backdrop_);
             lv_obj_safe_delete(backdrop_);
             // dialog_ is a child of backdrop_ and was destroyed with it
@@ -455,12 +445,8 @@ void Modal::hide(lv_obj_t* dialog) {
 
     spdlog::info("[Modal] Hiding modal");
 
-    // Remove backdrop from focus group BEFORE deletion to prevent LVGL from
-    // auto-focusing the next element (which triggers scroll-on-focus)
-    lv_group_t* group = lv_group_get_default();
-    if (group) {
-        lv_group_remove_obj(backdrop);
-    }
+    // Remove entire tree from focus group to prevent scroll-on-focus during exit animation
+    ui_defocus_tree(backdrop);
 
     // Mark as exiting (stays in stack until animation completes)
     stack.mark_exiting(backdrop);
@@ -555,12 +541,8 @@ void Modal::hide() {
     backdrop_ = nullptr;
     dialog_ = nullptr;
 
-    // Remove backdrop from focus group BEFORE deletion to prevent LVGL from
-    // auto-focusing the next element (which triggers scroll-on-focus)
-    lv_group_t* group = lv_group_get_default();
-    if (group) {
-        lv_group_remove_obj(backdrop);
-    }
+    // Remove entire tree from focus group to prevent scroll-on-focus during exit animation
+    ui_defocus_tree(backdrop);
 
     // Mark as exiting (stays in stack until animation completes)
     ModalStack::instance().mark_exiting(backdrop);

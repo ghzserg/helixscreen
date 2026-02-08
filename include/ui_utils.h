@@ -340,6 +340,20 @@ void ui_create_ripple(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, int start_si
 // ============================================================================
 
 /**
+ * @brief Recursively remove an object tree from the default focus group
+ *
+ * Prevents LVGL from auto-focusing the next element when focusable children
+ * (buttons, textareas, etc.) are deleted, which triggers scroll-on-focus.
+ * Safe to call on objects not in any group (no-op).
+ *
+ * Called automatically by lv_obj_safe_delete() - manual use only needed
+ * when removing objects from the group without deleting them.
+ *
+ * @param obj Root object of the tree to defocus
+ */
+void ui_defocus_tree(lv_obj_t* obj);
+
+/**
  * @brief Safely delete an LVGL object, guarding against shutdown race conditions
  *
  * During app shutdown, lv_is_initialized() can return true even after the display
@@ -380,6 +394,9 @@ inline bool lv_obj_safe_delete(lv_obj_t*& obj) {
         obj = nullptr;
         return false;
     }
+    // Remove entire tree from focus group before deletion to prevent LVGL from
+    // auto-focusing the next element (which triggers scroll-on-focus)
+    ui_defocus_tree(obj);
     lv_obj_delete(obj);
     obj = nullptr;
     return true;
