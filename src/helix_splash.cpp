@@ -193,8 +193,17 @@ static lv_obj_t* create_splash_ui(lv_obj_t* screen, int width, int height, bool 
         use_3d = (stat(splash_3d_path, &st) == 0);
     }
 
-    if (use_3d) {
-        // Full-screen 3D splash: image IS the entire screen, no container needed
+    // Also check for 3D source PNG fallback
+    char splash_3d_png[128];
+    bool use_3d_png = false;
+    if (!use_3d) {
+        snprintf(splash_3d_png, sizeof(splash_3d_png), "assets/images/helixscreen-logo-3d-%s.png",
+                 mode_name);
+        use_3d_png = (stat(splash_3d_png, &st) == 0);
+    }
+
+    if (use_3d || use_3d_png) {
+        // 3D splash: prerendered bin (full-screen) or source PNG (centered + scaled)
         uint32_t bg_color = dark_mode ? BG_COLOR_3D_DARK : BG_COLOR_3D_LIGHT;
         lv_obj_set_style_bg_color(screen, lv_color_hex(bg_color), 0);
         lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
@@ -203,9 +212,35 @@ static lv_obj_t* create_splash_ui(lv_obj_t* screen, int width, int height, bool 
         lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, LV_PART_MAIN);
         lv_obj_set_style_border_width(img, 0, LV_PART_MAIN);
 
-        char lvgl_path[140];
-        snprintf(lvgl_path, sizeof(lvgl_path), "A:%s", splash_3d_path);
-        lv_image_set_src(img, lvgl_path);
+        if (use_3d) {
+            // Prerendered bin: full-screen, no scaling needed
+            char lvgl_path[140];
+            snprintf(lvgl_path, sizeof(lvgl_path), "A:%s", splash_3d_path);
+            lv_image_set_src(img, lvgl_path);
+            fprintf(stderr, "helix-splash: Using 3D splash (%s, %s, fade=%s)\n", mode_name,
+                    size_name, use_fade ? "yes" : "no");
+        } else {
+            // Source PNG fallback: scale to fit screen width
+            char lvgl_path[140];
+            snprintf(lvgl_path, sizeof(lvgl_path), "A:%s", splash_3d_png);
+            lv_image_set_src(img, lvgl_path);
+
+            lv_image_header_t header;
+            if (lv_image_decoder_get_info(lvgl_path, &header) == LV_RESULT_OK && header.w > 0 &&
+                header.h > 0) {
+                // Fit to screen with 10% vertical margin (5% top + 5% bottom)
+                int usable_height = (height * 9) / 10;
+                int scale_w = (width * 256) / header.w;
+                int scale_h = (usable_height * 256) / header.h;
+                int scale = (scale_w < scale_h) ? scale_w : scale_h;
+                lv_image_set_scale(img, scale);
+                fprintf(stderr, "helix-splash: Using 3D PNG fallback (%s, %dx%d scale=%d)\n",
+                        mode_name, (int)header.w, (int)header.h, scale);
+            } else {
+                fprintf(stderr, "helix-splash: 3D PNG loaded but could not get dimensions\n");
+            }
+        }
+
         lv_obj_center(img);
 
         if (use_fade) {
@@ -221,8 +256,6 @@ static lv_obj_t* create_splash_ui(lv_obj_t* screen, int width, int height, bool 
         } else {
             lv_obj_set_style_opa(img, LV_OPA_COVER, LV_PART_MAIN);
         }
-        fprintf(stderr, "helix-splash: Using 3D splash (%s, %s, fade=%s)\n", mode_name, size_name,
-                use_fade ? "yes" : "no");
         return img;
     }
 

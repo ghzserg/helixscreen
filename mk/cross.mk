@@ -1304,7 +1304,7 @@ RELEASE_ASSETS := assets/fonts assets/images
 .PHONY: release-pi release-pi32 release-ad5m release-k1 release-k1-dynamic release-k2 release-all release-clean
 
 # Package Pi release
-release-pi: | build/pi/bin/helix-screen build/pi/bin/helix-splash
+release-pi: gen-all-images | build/pi/bin/helix-screen build/pi/bin/helix-splash
 	@echo "$(CYAN)$(BOLD)Packaging Pi release v$(VERSION)...$(RESET)"
 	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
 	@cp build/pi/bin/helix-screen build/pi/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/
@@ -1338,7 +1338,7 @@ release-pi: | build/pi/bin/helix-screen build/pi/bin/helix-splash
 	@ls -lh $(RELEASE_DIR)/helixscreen-pi-$(RELEASE_VERSION).tar.gz $(RELEASE_DIR)/helixscreen-pi.zip
 
 # Package Pi 32-bit release (same structure as 64-bit Pi)
-release-pi32: | build/pi32/bin/helix-screen build/pi32/bin/helix-splash
+release-pi32: gen-all-images | build/pi32/bin/helix-screen build/pi32/bin/helix-splash
 	@echo "$(CYAN)$(BOLD)Packaging Pi 32-bit release v$(VERSION)...$(RESET)"
 	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
 	@cp build/pi32/bin/helix-screen build/pi32/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/
@@ -1374,7 +1374,7 @@ release-pi32: | build/pi32/bin/helix-screen build/pi32/bin/helix-splash
 # Package AD5M release
 # Note: AD5M uses BusyBox which doesn't support tar -z, so we create uncompressed tar + gzip separately
 # Includes pre-configured helixconfig.json for Adventurer 5M Pro (skips setup wizard)
-release-ad5m: | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
+release-ad5m: gen-all-images | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
 	@echo "$(CYAN)$(BOLD)Packaging AD5M release v$(VERSION)...$(RESET)"
 	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
 	@cp build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/
@@ -1415,7 +1415,7 @@ release-ad5m: | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
 	@ls -lh $(RELEASE_DIR)/helixscreen-ad5m-$(RELEASE_VERSION).tar.gz $(RELEASE_DIR)/helixscreen-ad5m.zip
 
 # Package K1 release
-release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
+release-k1: gen-all-images | build/k1/bin/helix-screen build/k1/bin/helix-splash
 	@echo "$(CYAN)$(BOLD)Packaging K1 release v$(VERSION)...$(RESET)"
 	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
 	@cp build/k1/bin/helix-screen build/k1/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/
@@ -1448,7 +1448,7 @@ release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
 	@ls -lh $(RELEASE_DIR)/helixscreen-k1-$(RELEASE_VERSION).tar.gz $(RELEASE_DIR)/helixscreen-k1.zip
 
 # Package K1 Dynamic release
-release-k1-dynamic: | build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/helix-splash
+release-k1-dynamic: gen-all-images | build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/helix-splash
 	@echo "$(CYAN)$(BOLD)Packaging K1 Dynamic release v$(VERSION)...$(RESET)"
 	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
 	@cp build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/
@@ -1481,7 +1481,7 @@ release-k1-dynamic: | build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/hel
 	@ls -lh $(RELEASE_DIR)/helixscreen-k1-dynamic-$(RELEASE_VERSION).tar.gz $(RELEASE_DIR)/helixscreen-k1-dynamic.zip
 
 # Package K2 release
-release-k2: | build/k2/bin/helix-screen build/k2/bin/helix-splash
+release-k2: gen-all-images | build/k2/bin/helix-screen build/k2/bin/helix-splash
 	@echo "$(CYAN)$(BOLD)Packaging K2 release v$(VERSION)...$(RESET)"
 	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
 	@cp build/k2/bin/helix-screen build/k2/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/

@@ -71,16 +71,50 @@ void show_splash_screen(int screen_width, int screen_height) {
     // The widget we'll animate and clean up
     lv_obj_t* splash_widget = nullptr;
 
-    if (!splash_3d_path.empty()) {
-        // Full-screen 3D splash: image IS the entire screen, no container needed
+    // Also check for 3D source PNG fallback (runtime scaling, slower but works)
+    std::string splash_3d_png;
+    if (splash_3d_path.empty()) {
+        std::string png_rel =
+            std::string("assets/images/helixscreen-logo-3d-") + mode_name + ".png";
+        if (std::filesystem::exists(png_rel)) {
+            splash_3d_png = "A:" + png_rel;
+        }
+    }
+
+    if (!splash_3d_path.empty() || !splash_3d_png.empty()) {
+        // 3D splash: prerendered bin (full-screen) or source PNG (centered + scaled)
         lv_obj_t* img = lv_image_create(screen);
         lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, LV_PART_MAIN);
         lv_obj_set_style_border_width(img, 0, LV_PART_MAIN);
-        lv_image_set_src(img, splash_3d_path.c_str());
+
+        if (!splash_3d_path.empty()) {
+            // Prerendered bin: full-screen, no scaling needed
+            lv_image_set_src(img, splash_3d_path.c_str());
+            spdlog::info("[Splash Screen] Using 3D splash ({}, {})", mode_name, size_name);
+        } else {
+            // Source PNG fallback: scale to fit screen
+            lv_image_set_src(img, splash_3d_png.c_str());
+
+            lv_image_header_t header;
+            lv_result_t res = lv_image_decoder_get_info(splash_3d_png.c_str(), &header);
+            if (res == LV_RESULT_OK && header.w > 0 && header.h > 0) {
+                // Fit to screen with 10% vertical margin (5% top + 5% bottom)
+                int usable_height = (screen_height * 9) / 10;
+                uint32_t scale_w = (static_cast<uint32_t>(screen_width) * 256U) / header.w;
+                uint32_t scale_h = (static_cast<uint32_t>(usable_height) * 256U) / header.h;
+                uint32_t scale = (scale_w < scale_h) ? scale_w : scale_h;
+                lv_image_set_scale(img, static_cast<uint16_t>(scale));
+                spdlog::info("[Splash Screen] Using 3D PNG fallback ({}, {}x{} scale={})",
+                             mode_name, static_cast<int>(header.w), static_cast<int>(header.h),
+                             scale);
+            } else {
+                spdlog::warn("[Splash Screen] Could not get 3D PNG dimensions");
+            }
+        }
+
         lv_obj_center(img);
         lv_obj_set_style_opa(img, LV_OPA_TRANSP, LV_PART_MAIN); // Start invisible for fade-in
         splash_widget = img;
-        spdlog::info("[Splash Screen] Using 3D splash ({}, {})", mode_name, size_name);
     } else {
         // Fallback: centered logo in container
         lv_obj_t* container = lv_obj_create(screen);
