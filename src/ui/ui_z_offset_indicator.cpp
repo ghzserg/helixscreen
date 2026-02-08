@@ -16,6 +16,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cmath>
+#include <cstdlib>
+
 // ============================================================================
 // Widget Data
 // ============================================================================
@@ -28,8 +31,55 @@ struct ZOffsetIndicatorData {
     bool use_faceted_toolhead = false; // Which nozzle renderer to use
 };
 
-// Scale range in microns (±2mm)
-static constexpr int SCALE_RANGE_MICRONS = 2000;
+// ============================================================================
+// Auto-ranging scale
+// ============================================================================
+
+/// Predefined scale ranges in microns. Each is a symmetric ± range.
+/// We pick the smallest one that fits the current value with headroom.
+struct ScaleRange {
+    int range_microns;  // ± this value
+    int tick_step;      // Microns between ticks
+    int decimal_places; // For label formatting
+};
+
+static constexpr ScaleRange SCALE_RANGES[] = {
+    {100, 50, 2},     // ±0.10mm, ticks every 0.05mm
+    {250, 100, 1},    // ±0.25mm, ticks every 0.1mm
+    {500, 250, 2},    // ±0.50mm, ticks every 0.25mm
+    {1000, 500, 1},   // ±1.0mm, ticks every 0.5mm
+    {2000, 1000, 0},  // ±2.0mm, ticks every 1mm
+    {5000, 2000, 0},  // ±5.0mm, ticks every 2mm
+    {10000, 5000, 0}, // ±10mm, ticks every 5mm
+};
+static constexpr int NUM_SCALE_RANGES = sizeof(SCALE_RANGES) / sizeof(SCALE_RANGES[0]);
+
+/// Pick the best scale range for a given value in microns.
+static const ScaleRange& pick_scale_range(int microns) {
+    int abs_val = std::abs(microns);
+    for (int i = 0; i < NUM_SCALE_RANGES; i++) {
+        // 80% of range as headroom threshold
+        if (abs_val <= SCALE_RANGES[i].range_microns * 80 / 100) {
+            return SCALE_RANGES[i];
+        }
+    }
+    return SCALE_RANGES[NUM_SCALE_RANGES - 1]; // Largest range as fallback
+}
+
+/// Convert microns to Y pixel position on the vertical scale.
+/// Positive values (farther from bed) map to top, negative (closer) to bottom.
+static int32_t microns_to_y(int microns, int range_microns, int32_t scale_top,
+                            int32_t scale_bottom) {
+    // Clamp to range
+    if (microns > range_microns)
+        microns = range_microns;
+    if (microns < -range_microns)
+        microns = -range_microns;
+
+    int32_t center = (scale_top + scale_bottom) / 2;
+    int32_t half_px = (scale_bottom - scale_top) / 2;
+    return center - (int32_t)((int64_t)microns * half_px / range_microns);
+}
 
 // ============================================================================
 // Animation Callbacks (forward declarations)
@@ -42,18 +92,24 @@ static void arrow_anim_cb(void* var, int32_t value);
 // Drawing
 // ============================================================================
 
-/// Convert microns to a Y pixel position on the vertical scale.
-/// +2000 microns (farther from bed) is at the top, -2000 (closer) at bottom.
-static int32_t microns_to_scale_y(int microns, int32_t scale_top, int32_t scale_bottom) {
-    int clamped = microns;
-    if (clamped > SCALE_RANGE_MICRONS)
-        clamped = SCALE_RANGE_MICRONS;
-    if (clamped < -SCALE_RANGE_MICRONS)
-        clamped = -SCALE_RANGE_MICRONS;
-    // +2000 -> scale_top, -2000 -> scale_bottom, 0 -> center
-    int32_t center = (scale_top + scale_bottom) / 2;
-    int32_t half_range = (scale_bottom - scale_top) / 2;
-    return center - (clamped * half_range) / SCALE_RANGE_MICRONS;
+/// Format a micron tick value as a label string into a static buffer pool.
+/// Returns a pointer that remains valid until the next frame (pool of 16 slots).
+static const char* format_tick_label(int microns, int decimal_places) {
+    // Pool of static buffers so deferred rendering doesn't see stale pointers.
+    // 16 slots is enough for any reasonable number of ticks per frame.
+    static char pool[16][12];
+    static int slot = 0;
+    char* buf = pool[slot++ % 16];
+
+    double mm = microns / 1000.0;
+    if (decimal_places == 0) {
+        lv_snprintf(buf, 12, "%d", (int)mm);
+    } else if (decimal_places == 1) {
+        lv_snprintf(buf, 12, "%.1f", mm);
+    } else {
+        lv_snprintf(buf, 12, "%.2f", mm);
+    }
+    return buf;
 }
 
 static void indicator_draw_cb(lv_event_t* e) {
@@ -69,16 +125,23 @@ static void indicator_draw_cb(lv_event_t* e) {
     int32_t w = lv_area_get_width(&coords);
     int32_t h = lv_area_get_height(&coords);
 
+    // Current value in microns
+    int32_t current_microns = data->current_pos / 10;
+
+    // Auto-range: pick scale that fits the current value
+    const auto& scale = pick_scale_range(current_microns);
+
     // Layout: scale on left ~30%, nozzle on right ~70%
-    // Vertical margins for the scale
     int32_t margin_v = h / 10;
     int32_t scale_top = coords.y1 + margin_v;
     int32_t scale_bottom = coords.y1 + h - margin_v;
-    int32_t scale_x = coords.x1 + w / 4; // Vertical line at 25% from left
+    int32_t scale_x = coords.x1 + w / 4;
 
     lv_color_t muted_color = theme_manager_get_color("text_muted");
     lv_color_t text_color = theme_manager_get_color("text");
     lv_color_t primary_color = theme_manager_get_color("primary");
+    const lv_font_t* font = lv_font_get_default();
+    int32_t font_h = lv_font_get_line_height(font);
 
     // --- Vertical scale line ---
     lv_draw_line_dsc_t line_dsc;
@@ -93,49 +156,42 @@ static void indicator_draw_cb(lv_event_t* e) {
     line_dsc.p2.y = scale_bottom;
     lv_draw_line(layer, &line_dsc);
 
-    // --- Tick marks and labels at -2, -1, 0, +1, +2 ---
-    // Use string literals — lv_draw_label defers rendering, so stack buffers get stale
-    struct TickInfo {
-        int value;
-        const char* label;
-    };
-    static constexpr TickInfo ticks[] = {{2, "2"}, {1, "1"}, {0, "0"}, {-1, "-1"}, {-2, "-2"}};
-    int32_t tick_half_w = w / 16; // Responsive tick width
-    const lv_font_t* font = lv_font_get_default();
-    int32_t font_h = lv_font_get_line_height(font);
+    // --- Tick marks and labels ---
+    int32_t tick_half_w = w / 16;
 
-    for (const auto& tick : ticks) {
-        int32_t y = microns_to_scale_y(tick.value * 1000, scale_top, scale_bottom);
+    // Reset the label buffer pool for this frame
+    for (int tick_val = -scale.range_microns; tick_val <= scale.range_microns;
+         tick_val += scale.tick_step) {
+        int32_t y = microns_to_y(tick_val, scale.range_microns, scale_top, scale_bottom);
 
         // Tick mark
         lv_draw_line_dsc_t tick_dsc;
         lv_draw_line_dsc_init(&tick_dsc);
         tick_dsc.color = muted_color;
-        tick_dsc.width = (tick.value == 0) ? 2 : 1; // Bolder zero line
+        tick_dsc.width = (tick_val == 0) ? 2 : 1;
         tick_dsc.p1.x = scale_x - tick_half_w;
         tick_dsc.p1.y = y;
         tick_dsc.p2.x = scale_x + tick_half_w;
         tick_dsc.p2.y = y;
         lv_draw_line(layer, &tick_dsc);
 
-        // Label to the left of the tick
+        // Label
+        const char* label = format_tick_label(tick_val, scale.decimal_places);
         lv_draw_label_dsc_t lbl_dsc;
         lv_draw_label_dsc_init(&lbl_dsc);
         lbl_dsc.color = muted_color;
         lbl_dsc.font = font;
         lbl_dsc.align = LV_TEXT_ALIGN_RIGHT;
-        lbl_dsc.text = tick.label;
+        lbl_dsc.text = label;
         lv_area_t lbl_area = {coords.x1 + 2, y - font_h / 2, scale_x - tick_half_w - 4,
                               y + font_h / 2};
         lv_draw_label(layer, &lbl_dsc, &lbl_area);
     }
 
     // --- Position marker on scale ---
-    // current_pos is in 0.1-micron units, convert to microns for Y mapping
-    int32_t current_microns = data->current_pos / 10;
-    int32_t marker_y = microns_to_scale_y(current_microns, scale_top, scale_bottom);
+    int32_t marker_y = microns_to_y(current_microns, scale.range_microns, scale_top, scale_bottom);
 
-    // Triangular marker pointing right (drawn as a small filled area)
+    // Triangular marker pointing right
     int32_t tri_size = LV_MAX(4, h / 20);
     lv_draw_triangle_dsc_t tri_dsc;
     lv_draw_triangle_dsc_init(&tri_dsc);
@@ -150,8 +206,8 @@ static void indicator_draw_cb(lv_event_t* e) {
     lv_draw_triangle(layer, &tri_dsc);
 
     // --- Nozzle icon to the right of the scale ---
-    int32_t nozzle_cx = coords.x1 + (w * 5) / 8;    // 62.5% from left
-    int32_t nozzle_scale = LV_CLAMP(4, h / 16, 10); // Visible but fits within scale
+    int32_t nozzle_cx = coords.x1 + (w * 5) / 8;
+    int32_t nozzle_scale = LV_CLAMP(5, h / 10, 12);
     lv_color_t nozzle_color = theme_manager_get_color("text");
 
     if (data->use_faceted_toolhead) {
