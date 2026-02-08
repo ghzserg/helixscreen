@@ -1,6 +1,6 @@
 # HelixScreen Development Roadmap
 
-**Last Updated:** 2026-02-06 | **Status:** Beta - Seeking Testers
+**Last Updated:** 2026-02-07 | **Status:** Beta - Seeking Testers
 
 ---
 
@@ -22,6 +22,20 @@
 ---
 
 ## Recently Completed
+
+### Comprehensive AFC Support ✅
+**Completed:** 2026-02-07
+
+Full parsing and command support for AFC (Box Turtle) multi-filament systems:
+- **Bug fixes:** `current_state` field priority, tool mapping from `map` field, endless spool from `runout_lane`, AFC message parsing with error dedup
+- **Full data parsing:** Hub bowden length, stepper extended fields (`buffer_status`, `filament_status`, `dist_hub`), buffer objects, global state (`quiet_mode`, `led_state`)
+- **11 device actions:** Calibration wizard, bowden length, test lanes, change blade, park, brush, reset motor, LED toggle, quiet mode, forward/reverse speed
+- **Error recovery:** Differentiated `reset()` (AFC_HOME) vs `recover()` (AFC_RESET), per-lane reset (`AFC_LANE_RESET`)
+- **Mock AFC mode:** Realistic Box Turtle simulation via `HELIX_MOCK_AMS_TYPE=afc`
+- **Live smoke test:** `scripts/afc-test.sh` validates all AFC objects and detects field drift
+
+**Files:** `ams_backend_afc.cpp`, `ams_backend_afc.h`, `ams_backend_mock.cpp`, 8 fixture files
+**Tests:** 92 test cases, 173 assertions (phases tagged `[phase1]`-`[phase4]`)
 
 ### Input Shaper Calibration ✅
 **Completed:** 2026-01-22
@@ -150,6 +164,7 @@ Remaining items for production readiness:
 - Spoolman integration (6 API methods: list spools, assign, consume, etc.)
 - Print color requirements display from G-code metadata
 - External spool bypass support
+- **AFC comprehensive support:** Full data parsing (hub/extruder/buffer/stepper), 11 device actions, per-lane reset, live smoke test, mock AFC mode
 
 ### Filament Database
 - **48 materials** with temperature ranges, drying parameters, density, compatibility groups

@@ -1,5 +1,10 @@
 # Phase 6: Real AFC Backend Integration Plan
 
+> **STATUS: SUPERSEDED** — Completed 2026-02-07 as part of the Comprehensive AFC Support work.
+> See commits `103bf15e` through `4478332f` on main. All sensor parsing, device actions,
+> error recovery, and mock mode are implemented. Multi-unit support (Phase 6 of the new plan)
+> is deferred pending multi-unit hardware for testing.
+
 ## Goal
 Parse real sensor data from BoxTurtle/AFC Lite via Moonraker to drive the filament path visualization.
 
