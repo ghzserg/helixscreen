@@ -50,7 +50,7 @@
               style_flex_cross_place="center" style_pad_gap="#space_lg" scrollable="false">
         <bind_flag_if_not_eq subject="zoffset_cal_state" flag="hidden" ref_value="1"/>
         <spinner size="lg"/>
-        <text_heading text="Probing Bed..." translation_tag="Probing Bed..." style_text_align="center"/>
+        <text_heading width="100%" text="Probing Bed..." translation_tag="Probing Bed..." style_text_align="center"/>
         <text_small width="80%" text="Please wait while the printer homes and probes." translation_tag="Please wait while the printer homes and probes." style_text_align="center"/>
         <!-- Abort Button -->
         <ui_button name="btn_abort_probing" width="120" height="48" text="Abort" translation_tag="Abort" variant="danger">
