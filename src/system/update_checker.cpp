@@ -1034,6 +1034,8 @@ std::string UpdateChecker::get_platform_key() {
     return "ad5m";
 #elif defined(HELIX_PLATFORM_K1)
     return "k1";
+#elif defined(HELIX_PLATFORM_K2)
+    return "k2";
 #elif defined(HELIX_PLATFORM_PI32)
     return "pi32";
 #else

@@ -314,38 +314,70 @@ curl -s http://localhost:4408/server/info | head
 
 ---
 
-## 14. HelixScreen Build Target Assessment
+## 14. HelixScreen Build Target
 
-### What We'd Need
+### Status: Build target implemented (UNTESTED)
+
+The K2 cross-compilation target was added as `PLATFORM_TARGET=k2`. It uses Bootlin's armv7-eabihf musl toolchain with fully static linking — same proven strategy as the K1 target but for ARM instead of MIPS.
+
+### What's Done
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| `PLATFORM_TARGET=k2` in `mk/cross.mk` | **Done** | armv7 hard-float, musl static, fbdev/evdev |
+| `docker/Dockerfile.k2` | **Done** | Bootlin armv7-eabihf musl toolchain |
+| Deploy targets | **Done** | `deploy-k2`, `deploy-k2-fg`, `deploy-k2-bin`, `k2-test`, `k2-ssh` |
+| Release packaging | **Done** | `release-k2`, `package-k2` |
+| Update checker platform key | **Done** | `HELIX_PLATFORM_K2` → `"k2"` |
+| Framebuffer backend | **Done** | Existing fbdev backend auto-detects resolution |
+| Touch input | **Done** | Existing evdev auto-detection handles Goodix/TLSC |
+
+### Build & Deploy
+
+```bash
+# Build
+make k2-docker
+
+# Deploy (SSH: root / creality_2024)
+make deploy-k2 K2_HOST=192.168.1.100
+make deploy-k2-fg K2_HOST=192.168.1.100   # foreground with debug output
+make k2-ssh K2_HOST=192.168.1.100          # SSH into the printer
+```
+
+### Assumptions That May Be Wrong
+
+These are educated guesses. When someone tests on real hardware, expect some of these to break:
+
+| Assumption | Our guess | If wrong... |
+|-----------|-----------|-------------|
+| **ARM variant** | armv7 (32-bit userland) | Switch to aarch64 musl toolchain in Dockerfile |
+| **C library** | musl (OpenWrt default) | Doesn't matter — we're fully static |
+| **Framebuffer** | 800x480 (driver-rotated) | Need LVGL `lv_display_set_rotation()` + touch transform |
+| **Deploy dir** | `/opt/helixscreen` | Change `K2_DEPLOY_DIR` in cross.mk or override at deploy time |
+| **Stock UI process** | `display-server` | Check `ps` output, update the `killall` in deploy target |
+| **Log command** | `logread -f` (OpenWrt) | Might be `tail -f /var/log/messages` or journalctl |
+| **BusyBox (no rsync)** | Yes (tar/ssh deploy) | If rsync available, could use deploy-common instead |
+
+### What Still Needs Work
 
 | Component | Effort | Notes |
 |-----------|--------|-------|
-| `PLATFORM_TARGET=k2` in `mk/cross.mk` | Low | Copy AD5M or Pi target, adjust for ARM variant |
-| Toolchain / Docker image | Low | Standard ARM cross-compiler (armv7 or aarch64) |
-| Framebuffer backend | **Done** | Existing fbdev backend auto-detects resolution |
-| Touch input | **Done** | Existing evdev auto-detection handles Goodix/TLSC |
 | Display rotation (if fb is 480x800) | Medium | LVGL `lv_display_set_rotation()` + touch coord transform |
-| Display rotation (if fb is 800x480) | **None** | Already our primary resolution target |
 | procd init script | Low | Different from K1's SysV init, but simple |
-| Deploy script | Low | tar+ssh pipe (same as K1/AD5M, BusyBox environment) |
-| Moonraker port config | Trivial | Default to 4408 instead of 7125 |
-| Static linking | Low | Same approach as K1/AD5M, proven pattern |
-
-### Best case (fb already 800x480)
-Mostly plumbing - new cross.mk target, Docker image, deploy script, procd init. UI fits as-is.
-
-### Worst case (fb is 480x800, needs rotation)
-Add LVGL software rotation in fbdev flush callback + touch coordinate transform. Medium effort but well-documented path (GuppyScreen does this).
+| CFS multi-material support | Medium | Use G-code macros (T0-T3, BOX_*) |
+| Hardware validation | **Blocking** | Need someone with SSH access — see Section 13 |
 
 ---
 
 ## Conclusion
 
-The K2 Plus is architecturally easier to target than K1 (ARM vs MIPS) with stock Moonraker (no community tools needed). Key remaining unknowns:
+The K2 Plus is architecturally easier to target than K1 (ARM vs MIPS) with stock Moonraker (no community tools needed). The build target is implemented but **completely untested** — it needs someone with a K2 and SSH access to run the diagnostic commands in Section 13 and report back.
+
+Key remaining unknowns:
 
 1. **Framebuffer orientation** - determines if we need rotation support (the big question)
-2. **ARM variant** - armv7 vs aarch64 determines which toolchain
-3. **Install location** - where to put HelixScreen on the filesystem
+2. **ARM variant** - armv7 vs aarch64 determines if we need to change the toolchain
+3. **Install location** - `/opt/helixscreen` is a guess
 4. **CFS integration** - multi-material via existing G-code macros (T0-T3, BOX_*)
 5. **Community ecosystem** - thin and declining, but stock Moonraker means less dependency on community tools
 

@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# HelixScreen - Creality K2 Series (ARM Cortex-A53) Cross-Compilation Toolchain
+#
+# Build: docker build -t helixscreen/toolchain-k2 -f Dockerfile.k2 .
+# Usage: docker run --rm -v $(pwd):/src -w /src helixscreen/toolchain-k2 make PLATFORM_TARGET=k2 -j$(nproc)
+#
+# Target: Creality K2, K2 Pro, K2 Plus (Allwinner A133/T800 devices)
+#   - CPU: Allwinner A133 (ARM Cortex-A53, quad-core)
+#   - Display: 480x800 framebuffer (portrait panel, likely rotated to 800x480 by driver)
+#   - RAM: ~512MB (unconfirmed)
+#   - C Library: musl (assumed - Tina Linux is OpenWrt-based)
+#
+# Strategy: Use Bootlin's pre-built armv7-eabihf musl toolchain with STATIC linking.
+# Musl produces clean static binaries - same proven approach as K1 target.
+#
+# We target armv7 (32-bit) despite the A53 being aarch64-capable because:
+#   - Tina Linux (OpenWrt) commonly uses 32-bit userland
+#   - Entware packages for K2 are armv7sf
+#   - Static binary has no runtime libc dependency
+#   - If confirmed aarch64 userland, switch to aarch64 musl toolchain
+#
+# UNTESTED: Based on research, not hardware validation.
+# See docs/printer-research/CREALITY_K2_PLUS_RESEARCH.md Section 13 for
+# diagnostic commands to run on actual K2 hardware.
+#
+# Toolchain source: https://toolchains.bootlin.com/
+
+FROM debian:bookworm-slim
+
+LABEL maintainer="HelixScreen <dev@helixscreen.io>"
+LABEL description="Cross-compilation toolchain for Creality K2 series (ARM Cortex-A53, Allwinner)"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+# Note: autotools required for building libnl submodule
+# NOTE: nlohmann-json is bundled with libhv (lib/libhv/cpputil/json.hpp)
+# DO NOT install nlohmann-json3-dev - it causes ABI mismatches
+# Always use: #include "hv/json.hpp" (NOT <nlohmann/json.hpp>)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    pkg-config \
+    ca-certificates \
+    make \
+    cmake \
+    python3 \
+    file \
+    wget \
+    xz-utils \
+    bzip2 \
+    autoconf \
+    automake \
+    libtool \
+    flex \
+    bison \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download Bootlin's armv7-eabihf musl toolchain (stable-2024.02-1)
+# ARM hard-float with musl libc for clean static linking
+# Same Bootlin release series as the K1 MIPS toolchain
+WORKDIR /opt
+RUN wget -q "https://toolchains.bootlin.com/downloads/releases/toolchains/armv7-eabihf/tarballs/armv7-eabihf--musl--stable-2024.02-1.tar.bz2" && \
+    tar xjf "armv7-eabihf--musl--stable-2024.02-1.tar.bz2" && \
+    rm "armv7-eabihf--musl--stable-2024.02-1.tar.bz2" && \
+    mv "armv7-eabihf--musl--stable-2024.02-1" arm-musl-toolchain
+
+# ==============================================================================
+# Cross-Compilation Environment
+# ==============================================================================
+
+ENV PATH="/opt/arm-musl-toolchain/bin:$PATH"
+ENV CROSS_COMPILE=arm-buildroot-linux-musleabihf-
+ENV CC=arm-buildroot-linux-musleabihf-gcc
+ENV CXX=arm-buildroot-linux-musleabihf-g++
+# Use gcc-ar and gcc-ranlib for LTO compatibility (they load the LTO plugin)
+ENV AR=arm-buildroot-linux-musleabihf-gcc-ar
+ENV STRIP=arm-buildroot-linux-musleabihf-strip
+ENV RANLIB=arm-buildroot-linux-musleabihf-gcc-ranlib
+ENV LD=arm-buildroot-linux-musleabihf-ld
+
+# Target-specific flags for ARM Cortex-A53 (running as armv7)
+# Note: -static is added in cross.mk, not here (so libs can be built dynamically)
+ENV TARGET_CFLAGS="-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard"
+ENV TARGET_LDFLAGS=""
+
+# Working directory
+WORKDIR /src
+
+# Configure git to trust the mounted source directory
+# Required because the container runs as root but files are owned by the host user
+RUN git config --global --add safe.directory '*'
+
+# Verify the toolchain works (including LTO-aware tools)
+RUN arm-buildroot-linux-musleabihf-gcc --version && \
+    arm-buildroot-linux-musleabihf-g++ --version && \
+    arm-buildroot-linux-musleabihf-gcc-ar --version && \
+    arm-buildroot-linux-musleabihf-gcc-ranlib --version && \
+    echo "Toolchain verification passed (including LTO support)" && \
+    echo "" && \
+    echo "NOTE: This toolchain uses musl libc with STATIC linking" && \
+    echo "for clean, portable binaries on K2 series printers." && \
+    echo "" && \
+    echo "WARNING: UNTESTED - based on research, not hardware validation." && \
+    echo "Run diagnostic commands on actual K2 hardware to verify assumptions."
+
+# Default command: build for K2
+# SKIP_OPTIONAL_DEPS=1 runs minimal dependency check (skips npm, clang-format, etc.)
+CMD ["make", "PLATFORM_TARGET=k2", "SKIP_OPTIONAL_DEPS=1", "-j"]

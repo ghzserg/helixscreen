@@ -23,11 +23,15 @@ make ad5m-docker
 # Build for Creality K1 series (MIPS32)
 make k1-docker
 
+# Build for Creality K2 series (ARM, UNTESTED)
+make k2-docker
+
 # Verify the binaries
 file build/pi/bin/helix-screen     # ELF 64-bit LSB, ARM aarch64
 file build/pi32/bin/helix-screen   # ELF 32-bit LSB, ARM, EABI5
 file build/ad5m/bin/helix-screen   # ELF 32-bit LSB, ARM, EABI5
 file build/k1/bin/helix-screen     # ELF 32-bit LSB, MIPS32
+file build/k2/bin/helix-screen     # ELF 32-bit LSB, ARM, EABI5
 ```
 
 Docker images are **automatically built** on first use - no manual setup required!
@@ -40,6 +44,7 @@ Docker images are **automatically built** on first use - no manual setup require
 | **Raspberry Pi (32-bit)** | `make pi32-docker` | armv7-a (armhf) | DRM/fbdev | `build/pi32/` |
 | **Adventurer 5M** | `make ad5m-docker` | armv7-a (hard-float) | fbdev | `build/ad5m/` |
 | **Creality K1** | `make k1-docker` | MIPS32r2 (musl) | fbdev | `build/k1/` |
+| **Creality K2** | `make k2-docker` | armv7-a (musl) | fbdev | `build/k2/` |
 | **Native (SDL)** | `make` | Host architecture | SDL2 | `build/` |
 
 ### How It Works
@@ -65,6 +70,7 @@ make pi-docker           # Raspberry Pi 64-bit via Docker
 make pi32-docker         # Raspberry Pi 32-bit via Docker
 make ad5m-docker         # Adventurer 5M via Docker
 make k1-docker           # Creality K1 series via Docker
+make k2-docker           # Creality K2 series via Docker (UNTESTED)
 make docker-toolchains   # Pre-build all Docker images
 
 # Direct cross-compilation (requires toolchain installed on host)
@@ -72,6 +78,7 @@ make pi                  # Raspberry Pi 64-bit (needs aarch64-linux-gnu-gcc)
 make pi32                # Raspberry Pi 32-bit (needs arm-linux-gnueabihf-gcc)
 make ad5m                # Adventurer 5M (needs arm-linux-gnueabihf-gcc)
 make k1                  # Creality K1 (needs Bootlin mips32el-musl toolchain)
+make k2                  # Creality K2 (needs Bootlin armv7-eabihf-musl toolchain)
 
 # Information
 make cross-info          # Show cross-compilation help
@@ -103,14 +110,25 @@ make cross-info          # Show cross-compilation help
 - **RAM**: 110MB total (~36MB available with Klipper running)
 - **Docker Image**: `helixscreen/toolchain-ad5m` (Debian Buster)
 
-#### Creality K1 Series (K1C, K1 Max, K2 Plus)
+#### Creality K1 Series (K1C, K1 Max)
 - **CPU**: Ingenic X2000E (MIPS32r2 dual-core @ 1.2 GHz)
 - **Toolchain**: Bootlin `mips32el-musl` (GCC 12, musl libc)
-- **Display**: 480×400 (K1) or 480×800 (K2) framebuffer
+- **Display**: 480×400 framebuffer
 - **Input**: evdev for touch
 - **C Library**: musl (static linking for clean deployment)
 - **RAM**: 256MB
 - **Docker Image**: `helixscreen/toolchain-k1` (Debian Bookworm)
+
+#### Creality K2 Series (K2, K2 Pro, K2 Plus) — UNTESTED
+- **CPU**: Allwinner A133/T800 (ARM Cortex-A53, quad-core)
+- **Toolchain**: Bootlin `armv7-eabihf-musl` (GCC 12, musl libc)
+- **Display**: 480×800 framebuffer (portrait panel, may be rotated to 800×480 by driver)
+- **Input**: evdev for touch (Goodix GT9xx or TLSC6x)
+- **C Library**: musl (static linking — system libc unconfirmed, static avoids the question)
+- **RAM**: ~512MB (unconfirmed)
+- **Moonraker**: Stock on port 4408 (no community firmware needed)
+- **Docker Image**: `helixscreen/toolchain-k2` (Debian Bookworm)
+- **Known unknowns**: ARM variant (armv7 vs aarch64 userland), framebuffer orientation, exact install paths. See `docs/printer-research/CREALITY_K2_PLUS_RESEARCH.md` Section 13 for diagnostic commands.
 
 ### Dockerfile Architecture
 
@@ -119,7 +137,8 @@ docker/
 ├── Dockerfile.pi      # Pi 64-bit toolchain (Debian Bullseye, GCC 10)
 ├── Dockerfile.pi32    # Pi 32-bit toolchain (Debian Bullseye, GCC 10)
 ├── Dockerfile.ad5m    # AD5M toolchain (Debian Buster, GCC 8)
-└── Dockerfile.k1      # K1 toolchain (Bootlin mips32el-musl, GCC 12)
+├── Dockerfile.k1      # K1 toolchain (Bootlin mips32el-musl, GCC 12)
+└── Dockerfile.k2      # K2 toolchain (Bootlin armv7-eabihf-musl, GCC 12)
 ```
 
 The Dockerfiles handle:
@@ -133,7 +152,7 @@ The Dockerfiles handle:
 Cross-compilation is handled by `mk/cross.mk`, which defines:
 
 ```makefile
-# Set target platform (native, pi, pi32, ad5m, k1)
+# Set target platform (native, pi, pi32, ad5m, k1, k2)
 PLATFORM_TARGET ?= native
 
 # Cross-compiler configuration
