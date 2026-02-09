@@ -313,9 +313,22 @@ void MoonrakerClientMock::populate_capabilities() {
     mock_config["adxl345"] = json::object();
     mock_config["resonance_tester"] = json::object();
     // Provide kinematics so bed_moves detection works
-    // HELIX_MOCK_KINEMATICS: "cartesian" (default), "corexy", "corexz", "delta"
+    // HELIX_MOCK_KINEMATICS overrides; otherwise default matches printer type
     const char* kin_env = std::getenv("HELIX_MOCK_KINEMATICS");
-    std::string mock_kinematics = (kin_env && kin_env[0]) ? kin_env : "cartesian";
+    std::string default_kinematics;
+    switch (printer_type_) {
+    case PrinterType::VORON_24:
+    case PrinterType::VORON_TRIDENT:
+        default_kinematics = "corexy";
+        break;
+    case PrinterType::CREALITY_K1:
+        default_kinematics = "corexy";
+        break;
+    default:
+        default_kinematics = "cartesian";
+        break;
+    }
+    std::string mock_kinematics = (kin_env && kin_env[0]) ? kin_env : default_kinematics;
     mock_config["printer"] = {{"kinematics", mock_kinematics}};
     hardware_.parse_config_keys(mock_config);
     spdlog::debug("[MoonrakerClientMock] Mock config: adxl345, resonance_tester, kinematics={}",
@@ -2364,7 +2377,9 @@ void MoonrakerClientMock::dispatch_initial_state() {
         {"extruder", {{"temperature", ext_temp}, {"target", ext_target}}},
         {"heater_bed", {{"temperature", bed_temp_val}, {"target", bed_target_val}}},
         {"toolhead",
-         {{"position", {x, y, z, 0.0}}, {"homed_axes", homed}, {"kinematics", "cartesian"}}},
+         {{"position", {x, y, z, 0.0}},
+          {"homed_axes", homed},
+          {"kinematics", hardware_.kinematics()}}},
         {"gcode_move",
          {{"gcode_position", {x, y, z, 0.0}}, // Commanded position (same as toolhead in mock)
           {"speed_factor", speed / 100.0},
@@ -2977,7 +2992,9 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             {"extruder", {{"temperature", ext_temp}, {"target", ext_target}}},
             {"heater_bed", {{"temperature", bed_temp_val}, {"target", bed_target_val}}},
             {"toolhead",
-             {{"position", {x, y, z, 0.0}}, {"homed_axes", homed}, {"kinematics", "cartesian"}}},
+             {{"position", {x, y, z, 0.0}},
+              {"homed_axes", homed},
+              {"kinematics", hardware_.kinematics()}}},
             {"gcode_move",
              {{"gcode_position", {x, y, z, 0.0}}, // Commanded position (same as toolhead in mock)
               {"speed_factor", speed / 100.0},
