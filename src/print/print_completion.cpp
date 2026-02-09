@@ -222,6 +222,16 @@ static void on_print_state_changed_for_notification(lv_observer_t* observer,
             if (auto* dm = DisplayManager::instance()) {
                 dm->wake_display();
             }
+
+            // Proactively turn off heaters on print error to prevent
+            // indefinite heating (Klipper doesn't auto-off on error)
+            if (auto* mgr = get_moonraker_manager()) {
+                if (auto* client = mgr->client()) {
+                    spdlog::info("[PrintComplete] Turning off heaters after print error");
+                    client->gcode_script("TURN_OFF_HEATERS");
+                }
+            }
+
             show_rich_completion_modal(current, display_name.c_str());
             prev_print_state = current;
             return;

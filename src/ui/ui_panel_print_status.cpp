@@ -438,6 +438,12 @@ lv_obj_t* PrintStatusPanel::create(lv_obj_t* parent) {
         spdlog::debug("[{}]   ✓ Cancel badge", get_name());
     }
 
+    // Print error badge (for animation)
+    error_badge_ = lv_obj_find_by_name(overlay_content, "error_badge");
+    if (error_badge_) {
+        spdlog::debug("[{}]   ✓ Error badge", get_name());
+    }
+
     // Progress bar widget
     progress_bar_ = lv_obj_find_by_name(overlay_content, "print_progress");
     if (progress_bar_) {
@@ -1068,7 +1074,28 @@ void PrintStatusPanel::on_temperature_changed() {
     bed_current_ = lv_subject_get_int(printer_state_.get_bed_temp_subject());
     bed_target_ = lv_subject_get_int(printer_state_.get_bed_target_subject());
 
-    update_all_displays();
+    if (!subjects_initialized_)
+        return;
+
+    // Update only temperature-related subjects (not the full display refresh).
+    // Temperature observers fire frequently during heating (4 subjects × ~1Hz each),
+    // and update_all_displays() re-renders ALL subjects causing visible flickering.
+    format_temperature_pair(centi_to_degrees(nozzle_current_), centi_to_degrees(nozzle_target_),
+                            nozzle_temp_buf_, sizeof(nozzle_temp_buf_));
+    lv_subject_copy_string(&nozzle_temp_subject_, nozzle_temp_buf_);
+
+    format_temperature_pair(centi_to_degrees(bed_current_), centi_to_degrees(bed_target_),
+                            bed_temp_buf_, sizeof(bed_temp_buf_));
+    lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
+
+    auto nozzle_heater = helix::fmt::heater_display(nozzle_current_, nozzle_target_);
+    std::snprintf(nozzle_status_buf_, sizeof(nozzle_status_buf_), "%s",
+                  nozzle_heater.status.c_str());
+    lv_subject_copy_string(&nozzle_status_subject_, nozzle_status_buf_);
+
+    auto bed_heater = helix::fmt::heater_display(bed_current_, bed_target_);
+    std::snprintf(bed_status_buf_, sizeof(bed_status_buf_), "%s", bed_heater.status.c_str());
+    lv_subject_copy_string(&bed_status_subject_, bed_status_buf_);
 
     spdlog::trace("[{}] Temperatures updated: nozzle {}/{}°C, bed {}/{}°C", get_name(),
                   nozzle_current_, nozzle_target_, bed_current_, bed_target_);
@@ -1237,6 +1264,12 @@ void PrintStatusPanel::on_print_state_changed(PrintJobState job_state) {
 
             spdlog::info("[{}] Print complete! Final progress: {}%, elapsed: {}s wall-clock",
                          get_name(), current_progress_, elapsed_seconds_);
+        }
+
+        // Show print error overlay when entering Error state
+        if (new_state == PrintState::Error) {
+            animate_print_error();
+            spdlog::info("[{}] Print failed at progress: {}%", get_name(), current_progress_);
         }
 
         // Show print cancelled overlay when entering Cancelled state
@@ -1639,57 +1672,68 @@ void PrintStatusPanel::update_button_states() {
     }
     set_button_enabled(btn_cancel_, cancel_button_enabled);
 
+    // Error state: hide cancel, show reprint (same UX as cancelled).
+    // XML bindings only handle CANCELLED(2); this supplements for ERROR(3).
+    // Applied after XML observers fire, so it overrides until next subject change.
+    if (current_state_ == PrintState::Error) {
+        if (btn_cancel_) {
+            lv_obj_add_flag(btn_cancel_, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (btn_reprint_) {
+            lv_obj_remove_flag(btn_reprint_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_remove_state(btn_reprint_, LV_STATE_DISABLED);
+            lv_obj_set_style_opa(btn_reprint_, LV_OPA_COVER, LV_PART_MAIN);
+        }
+    }
+
     spdlog::debug("[{}] Button states updated: base={}, pause={}, cancel={} (state={})", get_name(),
                   buttons_enabled ? "enabled" : "disabled",
                   pause_button_enabled ? "enabled" : "disabled",
                   cancel_button_enabled ? "enabled" : "disabled", static_cast<int>(current_state_));
 }
 
-void PrintStatusPanel::animate_print_complete() {
-    if (!success_badge_) {
+void PrintStatusPanel::animate_badge_pop_in(lv_obj_t* badge, const char* label) {
+    if (!badge) {
         return;
     }
+
+    constexpr int32_t SCALE_FINAL = 256; // 100% scale
 
     // Skip animation if disabled - show badge in final state
     if (!SettingsManager::instance().get_animations_enabled()) {
-        constexpr int32_t SCALE_FINAL = 256; // 100% scale
-        lv_obj_set_style_transform_scale(success_badge_, SCALE_FINAL, LV_PART_MAIN);
-        lv_obj_set_style_opa(success_badge_, LV_OPA_COVER, LV_PART_MAIN);
-        spdlog::debug("[{}] Animations disabled - showing success badge instantly", get_name());
+        lv_obj_set_style_transform_scale(badge, SCALE_FINAL, LV_PART_MAIN);
+        lv_obj_set_style_opa(badge, LV_OPA_COVER, LV_PART_MAIN);
+        spdlog::debug("[{}] Animations disabled - showing {} badge instantly", get_name(), label);
         return;
     }
 
-    // Animation constants for celebration effect
-    // Stage 1: Quick scale-up with overshoot (300ms)
-    // Stage 2: Settle to final size (150ms)
-    constexpr int32_t CELEBRATION_DURATION_MS = 300;
+    // Pop-in animation: quick scale-up with overshoot, then settle
+    constexpr int32_t POP_DURATION_MS = 300;
     constexpr int32_t SETTLE_DURATION_MS = 150;
     constexpr int32_t SCALE_START = 128;     // 50% scale (128/256)
-    constexpr int32_t SCALE_OVERSHOOT = 282; // ~110% scale (slight overshoot)
-    constexpr int32_t SCALE_FINAL = 256;     // 100% scale (256/256)
+    constexpr int32_t SCALE_OVERSHOOT = 282; // ~110% scale
 
     // Start badge small and transparent
-    lv_obj_set_style_transform_scale(success_badge_, SCALE_START, LV_PART_MAIN);
-    lv_obj_set_style_opa(success_badge_, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_transform_scale(badge, SCALE_START, LV_PART_MAIN);
+    lv_obj_set_style_opa(badge, LV_OPA_TRANSP, LV_PART_MAIN);
 
     // Stage 1: Scale up with overshoot + fade in
     lv_anim_t scale_anim;
     lv_anim_init(&scale_anim);
-    lv_anim_set_var(&scale_anim, success_badge_);
+    lv_anim_set_var(&scale_anim, badge);
     lv_anim_set_values(&scale_anim, SCALE_START, SCALE_OVERSHOOT);
-    lv_anim_set_duration(&scale_anim, CELEBRATION_DURATION_MS);
+    lv_anim_set_duration(&scale_anim, POP_DURATION_MS);
     lv_anim_set_path_cb(&scale_anim, lv_anim_path_overshoot);
     lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
         lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
     });
     lv_anim_start(&scale_anim);
 
-    // Fade in animation (parallel with scale)
     lv_anim_t fade_anim;
     lv_anim_init(&fade_anim);
-    lv_anim_set_var(&fade_anim, success_badge_);
+    lv_anim_set_var(&fade_anim, badge);
     lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&fade_anim, CELEBRATION_DURATION_MS);
+    lv_anim_set_duration(&fade_anim, POP_DURATION_MS);
     lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
     lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
         lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
@@ -1700,83 +1744,29 @@ void PrintStatusPanel::animate_print_complete() {
     // Stage 2: Settle from overshoot to final size (delayed start)
     lv_anim_t settle_anim;
     lv_anim_init(&settle_anim);
-    lv_anim_set_var(&settle_anim, success_badge_);
+    lv_anim_set_var(&settle_anim, badge);
     lv_anim_set_values(&settle_anim, SCALE_OVERSHOOT, SCALE_FINAL);
     lv_anim_set_duration(&settle_anim, SETTLE_DURATION_MS);
-    lv_anim_set_delay(&settle_anim, CELEBRATION_DURATION_MS);
+    lv_anim_set_delay(&settle_anim, POP_DURATION_MS);
     lv_anim_set_path_cb(&settle_anim, lv_anim_path_ease_in_out);
     lv_anim_set_exec_cb(&settle_anim, [](void* obj, int32_t value) {
         lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
     });
     lv_anim_start(&settle_anim);
 
-    spdlog::debug("[{}] Print complete celebration animation started", get_name());
+    spdlog::debug("[{}] {} badge animation started", get_name(), label);
+}
+
+void PrintStatusPanel::animate_print_complete() {
+    animate_badge_pop_in(success_badge_, "complete");
 }
 
 void PrintStatusPanel::animate_print_cancelled() {
-    if (!cancel_badge_) {
-        return;
-    }
+    animate_badge_pop_in(cancel_badge_, "cancelled");
+}
 
-    // Skip animation if disabled - show badge in final state
-    if (!SettingsManager::instance().get_animations_enabled()) {
-        constexpr int32_t SCALE_FINAL = 256; // 100% scale
-        lv_obj_set_style_transform_scale(cancel_badge_, SCALE_FINAL, LV_PART_MAIN);
-        lv_obj_set_style_opa(cancel_badge_, LV_OPA_COVER, LV_PART_MAIN);
-        spdlog::debug("[{}] Animations disabled - showing cancel badge instantly", get_name());
-        return;
-    }
-
-    // Animation constants - same pop-in effect as completion
-    constexpr int32_t CELEBRATION_DURATION_MS = 300;
-    constexpr int32_t SETTLE_DURATION_MS = 150;
-    constexpr int32_t SCALE_START = 128;     // 50% scale (128/256)
-    constexpr int32_t SCALE_OVERSHOOT = 282; // ~110% scale (slight overshoot)
-    constexpr int32_t SCALE_FINAL = 256;     // 100% scale (256/256)
-
-    // Start badge small and transparent
-    lv_obj_set_style_transform_scale(cancel_badge_, SCALE_START, LV_PART_MAIN);
-    lv_obj_set_style_opa(cancel_badge_, LV_OPA_TRANSP, LV_PART_MAIN);
-
-    // Stage 1: Scale up with overshoot + fade in
-    lv_anim_t scale_anim;
-    lv_anim_init(&scale_anim);
-    lv_anim_set_var(&scale_anim, cancel_badge_);
-    lv_anim_set_values(&scale_anim, SCALE_START, SCALE_OVERSHOOT);
-    lv_anim_set_duration(&scale_anim, CELEBRATION_DURATION_MS);
-    lv_anim_set_path_cb(&scale_anim, lv_anim_path_overshoot);
-    lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
-        lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
-    });
-    lv_anim_start(&scale_anim);
-
-    // Fade in animation (parallel with scale)
-    lv_anim_t fade_anim;
-    lv_anim_init(&fade_anim);
-    lv_anim_set_var(&fade_anim, cancel_badge_);
-    lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&fade_anim, CELEBRATION_DURATION_MS);
-    lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
-    lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
-        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value),
-                             LV_PART_MAIN);
-    });
-    lv_anim_start(&fade_anim);
-
-    // Stage 2: Settle from overshoot to final size (delayed start)
-    lv_anim_t settle_anim;
-    lv_anim_init(&settle_anim);
-    lv_anim_set_var(&settle_anim, cancel_badge_);
-    lv_anim_set_values(&settle_anim, SCALE_OVERSHOOT, SCALE_FINAL);
-    lv_anim_set_duration(&settle_anim, SETTLE_DURATION_MS);
-    lv_anim_set_delay(&settle_anim, CELEBRATION_DURATION_MS);
-    lv_anim_set_path_cb(&settle_anim, lv_anim_path_ease_in_out);
-    lv_anim_set_exec_cb(&settle_anim, [](void* obj, int32_t value) {
-        lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
-    });
-    lv_anim_start(&settle_anim);
-
-    spdlog::debug("[{}] Print cancelled animation started", get_name());
+void PrintStatusPanel::animate_print_error() {
+    animate_badge_pop_in(error_badge_, "error");
 }
 
 // Tune panel handlers delegated to PrintTuneOverlay singleton:

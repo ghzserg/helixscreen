@@ -115,6 +115,23 @@
                      style_pad_bottom="#space_sm"/>
         </lv_obj>
 
+        <!-- PRINT ERROR OVERLAY: Shown when print fails with error -->
+        <!-- Hidden by default. Binding removes hidden ONLY when outcome == ERROR (3) -->
+        <lv_obj name="print_error_overlay"
+                width="100%" height="100%" align="center" style_radius="0" style_pad_all="#space_lg"
+                style_pad_bottom="115" flex_flow="column"
+                style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
+                style_pad_gap="#space_sm" scrollable="false" hidden="true">
+          <bind_flag_if_not_eq subject="print_outcome" flag="hidden" ref_value="3"/>
+          <!-- Red danger badge with alert icon (animated on appearance) -->
+          <!-- Uses ui_button for auto-contrast text via update_button_text_contrast() -->
+          <ui_button name="error_badge"
+                     width="content" height="content" variant="danger" icon="alert_circle" text="Print Failed"
+                     translation_tag="Print Failed" clickable="false" focusable="false" style_radius="#space_lg"
+                     style_pad_left="#space_md" style_pad_right="#space_md" style_pad_top="#space_sm"
+                     style_pad_bottom="#space_sm"/>
+        </lv_obj>
+
         <!-- Metadata container - fixed height at bottom, overlaying thumbnail -->
         <lv_obj name="metadata_clip"
                 width="100%" height="103" style_radius="0" style_pad_all="0" align="bottom_mid" scrollable="false">
