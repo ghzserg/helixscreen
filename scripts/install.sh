@@ -1760,6 +1760,29 @@ install_service_systemd() {
     $SUDO sed -i "s|@@INSTALL_DIR@@|${install_dir}|g" "$service_dest" 2>/dev/null || \
     $SUDO sed -i '' "s|@@INSTALL_DIR@@|${install_dir}|g" "$service_dest" 2>/dev/null || true
 
+    # Filter SupplementaryGroups to only groups that exist on this system.
+    # The template lists the ideal set (video input render) but not all systems
+    # have every group (e.g. 'render' is missing on older Pi OS installs).
+    local desired_groups existing_groups=""
+    desired_groups=$(grep '^SupplementaryGroups=' "$service_dest" 2>/dev/null | sed 's/^SupplementaryGroups=//')
+    if [ -n "$desired_groups" ]; then
+        for grp in $desired_groups; do
+            if getent group "$grp" >/dev/null 2>&1; then
+                existing_groups="${existing_groups:+$existing_groups }$grp"
+            else
+                log_info "Group '$grp' not found on this system, skipping"
+            fi
+        done
+        if [ -n "$existing_groups" ]; then
+            $SUDO sed -i "s|^SupplementaryGroups=.*|SupplementaryGroups=$existing_groups|" "$service_dest" 2>/dev/null || \
+            $SUDO sed -i '' "s|^SupplementaryGroups=.*|SupplementaryGroups=$existing_groups|" "$service_dest" 2>/dev/null || true
+        else
+            # No matching groups — remove the directive entirely
+            $SUDO sed -i '/^SupplementaryGroups=/d' "$service_dest" 2>/dev/null || \
+            $SUDO sed -i '' '/^SupplementaryGroups=/d' "$service_dest" 2>/dev/null || true
+        fi
+    fi
+
     if ! $SUDO systemctl daemon-reload; then
         log_error "Failed to reload systemd daemon."
         exit 1
