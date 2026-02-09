@@ -120,9 +120,9 @@ render_all() {
     for spec in "${PLACEHOLDER_IMAGES[@]}"; do
         IFS=':' read -r source_path output_name size <<< "$spec"
         if render_placeholder "$source_path" "$output_name" "$size"; then
-            ((success++))
+            ((success++)) || true
         else
-            ((failed++))
+            ((failed++)) || true
         fi
     done
 

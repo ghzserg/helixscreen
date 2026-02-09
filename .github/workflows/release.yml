@@ -77,7 +77,7 @@ jobs:
       run: sudo chown -R $(id -u):$(id -g) build/
 
     - name: Generate pre-rendered images
-      run: pip install Pillow && make gen-all-images
+      run: make venv-setup && make gen-all-images
 
     - name: Package Pi release
       run: make release-pi
@@ -142,7 +142,7 @@ jobs:
       run: sudo chown -R $(id -u):$(id -g) build/
 
     - name: Generate pre-rendered images
-      run: pip install Pillow && make gen-all-images
+      run: make venv-setup && make gen-all-images
 
     - name: Package Pi 32-bit release
       run: make release-pi32
@@ -207,7 +207,7 @@ jobs:
       run: sudo chown -R $(id -u):$(id -g) build/
 
     - name: Generate pre-rendered images
-      run: pip install Pillow && make gen-all-images
+      run: make venv-setup && make gen-all-images
 
     - name: Package AD5M release
       run: make release-ad5m
@@ -272,7 +272,7 @@ jobs:
       run: sudo chown -R $(id -u):$(id -g) build/
 
     - name: Generate pre-rendered images
-      run: pip install Pillow && make gen-all-images
+      run: make venv-setup && make gen-all-images
 
     - name: Package K1 release
       run: make release-k1

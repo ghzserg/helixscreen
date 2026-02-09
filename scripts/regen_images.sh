@@ -179,9 +179,9 @@ render_all() {
             IFS=':' read -r name width height logo_size <<< "$screen_spec"
 
             if render_image "$source_path" "$output_prefix" "$name" "$logo_size"; then
-                ((success++))
+                ((success++)) || true
             else
-                ((failed++))
+                ((failed++)) || true
             fi
         done
     done
