@@ -208,15 +208,7 @@
     <px name="temp_card_height_small" value="64"/>
     <px name="temp_card_height_medium" value="72"/>
     <px name="temp_card_height_large" value="80"/>
-    <!-- metadata_clip_height: Clip container for print status metadata overlay -->
-    <px name="metadata_clip_height_small" value="85"/>
-    <px name="metadata_clip_height_medium" value="95"/>
-    <px name="metadata_clip_height_large" value="103"/>
-    <!-- metadata_overlay_height: Inner metadata overlay (slightly taller than clip) -->
-    <px name="metadata_overlay_height_small" value="91"/>
-    <px name="metadata_overlay_height_medium" value="101"/>
-    <px name="metadata_overlay_height_large" value="109"/>
-    <!-- detail_metadata_clip_height: Clip container for print file detail overlay -->
+<!-- detail_metadata_clip_height: Clip container for print file detail overlay -->
     <px name="detail_metadata_clip_height_small" value="92"/>
     <px name="detail_metadata_clip_height_medium" value="112"/>
     <px name="detail_metadata_clip_height_large" value="112"/>

@@ -3,6 +3,16 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
   <!-- overlay_bg and overlay_text are theme-aware pairs defined in globals.xml -->
+  <consts>
+    <!-- metadata_clip_height: Clip container for print status metadata overlay -->
+    <px name="metadata_clip_height_small" value="95"/>
+    <px name="metadata_clip_height_medium" value="105"/>
+    <px name="metadata_clip_height_large" value="113"/>
+    <!-- metadata_overlay_height: Inner metadata overlay (slightly taller than clip) -->
+    <px name="metadata_overlay_height_small" value="101"/>
+    <px name="metadata_overlay_height_medium" value="111"/>
+    <px name="metadata_overlay_height_large" value="119"/>
+  </consts>
   <styles>
     <!-- Fully transparent but still takes up layout space -->
     <style name="invisible" opa="0"/>
@@ -137,7 +147,7 @@
           <lv_obj name="metadata_overlay"
                   width="100%" height="#metadata_overlay_height" align="bottom_mid" style_bg_opa="160"
                   style_radius="#border_radius" style_pad_left="#space_sm" style_pad_right="#space_sm"
-                  style_pad_top="#space_md" style_pad_bottom="#space_sm" style_pad_gap="#space_xs" flex_flow="column"
+                  style_pad_top="#space_md" style_pad_bottom="#space_md" style_pad_gap="#space_xs" flex_flow="column"
                   scrollable="false">
             <!-- Print Progress Bar (invisible during pre-print operations, but keeps layout space) -->
             <lv_bar name="print_progress"
