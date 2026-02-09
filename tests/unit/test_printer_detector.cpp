@@ -1139,6 +1139,49 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Combined heuristics -
     REQUIRE(result.confidence >= 90);
 }
 
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: board_match heuristic - Fysetc board identifies Doron Velta",
+                 "[printer][board_match]") {
+    // Doron Velta with Fysetc R4 mainboard visible as temperature_sensor
+    PrinterHardwareData hardware{
+        .heaters = {"extruder", "heater_bed"},
+        .sensors = {"temperature_sensor Fysetc_R4"},
+        .fans = {"fan"},
+        .leds = {},
+        .hostname = "dv",
+        .printer_objects = {"temperature_sensor Fysetc_R4", "probe_eddy_current fly_eddy_probe"},
+        .steppers = {"stepper_a", "stepper_b", "stepper_c"},
+
+        .kinematics = "delta"};
+
+    auto result = PrinterDetector::detect(hardware);
+
+    REQUIRE(result.detected());
+    REQUIRE(result.type_name == "Doron Velta");
+    // Delta kinematics (90) + Fysetc board (85) should beat FLSUN V400 (90 only)
+    REQUIRE(result.confidence >= 90);
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: board_match is case insensitive",
+                 "[printer][board_match]") {
+    // Board name in different case should still match
+    PrinterHardwareData hardware{.heaters = {"extruder", "heater_bed"},
+                                 .sensors = {},
+                                 .fans = {},
+                                 .leds = {},
+                                 .hostname = "test",
+                                 .printer_objects = {"temperature_sensor fysetc_spider"},
+                                 .steppers = {"stepper_a", "stepper_b", "stepper_c"},
+
+                                 .kinematics = "delta"};
+
+    auto result = PrinterDetector::detect(hardware);
+
+    REQUIRE(result.detected());
+    // Should still match Doron Velta due to case-insensitive fysetc match
+    REQUIRE(result.type_name == "Doron Velta");
+}
+
 // ============================================================================
 // LED-Based Detection Tests (AD5M Pro vs AD5M)
 // ============================================================================

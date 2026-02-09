@@ -2041,6 +2041,13 @@
           "max_y": 210,
           "confidence": 80,
           "reason": "200mm delta build volume (Doron Velta size)"
+        },
+        {
+          "type": "board_match",
+          "field": "printer_objects",
+          "pattern": "Fysetc",
+          "confidence": 85,
+          "reason": "Fysetc mainboard (common in Doron Velta builds)"
         }
       ]
     },

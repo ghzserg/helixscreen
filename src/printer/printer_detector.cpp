@@ -450,6 +450,30 @@ int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware
                 return confidence;
             }
         }
+    } else if (type == "board_match") {
+        // Match against board names found in temperature_sensor objects
+        // Board names appear as "temperature_sensor <BOARD_NAME>" in the objects list
+        std::string pattern = heuristic.value("pattern", "");
+        std::string pattern_lower = pattern;
+        std::transform(pattern_lower.begin(), pattern_lower.end(), pattern_lower.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+
+        for (const auto& obj : hardware.printer_objects) {
+            if (obj.rfind("temperature_sensor ", 0) == 0 ||
+                obj.rfind("temperature_host ", 0) == 0) {
+                std::string sensor_name = obj.substr(obj.find(' ') + 1);
+                std::string sensor_lower = sensor_name;
+                std::transform(sensor_lower.begin(), sensor_lower.end(), sensor_lower.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+
+                if (sensor_lower.find(pattern_lower) != std::string::npos) {
+                    spdlog::debug("[PrinterDetector] Matched board '{}' in sensor '{}' "
+                                  "(confidence: {})",
+                                  pattern, sensor_name, confidence);
+                    return confidence;
+                }
+            }
+        }
     } else if (type == "macro_match") {
         // Match against G-code macro names in printer_objects
         // G-code macros appear as "gcode_macro <NAME>" in the objects list
