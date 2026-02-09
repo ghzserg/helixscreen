@@ -252,6 +252,11 @@ class NavigationManager {
      */
     void shutdown();
 
+    /// True after shutdown() is called — overlays should skip destructive actions
+    [[nodiscard]] bool is_shutting_down() const {
+        return shutting_down_;
+    }
+
     /**
      * @brief Deinitialize subjects for clean shutdown
      *
@@ -356,6 +361,9 @@ class NavigationManager {
 
     // Overlay backdrop visibility subject (for modal dimming)
     lv_subject_t overlay_backdrop_visible_subject_{};
+
+    // Shutdown flag — overlays should skip destructive actions (e.g. ABORT)
+    bool shutting_down_ = false;
 };
 
 // ============================================================================

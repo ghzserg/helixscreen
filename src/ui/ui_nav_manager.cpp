@@ -1016,6 +1016,7 @@ bool NavigationManager::is_panel_in_stack(lv_obj_t* panel) const {
 
 void NavigationManager::shutdown() {
     spdlog::trace("[NavigationManager] Shutting down...");
+    shutting_down_ = true;
 
     // Deactivate any overlays in the stack
     for (lv_obj_t* overlay_widget : panel_stack_) {
