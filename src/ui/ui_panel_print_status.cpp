@@ -1233,6 +1233,17 @@ void PrintStatusPanel::on_print_state_changed(PrintJobState job_state) {
         bool show_viewer = want_viewer && gcode_loaded_;
         show_gcode_viewer(show_viewer);
 
+        // Center thumbnail when outcome overlays are showing (Complete/Cancelled/Error),
+        // restore the upward offset when in normal thumbnail mode (Idle/Preparing)
+        // so the metadata bar doesn't obscure the model
+        if (print_thumbnail_) {
+            bool has_outcome_overlay =
+                (new_state == PrintState::Complete || new_state == PrintState::Cancelled ||
+                 new_state == PrintState::Error);
+            lv_obj_set_style_translate_y(print_thumbnail_, has_outcome_overlay ? 0 : lv_pct(-20),
+                                         LV_PART_MAIN);
+        }
+
         // Delegate runout guidance handling to the handler
         if (runout_handler_) {
             runout_handler_->on_print_state_changed(old_state, new_state);
