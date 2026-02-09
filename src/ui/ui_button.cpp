@@ -146,6 +146,19 @@ void button_style_changed_cb(lv_event_t* e) {
 }
 
 /**
+ * @brief Event callback for LV_EVENT_CHILD_CREATED
+ *
+ * Fired when XML children are added to a "shell" button (e.g., text_body,
+ * text_small children). Re-runs contrast update so child labels pick up
+ * the correct text color. Uses current_target since the event bubbles up
+ * from the child to the button.
+ */
+void button_child_created_cb(lv_event_t* e) {
+    lv_obj_t* btn = lv_event_get_current_target_obj(e);
+    update_button_text_contrast(btn);
+}
+
+/**
  * @brief Event callback for LV_EVENT_DELETE
  *
  * Called when button is deleted. Frees the UiButtonData user data.
@@ -412,17 +425,11 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
     // Register event handlers
     lv_obj_add_event_cb(btn, button_style_changed_cb, LV_EVENT_STYLE_CHANGED, nullptr);
     lv_obj_add_event_cb(btn, button_style_changed_cb, LV_EVENT_STATE_CHANGED, nullptr);
+    lv_obj_add_event_cb(btn, button_child_created_cb, LV_EVENT_CHILD_CREATED, nullptr);
     lv_obj_add_event_cb(btn, button_delete_cb, LV_EVENT_DELETE, nullptr);
 
     // Apply initial text contrast for buttons with text=/icon= attrs
     update_button_text_contrast(btn);
-
-    // Defer a second pass for "shell" buttons whose XML children aren't
-    // created yet. By the time the async callback fires, children will have
-    // their fonts and variant styles applied, so contrast and icon-skip
-    // logic works correctly.
-    lv_async_call([](void* data) { update_button_text_contrast(static_cast<lv_obj_t*>(data)); },
-                  btn);
 
     const char* pos_name = icon_on_top      ? "top"
                            : icon_on_bottom ? "bottom"
