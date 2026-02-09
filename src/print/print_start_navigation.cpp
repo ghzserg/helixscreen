@@ -32,6 +32,14 @@ static void on_print_state_changed_for_navigation(lv_observer_t* observer, lv_su
     bool is_now_printing = (current == PrintJobState::PRINTING);
 
     if (was_not_printing && is_now_printing) {
+        // Don't auto-navigate while the setup wizard is running
+        if (is_wizard_active()) {
+            spdlog::debug(
+                "[PrintStartNav] Wizard active, suppressing auto-navigation to print status");
+            prev_print_state = current;
+            return;
+        }
+
         // A print just started - auto-navigate to print status from any panel
         auto& nav = NavigationManager::instance();
         lv_obj_t* print_status_widget = get_global_print_status_panel().get_panel();
