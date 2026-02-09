@@ -24,6 +24,7 @@
 #include <spdlog/spdlog.h>
 
 #include <cerrno>
+#include <climits>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -147,8 +148,28 @@ void app_store_argv(int argc, char** argv) {
     g_stored_argv.clear();
 
     if (argc > 0 && argv && argv[0]) {
-        // Store executable path (argv[0] might be relative, so we keep it as-is)
+        // Store executable path, resolved to absolute for safe restart via execv()
         g_executable_path = argv[0];
+
+        // Resolve to absolute path to prevent symlink/CWD attacks on restart
+#ifdef __linux__
+        {
+            char buf[PATH_MAX];
+            ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+            if (len > 0) {
+                buf[len] = '\0';
+                g_executable_path = buf;
+            }
+        }
+#else
+        {
+            char* resolved = realpath(argv[0], nullptr);
+            if (resolved) {
+                g_executable_path = resolved;
+                free(resolved);
+            }
+        }
+#endif
 
         // Copy all arguments
         for (int i = 0; i < argc; ++i) {
