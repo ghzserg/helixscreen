@@ -20,6 +20,7 @@
 #include "display_manager.h"
 #include "environment_config.h"
 #include "hardware_validator.h"
+#include "helix_version.h"
 #include "keyboard_shortcuts.h"
 #include "moonraker_manager.h"
 #include "panel_factory.h"
@@ -203,6 +204,7 @@ int Application::run(int argc, char** argv) {
     }
 
     spdlog::info("[Application] ========================");
+    spdlog::info("[Application] HelixScreen {} ({})", helix_version(), HELIX_GIT_HASH);
     spdlog::debug("[Application] Target: {}x{}", m_screen_width, m_screen_height);
     spdlog::debug("[Application] DPI: {}{}", (m_args.dpi > 0 ? m_args.dpi : LV_DPI_DEF),
                   (m_args.dpi > 0 ? " (custom)" : " (default)"));
@@ -544,6 +546,11 @@ bool Application::init_display() {
         spdlog::error("[Application] Display initialization failed");
         return false;
     }
+
+    // Update screen dimensions from what the display actually resolved to
+    // (may differ from requested if auto-detection was used)
+    m_screen_width = m_display->width();
+    m_screen_height = m_display->height();
 
     // Register LVGL log handler AFTER lv_init() (called inside display->init())
     // Must be after lv_init() because it resets global state and clears callbacks

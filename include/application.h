@@ -121,9 +121,9 @@ class Application {
     Config* m_config = nullptr; // Singleton, not owned
     helix::CliArgs m_args;
 
-    // Screen dimensions
-    int m_screen_width = 800;
-    int m_screen_height = 480;
+    // Screen dimensions (0 = auto-detect from display hardware)
+    int m_screen_width = 0;
+    int m_screen_height = 0;
 
     // UI objects (not owned, managed by LVGL)
     lv_obj_t* m_screen = nullptr;
