@@ -78,10 +78,36 @@ detect_platform() {
             is_pi=true
         fi
         if [ "$is_pi" = true ]; then
-            if [ "$arch" = "aarch64" ]; then
+            # Detect actual userspace bitness, not just kernel arch.
+            # Many Pi systems run 64-bit kernel with 32-bit userspace,
+            # which makes uname -m report aarch64 even though only
+            # 32-bit binaries can execute.
+            local userspace_bits
+            userspace_bits=$(getconf LONG_BIT 2>/dev/null || echo "")
+            if [ "$userspace_bits" = "64" ]; then
                 echo "pi"
-            else
+            elif [ "$userspace_bits" = "32" ]; then
+                if [ "$arch" = "aarch64" ]; then
+                    log_warn "64-bit kernel with 32-bit userspace detected — using pi32 build"
+                fi
                 echo "pi32"
+            else
+                # getconf unavailable — fall back to checking system binary
+                if file /usr/bin/id 2>/dev/null | grep -q "64-bit"; then
+                    echo "pi"
+                elif file /usr/bin/id 2>/dev/null | grep -q "32-bit"; then
+                    if [ "$arch" = "aarch64" ]; then
+                        log_warn "64-bit kernel with 32-bit userspace detected — using pi32 build"
+                    fi
+                    echo "pi32"
+                else
+                    # Last resort: trust kernel arch
+                    if [ "$arch" = "aarch64" ]; then
+                        echo "pi"
+                    else
+                        echo "pi32"
+                    fi
+                fi
             fi
             return
         fi

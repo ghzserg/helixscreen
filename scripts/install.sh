@@ -257,10 +257,36 @@ detect_platform() {
             is_pi=true
         fi
         if [ "$is_pi" = true ]; then
-            if [ "$arch" = "aarch64" ]; then
+            # Detect actual userspace bitness, not just kernel arch.
+            # Many Pi systems run 64-bit kernel with 32-bit userspace,
+            # which makes uname -m report aarch64 even though only
+            # 32-bit binaries can execute.
+            local userspace_bits
+            userspace_bits=$(getconf LONG_BIT 2>/dev/null || echo "")
+            if [ "$userspace_bits" = "64" ]; then
                 echo "pi"
-            else
+            elif [ "$userspace_bits" = "32" ]; then
+                if [ "$arch" = "aarch64" ]; then
+                    log_warn "64-bit kernel with 32-bit userspace detected — using pi32 build"
+                fi
                 echo "pi32"
+            else
+                # getconf unavailable — fall back to checking system binary
+                if file /usr/bin/id 2>/dev/null | grep -q "64-bit"; then
+                    echo "pi"
+                elif file /usr/bin/id 2>/dev/null | grep -q "32-bit"; then
+                    if [ "$arch" = "aarch64" ]; then
+                        log_warn "64-bit kernel with 32-bit userspace detected — using pi32 build"
+                    fi
+                    echo "pi32"
+                else
+                    # Last resort: trust kernel arch
+                    if [ "$arch" = "aarch64" ]; then
+                        echo "pi"
+                    else
+                        echo "pi32"
+                    fi
+                fi
             fi
             return
         fi
@@ -1759,29 +1785,6 @@ install_service_systemd() {
 
     $SUDO sed -i "s|@@INSTALL_DIR@@|${install_dir}|g" "$service_dest" 2>/dev/null || \
     $SUDO sed -i '' "s|@@INSTALL_DIR@@|${install_dir}|g" "$service_dest" 2>/dev/null || true
-
-    # Filter SupplementaryGroups to only groups that exist on this system.
-    # The template lists the ideal set (video input render) but not all systems
-    # have every group (e.g. 'render' is missing on older Pi OS installs).
-    local desired_groups existing_groups=""
-    desired_groups=$(grep '^SupplementaryGroups=' "$service_dest" 2>/dev/null | sed 's/^SupplementaryGroups=//')
-    if [ -n "$desired_groups" ]; then
-        for grp in $desired_groups; do
-            if getent group "$grp" >/dev/null 2>&1; then
-                existing_groups="${existing_groups:+$existing_groups }$grp"
-            else
-                log_info "Group '$grp' not found on this system, skipping"
-            fi
-        done
-        if [ -n "$existing_groups" ]; then
-            $SUDO sed -i "s|^SupplementaryGroups=.*|SupplementaryGroups=$existing_groups|" "$service_dest" 2>/dev/null || \
-            $SUDO sed -i '' "s|^SupplementaryGroups=.*|SupplementaryGroups=$existing_groups|" "$service_dest" 2>/dev/null || true
-        else
-            # No matching groups — remove the directive entirely
-            $SUDO sed -i '/^SupplementaryGroups=/d' "$service_dest" 2>/dev/null || \
-            $SUDO sed -i '' '/^SupplementaryGroups=/d' "$service_dest" 2>/dev/null || true
-        fi
-    fi
 
     if ! $SUDO systemctl daemon-reload; then
         log_error "Failed to reload systemd daemon."
