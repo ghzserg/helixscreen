@@ -416,3 +416,108 @@ CONF
     ! grep -q '# HelixScreen Update Manager' "$conf"
     ! grep -q '# Added by HelixScreen installer' "$conf"
 }
+
+# =============================================================================
+# ensure_moonraker_asvc
+# =============================================================================
+
+@test "ensure_moonraker_asvc: adds helixscreen to existing asvc file" {
+    local conf
+    conf=$(setup_moonraker_home)
+    create_moonraker_conf "$conf"
+
+    # Create moonraker.asvc in printer_data (two levels up from config/moonraker.conf)
+    local printer_data
+    printer_data="$(dirname "$(dirname "$conf")")"
+    printf "klipper\nmoonraker\n" > "$printer_data/moonraker.asvc"
+
+    ensure_moonraker_asvc "$conf"
+
+    grep -q '^helixscreen$' "$printer_data/moonraker.asvc"
+}
+
+@test "ensure_moonraker_asvc: skips if helixscreen already present" {
+    local conf
+    conf=$(setup_moonraker_home)
+    create_moonraker_conf "$conf"
+
+    local printer_data
+    printer_data="$(dirname "$(dirname "$conf")")"
+    printf "klipper\nmoonraker\nhelixscreen\n" > "$printer_data/moonraker.asvc"
+
+    local before
+    before=$(cat "$printer_data/moonraker.asvc")
+
+    ensure_moonraker_asvc "$conf"
+
+    # Content should be unchanged — no duplicate entry
+    [ "$(cat "$printer_data/moonraker.asvc")" = "$before" ]
+}
+
+@test "ensure_moonraker_asvc: no asvc file returns 0" {
+    local conf
+    conf=$(setup_moonraker_home)
+    create_moonraker_conf "$conf"
+
+    local printer_data
+    printer_data="$(dirname "$(dirname "$conf")")"
+    rm -f "$printer_data/moonraker.asvc"
+
+    run ensure_moonraker_asvc "$conf"
+    [ "$status" -eq 0 ]
+}
+
+@test "ensure_moonraker_asvc: does not match partial names" {
+    local conf
+    conf=$(setup_moonraker_home)
+    create_moonraker_conf "$conf"
+
+    local printer_data
+    printer_data="$(dirname "$(dirname "$conf")")"
+    printf "klipper\nmoonraker\nhelixscreen-old\n" > "$printer_data/moonraker.asvc"
+
+    ensure_moonraker_asvc "$conf"
+
+    # Should have added helixscreen (helixscreen-old is not an exact match)
+    grep -q '^helixscreen$' "$printer_data/moonraker.asvc"
+    # Original entry still there
+    grep -q '^helixscreen-old$' "$printer_data/moonraker.asvc"
+}
+
+# =============================================================================
+# configure_moonraker_updates + asvc integration
+# =============================================================================
+
+@test "configure_moonraker_updates: adds helixscreen to asvc when adding section" {
+    local conf
+    conf=$(setup_moonraker_home)
+    create_moonraker_conf "$conf"
+    MOONRAKER_CONF_PATHS="$conf"
+    rm -f "$INSTALL_DIR/bin/helix-screen"
+
+    local printer_data
+    printer_data="$(dirname "$(dirname "$conf")")"
+    printf "klipper\nmoonraker\n" > "$printer_data/moonraker.asvc"
+
+    mock_command_script "systemctl" 'exit 0'
+
+    configure_moonraker_updates "pi"
+
+    grep -q '^helixscreen$' "$printer_data/moonraker.asvc"
+}
+
+@test "configure_moonraker_updates: adds to asvc even when section already exists" {
+    local conf
+    conf=$(setup_moonraker_home)
+    create_moonraker_conf_with_helix "$conf"
+    MOONRAKER_CONF_PATHS="$conf"
+    rm -f "$INSTALL_DIR/bin/helix-screen"
+
+    local printer_data
+    printer_data="$(dirname "$(dirname "$conf")")"
+    printf "klipper\nmoonraker\n" > "$printer_data/moonraker.asvc"
+
+    configure_moonraker_updates "pi"
+
+    grep -q '^helixscreen$' "$printer_data/moonraker.asvc"
+}
