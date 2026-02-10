@@ -34,7 +34,7 @@
               height="100%" flex_flow="column" style_pad_all="0" style_pad_right="#space_sm" style_pad_gap="0"
               scrollable="false">
         <lv_obj name="printer_container"
-                width="100%" flex_grow="1" style_bg_opa="0%" style_pad_all="0" style_pad_bottom="0" scrollable="false"
+                width="100%" flex_grow="1" style_bg_color="#screen_bg" style_pad_all="0" style_pad_bottom="0" scrollable="false"
                 align="center" flex_flow="row">
           <lv_image name="printer_image" width="100%" height="100%" align="center" inner_align="contain">
             <!-- Dim image when disconnected (state 0) or connecting (state 1) -->
