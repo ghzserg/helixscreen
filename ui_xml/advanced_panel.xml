@@ -143,19 +143,23 @@
                           description="Show detailed print preparation status" description_tag="Show detailed print preparation status" subject="phase_tracking_enabled"
                           callback="on_phase_tracking_changed"/>
     </lv_obj>
-    <!-- Timelapse Settings -->
-    <setting_action_row name="row_timelapse"
-                        label="Timelapse" label_tag="Timelapse" icon="camera_timer" description="Configure timelapse recording" description_tag="Configure timelapse recording">
-      <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="0"/>
-      <event_cb trigger="clicked" callback="on_timelapse_row_clicked"/>
-    </setting_action_row>
-    <!-- Timelapse Setup (shown when plugin not installed but webcam available) -->
-    <setting_action_row name="row_timelapse_setup"
-                        label="Setup Timelapse" label_tag="Setup Timelapse" icon="camera_timer" description="Install timelapse plugin" description_tag="Install timelapse plugin">
-      <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="1"/>
-      <bind_flag_if_eq subject="printer_has_webcam" flag="hidden" ref_value="0"/>
-      <event_cb trigger="clicked" callback="on_timelapse_setup_clicked"/>
-    </setting_action_row>
+    <!-- Timelapse Settings (beta) -->
+    <beta_feature name="container_timelapse">
+      <setting_action_row name="row_timelapse"
+                          label="Timelapse" label_tag="Timelapse" icon="camera_timer" description="Configure timelapse recording" description_tag="Configure timelapse recording">
+        <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="0"/>
+        <event_cb trigger="clicked" callback="on_timelapse_row_clicked"/>
+      </setting_action_row>
+    </beta_feature>
+    <!-- Timelapse Setup (beta, shown when plugin not installed but webcam available) -->
+    <beta_feature name="container_timelapse_setup">
+      <setting_action_row name="row_timelapse_setup"
+                          label="Setup Timelapse" label_tag="Setup Timelapse" icon="camera_timer" description="Install timelapse plugin" description_tag="Install timelapse plugin">
+        <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="1"/>
+        <bind_flag_if_eq subject="printer_has_webcam" flag="hidden" ref_value="0"/>
+        <event_cb trigger="clicked" callback="on_timelapse_setup_clicked"/>
+      </setting_action_row>
+    </beta_feature>
     <!-- ================================================================== -->
     <!-- DIAGNOSTICS SECTION -->
     <!-- ================================================================== -->

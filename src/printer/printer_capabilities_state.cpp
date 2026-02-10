@@ -11,6 +11,7 @@
 #include "printer_capabilities_state.h"
 
 #include "async_helpers.h"
+#include "config.h"
 #include "state/subject_macros.h"
 
 #include <spdlog/spdlog.h>
@@ -94,8 +95,16 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     // Speaker capability (for M300 audio feedback)
     lv_subject_set_int(&printer_has_speaker_, hardware.has_speaker() ? 1 : 0);
 
-    // Timelapse capability (Moonraker-Timelapse plugin)
-    lv_subject_set_int(&printer_has_timelapse_, hardware.has_timelapse() ? 1 : 0);
+    // Timelapse capability (Moonraker-Timelapse plugin) — gated behind beta features
+    {
+        bool timelapse_detected = hardware.has_timelapse();
+        bool beta = Config::get_instance() && Config::get_instance()->is_beta_features_enabled();
+        lv_subject_set_int(&printer_has_timelapse_, (timelapse_detected && beta) ? 1 : 0);
+        if (timelapse_detected && !beta) {
+            spdlog::debug(
+                "[PrinterCapabilitiesState] Timelapse detected but beta features disabled");
+        }
+    }
 
     // Firmware retraction capability (for G10/G11 retraction settings)
     lv_subject_set_int(&printer_has_firmware_retraction_,
@@ -137,8 +146,12 @@ void PrinterCapabilitiesState::set_webcam_available(bool available) {
 void PrinterCapabilitiesState::set_timelapse_available(bool available) {
     // Thread-safe: Use helix::async::invoke to update LVGL subject from any thread
     helix::async::invoke([this, available]() {
-        lv_subject_set_int(&printer_has_timelapse_, available ? 1 : 0);
-        spdlog::debug("[PrinterCapabilitiesState] Timelapse availability set: {}", available);
+        // Gate behind beta features — timelapse is still in beta
+        bool beta = Config::get_instance() && Config::get_instance()->is_beta_features_enabled();
+        bool effective = available && beta;
+        lv_subject_set_int(&printer_has_timelapse_, effective ? 1 : 0);
+        spdlog::debug("[PrinterCapabilitiesState] Timelapse availability set: {} (beta={})",
+                      available, beta);
     });
 }
 
