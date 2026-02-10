@@ -374,7 +374,10 @@ class TelemetryManager {
     /** @brief HTTPS endpoint for telemetry submission */
     static constexpr const char* ENDPOINT_URL = "https://telemetry.helixscreen.org/v1/events";
 
-    /** @brief API key for telemetry ingestion authentication */
+    /** @brief API key for telemetry ingestion authentication.
+     *  Not a true secret (visible in source), but prevents casual spam.
+     *  To rotate: update this constant, then run `wrangler secret put INGEST_API_KEY`
+     *  in server/telemetry-worker/ with the new value, and release a new version. */
     static constexpr const char* API_KEY = "hx-tel-v1-a7f3c9e2d1b84056";
 
     /** @brief Minimum interval between transmission attempts */
