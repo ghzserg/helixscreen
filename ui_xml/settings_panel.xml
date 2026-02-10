@@ -179,9 +179,11 @@
                         callback="on_telemetry_changed"/>
     <setting_action_row name="row_telemetry_view_data"
                         label="View Telemetry Data" label_tag="View Telemetry Data" icon="list"
-                        description="See exactly what data would be sent"
-                        description_tag="See exactly what data would be sent"
-                        callback="on_telemetry_view_data"/>
+                        description="See exactly what data will be sent"
+                        description_tag="See exactly what data will be sent"
+                        callback="on_telemetry_view_data">
+      <bind_flag_if_eq subject="settings_telemetry_enabled" flag="hidden" ref_value="0"/>
+    </setting_action_row>
     <!-- About HelixScreen (opens overlay with version info, updates, component versions) -->
     <!-- Description bound to about_version_description subject in C++ setup() -->
     <setting_action_row name="row_about"

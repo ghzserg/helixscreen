@@ -864,6 +864,11 @@ void SettingsPanel::handle_estop_confirm_changed(bool enabled) {
 void SettingsPanel::handle_telemetry_changed(bool enabled) {
     spdlog::info("[{}] Telemetry toggled: {}", get_name(), enabled ? "ON" : "OFF");
     SettingsManager::instance().set_telemetry_enabled(enabled);
+    if (enabled) {
+        ui_toast_show(ToastSeverity::SUCCESS,
+                      lv_tr("Thanks! TOTALLY anonymous usage data helps improve HelixScreen."),
+                      4000);
+    }
 }
 
 void SettingsPanel::handle_telemetry_view_data_clicked() {
