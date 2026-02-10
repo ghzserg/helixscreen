@@ -479,9 +479,10 @@ ifneq ($(CROSS_COMPILE),)
     endif
     PLATFORM := Linux-$(TARGET_ARCH)
     WPA_DEPS := $(WPA_CLIENT_LIB)
-    # Strip embedded binaries for size
+    # Strip embedded binaries for size (CI extracts symbols first, then strips)
     ifeq ($(STRIP_BINARY),yes)
-        LDFLAGS += -s
+        STRIP_CMD := $(CROSS_COMPILE)strip
+        NM_CMD := $(CROSS_COMPILE)nm
     endif
 else ifeq ($(UNAME_S),Darwin)
     # macOS native build - Uses CoreWLAN framework for WiFi (with fallback to mock)
@@ -575,7 +576,7 @@ MOCK_OBJS := $(patsubst $(TEST_MOCK_DIR)/%.cpp,$(OBJ_DIR)/tests/mocks/%.o,$(MOCK
 # Default target
 .DEFAULT_GOAL := all
 
-.PHONY: all build clean run test tests test-integration test-cards test-print-select test-size-content demo compile_commands compile_commands_full libhv-build apply-patches generate-fonts validate-fonts regen-fonts update-mdi-cache verify-mdi-codepoints help check-deps install-deps venv-setup icon format format-staged screenshots tools moonraker-inspector strict quality setup translations
+.PHONY: all build clean run test tests test-integration test-cards test-print-select test-size-content demo compile_commands compile_commands_full libhv-build apply-patches generate-fonts validate-fonts regen-fonts update-mdi-cache verify-mdi-codepoints help check-deps install-deps venv-setup icon format format-staged screenshots tools moonraker-inspector strict quality setup translations symbols strip
 
 # Developer setup - configure git hooks and commit template
 setup:
@@ -642,6 +643,25 @@ screenshots: $(BIN)
 	$(Q)$(ECHO) "$(CYAN)Generating documentation screenshots...$(RESET)"
 	$(Q)./scripts/generate-screenshots.sh
 	$(Q)$(ECHO) "$(GREEN)✓ Documentation screenshots generated in docs/images/$(RESET)"
+
+# =============================================================================
+# Symbol extraction and stripping (for CI crash backtrace resolution)
+# =============================================================================
+symbols: $(TARGET)
+ifeq ($(STRIP_BINARY),yes)
+	$(NM_CMD) -nC $(TARGET) > $(TARGET).sym
+	@echo "Symbol map: $(TARGET).sym"
+else
+	@echo "STRIP_BINARY not set — skipping symbol extraction"
+endif
+
+strip: $(TARGET)
+ifeq ($(STRIP_BINARY),yes)
+	$(STRIP_CMD) $(TARGET)
+	@echo "Stripped: $(TARGET)"
+else
+	@echo "STRIP_BINARY not set — skipping strip"
+endif
 
 # Strict build - treat warnings as errors (for CI)
 # This catches issues that would otherwise slip through

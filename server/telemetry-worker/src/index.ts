@@ -8,7 +8,7 @@ interface Env {
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
 };
 
@@ -111,6 +111,26 @@ export default {
       }
 
       return json({ status: "ok", stored: body.length });
+    }
+
+    // Symbol map listing — returns available platforms for a version
+    if (url.pathname.startsWith("/v1/symbols/")) {
+      if (request.method !== "GET") {
+        return json({ error: "Method not allowed" }, 405);
+      }
+
+      const version = url.pathname.replace("/v1/symbols/", "").replace(/\/+$/, "");
+      if (!version || !/^[\d.]+[-\w.]*$/.test(version)) {
+        return json({ error: "Invalid version format" }, 400);
+      }
+
+      const prefix = `symbols/v${version}/`;
+      const listed = await env.TELEMETRY_BUCKET.list({ prefix });
+      const platforms = listed.objects
+        .map((obj) => obj.key.replace(prefix, "").replace(/\.sym$/, ""))
+        .filter((p) => p.length > 0);
+
+      return json({ version, platforms });
     }
 
     // Everything else

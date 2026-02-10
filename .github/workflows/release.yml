@@ -73,6 +73,22 @@ jobs:
           helixscreen/toolchain-pi \
           make PLATFORM_TARGET=pi SKIP_OPTIONAL_DEPS=1 -j$(nproc)
 
+    - name: Extract symbol map
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-pi \
+          make symbols PLATFORM_TARGET=pi SKIP_OPTIONAL_DEPS=1
+
+    - name: Strip binary
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-pi \
+          make strip PLATFORM_TARGET=pi SKIP_OPTIONAL_DEPS=1
+
     - name: Fix build directory ownership
       run: sudo chown -R $(id -u):$(id -g) build/
 
@@ -90,6 +106,13 @@ jobs:
           releases/helixscreen-pi-*.tar.gz
           releases/helixscreen-pi.zip
         retention-days: 7
+
+    - name: Upload symbol map artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: symbols-pi
+        path: build/pi/bin/helix-screen.sym
+        retention-days: 30
 
     # Move cache (prevents cache from growing indefinitely)
     - name: Move cache
@@ -138,6 +161,22 @@ jobs:
           helixscreen/toolchain-pi32 \
           make PLATFORM_TARGET=pi32 SKIP_OPTIONAL_DEPS=1 -j$(nproc)
 
+    - name: Extract symbol map
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-pi32 \
+          make symbols PLATFORM_TARGET=pi32 SKIP_OPTIONAL_DEPS=1
+
+    - name: Strip binary
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-pi32 \
+          make strip PLATFORM_TARGET=pi32 SKIP_OPTIONAL_DEPS=1
+
     - name: Fix build directory ownership
       run: sudo chown -R $(id -u):$(id -g) build/
 
@@ -155,6 +194,13 @@ jobs:
           releases/helixscreen-pi32-*.tar.gz
           releases/helixscreen-pi32.zip
         retention-days: 7
+
+    - name: Upload symbol map artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: symbols-pi32
+        path: build/pi32/bin/helix-screen.sym
+        retention-days: 30
 
     # Move cache (prevents cache from growing indefinitely)
     - name: Move cache
@@ -203,6 +249,22 @@ jobs:
           helixscreen/toolchain-ad5m \
           make PLATFORM_TARGET=ad5m SKIP_OPTIONAL_DEPS=1 -j$(nproc)
 
+    - name: Extract symbol map
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-ad5m \
+          make symbols PLATFORM_TARGET=ad5m SKIP_OPTIONAL_DEPS=1
+
+    - name: Strip binary
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-ad5m \
+          make strip PLATFORM_TARGET=ad5m SKIP_OPTIONAL_DEPS=1
+
     - name: Fix build directory ownership
       run: sudo chown -R $(id -u):$(id -g) build/
 
@@ -220,6 +282,13 @@ jobs:
           releases/helixscreen-ad5m-*.tar.gz
           releases/helixscreen-ad5m.zip
         retention-days: 7
+
+    - name: Upload symbol map artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: symbols-ad5m
+        path: build/ad5m/bin/helix-screen.sym
+        retention-days: 30
 
     # Move cache
     - name: Move cache
@@ -268,6 +337,22 @@ jobs:
           helixscreen/toolchain-k1 \
           make PLATFORM_TARGET=k1 SKIP_OPTIONAL_DEPS=1 -j$(nproc)
 
+    - name: Extract symbol map
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-k1 \
+          make symbols PLATFORM_TARGET=k1 SKIP_OPTIONAL_DEPS=1
+
+    - name: Strip binary
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-k1 \
+          make strip PLATFORM_TARGET=k1 SKIP_OPTIONAL_DEPS=1
+
     - name: Fix build directory ownership
       run: sudo chown -R $(id -u):$(id -g) build/
 
@@ -285,6 +370,13 @@ jobs:
           releases/helixscreen-k1-*.tar.gz
           releases/helixscreen-k1.zip
         retention-days: 7
+
+    - name: Upload symbol map artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: symbols-k1
+        path: build/k1/bin/helix-screen.sym
+        retention-days: 30
 
     # Move cache
     - name: Move cache
@@ -333,6 +425,22 @@ jobs:
           helixscreen/toolchain-k2 \
           make PLATFORM_TARGET=k2 SKIP_OPTIONAL_DEPS=1 -j$(nproc)
 
+    - name: Extract symbol map
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-k2 \
+          make symbols PLATFORM_TARGET=k2 SKIP_OPTIONAL_DEPS=1
+
+    - name: Strip binary
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}":/src \
+          -w /src \
+          helixscreen/toolchain-k2 \
+          make strip PLATFORM_TARGET=k2 SKIP_OPTIONAL_DEPS=1
+
     - name: Fix build directory ownership
       run: sudo chown -R $(id -u):$(id -g) build/
 
@@ -350,6 +458,13 @@ jobs:
           releases/helixscreen-k2-*.tar.gz
           releases/helixscreen-k2.zip
         retention-days: 7
+
+    - name: Upload symbol map artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: symbols-k2
+        path: build/k2/bin/helix-screen.sym
+        retention-days: 30
 
     # Move cache
     - name: Move cache
@@ -516,6 +631,18 @@ jobs:
         echo "Release files:"
         ls -lh release-files/
 
+    - name: Flatten symbol files
+      run: |
+        mkdir -p symbol-files
+        for dir in artifacts/symbols-*/; do
+          platform=$(basename "$dir" | sed 's/symbols-//')
+          if [ -f "${dir}helix-screen.sym" ]; then
+            cp "${dir}helix-screen.sym" "symbol-files/${platform}.sym"
+          fi
+        done
+        echo "Symbol files:"
+        ls -lh symbol-files/ || echo "No symbol files found"
+
     - name: Extract version from tag
       id: version
       run: |
@@ -619,6 +746,20 @@ jobs:
 
           echo "=== ${CHANNEL} upload complete ==="
         done
+
+        # Upload symbol maps (version-keyed, not channel-specific)
+        echo "=== Uploading symbol maps ==="
+        for symfile in symbol-files/*.sym; do
+          [ -f "$symfile" ] || continue
+          filename=$(basename "$symfile")
+          platform="${filename%.sym}"
+          echo "Uploading symbols/v${VERSION}/${platform}.sym..."
+          aws s3 cp "$symfile" \
+            "s3://${BUCKET}/symbols/v${VERSION}/${platform}.sym" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "text/plain"
+        done
+        echo "=== Symbol map upload complete ==="
 
         echo "All uploads complete!"
         for CHANNEL in ${{ steps.channels.outputs.channels }}; do
