@@ -699,7 +699,9 @@ ui_temp_graph_t* ui_temp_graph_create(lv_obj_t* parent) {
     // Subscribe to theme changes for live color updates
     lv_subject_t* theme_subject = theme_manager_get_changed_subject();
     if (theme_subject) {
-        graph->theme_observer = lv_subject_add_observer(theme_subject, theme_change_cb, graph);
+        // Tie observer to chart widget — auto-removed when chart is deleted
+        graph->theme_observer =
+            lv_subject_add_observer_obj(theme_subject, theme_change_cb, graph->chart, graph);
     }
 
     spdlog::debug("[TempGraph] Created: {} points, {:.0f}-{:.0f}°C range", graph->point_count,
@@ -717,12 +719,6 @@ void ui_temp_graph_destroy(ui_temp_graph_t* graph) {
     // Transfer ownership to RAII wrapper - automatic cleanup
     std::unique_ptr<ui_temp_graph_t> graph_ptr(graph);
 
-    // Unsubscribe from theme changes before deleting the chart
-    if (graph_ptr->theme_observer) {
-        lv_observer_remove(graph_ptr->theme_observer);
-        graph_ptr->theme_observer = nullptr;
-    }
-
     // Remove all series (cursors will be cleaned up automatically)
     for (int i = 0; i < graph_ptr->series_count; i++) {
         if (graph_ptr->series_meta[i].chart_series) {
@@ -730,7 +726,9 @@ void ui_temp_graph_destroy(ui_temp_graph_t* graph) {
         }
     }
 
-    // Delete chart widget
+    // Delete chart widget — theme observer is auto-removed via lv_subject_add_observer_obj.
+    // Manual lv_observer_remove() would free the observer, but LVGL's child-delete
+    // cascade would then fire unsubscribe_on_delete_cb on freed memory → crash.
     if (graph_ptr->chart) {
         lv_obj_del(graph_ptr->chart);
     }

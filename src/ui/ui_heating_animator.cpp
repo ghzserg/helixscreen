@@ -63,7 +63,8 @@ void HeatingIconAnimator::attach(lv_obj_t* icon) {
     // Subscribe to theme changes for automatic color refresh
     lv_subject_t* theme_subject = theme_manager_get_changed_subject();
     if (theme_subject) {
-        theme_observer_ = lv_subject_add_observer(theme_subject, theme_change_cb, this);
+        // Tie observer to icon widget — auto-removed when icon is deleted
+        theme_observer_ = lv_subject_add_observer_obj(theme_subject, theme_change_cb, icon_, this);
         spdlog::debug("[HeatingIconAnimator] Attached to icon with theme observer");
     } else {
         spdlog::debug("[HeatingIconAnimator] Attached to icon (no theme subject found)");
@@ -76,12 +77,10 @@ void HeatingIconAnimator::detach() {
     }
     stop_pulse();
 
-    // Unsubscribe from theme changes
-    if (theme_observer_) {
-        lv_observer_remove(theme_observer_);
-        theme_observer_ = nullptr;
-    }
-
+    // Theme observer is auto-removed when icon is deleted (lv_subject_add_observer_obj).
+    // Manual lv_observer_remove() would free the observer, but LVGL's delete cascade
+    // would then fire unsubscribe_on_delete_cb on freed memory → crash.
+    theme_observer_ = nullptr;
     icon_ = nullptr;
     spdlog::debug("[HeatingIconAnimator] Detached");
 }

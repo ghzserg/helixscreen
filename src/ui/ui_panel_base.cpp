@@ -88,11 +88,11 @@ void PanelBase::register_observer(lv_observer_t* observer) {
 }
 
 void PanelBase::cleanup_observers() {
-    for (auto* observer : observers_) {
-        if (observer) {
-            lv_observer_remove(observer);
-        }
-    }
+    // Do NOT manually call lv_observer_remove() here. Manual removal frees the
+    // observer, but LVGL's widget delete cascade will then fire the observer's
+    // unsubscribe_on_delete_cb on freed memory → linked list corruption → crash.
+    // Observers created with lv_subject_add_observer_obj() are auto-removed when
+    // their associated widget is deleted. See ui_temp_display.cpp on_delete().
     observers_.clear();
 }
 
