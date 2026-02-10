@@ -253,6 +253,7 @@ def generate_splash(
                 str(lvgl_image_py),
                 "--cf", "ARGB8888",
                 "--ofmt", "BIN",
+                "--compress", "LZ4",
                 "-o", str(output_dir),
                 "--name", output_name,
                 tmp_path,

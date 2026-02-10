@@ -92,6 +92,7 @@ lvgl_render_image() {
     if $LVGL_PYTHON "$LVGL_IMAGE_PY" \
         --cf "$color_format" \
         --ofmt BIN \
+        --compress LZ4 \
         --resize "${target_size}x${target_size}" \
         --resize-fit \
         -o "$output_dir" \

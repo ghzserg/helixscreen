@@ -668,9 +668,11 @@ help-cross:
 
 # Rsync flags for asset sync: delete stale files, checksum-based skip, exclude junk
 DEPLOY_RSYNC_FLAGS := -avz --delete --checksum
-DEPLOY_ASSET_EXCLUDES := --exclude='test_gcodes' --exclude='gcode' --exclude='.DS_Store' --exclude='*.pyc' --exclude='helixconfig*.json' --exclude='.claude-recall' --exclude='._*'
+DEPLOY_ASSET_EXCLUDES := --exclude='test_gcodes' --exclude='gcode' --exclude='.DS_Store' --exclude='*.pyc' --exclude='helixconfig*.json' --exclude='.claude-recall' --exclude='._*' \
+	--exclude='assets/fonts/*.c' --exclude='*.icns' --exclude='mdi-icon-metadata.json.gz' --exclude='moonraker-plugin/tests'
 # Tar-compatible excludes (same patterns, different syntax)
-DEPLOY_TAR_EXCLUDES := --exclude='test_gcodes' --exclude='gcode' --exclude='.DS_Store' --exclude='*.pyc' --exclude='helixconfig*.json' --exclude='.claude-recall' --exclude='._*'
+DEPLOY_TAR_EXCLUDES := --exclude='test_gcodes' --exclude='gcode' --exclude='.DS_Store' --exclude='*.pyc' --exclude='helixconfig*.json' --exclude='.claude-recall' --exclude='._*' \
+	--exclude='assets/fonts/*.c' --exclude='*.icns' --exclude='mdi-icon-metadata.json.gz' --exclude='moonraker-plugin/tests'
 DEPLOY_ASSET_DIRS := ui_xml assets config moonraker-plugin
 
 # Common deploy recipe (called with: $(call deploy-common,SSH_TARGET,DEPLOY_DIR,BIN_DIR))
@@ -1301,6 +1303,16 @@ RELEASE_VERSION := v$(VERSION)
 # Assets to include (exclude test_gcodes, gcode test files)
 RELEASE_ASSETS := assets/fonts assets/images
 
+# Clean up release assets: remove files that are compiled into the binary or dev-only
+# .c font files are compiled into the binary at build time (28 MB savings)
+# .icns is a macOS icon format, not used on embedded targets
+# mdi-icon-metadata is dev-only (icon search tooling)
+define release-clean-assets
+	@find $(1)/assets/fonts -name '*.c' -delete 2>/dev/null || true
+	@find $(1)/assets -name '*.icns' -delete 2>/dev/null || true
+	@find $(1)/assets -name 'mdi-icon-metadata.json.gz' -delete 2>/dev/null || true
+endef
+
 .PHONY: release-pi release-pi32 release-ad5m release-k1 release-k1-dynamic release-k2 release-all release-clean
 
 # Package Pi release
@@ -1329,6 +1341,7 @@ release-pi: | build/pi/bin/helix-screen build/pi/bin/helix-splash
 		cp -r build/assets/images/printers/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered/; \
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
+	$(call release-clean-assets,$(RELEASE_DIR)/helixscreen)
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
 	@echo '{"project_name":"helixscreen","project_owner":"prestonbrown","version":"$(RELEASE_VERSION)","asset_name":"helixscreen-pi.zip"}' > $(RELEASE_DIR)/helixscreen/release_info.json
 	@cd $(RELEASE_DIR)/helixscreen && zip -qr ../helixscreen-pi.zip .
@@ -1363,6 +1376,7 @@ release-pi32: | build/pi32/bin/helix-screen build/pi32/bin/helix-splash
 		cp -r build/assets/images/printers/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered/; \
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
+	$(call release-clean-assets,$(RELEASE_DIR)/helixscreen)
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
 	@echo '{"project_name":"helixscreen","project_owner":"prestonbrown","version":"$(RELEASE_VERSION)","asset_name":"helixscreen-pi32.zip"}' > $(RELEASE_DIR)/helixscreen/release_info.json
 	@cd $(RELEASE_DIR)/helixscreen && zip -qr ../helixscreen-pi32.zip .
@@ -1406,6 +1420,7 @@ release-ad5m: | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
 		echo "  $(DIM)Included CA certificates for HTTPS$(RESET)"; \
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
+	$(call release-clean-assets,$(RELEASE_DIR)/helixscreen)
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
 	@echo '{"project_name":"helixscreen","project_owner":"prestonbrown","version":"$(RELEASE_VERSION)","asset_name":"helixscreen-ad5m.zip"}' > $(RELEASE_DIR)/helixscreen/release_info.json
 	@cd $(RELEASE_DIR)/helixscreen && zip -qr ../helixscreen-ad5m.zip .
@@ -1439,6 +1454,7 @@ release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
 		cp -r build/assets/images/printers/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered/; \
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
+	$(call release-clean-assets,$(RELEASE_DIR)/helixscreen)
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
 	@echo '{"project_name":"helixscreen","project_owner":"prestonbrown","version":"$(RELEASE_VERSION)","asset_name":"helixscreen-k1.zip"}' > $(RELEASE_DIR)/helixscreen/release_info.json
 	@cd $(RELEASE_DIR)/helixscreen && zip -qr ../helixscreen-k1.zip .
@@ -1472,6 +1488,7 @@ release-k1-dynamic: | build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/hel
 		cp -r build/assets/images/printers/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered/; \
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
+	$(call release-clean-assets,$(RELEASE_DIR)/helixscreen)
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
 	@echo '{"project_name":"helixscreen","project_owner":"prestonbrown","version":"$(RELEASE_VERSION)","asset_name":"helixscreen-k1-dynamic.zip"}' > $(RELEASE_DIR)/helixscreen/release_info.json
 	@cd $(RELEASE_DIR)/helixscreen && zip -qr ../helixscreen-k1-dynamic.zip .
@@ -1505,6 +1522,7 @@ release-k2: | build/k2/bin/helix-screen build/k2/bin/helix-splash
 		cp -r build/assets/images/printers/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered/; \
 	fi
 	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
+	$(call release-clean-assets,$(RELEASE_DIR)/helixscreen)
 	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
 	@echo '{"project_name":"helixscreen","project_owner":"prestonbrown","version":"$(RELEASE_VERSION)","asset_name":"helixscreen-k2.zip"}' > $(RELEASE_DIR)/helixscreen/release_info.json
 	@cd $(RELEASE_DIR)/helixscreen && zip -qr ../helixscreen-k2.zip .
