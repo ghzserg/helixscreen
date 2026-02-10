@@ -6,6 +6,7 @@
 * **Z-axis direction flip toggle** - Settings option to invert Z movement buttons for printers where the heuristic gets it wrong
 * **Customizable home screen layout** - Let users configure which widgets/cards appear on the home screen (e.g., hide WiFi if not needed)
 * **Custom printer image on home page** - Allow manually choosing the printer picture shown on the home screen, and optionally uploading a custom image to replace the auto-detected one
+* **2D renderer crease/edge shading** - Estimate surface normals per extrusion segment using inter-layer contour analysis. Where normals change sharply between adjacent layers (creases, ridges, corners), darken segments to simulate light direction changes. Would give the 2D view a much more 3D appearance without the full 3D renderer. Requires a preprocessing pass after gcode parsing to build per-layer contour maps and detect normal discontinuities.
 * **Power device setup wizard** - Guided Moonraker config editing to help users set up smart plugs, relay boards, and other power devices through the UI instead of manually editing `moonraker.conf`. Basic power device control already works (see `ui_panel_power.cpp`); this adds the setup/onboarding flow.
 
 ---
