@@ -85,6 +85,7 @@ class MoonrakerAPI {
     using TimelapseSettingsCallback = std::function<void(const TimelapseSettings&)>;
     using SpoolCallback = std::function<void(const std::optional<SpoolInfo>&)>;
     using SpoolListCallback = std::function<void(const std::vector<SpoolInfo>&)>;
+    using WebcamListCallback = std::function<void(const std::vector<WebcamInfo>&)>;
     using JsonCallback = std::function<void(const json&)>;
 
     /**
@@ -516,6 +517,17 @@ class MoonrakerAPI {
      */
     void restart_klipper(SuccessCallback on_success, ErrorCallback on_error);
 
+    /**
+     * @brief Restart the Moonraker service
+     *
+     * POST /server/restart - Restarts the Moonraker service itself.
+     * This will cause a temporary WebSocket disconnect.
+     *
+     * @param on_success Success callback (called before disconnect)
+     * @param on_error Error callback
+     */
+    void restart_moonraker(SuccessCallback on_success, ErrorCallback on_error);
+
     // ========================================================================
     // Query Operations
     // ========================================================================
@@ -875,6 +887,21 @@ class MoonrakerAPI {
      */
     virtual void set_timelapse_enabled(bool enabled, SuccessCallback on_success,
                                        ErrorCallback on_error);
+
+    // ========================================================================
+    // Webcam Operations
+    // ========================================================================
+
+    /**
+     * @brief Get list of configured webcams
+     *
+     * Queries Moonraker for configured webcams. Used to detect if the printer
+     * has a camera, which is a prerequisite for timelapse setup.
+     *
+     * @param on_success Callback with vector of webcam info
+     * @param on_error Error callback
+     */
+    virtual void get_webcam_list(WebcamListCallback on_success, ErrorCallback on_error);
 
     // ========================================================================
     // Domain Service Operations (Bed Mesh, Object Exclusion)

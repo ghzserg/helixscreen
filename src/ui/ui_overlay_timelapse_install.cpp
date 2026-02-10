@@ -1,0 +1,583 @@
+// Copyright (C) 2025-2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "ui_overlay_timelapse_install.h"
+
+#include "ui_nav.h"
+#include "ui_nav_manager.h"
+#include "ui_step_progress.h"
+#include "ui_toast.h"
+
+#include "app_globals.h"
+#include "async_helpers.h"
+#include "moonraker_api.h"
+#include "moonraker_client.h"
+#include "moonraker_types.h"
+#include "static_panel_registry.h"
+
+#include <spdlog/spdlog.h>
+
+#include <sstream>
+
+// ============================================================================
+// GLOBAL INSTANCE
+// ============================================================================
+
+static std::unique_ptr<TimelapseInstallOverlay> g_timelapse_install;
+static lv_obj_t* g_timelapse_install_panel = nullptr;
+
+TimelapseInstallOverlay& get_global_timelapse_install() {
+    if (!g_timelapse_install) {
+        spdlog::error("[Timelapse Install] get_global called before init!");
+        throw std::runtime_error("TimelapseInstallOverlay not initialized");
+    }
+    return *g_timelapse_install;
+}
+
+void init_global_timelapse_install(MoonrakerAPI* api) {
+    if (g_timelapse_install) {
+        spdlog::warn("[Timelapse Install] Already initialized, skipping");
+        return;
+    }
+    g_timelapse_install = std::make_unique<TimelapseInstallOverlay>(api);
+    StaticPanelRegistry::instance().register_destroy("TimelapseInstallOverlay", []() {
+        g_timelapse_install_panel = nullptr;
+        g_timelapse_install.reset();
+    });
+    spdlog::trace("[Timelapse Install] Initialized");
+}
+
+// ============================================================================
+// ROW CLICK CALLBACK (opens overlay from Advanced panel)
+// ============================================================================
+
+/// Opens the install overlay; called from advanced panel timelapse setup row
+static void open_timelapse_install_overlay() {
+    if (!g_timelapse_install) {
+        spdlog::error("[Timelapse Install] Global instance not initialized!");
+        return;
+    }
+
+    // Lazy-create the panel
+    if (!g_timelapse_install_panel) {
+        spdlog::debug("[Timelapse Install] Creating install overlay panel...");
+        g_timelapse_install_panel =
+            g_timelapse_install->create(lv_display_get_screen_active(nullptr));
+
+        if (g_timelapse_install_panel) {
+            NavigationManager::instance().register_overlay_instance(g_timelapse_install_panel,
+                                                                    g_timelapse_install.get());
+            spdlog::debug("[Timelapse Install] Panel created and registered");
+        } else {
+            spdlog::error("[Timelapse Install] Failed to create timelapse_install_overlay");
+            return;
+        }
+    }
+
+    ui_nav_push_overlay(g_timelapse_install_panel);
+}
+
+// ============================================================================
+// CONSTRUCTOR & LIFECYCLE
+// ============================================================================
+
+TimelapseInstallOverlay::TimelapseInstallOverlay(MoonrakerAPI* api) : api_(api) {}
+
+void TimelapseInstallOverlay::init_subjects() {
+    lv_xml_register_event_cb(nullptr, "on_timelapse_install_action", on_action_clicked);
+    spdlog::trace("[{}] Event callbacks registered", get_name());
+}
+
+lv_obj_t* TimelapseInstallOverlay::create(lv_obj_t* parent) {
+    overlay_root_ =
+        static_cast<lv_obj_t*>(lv_xml_create(parent, get_xml_component_name(), nullptr));
+    if (!overlay_root_) {
+        spdlog::error("[{}] Failed to create overlay from XML", get_name());
+        return nullptr;
+    }
+
+    // Find key widgets by name
+    status_label_ = lv_obj_find_by_name(overlay_root_, "status_text");
+    action_btn_ = lv_obj_find_by_name(overlay_root_, "action_button");
+    ssh_container_ = lv_obj_find_by_name(overlay_root_, "ssh_instructions_container");
+
+    if (action_btn_) {
+        // ui_button stores its label as the first child
+        action_btn_label_ = lv_obj_get_child(action_btn_, 0);
+    }
+
+    // Create step progress widget programmatically (dynamic content)
+    lv_obj_t* step_container = lv_obj_find_by_name(overlay_root_, "step_container");
+    if (step_container) {
+        ui_step_t steps[] = {{"Checking webcam", UI_STEP_STATE_PENDING},
+                             {"Checking plugin", UI_STEP_STATE_PENDING},
+                             {"Install plugin", UI_STEP_STATE_PENDING},
+                             {"Configure Moonraker", UI_STEP_STATE_PENDING},
+                             {"Restart Moonraker", UI_STEP_STATE_PENDING},
+                             {"Verify", UI_STEP_STATE_PENDING}};
+        step_progress_ = ui_step_progress_create(step_container, steps, STEP_COUNT, false, nullptr);
+    }
+
+    // Initially hide interactive elements
+    hide_action_button();
+    if (ssh_container_)
+        lv_obj_add_flag(ssh_container_, LV_OBJ_FLAG_HIDDEN);
+
+    spdlog::debug("[{}] create() - widgets found: status={} action={} ssh={} steps={}", get_name(),
+                  status_label_ != nullptr, action_btn_ != nullptr, ssh_container_ != nullptr,
+                  step_progress_ != nullptr);
+
+    return overlay_root_;
+}
+
+void TimelapseInstallOverlay::on_activate() {
+    OverlayBase::on_activate();
+    spdlog::debug("[{}] Activated", get_name());
+    start_wizard();
+}
+
+void TimelapseInstallOverlay::on_deactivate() {
+    OverlayBase::on_deactivate();
+    spdlog::debug("[{}] Deactivated", get_name());
+    wizard_active_ = false;
+}
+
+void TimelapseInstallOverlay::cleanup() {
+    wizard_active_ = false;
+    action_callback_ = nullptr;
+    if (alive_guard_)
+        *alive_guard_ = false;
+    alive_guard_ = std::make_shared<bool>(true);
+    OverlayBase::cleanup();
+}
+
+// ============================================================================
+// WIZARD FLOW
+// ============================================================================
+
+void TimelapseInstallOverlay::start_wizard() {
+    wizard_active_ = true;
+    action_callback_ = nullptr;
+
+    // Reset UI state
+    if (ssh_container_)
+        lv_obj_add_flag(ssh_container_, LV_OBJ_FLAG_HIDDEN);
+    hide_action_button();
+
+    step_check_webcam();
+}
+
+void TimelapseInstallOverlay::set_step(Step step) {
+    current_step_ = step;
+    if (step_progress_) {
+        ui_step_progress_set_current(step_progress_, static_cast<int>(step));
+    }
+}
+
+void TimelapseInstallOverlay::set_status(const char* text) {
+    if (status_label_) {
+        lv_label_set_text(status_label_, text);
+    }
+}
+
+void TimelapseInstallOverlay::show_action_button(const char* label,
+                                                 std::function<void()> callback) {
+    action_callback_ = std::move(callback);
+    if (action_btn_) {
+        lv_obj_remove_flag(action_btn_, LV_OBJ_FLAG_HIDDEN);
+        if (action_btn_label_) {
+            lv_label_set_text(action_btn_label_, label);
+        }
+    }
+}
+
+void TimelapseInstallOverlay::hide_action_button() {
+    action_callback_ = nullptr;
+    if (action_btn_) {
+        lv_obj_add_flag(action_btn_, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+// ============================================================================
+// STEP 1: CHECK WEBCAM
+// ============================================================================
+
+void TimelapseInstallOverlay::step_check_webcam() {
+    set_step(Step::CHECKING_WEBCAM);
+    set_status("Checking for webcam...");
+
+    if (!api_) {
+        set_status("Not connected to printer");
+        return;
+    }
+
+    auto alive = alive_guard_;
+    api_->get_webcam_list(
+        [this, alive](const std::vector<WebcamInfo>& webcams) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            bool empty = webcams.empty();
+            size_t count = webcams.size();
+            helix::async::invoke([this, alive, empty, count]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                if (empty) {
+                    set_status("No webcam detected.\nA webcam is required for timelapse.");
+                    show_action_button("Close", []() { ui_nav_go_back(); });
+                    return;
+                }
+                spdlog::info("[{}] Found {} webcam(s)", get_name(), count);
+                step_check_plugin();
+            });
+        },
+        [this, alive](const MoonrakerError& err) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::warn("[{}] Webcam check failed: {}", get_name(), err.message);
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                set_status("Could not check webcam status.\nCheck printer connection.");
+                show_action_button("Retry", [this]() { step_check_webcam(); });
+            });
+        });
+}
+
+// ============================================================================
+// STEP 2: CHECK PLUGIN
+// ============================================================================
+
+void TimelapseInstallOverlay::step_check_plugin() {
+    set_step(Step::CHECKING_PLUGIN);
+    set_status("Checking timelapse plugin...");
+
+    if (!api_)
+        return;
+
+    auto alive = alive_guard_;
+    api_->get_timelapse_settings(
+        [this, alive](const TimelapseSettings& /*settings*/) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::info("[{}] Timelapse plugin already installed", get_name());
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                set_status("Timelapse plugin is already installed!");
+                if (step_progress_) {
+                    for (int i = 0; i < STEP_COUNT; i++) {
+                        ui_step_progress_set_completed(step_progress_, i);
+                    }
+                }
+                show_action_button("Close", []() { ui_nav_go_back(); });
+            });
+        },
+        [this, alive](const MoonrakerError& /*err*/) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::info("[{}] Plugin not detected, showing install instructions", get_name());
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                step_show_install_instructions();
+            });
+        });
+}
+
+// ============================================================================
+// STEP 3: SHOW SSH INSTALL INSTRUCTIONS
+// ============================================================================
+
+void TimelapseInstallOverlay::step_show_install_instructions() {
+    set_step(Step::INSTALL_PLUGIN);
+    set_status("Install the timelapse plugin via SSH,\nthen tap \"Check Again\".");
+
+    // Show SSH instructions container
+    if (ssh_container_) {
+        lv_obj_remove_flag(ssh_container_, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    show_action_button("Check Again", [this]() { recheck_after_install(); });
+}
+
+// ============================================================================
+// RECHECK AFTER SSH INSTALL
+// ============================================================================
+
+void TimelapseInstallOverlay::recheck_after_install() {
+    set_step(Step::CHECKING_PLUGIN);
+    set_status("Checking for plugin...");
+    hide_action_button();
+    if (ssh_container_)
+        lv_obj_add_flag(ssh_container_, LV_OBJ_FLAG_HIDDEN);
+
+    if (!api_)
+        return;
+
+    auto alive = alive_guard_;
+    api_->get_timelapse_settings(
+        [this, alive](const TimelapseSettings& /*settings*/) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::info("[{}] Plugin detected after recheck!", get_name());
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                set_status("Timelapse plugin is installed!");
+                if (step_progress_) {
+                    for (int i = 0; i < STEP_COUNT; i++) {
+                        ui_step_progress_set_completed(step_progress_, i);
+                    }
+                }
+                show_action_button("Done", []() { ui_nav_go_back(); });
+            });
+        },
+        [this, alive](const MoonrakerError& /*err*/) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::info("[{}] Plugin still not responding, proceeding to configure", get_name());
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                step_configure_moonraker();
+            });
+        });
+}
+
+// ============================================================================
+// STEP 4: CONFIGURE MOONRAKER
+// ============================================================================
+
+void TimelapseInstallOverlay::step_configure_moonraker() {
+    set_step(Step::CONFIGURE_MOONRAKER);
+    set_status("Configuring Moonraker...");
+    hide_action_button();
+    if (ssh_container_)
+        lv_obj_add_flag(ssh_container_, LV_OBJ_FLAG_HIDDEN);
+
+    download_and_modify_config();
+}
+
+void TimelapseInstallOverlay::download_and_modify_config() {
+    if (!api_) {
+        set_status("Not connected to printer");
+        return;
+    }
+
+    auto alive = alive_guard_;
+
+    // Download moonraker.conf
+    api_->download_file(
+        "config", "moonraker.conf",
+        [this, alive](const std::string& content) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+
+            // Check if [timelapse] section already exists (pure computation, safe on bg thread)
+            if (has_timelapse_section(content)) {
+                spdlog::info("[{}] moonraker.conf already has [timelapse] section", get_name());
+                helix::async::invoke([this, alive]() {
+                    if (!alive || !*alive || !wizard_active_)
+                        return;
+                    set_status("Configuration already present.");
+                    step_restart_moonraker();
+                });
+                return;
+            }
+
+            // Append timelapse configuration (pure computation, safe on bg thread)
+            std::string modified = append_timelapse_config(content);
+
+            // Upload modified config (API call, fine on bg thread)
+            api_->upload_file(
+                "config", "moonraker.conf", modified,
+                [this, alive]() {
+                    if (!alive || !*alive || !wizard_active_)
+                        return;
+                    spdlog::info("[{}] moonraker.conf updated successfully", get_name());
+                    helix::async::invoke([this, alive]() {
+                        if (!alive || !*alive || !wizard_active_)
+                            return;
+                        set_status("Configuration added successfully.");
+                        step_restart_moonraker();
+                    });
+                },
+                [this, alive](const MoonrakerError& err) {
+                    if (!alive || !*alive || !wizard_active_)
+                        return;
+                    spdlog::error("[{}] Failed to upload config: {}", get_name(), err.message);
+                    helix::async::invoke([this, alive]() {
+                        if (!alive || !*alive || !wizard_active_)
+                            return;
+                        set_status("Failed to update configuration.\nCheck printer connection.");
+                        show_action_button("Retry", [this]() { download_and_modify_config(); });
+                    });
+                });
+        },
+        [this, alive](const MoonrakerError& err) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::error("[{}] Failed to download config: {}", get_name(), err.message);
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                set_status("Failed to download moonraker.conf.\nCheck printer connection.");
+                show_action_button("Retry", [this]() { download_and_modify_config(); });
+            });
+        });
+}
+
+bool TimelapseInstallOverlay::has_timelapse_section(const std::string& content) {
+    std::istringstream stream(content);
+    std::string line;
+    while (std::getline(stream, line)) {
+        // Trim leading whitespace
+        size_t start = line.find_first_not_of(" \t");
+        if (start == std::string::npos)
+            continue;
+        std::string trimmed = line.substr(start);
+        // Trim trailing whitespace and carriage returns (Windows line endings)
+        size_t end = trimmed.find_last_not_of(" \t\r");
+        if (end != std::string::npos)
+            trimmed = trimmed.substr(0, end + 1);
+        // Skip comments
+        if (trimmed.empty() || trimmed[0] == '#')
+            continue;
+        if (trimmed == "[timelapse]")
+            return true;
+    }
+    return false;
+}
+
+std::string TimelapseInstallOverlay::append_timelapse_config(const std::string& content) {
+    std::string result = content;
+    // Ensure trailing newline
+    if (!result.empty() && result.back() != '\n') {
+        result += '\n';
+    }
+    result += "\n";
+    result += "# Timelapse - added by HelixScreen\n";
+    result += "[timelapse]\n";
+    result += "\n";
+    result += "[update_manager timelapse]\n";
+    result += "type: git_repo\n";
+    result += "primary_branch: main\n";
+    result += "path: ~/moonraker-timelapse\n";
+    result += "origin: https://github.com/mainsail-crew/moonraker-timelapse.git\n";
+    result += "managed_services: klipper moonraker\n";
+    return result;
+}
+
+// ============================================================================
+// STEP 5: RESTART MOONRAKER
+// ============================================================================
+
+void TimelapseInstallOverlay::step_restart_moonraker() {
+    set_step(Step::RESTART_MOONRAKER);
+    set_status("Restarting Moonraker...");
+    hide_action_button();
+
+    if (!api_)
+        return;
+
+    auto alive = alive_guard_;
+
+    // Suppress disconnect modal during intentional restart
+    api_->get_client().suppress_disconnect_modal(15000);
+
+    api_->restart_moonraker(
+        [this, alive]() {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::info("[{}] Moonraker restart initiated", get_name());
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                set_status("Moonraker restarting...\nWaiting for reconnection...");
+
+                // Wait 8 seconds then try to verify
+                lv_timer_create(
+                    [](lv_timer_t* timer) {
+                        lv_timer_delete(timer);
+                        if (!g_timelapse_install || !g_timelapse_install->wizard_active_)
+                            return;
+                        g_timelapse_install->step_verify();
+                    },
+                    8000, nullptr);
+            });
+        },
+        [this, alive](const MoonrakerError& err) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::error("[{}] Moonraker restart failed: {}", get_name(), err.message);
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                set_status("Failed to restart Moonraker.");
+                show_action_button("Retry", [this]() { step_restart_moonraker(); });
+            });
+        });
+}
+
+// ============================================================================
+// STEP 6: VERIFY
+// ============================================================================
+
+void TimelapseInstallOverlay::step_verify() {
+    set_step(Step::VERIFY);
+    set_status("Verifying timelapse plugin...");
+
+    if (!api_)
+        return;
+
+    auto alive = alive_guard_;
+    api_->get_timelapse_settings(
+        [this, alive](const TimelapseSettings& /*settings*/) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::info("[{}] Timelapse plugin verified!", get_name());
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                set_status("Timelapse plugin installed successfully!");
+                if (step_progress_) {
+                    ui_step_progress_set_completed(step_progress_, static_cast<int>(Step::VERIFY));
+                }
+                // Update capability state so UI reflects timelapse availability
+                get_printer_state().set_timelapse_available(true);
+                show_action_button("Done", []() { ui_nav_go_back(); });
+                ui_toast_show(ToastSeverity::SUCCESS, "Timelapse plugin installed!", 3000);
+            });
+        },
+        [this, alive](const MoonrakerError& /*err*/) {
+            if (!alive || !*alive || !wizard_active_)
+                return;
+            spdlog::warn("[{}] Verification failed - plugin not responding", get_name());
+            helix::async::invoke([this, alive]() {
+                if (!alive || !*alive || !wizard_active_)
+                    return;
+                set_status("Plugin not responding after restart.\nIt may need more time to load.");
+                show_action_button("Check Again", [this]() { step_verify(); });
+            });
+        });
+}
+
+// ============================================================================
+// EVENT CALLBACKS
+// ============================================================================
+
+void TimelapseInstallOverlay::on_action_clicked(lv_event_t* /*e*/) {
+    if (!g_timelapse_install)
+        return;
+    if (g_timelapse_install->action_callback_) {
+        g_timelapse_install->action_callback_();
+    }
+}
+
+// ============================================================================
+// PUBLIC OPENER (called from advanced panel)
+// ============================================================================
+
+void open_timelapse_install() {
+    open_timelapse_install_overlay();
+}

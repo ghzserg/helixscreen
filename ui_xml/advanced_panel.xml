@@ -149,6 +149,13 @@
       <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="0"/>
       <event_cb trigger="clicked" callback="on_timelapse_row_clicked"/>
     </setting_action_row>
+    <!-- Timelapse Setup (shown when plugin not installed but webcam available) -->
+    <setting_action_row name="row_timelapse_setup"
+                        label="Setup Timelapse" label_tag="Setup Timelapse" icon="camera_timer" description="Install timelapse plugin" description_tag="Install timelapse plugin">
+      <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="1"/>
+      <bind_flag_if_eq subject="printer_has_webcam" flag="hidden" ref_value="0"/>
+      <event_cb trigger="clicked" callback="on_timelapse_setup_clicked"/>
+    </setting_action_row>
     <!-- ================================================================== -->
     <!-- DIAGNOSTICS SECTION -->
     <!-- ================================================================== -->

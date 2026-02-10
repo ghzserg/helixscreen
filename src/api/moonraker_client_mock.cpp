@@ -522,6 +522,11 @@ void MoonrakerClientMock::discover_printer(
             get_printer_state().set_spoolman_available(mock_spoolman_enabled_);
             spdlog::debug("[MoonrakerClientMock] Spoolman available: {}", mock_spoolman_enabled_);
 
+            // Set webcam availability during discovery (matches real Moonraker behavior)
+            // Real client queries server.webcams.list during discovery
+            get_printer_state().set_webcam_available(true);
+            spdlog::debug("[MoonrakerClientMock] Webcam available: true (mock always has webcam)");
+
             // Log discovered hardware
             spdlog::debug("[MoonrakerClientMock] Discovered: {} heaters, {} sensors, {} fans, {} "
                           "LEDs",

@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Timelapse Install Wizard Overlay -->
+<!-- Step-progress wizard guiding users through moonraker-timelapse installation -->
+<component>
+  <view name="timelapse_install_overlay"
+        extends="overlay_panel" width="#overlay_panel_width_full"
+        title="Setup Timelapse" bg_color="#screen_bg">
+
+    <lv_obj name="overlay_content" width="100%" flex_grow="1"
+            style_pad_all="#space_md" scrollable="true" flex_flow="column"
+            style_pad_row="#space_md">
+
+      <!-- Step progress container (populated programmatically) -->
+      <lv_obj name="step_container" width="100%" height="content"
+              style_pad_all="#space_sm" style_bg_opa="0"/>
+
+      <!-- Status text area -->
+      <lv_obj name="status_container" width="100%" height="content"
+              style_pad_all="#space_md" style_bg_color="#card_bg"
+              style_radius="#border_radius" style_bg_opa="255">
+        <text_body name="status_text" width="100%"
+                   text="Initializing..."
+                   style_text_color="#text_primary"
+                   long_mode="wrap"/>
+      </lv_obj>
+
+      <!-- SSH instructions (hidden by default, shown in Step 3) -->
+      <lv_obj name="ssh_instructions_container" width="100%" height="content"
+              style_pad_all="#space_md" style_bg_color="#card_bg"
+              style_radius="#border_radius" style_bg_opa="255"
+              flags="hidden">
+        <lv_obj width="100%" height="content" flex_flow="column"
+                style_pad_row="#space_sm" style_bg_opa="0">
+          <text_body width="100%"
+                     text="Connect to your printer via SSH and run:"
+                     style_text_color="#text_secondary"
+                     long_mode="wrap"/>
+          <lv_obj width="100%" height="content"
+                  style_bg_color="#overlay_bg" style_radius="#border_radius"
+                  style_pad_all="#space_sm" style_bg_opa="255">
+            <text_small name="ssh_commands" width="100%"
+                        text="cd ~&#10;git clone https://github.com/mainsail-crew/moonraker-timelapse.git&#10;cd moonraker-timelapse&#10;make install"
+                        style_text_color="#text_primary"
+                        long_mode="wrap"/>
+          </lv_obj>
+          <text_small width="100%"
+                      text="After running the commands, tap Check Again below."
+                      style_text_color="#text_muted"
+                      long_mode="wrap"/>
+        </lv_obj>
+      </lv_obj>
+
+      <!-- Action button (hidden by default, shown contextually) -->
+      <ui_button name="action_button" width="100%" text="Check Again"
+                 variant="primary" flags="hidden">
+        <event_cb trigger="clicked" callback="on_timelapse_install_action"/>
+      </ui_button>
+
+    </lv_obj>
+  </view>
+</component>

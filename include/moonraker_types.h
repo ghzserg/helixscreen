@@ -177,6 +177,20 @@ struct FileMetadata {
 };
 
 // ============================================================================
+// Webcam Types
+// ============================================================================
+
+/// Webcam information from Moonraker
+struct WebcamInfo {
+    std::string name;         ///< Webcam name/identifier
+    std::string service;      ///< Service type (e.g., "mjpegstreamer")
+    std::string snapshot_url; ///< URL for snapshot image
+    std::string stream_url;   ///< URL for MJPEG stream
+    std::string uid;          ///< Unique identifier
+    bool enabled = true;      ///< Whether the webcam is enabled
+};
+
+// ============================================================================
 // Timelapse Types
 // ============================================================================
 

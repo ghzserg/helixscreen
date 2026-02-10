@@ -569,6 +569,19 @@ void MoonrakerAPI::restart_klipper(SuccessCallback on_success, ErrorCallback on_
         on_error);
 }
 
+void MoonrakerAPI::restart_moonraker(SuccessCallback on_success, ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Restarting Moonraker");
+
+    client_.send_jsonrpc(
+        "server.restart", json::object(),
+        [on_success](json) {
+            spdlog::info("[Moonraker API] Moonraker restart initiated");
+            if (on_success)
+                on_success();
+        },
+        on_error);
+}
+
 // ============================================================================
 // Query Operations
 // ============================================================================

@@ -542,6 +542,16 @@ void PrinterState::set_spoolman_available(bool available) {
     capabilities_state_.set_spoolman_available(available);
 }
 
+void PrinterState::set_webcam_available(bool available) {
+    // Delegate to capabilities_state_ component (handles thread-safety)
+    capabilities_state_.set_webcam_available(available);
+}
+
+void PrinterState::set_timelapse_available(bool available) {
+    // Delegate to capabilities_state_ component (handles thread-safety)
+    capabilities_state_.set_timelapse_available(available);
+}
+
 void PrinterState::set_helix_plugin_installed(bool installed) {
     // Thread-safe: Use helix::async::invoke to update LVGL subject from any thread
     // We handle the async dispatch here because we need to update composite subjects after

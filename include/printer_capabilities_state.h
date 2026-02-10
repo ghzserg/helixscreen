@@ -14,7 +14,7 @@ namespace helix {
  *
  * Tracks hardware capabilities (probe, heater bed, LED, accelerometer, etc.)
  * and feature availability (spoolman, timelapse, firmware retraction, etc.)
- * Provides 15 subjects for reactive UI updates based on printer capabilities.
+ * Provides 17 subjects for reactive UI updates based on printer capabilities.
  * Extracted from PrinterState as part of god class decomposition.
  *
  * @note Capability values are set from hardware discovery on connect, with
@@ -81,6 +81,24 @@ class PrinterCapabilitiesState {
     void set_purge_line(bool has_purge_line);
 
     /**
+     * @brief Set webcam availability (async update from Moonraker query)
+     *
+     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     *
+     * @param available True if at least one enabled webcam is configured
+     */
+    void set_webcam_available(bool available);
+
+    /**
+     * @brief Set timelapse plugin availability (async update)
+     *
+     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     *
+     * @param available True if moonraker-timelapse plugin is installed and responding
+     */
+    void set_timelapse_available(bool available);
+
+    /**
      * @brief Set bed moves on Z axis (from kinematics detection)
      *
      * @param bed_moves True if bed moves on Z (corexy), false if gantry moves (cartesian/delta)
@@ -110,7 +128,7 @@ class PrinterCapabilitiesState {
     }
 
     // ========================================================================
-    // Subject accessors (15 subjects)
+    // Subject accessors (17 subjects)
     // ========================================================================
 
     /// 1 if printer has quad_gantry_level
@@ -193,6 +211,11 @@ class PrinterCapabilitiesState {
         return const_cast<lv_subject_t*>(&printer_has_screws_tilt_);
     }
 
+    /// 1 if printer has an enabled webcam configured
+    lv_subject_t* get_printer_has_webcam_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_webcam_);
+    }
+
     // ========================================================================
     // Convenience methods
     // ========================================================================
@@ -230,6 +253,7 @@ class PrinterCapabilitiesState {
     lv_subject_t printer_bed_moves_{};               // 0=gantry moves on Z, 1=bed moves on Z
     lv_subject_t printer_has_chamber_sensor_{};      // chamber temperature sensor
     lv_subject_t printer_has_screws_tilt_{};         // screws_tilt_adjust
+    lv_subject_t printer_has_webcam_{};              // enabled webcam configured
 };
 
 } // namespace helix

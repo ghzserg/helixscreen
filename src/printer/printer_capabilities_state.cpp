@@ -43,6 +43,7 @@ void PrinterCapabilitiesState::init_subjects(bool register_xml) {
     INIT_SUBJECT_INT(printer_bed_moves, 0, subjects_, register_xml); // 0=gantry moves, 1=bed moves
     INIT_SUBJECT_INT(printer_has_chamber_sensor, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(printer_has_screws_tilt, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(printer_has_webcam, 0, subjects_, register_xml);
 
     subjects_initialized_ = true;
     spdlog::trace("[PrinterCapabilitiesState] Subjects initialized successfully");
@@ -122,6 +123,22 @@ void PrinterCapabilitiesState::set_spoolman_available(bool available) {
     helix::async::invoke([this, available]() {
         lv_subject_set_int(&printer_has_spoolman_, available ? 1 : 0);
         spdlog::debug("[PrinterCapabilitiesState] Spoolman availability set: {}", available);
+    });
+}
+
+void PrinterCapabilitiesState::set_webcam_available(bool available) {
+    // Thread-safe: Use helix::async::invoke to update LVGL subject from any thread
+    helix::async::invoke([this, available]() {
+        lv_subject_set_int(&printer_has_webcam_, available ? 1 : 0);
+        spdlog::debug("[PrinterCapabilitiesState] Webcam availability set: {}", available);
+    });
+}
+
+void PrinterCapabilitiesState::set_timelapse_available(bool available) {
+    // Thread-safe: Use helix::async::invoke to update LVGL subject from any thread
+    helix::async::invoke([this, available]() {
+        lv_subject_set_int(&printer_has_timelapse_, available ? 1 : 0);
+        spdlog::debug("[PrinterCapabilitiesState] Timelapse availability set: {}", available);
     });
 }
 

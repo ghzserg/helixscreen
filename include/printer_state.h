@@ -1063,6 +1063,30 @@ class PrinterState {
     void set_spoolman_available(bool available);
 
     /**
+     * @brief Set webcam availability status
+     *
+     * Called after checking Moonraker's server.webcams.list API.
+     * Updates printer_has_webcam subject for UI visibility gating.
+     *
+     * Thread-safe: Can be called from any thread, defers LVGL update to main thread.
+     *
+     * @param available True if at least one enabled webcam is configured
+     */
+    void set_webcam_available(bool available);
+
+    /**
+     * @brief Set timelapse plugin availability status
+     *
+     * Called after verifying the moonraker-timelapse plugin is installed.
+     * Updates printer_has_timelapse subject for UI visibility gating.
+     *
+     * Thread-safe: Can be called from any thread, defers LVGL update to main thread.
+     *
+     * @param available True if moonraker-timelapse plugin is installed and responding
+     */
+    void set_timelapse_available(bool available);
+
+    /**
      * @brief Set HelixPrint plugin installation status
      *
      * Called after checking Moonraker for the helix_print plugin.

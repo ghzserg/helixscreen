@@ -5,6 +5,7 @@
 
 #include "ui_nav.h"
 #include "ui_nav_manager.h"
+#include "ui_overlay_timelapse_install.h"
 #include "ui_overlay_timelapse_settings.h"
 #include "ui_panel_calibration_pid.h"
 #include "ui_panel_console.h"
@@ -70,6 +71,7 @@ void AdvancedPanel::init_subjects() {
                              on_helix_plugin_uninstall_clicked);
     lv_xml_register_event_cb(nullptr, "on_phase_tracking_changed", on_phase_tracking_changed);
     lv_xml_register_event_cb(nullptr, "on_pid_tuning_clicked", on_pid_tuning_clicked);
+    lv_xml_register_event_cb(nullptr, "on_timelapse_setup_clicked", on_timelapse_setup_clicked);
 
     // Note: Input shaping uses on_input_shaper_row_clicked registered by InputShaperPanel
     // Note: Restart row doesn't exist - restart buttons have their own callbacks in
@@ -220,6 +222,19 @@ void AdvancedPanel::on_phase_tracking_changed(lv_event_t* e) {
 
 void AdvancedPanel::on_pid_tuning_clicked(lv_event_t* /*e*/) {
     get_global_advanced_panel().handle_pid_tuning_clicked();
+}
+
+void AdvancedPanel::on_timelapse_setup_clicked(lv_event_t* /*e*/) {
+    get_global_advanced_panel().handle_timelapse_setup_clicked();
+}
+
+// ============================================================================
+// TIMELAPSE SETUP HANDLER
+// ============================================================================
+
+void AdvancedPanel::handle_timelapse_setup_clicked() {
+    spdlog::info("[{}] Timelapse setup clicked", get_name());
+    open_timelapse_install();
 }
 
 // ============================================================================

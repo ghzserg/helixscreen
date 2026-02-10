@@ -12,6 +12,7 @@
 #include "ui_notification.h"
 #include "ui_notification_manager.h"
 #include "ui_overlay_retraction_settings.h"
+#include "ui_overlay_timelapse_install.h"
 #include "ui_overlay_timelapse_settings.h"
 #include "ui_panel_advanced.h"
 #include "ui_panel_bed_mesh.h"
@@ -212,6 +213,9 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     // Settings overlays
     init_global_timelapse_settings(api);
     get_global_timelapse_settings().init_subjects();
+
+    init_global_timelapse_install(api);
+    get_global_timelapse_install().init_subjects();
 
     init_global_retraction_settings(api ? get_moonraker_client() : nullptr);
     get_global_retraction_settings().init_subjects();

@@ -101,6 +101,7 @@ class AdvancedPanel : public PanelBase {
     void handle_history_clicked();
     void handle_configure_print_start_clicked();
     void handle_pid_tuning_clicked();
+    void handle_timelapse_setup_clicked();
     void handle_helix_plugin_install_clicked();
     void handle_helix_plugin_uninstall_clicked();
     void handle_phase_tracking_changed(bool enabled);
@@ -115,6 +116,7 @@ class AdvancedPanel : public PanelBase {
     static void on_history_clicked(lv_event_t* e);
     static void on_configure_print_start_clicked(lv_event_t* e);
     static void on_pid_tuning_clicked(lv_event_t* e);
+    static void on_timelapse_setup_clicked(lv_event_t* e);
     static void on_helix_plugin_install_clicked(lv_event_t* e);
     static void on_helix_plugin_uninstall_clicked(lv_event_t* e);
     static void on_phase_tracking_changed(lv_event_t* e);

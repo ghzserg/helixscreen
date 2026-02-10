@@ -461,3 +461,35 @@ void MoonrakerAPI::set_timelapse_enabled(bool enabled, SuccessCallback on_succes
         }
     });
 }
+
+// ============================================================================
+// Webcam Operations
+// ============================================================================
+
+void MoonrakerAPI::get_webcam_list(WebcamListCallback on_success, ErrorCallback on_error) {
+    spdlog::debug("[Moonraker API] get_webcam_list()");
+
+    client_.send_jsonrpc(
+        "server.webcams.list", json::object(),
+        [on_success](json response) {
+            std::vector<WebcamInfo> webcams;
+            if (response.contains("result") && response["result"].contains("webcams")) {
+                for (const auto& cam : response["result"]["webcams"]) {
+                    WebcamInfo info;
+                    info.name = cam.value("name", "");
+                    info.service = cam.value("service", "");
+                    info.snapshot_url = cam.value("snapshot_url", "");
+                    info.stream_url = cam.value("stream_url", "");
+                    info.uid = cam.value("uid", "");
+                    info.enabled = cam.value("enabled", true);
+                    if (info.enabled) {
+                        webcams.push_back(std::move(info));
+                    }
+                }
+            }
+            spdlog::debug("[Moonraker API] Found {} enabled webcam(s)", webcams.size());
+            if (on_success)
+                on_success(webcams);
+        },
+        on_error);
+}

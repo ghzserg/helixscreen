@@ -1180,6 +1180,28 @@ void MoonrakerClient::continue_discovery(std::function<void()> on_complete,
                     }
                 }
 
+                // Fire-and-forget webcam detection - independent of components list
+                send_jsonrpc(
+                    "server.webcams.list", json::object(),
+                    [](json response) {
+                        bool has_webcam = false;
+                        if (response.contains("result") && response["result"].contains("webcams")) {
+                            for (const auto& cam : response["result"]["webcams"]) {
+                                if (cam.value("enabled", true)) {
+                                    has_webcam = true;
+                                    break;
+                                }
+                            }
+                        }
+                        spdlog::info("[Moonraker Client] Webcam detection: {}",
+                                     has_webcam ? "found" : "none");
+                        get_printer_state().set_webcam_available(has_webcam);
+                    },
+                    [](const MoonrakerError& err) {
+                        spdlog::warn("[Moonraker Client] Webcam detection failed: {}", err.message);
+                        get_printer_state().set_webcam_available(false);
+                    });
+
                 // Step 3: Get printer information
                 send_jsonrpc("printer.info", {}, [this, on_complete](json printer_response) {
                     if (printer_response.contains("result")) {
