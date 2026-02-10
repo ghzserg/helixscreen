@@ -475,6 +475,16 @@ class PrinterState {
     }
 
     /**
+     * @brief Set current layer number (gcode response fallback)
+     *
+     * Thread-safe. Called from gcode response parser when
+     * print_stats.info.current_layer doesn't fire.
+     */
+    void set_print_layer_current(int layer) {
+        print_domain_.set_print_layer_current(layer);
+    }
+
+    /**
      * @brief Set slicer's estimated total print time (from file metadata)
      *
      * Used as fallback for remaining time when print_duration is still 0.

@@ -222,16 +222,23 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status) {
         // Note: Moonraker can send null values for layer fields when not available
         if (stats.contains("info") && stats["info"].is_object()) {
             const auto& info = stats["info"];
+            spdlog::debug("[LayerTracker] print_stats.info received: {}", info.dump());
 
             if (info.contains("current_layer") && info["current_layer"].is_number()) {
                 int current_layer = info["current_layer"].get<int>();
+                spdlog::debug("[LayerTracker] current_layer={} (from print_stats.info)",
+                              current_layer);
                 lv_subject_set_int(&print_layer_current_, current_layer);
             }
 
             if (info.contains("total_layer") && info["total_layer"].is_number()) {
                 int total_layer = info["total_layer"].get<int>();
+                spdlog::debug("[LayerTracker] total_layer={} (from print_stats.info)", total_layer);
                 lv_subject_set_int(&print_layer_total_, total_layer);
             }
+        } else if (stats.contains("info")) {
+            spdlog::debug("[LayerTracker] print_stats.info is null/missing - slicer may not emit "
+                          "SET_PRINT_STATS_INFO");
         }
 
         // Update print time tracking (elapsed and remaining)
@@ -342,6 +349,11 @@ void PrinterPrintState::set_print_display_filename(const std::string& name) {
 
 void PrinterPrintState::set_print_layer_total(int total) {
     lv_subject_set_int(&print_layer_total_, total);
+}
+
+void PrinterPrintState::set_print_layer_current(int layer) {
+    spdlog::debug("[LayerTracker] set_print_layer_current({}) via gcode fallback", layer);
+    helix::async::invoke([this, layer]() { lv_subject_set_int(&print_layer_current_, layer); });
 }
 
 void PrinterPrintState::set_print_start_state(PrintStartPhase phase, const char* message,

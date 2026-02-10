@@ -202,6 +202,16 @@ class PrinterPrintState {
     void set_print_layer_total(int total);
 
     /**
+     * @brief Set current layer number (gcode response fallback)
+     *
+     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     * Called from gcode response parser when print_stats.info doesn't fire.
+     *
+     * @param layer Current layer number
+     */
+    void set_print_layer_current(int layer);
+
+    /**
      * @brief Set print start phase and update message/progress
      *
      * Thread-safe: Uses helix::async::invoke() for main-thread execution.
