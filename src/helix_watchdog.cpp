@@ -177,6 +177,7 @@ static int read_config_brightness(int default_value = 100) {
 struct WatchdogArgs {
     int width = 0; // 0 = auto-detect from display hardware
     int height = 0;
+    int rotation = 0;          // Display rotation in degrees (0, 90, 180, 270)
     std::string splash_binary; // Optional: --splash-bin=<path>
     std::string child_binary;
     std::vector<std::string> child_args;
@@ -188,6 +189,8 @@ static void print_usage(const char* program) {
             program);
     fprintf(stderr, "  -w <width>          Screen width (default: %d)\n", DEFAULT_WIDTH);
     fprintf(stderr, "  -h <height>         Screen height (default: %d)\n", DEFAULT_HEIGHT);
+    fprintf(stderr,
+            "  -r <degrees>        Display rotation: 0, 90, 180, 270 (default: from config)\n");
     fprintf(stderr, "  --splash-bin=<path> Path to splash screen binary (optional)\n");
     fprintf(stderr, "  --                  Separator before child binary and args\n");
 }
@@ -208,6 +211,8 @@ static bool parse_args(int argc, char** argv, WatchdogArgs& args) {
             args.width = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-h") == 0 && i + 1 < argc) {
             args.height = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-r") == 0 && i + 1 < argc) {
+            args.rotation = atoi(argv[++i]);
         } else if (strncmp(argv[i], "--splash-bin=", 13) == 0) {
             args.splash_binary = argv[i] + 13;
         } else if (strcmp(argv[i], "--help") == 0) {
@@ -256,8 +261,13 @@ static pid_t start_splash_process(const WatchdogArgs& args) {
     }
 
     if (pid == 0) {
-        // Child process: exec splash (splash auto-detects resolution)
-        execl(args.splash_binary.c_str(), "helix-splash", nullptr);
+        // Child process: exec splash with rotation if configured
+        if (args.rotation != 0) {
+            std::string rot_str = std::to_string(args.rotation);
+            execl(args.splash_binary.c_str(), "helix-splash", "-r", rot_str.c_str(), nullptr);
+        } else {
+            execl(args.splash_binary.c_str(), "helix-splash", nullptr);
+        }
 
         // If exec fails
         fprintf(stderr, "[Watchdog] Failed to exec splash: %s\n", strerror(errno));
@@ -317,6 +327,11 @@ static CrashInfo run_child_process(const WatchdogArgs& args, pid_t splash_pid) {
     // Add splash PID argument if splash is running
     if (splash_pid > 0) {
         arg_strings.push_back("--splash-pid=" + std::to_string(splash_pid));
+    }
+
+    // Pass rotation to child if configured
+    if (args.rotation != 0) {
+        arg_strings.push_back("--rotate=" + std::to_string(args.rotation));
     }
 
     // Add remaining child args, but skip any --splash-pid from the original
@@ -599,7 +614,7 @@ static void create_crash_dialog(lv_obj_t* screen, int /*width*/, int /*height*/,
  * @brief Show crash dialog and wait for user choice
  * @return User's choice
  */
-static DialogChoice show_crash_dialog(int width, int height, const CrashInfo& crash) {
+static DialogChoice show_crash_dialog(int width, int height, int rotation, const CrashInfo& crash) {
     int auto_restart_sec = read_auto_restart_timeout();
 
     spdlog::info("[Watchdog] Showing crash dialog (auto_restart={}s)", auto_restart_sec);
@@ -621,6 +636,12 @@ static DialogChoice show_crash_dialog(int width, int height, const CrashInfo& cr
     if (!display) {
         spdlog::error("[Watchdog] Failed to create display");
         return DialogChoice::RESTART_APP;
+    }
+
+    // Apply rotation to crash dialog display
+    if (rotation != 0) {
+        lv_display_set_rotation(display, degrees_to_lv_rotation(rotation));
+        spdlog::info("[Watchdog] Crash dialog rotated {}°", rotation);
     }
 
     // Turn on backlight
@@ -725,7 +746,7 @@ static int run_watchdog(const WatchdogArgs& args) {
         // Crash detected - show recovery dialog (no splash during dialog)
         spdlog::warn("[Watchdog] Crash detected, showing recovery dialog");
 
-        DialogChoice choice = show_crash_dialog(args.width, args.height, crash);
+        DialogChoice choice = show_crash_dialog(args.width, args.height, args.rotation, crash);
 
         if (choice == DialogChoice::RESTART_SYSTEM) {
             perform_system_restart();
@@ -780,6 +801,14 @@ int main(int argc, char** argv) {
             args.height = DEFAULT_HEIGHT;
             spdlog::info("[Watchdog] Using default resolution: {}x{}", args.width, args.height);
         }
+    }
+
+    // Read display rotation from config if not set via CLI
+    if (args.rotation == 0) {
+        args.rotation = read_config_rotation(0);
+    }
+    if (args.rotation != 0) {
+        spdlog::info("[Watchdog] Display rotation: {}°", args.rotation);
     }
 
     // Run the watchdog

@@ -51,6 +51,7 @@ class DisplayManager {
     struct Config {
         int width = 0;               ///< Display width in pixels (0 = auto-detect)
         int height = 0;              ///< Display height in pixels (0 = auto-detect)
+        int rotation = 0;            ///< Display rotation in degrees (0, 90, 180, 270)
         int scroll_throw = 25;       ///< Scroll momentum decay (1-99, higher = faster decay)
         int scroll_limit = 10;       ///< Pixels before scrolling starts
         bool require_pointer = true; ///< Fail init if no pointer device (embedded only)

@@ -130,6 +130,7 @@ static void print_help(const char* program_name) {
     printf("  --release-notes      Fetch latest release notes and show in update modal\n");
     printf("  --debug-subjects     Enable verbose subject debugging with stack traces\n");
     printf("  --moonraker <url>    Override Moonraker URL (e.g., ws://192.168.1.112:7125)\n");
+    printf("  --rotate <degrees>   Display rotation: 0, 90, 180, 270\n");
     printf("  -h, --help           Show this help message\n");
     printf("  -V, --version        Show version information\n");
     printf("\nTest Mode Options:\n");
@@ -503,6 +504,12 @@ bool parse_cli_args(int argc, char** argv, CliArgs& args, int& screen_width, int
             config.splash_pid = static_cast<pid_t>(atoi(argv[i] + 13));
             config.skip_splash = true; // External splash already running, don't show internal one
             spdlog::info("[CLI] Splash PID received from launcher: {}", config.splash_pid);
+        } else if (strncmp(argv[i], "--rotate=", 9) == 0) {
+            args.rotation = atoi(argv[i] + 9);
+            spdlog::info("[CLI] Display rotation: {}°", args.rotation);
+        } else if (strcmp(argv[i], "--rotate") == 0 && i + 1 < argc) {
+            args.rotation = atoi(argv[++i]);
+            spdlog::info("[CLI] Display rotation: {}°", args.rotation);
         } else if (strcmp(argv[i], "--real-wifi") == 0) {
             config.use_real_wifi = true;
         } else if (strcmp(argv[i], "--real-ethernet") == 0) {

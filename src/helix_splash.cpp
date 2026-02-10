@@ -162,16 +162,19 @@ static int get_splash_3d_target_height(const char* size_name) {
 /**
  * @brief Parse command line arguments
  */
-static void parse_args(int argc, char** argv, int& width, int& height) {
+static void parse_args(int argc, char** argv, int& width, int& height, int& rotation) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-w") == 0 && i + 1 < argc) {
             width = atoi(argv[++i]);
         } else if (strcmp(argv[i], "-h") == 0 && i + 1 < argc) {
             height = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-r") == 0 && i + 1 < argc) {
+            rotation = atoi(argv[++i]);
         } else if (strcmp(argv[i], "--help") == 0) {
-            printf("Usage: helix-splash [-w width] [-h height]\n");
-            printf("  -w <width>   Screen width (default: %d)\n", DEFAULT_WIDTH);
-            printf("  -h <height>  Screen height (default: %d)\n", DEFAULT_HEIGHT);
+            printf("Usage: helix-splash [-w width] [-h height] [-r rotation]\n");
+            printf("  -w <width>    Screen width (default: %d)\n", DEFAULT_WIDTH);
+            printf("  -h <height>   Screen height (default: %d)\n", DEFAULT_HEIGHT);
+            printf("  -r <degrees>  Display rotation: 0, 90, 180, 270 (default: from config)\n");
             exit(0);
         }
     }
@@ -367,7 +370,8 @@ int main(int argc, char** argv) {
     // Parse command line arguments (CLI overrides auto-detection)
     int width = 0;
     int height = 0;
-    parse_args(argc, argv, width, height);
+    int rotation = 0;
+    parse_args(argc, argv, width, height, rotation);
 
     // Initialize LVGL
     lv_init();
@@ -413,6 +417,19 @@ int main(int argc, char** argv) {
     if (!display) {
         fprintf(stderr, "helix-splash: Failed to create display\n");
         return 1;
+    }
+
+    // Apply display rotation if configured (CLI arg from watchdog, or config fallback)
+    if (rotation == 0) {
+        rotation = read_config_rotation(0);
+    }
+    if (rotation != 0) {
+        lv_display_set_rotation(display, degrees_to_lv_rotation(rotation));
+        // Update dimensions to match rotated resolution for splash layout
+        width = lv_display_get_horizontal_resolution(display);
+        height = lv_display_get_vertical_resolution(display);
+        fprintf(stderr, "helix-splash: Display rotated %d° — effective resolution: %dx%d\n",
+                rotation, width, height);
     }
 
     // Read dark mode preference from config (before framebuffer clear so we use the right color)

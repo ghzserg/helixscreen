@@ -112,6 +112,9 @@ struct CliArgs {
     bool memory_report = false; // --memory-report: log memory every 30s
     bool show_memory = false;   // --show-memory: display memory overlay (M key toggle)
 
+    // Display rotation (passed by watchdog, or CLI override)
+    int rotation = 0; // 0, 90, 180, 270 degrees
+
     // Moonraker override (for testing/development)
     std::string moonraker_url; // --moonraker: override config URL (e.g., ws://192.168.1.112:7125)
 

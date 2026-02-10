@@ -147,6 +147,49 @@ bool DisplayManager::init(const Config& config) {
         spdlog::info("[DisplayManager] Display unblanked via framebuffer ioctl");
     }
 
+    // Apply display rotation if configured.
+    // Must happen AFTER display creation but BEFORE UI init so layout uses
+    // the rotated resolution. LVGL auto-swaps width/height when rotation is set.
+    {
+        // CLI/config rotation (passed via Config struct)
+        int rotation_degrees = config.rotation;
+
+        // Environment variable override (highest priority)
+        const char* env_rotate = std::getenv("HELIX_DISPLAY_ROTATION");
+        if (env_rotate) {
+            rotation_degrees = std::atoi(env_rotate);
+            spdlog::info("[DisplayManager] HELIX_DISPLAY_ROTATION={} override", rotation_degrees);
+        }
+
+        // Fall back to config file if not set via Config struct or env
+        if (rotation_degrees == 0) {
+            rotation_degrees = ::Config::get_instance()->get<int>("/display/rotate", 0);
+        }
+
+        if (rotation_degrees != 0) {
+#ifdef HELIX_DISPLAY_SDL
+            // LVGL's SDL driver only supports software rotation in PARTIAL render mode,
+            // but we use DIRECT mode for performance. Skip rotation on SDL — it's only
+            // for desktop dev. On embedded (fbdev/DRM) rotation works correctly.
+            spdlog::warn("[DisplayManager] Rotation {}° requested but SDL backend does not "
+                         "support software rotation (DIRECT render mode). Ignoring on desktop.",
+                         rotation_degrees);
+#else
+            lv_display_rotation_t lv_rot = degrees_to_lv_rotation(rotation_degrees);
+            lv_display_set_rotation(m_display, lv_rot);
+
+            // Update tracked dimensions to match rotated resolution
+            m_width = lv_display_get_horizontal_resolution(m_display);
+            m_height = lv_display_get_vertical_resolution(m_display);
+
+            spdlog::info("[DisplayManager] Display rotated {}° — effective resolution: {}x{}",
+                         rotation_degrees, m_width, m_height);
+            spdlog::info("[DisplayManager] Touch may need recalibration after rotation "
+                         "(use HELIX_TOUCH_SWAP_AXES=1 or touch calibration wizard)");
+#endif
+        }
+    }
+
     // Initialize UI update queue for thread-safe async updates
     // Must be done AFTER display is created - registers LV_EVENT_REFR_START handler
     ui_update_queue_init();

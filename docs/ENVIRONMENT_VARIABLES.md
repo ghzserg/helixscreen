@@ -6,7 +6,7 @@ This document provides a comprehensive reference for all environment variables u
 
 | Category | Count | Prefix |
 |----------|-------|--------|
-| [Display & Backend](#display--backend-configuration) | 8 | `HELIX_` |
+| [Display & Backend](#display--backend-configuration) | 9 | `HELIX_` |
 | [Touch Calibration](#touch-calibration) | 5 | `HELIX_TOUCH_*` |
 | [G-Code Viewer](#g-code-viewer) | 3 | `HELIX_` |
 | [Bed Mesh](#bed-mesh) | 1 | `HELIX_` |
@@ -108,6 +108,32 @@ HELIX_BACKLIGHT_DEVICE=none ./build/bin/helix-screen
 # Use specific backlight device
 HELIX_BACKLIGHT_DEVICE=/sys/class/backlight/backlight-lvds ./build/bin/helix-screen
 ```
+
+### `HELIX_DISPLAY_ROTATION`
+
+Override the display rotation angle. Takes highest priority over config file (`/display/rotate`) and CLI flags (`--rotate`).
+
+| Property | Value |
+|----------|-------|
+| **Values** | `0`, `90`, `180`, `270` (degrees) |
+| **Default** | `0` (no rotation) |
+| **Files** | `src/application/display_manager.cpp` |
+
+```bash
+# Rotate display 90° (e.g., portrait display mounted landscape)
+HELIX_DISPLAY_ROTATION=90 ./build/bin/helix-screen
+
+# Rotate 180° (upside-down mount)
+HELIX_DISPLAY_ROTATION=180 ./build/bin/helix-screen
+```
+
+**Priority order:**
+1. `HELIX_DISPLAY_ROTATION` environment variable (highest)
+2. `--rotate <degrees>` CLI flag
+3. `/display/rotate` in `helixconfig.json`
+4. Default: `0` (no rotation)
+
+**Note:** Software rotation is only supported on embedded backends (fbdev/DRM). On SDL (desktop dev), rotation is logged as a warning and skipped due to LVGL's DIRECT render mode limitation. Touch input may need recalibration after rotation — use `HELIX_TOUCH_SWAP_AXES=1` or the touch calibration wizard.
 
 ### `HELIX_SDL_DISPLAY`
 

@@ -13,8 +13,10 @@
 
 #pragma once
 
+#include <fstream>
 #include <lvgl.h>
 #include <memory>
+#include <regex>
 #include <string>
 
 /**
@@ -55,6 +57,67 @@ inline const char* display_backend_type_to_string(DisplayBackendType type) {
     default:
         return "Unknown";
     }
+}
+
+/**
+ * @brief Convert rotation degrees to LVGL rotation enum
+ *
+ * Maps user-facing degree values (0, 90, 180, 270) to LVGL's
+ * LV_DISPLAY_ROTATION_* constants. Invalid values default to 0.
+ *
+ * @param degrees Rotation in degrees (0, 90, 180, 270)
+ * @return LVGL rotation enum value
+ */
+inline lv_display_rotation_t degrees_to_lv_rotation(int degrees) {
+    switch (degrees) {
+    case 90:
+        return LV_DISPLAY_ROTATION_90;
+    case 180:
+        return LV_DISPLAY_ROTATION_180;
+    case 270:
+        return LV_DISPLAY_ROTATION_270;
+    default:
+        return LV_DISPLAY_ROTATION_0;
+    }
+}
+
+/**
+ * @brief Read display rotation from helixconfig.json
+ *
+ * Searches standard config paths for the /display/rotate field.
+ * Used by watchdog and splash binaries which don't use the full Config system.
+ *
+ * @param default_value Fallback rotation in degrees (default: 0)
+ * @return Rotation in degrees (0, 90, 180, 270)
+ */
+inline int read_config_rotation(int default_value = 0) {
+    const char* paths[] = {"config/helixconfig.json", "helixconfig.json",
+                           "/opt/helixscreen/helixconfig.json"};
+
+    for (const char* path : paths) {
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            continue;
+        }
+
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+
+        // Look for "rotate" inside "display" section
+        // Simple regex approach matching existing pattern (read_config_brightness)
+        std::regex rotate_regex(R"("rotate"\s*:\s*(\d+))");
+        std::smatch match;
+        if (std::regex_search(content, match, rotate_regex) && match.size() > 1) {
+            int rotation = std::stoi(match[1].str());
+            // Validate: only 0, 90, 180, 270 are valid
+            if (rotation == 90 || rotation == 180 || rotation == 270) {
+                return rotation;
+            }
+            return 0; // Invalid value → no rotation
+        }
+    }
+
+    return default_value;
 }
 
 /**
