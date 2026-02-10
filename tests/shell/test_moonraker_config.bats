@@ -341,9 +341,9 @@ MOONEOF
     chmod +x "$init_script"
 
     # The function checks /etc/init.d/S56moonraker_service which is a fixed path.
-    # On macOS we can't create /etc/init.d, so skip.
-    if [ ! -w "/etc/init.d" ] 2>/dev/null && [ "$(uname)" = "Darwin" ]; then
-        skip "Cannot create /etc/init.d on macOS (hardcoded path in moonraker.sh)"
+    # We can only test this if we can write to /etc/init.d.
+    if [ ! -d "/etc/init.d" ] || [ ! -w "/etc/init.d" ]; then
+        skip "Cannot create /etc/init.d/S56moonraker_service (hardcoded path, need writable /etc/init.d)"
     fi
 
     restart_moonraker

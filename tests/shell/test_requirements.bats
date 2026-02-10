@@ -275,6 +275,12 @@ echo "/dev/sda1          1000   800       200  80% /"
     if [ ! -d /etc/init.d ]; then
         skip "/etc/init.d not present on this system"
     fi
+    # detect_init_system checks 'command -v systemctl' (which finds the mock)
+    # AND '[ -d /run/systemd/system ]'. If the latter exists, it picks systemd
+    # regardless of mock. Skip on systems with real systemd runtime dir.
+    if [ -d /run/systemd/system ]; then
+        skip "Cannot hide /run/systemd/system on this system (systemd runner)"
+    fi
 
     detect_init_system
     [ "$INIT_SYSTEM" = "sysv" ]
