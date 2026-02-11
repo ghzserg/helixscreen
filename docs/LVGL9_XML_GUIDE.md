@@ -385,19 +385,27 @@ Best for 1D layouts (single row/column or wrapping).
 <lv_obj flex_flow="column_wrap"/>   <!-- Wrap to new columns -->
 ```
 
-#### Flex Alignment (Three Properties!)
+#### Flex Alignment (Three Properties — You Need ALL THREE to Center!)
 
 | Property | Controls | CSS Equivalent |
 |----------|----------|----------------|
-| `style_flex_main_place` | Main axis distribution | `justify-content` |
-| `style_flex_cross_place` | Cross axis alignment | `align-items` |
-| `style_flex_track_place` | Multi-track distribution | `align-content` |
+| `style_flex_main_place` | Main axis distribution (vertical in column) | `justify-content` |
+| `style_flex_cross_place` | Cross axis alignment (horizontal in column) | `align-items` |
+| `style_flex_track_place` | Track alignment — **required to center items with explicit widths** | `align-content` |
 
-**CRITICAL:** `flex_align` does NOT exist in LVGL 9 XML!
+**GOTCHA:** Unlike CSS, LVGL needs `style_flex_track_place="center"` even without flex wrap.
+Without it, children with explicit widths (e.g., `width="80%"`) will be left-aligned even if
+`style_flex_cross_place="center"` is set. Always use all three for centering:
 
 ```xml
-<!-- ✅ CORRECT -->
-<lv_obj flex_flow="row"
+<!-- ✅ CORRECT — fully centered column layout -->
+<lv_obj flex_flow="column"
+        style_flex_main_place="center"
+        style_flex_cross_place="center"
+        style_flex_track_place="center">
+
+<!-- ❌ WRONG — children with explicit widths won't center horizontally -->
+<lv_obj flex_flow="column"
         style_flex_main_place="center"
         style_flex_cross_place="center">
 

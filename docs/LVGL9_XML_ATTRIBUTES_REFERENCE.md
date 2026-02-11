@@ -112,8 +112,8 @@ All widgets inherit these.
 | Attr | Notes |
 |------|-------|
 | `style_flex_main_place` | Main axis: `start`, `end`, `center`, `space_between`, `space_around`, `space_evenly` |
-| `style_flex_cross_place` | Cross axis |
-| `style_flex_track_place` | Wrap mode |
+| `style_flex_cross_place` | Cross axis alignment |
+| `style_flex_track_place` | Track alignment — **needed to center items with explicit widths** (not just wrap!) |
 
 ### Transforms
 
