@@ -28,8 +28,7 @@
  * - purge_line: From printer type database (set_printer_type), NOT hardware discovery
  */
 
-#include "ui_update_queue.h"
-
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_discovery.h"
@@ -79,7 +78,7 @@ TEST_CASE("Composite visibility characterization: derivation logic",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("plugin NOT installed: hardware-based can_show_* remain 0 regardless of capabilities") {
@@ -89,11 +88,11 @@ TEST_CASE("Composite visibility characterization: derivation logic",
         // Do NOT install plugin (it defaults to unknown/-1)
         // Explicitly mark as not installed
         state.set_helix_plugin_installed(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Set hardware - this triggers update_gcode_modification_visibility()
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // All should be 0 because plugin is not installed
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
@@ -107,12 +106,12 @@ TEST_CASE("Composite visibility characterization: derivation logic",
     SECTION("plugin installed but NO capabilities: all can_show_* remain 0") {
         // Install plugin first
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Set hardware with NO capabilities
         auto hardware = create_hardware_with_capabilities(false, false, false, false);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // All should be 0 because no capabilities
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
@@ -125,12 +124,12 @@ TEST_CASE("Composite visibility characterization: derivation logic",
     SECTION("plugin installed + bed_mesh capability: can_show_bed_mesh = 1") {
         // Install plugin first
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Set hardware with only bed_mesh
         auto hardware = create_hardware_with_capabilities(true, false, false, false);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 1);
         REQUIRE(lv_subject_get_int(state.get_can_show_qgl_subject()) == 0);
@@ -141,11 +140,11 @@ TEST_CASE("Composite visibility characterization: derivation logic",
 
     SECTION("plugin installed + qgl capability: can_show_qgl = 1") {
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         auto hardware = create_hardware_with_capabilities(false, true, false, false);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
         REQUIRE(lv_subject_get_int(state.get_can_show_qgl_subject()) == 1);
@@ -156,11 +155,11 @@ TEST_CASE("Composite visibility characterization: derivation logic",
 
     SECTION("plugin installed + z_tilt capability: can_show_z_tilt = 1") {
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         auto hardware = create_hardware_with_capabilities(false, false, true, false);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
         REQUIRE(lv_subject_get_int(state.get_can_show_qgl_subject()) == 0);
@@ -171,11 +170,11 @@ TEST_CASE("Composite visibility characterization: derivation logic",
 
     SECTION("plugin installed + nozzle_clean macro: can_show_nozzle_clean = 1") {
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         auto hardware = create_hardware_with_capabilities(false, false, false, true);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
         REQUIRE(lv_subject_get_int(state.get_can_show_qgl_subject()) == 0);
@@ -198,34 +197,34 @@ TEST_CASE("Composite visibility characterization: update triggers",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("plugin status change from 0 to 1 triggers visibility update") {
         // First set up hardware with bed_mesh capability
         auto hardware = create_hardware_with_capabilities(true, false, false, false);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Plugin not installed yet - should be 0
         state.set_helix_plugin_installed(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
 
         // Now install plugin - should become 1
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 1);
     }
 
     SECTION("plugin status change from 1 to 0 clears visibility") {
         // Set up with plugin installed and hardware capabilities
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         auto hardware = create_hardware_with_capabilities(true, true, true, true);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Verify hardware-detected ones are visible
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 1);
@@ -237,7 +236,7 @@ TEST_CASE("Composite visibility characterization: update triggers",
 
         // Uninstall plugin
         state.set_helix_plugin_installed(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // All should be hidden now
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
@@ -250,18 +249,18 @@ TEST_CASE("Composite visibility characterization: update triggers",
     SECTION("hardware change with plugin installed updates visibility") {
         // Install plugin first
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Start with no capabilities
         auto hardware1 = create_hardware_with_capabilities(false, false, false, false);
         state.set_hardware(hardware1);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
 
         // Now add bed_mesh capability
         auto hardware2 = create_hardware_with_capabilities(true, false, false, false);
         state.set_hardware(hardware2);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 1);
     }
 }
@@ -275,16 +274,16 @@ TEST_CASE("Composite visibility characterization: combined states",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("all hardware capabilities + plugin installed: hardware-based visible") {
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         auto hardware = create_hardware_with_capabilities(true, true, true, true);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 1);
         REQUIRE(lv_subject_get_int(state.get_can_show_qgl_subject()) == 1);
@@ -296,11 +295,11 @@ TEST_CASE("Composite visibility characterization: combined states",
 
     SECTION("all hardware capabilities + plugin NOT installed: all hidden") {
         state.set_helix_plugin_installed(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         auto hardware = create_hardware_with_capabilities(true, true, true, true);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 0);
         REQUIRE(lv_subject_get_int(state.get_can_show_qgl_subject()) == 0);
@@ -311,12 +310,12 @@ TEST_CASE("Composite visibility characterization: combined states",
 
     SECTION("mixed capabilities + plugin installed: only enabled ones visible") {
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Only bed_mesh and z_tilt
         auto hardware = create_hardware_with_capabilities(true, false, true, false);
         state.set_hardware(hardware);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(state.get_can_show_bed_mesh_subject()) == 1);
         REQUIRE(lv_subject_get_int(state.get_can_show_qgl_subject()) == 0);

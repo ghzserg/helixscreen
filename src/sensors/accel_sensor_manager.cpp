@@ -389,22 +389,6 @@ lv_subject_t* AccelSensorManager::get_sensor_count_subject() {
 // Testing Support
 // ============================================================================
 
-void AccelSensorManager::reset_for_testing() {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-
-    sensors_.clear();
-    states_.clear();
-    sync_mode_ = true;
-
-    // Reset subject state for clean test isolation
-    if (subjects_initialized_) {
-        subjects_.deinit_all();
-        subjects_initialized_ = false;
-    }
-
-    spdlog::debug("[AccelSensorManager] Reset for testing");
-}
-
 void AccelSensorManager::set_sync_mode(bool enabled) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     sync_mode_ = enabled;

@@ -44,26 +44,6 @@ void PrinterExcludedObjectsState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterExcludedObjectsState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterExcludedObjectsState] reset_for_testing: subjects not initialized, "
-                      "nothing to reset");
-        return;
-    }
-
-    spdlog::trace("[PrinterExcludedObjectsState] reset_for_testing: Deinitializing subjects to "
-                  "clear observers");
-
-    // Clear all state
-    excluded_objects_.clear();
-    defined_objects_.clear();
-    current_object_.clear();
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 void PrinterExcludedObjectsState::set_excluded_objects(
     const std::unordered_set<std::string>& objects) {
     // Only update if the set actually changed

@@ -9,8 +9,7 @@
  * 2. Gcode response parsing (fallback for slicers that don't emit SET_PRINT_STATS_INFO)
  */
 
-#include "ui_update_queue.h"
-
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_state.h"
@@ -68,7 +67,7 @@ TEST_CASE("Layer tracking: print_stats.info.current_layer updates subject",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Start printing
@@ -162,13 +161,13 @@ TEST_CASE("Layer tracking: set_print_layer_current setter", "[layer_tracking][se
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("setter updates the subject via async") {
         state.set_print_layer_current(7);
         // Process the async queue so the value actually lands
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(state.get_print_layer_current_subject()) == 7);
     }
@@ -176,7 +175,7 @@ TEST_CASE("Layer tracking: set_print_layer_current setter", "[layer_tracking][se
     SECTION("setter and print_stats.info both update same subject") {
         // Simulate gcode fallback setting layer
         state.set_print_layer_current(10);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_print_layer_current_subject()) == 10);
 
         // Then print_stats.info comes in with a different value (takes precedence naturally)

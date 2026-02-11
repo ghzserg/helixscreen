@@ -30,6 +30,24 @@ using namespace helix::sensors;
 using json = nlohmann::json;
 
 // ============================================================================
+// Test Access
+// ============================================================================
+
+namespace helix::sensors {
+class TemperatureSensorManagerTestAccess {
+  public:
+    static void reset(TemperatureSensorManager& obj) {
+        std::lock_guard<std::recursive_mutex> lock(obj.mutex_);
+        obj.sensors_.clear();
+        obj.states_.clear();
+        obj.temp_subjects_.clear();
+        obj.sync_mode_ = true;
+        obj.deinit_subjects();
+    }
+};
+} // namespace helix::sensors
+
+// ============================================================================
 // Test Fixture
 // ============================================================================
 
@@ -53,7 +71,7 @@ class TemperatureSensorTestFixture {
         }
 
         // Reset state for test isolation first (clears subjects)
-        mgr().reset_for_testing();
+        TemperatureSensorManagerTestAccess::reset(mgr());
 
         // Initialize subjects after reset
         mgr().init_subjects();
@@ -61,7 +79,7 @@ class TemperatureSensorTestFixture {
 
     ~TemperatureSensorTestFixture() {
         // Reset after each test
-        mgr().reset_for_testing();
+        TemperatureSensorManagerTestAccess::reset(mgr());
     }
 
   protected:

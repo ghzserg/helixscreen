@@ -183,26 +183,6 @@ void TemperatureHistoryManager::notify_observers(const std::string& heater_name)
 }
 
 // ============================================================================
-// Manual Sample Injection (for testing)
-// ============================================================================
-
-bool TemperatureHistoryManager::add_sample_for_testing(const std::string& heater_name,
-                                                       int temp_centi, int target_centi,
-                                                       int64_t timestamp_ms) {
-    bool stored;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        stored = add_sample_internal(heater_name, temp_centi, target_centi, timestamp_ms);
-    }
-
-    if (stored) {
-        notify_observers(heater_name);
-    }
-
-    return stored;
-}
-
-// ============================================================================
 // Internal Methods
 // ============================================================================
 
@@ -272,7 +252,15 @@ void TemperatureHistoryManager::temp_observer_callback(lv_observer_t* observer,
     // Read target from the manager's cached value
     int target_centi = ctx->manager->get_cached_target(ctx->heater_name);
 
-    ctx->manager->add_sample_for_testing(ctx->heater_name, temp_centi, target_centi, now_ms());
+    bool stored;
+    {
+        std::lock_guard<std::mutex> lock(ctx->manager->mutex_);
+        stored =
+            ctx->manager->add_sample_internal(ctx->heater_name, temp_centi, target_centi, now_ms());
+    }
+    if (stored) {
+        ctx->manager->notify_observers(ctx->heater_name);
+    }
 }
 
 void TemperatureHistoryManager::target_observer_callback(lv_observer_t* observer,

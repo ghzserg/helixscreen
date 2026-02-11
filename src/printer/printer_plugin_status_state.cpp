@@ -47,21 +47,6 @@ void PrinterPluginStatusState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterPluginStatusState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterPluginStatusState] reset_for_testing: subjects not initialized, "
-                      "nothing to reset");
-        return;
-    }
-
-    spdlog::trace(
-        "[PrinterPluginStatusState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 void PrinterPluginStatusState::set_installed_sync(bool installed) {
     // Synchronous update - caller must ensure this runs on UI thread
     // PrinterState wraps this in helix::async::invoke() and calls

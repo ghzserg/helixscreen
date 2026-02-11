@@ -7,6 +7,7 @@
 
 #include "lib/lvgl/src/misc/lv_timer_private.h"
 #include "spdlog/spdlog.h"
+#include "test_helpers/update_queue_test_access.h"
 
 #include <chrono>
 #include <filesystem>
@@ -28,7 +29,7 @@ void lv_init_safe() {
 uint32_t lv_timer_handler_safe() {
     // Drain the UpdateQueue — executes pending callbacks which set subjects.
     // Subject observers fire synchronously during drain, propagating bindings.
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     // Pause ALL timers to prevent infinite handler loops, then selectively
     // execute one-shot timers (lv_async_call, retry timers) manually.

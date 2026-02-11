@@ -44,11 +44,6 @@ class PrinterLedState {
     void update_from_status(const nlohmann::json& status);
 
     /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
-    /**
      * @brief Set which LED to track for state updates
      *
      * Call this after loading config to tell PrinterLedState which LED object
@@ -96,6 +91,8 @@ class PrinterLedState {
     }
 
   private:
+    friend class PrinterLedStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
     std::string tracked_led_name_;

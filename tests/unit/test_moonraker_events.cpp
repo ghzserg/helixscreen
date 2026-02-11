@@ -35,6 +35,42 @@
 #include "../catch_amalgamated.hpp"
 
 // ============================================================================
+// Test Access: AbortManager friend class for test-only state manipulation
+// ============================================================================
+
+namespace helix {
+
+class AbortManagerTestAccess {
+  public:
+    static void reset(AbortManager& m) {
+        m.cancel_all_timers();
+        m.klippy_observer_ = {};
+        m.cancel_state_observer_ = {};
+        m.abort_state_.store(AbortManager::State::IDLE);
+        m.escalation_level_.store(0);
+        m.shutdown_recovery_in_progress_.store(false);
+        m.kalico_status_ = AbortManager::KalicoStatus::UNKNOWN;
+        m.commands_sent_ = 0;
+        m.api_ = nullptr;
+        m.printer_state_ = nullptr;
+        if (m.subjects_initialized_) {
+            lv_subject_set_int(&m.abort_state_subject_,
+                               static_cast<int>(AbortManager::State::IDLE));
+        }
+    }
+
+    static void on_heater_interrupt_error(AbortManager& m) {
+        m.on_heater_interrupt_error();
+    }
+
+    static void on_probe_timeout(AbortManager& m) {
+        m.on_probe_timeout();
+    }
+};
+
+} // namespace helix
+
+// ============================================================================
 // Test Helper: Testable Mock with Protected emit_event Access
 // ============================================================================
 
@@ -617,12 +653,12 @@ TEST_CASE_METHOD(EventTestFixture, "MoonrakerClient suppresses RPC_ERROR during 
     SECTION("RPC_ERROR not emitted when AbortManager is handling shutdown") {
         // Set up AbortManager in shutdown handling state
         // This simulates the condition after M112 is sent and we're waiting for recovery
-        helix::AbortManager::instance().reset_for_testing();
+        helix::AbortManagerTestAccess::reset(helix::AbortManager::instance());
         helix::AbortManager::instance().start_abort();
 
         // Progress to SENT_ESTOP which triggers shutdown recovery handling
-        helix::AbortManager::instance().on_heater_interrupt_error_for_testing("Unknown command");
-        helix::AbortManager::instance().on_probe_timeout_for_testing();
+        helix::AbortManagerTestAccess::on_heater_interrupt_error(helix::AbortManager::instance());
+        helix::AbortManagerTestAccess::on_probe_timeout(helix::AbortManager::instance());
 
         // Verify AbortManager reports it's handling shutdown
         REQUIRE(helix::AbortManager::instance().is_handling_shutdown() == true);
@@ -635,12 +671,12 @@ TEST_CASE_METHOD(EventTestFixture, "MoonrakerClient suppresses RPC_ERROR during 
         CHECK(event_count() == 0);
 
         // Clean up
-        helix::AbortManager::instance().reset_for_testing();
+        helix::AbortManagerTestAccess::reset(helix::AbortManager::instance());
     }
 
     SECTION("RPC_ERROR still emitted when AbortManager is NOT handling shutdown") {
         // Ensure AbortManager is in idle state (not handling shutdown)
-        helix::AbortManager::instance().reset_for_testing();
+        helix::AbortManagerTestAccess::reset(helix::AbortManager::instance());
         REQUIRE(helix::AbortManager::instance().is_handling_shutdown() == false);
 
         // Trigger an RPC error through the full error handling path

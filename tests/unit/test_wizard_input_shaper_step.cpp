@@ -11,9 +11,9 @@
  * - Integration: wizard skip flow based on hardware discovery
  */
 
-#include "ui_update_queue.h"
 #include "ui_wizard_input_shaper.h"
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "input_shaper_calibrator.h"
@@ -60,13 +60,13 @@ class WizardInputShaperStepTestFixture {
         }
 
         // Initialize PrinterState subjects for testing
-        state().reset_for_testing();
+        PrinterStateTestAccess::reset(state());
         state().init_subjects(true); // Need XML registration to lookup by name
     }
 
     ~WizardInputShaperStepTestFixture() {
         // Reset after each test
-        state().reset_for_testing();
+        PrinterStateTestAccess::reset(state());
     }
 
   protected:
@@ -93,7 +93,7 @@ class WizardInputShaperStepTestFixture {
         state().set_hardware(hardware);
 
         // Drain async queue to apply subject updates
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     }
 
   private:

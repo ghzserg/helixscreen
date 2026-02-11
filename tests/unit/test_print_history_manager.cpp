@@ -18,6 +18,7 @@
 #include "../../include/printer_state.h"
 #include "../../include/ui_update_queue.h"
 #include "../../lvgl/lvgl.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 
 #include <atomic>
@@ -76,7 +77,7 @@ class HistoryManagerTestFixture {
         client_.disconnect();
 
         // Drain pending callbacks
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Shutdown queue
         ui_update_queue_shutdown();
@@ -90,7 +91,7 @@ class HistoryManagerTestFixture {
     bool wait_for_loaded(int timeout_ms = 500) {
         for (int i = 0; i < timeout_ms / 10; ++i) {
             // Drain the update queue to process callbacks scheduled via ui_queue_update
-            helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+            UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
             if (manager_->is_loaded()) {
                 return true;

@@ -88,11 +88,6 @@ class PrinterFanState {
     void update_from_status(const nlohmann::json& status);
 
     /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
-    /**
      * @brief Initialize fan tracking from discovered fan objects
      * @param fan_objects List of Moonraker fan object names
      * @param roles Wizard-configured fan role assignments (for naming and classification)
@@ -134,6 +129,8 @@ class PrinterFanState {
     }
 
   private:
+    friend class PrinterFanStateTestAccess;
+
     /// Classify fan type from object name (considers configured part fan)
     FanType classify_fan_type(const std::string& object_name) const;
 

@@ -17,9 +17,8 @@
  * Written TDD-style - tests WILL FAIL until AbortManager is implemented.
  */
 
-#include "ui_update_queue.h"
-
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "abort_manager.h"
 #include "app_globals.h"
@@ -29,6 +28,120 @@
 #include "../catch_amalgamated.hpp"
 
 using namespace helix;
+
+// ============================================================================
+// Test Access Helper (friend class)
+// ============================================================================
+
+namespace helix {
+
+class AbortManagerTestAccess {
+  public:
+    static void reset(AbortManager& m) {
+        reset_state(m);
+        m.kalico_status_ = AbortManager::KalicoStatus::UNKNOWN;
+        m.commands_sent_ = 0;
+        m.api_ = nullptr;
+        m.printer_state_ = nullptr;
+    }
+
+    static void reset_state(AbortManager& m) {
+        m.cancel_all_timers();
+        m.klippy_observer_.reset();
+        m.cancel_state_observer_.reset();
+        m.abort_state_ = AbortManager::State::IDLE;
+        m.escalation_level_ = 0;
+        m.shutdown_recovery_in_progress_ = false;
+        m.seen_shutdown_during_reconnect_ = false;
+        {
+            std::lock_guard<std::mutex> lock(m.message_mutex_);
+            m.last_result_message_.clear();
+        }
+        if (m.subjects_initialized_) {
+            lv_subject_set_int(&m.abort_state_subject_,
+                               static_cast<int>(AbortManager::State::IDLE));
+            lv_subject_copy_string(&m.progress_message_subject_, "");
+            m.update_visibility();
+        }
+    }
+
+    static void on_heater_interrupt_success(AbortManager& m) {
+        m.on_heater_interrupt_success();
+    }
+
+    static void on_heater_interrupt_error(AbortManager& m) {
+        m.on_heater_interrupt_error();
+    }
+
+    static void on_heater_interrupt_timeout(AbortManager& m) {
+        m.on_heater_interrupt_timeout();
+    }
+
+    static void on_probe_response(AbortManager& m) {
+        m.on_probe_response();
+    }
+
+    static void on_probe_timeout(AbortManager& m) {
+        m.on_probe_timeout();
+    }
+
+    static void on_cancel_success(AbortManager& m) {
+        m.on_cancel_success();
+    }
+
+    static void on_cancel_timeout(AbortManager& m) {
+        m.on_cancel_timeout();
+    }
+
+    static void on_estop_sent(AbortManager& m) {
+        m.on_estop_sent();
+    }
+
+    static void on_restart_sent(AbortManager& m) {
+        m.on_restart_sent();
+    }
+
+    static void on_klippy_ready(AbortManager& m) {
+        m.on_klippy_state_changed(KlippyState::READY);
+    }
+
+    static void on_reconnect_timeout(AbortManager& m) {
+        if (m.reconnect_timer_) {
+            lv_timer_delete(m.reconnect_timer_);
+            m.reconnect_timer_ = nullptr;
+        }
+        m.complete_abort("Abort complete (reconnect timeout). Check printer status.");
+    }
+
+    static void on_klippy_state_change(AbortManager& m, KlippyState state) {
+        m.on_klippy_state_changed(state);
+    }
+
+    static void on_print_state_during_cancel(AbortManager& m, PrintJobState state) {
+        m.on_print_state_during_cancel(state);
+    }
+
+    static void on_api_error(AbortManager& m, const std::string& /* error */) {
+        switch (m.abort_state_.load()) {
+        case AbortManager::State::TRY_HEATER_INTERRUPT:
+            m.on_heater_interrupt_error();
+            break;
+        case AbortManager::State::PROBE_QUEUE:
+            m.on_probe_timeout();
+            break;
+        case AbortManager::State::SENT_CANCEL:
+            m.escalate_to_estop();
+            break;
+        default:
+            spdlog::warn("[AbortManager] API error in state {}", m.get_state_name());
+            break;
+        }
+    }
+};
+
+} // namespace helix
+
+// Minimal reset helper using public API only
 
 // ============================================================================
 // Test Fixture
@@ -46,14 +159,14 @@ class AbortManagerTestFixture : public LVGLTestFixture {
   public:
     AbortManagerTestFixture() : LVGLTestFixture() {
         // Reset AbortManager to known state before each test
-        AbortManager::instance().reset_for_testing();
+        AbortManagerTestAccess::reset(AbortManager::instance());
     }
 
     ~AbortManagerTestFixture() override {
         // Deinit subjects before LVGL teardown to avoid dangling pointers
         AbortManager::instance().deinit_subjects();
         // Ensure clean state after test
-        AbortManager::instance().reset_for_testing();
+        AbortManagerTestAccess::reset(AbortManager::instance());
 
         // Note: Queue drain/shutdown handled by LVGLTestFixture base class
     }
@@ -63,49 +176,49 @@ class AbortManagerTestFixture : public LVGLTestFixture {
      * @brief Simulate successful Kalico detection (HEATER_INTERRUPT succeeds)
      */
     void simulate_kalico_detected() {
-        AbortManager::instance().on_heater_interrupt_success_for_testing();
+        AbortManagerTestAccess::on_heater_interrupt_success(AbortManager::instance());
     }
 
     /**
      * @brief Simulate Kalico not present (HEATER_INTERRUPT returns "Unknown command")
      */
     void simulate_kalico_not_present() {
-        AbortManager::instance().on_heater_interrupt_error_for_testing("Unknown command");
+        AbortManagerTestAccess::on_heater_interrupt_error(AbortManager::instance());
     }
 
     /**
      * @brief Simulate M115 probe response (queue is responsive)
      */
     void simulate_queue_responsive() {
-        AbortManager::instance().on_probe_response_for_testing();
+        AbortManagerTestAccess::on_probe_response(AbortManager::instance());
     }
 
     /**
      * @brief Simulate M115 probe timeout (queue is blocked)
      */
     void simulate_queue_blocked() {
-        AbortManager::instance().on_probe_timeout_for_testing();
+        AbortManagerTestAccess::on_probe_timeout(AbortManager::instance());
     }
 
     /**
      * @brief Simulate CANCEL_PRINT success
      */
     void simulate_cancel_success() {
-        AbortManager::instance().on_cancel_success_for_testing();
+        AbortManagerTestAccess::on_cancel_success(AbortManager::instance());
     }
 
     /**
      * @brief Simulate CANCEL_PRINT timeout
      */
     void simulate_cancel_timeout() {
-        AbortManager::instance().on_cancel_timeout_for_testing();
+        AbortManagerTestAccess::on_cancel_timeout(AbortManager::instance());
     }
 
     /**
      * @brief Simulate klippy_state becoming READY after restart
      */
     void simulate_klippy_ready() {
-        AbortManager::instance().on_klippy_ready_for_testing();
+        AbortManagerTestAccess::on_klippy_ready(AbortManager::instance());
     }
 
     /**
@@ -217,7 +330,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::TRY_HEATER_INTERRUPT);
 
     // Simulate timeout (no response within 1s)
-    AbortManager::instance().on_heater_interrupt_timeout_for_testing();
+    AbortManagerTestAccess::on_heater_interrupt_timeout(AbortManager::instance());
 
     // Kalico should be cached as NOT_PRESENT
     REQUIRE(AbortManager::instance().get_kalico_status() ==
@@ -245,7 +358,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
 
     // Reset state but keep cached Kalico status
-    AbortManager::instance().reset_state_for_testing();
+    AbortManagerTestAccess::reset_state(AbortManager::instance());
 
     // Second abort - should use cached status
     AbortManager::instance().start_abort();
@@ -269,7 +382,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     simulate_cancel_success();
 
     // Reset state but keep cached Kalico status
-    AbortManager::instance().reset_state_for_testing();
+    AbortManagerTestAccess::reset_state(AbortManager::instance());
 
     // Second abort - should skip HEATER_INTERRUPT
     AbortManager::instance().start_abort();
@@ -356,15 +469,15 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
 
     // M112 sent, now should transition to SENT_RESTART
-    AbortManager::instance().on_estop_sent_for_testing();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_RESTART);
 
     // FIRMWARE_RESTART sent, now waiting for reconnect
-    AbortManager::instance().on_restart_sent_for_testing();
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::WAITING_RECONNECT);
 
     // klippy goes through SHUTDOWN before becoming READY (required by state machine)
-    AbortManager::instance().on_klippy_state_change_for_testing(KlippyState::SHUTDOWN);
+    AbortManagerTestAccess::on_klippy_state_change(AbortManager::instance(), KlippyState::SHUTDOWN);
     simulate_klippy_ready();
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
 }
@@ -378,11 +491,11 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: Cancel timeout triggers
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
 
     // Complete escalation path
-    AbortManager::instance().on_estop_sent_for_testing();
-    AbortManager::instance().on_restart_sent_for_testing();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
 
     // klippy goes through SHUTDOWN before becoming READY (required by state machine)
-    AbortManager::instance().on_klippy_state_change_for_testing(KlippyState::SHUTDOWN);
+    AbortManagerTestAccess::on_klippy_state_change(AbortManager::instance(), KlippyState::SHUTDOWN);
     simulate_klippy_ready();
 
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
@@ -398,25 +511,25 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     AbortManager::instance().start_abort();
     simulate_kalico_not_present();
     simulate_queue_blocked();
-    AbortManager::instance().on_estop_sent_for_testing();
-    AbortManager::instance().on_restart_sent_for_testing();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
 
     // Now in WAITING_RECONNECT state
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::WAITING_RECONNECT);
     REQUIRE(AbortManager::instance().is_aborting() == true); // Modal should still be visible
 
     // Simulate klippy in STARTUP state (not ready yet)
-    AbortManager::instance().on_klippy_state_change_for_testing(KlippyState::STARTUP);
+    AbortManagerTestAccess::on_klippy_state_change(AbortManager::instance(), KlippyState::STARTUP);
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::WAITING_RECONNECT);
     REQUIRE(AbortManager::instance().is_aborting() == true);
 
     // Simulate klippy in SHUTDOWN state (not ready yet)
-    AbortManager::instance().on_klippy_state_change_for_testing(KlippyState::SHUTDOWN);
+    AbortManagerTestAccess::on_klippy_state_change(AbortManager::instance(), KlippyState::SHUTDOWN);
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::WAITING_RECONNECT);
     REQUIRE(AbortManager::instance().is_aborting() == true);
 
     // Finally klippy becomes READY
-    AbortManager::instance().on_klippy_state_change_for_testing(KlippyState::READY);
+    AbortManagerTestAccess::on_klippy_state_change(AbortManager::instance(), KlippyState::READY);
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
     REQUIRE(AbortManager::instance().is_aborting() == false);
 }
@@ -427,13 +540,13 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     AbortManager::instance().start_abort();
     simulate_kalico_not_present();
     simulate_queue_blocked();
-    AbortManager::instance().on_estop_sent_for_testing();
-    AbortManager::instance().on_restart_sent_for_testing();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
 
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::WAITING_RECONNECT);
 
     // Simulate 15s timeout without READY
-    AbortManager::instance().on_reconnect_timeout_for_testing();
+    AbortManagerTestAccess::on_reconnect_timeout(AbortManager::instance());
 
     // Should still complete (but with error message about timeout)
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
@@ -451,7 +564,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: HEATER_INTERRUPT NOT se
     // Sending HEATER_INTERRUPT at startup would unexpectedly abort their operation.
 
     // Create a fresh AbortManager and initialize it
-    AbortManager::instance().reset_for_testing();
+    AbortManagerTestAccess::reset(AbortManager::instance());
     AbortManager::instance().init(nullptr, nullptr);
 
     // Kalico status should remain UNKNOWN after init
@@ -466,7 +579,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: HEATER_INTERRUPT NOT se
 
 TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: init_subjects does not trigger probe",
                  "[abort][kalico][critical]") {
-    AbortManager::instance().reset_for_testing();
+    AbortManagerTestAccess::reset(AbortManager::instance());
     AbortManager::instance().init_subjects();
 
     // Kalico should still be UNKNOWN
@@ -493,7 +606,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: Timeout constants are c
 TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: get_state_name returns correct names",
                  "[abort][state][debug]") {
     SECTION("IDLE") {
-        AbortManager::instance().reset_for_testing();
+        AbortManagerTestAccess::reset(AbortManager::instance());
         REQUIRE(state_name() == "IDLE");
     }
 
@@ -526,7 +639,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: get_state_name returns 
         AbortManager::instance().start_abort();
         simulate_kalico_not_present();
         simulate_queue_blocked();
-        AbortManager::instance().on_estop_sent_for_testing();
+        AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
         REQUIRE(state_name() == "SENT_RESTART");
     }
 
@@ -534,8 +647,8 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: get_state_name returns 
         AbortManager::instance().start_abort();
         simulate_kalico_not_present();
         simulate_queue_blocked();
-        AbortManager::instance().on_estop_sent_for_testing();
-        AbortManager::instance().on_restart_sent_for_testing();
+        AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+        AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
         REQUIRE(state_name() == "WAITING_RECONNECT");
     }
 
@@ -588,16 +701,17 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
         REQUIRE_FALSE(success_msg.empty());
 
         // Reset for escalation test
-        AbortManager::instance().reset_for_testing();
+        AbortManagerTestAccess::reset(AbortManager::instance());
 
         // Escalated to ESTOP
         AbortManager::instance().start_abort();
         simulate_kalico_not_present();
         simulate_queue_blocked();
-        AbortManager::instance().on_estop_sent_for_testing();
-        AbortManager::instance().on_restart_sent_for_testing();
+        AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+        AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
         // klippy goes through SHUTDOWN before becoming READY
-        AbortManager::instance().on_klippy_state_change_for_testing(KlippyState::SHUTDOWN);
+        AbortManagerTestAccess::on_klippy_state_change(AbortManager::instance(),
+                                                       KlippyState::SHUTDOWN);
         simulate_klippy_ready();
 
         std::string escalation_msg = AbortManager::instance().last_result_message();
@@ -614,7 +728,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
 
 TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: Subjects are initialized correctly",
                  "[abort][subjects][init]") {
-    AbortManager::instance().reset_for_testing();
+    AbortManagerTestAccess::reset(AbortManager::instance());
     AbortManager::instance().init_subjects();
 
     // State subject should exist and be set to IDLE
@@ -629,7 +743,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: Subjects are initialize
 
 TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: State subject updates during transitions",
                  "[abort][subjects][observer]") {
-    AbortManager::instance().reset_for_testing();
+    AbortManagerTestAccess::reset(AbortManager::instance());
     AbortManager::instance().init_subjects();
 
     lv_subject_t* state_subject = AbortManager::instance().get_abort_state_subject();
@@ -673,7 +787,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
         AbortManager::instance().start_abort();
 
         // Simulate API error (not "Unknown command", but actual network error)
-        AbortManager::instance().on_api_error_for_testing("Connection lost");
+        AbortManagerTestAccess::on_api_error(AbortManager::instance(), "Connection lost");
 
         // Should handle gracefully - either retry or escalate
         REQUIRE(AbortManager::instance().is_aborting() == true);
@@ -685,7 +799,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
         simulate_queue_responsive();
 
         // Simulate API error during cancel
-        AbortManager::instance().on_api_error_for_testing("WebSocket closed");
+        AbortManagerTestAccess::on_api_error(AbortManager::instance(), "WebSocket closed");
 
         // Should escalate to ESTOP
         REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
@@ -725,12 +839,12 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: Edge cases", "[abort][e
         REQUIRE(AbortManager::instance().is_aborting() == true);
     }
 
-    SECTION("reset_for_testing clears all state") {
+    SECTION("reset clears all state") {
         AbortManager::instance().start_abort();
         simulate_kalico_detected();
         simulate_queue_responsive();
 
-        AbortManager::instance().reset_for_testing();
+        AbortManagerTestAccess::reset(AbortManager::instance());
 
         REQUIRE(AbortManager::instance().get_state() == AbortManager::State::IDLE);
         REQUIRE(AbortManager::instance().is_aborting() == false);
@@ -767,8 +881,8 @@ TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: Observes klippy_state f
     AbortManager::instance().start_abort();
     simulate_kalico_not_present();
     simulate_queue_blocked();
-    AbortManager::instance().on_estop_sent_for_testing();
-    AbortManager::instance().on_restart_sent_for_testing();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
 
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::WAITING_RECONNECT);
 
@@ -842,15 +956,15 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
 
     // M112 sent
-    AbortManager::instance().on_estop_sent_for_testing();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_RESTART);
 
     // FIRMWARE_RESTART sent
-    AbortManager::instance().on_restart_sent_for_testing();
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::WAITING_RECONNECT);
 
     // klippy goes through SHUTDOWN before becoming READY (required by state machine)
-    AbortManager::instance().on_klippy_state_change_for_testing(KlippyState::SHUTDOWN);
+    AbortManagerTestAccess::on_klippy_state_change(AbortManager::instance(), KlippyState::SHUTDOWN);
     simulate_klippy_ready();
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
 
@@ -877,7 +991,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     // Per L048: Must drain async queue after abort completes
 
     // Initialize PrinterState subjects
-    get_printer_state().reset_for_testing();
+    PrinterStateTestAccess::reset(get_printer_state());
     get_printer_state().init_subjects(false);
 
     // Initialize AbortManager with PrinterState reference
@@ -895,7 +1009,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     simulate_cancel_success();
 
     // Drain async queue - L048: async tests need queue drain
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     // Abort should be complete
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
@@ -913,7 +1027,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
                  "[abort][print_outcome][escalation]") {
     // Verify print_outcome is set to CANCELLED even when abort escalates to M112
 
-    get_printer_state().reset_for_testing();
+    PrinterStateTestAccess::reset(get_printer_state());
     get_printer_state().init_subjects(false);
     AbortManager::instance().init(nullptr, &get_printer_state());
 
@@ -926,13 +1040,13 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     AbortManager::instance().start_abort();
     simulate_kalico_not_present();
     simulate_queue_blocked(); // Forces escalation to SENT_ESTOP
-    AbortManager::instance().on_estop_sent_for_testing();
-    AbortManager::instance().on_restart_sent_for_testing();
-    AbortManager::instance().on_klippy_state_change_for_testing(KlippyState::SHUTDOWN);
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance());
+    AbortManagerTestAccess::on_klippy_state_change(AbortManager::instance(), KlippyState::SHUTDOWN);
     simulate_klippy_ready();
 
     // Drain async queue
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     // Abort should be complete
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
@@ -957,7 +1071,8 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
 
     // Simulate print state transitioning to STANDBY (Klipper finished cancel macro)
-    AbortManager::instance().on_print_state_during_cancel_for_testing(PrintJobState::STANDBY);
+    AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
+                                                         PrintJobState::STANDBY);
 
     // Should complete without escalation
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
@@ -972,7 +1087,8 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     simulate_queue_responsive();
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
 
-    AbortManager::instance().on_print_state_during_cancel_for_testing(PrintJobState::CANCELLED);
+    AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
+                                                         PrintJobState::CANCELLED);
 
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
     REQUIRE(AbortManager::instance().escalation_level() == 0);
@@ -987,7 +1103,8 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
 
     // PAUSED is non-terminal — cancel macro hasn't finished yet
-    AbortManager::instance().on_print_state_during_cancel_for_testing(PrintJobState::PAUSED);
+    AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
+                                                         PrintJobState::PAUSED);
 
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
 }
@@ -1001,7 +1118,8 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
 
     // PRINTING is non-terminal
-    AbortManager::instance().on_print_state_during_cancel_for_testing(PrintJobState::PRINTING);
+    AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
+                                                         PrintJobState::PRINTING);
 
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
 }
@@ -1020,17 +1138,18 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
 
     // Sending a print state change after completion should be harmless
-    AbortManager::instance().on_print_state_during_cancel_for_testing(PrintJobState::STANDBY);
+    AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
+                                                         PrintJobState::STANDBY);
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
 }
 
 TEST_CASE_METHOD(AbortManagerTestFixture,
                  "AbortManager: Observer fires immediately with PAUSED - stays in SENT_CANCEL",
                  "[abort][cancel][state_observer][integration]") {
-    // Test the REAL observer path (not the _for_testing bypass).
+    // Test the REAL observer path (not the TestAccess bypass).
     // When PrinterState is initialized and print state is PAUSED (non-terminal),
     // the observer should fire immediately on registration and be ignored.
-    get_printer_state().reset_for_testing();
+    PrinterStateTestAccess::reset(get_printer_state());
     get_printer_state().init_subjects(false);
 
     // Set print state to PAUSED (simulates: user is cancelling a paused print)
@@ -1061,7 +1180,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     // If print state is already STANDBY when we enter SENT_CANCEL,
     // the observer fires immediately and correctly completes the abort.
     // This handles the edge case where the print ended before our cancel was sent.
-    get_printer_state().reset_for_testing();
+    PrinterStateTestAccess::reset(get_printer_state());
     get_printer_state().init_subjects(false);
 
     // Print state is already STANDBY (print ended on its own)
@@ -1093,6 +1212,7 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
 
     // Print state change after escalation should be harmless
-    AbortManager::instance().on_print_state_during_cancel_for_testing(PrintJobState::STANDBY);
+    AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
+                                                         PrintJobState::STANDBY);
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
 }

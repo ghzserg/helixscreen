@@ -411,22 +411,6 @@ lv_subject_t* HumiditySensorManager::get_chamber_humidity_text_subject() {
 // Testing Support
 // ============================================================================
 
-void HumiditySensorManager::reset_for_testing() {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-
-    sensors_.clear();
-    states_.clear();
-    sync_mode_ = true;
-
-    // Reset subject state for clean test isolation
-    if (subjects_initialized_) {
-        subjects_.deinit_all();
-        subjects_initialized_ = false;
-    }
-
-    spdlog::debug("[HumiditySensorManager] Reset for testing");
-}
-
 void HumiditySensorManager::set_sync_mode(bool enabled) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     sync_mode_ = enabled;

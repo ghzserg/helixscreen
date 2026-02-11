@@ -56,24 +56,6 @@ void PrinterHardwareValidationState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterHardwareValidationState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterHardwareValidationState] reset_for_testing: subjects not "
-                      "initialized, nothing to reset");
-        return;
-    }
-
-    spdlog::trace("[PrinterHardwareValidationState] reset_for_testing: Deinitializing subjects to "
-                  "clear observers");
-
-    // Clear the validation result
-    hardware_validation_result_ = HardwareValidationResult{};
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 void PrinterHardwareValidationState::set_hardware_validation_result(
     const HardwareValidationResult& result) {
     // Store the full result for UI access

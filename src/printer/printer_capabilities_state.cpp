@@ -60,21 +60,6 @@ void PrinterCapabilitiesState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterCapabilitiesState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterCapabilitiesState] reset_for_testing: subjects not initialized, "
-                      "nothing to reset");
-        return;
-    }
-
-    spdlog::trace(
-        "[PrinterCapabilitiesState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
                                             const CapabilityOverrides& overrides) {
     // Update subjects using effective values (auto-detect + user overrides)

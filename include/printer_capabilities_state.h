@@ -41,11 +41,6 @@ class PrinterCapabilitiesState {
      */
     void deinit_subjects();
 
-    /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
     // ========================================================================
     // Hardware update methods
     // ========================================================================
@@ -230,6 +225,8 @@ class PrinterCapabilitiesState {
     }
 
   private:
+    friend class PrinterCapabilitiesStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 

@@ -200,7 +200,7 @@ lv_subject_t* AbortManager::get_progress_message_subject() {
 
 void AbortManager::try_heater_interrupt() {
     // If no API, just stay in TRY_HEATER_INTERRUPT state
-    // Tests will call on_heater_interrupt_*_for_testing() to progress
+    // Tests will call on_heater_interrupt_*() via AbortManagerTestAccess to progress
     if (!api_) {
         spdlog::debug("[AbortManager] No API, waiting for test callback in TRY_HEATER_INTERRUPT");
         return;
@@ -239,7 +239,7 @@ void AbortManager::try_heater_interrupt() {
 
 void AbortManager::start_probe() {
     // If no API, just stay in PROBE_QUEUE state
-    // Tests will call on_probe_*_for_testing() to progress
+    // Tests will call on_probe_*() via AbortManagerTestAccess to progress
     if (!api_) {
         spdlog::debug("[AbortManager] No API, waiting for test callback in PROBE_QUEUE");
         return;
@@ -284,7 +284,7 @@ void AbortManager::send_cancel_print() {
     }
 
     // If no API, just stay in SENT_CANCEL state
-    // Tests will call on_cancel_*_for_testing() to progress
+    // Tests will call on_cancel_*() via AbortManagerTestAccess to progress
     if (!api_) {
         spdlog::debug("[AbortManager] No API, waiting for test callback in SENT_CANCEL");
         return;
@@ -332,7 +332,7 @@ void AbortManager::escalate_to_estop() {
     set_progress_message("Emergency stopping...");
 
     // If no API, just stay in SENT_ESTOP state
-    // Tests will call on_estop_sent_for_testing() to progress
+    // Tests will call on_estop_sent() via AbortManagerTestAccess to progress
     if (!api_) {
         spdlog::debug("[AbortManager] No API, waiting for test callback in SENT_ESTOP");
         return;
@@ -367,7 +367,7 @@ void AbortManager::send_firmware_restart() {
     set_progress_message("Restarting...");
 
     // If no API, just stay in SENT_RESTART state
-    // Tests will call on_restart_sent_for_testing() to progress
+    // Tests will call on_restart_sent() via AbortManagerTestAccess to progress
     if (!api_) {
         spdlog::debug("[AbortManager] No API, waiting for test callback in SENT_RESTART");
         return;
@@ -769,120 +769,6 @@ void AbortManager::reconnect_timer_cb(lv_timer_t* timer) {
         self->reconnect_timer_ = nullptr;
         // Timeout without reconnect - still complete (with warning message)
         self->complete_abort("Abort complete (reconnect timeout). Check printer status.");
-    }
-}
-
-// ============================================================================
-// Testing Interface
-// ============================================================================
-
-void AbortManager::reset_for_testing() {
-    reset_state_for_testing();
-    // Also reset cached values that reset_state_for_testing() preserves
-    kalico_status_ = KalicoStatus::UNKNOWN;
-    commands_sent_ = 0;
-    // Clear dependencies to prevent stale pointers across tests
-    api_ = nullptr;
-    printer_state_ = nullptr;
-}
-
-void AbortManager::reset_state_for_testing() {
-    cancel_all_timers();
-    klippy_observer_.reset();
-    cancel_state_observer_.reset();
-    abort_state_ = State::IDLE;
-    escalation_level_ = 0;
-    shutdown_recovery_in_progress_ = false;
-    seen_shutdown_during_reconnect_ = false;
-    {
-        std::lock_guard<std::mutex> lock(message_mutex_);
-        last_result_message_.clear();
-    }
-    // Keep kalico_status_ and commands_sent_ cached
-
-    if (subjects_initialized_) {
-        lv_subject_set_int(&abort_state_subject_, static_cast<int>(State::IDLE));
-        lv_subject_copy_string(&progress_message_subject_, "");
-        update_visibility();
-    }
-}
-
-void AbortManager::on_heater_interrupt_success_for_testing() {
-    on_heater_interrupt_success();
-}
-
-void AbortManager::on_heater_interrupt_error_for_testing(const std::string& /* error */) {
-    on_heater_interrupt_error();
-}
-
-void AbortManager::on_heater_interrupt_timeout_for_testing() {
-    on_heater_interrupt_timeout();
-}
-
-void AbortManager::on_probe_response_for_testing() {
-    on_probe_response();
-}
-
-void AbortManager::on_probe_timeout_for_testing() {
-    on_probe_timeout();
-}
-
-void AbortManager::on_cancel_success_for_testing() {
-    on_cancel_success();
-}
-
-void AbortManager::on_cancel_timeout_for_testing() {
-    on_cancel_timeout();
-}
-
-void AbortManager::on_estop_sent_for_testing() {
-    on_estop_sent();
-}
-
-void AbortManager::on_restart_sent_for_testing() {
-    on_restart_sent();
-}
-
-void AbortManager::on_klippy_ready_for_testing() {
-    on_klippy_state_changed(KlippyState::READY);
-}
-
-void AbortManager::on_reconnect_timeout_for_testing() {
-    // Simulate the timer callback
-    if (reconnect_timer_) {
-        lv_timer_delete(reconnect_timer_);
-        reconnect_timer_ = nullptr;
-    }
-    complete_abort("Abort complete (reconnect timeout). Check printer status.");
-}
-
-void AbortManager::on_klippy_state_change_for_testing(KlippyState klippy_state) {
-    on_klippy_state_changed(klippy_state);
-}
-
-void AbortManager::on_print_state_during_cancel_for_testing(PrintJobState state) {
-    on_print_state_during_cancel(state);
-}
-
-void AbortManager::on_api_error_for_testing(const std::string& /* error */) {
-    // Handle API error based on current state
-    switch (abort_state_.load()) {
-    case State::TRY_HEATER_INTERRUPT:
-        // Treat as not-Kalico and continue
-        on_heater_interrupt_error();
-        break;
-    case State::PROBE_QUEUE:
-        // Queue may be blocked, escalate
-        on_probe_timeout();
-        break;
-    case State::SENT_CANCEL:
-        // Cancel failed, escalate to ESTOP
-        escalate_to_estop();
-        break;
-    default:
-        // For other states, just log
-        spdlog::warn("[AbortManager] API error in state {}", get_state_name());
-        break;
     }
 }
 

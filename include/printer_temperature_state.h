@@ -42,11 +42,6 @@ class PrinterTemperatureState {
     void update_from_status(const nlohmann::json& status);
 
     /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
-    /**
      * @brief Re-register subjects with LVGL XML system
      *
      * Call this to ensure subjects are registered in LVGL's global XML registry.
@@ -84,6 +79,8 @@ class PrinterTemperatureState {
     }
 
   private:
+    friend class PrinterTemperatureStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 

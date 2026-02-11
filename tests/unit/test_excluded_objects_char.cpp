@@ -20,6 +20,7 @@
 #include "ui_observer_guard.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/printer_state_test_access.h"
 #include "printer_state.h"
 
 #include <string>
@@ -45,7 +46,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Setting empty set to non-empty set incr
     REQUIRE(state.get_excluded_objects().count("Part_1") == 1);
     REQUIRE(state.get_excluded_objects().count("Part_2") == 1);
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Setting same set again does NOT increment version",
@@ -67,7 +68,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Setting same set again does NOT increme
     state.set_excluded_objects(same_objects);
     REQUIRE(lv_subject_get_int(state.get_excluded_objects_version_subject()) == 1);
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Setting different set increments version",
@@ -95,7 +96,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Setting different set increments versio
     state.set_excluded_objects(objects4);
     REQUIRE(lv_subject_get_int(state.get_excluded_objects_version_subject()) == 4);
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Setting back to empty set increments version",
@@ -115,7 +116,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Setting back to empty set increments ve
     REQUIRE(lv_subject_get_int(state.get_excluded_objects_version_subject()) == 2);
     REQUIRE(state.get_excluded_objects().empty());
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 // ============================================================================
@@ -145,7 +146,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Multiple changes increment version by 1
     state.set_excluded_objects({});
     REQUIRE(lv_subject_get_int(state.get_excluded_objects_version_subject()) == 5);
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Version does not skip or jump values",
@@ -167,7 +168,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Version does not skip or jump values",
                 expected_version);
     }
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 // ============================================================================
@@ -208,7 +209,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Observer on version subject fires when 
     REQUIRE(callback_count == 4);
 
     guard.release();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Observer receives correct version value",
@@ -237,7 +238,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Observer receives correct version value
     REQUIRE(observed_version == 2);
 
     guard.release();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 // ============================================================================
@@ -255,7 +256,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Single object in set works correctly",
     REQUIRE(state.get_excluded_objects().size() == 1);
     REQUIRE(state.get_excluded_objects().count("SingleObject") == 1);
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Object names with special characters work",
@@ -280,7 +281,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: Object names with special characters wo
         REQUIRE(state.get_excluded_objects().count(obj) == 1);
     }
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "CHAR: get_excluded_objects returns const reference",
@@ -298,7 +299,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "CHAR: get_excluded_objects returns const refe
     REQUIRE(&ref1 == &ref2);
     REQUIRE(ref1.size() == 2);
 
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
 }
 
 // ============================================================================

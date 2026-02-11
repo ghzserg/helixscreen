@@ -28,6 +28,23 @@ using namespace helix::sensors;
 using json = nlohmann::json;
 
 // ============================================================================
+// Test Access
+// ============================================================================
+
+namespace helix::sensors {
+class AccelSensorManagerTestAccess {
+  public:
+    static void reset(AccelSensorManager& obj) {
+        std::lock_guard<std::recursive_mutex> lock(obj.mutex_);
+        obj.sensors_.clear();
+        obj.states_.clear();
+        obj.sync_mode_ = true;
+        obj.deinit_subjects();
+    }
+};
+} // namespace helix::sensors
+
+// ============================================================================
 // Test Fixture
 // ============================================================================
 
@@ -51,7 +68,7 @@ class AccelSensorTestFixture {
         }
 
         // Reset state for test isolation first
-        mgr().reset_for_testing();
+        AccelSensorManagerTestAccess::reset(mgr());
 
         // Initialize subjects after reset (reset_for_testing deinits subjects)
         mgr().init_subjects();
@@ -59,7 +76,7 @@ class AccelSensorTestFixture {
 
     ~AccelSensorTestFixture() {
         // Reset after each test
-        mgr().reset_for_testing();
+        AccelSensorManagerTestAccess::reset(mgr());
     }
 
   protected:

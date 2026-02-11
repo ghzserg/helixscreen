@@ -27,6 +27,28 @@ using namespace helix::sensors;
 using json = nlohmann::json;
 
 // ============================================================================
+// Test Access
+// ============================================================================
+
+namespace helix::sensors {
+class WidthSensorManagerTestAccess {
+  public:
+    static void reset(WidthSensorManager& obj) {
+        std::lock_guard<std::recursive_mutex> lock(obj.mutex_);
+        obj.sensors_.clear();
+        obj.states_.clear();
+        obj.sync_mode_ = true;
+        // Reset subject values but keep subjects initialized
+        if (obj.subjects_initialized_) {
+            lv_subject_set_int(&obj.sensor_count_, 0);
+            lv_subject_set_int(&obj.diameter_, -1);
+            lv_subject_copy_string(&obj.diameter_text_, "--");
+        }
+    }
+};
+} // namespace helix::sensors
+
+// ============================================================================
 // Test Fixture
 // ============================================================================
 
@@ -53,12 +75,12 @@ class WidthSensorTestFixture {
         mgr().init_subjects();
 
         // Then reset state for test isolation (clears data but keeps subjects)
-        mgr().reset_for_testing();
+        WidthSensorManagerTestAccess::reset(mgr());
     }
 
     ~WidthSensorTestFixture() {
         // Reset after each test
-        mgr().reset_for_testing();
+        WidthSensorManagerTestAccess::reset(mgr());
     }
 
   protected:

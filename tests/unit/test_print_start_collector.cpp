@@ -458,6 +458,7 @@ TEST_CASE("PrintStart: typical noise lines should not match phases", "[print][ne
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "moonraker_client_mock.h"
 #include "print_start_collector.h"
 #include "print_start_profile.h"
@@ -605,7 +606,7 @@ class PrintStartCollectorHeaterFixture : public LVGLTestFixture {
      * we need to drain the queue to see the updates in tests.
      */
     void drain_async_updates() {
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     }
 
   protected:
@@ -1434,7 +1435,7 @@ class PrintStartCollectorSequentialFixture : public LVGLTestFixture {
     }
 
     void drain_async_updates() {
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     }
 
   protected:

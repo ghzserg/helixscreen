@@ -11,6 +11,7 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "observer_factory.h"
 
 #include <atomic>
@@ -142,7 +143,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_async calls value handle
     REQUIRE(panel.int_value == 42);
 
     // Process async queue to trigger update handler
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     REQUIRE(panel.update_called == true);
 
     guard.release();
@@ -165,7 +166,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_async with temperature t
     REQUIRE(panel.int_value == 210);
 
     // Process async queue
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     REQUIRE(panel.update_called == true);
     panel.reset();
     panel.int_value = 210; // Keep transformed value
@@ -176,7 +177,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_async with temperature t
 
     // Drain async queue before releasing guard - ensures pending callbacks
     // execute while panel is still valid (L054 pattern)
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     guard.release();
     lv_subject_deinit(&subject);
@@ -273,7 +274,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_string_async calls update ha
     REQUIRE(panel.string_value == "test");
 
     // Process async queue
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     REQUIRE(panel.update_called == true);
 
     guard.release();

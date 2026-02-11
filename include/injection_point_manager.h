@@ -193,19 +193,8 @@ class InjectionPointManager {
      */
     size_t get_widget_count(const std::string& point_id) const;
 
-    /**
-     * @brief Reset all internal state for testing
-     *
-     * Clears all registered injection points and tracked widgets without
-     * calling any callbacks or deleting LVGL widgets. Use only in test
-     * teardown to ensure clean state between tests.
-     *
-     * @note Does NOT invoke on_destroy callbacks - caller must ensure
-     *       widgets are no longer referenced before calling.
-     */
-    static void reset_for_testing();
-
   private:
+    friend class InjectionPointManagerTestAccess;
     InjectionPointManager() = default;
     ~InjectionPointManager() = default;
 

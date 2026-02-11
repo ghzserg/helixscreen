@@ -45,11 +45,6 @@ class PrinterExcludedObjectsState {
      */
     void deinit_subjects();
 
-    /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
     // ========================================================================
     // Setters
     // ========================================================================
@@ -155,6 +150,8 @@ class PrinterExcludedObjectsState {
     }
 
   private:
+    friend class PrinterExcludedObjectsStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 

@@ -9,12 +9,13 @@
  * into a single boolean for simpler XML bindings.
  */
 
+#include "../test_helpers/printer_state_test_access.h"
+#include "../ui_test_utils.h"
 #include "printer_state.h"
 
 #include <spdlog/spdlog.h>
 
 #include "../catch_amalgamated.hpp"
-#include "../ui_test_utils.h"
 
 using json = nlohmann::json;
 
@@ -41,7 +42,7 @@ class PrintActiveTestFixture {
         }
 
         // Reset PrinterState for test isolation
-        state_.reset_for_testing();
+        PrinterStateTestAccess::reset(state_);
 
         // Initialize subjects (without XML registration in tests)
         state_.init_subjects(false);
@@ -49,7 +50,7 @@ class PrintActiveTestFixture {
 
     ~PrintActiveTestFixture() {
         // Reset after each test
-        state_.reset_for_testing();
+        PrinterStateTestAccess::reset(state_);
     }
 
   protected:

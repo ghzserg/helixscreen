@@ -106,21 +106,6 @@ void PrinterLedState::update_from_status(const nlohmann::json& status) {
     }
 }
 
-void PrinterLedState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::debug(
-            "[PrinterLedState] reset_for_testing: subjects not initialized, nothing to reset");
-        return;
-    }
-
-    spdlog::debug(
-        "[PrinterLedState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 void PrinterLedState::set_tracked_led(const std::string& led_name) {
     tracked_led_name_ = led_name;
     if (!led_name.empty()) {

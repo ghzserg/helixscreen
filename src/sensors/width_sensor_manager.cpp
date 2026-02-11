@@ -400,24 +400,6 @@ lv_subject_t* WidthSensorManager::get_diameter_text_subject() {
 // Testing Support
 // ============================================================================
 
-void WidthSensorManager::reset_for_testing() {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-
-    sensors_.clear();
-    states_.clear();
-    sync_mode_ = true;
-
-    // Reset subject VALUES but keep subjects initialized
-    // (deinit_all() corrupts subjects in ways that prevent reuse)
-    if (subjects_initialized_) {
-        lv_subject_set_int(&sensor_count_, 0);
-        lv_subject_set_int(&diameter_, -1);
-        lv_subject_copy_string(&diameter_text_, "--");
-    }
-
-    spdlog::debug("[WidthSensorManager] Reset for testing");
-}
-
 void WidthSensorManager::set_sync_mode(bool enabled) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     sync_mode_ = enabled;

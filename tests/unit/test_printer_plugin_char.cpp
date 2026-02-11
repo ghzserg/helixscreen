@@ -26,8 +26,7 @@
  * - Updates trigger update_gcode_modification_visibility() for composite subjects
  */
 
-#include "ui_update_queue.h"
-
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_state.h"
@@ -48,7 +47,7 @@ TEST_CASE("Plugin status characterization: initial values after init",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true); // Need XML registration to lookup by name
 
     SECTION("helix_plugin_installed initializes to -1 (unknown)") {
@@ -69,7 +68,7 @@ TEST_CASE("Plugin status characterization: initial query methods return false fo
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("service_has_helix_plugin returns false when unknown (-1)") {
@@ -90,12 +89,12 @@ TEST_CASE("Plugin status characterization: set_helix_plugin_installed behavior",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("set_helix_plugin_installed(true) sets subject to 1") {
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         lv_subject_t* subject = get_subject_by_name("helix_plugin_installed");
         REQUIRE(lv_subject_get_int(subject) == 1);
@@ -104,11 +103,11 @@ TEST_CASE("Plugin status characterization: set_helix_plugin_installed behavior",
     SECTION("set_helix_plugin_installed(false) sets subject to 0") {
         // First set to true
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Then set to false
         state.set_helix_plugin_installed(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         lv_subject_t* subject = get_subject_by_name("helix_plugin_installed");
         REQUIRE(lv_subject_get_int(subject) == 0);
@@ -116,14 +115,14 @@ TEST_CASE("Plugin status characterization: set_helix_plugin_installed behavior",
 
     SECTION("service_has_helix_plugin returns true after set_helix_plugin_installed(true)") {
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(state.service_has_helix_plugin() == true);
     }
 
     SECTION("service_has_helix_plugin returns false after set_helix_plugin_installed(false)") {
         state.set_helix_plugin_installed(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(state.service_has_helix_plugin() == false);
     }
@@ -138,12 +137,12 @@ TEST_CASE("Plugin status characterization: set_phase_tracking_enabled behavior",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("set_phase_tracking_enabled(true) sets subject to 1") {
         state.set_phase_tracking_enabled(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         lv_subject_t* subject = get_subject_by_name("phase_tracking_enabled");
         REQUIRE(lv_subject_get_int(subject) == 1);
@@ -152,11 +151,11 @@ TEST_CASE("Plugin status characterization: set_phase_tracking_enabled behavior",
     SECTION("set_phase_tracking_enabled(false) sets subject to 0") {
         // First set to true
         state.set_phase_tracking_enabled(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Then set to false
         state.set_phase_tracking_enabled(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         lv_subject_t* subject = get_subject_by_name("phase_tracking_enabled");
         REQUIRE(lv_subject_get_int(subject) == 0);
@@ -164,14 +163,14 @@ TEST_CASE("Plugin status characterization: set_phase_tracking_enabled behavior",
 
     SECTION("is_phase_tracking_enabled returns true after set_phase_tracking_enabled(true)") {
         state.set_phase_tracking_enabled(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(state.is_phase_tracking_enabled() == true);
     }
 
     SECTION("is_phase_tracking_enabled returns false after set_phase_tracking_enabled(false)") {
         state.set_phase_tracking_enabled(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(state.is_phase_tracking_enabled() == false);
     }
@@ -186,7 +185,7 @@ TEST_CASE("Plugin status characterization: tri-state semantics",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("helix_plugin_installed: unknown (-1) vs not installed (0) are distinct") {
@@ -198,7 +197,7 @@ TEST_CASE("Plugin status characterization: tri-state semantics",
 
         // Set to not installed
         state.set_helix_plugin_installed(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(subject) == 0);
         REQUIRE(state.service_has_helix_plugin() == false);
@@ -230,7 +229,7 @@ TEST_CASE("Plugin status characterization: async update behavior",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("set_helix_plugin_installed requires queue drain to take effect") {
@@ -243,7 +242,7 @@ TEST_CASE("Plugin status characterization: async update behavior",
         // (This is implementation-dependent - the async call may be synchronous in tests)
 
         // Drain queue ensures update is processed
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(subject) == 1);
     }
 
@@ -252,7 +251,7 @@ TEST_CASE("Plugin status characterization: async update behavior",
         lv_subject_t* subject = get_subject_by_name("phase_tracking_enabled");
 
         state.set_phase_tracking_enabled(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         REQUIRE(lv_subject_get_int(subject) == 1);
     }
@@ -264,7 +263,7 @@ TEST_CASE("Plugin status characterization: async update behavior",
         state.set_helix_plugin_installed(true);
         state.set_helix_plugin_installed(false);
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Final value should be 1 (last write wins)
         REQUIRE(lv_subject_get_int(subject) == 1);
@@ -280,7 +279,7 @@ TEST_CASE("Plugin status characterization: triggers composite visibility update"
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("set_helix_plugin_installed(true) updates can_show_* subjects") {
@@ -291,7 +290,7 @@ TEST_CASE("Plugin status characterization: triggers composite visibility update"
 
         // Install plugin and enable bed mesh capability
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Note: can_show_bed_mesh also requires printer_has_bed_mesh to be true
         // So it stays 0 unless we also set the capability
@@ -301,11 +300,11 @@ TEST_CASE("Plugin status characterization: triggers composite visibility update"
     SECTION("set_helix_plugin_installed(false) clears can_show_* subjects") {
         // Install plugin first
         state.set_helix_plugin_installed(true);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Then uninstall
         state.set_helix_plugin_installed(false);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // All can_show_* should be 0
         lv_subject_t* can_show_bed_mesh = get_subject_by_name("can_show_bed_mesh");

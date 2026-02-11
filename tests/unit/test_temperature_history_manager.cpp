@@ -20,7 +20,24 @@
 #include "../../include/temperature_history_manager.h"
 #include "../../include/ui_update_queue.h"
 #include "../../lvgl/lvgl.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
+
+class TemperatureHistoryManagerTestAccess {
+  public:
+    static bool add_sample(TemperatureHistoryManager& m, const std::string& heater_name,
+                           int temp_centi, int target_centi, int64_t timestamp_ms) {
+        bool stored;
+        {
+            std::lock_guard<std::mutex> lock(m.mutex_);
+            stored = m.add_sample_internal(heater_name, temp_centi, target_centi, timestamp_ms);
+        }
+        if (stored) {
+            m.notify_observers(heater_name);
+        }
+        return stored;
+    }
+};
 
 #include <atomic>
 #include <chrono>
@@ -77,7 +94,7 @@ class TemperatureHistoryManagerTestFixture {
         manager_.reset();
 
         // Drain pending callbacks
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Shutdown queue
         ui_update_queue_shutdown();
@@ -99,7 +116,7 @@ class TemperatureHistoryManagerTestFixture {
      */
     void set_extruder_temp(int centidegrees) {
         lv_subject_set_int(printer_state_.get_extruder_temp_subject(), centidegrees);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     }
 
     /**
@@ -107,7 +124,7 @@ class TemperatureHistoryManagerTestFixture {
      */
     void set_extruder_target(int centidegrees) {
         lv_subject_set_int(printer_state_.get_extruder_target_subject(), centidegrees);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     }
 
     /**
@@ -115,7 +132,7 @@ class TemperatureHistoryManagerTestFixture {
      */
     void set_bed_temp(int centidegrees) {
         lv_subject_set_int(printer_state_.get_bed_temp_subject(), centidegrees);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     }
 
     /**
@@ -123,7 +140,7 @@ class TemperatureHistoryManagerTestFixture {
      */
     void set_bed_target(int centidegrees) {
         lv_subject_set_int(printer_state_.get_bed_target_subject(), centidegrees);
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     }
 
     // ========================================================================
@@ -140,7 +157,7 @@ class TemperatureHistoryManagerTestFixture {
      */
     bool wait_for_sample_count(const std::string& heater, int count, int timeout_ms = 500) {
         for (int i = 0; i < timeout_ms / 10; ++i) {
-            helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+            UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
             if (manager_->get_sample_count(heater) >= count) {
                 return true;
             }
@@ -236,12 +253,16 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
     int64_t ts = now_ms();
 
     // When: we inject samples rapidly (simulating 4Hz updates)
-    bool stored1 = manager_->add_sample_for_testing("extruder", 2000, 2100, ts);
-    bool stored2 = manager_->add_sample_for_testing("extruder", 2010, 2100, ts + 250); // +250ms
-    bool stored3 = manager_->add_sample_for_testing("extruder", 2020, 2100, ts + 500); // +500ms
-    bool stored4 = manager_->add_sample_for_testing("extruder", 2030, 2100, ts + 750); // +750ms
-    bool stored5 =
-        manager_->add_sample_for_testing("extruder", 2040, 2100, ts + 1000); // +1000ms (new second)
+    bool stored1 =
+        TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2000, 2100, ts);
+    bool stored2 = TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2010,
+                                                                   2100, ts + 250); // +250ms
+    bool stored3 = TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2020,
+                                                                   2100, ts + 500); // +500ms
+    bool stored4 = TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2030,
+                                                                   2100, ts + 750); // +750ms
+    bool stored5 = TemperatureHistoryManagerTestAccess::add_sample(
+        *manager_, "extruder", 2040, 2100, ts + 1000); // +1000ms (new second)
 
     // Then: only samples at 1Hz intervals should be stored
     // First sample always stored
@@ -268,7 +289,8 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
 
     for (int i = 0; i < TemperatureHistoryManager::HISTORY_SIZE; ++i) {
         int64_t ts = base_ts + (i * TemperatureHistoryManager::SAMPLE_INTERVAL_MS);
-        bool stored = manager_->add_sample_for_testing("extruder", 2000 + i, 2100, ts);
+        bool stored = TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder",
+                                                                      2000 + i, 2100, ts);
         REQUIRE(stored);
     }
 
@@ -277,7 +299,8 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
     // When: we add one more sample
     int64_t overflow_ts = base_ts + (TemperatureHistoryManager::HISTORY_SIZE *
                                      TemperatureHistoryManager::SAMPLE_INTERVAL_MS);
-    bool overflow_stored = manager_->add_sample_for_testing("extruder", 9999, 2100, overflow_ts);
+    bool overflow_stored = TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder",
+                                                                           9999, 2100, overflow_ts);
     REQUIRE(overflow_stored);
 
     // Then: count stays at HISTORY_SIZE (oldest evicted)
@@ -303,11 +326,11 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
     int64_t ts = now_ms();
 
     // When: we add samples to different heaters
-    manager_->add_sample_for_testing("extruder", 2000, 2100, ts);
-    manager_->add_sample_for_testing("heater_bed", 600, 700, ts);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2000, 2100, ts);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "heater_bed", 600, 700, ts);
 
     // Add more to extruder at different time
-    manager_->add_sample_for_testing("extruder", 2050, 2100, ts + 1000);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2050, 2100, ts + 1000);
 
     // Then: heaters have independent histories
     REQUIRE(manager_->get_sample_count("extruder") == 2);
@@ -342,7 +365,7 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
 
     // When: a sample is added
     int64_t ts = now_ms();
-    manager_->add_sample_for_testing("extruder", 2000, 2100, ts);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2000, 2100, ts);
 
     // Then: observer should be notified
     REQUIRE(callback_count.load() == 1);
@@ -352,7 +375,7 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
     }
 
     // And: subsequent samples trigger notifications
-    manager_->add_sample_for_testing("heater_bed", 600, 700, ts);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "heater_bed", 600, 700, ts);
     REQUIRE(callback_count.load() == 2);
     {
         std::lock_guard<std::mutex> lock(heater_mutex);
@@ -377,14 +400,14 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
 
     // And: a sample triggers notification
     int64_t ts = now_ms();
-    manager_->add_sample_for_testing("extruder", 2000, 2100, ts);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2000, 2100, ts);
     REQUIRE(callback_count.load() == 1);
 
     // When: observer is removed
     manager_->remove_observer(&callback);
 
     // And: another sample is added
-    manager_->add_sample_for_testing("extruder", 2050, 2100, ts + 1000);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2050, 2100, ts + 1000);
 
     // Then: observer should NOT be notified again
     REQUIRE(callback_count.load() == 1);
@@ -404,10 +427,10 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
     int64_t ts3 = base_ts + 2000; // +2s
     int64_t ts4 = base_ts + 3000; // +3s
 
-    manager_->add_sample_for_testing("extruder", 2000, 2100, ts1);
-    manager_->add_sample_for_testing("extruder", 2010, 2100, ts2);
-    manager_->add_sample_for_testing("extruder", 2020, 2100, ts3);
-    manager_->add_sample_for_testing("extruder", 2030, 2100, ts4);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2000, 2100, ts1);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2010, 2100, ts2);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2020, 2100, ts3);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2030, 2100, ts4);
 
     // When: querying samples since ts2
     auto filtered = manager_->get_samples_since("extruder", ts2);
@@ -446,8 +469,8 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
     std::thread writer([&]() {
         int64_t ts = now_ms();
         for (int i = 0; i < 100 && !stop; ++i) {
-            manager_->add_sample_for_testing(
-                "extruder", 2000 + i, 2100,
+            TemperatureHistoryManagerTestAccess::add_sample(
+                *manager_, "extruder", 2000 + i, 2100,
                 ts + (i * TemperatureHistoryManager::SAMPLE_INTERVAL_MS));
             writes_completed++;
             std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -527,7 +550,7 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
 
     // When: a sample is added
     int64_t ts = now_ms();
-    manager_->add_sample_for_testing("extruder", 2000, 2100, ts);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2000, 2100, ts);
 
     // Then: all observers are notified
     REQUIRE(callback1_count.load() == 1);
@@ -535,7 +558,7 @@ TEST_CASE_METHOD(TemperatureHistoryManagerTestFixture,
 
     // When: one observer is removed
     manager_->remove_observer(&callback1);
-    manager_->add_sample_for_testing("extruder", 2050, 2100, ts + 1000);
+    TemperatureHistoryManagerTestAccess::add_sample(*manager_, "extruder", 2050, 2100, ts + 1000);
 
     // Then: only remaining observer is notified
     REQUIRE(callback1_count.load() == 1); // Unchanged

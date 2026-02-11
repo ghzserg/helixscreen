@@ -44,11 +44,6 @@ class PrinterPluginStatusState {
      */
     void deinit_subjects();
 
-    /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
     // ========================================================================
     // Setters
     // ========================================================================
@@ -110,6 +105,8 @@ class PrinterPluginStatusState {
     }
 
   private:
+    friend class PrinterPluginStatusStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 

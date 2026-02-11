@@ -217,7 +217,7 @@ void LVGLUITestFixture::cleanup() {
         ui_wizard_deinit_subjects();
 
         // PrinterState subjects
-        get_printer_state().reset_for_testing();
+        get_printer_state().deinit_subjects();
 
         // Core singleton subjects - must be deinitialized to clear observers
         // before widgets are destroyed, otherwise style broadcasts will hit

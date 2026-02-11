@@ -104,29 +104,6 @@ void PrinterFanState::update_from_status(const nlohmann::json& status) {
     }
 }
 
-void PrinterFanState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::debug(
-            "[PrinterFanState] reset_for_testing: subjects not initialized, nothing to reset");
-        return;
-    }
-
-    spdlog::debug(
-        "[PrinterFanState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Deinit per-fan speed subjects (unique_ptr handles memory, we just need to deinit)
-    for (auto& [name, subject_ptr] : fan_speed_subjects_) {
-        if (subject_ptr) {
-            lv_subject_deinit(subject_ptr.get());
-        }
-    }
-    fan_speed_subjects_.clear();
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 FanType PrinterFanState::classify_fan_type(const std::string& object_name) const {
     if (object_name == "fan") {
         return FanType::PART_COOLING;

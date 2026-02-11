@@ -114,18 +114,8 @@ class PluginRegistry {
      */
     void clear();
 
-    /**
-     * @brief Reset all internal state for testing
-     *
-     * Clears all registered services. Use only in test teardown to ensure
-     * clean state between tests.
-     *
-     * @note Caller must ensure no code is actively using registered services
-     *       before calling this method.
-     */
-    static void reset_for_testing();
-
   private:
+    friend class PluginRegistryTestAccess;
     PluginRegistry() = default;
 
     std::unordered_map<std::string, void*> services_;

@@ -17,6 +17,7 @@
 
 #include "ui_update_queue.h"
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_detector.h"
@@ -32,7 +33,7 @@ TEST_CASE("PrinterState: set_printer_type stores the type name", "[printer_state
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set a known printer type
@@ -47,7 +48,7 @@ TEST_CASE("PrinterState: set_printer_type with different printer names",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("FlashForge Adventurer 5M") {
@@ -80,7 +81,7 @@ TEST_CASE("PrinterState: set_printer_type fetches capabilities from database",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set printer type that has capabilities in the database
@@ -106,7 +107,7 @@ TEST_CASE("PrinterState: AD5M Pro does not include purge_line parameter",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
@@ -122,7 +123,7 @@ TEST_CASE("PrinterState: AD5M Pro does not include skew_correct parameter",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
@@ -142,7 +143,7 @@ TEST_CASE("PrinterState: unknown printer type returns empty capabilities",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set an unknown printer type (not in database)
@@ -160,7 +161,7 @@ TEST_CASE("PrinterState: Custom/Other printer type returns empty capabilities",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Custom/Other is a valid selection but has no database entry
@@ -175,7 +176,7 @@ TEST_CASE("PrinterState: empty printer type returns empty capabilities",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.set_printer_type_sync("");
@@ -193,7 +194,7 @@ TEST_CASE("PrinterState: changing printer type updates capabilities",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // First set to AD5M Pro (has capabilities)
@@ -218,7 +219,7 @@ TEST_CASE("PrinterState: changing from unknown to known updates capabilities",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Start with unknown
@@ -238,7 +239,7 @@ TEST_CASE("PrinterState: changing between printers with different capabilities",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set to AD5M Pro
@@ -261,7 +262,7 @@ TEST_CASE("PrinterState: initial printer type is empty", "[printer_state][capabi
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Before setting any type, should be empty
@@ -272,7 +273,7 @@ TEST_CASE("PrinterState: initial capabilities are empty", "[printer_state][capab
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Before setting any type, capabilities should be empty
@@ -289,7 +290,7 @@ TEST_CASE("PrinterState: printer type lookup is case-insensitive",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Correct case should work
@@ -306,7 +307,7 @@ TEST_CASE("PrinterState: setting same type twice is idempotent",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
@@ -326,7 +327,7 @@ TEST_CASE("PrinterState: get_printer_type returns const reference",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
@@ -345,7 +346,7 @@ TEST_CASE("PrinterState: get_print_start_capabilities returns const reference",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.set_printer_type_sync("FlashForge Adventurer 5M Pro");

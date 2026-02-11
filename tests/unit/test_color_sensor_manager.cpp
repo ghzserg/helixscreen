@@ -28,6 +28,23 @@ using namespace helix::sensors;
 using json = nlohmann::json;
 
 // ============================================================================
+// Test Access
+// ============================================================================
+
+namespace helix::sensors {
+class ColorSensorManagerTestAccess {
+  public:
+    static void reset(ColorSensorManager& obj) {
+        std::lock_guard<std::recursive_mutex> lock(obj.mutex_);
+        obj.sensors_.clear();
+        obj.states_.clear();
+        obj.sync_mode_ = true;
+        obj.deinit_subjects();
+    }
+};
+} // namespace helix::sensors
+
+// ============================================================================
 // Test Fixture
 // ============================================================================
 
@@ -51,7 +68,7 @@ class ColorSensorTestFixture {
         }
 
         // Reset state for test isolation first
-        mgr().reset_for_testing();
+        ColorSensorManagerTestAccess::reset(mgr());
 
         // Initialize subjects after reset
         mgr().init_subjects();
@@ -59,7 +76,7 @@ class ColorSensorTestFixture {
 
     ~ColorSensorTestFixture() {
         // Reset after each test
-        mgr().reset_for_testing();
+        ColorSensorManagerTestAccess::reset(mgr());
     }
 
   protected:

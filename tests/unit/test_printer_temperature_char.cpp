@@ -17,6 +17,7 @@
  * Centidegrees format: value * 10 for 0.1C resolution (divide by 10 for display)
  */
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_state.h"
@@ -32,7 +33,7 @@ TEST_CASE("Temperature characterization: observer fires when extruder_temp chang
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Observer callback to track notifications
@@ -75,7 +76,7 @@ TEST_CASE("Temperature characterization: observer fires when extruder_target cha
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -110,7 +111,7 @@ TEST_CASE("Temperature characterization: observer fires when bed_temp changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -145,7 +146,7 @@ TEST_CASE("Temperature characterization: observer fires when bed_target changes"
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -184,7 +185,7 @@ TEST_CASE("Temperature characterization: subjects survive reset_for_testing cycl
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set some temperature values
@@ -199,7 +200,7 @@ TEST_CASE("Temperature characterization: subjects survive reset_for_testing cycl
     REQUIRE(lv_subject_get_int(state.get_bed_target_subject()) == 600);
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // After reset, values should be back to defaults (0)
@@ -224,7 +225,7 @@ TEST_CASE("Temperature characterization: all 4 temp subjects are independent",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // All subjects should start at 0
@@ -279,7 +280,7 @@ TEST_CASE("Temperature characterization: simultaneous updates work correctly",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Update all four temperatures in a single status message
@@ -303,7 +304,7 @@ TEST_CASE("Temperature characterization: centidegree storage precision",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("0.1C precision is preserved") {
@@ -346,7 +347,7 @@ TEST_CASE("Temperature characterization: observers on different subjects are ind
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     int extruder_count = 0;
@@ -396,7 +397,7 @@ TEST_CASE("Temperature characterization: multiple observers on same subject all 
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     int count1 = 0, count2 = 0, count3 = 0;
@@ -440,7 +441,7 @@ TEST_CASE("Temperature characterization: partial status updates preserve other v
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set initial values
@@ -470,7 +471,7 @@ TEST_CASE("Temperature characterization: empty status does not affect values",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set initial values

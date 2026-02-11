@@ -158,25 +158,6 @@ class TemperatureHistoryManager {
      */
     void remove_observer(HistoryCallback* cb);
 
-    // ========================================================================
-    // Manual Sample Injection (for testing)
-    // ========================================================================
-
-    /**
-     * @brief Manually add a sample (for testing)
-     *
-     * Bypasses subject subscription, directly adds sample to history.
-     * Respects throttling - samples within SAMPLE_INTERVAL_MS are dropped.
-     *
-     * @param heater_name Heater name
-     * @param temp_centi Temperature in centidegrees
-     * @param target_centi Target in centidegrees
-     * @param timestamp_ms Timestamp in milliseconds
-     * @return true if sample was stored, false if throttled
-     */
-    bool add_sample_for_testing(const std::string& heater_name, int temp_centi, int target_centi,
-                                int64_t timestamp_ms);
-
     /**
      * @brief Get cached target temperature for a heater
      * @param heater_name Heater name
@@ -204,6 +185,8 @@ class TemperatureHistoryManager {
     void update_recent_sample_target(const std::string& heater_name, int target_centi);
 
   private:
+    friend class TemperatureHistoryManagerTestAccess;
+
     /**
      * @brief Per-heater circular buffer for temperature samples
      */

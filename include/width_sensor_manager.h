@@ -195,14 +195,6 @@ class WidthSensorManager : public ISensorManager {
     [[nodiscard]] lv_subject_t* get_diameter_text_subject();
 
     /**
-     * @brief Reset all state for testing.
-     *
-     * Clears all sensors, states, and resets flags.
-     * Call this between tests to ensure isolation.
-     */
-    void reset_for_testing();
-
-    /**
      * @brief Enable synchronous mode for testing
      *
      * When enabled, update_from_status() calls update_subjects() synchronously
@@ -214,6 +206,8 @@ class WidthSensorManager : public ISensorManager {
      * @brief Update subjects on main LVGL thread (called by async callback)
      */
     void update_subjects_on_main_thread();
+
+    friend class WidthSensorManagerTestAccess;
 
   private:
     WidthSensorManager();

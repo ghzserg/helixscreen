@@ -419,24 +419,6 @@ lv_subject_t* ProbeSensorManager::get_sensor_count_subject() {
 // Testing Support
 // ============================================================================
 
-void ProbeSensorManager::reset_for_testing() {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-
-    sensors_.clear();
-    states_.clear();
-    sync_mode_ = true;
-
-    // Reset subject values for clean test isolation (keep subjects initialized)
-    if (subjects_initialized_) {
-        lv_subject_set_int(&sensor_count_, 0);
-        lv_subject_set_int(&probe_triggered_, -1);
-        lv_subject_set_int(&probe_last_z_, -1);
-        lv_subject_set_int(&probe_z_offset_, -1);
-    }
-
-    spdlog::debug("[ProbeSensorManager] Reset for testing");
-}
-
 void ProbeSensorManager::set_sync_mode(bool enabled) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     sync_mode_ = enabled;

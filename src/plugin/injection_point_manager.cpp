@@ -286,14 +286,4 @@ size_t InjectionPointManager::get_widget_count(const std::string& point_id) cons
     return count;
 }
 
-void InjectionPointManager::reset_for_testing() {
-    auto& inst = instance();
-    std::lock_guard<std::mutex> lock(inst.mutex_);
-
-    inst.points_.clear();
-    inst.injected_widgets_.clear();
-
-    spdlog::debug("[InjectionPointManager] Reset for testing - all state cleared");
-}
-
 } // namespace helix::plugin

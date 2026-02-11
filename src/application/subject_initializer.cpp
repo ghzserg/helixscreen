@@ -134,9 +134,9 @@ void SubjectInitializer::init_printer_state_subjects() {
     get_printer_state().init_subjects();
 
     // Register PrinterState cleanup - MUST happen before lv_deinit() to disconnect observers
-    // Uses reset_for_testing() which calls lv_subject_deinit() on all 60+ subjects
+    // Calls lv_subject_deinit() on all 60+ subjects across all sub-components
     StaticSubjectRegistry::instance().register_deinit(
-        "PrinterState", []() { get_printer_state().reset_for_testing(); });
+        "PrinterState", []() { get_printer_state().deinit_subjects(); });
 
     // ActivePrintMediaManager observes print_filename_ and updates print_display_filename_
     // and print_thumbnail_path_. Must be initialized after PrinterState, before panels.

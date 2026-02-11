@@ -93,24 +93,6 @@ void PrinterPrintState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterPrintState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::debug(
-            "[PrinterPrintState] reset_for_testing: subjects not initialized, nothing to reset");
-        return;
-    }
-
-    spdlog::debug(
-        "[PrinterPrintState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-
-    // Reset non-subject state too
-    estimated_print_time_ = 0;
-}
-
 void PrinterPrintState::reset_for_new_print() {
     // Clear stale print PROGRESS data when starting a new print.
     // The preparing overlay covers the UI, so stale data isn't visible.

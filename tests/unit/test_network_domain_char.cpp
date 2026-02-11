@@ -25,6 +25,7 @@
  * - nav_buttons_enabled_: 0 (starts disabled)
  */
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "moonraker_client.h" // For ConnectionState enum
@@ -41,7 +42,7 @@ TEST_CASE("Network characterization: initial values after init",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("printer_connection_message initializes to 'Disconnected'") {
@@ -69,7 +70,7 @@ TEST_CASE("Network characterization: set_printer_connection_state_internal updat
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("disconnected state (0)") {
@@ -127,7 +128,7 @@ TEST_CASE("Network characterization: set_network_status updates subject",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("disconnected (0)") {
@@ -155,7 +156,7 @@ TEST_CASE("Network characterization: set_klippy_state_sync updates subject",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("READY state (0)") {
@@ -188,7 +189,7 @@ TEST_CASE("Network characterization: nav_buttons_enabled derivation",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("connected AND klippy ready -> nav_buttons_enabled = 1") {
@@ -275,7 +276,7 @@ TEST_CASE("Network characterization: was_ever_connected flag behavior",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Note: was_ever_connected_ is NOT reset by reset_for_testing().
@@ -350,7 +351,7 @@ TEST_CASE("Network characterization: observer fires when printer_connection_stat
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -385,7 +386,7 @@ TEST_CASE("Network characterization: observer fires when klippy_state changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -419,7 +420,7 @@ TEST_CASE("Network characterization: observer fires when nav_buttons_enabled cha
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -465,7 +466,7 @@ TEST_CASE("Network characterization: subjects survive reset_for_testing cycle",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set some network values
@@ -482,7 +483,7 @@ TEST_CASE("Network characterization: subjects survive reset_for_testing cycle",
     REQUIRE(state.was_ever_connected() == true);
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // After reset, subject values should be back to defaults
@@ -508,7 +509,7 @@ TEST_CASE("Network characterization: subject pointers remain valid after reset",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Capture subject pointers
@@ -517,7 +518,7 @@ TEST_CASE("Network characterization: subject pointers remain valid after reset",
     lv_subject_t* nav_buttons_before = state.get_nav_buttons_enabled_subject();
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Pointers should be the same (singleton subjects are reused)
@@ -539,7 +540,7 @@ TEST_CASE("Network characterization: connection and klippy subjects are independ
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("changing connection state does not affect klippy state") {
@@ -592,7 +593,7 @@ TEST_CASE("Network characterization: observers on different subjects are indepen
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     int connection_count = 0;
@@ -641,7 +642,7 @@ TEST_CASE("Network characterization: multiple observers on same subject all fire
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     int count1 = 0, count2 = 0, count3 = 0;
@@ -685,7 +686,7 @@ TEST_CASE("Network characterization: connection message buffer behavior",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("message updates with state changes") {

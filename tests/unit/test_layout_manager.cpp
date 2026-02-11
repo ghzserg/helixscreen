@@ -7,7 +7,6 @@
 using helix::LayoutManager;
 using helix::LayoutType;
 
-// Friend class for test-only access to LayoutManager internals
 class LayoutManagerTestAccess {
   public:
     static void reset(LayoutManager& lm) {

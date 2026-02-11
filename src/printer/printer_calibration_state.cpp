@@ -55,21 +55,6 @@ void PrinterCalibrationState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterCalibrationState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterCalibrationState] reset_for_testing: subjects not initialized, "
-                      "nothing to reset");
-        return;
-    }
-
-    spdlog::trace(
-        "[PrinterCalibrationState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 void PrinterCalibrationState::update_from_status(const nlohmann::json& status) {
     // Update manual probe state (for Z-offset calibration)
     // Klipper's manual_probe object is active during PROBE_CALIBRATE and Z_ENDSTOP_CALIBRATE

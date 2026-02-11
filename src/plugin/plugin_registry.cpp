@@ -68,13 +68,4 @@ void PluginRegistry::clear() {
     spdlog::debug("[plugin] All services cleared from registry");
 }
 
-void PluginRegistry::reset_for_testing() {
-    auto& inst = instance();
-    std::lock_guard<std::mutex> lock(inst.mutex_);
-
-    inst.services_.clear();
-
-    spdlog::debug("[plugin] PluginRegistry reset for testing - all state cleared");
-}
-
 } // namespace helix::plugin

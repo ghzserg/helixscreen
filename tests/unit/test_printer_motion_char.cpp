@@ -23,6 +23,7 @@
  * Offset format: value * 1000 for microns (divide by 1000 for mm)
  */
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_state.h"
@@ -38,7 +39,7 @@ TEST_CASE("Motion characterization: non-obvious initial values after init",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("speed_factor initializes to 100%") {
@@ -59,7 +60,7 @@ TEST_CASE("Motion characterization: position updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("positions store as centimillimeters with 0.01mm precision") {
@@ -119,7 +120,7 @@ TEST_CASE("Motion characterization: homed_axes updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("empty homed_axes (nothing homed)") {
@@ -164,7 +165,7 @@ TEST_CASE("Motion characterization: speed_factor updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("normal speed factor (100%)") {
@@ -201,7 +202,7 @@ TEST_CASE("Motion characterization: flow_factor updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("normal flow factor (100%)") {
@@ -235,7 +236,7 @@ TEST_CASE("Motion characterization: gcode_z_offset updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("zero Z-offset") {
@@ -276,7 +277,7 @@ TEST_CASE("Motion characterization: pending_z_offset_delta methods",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("initial state has no pending adjustment") {
@@ -330,7 +331,7 @@ TEST_CASE("Motion characterization: observer fires when position_x changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -365,7 +366,7 @@ TEST_CASE("Motion characterization: observer fires when homed_axes changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     int callback_count = 0;
@@ -402,7 +403,7 @@ TEST_CASE("Motion characterization: observer fires when speed_factor changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -441,7 +442,7 @@ TEST_CASE("Motion characterization: toolhead update does not affect gcode_move s
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set initial gcode_move values
@@ -476,7 +477,7 @@ TEST_CASE("Motion characterization: gcode_move update does not affect toolhead s
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set initial toolhead values
@@ -508,7 +509,7 @@ TEST_CASE("Motion characterization: simultaneous updates work correctly",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Update all motion values in a single status message
@@ -537,7 +538,7 @@ TEST_CASE("Motion characterization: subjects survive reset_for_testing cycle",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set some motion values
@@ -554,7 +555,7 @@ TEST_CASE("Motion characterization: subjects survive reset_for_testing cycle",
     REQUIRE(state.get_pending_z_offset_delta() == 50);
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // After reset, values should be back to defaults
@@ -579,7 +580,7 @@ TEST_CASE("Motion characterization: subject pointers remain valid after reset",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Capture subject pointers
@@ -588,7 +589,7 @@ TEST_CASE("Motion characterization: subject pointers remain valid after reset",
     lv_subject_t* homed_axes_before = state.get_homed_axes_subject();
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Pointers should be the same (singleton subjects are reused)
@@ -610,7 +611,7 @@ TEST_CASE("Motion characterization: partial status updates preserve other values
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set initial values
@@ -643,7 +644,7 @@ TEST_CASE("Motion characterization: empty status does not affect values",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Set initial values
@@ -668,7 +669,7 @@ TEST_CASE("Motion characterization: observers on different subjects are independ
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     int position_count = 0;
@@ -719,7 +720,7 @@ TEST_CASE("Motion characterization: multiple observers on same subject all fire"
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     int count1 = 0, count2 = 0, count3 = 0;
@@ -764,7 +765,7 @@ TEST_CASE("Motion characterization: gcode_position updates from gcode_move.gcode
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("gcode positions store as centimillimeters from gcode_move.gcode_position") {
@@ -812,7 +813,7 @@ TEST_CASE("Motion characterization: gcode_position vs position are independent",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // This is the critical test: gcode_move contains BOTH position and gcode_position
@@ -861,7 +862,7 @@ TEST_CASE("Motion characterization: gcode_position observer fires on update",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {

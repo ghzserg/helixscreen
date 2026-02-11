@@ -16,12 +16,13 @@
  * TEST-FIRST: Documents expected behavior for the fix.
  */
 
+#include "../test_helpers/printer_state_test_access.h"
+#include "../ui_test_utils.h"
 #include "printer_state.h"
 
 #include <spdlog/spdlog.h>
 
 #include "../catch_amalgamated.hpp"
-#include "../ui_test_utils.h"
 
 using json = nlohmann::json;
 
@@ -48,7 +49,7 @@ class PrintCompletionTestFixture {
         }
 
         // Reset PrinterState for test isolation
-        state_.reset_for_testing();
+        PrinterStateTestAccess::reset(state_);
 
         // Initialize subjects (without XML registration in tests)
         state_.init_subjects(false);
@@ -64,7 +65,7 @@ class PrintCompletionTestFixture {
             lv_observer_remove(observer_);
             observer_ = nullptr;
         }
-        state_.reset_for_testing();
+        PrinterStateTestAccess::reset(state_);
     }
 
   protected:

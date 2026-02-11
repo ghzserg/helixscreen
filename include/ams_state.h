@@ -93,14 +93,6 @@ class AmsState {
     void init_subjects(bool register_xml = true);
 
     /**
-     * @brief Reset initialization state for testing
-     *
-     * FOR TESTING ONLY. Clears the initialization flag so init_subjects()
-     * can be called again after lv_init() creates a new LVGL context.
-     */
-    void reset_for_testing();
-
-    /**
      * @brief Deinitialize subjects for clean shutdown
      *
      * Must be called before lv_deinit() to prevent observer corruption.
@@ -603,6 +595,8 @@ class AmsState {
     void stop_spoolman_polling();
 
   private:
+    friend class AmsStateTestAccess;
+
     AmsState();
     ~AmsState();
 

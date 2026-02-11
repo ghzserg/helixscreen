@@ -380,11 +380,6 @@ void PrintPreparationManager::set_cached_scan_result(const gcode::ScanResult& sc
     cached_scan_filename_ = filename;
 }
 
-std::vector<std::pair<std::string, std::string>>
-PrintPreparationManager::get_skip_params_for_testing() const {
-    return collect_macro_skip_params();
-}
-
 // ============================================================================
 // G-code Scanning
 // ============================================================================

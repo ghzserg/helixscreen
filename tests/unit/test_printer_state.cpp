@@ -1,8 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "ui_update_queue.h"
-
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "moonraker_client.h"
@@ -34,7 +33,7 @@ TEST_CASE("PrinterState: Singleton persists modifications", "[core][state][singl
 
     // Modify a value through one reference
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     // Read it back through another reference
     PrinterState& state2 = get_printer_state();
@@ -67,8 +66,8 @@ TEST_CASE("PrinterState: Observer fires when printer connection state changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();  // Allow re-initialization after lv_init()
-    state.init_subjects(false); // Skip XML registration
+    PrinterStateTestAccess::reset(state); // Allow re-initialization after lv_init()
+    state.init_subjects(false);           // Skip XML registration
 
     // Register observer
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -91,14 +90,14 @@ TEST_CASE("PrinterState: Observer fires when printer connection state changes",
     // Change state - should trigger observer again
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTING),
                                        "Connecting...");
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     REQUIRE(user_data[0] == 2); // Callback fired again with new value
     REQUIRE(user_data[1] == static_cast<int>(ConnectionState::CONNECTING));
 
     // Change again
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     REQUIRE(user_data[0] == 3); // Callback fired three times total (initial + 2 changes)
     REQUIRE(user_data[1] == static_cast<int>(ConnectionState::CONNECTED));
@@ -111,8 +110,8 @@ TEST_CASE("PrinterState: Observer fires when network status changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();  // Allow re-initialization after lv_init()
-    state.init_subjects(false); // Skip XML registration
+    PrinterStateTestAccess::reset(state); // Allow re-initialization after lv_init()
+    state.init_subjects(false);           // Skip XML registration
 
     int callback_count = 0;
 
@@ -142,8 +141,8 @@ TEST_CASE("PrinterState: Multiple observers on same subject all fire", "[state][
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();  // Allow re-initialization after lv_init()
-    state.init_subjects(false); // Skip XML registration
+    PrinterStateTestAccess::reset(state); // Allow re-initialization after lv_init()
+    state.init_subjects(false);           // Skip XML registration
 
     int count1 = 0, count2 = 0, count3 = 0;
 
@@ -167,7 +166,7 @@ TEST_CASE("PrinterState: Multiple observers on same subject all fire", "[state][
 
     // Single state change should fire all three again
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     REQUIRE(count1 == 2); // All observers fired again
     REQUIRE(count2 == 2);
@@ -185,7 +184,7 @@ TEST_CASE("PrinterState: Multiple observers on same subject all fire", "[state][
 TEST_CASE("PrinterState: Initialization sets default values", "[state][init]") {
     lv_init_safe();
     PrinterState& state = get_printer_state();
-    state.reset_for_testing(); // Reset singleton state from previous tests
+    PrinterStateTestAccess::reset(state); // Reset singleton state from previous tests
     state.init_subjects();
 
     // Temperature subjects should be initialized to 0
@@ -233,7 +232,7 @@ TEST_CASE("PrinterState: Initialization sets default values", "[state][init]") {
 TEST_CASE("PrinterState: Update extruder temperature from status", "[state][temp]") {
     lv_init_safe();
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     json status = {{"extruder", {{"temperature", 205.3}, {"target", 210.0}}}};
@@ -247,7 +246,7 @@ TEST_CASE("PrinterState: Update extruder temperature from status", "[state][temp
 TEST_CASE("PrinterState: Update bed temperature from status", "[state][temp]") {
     lv_init_safe();
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     json status = {{"heater_bed", {{"temperature", 60.5}, {"target", 60.0}}}};
@@ -261,7 +260,7 @@ TEST_CASE("PrinterState: Update bed temperature from status", "[state][temp]") {
 TEST_CASE("PrinterState: Temperature centidegree storage", "[state][temp][edge]") {
     lv_init_safe();
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("205.4°C stored as 2054 centidegrees") {
@@ -510,7 +509,7 @@ TEST_CASE("PrinterState: Homed axes observer pattern for derived subjects",
 
     lv_init_safe();
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Track derived values via observer
@@ -613,7 +612,7 @@ TEST_CASE("PrinterState: Set printer connection state", "[state][connection]") {
     state.init_subjects();
 
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
             static_cast<int>(ConnectionState::CONNECTED));
@@ -632,7 +631,7 @@ TEST_CASE("PrinterState: Connection state transitions", "[state][connection]") {
                                            "Disconnected");
         state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTING),
                                            "Connecting...");
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
                 static_cast<int>(ConnectionState::CONNECTING));
     }
@@ -641,7 +640,7 @@ TEST_CASE("PrinterState: Connection state transitions", "[state][connection]") {
         state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTING),
                                            "Connecting...");
         state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Ready");
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
                 static_cast<int>(ConnectionState::CONNECTED));
     }
@@ -650,7 +649,7 @@ TEST_CASE("PrinterState: Connection state transitions", "[state][connection]") {
         state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Ready");
         state.set_printer_connection_state(static_cast<int>(ConnectionState::RECONNECTING),
                                            "Reconnecting...");
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
                 static_cast<int>(ConnectionState::RECONNECTING));
     }
@@ -658,7 +657,7 @@ TEST_CASE("PrinterState: Connection state transitions", "[state][connection]") {
     SECTION("Failed connection") {
         state.set_printer_connection_state(static_cast<int>(ConnectionState::FAILED),
                                            "Connection failed");
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
                 static_cast<int>(ConnectionState::FAILED));
     }
@@ -672,7 +671,7 @@ TEST_CASE("PrinterState: Network status initialization", "[state][network]") {
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing(); // Reset singleton state from previous tests
+    PrinterStateTestAccess::reset(state); // Reset singleton state from previous tests
     state.init_subjects();
 
     // Network status is initialized to CONNECTED (mock mode default)
@@ -727,7 +726,7 @@ TEST_CASE("PrinterState: Printer and network status are independent", "[state][i
     // Set printer connected but network disconnected
     state.set_printer_connection_state(static_cast<int>(ConnectionState::CONNECTED), "Connected");
     state.set_network_status(static_cast<int>(NetworkStatus::DISCONNECTED));
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
             static_cast<int>(ConnectionState::CONNECTED));
@@ -738,7 +737,7 @@ TEST_CASE("PrinterState: Printer and network status are independent", "[state][i
     state.set_printer_connection_state(static_cast<int>(ConnectionState::DISCONNECTED),
                                        "Disconnected");
     state.set_network_status(static_cast<int>(NetworkStatus::CONNECTED));
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     REQUIRE(lv_subject_get_int(state.get_printer_connection_state_subject()) ==
             static_cast<int>(ConnectionState::DISCONNECTED));
@@ -756,7 +755,7 @@ TEST_CASE("PrinterState: Printer and network status are independent", "[state][i
 TEST_CASE("PrinterState: Empty status object is handled", "[state][error]") {
     lv_init_safe();
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Empty JSON should not crash
@@ -770,7 +769,7 @@ TEST_CASE("PrinterState: Empty status object is handled", "[state][error]") {
 TEST_CASE("PrinterState: Partial status updates work", "[state][error]") {
     lv_init_safe();
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("Only extruder temp, no target") {
@@ -1027,7 +1026,7 @@ TEST_CASE("PrinterState: Klippy state initialization defaults to READY", "[state
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Default should be READY (0)
@@ -1039,7 +1038,7 @@ TEST_CASE("PrinterState: set_klippy_state_sync changes subject value", "[state][
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Default should be READY
@@ -1071,7 +1070,7 @@ TEST_CASE("PrinterState: Observer fires when klippy state changes", "[state][kli
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Register observer
@@ -1113,7 +1112,7 @@ TEST_CASE("PrinterState: Update klippy state from webhooks notification",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Test "startup" state (RESTART in progress)
@@ -1157,7 +1156,7 @@ TEST_CASE("PrinterState: Unknown webhooks state defaults to READY", "[state][kli
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Can't pre-set klippy state (async), so just verify unknown -> READY
@@ -1178,7 +1177,7 @@ TEST_CASE("PrinterState: set_kinematics detects corexy as bed-moves", "[state][k
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Default should be 0 (gantry moves)
@@ -1193,7 +1192,7 @@ TEST_CASE("PrinterState: set_kinematics detects cartesian as gantry-moves", "[st
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // First set to corexy (bed moves)
@@ -1209,7 +1208,7 @@ TEST_CASE("PrinterState: set_kinematics detects delta as gantry-moves", "[state]
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Delta printers have moving effector, not bed
@@ -1221,7 +1220,7 @@ TEST_CASE("PrinterState: set_kinematics handles kinematics variations", "[state]
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("corexz - gantry moves on Z (Voron Switchwire)") {
@@ -1247,7 +1246,7 @@ TEST_CASE("PrinterState: Update kinematics from toolhead notification", "[state]
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Send notification with toolhead kinematics
@@ -1265,7 +1264,7 @@ TEST_CASE("PrinterState: Kinematics update from cartesian notification",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // First set to corexy (bed moves)
@@ -1287,7 +1286,7 @@ TEST_CASE("PrinterState: Observer fires when bed_moves changes", "[state][kinema
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Register observer
@@ -1329,7 +1328,7 @@ TEST_CASE("PrinterState: set_print_outcome updates subject", "[state][print_outc
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Initial state should be NONE
@@ -1338,7 +1337,7 @@ TEST_CASE("PrinterState: set_print_outcome updates subject", "[state][print_outc
 
     // Set to CANCELLED - THIS SHOULD FAIL TO COMPILE (method doesn't exist yet)
     state.set_print_outcome(PrintOutcome::CANCELLED);
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     auto after = static_cast<PrintOutcome>(lv_subject_get_int(state.get_print_outcome_subject()));
     REQUIRE(after == PrintOutcome::CANCELLED);

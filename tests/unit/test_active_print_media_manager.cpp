@@ -13,8 +13,7 @@
  * - Uses generation counter for stale callback detection
  */
 
-#include "ui_update_queue.h"
-
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "active_print_media_manager.h"
 #include "printer_state.h"
@@ -68,7 +67,7 @@ class ActivePrintMediaManagerTestFixture {
         }
 
         // Reset PrinterState for test isolation
-        state_.reset_for_testing();
+        PrinterStateTestAccess::reset(state_);
 
         // Initialize subjects (without XML registration in tests)
         state_.init_subjects(false);
@@ -82,14 +81,14 @@ class ActivePrintMediaManagerTestFixture {
         manager_.reset();
 
         // Drain any pending updates before shutdown to ensure clean state
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Shutdown update queue - also clears any remaining pending callbacks
         ui_update_queue_shutdown();
         queue_initialized = false; // Reset static flag for next test
 
         // Reset after each test
-        state_.reset_for_testing();
+        PrinterStateTestAccess::reset(state_);
     }
 
   protected:
@@ -107,7 +106,7 @@ class ActivePrintMediaManagerTestFixture {
         state_.update_from_status(status);
         // Process queued UI updates - call drain_queue directly instead of lv_timer_handler
         // to avoid potential infinite loops from the 1ms timer period
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     }
 
     // Get current print_filename (raw)

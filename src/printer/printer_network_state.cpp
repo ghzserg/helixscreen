@@ -65,23 +65,6 @@ void PrinterNetworkState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterNetworkState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterNetworkState] reset_for_testing: subjects not initialized, "
-                      "nothing to reset");
-        return;
-    }
-
-    spdlog::trace(
-        "[PrinterNetworkState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-
-    // Note: was_ever_connected_ is NOT reset - it tracks session lifetime
-}
-
 void PrinterNetworkState::set_printer_connection_state_internal(int state, const char* message) {
     // Called from main thread via ui_async_call
     // Log "Connected" at info level, transitional states at debug to reduce noise

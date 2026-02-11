@@ -5,6 +5,8 @@
 
 #include "ui_test_utils.h"
 
+#include "test_helpers/update_queue_test_access.h"
+
 #include <chrono>
 #include <thread>
 
@@ -57,7 +59,7 @@ LVGLTestFixture::~LVGLTestFixture() {
     }
 
     // Per L053/L054: Drain pending callbacks before shutdown
-    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+    UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     // Shutdown queue
     ui_update_queue_shutdown();

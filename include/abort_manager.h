@@ -212,96 +212,6 @@ class AbortManager {
     lv_subject_t* get_progress_message_subject();
 
     // ========================================================================
-    // Testing Interface
-    // ========================================================================
-
-    /**
-     * @brief Reset all state for testing
-     *
-     * Resets state to IDLE, clears Kalico cache, and resets command count.
-     */
-    void reset_for_testing();
-
-    /**
-     * @brief Reset state only (keep Kalico cache) for testing
-     */
-    void reset_state_for_testing();
-
-    /**
-     * @brief Simulate HEATER_INTERRUPT success (Kalico detected)
-     */
-    void on_heater_interrupt_success_for_testing();
-
-    /**
-     * @brief Simulate HEATER_INTERRUPT error (Kalico not present)
-     * @param error Error message (e.g., "Unknown command")
-     */
-    void on_heater_interrupt_error_for_testing(const std::string& error);
-
-    /**
-     * @brief Simulate HEATER_INTERRUPT timeout
-     */
-    void on_heater_interrupt_timeout_for_testing();
-
-    /**
-     * @brief Simulate M115 probe response (queue responsive)
-     */
-    void on_probe_response_for_testing();
-
-    /**
-     * @brief Simulate M115 probe timeout (queue blocked)
-     */
-    void on_probe_timeout_for_testing();
-
-    /**
-     * @brief Simulate CANCEL_PRINT success
-     */
-    void on_cancel_success_for_testing();
-
-    /**
-     * @brief Simulate CANCEL_PRINT timeout
-     */
-    void on_cancel_timeout_for_testing();
-
-    /**
-     * @brief Simulate M112 sent (transitions to SENT_RESTART)
-     */
-    void on_estop_sent_for_testing();
-
-    /**
-     * @brief Simulate FIRMWARE_RESTART sent (transitions to WAITING_RECONNECT)
-     */
-    void on_restart_sent_for_testing();
-
-    /**
-     * @brief Simulate klippy_state becoming READY
-     */
-    void on_klippy_ready_for_testing();
-
-    /**
-     * @brief Simulate reconnect timeout (15s elapsed without READY)
-     */
-    void on_reconnect_timeout_for_testing();
-
-    /**
-     * @brief Simulate print state change during SENT_CANCEL
-     * @param state New PrintJobState
-     */
-    void on_print_state_during_cancel_for_testing(PrintJobState state);
-
-    /**
-     * @brief Simulate klippy_state change
-     * @param state New klippy state
-     */
-    void on_klippy_state_change_for_testing(KlippyState state);
-
-    /**
-     * @brief Simulate API error during abort
-     * @param error Error message
-     */
-    void on_api_error_for_testing(const std::string& error);
-
-    // ========================================================================
     // Timeout Constants (public for testing)
     // ========================================================================
 
@@ -311,6 +221,8 @@ class AbortManager {
     static constexpr uint32_t RECONNECT_TIMEOUT_MS = 15000;       ///< 15 seconds
 
   private:
+    friend class AbortManagerTestAccess;
+
     AbortManager() = default;
     ~AbortManager() = default;
 

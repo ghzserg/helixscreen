@@ -279,12 +279,6 @@ void AmsState::init_subjects(bool register_xml) {
     initialized_ = true;
 }
 
-void AmsState::reset_for_testing() {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    initialized_ = false;
-    backend_.reset();
-}
-
 void AmsState::deinit_subjects() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 

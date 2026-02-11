@@ -2,7 +2,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_print_preparation_manager.h"
-#include "ui_update_queue.h"
+
+#include "../test_helpers/printer_state_test_access.h"
+
+class PrintPreparationManagerTestAccess {
+  public:
+    static std::vector<std::pair<std::string, std::string>>
+    get_skip_params(const helix::ui::PrintPreparationManager& m) {
+        return m.collect_macro_skip_params();
+    }
+};
 
 #include "../mocks/mock_websocket_server.h"
 #include "../ui_test_utils.h"
@@ -753,7 +762,7 @@ TEST_CASE("PrintPreparationManager: capabilities come from PrinterState",
 
     // Create PrinterState and initialize subjects (without XML registration for tests)
     PrinterState& printer_state = get_printer_state();
-    printer_state.reset_for_testing();
+    PrinterStateTestAccess::reset(printer_state);
     printer_state.init_subjects(false);
 
     // Create manager and set dependencies
@@ -810,7 +819,7 @@ TEST_CASE("PrintPreparationManager: capabilities update when PrinterState type c
 
     // Create PrinterState and initialize subjects
     PrinterState& printer_state = get_printer_state();
-    printer_state.reset_for_testing();
+    PrinterStateTestAccess::reset(printer_state);
     printer_state.init_subjects(false);
 
     // Create manager and set dependencies
@@ -1193,7 +1202,7 @@ class MacroAnalysisRetryFixture {
         server_.reset();
 
         // Drain pending callbacks
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Shutdown queue
         ui_update_queue_shutdown();
@@ -1206,7 +1215,7 @@ class MacroAnalysisRetryFixture {
      * @brief Drain pending UI updates (simulates main loop iteration)
      */
     void drain_queue() {
-        helix::ui::UpdateQueue::instance().drain_queue_for_testing();
+        UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
         lv_timer_handler_safe(); // Process LVGL timers for retry scheduling
     }
 
@@ -1857,7 +1866,7 @@ TEST_CASE("PrintPreparationManager: hidden options don't produce macro skip para
         lv_subject_set_int(&subjects.can_show_bed_mesh, 0); // hidden (plugin not installed)
         lv_subject_set_int(&subjects.preprint_bed_mesh, 0); // unchecked
 
-        auto skip_params = manager.get_skip_params_for_testing();
+        auto skip_params = PrintPreparationManagerTestAccess::get_skip_params(manager);
 
         // Should be EMPTY - hidden means not applicable, not "user disabled"
         REQUIRE(skip_params.empty());
@@ -1867,7 +1876,7 @@ TEST_CASE("PrintPreparationManager: hidden options don't produce macro skip para
         lv_subject_set_int(&subjects.can_show_bed_mesh, 0); // hidden
         lv_subject_set_int(&subjects.preprint_bed_mesh, 1); // checked (irrelevant)
 
-        auto skip_params = manager.get_skip_params_for_testing();
+        auto skip_params = PrintPreparationManagerTestAccess::get_skip_params(manager);
         REQUIRE(skip_params.empty());
     }
 
@@ -1875,7 +1884,7 @@ TEST_CASE("PrintPreparationManager: hidden options don't produce macro skip para
         lv_subject_set_int(&subjects.can_show_bed_mesh, 1); // visible
         lv_subject_set_int(&subjects.preprint_bed_mesh, 0); // unchecked = user wants to skip
 
-        auto skip_params = manager.get_skip_params_for_testing();
+        auto skip_params = PrintPreparationManagerTestAccess::get_skip_params(manager);
 
         REQUIRE(skip_params.size() == 1);
         REQUIRE(skip_params[0].first == "SKIP_BED_MESH");
@@ -1886,7 +1895,7 @@ TEST_CASE("PrintPreparationManager: hidden options don't produce macro skip para
         lv_subject_set_int(&subjects.can_show_bed_mesh, 1); // visible
         lv_subject_set_int(&subjects.preprint_bed_mesh, 1); // checked = user wants operation
 
-        auto skip_params = manager.get_skip_params_for_testing();
+        auto skip_params = PrintPreparationManagerTestAccess::get_skip_params(manager);
         REQUIRE(skip_params.empty());
     }
 }
@@ -2027,7 +2036,7 @@ TEST_CASE("PrintPreparationManager: build_capability_matrix", "[print_preparatio
     SECTION("Includes database capabilities when printer detected") {
         // Set up manager with PrinterState that has a known printer type
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false); // No XML registration for tests
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
 
@@ -2114,7 +2123,7 @@ TEST_CASE("PrintPreparationManager: capability priority ordering", "[print_prepa
     SECTION("Database takes priority over macro analysis") {
         // Set up PrinterState with AD5M Pro (has database bed_mesh capability)
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false);
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
         manager.set_dependencies(nullptr, &printer_state);
@@ -2213,7 +2222,7 @@ TEST_CASE("PrintPreparationManager: collect_macro_skip_params with matrix",
     SECTION("Returns skip params from best source") {
         // Set up PrinterState with AD5M Pro (database source)
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false);
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
         manager.set_dependencies(nullptr, &printer_state);
@@ -2223,9 +2232,9 @@ TEST_CASE("PrintPreparationManager: collect_macro_skip_params with matrix",
         lv_subject_set_int(&subjects.preprint_bed_mesh, 0); // unchecked = skip
 
         // NOTE: collect_macro_skip_params() is private. This test uses the new
-        // public test accessor method: get_skip_params_for_testing()
+        // Test accessor: PrintPreparationManagerTestAccess::get_skip_params()
         // Implementation should add this method or make collect_macro_skip_params public.
-        auto skip_params = manager.get_skip_params_for_testing();
+        auto skip_params = PrintPreparationManagerTestAccess::get_skip_params(manager);
 
         // Should have one param for bed_mesh using database source
         REQUIRE(skip_params.size() >= 1);
@@ -2263,7 +2272,7 @@ TEST_CASE("PrintPreparationManager: collect_macro_skip_params with matrix",
         lv_subject_set_int(&subjects.can_show_bed_mesh, 1);
         lv_subject_set_int(&subjects.preprint_bed_mesh, 0); // unchecked
 
-        auto skip_params = manager.get_skip_params_for_testing();
+        auto skip_params = PrintPreparationManagerTestAccess::get_skip_params(manager);
 
         // Find the param
         bool found_force_bed_mesh = false;
@@ -2297,7 +2306,7 @@ TEST_CASE("PrintPreparationManager: collect_macro_skip_params with matrix",
         lv_subject_set_int(&subjects.can_show_bed_mesh, 1);
         lv_subject_set_int(&subjects.preprint_bed_mesh, 0); // unchecked
 
-        auto skip_params = manager.get_skip_params_for_testing();
+        auto skip_params = PrintPreparationManagerTestAccess::get_skip_params(manager);
 
         // Find the param
         bool found_skip_bed_mesh = false;
@@ -2354,7 +2363,7 @@ TEST_CASE("PrintPreparationManager: lookup_operation_capability", "[print_prepar
     SECTION("Returns skip param when operation disabled (visible + unchecked)") {
         // Set up PrinterState with AD5M Pro (has database capability for BED_MESH)
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false);
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
         manager.set_dependencies(nullptr, &printer_state);
@@ -2378,7 +2387,7 @@ TEST_CASE("PrintPreparationManager: lookup_operation_capability", "[print_prepar
     SECTION("Returns nullopt when operation hidden (visibility = 0)") {
         // Set up PrinterState with known printer
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false);
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
         manager.set_dependencies(nullptr, &printer_state);
@@ -2397,7 +2406,7 @@ TEST_CASE("PrintPreparationManager: lookup_operation_capability", "[print_prepar
     SECTION("Returns nullopt when operation enabled (visible + checked)") {
         // Set up PrinterState with known printer
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false);
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
         manager.set_dependencies(nullptr, &printer_state);
@@ -2463,7 +2472,7 @@ TEST_CASE("PrintPreparationManager: lookup_operation_capability", "[print_prepar
     SECTION("Uses best source based on priority (database over macro)") {
         // Set up PrinterState with AD5M Pro (database source)
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false);
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
         manager.set_dependencies(nullptr, &printer_state);
@@ -2536,7 +2545,7 @@ TEST_CASE("PrintPreparationManager: lookup_operation_capability edge cases",
 
         // Set up a capability source
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false);
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
         manager.set_dependencies(nullptr, &printer_state);
@@ -2651,7 +2660,7 @@ TEST_CASE("PrintPreparationManager: lookup_operation_capability with visibility-
     SECTION("Returns nullopt when checkbox subjects not set") {
         // Set up capability source
         PrinterState& printer_state = get_printer_state();
-        printer_state.reset_for_testing();
+        PrinterStateTestAccess::reset(printer_state);
         printer_state.init_subjects(false);
         printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
         manager.set_dependencies(nullptr, &printer_state);

@@ -49,21 +49,6 @@ void PrinterCompositeVisibilityState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterCompositeVisibilityState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterCompositeVisibilityState] reset_for_testing: subjects not "
-                      "initialized, nothing to reset");
-        return;
-    }
-
-    spdlog::trace("[PrinterCompositeVisibilityState] reset_for_testing: Deinitializing subjects to "
-                  "clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 void PrinterCompositeVisibilityState::update_visibility(
     bool plugin_installed, const PrinterCapabilitiesState& capabilities) {
     // Recalculate composite subjects: can_show_X = helix_plugin_installed && printer_has_X

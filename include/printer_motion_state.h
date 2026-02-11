@@ -46,11 +46,6 @@ class PrinterMotionState {
      */
     void update_from_status(const nlohmann::json& status);
 
-    /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
     // Toolhead position accessors - actual physical position (centimillimeters)
     lv_subject_t* get_position_x_subject() {
         return &position_x_;
@@ -100,6 +95,8 @@ class PrinterMotionState {
     void clear_pending_z_offset_delta();
 
   private:
+    friend class PrinterMotionStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 

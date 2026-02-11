@@ -87,16 +87,6 @@ void EventDispatcher::clear() {
     spdlog::debug("[plugin] All event subscriptions cleared");
 }
 
-void EventDispatcher::reset_for_testing() {
-    auto& inst = instance();
-    std::lock_guard<std::mutex> lock(inst.mutex_);
-
-    inst.subscriptions_.clear();
-    inst.next_id_ = 1;
-
-    spdlog::debug("[plugin] EventDispatcher reset for testing - all state cleared");
-}
-
 // ============================================================================
 // Helper Functions
 // ============================================================================

@@ -110,19 +110,4 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
     }
 }
 
-void PrinterTemperatureState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterTemperatureState] reset_for_testing: subjects not initialized, "
-                      "nothing to reset");
-        return;
-    }
-
-    spdlog::trace(
-        "[PrinterTemperatureState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 } // namespace helix

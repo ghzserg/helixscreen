@@ -20,6 +20,8 @@
 #include <string>
 #include <vector>
 
+class PrintPreparationManagerTestAccess;
+
 namespace helix::ui {
 
 /**
@@ -316,15 +318,6 @@ class PrintPreparationManager {
      */
     void set_cached_scan_result(const gcode::ScanResult& scan, const std::string& filename);
 
-    /**
-     * @brief Get skip params for testing
-     *
-     * Exposes collect_macro_skip_params() for testing.
-     * @return Vector of (param_name, value) pairs
-     */
-    [[nodiscard]] std::vector<std::pair<std::string, std::string>>
-    get_skip_params_for_testing() const;
-
     // === G-code Scanning ===
 
     /**
@@ -458,6 +451,8 @@ class PrintPreparationManager {
     [[nodiscard]] bool is_print_in_progress() const;
 
   private:
+    friend class ::PrintPreparationManagerTestAccess;
+
     // === Dependencies ===
     MoonrakerAPI* api_ = nullptr;
     PrinterState* printer_state_ = nullptr;

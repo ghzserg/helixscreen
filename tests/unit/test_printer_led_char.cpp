@@ -23,6 +23,7 @@
  * - led_brightness_ = max(R,G,B,W) * 100 / 255
  */
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_state.h"
@@ -37,7 +38,7 @@ TEST_CASE("LED characterization: tracked LED management", "[characterization][le
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("has_tracked_led returns false initially") {
@@ -80,7 +81,7 @@ TEST_CASE("LED characterization: LED updates from JSON", "[characterization][led
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Must set tracked LED before updates will apply
@@ -189,7 +190,7 @@ TEST_CASE("LED characterization: brightness calculation", "[characterization][le
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -232,7 +233,7 @@ TEST_CASE("LED characterization: led_state derivation", "[characterization][led]
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -269,7 +270,7 @@ TEST_CASE("LED characterization: updates ignored without tracked LED",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Explicitly clear any previously set tracked LED
@@ -313,7 +314,7 @@ TEST_CASE("LED characterization: observer fires when led_state changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -349,7 +350,7 @@ TEST_CASE("LED characterization: observer fires when led_r changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -385,7 +386,7 @@ TEST_CASE("LED characterization: observer fires when led_brightness changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -425,7 +426,7 @@ TEST_CASE("LED characterization: LED update does not affect non-LED subjects",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -453,7 +454,7 @@ TEST_CASE("LED characterization: non-LED update does not affect LED subjects",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -483,7 +484,7 @@ TEST_CASE("LED characterization: subjects survive reset_for_testing cycle",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -496,7 +497,7 @@ TEST_CASE("LED characterization: subjects survive reset_for_testing cycle",
     REQUIRE(lv_subject_get_int(state.get_led_state_subject()) == 1);
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // After reset, subject values should be back to defaults
@@ -524,7 +525,7 @@ TEST_CASE("LED characterization: subject pointers remain valid after reset",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Capture subject pointers
@@ -533,7 +534,7 @@ TEST_CASE("LED characterization: subject pointers remain valid after reset",
     lv_subject_t* led_brightness_before = state.get_led_brightness_subject();
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Pointers should be the same (singleton subjects are reused)
@@ -554,7 +555,7 @@ TEST_CASE("LED characterization: edge cases and boundary values", "[characteriza
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -612,7 +613,7 @@ TEST_CASE("LED characterization: observers on different LED subjects are indepen
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 
@@ -650,7 +651,7 @@ TEST_CASE("LED characterization: multiple observers on same LED subject all fire
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.set_tracked_led("neopixel led_strip");
 

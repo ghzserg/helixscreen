@@ -34,6 +34,7 @@
  * - Motor state derived from idle_timeout.state string ("Ready"/"Printing" vs "Idle")
  */
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_state.h"
@@ -56,7 +57,7 @@ TEST_CASE("Calibration characterization: initial values after init",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true); // Need XML registration to lookup by name
 
     SECTION("retract_speed initializes to 20 mm/s") {
@@ -88,7 +89,7 @@ TEST_CASE("Calibration characterization: firmware retraction updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("retract_length converts mm to centimillimeters (x100)") {
@@ -170,7 +171,7 @@ TEST_CASE("Calibration characterization: manual probe updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("manual_probe.is_active true sets subject to 1") {
@@ -251,7 +252,7 @@ TEST_CASE("Calibration characterization: motor state updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("all steppers enabled sets motors_enabled to 1") {
@@ -383,7 +384,7 @@ TEST_CASE("Calibration characterization: combined status updates",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("all calibration sections update in single status message") {
@@ -438,7 +439,7 @@ TEST_CASE("Calibration characterization: observer fires when manual_probe_active
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -473,7 +474,7 @@ TEST_CASE("Calibration characterization: observer fires when motors_enabled chan
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -517,7 +518,7 @@ TEST_CASE("Calibration characterization: subjects survive reset_for_testing cycl
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     // Set calibration values (stepper_enable with all disabled = motors off)
@@ -537,7 +538,7 @@ TEST_CASE("Calibration characterization: subjects survive reset_for_testing cycl
     REQUIRE(lv_subject_get_int(state.get_motors_enabled_subject()) == 0);
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     // After reset, values should be back to defaults
@@ -564,7 +565,7 @@ TEST_CASE("Calibration characterization: subjects are independent",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("firmware_retraction update does not affect manual_probe or motors") {
@@ -674,7 +675,7 @@ TEST_CASE("Calibration characterization: stepper_enable motor state tracking",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("all steppers enabled = motors_enabled is 1") {
@@ -790,7 +791,7 @@ TEST_CASE("Calibration characterization: homed_axes motor state tracking",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("homed_axes 'xyz' sets motors_enabled to 1") {

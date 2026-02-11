@@ -49,11 +49,6 @@ class PrinterCompositeVisibilityState {
      */
     void deinit_subjects();
 
-    /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
     // ========================================================================
     // Update method
     // ========================================================================
@@ -120,6 +115,8 @@ class PrinterCompositeVisibilityState {
     }
 
   private:
+    friend class PrinterCompositeVisibilityStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 

@@ -28,6 +28,29 @@ using namespace helix::sensors;
 using json = nlohmann::json;
 
 // ============================================================================
+// Test Access
+// ============================================================================
+
+namespace helix::sensors {
+class ProbeSensorManagerTestAccess {
+  public:
+    static void reset(ProbeSensorManager& obj) {
+        std::lock_guard<std::recursive_mutex> lock(obj.mutex_);
+        obj.sensors_.clear();
+        obj.states_.clear();
+        obj.sync_mode_ = true;
+        // Reset subject values but keep subjects initialized
+        if (obj.subjects_initialized_) {
+            lv_subject_set_int(&obj.sensor_count_, 0);
+            lv_subject_set_int(&obj.probe_triggered_, -1);
+            lv_subject_set_int(&obj.probe_last_z_, -1);
+            lv_subject_set_int(&obj.probe_z_offset_, -1);
+        }
+    }
+};
+} // namespace helix::sensors
+
+// ============================================================================
 // Test Fixture
 // ============================================================================
 
@@ -54,12 +77,12 @@ class ProbeSensorTestFixture {
         mgr().init_subjects();
 
         // Reset state for test isolation
-        mgr().reset_for_testing();
+        ProbeSensorManagerTestAccess::reset(mgr());
     }
 
     ~ProbeSensorTestFixture() {
         // Reset after each test
-        mgr().reset_for_testing();
+        ProbeSensorManagerTestAccess::reset(mgr());
     }
 
   protected:

@@ -429,23 +429,6 @@ lv_subject_t* TemperatureSensorManager::get_sensor_count_subject() {
 // Testing Support
 // ============================================================================
 
-void TemperatureSensorManager::reset_for_testing() {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-
-    sensors_.clear();
-    states_.clear();
-    temp_subjects_.clear();
-    sync_mode_ = true;
-
-    // Reset subject state for clean test isolation
-    if (subjects_initialized_) {
-        subjects_.deinit_all();
-        subjects_initialized_ = false;
-    }
-
-    spdlog::debug("[TemperatureSensorManager] Reset for testing");
-}
-
 void TemperatureSensorManager::set_sync_mode(bool enabled) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     sync_mode_ = enabled;

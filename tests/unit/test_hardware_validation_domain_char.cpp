@@ -31,6 +31,7 @@
  * - String formatting respects pluralization
  */
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "hardware_validator.h"
@@ -67,7 +68,7 @@ TEST_CASE("Hardware validation characterization: initial values after init",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true); // Need XML registration to lookup by name
 
     SECTION("hardware_status_title initializes to 'Healthy'") {
@@ -92,7 +93,7 @@ TEST_CASE("Hardware validation characterization: empty result (no issues)",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     HardwareValidationResult empty_result;
@@ -151,7 +152,7 @@ TEST_CASE("Hardware validation characterization: critical issues only",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     HardwareValidationResult result;
@@ -207,7 +208,7 @@ TEST_CASE("Hardware validation characterization: warning issues only",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     HardwareValidationResult result;
@@ -255,7 +256,7 @@ TEST_CASE("Hardware validation characterization: info issues only (newly discove
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     HardwareValidationResult result;
@@ -300,7 +301,7 @@ TEST_CASE("Hardware validation characterization: session changed issues only",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     HardwareValidationResult result;
@@ -341,7 +342,7 @@ TEST_CASE("Hardware validation characterization: mixed issues",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     HardwareValidationResult result;
@@ -391,7 +392,7 @@ TEST_CASE("Hardware validation characterization: version increments on each call
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     int initial_version = lv_subject_get_int(state.get_hardware_validation_version_subject());
@@ -436,7 +437,7 @@ TEST_CASE(
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("after setting empty result, returns empty result") {
@@ -477,7 +478,7 @@ TEST_CASE("Hardware validation characterization: remove_hardware_issue",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("removes issue from critical_missing and updates counts") {
@@ -569,7 +570,7 @@ TEST_CASE("Hardware validation characterization: string formatting and pluraliza
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("singular issue label: '1 Hardware Issue'") {
@@ -624,7 +625,7 @@ TEST_CASE("Hardware validation characterization: has_hardware_issues() method",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     SECTION("has_hardware_issues() returns false initially") {
@@ -660,7 +661,7 @@ TEST_CASE("Hardware validation characterization: observer fires when validation 
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -717,7 +718,7 @@ TEST_CASE("Hardware validation characterization: subjects survive reset_for_test
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     // Set validation result
@@ -729,7 +730,7 @@ TEST_CASE("Hardware validation characterization: subjects survive reset_for_test
     REQUIRE(lv_subject_get_int(state.get_hardware_issue_count_subject()) == 1);
 
     // Reset and reinitialize
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(true);
 
     // After reset, values should be back to defaults

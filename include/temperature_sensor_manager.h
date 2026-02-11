@@ -206,18 +206,6 @@ class TemperatureSensorManager : public ISensorManager {
      */
     [[nodiscard]] lv_subject_t* get_sensor_count_subject();
 
-    // ========================================================================
-    // Testing Support
-    // ========================================================================
-
-    /**
-     * @brief Reset all state for testing.
-     *
-     * Clears all sensors, states, and resets flags.
-     * Call this between tests to ensure isolation.
-     */
-    void reset_for_testing();
-
     /**
      * @brief Enable synchronous mode for testing
      *
@@ -230,6 +218,8 @@ class TemperatureSensorManager : public ISensorManager {
      * @brief Update subjects on main LVGL thread (called by async callback)
      */
     void update_subjects_on_main_thread();
+
+    friend class TemperatureSensorManagerTestAccess;
 
   private:
     TemperatureSensorManager();

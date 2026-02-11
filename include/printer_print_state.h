@@ -53,11 +53,6 @@ class PrinterPrintState {
     void update_from_status(const nlohmann::json& status);
 
     /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
-    /**
      * @brief Reset UI state when starting a new print
      *
      * Clears progress, layers, and timing but preserves filename.
@@ -311,6 +306,8 @@ class PrinterPrintState {
     [[nodiscard]] bool is_in_print_start() const;
 
   private:
+    friend class PrinterPrintStateTestAccess;
+
     /**
      * @brief Update print_show_progress_ combined subject
      *

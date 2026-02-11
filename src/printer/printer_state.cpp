@@ -103,63 +103,32 @@ PrinterState::PrinterState() {
 
 PrinterState::~PrinterState() {}
 
-void PrinterState::reset_for_testing() {
+void PrinterState::deinit_subjects() {
     if (!subjects_initialized_) {
         spdlog::trace(
-            "[PrinterState] reset_for_testing: subjects not initialized, nothing to reset");
-        return; // Nothing to reset
+            "[PrinterState] deinit_subjects: subjects not initialized, nothing to deinit");
+        return;
     }
 
-    spdlog::trace("[PrinterState] reset_for_testing: Deinitializing subjects to clear observers");
+    spdlog::trace("[PrinterState] deinit_subjects: Deinitializing all subjects");
 
-    // Reset temperature state component
-    temperature_state_.reset_for_testing();
+    // Deinit all sub-component subjects
+    temperature_state_.deinit_subjects();
+    motion_state_.deinit_subjects();
+    led_state_component_.deinit_subjects();
+    fan_state_.deinit_subjects();
+    print_domain_.deinit_subjects();
+    capabilities_state_.deinit_subjects();
+    plugin_status_state_.deinit_subjects();
+    calibration_state_.deinit_subjects();
+    hardware_validation_state_.deinit_subjects();
+    composite_visibility_state_.deinit_subjects();
+    network_state_.deinit_subjects();
+    versions_state_.deinit_subjects();
+    excluded_objects_state_.deinit_subjects();
 
-    // Reset motion state component
-    motion_state_.reset_for_testing();
-
-    // Reset LED state component
-    led_state_component_.reset_for_testing();
-
-    // Reset fan state component
-    fan_state_.reset_for_testing();
-
-    // Reset print state component
-    print_domain_.reset_for_testing();
-
-    // Reset capabilities state component
-    capabilities_state_.reset_for_testing();
-
-    // Reset plugin status state component
-    plugin_status_state_.reset_for_testing();
-
-    // Reset calibration state component
-    calibration_state_.reset_for_testing();
-
-    // Reset hardware validation state component
-    hardware_validation_state_.reset_for_testing();
-
-    // Reset composite visibility state component
-    composite_visibility_state_.reset_for_testing();
-
-    // Reset network state component
-    network_state_.reset_for_testing();
-
-    // Reset versions state component
-    versions_state_.reset_for_testing();
-
-    // Reset excluded objects state component
-    excluded_objects_state_.reset_for_testing();
-
-    // Use SubjectManager for automatic subject cleanup
+    // Deinit PrinterState's own subjects
     subjects_.deinit_all();
-
-    // Reset printer type, capabilities, and auto-detected state
-    printer_type_.clear();
-    print_start_capabilities_ = PrintStartCapabilities{};
-    z_offset_calibration_strategy_ = ZOffsetCalibrationStrategy::PROBE_CALIBRATE;
-    auto_detected_bed_moves_ = false;
-    last_kinematics_.clear();
 
     subjects_initialized_ = false;
 }
@@ -178,7 +147,7 @@ void PrinterState::init_subjects(bool register_xml) {
         if (current_display != cached_display_) {
             // LVGL was reinitialized - our subjects are now invalid
             spdlog::warn("[PrinterState] LVGL reinitialized (display changed), resetting subjects");
-            reset_for_testing();
+            deinit_subjects();
         } else {
             spdlog::debug("[PrinterState] Subjects already initialized, skipping");
             return;

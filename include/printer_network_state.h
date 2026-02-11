@@ -31,8 +31,7 @@ namespace helix {
  * Additional state:
  * - was_ever_connected_ (bool) - tracks if ever successfully connected this session
  *
- * @note The was_ever_connected_ flag is NOT reset by reset_for_testing().
- *       It persists across the application session to track if we've ever connected.
+ * @note The was_ever_connected_ flag persists across resets - it tracks session lifetime.
  */
 class PrinterNetworkState {
   public:
@@ -53,13 +52,6 @@ class PrinterNetworkState {
      * @brief Deinitialize subjects (called by SubjectManager automatically)
      */
     void deinit_subjects();
-
-    /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     *
-     * @note was_ever_connected_ is NOT reset - it tracks session lifetime
-     */
-    void reset_for_testing();
 
     // ========================================================================
     // Setters
@@ -150,6 +142,8 @@ class PrinterNetworkState {
     void update_nav_buttons_enabled();
 
   private:
+    friend class PrinterNetworkStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 

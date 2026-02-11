@@ -44,21 +44,6 @@ void PrinterVersionsState::deinit_subjects() {
     subjects_initialized_ = false;
 }
 
-void PrinterVersionsState::reset_for_testing() {
-    if (!subjects_initialized_) {
-        spdlog::trace("[PrinterVersionsState] reset_for_testing: subjects not initialized, "
-                      "nothing to reset");
-        return;
-    }
-
-    spdlog::trace(
-        "[PrinterVersionsState] reset_for_testing: Deinitializing subjects to clear observers");
-
-    // Use SubjectManager for automatic subject cleanup
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
-}
-
 void PrinterVersionsState::set_klipper_version_internal(const std::string& version) {
     lv_subject_copy_string(&klipper_version_, version.c_str());
     spdlog::debug("[PrinterVersionsState] Klipper version set: {}", version);

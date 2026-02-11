@@ -54,11 +54,6 @@ class PrinterCalibrationState {
     void deinit_subjects();
 
     /**
-     * @brief Reset state for testing - clears subjects and reinitializes
-     */
-    void reset_for_testing();
-
-    /**
      * @brief Update calibration state from Moonraker status JSON
      *
      * Parses firmware_retraction, manual_probe, and idle_timeout sections.
@@ -128,6 +123,8 @@ class PrinterCalibrationState {
     }
 
   private:
+    friend class PrinterCalibrationStateTestAccess;
+
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 

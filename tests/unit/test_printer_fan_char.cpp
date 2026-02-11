@@ -25,6 +25,7 @@
  * - "fan_generic *" -> GENERIC_FAN (controllable)
  */
 
+#include "../test_helpers/printer_state_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "printer_state.h"
@@ -42,7 +43,7 @@ TEST_CASE("Fan characterization: initial values after init", "[characterization]
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("no per-fan subjects initially") {
@@ -65,7 +66,7 @@ TEST_CASE("Fan characterization: init_fans creates per-fan subjects",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.init_fans({"fan", "heater_fan hotend_fan", "fan_generic aux_fan"});
@@ -93,7 +94,7 @@ TEST_CASE("Fan characterization: init_fans populates fans vector",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.init_fans({"fan", "heater_fan hotend_fan", "controller_fan mcu_fan", "fan_generic aux"});
@@ -126,7 +127,7 @@ TEST_CASE("Fan characterization: fan type classification", "[characterization][f
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.init_fans({"fan", "heater_fan hotend_fan", "controller_fan mcu_fan", "fan_generic aux"});
@@ -154,7 +155,7 @@ TEST_CASE("Fan characterization: fan controllability", "[characterization][fan][
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.init_fans({"fan", "heater_fan hotend_fan", "controller_fan mcu_fan", "fan_generic aux"});
@@ -187,7 +188,7 @@ TEST_CASE("Fan characterization: main fan speed updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Must init fans for multi-fan tracking to work
@@ -239,7 +240,7 @@ TEST_CASE("Fan characterization: per-fan speed updates from JSON",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.init_fans({"fan", "heater_fan hotend_fan", "fan_generic aux"});
@@ -284,7 +285,7 @@ TEST_CASE("Fan characterization: FanInfo speed_percent updates",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.init_fans({"fan", "heater_fan hotend_fan"});
@@ -315,7 +316,7 @@ TEST_CASE("Fan characterization: observer fires when fan_speed changes",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.init_fans({"fan"});
 
@@ -351,7 +352,7 @@ TEST_CASE("Fan characterization: observer fires on per-fan subject change",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.init_fans({"heater_fan hotend_fan"});
 
@@ -389,7 +390,7 @@ TEST_CASE("Fan characterization: fans_version observer fires on init_fans",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     auto observer_cb = [](lv_observer_t* observer, lv_subject_t* subject) {
@@ -432,7 +433,7 @@ TEST_CASE("Fan characterization: updates before init_fans", "[characterization][
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Do NOT call init_fans
@@ -456,7 +457,7 @@ TEST_CASE("Fan characterization: update for undiscovered fan is ignored",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Only init some fans
@@ -487,7 +488,7 @@ TEST_CASE("Fan characterization: per-fan subjects cleared on reset",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.init_fans({"fan", "heater_fan hotend_fan"});
@@ -502,7 +503,7 @@ TEST_CASE("Fan characterization: per-fan subjects cleared on reset",
     REQUIRE(lv_subject_get_int(state.get_fan_speed_subject("fan")) == 80);
 
     // Reset
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Per-fan subjects should be cleared
@@ -520,7 +521,7 @@ TEST_CASE("Fan characterization: static subjects reset to defaults",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     state.init_fans({"fan"});
@@ -534,7 +535,7 @@ TEST_CASE("Fan characterization: static subjects reset to defaults",
     REQUIRE(version_before == 1);
 
     // Reset
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Static subjects should be back to defaults
@@ -547,7 +548,7 @@ TEST_CASE("Fan characterization: reinitializing fans replaces previous subjects"
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // First init
@@ -581,7 +582,7 @@ TEST_CASE("Fan characterization: fan update does not affect non-fan subjects",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.init_fans({"fan"});
 
@@ -607,7 +608,7 @@ TEST_CASE("Fan characterization: non-fan update does not affect fan subjects",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.init_fans({"fan"});
 
@@ -636,7 +637,7 @@ TEST_CASE("Fan characterization: observers on different fan subjects are indepen
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.init_fans({"fan", "heater_fan hotend_fan"});
 
@@ -674,7 +675,7 @@ TEST_CASE("Fan characterization: multiple observers on same fan subject all fire
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.init_fans({"fan"});
 
@@ -718,7 +719,7 @@ TEST_CASE("Fan characterization: edge cases and boundary values", "[characteriza
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
     state.init_fans({"fan"});
 
@@ -774,7 +775,7 @@ TEST_CASE("Fan characterization: empty init_fans", "[characterization][fan][edge
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("init_fans with empty vector") {
@@ -790,7 +791,7 @@ TEST_CASE("Fan characterization: fan with unusual name format", "[characterizati
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     SECTION("fan_generic with underscore in name") {
@@ -818,7 +819,7 @@ TEST_CASE("Fan role config: configured part fan classified as PART_COOLING", "[f
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     helix::FanRoleConfig roles;
@@ -849,7 +850,7 @@ TEST_CASE("Fan role config: display name overrides from configured roles",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     helix::FanRoleConfig roles;
@@ -895,7 +896,7 @@ TEST_CASE("Fan role config: empty roles uses default behavior", "[fan][role_conf
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // Default-constructed FanRoleConfig has empty strings
@@ -919,7 +920,7 @@ TEST_CASE("Fan role config: configured part fan updates hero slider subject",
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     helix::FanRoleConfig roles;
@@ -948,7 +949,7 @@ TEST_CASE("Fan role config: canonical 'fan' part_fan does not create redundant o
     lv_init_safe();
 
     PrinterState& state = get_printer_state();
-    state.reset_for_testing();
+    PrinterStateTestAccess::reset(state);
     state.init_subjects(false);
 
     // When the configured part fan IS the canonical "fan", don't add a role override
