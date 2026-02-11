@@ -164,6 +164,10 @@ class WizardInputShaperStep {
         return &calibration_progress_;
     }
 
+    lv_subject_t* get_started_subject() {
+        return &calibration_started_;
+    }
+
     /**
      * @brief Get alive flag for async callback safety
      *
@@ -190,6 +194,7 @@ class WizardInputShaperStep {
     // Subjects
     lv_subject_t calibration_status_;
     lv_subject_t calibration_progress_;
+    lv_subject_t calibration_started_; ///< 0=not started, 1=started (hides Start button)
 
     // String buffers for subjects
     char status_buffer_[128] = "Ready to calibrate";

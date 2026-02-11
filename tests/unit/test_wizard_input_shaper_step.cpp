@@ -40,7 +40,7 @@ static lv_subject_t* get_subject_by_name(const char* name) {
 class WizardInputShaperStepTestFixture {
   public:
     WizardInputShaperStepTestFixture() {
-        // Enable test mode so beta features (including input shaper) are available
+        // Enable test mode so beta features are available
         get_runtime_config()->test_mode = true;
 
         // Initialize LVGL (safe version avoids "already initialized" warnings)

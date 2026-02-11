@@ -5,8 +5,8 @@
 #include "ui_update_queue.h"
 #include "ui_wizard_helpers.h"
 
+#include "app_globals.h"
 #include "calibration_types.h"
-#include "config.h"
 #include "input_shaper_calibrator.h"
 #include "lvgl/lvgl.h"
 #include "printer_state.h"
@@ -22,6 +22,7 @@ using helix::calibration::InputShaperCalibrator;
 
 // External wizard subjects (defined in ui_wizard.cpp)
 extern lv_subject_t wizard_show_skip;
+extern lv_subject_t connection_test_passed;
 
 // ============================================================================
 // Global Instance
@@ -47,7 +48,7 @@ void destroy_wizard_input_shaper_step() {
 // ============================================================================
 
 WizardInputShaperStep::WizardInputShaperStep()
-    : calibrator_(std::make_unique<InputShaperCalibrator>()) {
+    : calibrator_(std::make_unique<InputShaperCalibrator>(get_moonraker_api())) {
     spdlog::debug("[{}] Instance created", get_name());
 }
 
@@ -62,6 +63,7 @@ WizardInputShaperStep::~WizardInputShaperStep() {
     if (subjects_initialized_) {
         lv_subject_deinit(&calibration_status_);
         lv_subject_deinit(&calibration_progress_);
+        lv_subject_deinit(&calibration_started_);
         subjects_initialized_ = false;
     }
 
@@ -138,6 +140,9 @@ void WizardInputShaperStep::init_subjects() {
     // Initialize progress subject
     helix::ui::wizard::init_int_subject(&calibration_progress_, 0, "wizard_input_shaper_progress");
 
+    // Initialize started subject (controls Start button and skip hint visibility)
+    helix::ui::wizard::init_int_subject(&calibration_started_, 0, "wizard_input_shaper_started");
+
     subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized", get_name());
 }
@@ -195,13 +200,14 @@ static void safe_set_complete(std::weak_ptr<std::atomic<bool>> alive_weak) {
             lv_subject_copy_string(step->get_status_subject(), "Calibration complete!");
             lv_subject_set_int(step->get_progress_subject(), 100);
             step->set_calibration_complete(true);
-            // Switch footer from "Skip" to "Next"
-            lv_subject_set_int(&wizard_show_skip, 0);
+
+            // Enable wizard Next button (connection_test_passed controls disabled state)
+            lv_subject_set_int(&connection_test_passed, 1);
         }
     });
 }
 
-static void safe_reenable_buttons(std::weak_ptr<std::atomic<bool>> alive_weak) {
+static void safe_handle_error(std::weak_ptr<std::atomic<bool>> alive_weak) {
     ui_queue_update([alive_weak]() {
         if (auto alive = alive_weak.lock()) {
             if (!alive->load(std::memory_order_acquire)) {
@@ -210,15 +216,9 @@ static void safe_reenable_buttons(std::weak_ptr<std::atomic<bool>> alive_weak) {
         } else {
             return;
         }
-        WizardInputShaperStep* step = get_wizard_input_shaper_step();
-        if (step) {
-            lv_obj_t* screen = step->get_screen_root();
-            if (screen) {
-                lv_obj_t* start_btn = lv_obj_find_by_name(screen, "start_calibration_btn");
-                if (start_btn)
-                    lv_obj_clear_state(start_btn, LV_STATE_DISABLED);
-            }
-        }
+        // On error: switch footer back to Skip so user can proceed past the step
+        lv_subject_set_int(&connection_test_passed, 1);
+        lv_subject_set_int(&wizard_show_skip, 1);
     });
 }
 
@@ -231,13 +231,12 @@ static void on_start_calibration_clicked(lv_event_t* e) {
         return;
     }
 
-    // Disable button during calibration
-    lv_obj_t* screen = step->get_screen_root();
-    if (screen) {
-        lv_obj_t* start_btn = lv_obj_find_by_name(screen, "start_calibration_btn");
-        if (start_btn)
-            lv_obj_add_state(start_btn, LV_STATE_DISABLED);
-    }
+    // Hide Start button and skip hint via subject binding
+    lv_subject_set_int(step->get_started_subject(), 1);
+
+    // Switch footer from Skip to Next (disabled during calibration)
+    lv_subject_set_int(&wizard_show_skip, 0);
+    lv_subject_set_int(&connection_test_passed, 0);
 
     // Update status (already on UI thread, so direct call is safe)
     lv_subject_copy_string(step->get_status_subject(), "Checking accelerometer...");
@@ -287,14 +286,13 @@ static void on_start_calibration_clicked(lv_event_t* e) {
                                         (void)result;
                                         spdlog::info("[Wizard Input Shaper] Y axis complete");
                                         safe_set_complete(alive_weak);
-                                        safe_reenable_buttons(alive_weak);
                                     },
                                     [alive_weak](const std::string& error) {
                                         spdlog::error("[Wizard Input Shaper] Y axis error: {}",
                                                       error);
                                         safe_update_status(alive_weak, error);
                                         safe_update_progress(alive_weak, 0);
-                                        safe_reenable_buttons(alive_weak);
+                                        safe_handle_error(alive_weak);
                                     });
                             }
                         },
@@ -302,7 +300,7 @@ static void on_start_calibration_clicked(lv_event_t* e) {
                             spdlog::error("[Wizard Input Shaper] X axis error: {}", error);
                             safe_update_status(alive_weak, error);
                             safe_update_progress(alive_weak, 0);
-                            safe_reenable_buttons(alive_weak);
+                            safe_handle_error(alive_weak);
                         });
                 }
             },
@@ -310,7 +308,7 @@ static void on_start_calibration_clicked(lv_event_t* e) {
                 spdlog::error("[Wizard Input Shaper] Accelerometer check failed: {}", error);
                 safe_update_status(alive_weak, error);
                 safe_update_progress(alive_weak, 0);
-                safe_reenable_buttons(alive_weak);
+                safe_handle_error(alive_weak);
             });
     }
 }
@@ -366,8 +364,9 @@ void WizardInputShaperStep::cleanup() {
         calibrator_->cancel();
     }
 
-    // Reset footer button to "Next"
+    // Reset footer subjects for next step
     lv_subject_set_int(&wizard_show_skip, 0);
+    lv_subject_set_int(&connection_test_passed, 1);
 
     // Reset UI references
     // Note: Do NOT call lv_obj_del() here - the wizard framework handles
@@ -391,13 +390,6 @@ bool WizardInputShaperStep::is_validated() const {
 // ============================================================================
 
 bool WizardInputShaperStep::should_skip() const {
-    // Gate behind beta features - input shaper calibration is experimental
-    Config* config = Config::get_instance();
-    if (config && !config->is_beta_features_enabled()) {
-        spdlog::info("[{}] Beta features disabled, skipping step", get_name());
-        return true;
-    }
-
     bool has_accel = has_accelerometer();
 
     if (!has_accel) {
@@ -430,7 +422,7 @@ bool WizardInputShaperStep::has_accelerometer() const {
 
 InputShaperCalibrator* WizardInputShaperStep::get_calibrator() {
     if (!calibrator_) {
-        calibrator_ = std::make_unique<InputShaperCalibrator>();
+        calibrator_ = std::make_unique<InputShaperCalibrator>(get_moonraker_api());
     }
     return calibrator_.get();
 }

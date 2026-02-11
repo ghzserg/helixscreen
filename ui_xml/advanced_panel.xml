@@ -53,15 +53,13 @@
         <event_cb trigger="clicked" callback="on_screws_tilt_row_clicked"/>
       </setting_action_row>
     </lv_obj>
-    <!-- Input Shaping (beta + hidden if no accelerometer) -->
-    <beta_feature name="container_input_shaping">
-      <setting_action_row name="row_input_shaping"
-                          label="Input Shaping" label_tag="Input Shaping" icon="inputshaper"
-                          description="Reduce ringing and ghosting artifacts" description_tag="Reduce ringing and ghosting artifacts">
-        <bind_flag_if_eq subject="printer_has_accelerometer" flag="hidden" ref_value="0"/>
-        <event_cb trigger="clicked" callback="on_input_shaper_row_clicked"/>
-      </setting_action_row>
-    </beta_feature>
+    <!-- Input Shaping (hidden if no accelerometer) -->
+    <setting_action_row name="row_input_shaping"
+                        label="Input Shaping" label_tag="Input Shaping" icon="inputshaper"
+                        description="Reduce ringing and ghosting artifacts" description_tag="Reduce ringing and ghosting artifacts">
+      <bind_flag_if_eq subject="printer_has_accelerometer" flag="hidden" ref_value="0"/>
+      <event_cb trigger="clicked" callback="on_input_shaper_row_clicked"/>
+    </setting_action_row>
     <!-- Z-Offset Calibration (beta + hidden if no probe) -->
     <beta_feature name="container_z_offset">
       <setting_action_row name="row_z_offset"
