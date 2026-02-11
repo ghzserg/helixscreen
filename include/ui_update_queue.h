@@ -114,9 +114,9 @@ class UpdateQueue {
     /**
      * @brief Shutdown and cleanup
      *
-     * Deletes the LVGL timer to prevent orphaned timers from accumulating
-     * across test fixture lifecycles. Clears pending queue to prevent stale
-     * callbacks from executing after objects they reference are destroyed.
+     * Nullifies the timer pointer and clears the pending queue to prevent
+     * stale callbacks from executing after objects they reference are
+     * destroyed. The actual LVGL timer is freed by lv_deinit().
      */
     void shutdown() {
         {

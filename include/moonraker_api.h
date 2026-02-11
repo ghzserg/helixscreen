@@ -1009,7 +1009,7 @@ class MoonrakerAPI {
     virtual bool unregister_method_callback(const std::string& method, const std::string& name);
 
     /// Temporarily suppress disconnect modal notifications
-    virtual void suppress_disconnect_modal(int duration_ms);
+    virtual void suppress_disconnect_modal(uint32_t duration_ms);
 
     // ========================================================================
     // Helix Plugin Operations

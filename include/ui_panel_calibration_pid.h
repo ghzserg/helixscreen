@@ -12,7 +12,6 @@
 #include <string>
 
 class MoonrakerAPI;
-class MoonrakerClient;
 class TempControlPanel;
 
 /**
@@ -125,15 +124,6 @@ class PIDCalibrationPanel : public OverlayBase {
     void show();
 
     /**
-     * @brief Set the Moonraker client for G-code commands
-     *
-     * @param client MoonrakerClient for sending commands
-     */
-    void set_client(MoonrakerClient* client) {
-        client_ = client;
-    }
-
-    /**
      * @brief Set the Moonraker API for high-level operations
      *
      * @param api MoonrakerAPI for PID calibrate and save_config
@@ -172,7 +162,6 @@ class PIDCalibrationPanel : public OverlayBase {
     // Client/API references
     // Note: overlay_root_ inherited from OverlayBase
     lv_obj_t* parent_screen_ = nullptr;
-    MoonrakerClient* client_ = nullptr;
     MoonrakerAPI* api_ = nullptr;
 
     // State

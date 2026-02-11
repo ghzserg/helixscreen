@@ -25,38 +25,39 @@ void lv_init_safe() {
     // the per-test shutdown/reinit lifecycle in the fixture destructor.
 }
 
-// Track whether timer last_run values have been normalized
-static bool s_timers_normalized = false;
-
 uint32_t lv_timer_handler_safe() {
-    // Drain the UpdateQueue before calling lv_timer_handler() to prevent
-    // the queue's 1ms timer from setting subjects during the handler,
-    // which triggers observers that may create/delete timers and restart
-    // LVGL's internal do-while loop.
-    auto& queue = helix::ui::UpdateQueue::instance();
-    queue.drain_queue_for_testing();
+    // Drain the UpdateQueue — executes pending callbacks which set subjects.
+    // Subject observers fire synchronously during drain, propagating bindings.
+    helix::ui::UpdateQueue::instance().drain_queue_for_testing();
 
-    // On first call, normalize all timer last_run timestamps to the current
-    // tick. Without this, timers created during fixture initialization may
-    // have stale last_run values (e.g., from a previous tick epoch), making
-    // them all simultaneously "ready". When they all fire at once, each one
-    // that creates/deletes a timer causes LVGL's do-while to restart from
-    // the head, creating an infinite loop.
-    if (!s_timers_normalized) {
-        uint32_t now = lv_tick_get();
-        lv_timer_t* t = lv_timer_get_next(nullptr);
-        while (t) {
-            t->last_run = now;
-            t = lv_timer_get_next(t);
-        }
-        s_timers_normalized = true;
+    // Pause ALL timers before calling lv_timer_handler().
+    //
+    // Background: LVGL's test fixture creates leaked display refresh timers
+    // (typically 13+) with stale last_run timestamps, making them all
+    // simultaneously "ready". When lv_timer_handler()'s internal do-while
+    // loop processes them, each timer fire that creates/deletes a timer
+    // causes the loop to restart from the head — an infinite loop.
+    //
+    // By pausing all timers, lv_timer_handler() iterates the list without
+    // firing any, exits quickly, and returns a valid time-until-next value.
+    // We then resume all timers afterward. The actual test processing
+    // (subject propagation, input reads) is handled by drain_queue and
+    // direct lv_indev_read() calls respectively.
+    lv_timer_t* t = lv_timer_get_next(nullptr);
+    while (t) {
+        lv_timer_pause(t);
+        t = lv_timer_get_next(t);
     }
 
-    // Pause the UpdateQueue timer during the handler call to prevent it
-    // from firing and re-triggering the subject→observer→async chain
-    queue.pause_timer();
     uint32_t result = lv_timer_handler();
-    queue.resume_timer();
+
+    // Resume all timers
+    t = lv_timer_get_next(nullptr);
+    while (t) {
+        lv_timer_resume(t);
+        t = lv_timer_get_next(t);
+    }
+
     return result;
 }
 
@@ -138,13 +139,13 @@ bool click_at(int32_t x, int32_t y) {
     last_data.point.x = x;
     last_data.point.y = y;
     last_data.state = LV_INDEV_STATE_PRESSED;
-    lv_timer_handler_safe(); // Process press event
-    wait_ms(50);             // Minimum press duration
+    lv_indev_read(virtual_indev); // Directly read indev to process press
+    wait_ms(50);                  // Minimum press duration
 
     // Simulate release
     last_data.state = LV_INDEV_STATE_RELEASED;
-    lv_timer_handler_safe(); // Process release event
-    wait_ms(50);             // Allow click handlers to execute
+    lv_indev_read(virtual_indev); // Directly read indev to process release
+    wait_ms(50);                  // Allow click handlers to execute
 
     spdlog::debug("[UITest] Click simulation complete");
     return true;

@@ -125,7 +125,7 @@ class MoonrakerAPIMock : public MoonrakerAPI {
     void register_method_callback(const std::string& method, const std::string& name,
                                   std::function<void(json)> callback) override;
     bool unregister_method_callback(const std::string& method, const std::string& name) override;
-    void suppress_disconnect_modal(int duration_ms) override;
+    void suppress_disconnect_modal(uint32_t duration_ms) override;
     void database_get_item(const std::string& namespace_name, const std::string& key,
                            std::function<void(const json&)> on_success,
                            ErrorCallback on_error = nullptr) override;

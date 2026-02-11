@@ -167,7 +167,6 @@ void AdvancedPanel::handle_pid_tuning_clicked() {
 
     if (!overlay.get_root()) {
         overlay.init_subjects();
-        overlay.set_client(get_moonraker_client());
         overlay.set_api(get_moonraker_api());
         overlay.create(parent_screen_);
     }

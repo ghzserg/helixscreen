@@ -243,8 +243,8 @@ bool MoonrakerAPI::unregister_method_callback(const std::string& method, const s
     return client_.unregister_method_callback(method, name);
 }
 
-void MoonrakerAPI::suppress_disconnect_modal(int duration_ms) {
-    client_.suppress_disconnect_modal(static_cast<uint32_t>(duration_ms));
+void MoonrakerAPI::suppress_disconnect_modal(uint32_t duration_ms) {
+    client_.suppress_disconnect_modal(duration_ms);
 }
 
 // ============================================================================
@@ -275,10 +275,29 @@ void MoonrakerAPI::set_phase_tracking_enabled(bool enabled,
         enabled ? "server.helix.phase_tracking.enable" : "server.helix.phase_tracking.disable";
     client_.send_jsonrpc(
         method, json::object(),
-        [on_success](const json& result) {
+        [on_success, on_error, method](const json& result) {
             bool ok = result.value("success", false);
-            if (on_success)
-                on_success(ok);
+            if (ok) {
+                if (on_success)
+                    on_success(true);
+            } else {
+                // Server returned a response but success=false - extract error detail
+                std::string msg = result.value("message", std::string{});
+                if (msg.empty()) {
+                    msg = "Server returned success=false for " + method;
+                }
+                spdlog::warn("[MoonrakerAPI] {} failed: {}", method, msg);
+                if (on_error) {
+                    MoonrakerError err;
+                    err.type = MoonrakerErrorType::JSON_RPC_ERROR;
+                    err.message = msg;
+                    err.method = method;
+                    err.details = result;
+                    on_error(err);
+                } else if (on_success) {
+                    on_success(false);
+                }
+            }
         },
         [on_error](const MoonrakerError& err) {
             if (on_error)

@@ -499,9 +499,9 @@ void ConsolePanel::subscribe_to_gcode_responses() {
         return;
     }
 
-    MoonrakerClient* client = get_moonraker_client();
-    if (!client) {
-        spdlog::debug("[{}] Cannot subscribe - no client", get_name());
+    MoonrakerAPI* api = get_moonraker_api();
+    if (!api) {
+        spdlog::debug("[{}] Cannot subscribe - no API", get_name());
         return;
     }
 
@@ -511,8 +511,8 @@ void ConsolePanel::subscribe_to_gcode_responses() {
 
     // Register for notify_gcode_response notifications
     // Capture 'this' safely since we unregister in on_deactivate()
-    client->register_method_callback("notify_gcode_response", gcode_handler_name_,
-                                     [this](const nlohmann::json& msg) { on_gcode_response(msg); });
+    api->register_method_callback("notify_gcode_response", gcode_handler_name_,
+                                  [this](const nlohmann::json& msg) { on_gcode_response(msg); });
 
     is_subscribed_ = true;
     spdlog::debug("[{}] Subscribed to notify_gcode_response (handler: {})", get_name(),
@@ -524,9 +524,9 @@ void ConsolePanel::unsubscribe_from_gcode_responses() {
         return;
     }
 
-    MoonrakerClient* client = get_moonraker_client();
-    if (client) {
-        client->unregister_method_callback("notify_gcode_response", gcode_handler_name_);
+    MoonrakerAPI* api = get_moonraker_api();
+    if (api) {
+        api->unregister_method_callback("notify_gcode_response", gcode_handler_name_);
         spdlog::debug("[{}] Unsubscribed from notify_gcode_response", get_name());
     }
 

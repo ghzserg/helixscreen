@@ -12,7 +12,6 @@
 
 #include "filament_database.h"
 #include "moonraker_api.h"
-#include "moonraker_client.h"
 #include "static_panel_registry.h"
 
 #include <spdlog/spdlog.h>
@@ -542,8 +541,8 @@ void PIDCalibrationPanel::send_save_config() {
 
     // Suppress shutdown/disconnect modals — SAVE_CONFIG triggers an expected Klipper restart
     EmergencyStopOverlay::instance().suppress_recovery_dialog(15000);
-    if (client_) {
-        client_->suppress_disconnect_modal(15000);
+    if (api_) {
+        api_->suppress_disconnect_modal(15000);
     }
 
     spdlog::info("[PIDCal] Sending SAVE_CONFIG");
@@ -672,8 +671,8 @@ void PIDCalibrationPanel::handle_abort_clicked() {
 
     // Suppress shutdown/disconnect modals — E-stop + restart triggers expected reconnect
     EmergencyStopOverlay::instance().suppress_recovery_dialog(15000);
-    if (client_) {
-        client_->suppress_disconnect_modal(15000);
+    if (api_) {
+        api_->suppress_disconnect_modal(15000);
     }
 
     // M112 emergency stop halts immediately at MCU level (bypasses blocked gcode queue),

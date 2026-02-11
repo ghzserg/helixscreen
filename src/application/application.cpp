@@ -1141,7 +1141,6 @@ void Application::create_overlays() {
     if (m_args.overlays.pid) {
         auto& overlay = get_global_pid_cal_panel();
         // init_subjects already called by SubjectInitializer
-        overlay.set_client(m_moonraker->client());
         overlay.set_api(m_moonraker->api());
         if (overlay.create(m_screen)) {
             overlay.show();
