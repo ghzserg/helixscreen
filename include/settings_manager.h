@@ -313,6 +313,12 @@ class SettingsManager {
     /** @brief Get dropdown options string "Auto\n3D View\n2D Heatmap" */
     static const char* get_bed_mesh_render_mode_options();
 
+    /** @brief Get custom printer image ID (empty = auto-detect) */
+    std::string get_printer_image() const;
+
+    /** @brief Set custom printer image ID and persist. Empty = auto-detect. */
+    void set_printer_image(const std::string& id);
+
     /**
      * @brief Get bed mesh zero plane visibility
      * @return true if translucent Z=0 reference plane should be shown in 3D view

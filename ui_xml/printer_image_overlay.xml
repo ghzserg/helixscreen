@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Printer Image Selection Overlay -->
+<component>
+  <view name="printer_image_overlay"
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Printer Image" title_tag="Printer Image"
+        bg_color="#screen_bg">
+    <!-- Content Area -->
+    <lv_obj name="overlay_content"
+            width="100%" flex_grow="1" style_pad_top="0" style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_bottom="#space_lg" scrollable="true" flex_flow="column">
+
+      <!-- AUTO-DETECT OPTION -->
+      <setting_action_row name="row_auto_detect"
+                          label="Auto-Detect" label_tag="Auto-Detect" icon="sync"
+                          description="Use printer type to select image"
+                          description_tag="Use printer type to select image" callback="on_printer_image_auto_detect"/>
+
+      <!-- SHIPPED IMAGES SECTION -->
+      <setting_section_header title="SHIPPED IMAGES" title_tag="SHIPPED IMAGES" icon="printer_3d"/>
+
+      <!-- Grid container for shipped images - populated dynamically -->
+      <lv_obj name="shipped_images_grid"
+              width="100%" height="content" scrollable="false" flex_flow="row_wrap" style_pad_all="#space_sm"
+              style_pad_gap="#space_sm" style_bg_opa="0" style_border_width="0"/>
+
+      <!-- CUSTOM IMAGES SECTION -->
+      <setting_section_header title="CUSTOM IMAGES" title_tag="CUSTOM IMAGES" icon="image_area"/>
+
+      <!-- Grid container for custom images - populated dynamically -->
+      <lv_obj name="custom_images_grid"
+              width="100%" height="content" scrollable="false" flex_flow="row_wrap" style_pad_all="#space_sm"
+              style_pad_gap="#space_sm" style_bg_opa="0" style_border_width="0"/>
+
+      <!-- USB IMPORT SECTION (hidden when no USB drive) -->
+      <lv_obj name="usb_import_section"
+              width="100%" height="content" scrollable="false" flex_flow="column" style_pad_all="0" style_bg_opa="0"
+              style_border_width="0">
+        <setting_section_header title="IMPORT FROM USB" title_tag="IMPORT FROM USB" icon="usb"/>
+
+        <!-- Grid for USB images -->
+        <lv_obj name="usb_images_grid"
+                width="100%" height="content" scrollable="false" flex_flow="row_wrap" style_pad_all="#space_sm"
+                style_pad_gap="#space_sm" style_bg_opa="0" style_border_width="0"/>
+
+        <!-- Import status label -->
+        <text_muted name="usb_status_label" width="100%" text="" style_text_align="center" style_pad_top="#space_sm"/>
+      </lv_obj>
+
+      <!-- Info note about custom images -->
+      <info_note icon="info"
+                 text="Place PNG or JPEG files in config/custom_images/ to add custom images"
+                 translation_tag="Place PNG or JPEG files in config/custom_images/ to add custom images"
+                 style_pad_left="#space_lg" style_pad_right="#space_lg"/>
+
+    </lv_obj>
+  </view>
+</component>

@@ -31,6 +31,11 @@
                         label="Display Settings" label_tag="Display Settings" icon="light"
                         description="Theme, brightness, and sleep settings"
                         description_tag="Theme, brightness, and sleep settings" callback="on_display_settings_clicked"/>
+    <!-- Printer Image (choose home panel printer image) -->
+    <setting_action_row name="row_printer_image"
+                        label="Printer Image" label_tag="Printer Image" icon="printer_3d"
+                        description="Choose your printer image" description_tag="Choose your printer image"
+                        callback="on_printer_image_clicked"/>
     <!-- ================================================================== -->
     <!-- PRINTER SECTION -->
     <!-- ================================================================== -->

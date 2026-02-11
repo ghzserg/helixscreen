@@ -307,6 +307,7 @@ void register_xml_components() {
     register_xml("plugin_card.xml");
     register_xml("settings_plugins_overlay.xml");
     register_xml("touch_calibration_overlay.xml");
+    register_xml("printer_image_overlay.xml");
     register_xml("hidden_network_modal.xml");
     register_xml("network_test_modal.xml");
     register_xml("filament_preset_edit_modal.xml");

@@ -11,6 +11,7 @@
 #include "ui_nav_manager.h"
 #include "ui_notification.h"
 #include "ui_notification_manager.h"
+#include "ui_overlay_printer_image.h"
 #include "ui_overlay_retraction_settings.h"
 #include "ui_overlay_timelapse_install.h"
 #include "ui_overlay_timelapse_settings.h"
@@ -336,6 +337,8 @@ void SubjectInitializer::init_usb_manager(const RuntimeConfig& runtime_config) {
         if (m_print_select_panel) {
             m_print_select_panel->set_usb_manager(m_usb_manager.get());
         }
+        // Also provide USB manager to printer image overlay
+        helix::settings::get_printer_image_overlay().set_usb_manager(m_usb_manager.get());
     } else {
         spdlog::info(
             "[SubjectInitializer] USB Manager not started (not available on this platform)");

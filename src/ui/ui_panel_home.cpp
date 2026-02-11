@@ -29,6 +29,7 @@
 #include "observer_factory.h"
 #include "prerendered_images.h"
 #include "printer_detector.h"
+#include "printer_image_manager.h"
 #include "printer_state.h"
 #include "runtime_config.h"
 #include "settings_manager.h"
@@ -844,40 +845,58 @@ void HomePanel::reload_from_config() {
     std::string printer_type = config->get<std::string>(helix::wizard::PRINTER_TYPE, "");
     printer_state_.set_printer_type_sync(printer_type);
 
-    // Update printer image based on configured printer type
-    if (!printer_type.empty()) {
-        // Look up image filename from printer database
-        std::string image_filename = PrinterDetector::get_image_for_printer(printer_type);
-        std::string image_path;
+    // Update printer image — check custom override first, then auto-detect
+    do {
+        lv_display_t* disp = lv_display_get_default();
+        int screen_width = disp ? lv_display_get_horizontal_resolution(disp) : 800;
 
-        if (!image_filename.empty()) {
-            // Strip .png extension to get base name for prerendered lookup
-            std::string base_name = image_filename;
-            if (base_name.size() > 4 && base_name.substr(base_name.size() - 4) == ".png") {
-                base_name = base_name.substr(0, base_name.size() - 4);
+        // Check for user-selected printer image (custom or shipped override)
+        auto& pim = helix::PrinterImageManager::instance();
+        std::string custom_path = pim.get_active_image_path(screen_width);
+        if (!custom_path.empty()) {
+            if (panel_) {
+                lv_obj_t* printer_image = lv_obj_find_by_name(panel_, "printer_image");
+                if (printer_image) {
+                    lv_image_set_src(printer_image, custom_path.c_str());
+                    spdlog::debug("[{}] User-selected printer image: '{}'", get_name(),
+                                  custom_path);
+                }
             }
-
-            // Use prerendered .bin if available (faster on embedded), else fallback to PNG
-            lv_display_t* disp = lv_display_get_default();
-            int screen_width = disp ? lv_display_get_horizontal_resolution(disp) : 800;
-            image_path = helix::get_prerendered_printer_path(base_name, screen_width);
-        } else {
-            // Fall back to generic CoreXY image
-            spdlog::info("[{}] No specific image for '{}' - using generic CoreXY", get_name(),
-                         printer_type);
-            image_path = "A:assets/images/printers/generic-corexy.png";
+            break; // Skip auto-detect
         }
 
-        // Find and update the printer_image widget
-        if (panel_) {
-            lv_obj_t* printer_image = lv_obj_find_by_name(panel_, "printer_image");
-            if (printer_image) {
-                lv_image_set_src(printer_image, image_path.c_str());
-                spdlog::debug("[{}] Printer image: '{}' for '{}'", get_name(), image_path,
-                              printer_type);
+        // Auto-detect from printer type (existing logic)
+        if (!printer_type.empty()) {
+            // Look up image filename from printer database
+            std::string image_filename = PrinterDetector::get_image_for_printer(printer_type);
+            std::string image_path;
+
+            if (!image_filename.empty()) {
+                // Strip .png extension to get base name for prerendered lookup
+                std::string base_name = image_filename;
+                if (base_name.size() > 4 && base_name.substr(base_name.size() - 4) == ".png") {
+                    base_name = base_name.substr(0, base_name.size() - 4);
+                }
+
+                image_path = helix::get_prerendered_printer_path(base_name, screen_width);
+            } else {
+                // Fall back to generic CoreXY image
+                spdlog::info("[{}] No specific image for '{}' - using generic CoreXY", get_name(),
+                             printer_type);
+                image_path = "A:assets/images/printers/generic-corexy.png";
+            }
+
+            // Find and update the printer_image widget
+            if (panel_) {
+                lv_obj_t* printer_image = lv_obj_find_by_name(panel_, "printer_image");
+                if (printer_image) {
+                    lv_image_set_src(printer_image, image_path.c_str());
+                    spdlog::debug("[{}] Printer image: '{}' for '{}'", get_name(), image_path,
+                                  printer_type);
+                }
             }
         }
-    }
+    } while (false);
 
     // Update printer type/host overlay
     // Always visible (even for localhost) to maintain consistent flex layout.

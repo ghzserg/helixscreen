@@ -598,6 +598,22 @@ bool SettingsManager::get_bed_mesh_show_zero_plane() const {
     return config->get<bool>("/display/bed_mesh_show_zero_plane", true);
 }
 
+std::string SettingsManager::get_printer_image() const {
+    Config* config = Config::get_instance();
+    if (!config)
+        return "";
+    return config->get<std::string>("/display/printer_image", "");
+}
+
+void SettingsManager::set_printer_image(const std::string& id) {
+    Config* config = Config::get_instance();
+    if (!config)
+        return;
+    config->set<std::string>("/display/printer_image", id);
+    config->save();
+    spdlog::info("[SettingsManager] Printer image set to: '{}'", id.empty() ? "(auto-detect)" : id);
+}
+
 int SettingsManager::get_gcode_render_mode() const {
     return lv_subject_get_int(const_cast<lv_subject_t*>(&gcode_render_mode_subject_));
 }
