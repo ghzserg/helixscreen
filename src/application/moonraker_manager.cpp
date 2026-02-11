@@ -186,17 +186,15 @@ void MoonrakerManager::process_notifications() {
                           messages[new_state]);
             get_printer_state().set_printer_connection_state(new_state, messages[new_state]);
 
-            // Auto-close connection error modals when connection is restored
+            // Auto-close Connection Failed modal when connection is restored
+            // (Disconnect modal is now handled by unified recovery dialog in EmergencyStopOverlay)
             if (new_state == static_cast<int>(ConnectionState::CONNECTED)) {
                 lv_obj_t* modal = ui_modal_get_top();
                 if (modal) {
-                    // The modal_dialog.xml uses "dialog_title" for the title label
                     lv_obj_t* title_label = lv_obj_find_by_name(modal, "dialog_title");
                     if (title_label) {
                         const char* title = lv_label_get_text(title_label);
-                        // Close modals that were showing connection/disconnection errors
-                        if (title && (strcmp(title, "Printer Firmware Disconnected") == 0 ||
-                                      strcmp(title, "Connection Failed") == 0)) {
+                        if (title && strcmp(title, "Connection Failed") == 0) {
                             spdlog::info("[MoonrakerManager] Auto-closing '{}' modal on reconnect",
                                          title);
                             ui_modal_hide(modal);
@@ -277,25 +275,16 @@ void MoonrakerManager::register_callbacks() {
         if (evt.type == MoonrakerEventType::CONNECTION_FAILED) {
             title = "Connection Failed";
         } else if (evt.type == MoonrakerEventType::KLIPPY_DISCONNECTED) {
-            // Check if disconnect modal is suppressed (intentional restart or AbortManager
-            // handling)
-            if (m_client && m_client->is_disconnect_modal_suppressed()) {
-                spdlog::info("[MoonrakerManager] Suppressing disconnect modal (expected restart)");
-                return;
-            }
-            if (helix::AbortManager::instance().is_handling_shutdown()) {
-                spdlog::info(
-                    "[MoonrakerManager] Suppressing disconnect modal (AbortManager handling)");
-                return;
-            }
-            title = "Printer Firmware Disconnected";
+            // Route through unified recovery dialog (same dialog as SHUTDOWN state)
+            // Suppression checks are handled inside show_recovery_for()
+            EmergencyStopOverlay::instance().show_recovery_for(RecoveryReason::DISCONNECTED);
+            return;
         } else if (evt.type == MoonrakerEventType::RPC_ERROR) {
             title = "Request Failed";
         }
 
         if (evt.is_error) {
-            bool is_critical = (evt.type == MoonrakerEventType::CONNECTION_FAILED ||
-                                evt.type == MoonrakerEventType::KLIPPY_DISCONNECTED);
+            bool is_critical = (evt.type == MoonrakerEventType::CONNECTION_FAILED);
             if (is_critical) {
                 NOTIFY_ERROR_MODAL(title, "{}", evt.message);
             } else {

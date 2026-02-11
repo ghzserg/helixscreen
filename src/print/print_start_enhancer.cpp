@@ -3,6 +3,8 @@
 
 #include "print_start_enhancer.h"
 
+#include "ui_emergency_stop.h"
+
 #include "moonraker_api.h"
 #include "moonraker_types.h"
 
@@ -697,10 +699,9 @@ void PrintStartEnhancer::modify_and_upload_config(
 
 void PrintStartEnhancer::restart_klipper(MoonrakerAPI* api, std::function<void()> on_success,
                                          EnhancementErrorCallback on_error) {
-    // Suppress the disconnect modal since we're intentionally restarting Klipper.
-    // Without this, users see a scary "Printer Firmware Disconnected" error modal
-    // even though we just told Klipper to restart.
-    api->suppress_disconnect_modal(10000); // 10 seconds
+    // Suppress recovery modal during intentional restart.
+    // Without this, users see error modals even though we just told Klipper to restart.
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(10000);
 
     api->restart_klipper(on_success, on_error);
 }

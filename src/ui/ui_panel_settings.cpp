@@ -1045,8 +1045,8 @@ void SettingsPanel::handle_change_host_clicked() {
             return;
         }
 
-        // Suppress disconnect modal during intentional switch
-        client->suppress_disconnect_modal(5000);
+        // Suppress recovery modal during intentional switch
+        EmergencyStopOverlay::instance().suppress_recovery_dialog(5000);
 
         // Disconnect current connection
         client->disconnect();

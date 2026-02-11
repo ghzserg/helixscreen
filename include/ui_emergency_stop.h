@@ -13,6 +13,19 @@
 #include <chrono>
 
 /**
+ * @brief Reason the recovery dialog is being shown
+ *
+ * Tracks which error condition(s) triggered the dialog so the message
+ * and available actions can adapt. Multiple reasons can be active
+ * simultaneously (e.g., SHUTDOWN then DISCONNECTED in sequence).
+ */
+enum class RecoveryReason {
+    NONE,         ///< No active recovery
+    SHUTDOWN,     ///< Klipper entered SHUTDOWN state (e-stop, thermal runaway, config error)
+    DISCONNECTED, ///< Klipper firmware disconnected from Moonraker
+};
+
+/**
  * @brief Emergency stop visibility coordinator
  *
  * Manages the estop_visible subject that drives contextual E-Stop buttons
@@ -101,15 +114,31 @@ class EmergencyStopOverlay {
     void set_require_confirmation(bool require);
 
     /**
-     * @brief Temporarily suppress recovery dialog for expected restarts
+     * @brief Show recovery dialog for a specific reason
      *
-     * Call before operations that intentionally trigger a Klipper restart
-     * (e.g., SAVE_CONFIG) to prevent the "Printer Shutdown" recovery dialog
-     * from flashing. Suppression auto-expires after the specified duration.
+     * Called for both SHUTDOWN state and KLIPPY_DISCONNECTED events.
+     * If the dialog is already showing, updates the content to reflect
+     * the combined error state (e.g., SHUTDOWN + DISCONNECTED).
      *
-     * @param duration_ms How long to suppress (default 15000ms)
+     * @param reason Why the recovery dialog is being shown
+     */
+    void show_recovery_for(RecoveryReason reason);
+
+    /**
+     * @brief Suppress recovery dialog for a duration
+     *
+     * Unified suppression for both SHUTDOWN and DISCONNECTED modals.
+     * Used before expected restarts (SAVE_CONFIG, PID calibration).
+     *
+     * @param duration_ms How long to suppress (default 15 seconds)
      */
     void suppress_recovery_dialog(uint32_t duration_ms = 15000);
+
+    /**
+     * @brief Check if recovery dialog suppression is active
+     * @return true if suppression window is still active
+     */
+    bool is_recovery_suppressed() const;
 
   private:
     EmergencyStopOverlay() = default;
@@ -133,11 +162,22 @@ class EmergencyStopOverlay {
     // Restart operation tracking - prevents recovery dialog during expected SHUTDOWN
     bool restart_in_progress_ = false;
 
-    // Time-based suppression for expected restarts (e.g., SAVE_CONFIG)
-    std::chrono::steady_clock::time_point suppress_recovery_until_{};
+    // Recovery dialog state
+    RecoveryReason recovery_reason_ = RecoveryReason::NONE;
+
+    // Time-based suppression for expected restarts (SAVE_CONFIG, PID calibration)
+    uint32_t suppress_recovery_until_ = 0;
 
     // Visibility subject (1=visible, 0=hidden) - drives XML bindings
     lv_subject_t estop_visible_;
+
+    // Recovery dialog subjects (drive XML bindings in klipper_recovery_dialog.xml)
+    lv_subject_t recovery_title_subject_;
+    char recovery_title_buf_[64]{};
+    lv_subject_t recovery_message_subject_;
+    char recovery_message_buf_[256]{};
+    lv_subject_t recovery_can_restart_; // 1=show restart buttons, 0=hide (disconnected)
+
     bool subjects_initialized_ = false;
 
     // RAII subject manager for automatic cleanup
@@ -154,6 +194,7 @@ class EmergencyStopOverlay {
     void dismiss_confirmation_dialog();
     void show_recovery_dialog();
     void dismiss_recovery_dialog();
+    void update_recovery_dialog_content();
     void restart_klipper();
     void firmware_restart();
 

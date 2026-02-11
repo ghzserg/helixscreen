@@ -3,6 +3,7 @@
 
 #include "ui_overlay_timelapse_install.h"
 
+#include "ui_emergency_stop.h"
 #include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_step_progress.h"
@@ -482,8 +483,8 @@ void TimelapseInstallOverlay::step_restart_moonraker() {
 
     auto alive = alive_guard_;
 
-    // Suppress disconnect modal during intentional restart
-    api_->suppress_disconnect_modal(15000);
+    // Suppress recovery modal during intentional restart
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(15000);
 
     api_->restart_moonraker(
         [this, alive]() {

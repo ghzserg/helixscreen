@@ -15,6 +15,29 @@
 
 #include <spdlog/spdlog.h>
 
+namespace {
+// Recovery dialog content per reason
+struct RecoveryContent {
+    const char* title;
+    const char* message;
+};
+
+RecoveryContent get_recovery_content(RecoveryReason reason) {
+    switch (reason) {
+    case RecoveryReason::SHUTDOWN:
+        return {"Printer Shutdown",
+                "Klipper has entered shutdown state. This may be due to an emergency stop, "
+                "thermal runaway, or configuration error."};
+    case RecoveryReason::DISCONNECTED:
+        return {"Printer Firmware Disconnected",
+                "Klipper firmware has disconnected from the host. "
+                "Try restarting Klipper or performing a firmware restart."};
+    default:
+        return {"Printer Error", "An unexpected printer error occurred."};
+    }
+}
+} // namespace
+
 using helix::ui::observe_int_sync;
 
 EmergencyStopOverlay& EmergencyStopOverlay::instance() {
@@ -33,12 +56,6 @@ void EmergencyStopOverlay::set_require_confirmation(bool require) {
     spdlog::debug("[EmergencyStop] Confirmation requirement set to: {}", require);
 }
 
-void EmergencyStopOverlay::suppress_recovery_dialog(uint32_t duration_ms) {
-    suppress_recovery_until_ =
-        std::chrono::steady_clock::now() + std::chrono::milliseconds(duration_ms);
-    spdlog::debug("[KlipperRecovery] Recovery dialog suppressed for {}ms", duration_ms);
-}
-
 void EmergencyStopOverlay::init_subjects() {
     if (subjects_initialized_) {
         return;
@@ -46,6 +63,13 @@ void EmergencyStopOverlay::init_subjects() {
 
     // Initialize visibility subject (default hidden)
     UI_MANAGED_SUBJECT_INT(estop_visible_, 0, "estop_visible", subjects_);
+
+    // Recovery dialog subjects (bound in klipper_recovery_dialog.xml)
+    UI_MANAGED_SUBJECT_STRING(recovery_title_subject_, recovery_title_buf_, "Printer Shutdown",
+                              "recovery_title", subjects_);
+    UI_MANAGED_SUBJECT_STRING(recovery_message_subject_, recovery_message_buf_, "",
+                              "recovery_message", subjects_);
+    UI_MANAGED_SUBJECT_INT(recovery_can_restart_, 1, "recovery_can_restart", subjects_);
 
     // Register click callbacks for XML event binding
     lv_xml_register_event_cb(nullptr, "emergency_stop_clicked", emergency_stop_clicked);
@@ -105,41 +129,8 @@ void EmergencyStopOverlay::create() {
             auto klippy_state = static_cast<KlippyState>(state);
 
             if (klippy_state == KlippyState::SHUTDOWN) {
-                // Don't show recovery dialog during wizard - no printer configured yet
-                if (is_wizard_active()) {
-                    spdlog::debug("[KlipperRecovery] Ignoring SHUTDOWN during setup wizard");
-                    return;
-                }
-                // Don't show recovery dialog if we initiated the restart operation
-                // (Klipper briefly enters SHUTDOWN during firmware/klipper restart)
-                if (self->restart_in_progress_) {
-                    spdlog::debug("[KlipperRecovery] Ignoring SHUTDOWN during restart operation");
-                    return;
-                }
-                // Don't show recovery dialog during expected restart (e.g., SAVE_CONFIG)
-                if (std::chrono::steady_clock::now() < self->suppress_recovery_until_) {
-                    spdlog::debug(
-                        "[KlipperRecovery] Ignoring SHUTDOWN - recovery dialog suppressed");
-                    return;
-                }
-                // Don't show recovery dialog if AbortManager is handling controlled shutdown
-                // (M112 -> FIRMWARE_RESTART escalation path)
-                if (helix::AbortManager::instance().is_handling_shutdown()) {
-                    spdlog::debug(
-                        "[KlipperRecovery] Ignoring SHUTDOWN - AbortManager handling recovery");
-                    return;
-                }
-                // Auto-popup recovery dialog when Klipper enters SHUTDOWN state
-                // NOTE: Must defer to main thread - observer may fire from WebSocket thread
-                spdlog::info(
-                    "[KlipperRecovery] Detected Klipper SHUTDOWN state, queueing recovery dialog");
-                spdlog::debug("[KlipperRecovery] Queueing recovery dialog (observer path)");
-                ui_async_call(
-                    [](void*) {
-                        spdlog::debug("[KlipperRecovery] Async callback executing (observer path)");
-                        EmergencyStopOverlay::instance().show_recovery_dialog();
-                    },
-                    nullptr);
+                // Unified recovery path - all suppression checks are in show_recovery_for()
+                self->show_recovery_for(RecoveryReason::SHUTDOWN);
             } else if (klippy_state == KlippyState::READY) {
                 // Reset restart flag - operation complete
                 self->restart_in_progress_ = false;
@@ -214,14 +205,7 @@ void EmergencyStopOverlay::execute_emergency_stop() {
             // Proactively show recovery dialog after E-stop
             // We know Klipper will be in SHUTDOWN state - don't wait for notification
             // which may not arrive due to WebSocket timing/disconnection
-            // NOTE: Must defer to main thread - this callback runs on WebSocket thread
-            spdlog::debug("[EmergencyStop] Queueing proactive recovery dialog (E-stop path)");
-            ui_async_call(
-                [](void*) {
-                    spdlog::debug("[EmergencyStop] Async callback executing (E-stop path)");
-                    EmergencyStopOverlay::instance().show_recovery_dialog();
-                },
-                nullptr);
+            EmergencyStopOverlay::instance().show_recovery_for(RecoveryReason::SHUTDOWN);
         },
         [](const MoonrakerError& err) {
             spdlog::error("[EmergencyStop] Emergency stop failed: {}", err.message);
@@ -286,6 +270,10 @@ void EmergencyStopOverlay::show_recovery_dialog() {
         return;
     }
 
+    // XML component name attr on <view> is not applied to the LVGL object,
+    // so set it explicitly for lv_obj_find_by_name() lookups
+    lv_obj_set_name(recovery_dialog_, "klipper_recovery_backdrop");
+
     // Ensure dialog is on top of everything
     lv_obj_move_foreground(recovery_dialog_);
 }
@@ -293,8 +281,100 @@ void EmergencyStopOverlay::show_recovery_dialog() {
 void EmergencyStopOverlay::dismiss_recovery_dialog() {
     if (recovery_dialog_) {
         lv_obj_safe_delete(recovery_dialog_);
+        recovery_reason_ = RecoveryReason::NONE;
         spdlog::debug("[KlipperRecovery] Recovery dialog dismissed");
     }
+}
+
+void EmergencyStopOverlay::show_recovery_for(RecoveryReason reason) {
+    // Check suppression
+    if (is_recovery_suppressed()) {
+        spdlog::info("[KlipperRecovery] Suppressing recovery dialog (suppression active)");
+        return;
+    }
+
+    // Don't show during wizard
+    if (is_wizard_active()) {
+        spdlog::debug("[KlipperRecovery] Ignoring {} during setup wizard",
+                      reason == RecoveryReason::SHUTDOWN ? "SHUTDOWN" : "DISCONNECTED");
+        return;
+    }
+
+    // Don't show if restart is in progress (expected shutdown cycle)
+    if (restart_in_progress_) {
+        spdlog::debug("[KlipperRecovery] Ignoring {} during restart operation",
+                      reason == RecoveryReason::SHUTDOWN ? "SHUTDOWN" : "DISCONNECTED");
+        return;
+    }
+
+    // Don't show if AbortManager is handling controlled shutdown
+    if (helix::AbortManager::instance().is_handling_shutdown()) {
+        spdlog::debug("[KlipperRecovery] Ignoring {} - AbortManager handling recovery",
+                      reason == RecoveryReason::SHUTDOWN ? "SHUTDOWN" : "DISCONNECTED");
+        return;
+    }
+
+    // If dialog is already showing, update reason if it's worse (SHUTDOWN -> DISCONNECTED means
+    // can't restart)
+    if (recovery_dialog_) {
+        if (reason == RecoveryReason::DISCONNECTED &&
+            recovery_reason_ == RecoveryReason::SHUTDOWN) {
+            spdlog::info("[KlipperRecovery] Connection dropped while SHUTDOWN dialog showing, "
+                         "updating buttons");
+            recovery_reason_ = RecoveryReason::DISCONNECTED;
+            ui_async_call(
+                [](void*) { EmergencyStopOverlay::instance().update_recovery_dialog_content(); },
+                nullptr);
+        } else {
+            spdlog::debug("[KlipperRecovery] Recovery dialog already visible, ignoring {}",
+                          reason == RecoveryReason::SHUTDOWN ? "SHUTDOWN" : "DISCONNECTED");
+        }
+        return;
+    }
+
+    recovery_reason_ = reason;
+
+    // Defer to main thread - may be called from WebSocket thread
+    ui_async_call(
+        [](void*) {
+            auto& inst = EmergencyStopOverlay::instance();
+            // Guard: dialog may have been shown by another async call in the meantime
+            if (inst.recovery_dialog_) {
+                return;
+            }
+            spdlog::info("[KlipperRecovery] Showing recovery dialog (reason: {})",
+                         inst.recovery_reason_ == RecoveryReason::SHUTDOWN ? "SHUTDOWN"
+                                                                           : "DISCONNECTED");
+            inst.show_recovery_dialog();
+            inst.update_recovery_dialog_content();
+        },
+        nullptr);
+}
+
+void EmergencyStopOverlay::suppress_recovery_dialog(uint32_t duration_ms) {
+    suppress_recovery_until_ = lv_tick_get() + duration_ms;
+    spdlog::info("[KlipperRecovery] Suppressing recovery dialog for {}ms", duration_ms);
+}
+
+bool EmergencyStopOverlay::is_recovery_suppressed() const {
+    if (suppress_recovery_until_ == 0) {
+        return false;
+    }
+    return lv_tick_elaps(suppress_recovery_until_) > (UINT32_MAX / 2);
+}
+
+void EmergencyStopOverlay::update_recovery_dialog_content() {
+    auto content = get_recovery_content(recovery_reason_);
+
+    // Update subjects — XML bindings in klipper_recovery_dialog.xml react automatically
+    lv_subject_copy_string(&recovery_title_subject_, lv_tr(content.title));
+    lv_subject_copy_string(&recovery_message_subject_, lv_tr(content.message));
+    lv_subject_set_int(&recovery_can_restart_,
+                       recovery_reason_ != RecoveryReason::DISCONNECTED ? 1 : 0);
+
+    spdlog::debug("[KlipperRecovery] Updated dialog content: reason={}, can_restart={}",
+                  recovery_reason_ == RecoveryReason::SHUTDOWN ? "SHUTDOWN" : "DISCONNECTED",
+                  recovery_reason_ != RecoveryReason::DISCONNECTED);
 }
 
 void EmergencyStopOverlay::restart_klipper() {

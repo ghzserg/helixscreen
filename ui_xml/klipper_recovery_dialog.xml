@@ -16,25 +16,27 @@
               style_pad_bottom="#space_lg" flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md">
         <!-- Warning icon -->
         <icon src="alert_octagon" size="lg" variant="warning"/>
-        <!-- Title -->
-        <text_heading width="100%" text="Printer Shutdown" translation_tag="Printer Shutdown" style_text_align="center"/>
-        <!-- Message -->
-        <text_muted width="100%"
-                    text="Klipper has entered shutdown state. This may be due to an emergency stop, thermal runaway, or configuration error." translation_tag="Klipper has entered shutdown state. This may be due to an emergency stop, thermal runaway, or configuration error."
+        <!-- Title (driven by recovery_title subject) -->
+        <text_heading name="recovery_title" width="100%" bind_text="recovery_title" style_text_align="center"/>
+        <!-- Message (driven by recovery_message subject) -->
+        <text_muted name="recovery_message" width="100%"
+                    bind_text="recovery_message"
                     long_mode="wrap" style_text_align="center"/>
       </lv_obj>
       <!-- Horizontal divider above buttons -->
       <divider_horizontal/>
       <!-- Button column -->
       <lv_obj width="100%" style_pad_all="#space_md" flex_flow="column" style_pad_gap="#space_sm">
-        <!-- Restart Klipper (primary action) -->
+        <!-- Restart Klipper (hidden when disconnected via recovery_can_restart subject) -->
         <ui_button name="restart_klipper_btn"
                    width="100%" height="#button_height" variant="warning" icon="refresh" text="Restart Klipper" translation_tag="Restart Klipper">
+          <bind_flag_if_eq subject="recovery_can_restart" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="recovery_restart_klipper_clicked"/>
         </ui_button>
-        <!-- Firmware Restart (secondary action) -->
+        <!-- Firmware Restart (hidden when disconnected via recovery_can_restart subject) -->
         <ui_button name="firmware_restart_btn"
                    width="100%" height="#button_height" variant="secondary" icon="update" text="Firmware Restart" translation_tag="Firmware Restart">
+          <bind_flag_if_eq subject="recovery_can_restart" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="recovery_firmware_restart_clicked"/>
         </ui_button>
         <!-- Dismiss (tertiary action) -->

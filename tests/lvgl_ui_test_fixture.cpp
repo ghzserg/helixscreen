@@ -159,6 +159,9 @@ void LVGLUITestFixture::init_subjects() {
     // Wizard subjects (needed for wizard components)
     ui_wizard_init_subjects();
 
+    // Emergency stop overlay subjects (recovery dialog bindings)
+    EmergencyStopOverlay::instance().init_subjects();
+
     // Create disconnected client and API for tests that need them
     m_client = std::make_unique<MoonrakerClient>();
     m_api = std::make_unique<MoonrakerAPI>(*m_client, get_printer_state());
@@ -207,6 +210,9 @@ void LVGLUITestFixture::cleanup() {
 
     // Deinitialize subjects
     if (m_subjects_initialized) {
+        // Emergency stop overlay subjects
+        EmergencyStopOverlay::instance().deinit_subjects();
+
         // Wizard subjects
         ui_wizard_deinit_subjects();
 

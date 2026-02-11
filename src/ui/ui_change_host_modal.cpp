@@ -3,6 +3,7 @@
 
 #include "ui_change_host_modal.h"
 
+#include "ui_emergency_stop.h"
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
@@ -179,8 +180,8 @@ void ChangeHostModal::handle_test_connection() {
         return;
     }
 
-    // Suppress disconnect modal (we're intentionally disconnecting)
-    client->suppress_disconnect_modal(10000);
+    // Suppress recovery modal during intentional host change
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(10000);
     client->disconnect();
 
     // Increment generation for stale callback detection
