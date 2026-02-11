@@ -72,6 +72,11 @@ static void show_rich_completion_modal(PrintJobState state, const char* filename
     // Get print stats (wall-clock elapsed including prep time)
     int duration_secs = lv_subject_get_int(printer_state.get_print_elapsed_subject());
     int total_layers = lv_subject_get_int(printer_state.get_print_layer_total_subject());
+    int estimated_secs = printer_state.get_estimated_print_time();
+    int filament_mm = lv_subject_get_int(printer_state.get_print_filament_used_subject());
+
+    spdlog::info("[PrintComplete] Stats: duration={}s, estimated={}s, layers={}, filament={}mm",
+                 duration_secs, estimated_secs, total_layers, filament_mm);
 
     // Determine icon colors and title based on state
     const char* icon_color_token = "success";
@@ -131,22 +136,47 @@ static void show_rich_completion_modal(PrintJobState state, const char* filename
     // Update duration
     lv_obj_t* duration_label = lv_obj_find_by_name(dialog, "duration_label");
     if (duration_label) {
-        std::string duration_str = fmt::duration_padded(duration_secs);
+        std::string duration_str = fmt::duration_padded(duration_secs) + " " + lv_tr("elapsed");
         lv_label_set_text(duration_label, duration_str.c_str());
+    }
+
+    // Update slicer estimate (only if available)
+    lv_obj_t* estimate_stat = lv_obj_find_by_name(dialog, "estimate_stat");
+    if (estimate_stat) {
+        if (estimated_secs > 0) {
+            std::string est_str =
+                std::string(lv_tr("est")) + " " + fmt::duration_padded(estimated_secs);
+            lv_obj_t* estimate_label = lv_obj_find_by_name(dialog, "estimate_label");
+            if (estimate_label) {
+                lv_label_set_text(estimate_label, est_str.c_str());
+            }
+        } else {
+            // Hide estimate stat if no slicer estimate was available
+            lv_obj_add_flag(estimate_stat, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
     // Update layers
     lv_obj_t* layers_label = lv_obj_find_by_name(dialog, "layers_label");
     if (layers_label) {
         char layers_buf[32];
-        snprintf(layers_buf, sizeof(layers_buf), "%d layers", total_layers);
+        snprintf(layers_buf, sizeof(layers_buf), "%d %s", total_layers, lv_tr("layers"));
         lv_label_set_text(layers_label, layers_buf);
     }
 
-    // Hide filament stat for now (would need metadata fetch)
+    // Show filament usage (from Moonraker print_stats.filament_used)
     lv_obj_t* filament_stat = lv_obj_find_by_name(dialog, "filament_stat");
     if (filament_stat) {
-        lv_obj_add_flag(filament_stat, LV_OBJ_FLAG_HIDDEN);
+        if (filament_mm > 0) {
+            std::string fil_str =
+                fmt::format_filament_length(static_cast<double>(filament_mm)) + " " + lv_tr("used");
+            lv_obj_t* filament_label = lv_obj_find_by_name(dialog, "filament_label");
+            if (filament_label) {
+                lv_label_set_text(filament_label, fil_str.c_str());
+            }
+        } else {
+            lv_obj_add_flag(filament_stat, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
     // Note: OK button dismissal is wired via XML event_cb="on_print_complete_ok"

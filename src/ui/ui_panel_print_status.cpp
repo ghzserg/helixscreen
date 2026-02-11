@@ -245,6 +245,8 @@ void PrintStatusPanel::init_subjects() {
                               "print_progress_text", subjects_);
     UI_MANAGED_SUBJECT_STRING(layer_text_subject_, layer_text_buf_, "Layer 0 / 0",
                               "print_layer_text", subjects_);
+    UI_MANAGED_SUBJECT_STRING(filament_used_text_subject_, filament_used_text_buf_, "",
+                              "print_filament_used_text", subjects_);
     UI_MANAGED_SUBJECT_STRING(elapsed_subject_, elapsed_buf_, "0h 00m", "print_elapsed", subjects_);
     UI_MANAGED_SUBJECT_STRING(remaining_subject_, remaining_buf_, "0h 00m", "print_remaining",
                               subjects_);
@@ -763,6 +765,18 @@ void PrintStatusPanel::update_all_displays() {
                   total_layers_);
     lv_subject_copy_string(&layer_text_subject_, layer_text_buf_);
 
+    // Filament used text
+    int filament_mm = lv_subject_get_int(get_printer_state().get_print_filament_used_subject());
+    if (filament_mm > 0) {
+        std::string fil_str = helix::fmt::format_filament_length(static_cast<double>(filament_mm)) +
+                              " " + lv_tr("used");
+        std::strncpy(filament_used_text_buf_, fil_str.c_str(), sizeof(filament_used_text_buf_) - 1);
+        filament_used_text_buf_[sizeof(filament_used_text_buf_) - 1] = '\0';
+    } else {
+        filament_used_text_buf_[0] = '\0';
+    }
+    lv_subject_copy_string(&filament_used_text_subject_, filament_used_text_buf_);
+
     // Time displays - Preparing: preprint observers own these.
     // Complete: on_print_state_changed sets frozen final values, don't overwrite.
     if (current_state_ != PrintState::Preparing && current_state_ != PrintState::Complete) {
@@ -1168,6 +1182,18 @@ void PrintStatusPanel::on_print_progress_changed(int progress) {
             SettingsManager::instance().get_animations_enabled() ? LV_ANIM_ON : LV_ANIM_OFF;
         lv_bar_set_value(progress_bar_, current_progress_, anim_enable);
     }
+
+    // Update filament used text (evolves during active printing)
+    int filament_mm = lv_subject_get_int(get_printer_state().get_print_filament_used_subject());
+    if (filament_mm > 0) {
+        std::string fil_str = helix::fmt::format_filament_length(static_cast<double>(filament_mm)) +
+                              " " + lv_tr("used");
+        std::strncpy(filament_used_text_buf_, fil_str.c_str(), sizeof(filament_used_text_buf_) - 1);
+        filament_used_text_buf_[sizeof(filament_used_text_buf_) - 1] = '\0';
+    } else {
+        filament_used_text_buf_[0] = '\0';
+    }
+    lv_subject_copy_string(&filament_used_text_subject_, filament_used_text_buf_);
 
     spdlog::trace("[{}] Progress updated: {}%", get_name(), current_progress_);
 }

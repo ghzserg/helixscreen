@@ -255,6 +255,18 @@ std::string duration_padded(int total_seconds) {
     return std::string(buf);
 }
 
+std::string format_filament_length(double mm) {
+    char buf[32];
+    if (mm < 1000) {
+        std::snprintf(buf, sizeof(buf), "%.0fmm", mm);
+    } else if (mm < 1000000) {
+        std::snprintf(buf, sizeof(buf), "%.1fm", mm / 1000.0);
+    } else {
+        std::snprintf(buf, sizeof(buf), "%.2fkm", mm / 1000000.0);
+    }
+    return std::string(buf);
+}
+
 HeaterDisplayResult heater_display(int current_centi, int target_centi) {
     HeaterDisplayResult result;
 

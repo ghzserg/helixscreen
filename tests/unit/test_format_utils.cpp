@@ -421,3 +421,28 @@ TEST_CASE("duration_remaining shows seconds under 5 minutes", "[format_utils][du
         CHECK(duration_remaining(7200) == "2:00 left");
     }
 }
+
+// =============================================================================
+// Filament length formatting
+// =============================================================================
+
+TEST_CASE("format_filament_length formats correctly", "[format_utils][filament]") {
+    SECTION("sub-meter values show as mm") {
+        CHECK(format_filament_length(0) == "0mm");
+        CHECK(format_filament_length(1) == "1mm");
+        CHECK(format_filament_length(500) == "500mm");
+        CHECK(format_filament_length(999) == "999mm");
+    }
+
+    SECTION("meter-range values show as meters with 1 decimal") {
+        CHECK(format_filament_length(1000) == "1.0m");
+        CHECK(format_filament_length(1500) == "1.5m");
+        CHECK(format_filament_length(12500) == "12.5m");
+        CHECK(format_filament_length(999999) == "1000.0m");
+    }
+
+    SECTION("kilometer-range values show as km with 2 decimals") {
+        CHECK(format_filament_length(1000000) == "1.00km");
+        CHECK(format_filament_length(1230000) == "1.23km");
+    }
+}

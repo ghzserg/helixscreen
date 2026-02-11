@@ -455,6 +455,12 @@ class PrinterState {
         return print_domain_.get_print_in_progress_subject();
     }
 
+    // Filament used subject (from print_stats.filament_used, in mm)
+    // Delegated to PrinterPrintState component
+    lv_subject_t* get_print_filament_used_subject() {
+        return print_domain_.get_print_filament_used_subject();
+    }
+
     // Layer tracking subjects (from print_stats.info.current_layer/total_layer)
     // Delegated to PrinterPrintState component
     lv_subject_t* get_print_layer_current_subject() {

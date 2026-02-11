@@ -63,6 +63,7 @@ void PrinterPrintState::init_subjects(bool register_xml) {
     INIT_SUBJECT_INT(print_duration, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(print_elapsed, 0, subjects_, false);
     INIT_SUBJECT_INT(print_time_left, 0, subjects_, false);
+    INIT_SUBJECT_INT(print_filament_used, 0, subjects_, register_xml);
 
     // Print start progress subjects
     INIT_SUBJECT_INT(print_start_phase, static_cast<int>(PrintStartPhase::IDLE), subjects_,
@@ -120,6 +121,7 @@ void PrinterPrintState::reset_for_new_print() {
     lv_subject_set_int(&print_layer_current_, 0);
     lv_subject_set_int(&print_duration_, 0);
     lv_subject_set_int(&print_elapsed_, 0);
+    lv_subject_set_int(&print_filament_used_, 0);
     // Re-seed time_left from slicer estimate instead of clearing to 0.
     // For same-file reprints, the metadata callback won't re-fire since
     // the filename hasn't changed, so we preserve the previous estimate.
@@ -244,6 +246,24 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status) {
         } else if (stats.contains("info")) {
             spdlog::debug("[LayerTracker] print_stats.info is null/missing - slicer may not emit "
                           "SET_PRINT_STATS_INFO");
+        }
+
+        // Accept estimated_time from status updates (mock includes this; real Moonraker
+        // sends it via file metadata API instead, handled by print status panel callback)
+        if (stats.contains("estimated_time") && stats["estimated_time"].is_number()) {
+            int est = static_cast<int>(stats["estimated_time"].get<double>());
+            if (est > 0 && estimated_print_time_ == 0) {
+                estimated_print_time_ = est;
+                spdlog::debug("[PrinterPrintState] Estimated time from status: {}s", est);
+            }
+        }
+
+        // Track filament usage (Moonraker reports in mm)
+        if (stats.contains("filament_used") && stats["filament_used"].is_number()) {
+            int filament_mm = static_cast<int>(stats["filament_used"].get<double>());
+            if (filament_mm != lv_subject_get_int(&print_filament_used_)) {
+                lv_subject_set_int(&print_filament_used_, filament_mm);
+            }
         }
 
         // Update print time tracking (elapsed and remaining)

@@ -167,6 +167,7 @@
               <text_small name="objects_count_label" text="" bind_text="print_objects_text" variant="muted">
                 <bind_flag_if_eq subject="exclude_objects_available" flag="hidden" ref_value="0"/>
               </text_small>
+              <text_small name="filament_used_label" text="" bind_text="print_filament_used_text" variant="muted"/>
             </lv_obj>
             <!-- File Name (shared subject from ActivePrintMediaManager) -->
             <text_body name="file_name"

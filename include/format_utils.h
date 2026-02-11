@@ -259,6 +259,13 @@ size_t duration_to_buffer(char* buf, size_t buf_size, int total_seconds);
 std::string duration_padded(int total_seconds);
 
 /**
+ * @brief Format filament length in mm to human-readable string
+ * @param mm Filament length in millimeters
+ * @return Formatted string (e.g., "850mm", "12.5m", "1.23km")
+ */
+std::string format_filament_length(double mm);
+
+/**
  * @brief Result of formatting a heater display
  *
  * Contains all the information needed to display a heater status:

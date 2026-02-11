@@ -1966,7 +1966,8 @@ bool MoonrakerClientMock::start_print_internal(const std::string& filename) {
             (meta.first_layer_bed_temp > 0) ? meta.first_layer_bed_temp : 60.0;
         print_metadata_.target_nozzle_temp =
             (meta.first_layer_nozzle_temp > 0) ? meta.first_layer_nozzle_temp : 210.0;
-        print_metadata_.filament_mm = meta.filament_used_mm;
+        print_metadata_.filament_mm =
+            (meta.filament_used_mm > 0) ? meta.filament_used_mm : 5400.0; // Default: ~5.4m
     }
 
     // Set temperature targets for preheat
@@ -2303,10 +2304,18 @@ void MoonrakerClientMock::dispatch_enhanced_print_status() {
     double elapsed = progress * total_time;
 
     std::string filename;
+    double filament_total_mm;
     {
         std::lock_guard<std::mutex> lock(print_mutex_);
         filename = print_filename_;
     }
+    {
+        std::lock_guard<std::mutex> lock(metadata_mutex_);
+        filament_total_mm = print_metadata_.filament_mm;
+    }
+
+    // Simulate filament consumption proportional to progress
+    double filament_used = (filament_total_mm > 0) ? progress * filament_total_mm : 0.0;
 
     MockPrintPhase phase = print_phase_.load();
     bool is_active = (phase == MockPrintPhase::PRINTING || phase == MockPrintPhase::PREHEAT);
@@ -2315,8 +2324,9 @@ void MoonrakerClientMock::dispatch_enhanced_print_status() {
                     {{"state", get_print_state_string()},
                      {"filename", filename},
                      {"print_duration", elapsed},
-                     {"total_duration", elapsed}, // Wall-clock elapsed (matches real Moonraker)
-                     {"filament_used", 0.0},
+                     {"total_duration", elapsed},    // Wall-clock elapsed (matches real Moonraker)
+                     {"estimated_time", total_time}, // Slicer estimate (for completion modal)
+                     {"filament_used", filament_used},
                      {"message", ""},
                      {"info", {{"current_layer", current_layer}, {"total_layer", total_layers}}}}},
                    {"virtual_sdcard",
@@ -3079,6 +3089,14 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         double progress = print_progress_.load();
         double elapsed = progress * total_time;
 
+        // Simulate filament consumption proportional to progress
+        double filament_total_mm;
+        {
+            std::lock_guard<std::mutex> lock(metadata_mutex_);
+            filament_total_mm = print_metadata_.filament_mm;
+        }
+        double filament_used = (filament_total_mm > 0) ? progress * filament_total_mm : 0.0;
+
         // Get Z offset for gcode_move
         double z_offset = gcode_offset_z_.load();
 
@@ -3100,8 +3118,9 @@ void MoonrakerClientMock::temperature_simulation_loop() {
              {{"state", print_state_str},
               {"filename", filename},
               {"print_duration", elapsed},
-              {"total_duration", elapsed}, // Wall-clock elapsed (matches real Moonraker)
-              {"filament_used", 0.0},
+              {"total_duration", elapsed},    // Wall-clock elapsed (matches real Moonraker)
+              {"estimated_time", total_time}, // Slicer estimate (for completion modal)
+              {"filament_used", filament_used},
               {"message", ""},
               {"info", {{"current_layer", current_layer}, {"total_layer", total_layers}}}}},
             {"virtual_sdcard",

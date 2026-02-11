@@ -169,14 +169,21 @@ static json build_mock_file_metadata_response(const std::string& filename) {
         filament_colors.push_back(color);
     }
 
+    // Use fallback values for mock when G-code headers lack metadata
+    double estimated_time =
+        (header_meta.estimated_time_seconds > 0) ? header_meta.estimated_time_seconds : 300.0;
+    double filament_mm = (header_meta.filament_used_mm > 0) ? header_meta.filament_used_mm : 5400.0;
+    double filament_g =
+        (header_meta.filament_used_g > 0) ? header_meta.filament_used_g : filament_mm * 0.00298;
+
     json result = {{"filename", filename},
                    {"size", size},
                    {"modified", modified},
                    {"slicer", header_meta.slicer},
                    {"slicer_version", header_meta.slicer_version},
-                   {"estimated_time", header_meta.estimated_time_seconds},
-                   {"filament_total", header_meta.filament_used_mm},
-                   {"filament_weight_total", header_meta.filament_used_g},
+                   {"estimated_time", estimated_time},
+                   {"filament_total", filament_mm},
+                   {"filament_weight_total", filament_g},
                    {"filament_type", header_meta.filament_type},
                    {"filament_colors", filament_colors},
                    {"layer_count", header_meta.layer_count},
