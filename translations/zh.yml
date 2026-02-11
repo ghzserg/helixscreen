@@ -30,7 +30,7 @@ translations:
   850g: 850g
   = Loosen: = 松开
   = Tighten: = 拧紧
-  ABOUT: ''
+  ABOUT: 关于
   ABS: ABS
   AMS Settings: AMS 设置
   APPEARANCE: 外观
@@ -50,7 +50,7 @@ translations:
   Adjust screws, then re-probe.: 调整螺丝，然后重新探测。
   Adjustments stay active until restart. Save after print completes.: 调整在重启前保持有效。打印完成后保存。
   Advanced Setting: 高级设置
-  After running the commands, tap Check Again below.: ''
+  After running the commands, tap Check Again below.: 执行命令后，点击下方的重新检查。
   All: 全部
   All screws are within tolerance.: 所有螺丝都在公差范围内。
   Allow display to sleep during active prints: 打印时允许屏幕休眠
@@ -60,8 +60,8 @@ translations:
   An error occurred during probing.: 探测过程中发生错误。
   An error occurred while loading filament.: 加载耗材时发生错误。
   Animations: 动画
-  Anonymous data to help improve HelixScreen: ''
-  Anonymous stats — no personal data, ever.: ''
+  Anonymous data to help improve HelixScreen: 匿名数据以帮助改进 HelixScreen
+  Anonymous stats — no personal data, ever.: 匿名统计 — 绝不收集个人数据。
   App Background: 应用背景
   Apply: 应用
   Apply Changes: 应用更改
@@ -104,7 +104,7 @@ translations:
   Border transparency (0 = invisible, 255 = solid): 边框透明度（0 = 不可见，255 = 实心）
   Brightness: 亮度
   Browse: 浏览
-  Button taps and navigation sounds: ''
+  Button taps and navigation sounds: 按钮点击和导航声音
   Bypass: 旁路
   Bypass Mode: 旁路模式
   CALIBRATION: 校准
@@ -128,7 +128,7 @@ translations:
   Change Printer Host: 更改打印机主机
   Changes apply immediately. Adjust during print for tuning.: 更改立即生效。可在打印时调整进行调优。
   Changes are temporary and reset on printer reboot: 更改是临时的，打印机重启后会重置
-  Check Again: ''
+  Check Again: 重新检查
   Check for Updates: 检查更新
   Check the filament path and try again.: 检查耗材路径并重试。
   Checking slots...: 正在检查料仓...
@@ -137,11 +137,11 @@ translations:
   Choose how frames are captured during printing: 选择打印期间的帧捕获方式
   Choose rendering mode for G-code visualization: 选择 G-code 可视化的渲染模式
   Choose rendering mode for bed mesh visualization: 选择热床网格可视化的渲染模式
-  Choose sound style: ''
+  Choose sound style: 选择声音风格
   Clean Nozzle: 清洁喷嘴
   Clear: 清除
   Clear All: 全部清除
-  Clear All Events: ''
+  Clear All Events: 清除所有事件
   Clear Assignment: 清除分配
   Clipboard unavailable - use SSH: 剪贴板不可用 - 请使用 SSH
   Close: 关闭
@@ -160,7 +160,7 @@ translations:
   Configure quick buttons and standard macros: 配置快捷按钮和标准宏
   Configure timelapse recording: 配置延时录像
   Connect: 连接
-  'Connect to your printer via SSH and run:': ''
+  'Connect to your printer via SSH and run:': '通过 SSH 连接到打印机并运行：'
   Connected: 已连接
   Connecting to network...: 正在连接网络...
   Connecting...: 正在连接...
@@ -241,7 +241,7 @@ translations:
   Error: 错误
   Error state: 错误状态
   Ethernet: 以太网
-  Events appear here after sessions and prints: ''
+  Events appear here after sessions and prints: 会话和打印后事件将显示在此处
   Exclude: 排除
   Excluded: 已排除
   Execute printer macros: 执行打印机宏
@@ -283,7 +283,7 @@ translations:
   G-code Preview: G-code 预览
   G-code commands will appear here: G-code 命令将显示在此处
   'Ghost:': 残影：
-  Got it: ''
+  Got it: 知道了
   Gray: 灰色
   Happy Hare MMU: Happy Hare MMU
   Hardware: 硬件
@@ -291,21 +291,21 @@ translations:
   Hardware Issues: 硬件问题
   Hardware Name: 硬件名称
   Hardware is validated on startup and reconnection: 硬件在启动和重新连接时进行验证
-  Have a piece of paper ready.: ''
+  Have a piece of paper ready.: 请准备好一张纸。
   ? Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't
     adjusted with                              thumb wheels or some other built-in
     mechanism.
   : 如果您的热床不是用旋钮或其他内置机构调整的，请准备好热床调整工具（螺丝刀、内六角扳手等）。
   Heading: 标题
   Heat Soak: 预热浸泡
-  Heat bed before calibrating for accurate offset with thermal expansion.: ''
+  Heat bed before calibrating for accurate offset with thermal expansion.: 校准前加热热床，以获得考虑热膨胀的精确偏移。
   Heatbed Temperature: 热床温度
   Heated Bed: 加热床
   Heating...: 正在加热...
   HelixScreen Crashed: HelixScreen 崩溃
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     将与您的耗材更换器集成，用于多料盘/多色打印操作。
-  Help improve HelixScreen?: ''
+  Help improve HelixScreen?: 帮助改进 HelixScreen？
   Higher = faster: 越高 = 越快
   Home: 归位
   Horizontal Progress (Leveling Wizard): 水平进度（调平向导）
@@ -322,7 +322,7 @@ translations:
   Ignore: 忽略
   In Progress: 进行中
   Indexing G-code...: 正在索引 G-code...
-  Initializing...: ''
+  Initializing...: 初始化中...
   Input: 输入
   Input Shaper: 输入整形器
   Input Shaping: 输入整形
@@ -334,7 +334,7 @@ translations:
   Install Update: 安装更新
   'Install the HelixPrint plugin to enable fast G-code modifications. Run this command via SSH on your printer:': 安装
     HelixPrint 插件以启用快速 G-code 修改。通过 SSH 在打印机上运行此命令：
-  Install timelapse plugin: ''
+  Install timelapse plugin: 安装延时摄影插件
   Installation Failed: 安装失败
   Installation takes about 30 seconds.: 安装大约需要 30 秒。
   Installing...: 正在安装...
@@ -366,7 +366,7 @@ translations:
   Layer mode captures one frame per layer change. Best for most prints.: 层模式在每次换层时捕获一帧。适用于大多数打印。
   'Layer:': 层：
   Layers: 层
-  Learn More: ''
+  Learn More: 了解更多
   'Length:': 长度：
   Light: 浅色
   Load: 加载
@@ -405,7 +405,7 @@ translations:
   Make bed mesh and QGL skippable: 使热床网格和 QGL 可跳过
   Manage: 管理
   Manual Bed Leveling: 手动热床调平
-  Match your typical print fan speed for best results: ''
+  Match your typical print fan speed for best results: 设置您常用的打印风扇速度以获得最佳效果
   Material: 材料
   Material Design Spinner: Material Design 加载动画
   Max Acceleration: 最大加速度
@@ -448,7 +448,7 @@ translations:
   No Macros Found: 未找到宏
   No Power Devices: 无电源设备
   No Spools: 无料盘
-  No events queued: ''
+  No events queued: 无排队事件
   No file loaded: 未加载文件
   No files available for printing: 没有可用于打印的文件
   No mesh loaded: 未加载网格
@@ -498,7 +498,7 @@ translations:
   Pick Color: 选择颜色
   Place plugins in the plugins directory to extend HelixScreen: 将插件放在 plugins 目录中以扩展
     HelixScreen
-  Play a test beep: ''
+  Play a test beep: 播放测试提示音
   Please enter a theme name: 请输入主题名称
   Please wait while the printer homes and probes.: 请等待打印机归位和探测。
   Please wait while the printer probes each screw position.: 请等待打印机探测每个螺丝位置。
@@ -548,7 +548,7 @@ translations:
   Profiles: 配置
   Progress Bar Tests: 进度条测试
   Purge: 排料
-  QUEUED EVENTS: ''
+  QUEUED EVENTS: 排队事件
   QUICK BUTTONS: 快捷按钮
   Quad Gantry Level: 四角龙门调平
   Quick Actions: 快捷操作
@@ -616,14 +616,14 @@ translations:
   Search filename...: 搜索文件名...
   Secondary: 次要
   Security: 安全
-  See exactly what data will be sent: ''
+  See exactly what data will be sent: 查看将发送的确切数据
   Select: 选择
   Select 'None' if you don't have a filament sensor, or if you don't want to pause on runout.: 如果您没有耗材传感器，或不想在断料时暂停，请选择「无」。
   Select 'None' if you have a dedicated probe, or don't use bed mesh leveling.: 如果您有专用探针，或不使用热床网格调平，请选择「无」。
   Select Filament: 选择耗材
   Select G-Code File: 选择 G-Code 文件
   Select Heater: 选择加热器
-  Select a material or adjust temperature: ''
+  Select a material or adjust temperature: 选择材料或调整温度
   Select macro for first button: 为第一个按钮选择宏
   Select macro for second button: 为第二个按钮选择宏
   Select which LED to control: 选择要控制的 LED
@@ -633,10 +633,10 @@ translations:
   Sensors: 传感器
   'Set ': '设置 '
   Settings: 设置
-  Setup Timelapse: ''
+  Setup Timelapse: 设置延时摄影
   Shadow Intensity: 阴影强度
   Shaper: 整形器
-  Share Usage Data: ''
+  Share Usage Data: 共享使用数据
   'Shininess:': 光泽度：
   Show detailed print preparation status: 显示详细的打印准备状态
   Side: 侧面
@@ -646,7 +646,7 @@ translations:
   Slot 1: 料仓 1
   Small labels help keep controls calm and focused.: 小标签有助于保持控件简洁专注。
   Some settings will take effect after restart.: 某些设置将在重启后生效。
-  Sound Theme: ''
+  Sound Theme: 声音主题
   Sounds: 声音
   'Specular:': 镜面反射：
   Speed Settings: 速度设置
@@ -682,7 +682,7 @@ translations:
   TPU: TPU
   Tap to show keyboard...: 点击显示键盘...
   Target Temperature: 目标温度
-  Telemetry Data: ''
+  Telemetry Data: 遥测数据
   Temperature: 温度
   Temperature Sensors: 温度传感器
   Temperatures: 温度
@@ -691,7 +691,7 @@ translations:
   Test Connection: 测试连接
   Test Network: 测试网络
   Test Print: 测试打印
-  Test Sound: ''
+  Test Sound: 测试声音
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
   : HelixPrint 插件可在打印机上直接进行快速 G-code 修改——例如跳过热床网格以快速重新打印。
@@ -703,8 +703,8 @@ translations:
   Theme, brightness, and sleep settings: 主题、亮度和休眠设置
   This calibration uses the paper friction method to set your Z-offset.: 此校准使用纸张摩擦法设置
     Z 偏移。
-  This is exactly the data that will be sent: ''
-  This is what data would be sent if enabled: ''
+  This is exactly the data that will be sent: 这正是将要发送的数据
+  This is what data would be sent if enabled: 这是启用后将发送的数据
   This may take 1-2 minutes: 这可能需要 1-2 分钟
   This may take up to 30 seconds: 这可能需要 30 秒
   ? This plugin lets HelixScreen control print start options like bed mesh and QGL.
@@ -736,7 +736,7 @@ translations:
   Turn on LED when printer starts: 打印机启动时打开 LED
   Type: 类型
   Type to preview input field...: 输入以预览输入框...
-  UI Sounds: ''
+  UI Sounds: 界面声音
   USB: USB
   Uninstall HelixPrint Plugin: 卸载 HelixPrint 插件
   Unknown: 未知
@@ -765,20 +765,20 @@ translations:
   View Changelog: 查看更新日志
   View Full History: 查看完整历史
   View Presets: 查看预设
-  View Telemetry Data: ''
+  View Telemetry Data: 查看遥测数据
   View Timelapse: 查看延时摄影
   View installed plugins and status: 查看已安装的插件和状态
   View print statistics and job history: 查看打印统计和作业历史
-  Waiting for bed to reach temperature for accurate calibration.: ''
-  Warm Bed: ''
-  Warming Bed...: ''
+  Waiting for bed to reach temperature for accurate calibration.: 等待热床达到温度以进行精确校准。
+  Warm Bed: 预热热床
+  Warming Bed...: 正在预热热床...
   Warning: 警告
   Week: 周
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : 重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。
   Weight sync settings: 重量同步设置
-  What We Collect: ''
+  What We Collect: 我们收集的内容
   White: 白色
   WiFi: WiFi
   WiFi Network: WiFi 网络

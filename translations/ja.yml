@@ -31,7 +31,7 @@ translations:
   850g: 850g
   = Loosen: = 緩める
   = Tighten: = 締める
-  ABOUT: ''
+  ABOUT: 情報
   ABS: ABS
   AMS Settings: AMS設定
   APPEARANCE: 外観
@@ -51,7 +51,7 @@ translations:
   Adjust screws, then re-probe.: ネジを調整して、再度プローブしてください。
   Adjustments stay active until restart. Save after print completes.: 調整は再起動まで有効です。印刷完了後に保存してください。
   Advanced Setting: 詳細設定
-  After running the commands, tap Check Again below.: ''
+  After running the commands, tap Check Again below.: コマンド実行後、下の「再確認」をタップしてください。
   All: すべて
   All screws are within tolerance.: すべてのネジが許容範囲内です。
   Allow display to sleep during active prints: 印刷中のスリープを許可
@@ -61,8 +61,8 @@ translations:
   An error occurred during probing.: プローブ中にエラーが発生しました。
   An error occurred while loading filament.: フィラメントの装填中にエラーが発生しました。
   Animations: アニメーション
-  Anonymous data to help improve HelixScreen: ''
-  Anonymous stats — no personal data, ever.: ''
+  Anonymous data to help improve HelixScreen: HelixScreen改善のための匿名データ
+  Anonymous stats — no personal data, ever.: 匿名の統計情報 — 個人データは一切収集しません。
   App Background: アプリ背景
   Apply: 適用
   Apply Changes: 変更を適用
@@ -105,7 +105,7 @@ translations:
   Border transparency (0 = invisible, 255 = solid): 境界線の透明度 (0 = 透明、255 = 不透明)
   Brightness: 明るさ
   Browse: 参照
-  Button taps and navigation sounds: ''
+  Button taps and navigation sounds: ボタンタップとナビゲーション音
   Bypass: バイパス
   Bypass Mode: バイパスモード
   CALIBRATION: キャリブレーション
@@ -129,7 +129,7 @@ translations:
   Change Printer Host: プリンターホスト変更
   Changes apply immediately. Adjust during print for tuning.: 変更は即座に適用されます。印刷中に調整して最適化できます。
   Changes are temporary and reset on printer reboot: 変更は一時的で、プリンター再起動時にリセットされます
-  Check Again: ''
+  Check Again: 再確認
   Check for Updates: 更新を確認
   Check the filament path and try again.: フィラメント経路を確認して、もう一度お試しください。
   Checking slots...: スロットを確認中...
@@ -138,11 +138,11 @@ translations:
   Choose how frames are captured during printing: 印刷中のフレームキャプチャ方法を選択
   Choose rendering mode for G-code visualization: G-codeの視覚化レンダリングモードを選択
   Choose rendering mode for bed mesh visualization: ベッドメッシュの視覚化レンダリングモードを選択
-  Choose sound style: ''
+  Choose sound style: サウンドスタイルを選択
   Clean Nozzle: ノズル清掃
   Clear: クリア
   Clear All: すべてクリア
-  Clear All Events: ''
+  Clear All Events: すべてのイベントをクリア
   Clear Assignment: 割り当てを解除
   Clipboard unavailable - use SSH: クリップボード利用不可 - SSHを使用してください
   Close: 閉じる
@@ -161,7 +161,7 @@ translations:
   Configure quick buttons and standard macros: クイックボタンと標準マクロを設定
   Configure timelapse recording: タイムラプス録画を設定
   Connect: 接続
-  'Connect to your printer via SSH and run:': ''
+  'Connect to your printer via SSH and run:': 'SSHでプリンターに接続し、次を実行してください:'
   Connected: 接続済み
   Connecting to network...: ネットワークに接続中...
   Connecting...: 接続中...
@@ -242,7 +242,7 @@ translations:
   Error: エラー
   Error state: エラー状態
   Ethernet: イーサネット
-  Events appear here after sessions and prints: ''
+  Events appear here after sessions and prints: セッションと印刷の後にイベントがここに表示されます
   Exclude: 除外
   Excluded: 除外
   Execute printer macros: プリンターマクロを実行
@@ -284,7 +284,7 @@ translations:
   G-code Preview: G-code プレビュー
   G-code commands will appear here: G-code コマンドがここに表示されます
   'Ghost:': 'Ghost:'
-  Got it: ''
+  Got it: 了解
   Gray: グレー
   Happy Hare MMU: Happy Hare MMU
   Hardware: ハードウェア
@@ -292,21 +292,21 @@ translations:
   Hardware Issues: ハードウェアの問題
   Hardware Name: ハードウェア名
   Hardware is validated on startup and reconnection: ハードウェアは起動時と再接続時に検証されます
-  Have a piece of paper ready.: ''
+  Have a piece of paper ready.: 紙を1枚用意してください。
   ? Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't
     adjusted with                              thumb wheels or some other built-in
     mechanism.
   : ベッドがサムホイールなどの内蔵機構で調整できない場合は、ベッド調整ツール（ドライバー、六角レンチなど）を用意してください。
   Heading: 見出し
   Heat Soak: ヒートソーク
-  Heat bed before calibrating for accurate offset with thermal expansion.: ''
+  Heat bed before calibrating for accurate offset with thermal expansion.: 熱膨張を考慮した正確なオフセットのため、キャリブレーション前にベッドを加熱してください。
   Heatbed Temperature: ヒートベッド温度
   Heated Bed: 加熱ベッド
   Heating...: 加熱中...
   HelixScreen Crashed: HelixScreen がクラッシュしました
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。
-  Help improve HelixScreen?: ''
+  Help improve HelixScreen?: HelixScreenの改善に協力しますか？
   Higher = faster: 高い = 速い
   Home: ホーム
   Horizontal Progress (Leveling Wizard): 水平プログレス（レベリングウィザード）
@@ -323,7 +323,7 @@ translations:
   Ignore: 無視
   In Progress: 進行中
   Indexing G-code...: G-codeをインデックス中...
-  Initializing...: ''
+  Initializing...: 初期化中...
   Input: 入力
   Input Shaper: インプットシェーパー
   Input Shaping: インプットシェーピング
@@ -335,7 +335,7 @@ translations:
   Install Update: 更新をインストール
   'Install the HelixPrint plugin to enable fast G-code modifications. Run this command via SSH on your printer:': '高速
     G-code 修正を有効にするために HelixPrint プラグインをインストールしてください。プリンターで SSH 経由でこのコマンドを実行してください:'
-  Install timelapse plugin: ''
+  Install timelapse plugin: タイムラプスプラグインをインストール
   Installation Failed: インストール失敗
   Installation takes about 30 seconds.: インストールには約30秒かかります。
   Installing...: インストール中...
@@ -367,7 +367,7 @@ translations:
   Layer mode captures one frame per layer change. Best for most prints.: レイヤーモードはレイヤー変更ごとに1フレームをキャプチャします。ほとんどの印刷に最適です。
   'Layer:': 'レイヤー:'
   Layers: レイヤー
-  Learn More: ''
+  Learn More: 詳細を見る
   'Length:': '長さ:'
   Light: ライト
   Load: 装填
@@ -406,7 +406,7 @@ translations:
   Make bed mesh and QGL skippable: ベッドメッシュと QGL をスキップ可能にする
   Manage: 管理
   Manual Bed Leveling: 手動ベッドレベリング
-  Match your typical print fan speed for best results: ''
+  Match your typical print fan speed for best results: 最良の結果のために通常の印刷ファン速度に合わせてください
   Material: 素材
   Material Design Spinner: マテリアルデザインスピナー
   Max Acceleration: 最大加速度
@@ -449,7 +449,7 @@ translations:
   No Macros Found: マクロが見つかりません
   No Power Devices: 電源デバイスなし
   No Spools: スプールなし
-  No events queued: ''
+  No events queued: キューにイベントはありません
   No file loaded: ファイルが読み込まれていません
   No files available for printing: 印刷可能なファイルがありません
   No mesh loaded: メッシュが読み込まれていません
@@ -498,7 +498,7 @@ translations:
   Phase Tracking: フェーズトラッキング
   Pick Color: 色を選択
   Place plugins in the plugins directory to extend HelixScreen: HelixScreen を拡張するには、プラグインディレクトリにプラグインを配置してください
-  Play a test beep: ''
+  Play a test beep: テストビープ音を再生
   Please enter a theme name: テーマ名を入力してください
   Please wait while the printer homes and probes.: プリンターがホーミングとプローブを行う間お待ちください。
   Please wait while the printer probes each screw position.: プリンターが各ネジ位置をプローブする間お待ちください。
@@ -548,7 +548,7 @@ translations:
   Profiles: プロファイル
   Progress Bar Tests: プログレスバーテスト
   Purge: パージ
-  QUEUED EVENTS: ''
+  QUEUED EVENTS: キュー内のイベント
   QUICK BUTTONS: クイックボタン
   Quad Gantry Level: クアッドガントリーレベル
   Quick Actions: クイックアクション
@@ -616,14 +616,14 @@ translations:
   Search filename...: ファイル名を検索...
   Secondary: セカンダリ
   Security: セキュリティ
-  See exactly what data will be sent: ''
+  See exactly what data will be sent: 送信されるデータを正確に確認
   Select: 選択
   Select 'None' if you don't have a filament sensor, or if you don't want to pause on runout.: フィラメントセンサーがない場合、またはフィラメント切れで一時停止したくない場合は「なし」を選択してください。
   Select 'None' if you have a dedicated probe, or don't use bed mesh leveling.: 専用プローブがある場合、またはベッドメッシュレベリングを使用しない場合は「なし」を選択してください。
   Select Filament: フィラメントを選択
   Select G-Code File: G-Codeファイルを選択
   Select Heater: ヒーターを選択
-  Select a material or adjust temperature: ''
+  Select a material or adjust temperature: 素材を選択するか温度を調整
   Select macro for first button: 最初のボタンのマクロを選択
   Select macro for second button: 2番目のボタンのマクロを選択
   Select which LED to control: 制御するLEDを選択
@@ -633,10 +633,10 @@ translations:
   Sensors: センサー
   'Set ': '設定 '
   Settings: 設定
-  Setup Timelapse: ''
+  Setup Timelapse: タイムラプスを設定
   Shadow Intensity: 影の強度
   Shaper: シェーパー
-  Share Usage Data: ''
+  Share Usage Data: 使用データを共有
   'Shininess:': '光沢:'
   Show detailed print preparation status: 詳細な印刷準備ステータスを表示
   Side: 側面
@@ -646,7 +646,7 @@ translations:
   Slot 1: スロット1
   Small labels help keep controls calm and focused.: 小さなラベルはコントロールを落ち着いた集中した状態に保ちます。
   Some settings will take effect after restart.: 一部の設定は再起動後に有効になります。
-  Sound Theme: ''
+  Sound Theme: サウンドテーマ
   Sounds: サウンド
   'Specular:': 'スペキュラー:'
   Speed Settings: 速度設定
@@ -682,7 +682,7 @@ translations:
   TPU: TPU
   Tap to show keyboard...: タップしてキーボードを表示...
   Target Temperature: 目標温度
-  Telemetry Data: ''
+  Telemetry Data: テレメトリデータ
   Temperature: 温度
   Temperature Sensors: 温度センサー
   Temperatures: 温度
@@ -691,7 +691,7 @@ translations:
   Test Connection: 接続テスト
   Test Network: ネットワークテスト
   Test Print: テスト印刷
-  Test Sound: ''
+  Test Sound: テストサウンド
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
   : HelixPrint プラグインは、クイック再印刷のためのベッドメッシュスキップなど、プリンター上で直接高速 G-code 修正を可能にします。
@@ -703,8 +703,8 @@ translations:
   Theme, brightness, and sleep settings: テーマ、明るさ、スリープ設定
   This calibration uses the paper friction method to set your Z-offset.: このキャリブレーションは紙の摩擦方式を使用して
     Z-offset を設定します。
-  This is exactly the data that will be sent: ''
-  This is what data would be sent if enabled: ''
+  This is exactly the data that will be sent: これが送信されるデータです
+  This is what data would be sent if enabled: これは有効にした場合に送信されるデータです
   This may take 1-2 minutes: 1〜2分かかる場合があります
   This may take up to 30 seconds: 最大30秒かかる場合があります
   ? This plugin lets HelixScreen control print start options like bed mesh and QGL.
@@ -737,7 +737,7 @@ translations:
   Turn on LED when printer starts: プリンター起動時に LED を点灯
   Type: タイプ
   Type to preview input field...: 入力フィールドをプレビューするには入力してください...
-  UI Sounds: ''
+  UI Sounds: UIサウンド
   USB: USB
   Uninstall HelixPrint Plugin: HelixPrint プラグインをアンインストール
   Unknown: 不明
@@ -766,20 +766,20 @@ translations:
   View Changelog: 変更履歴を表示
   View Full History: 全履歴を表示
   View Presets: プリセットを表示
-  View Telemetry Data: ''
+  View Telemetry Data: テレメトリデータを表示
   View Timelapse: タイムラプスを表示
   View installed plugins and status: インストール済みプラグインとステータスを表示
   View print statistics and job history: 印刷統計とジョブ履歴を表示
-  Waiting for bed to reach temperature for accurate calibration.: ''
-  Warm Bed: ''
-  Warming Bed...: ''
+  Waiting for bed to reach temperature for accurate calibration.: 正確なキャリブレーションのためにベッド温度到達を待機中。
+  Warm Bed: ベッドを予熱
+  Warming Bed...: ベッド予熱中...
   Warning: 警告
   Week: 週
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : 残りのフィラメントを表示するために、重量データが Spoolman から同期されます。印刷の開始、一時停止、完了時にも変更が同期されます。
   Weight sync settings: 重量同期設定
-  What We Collect: ''
+  What We Collect: 収集する情報
   White: ホワイト
   WiFi: WiFi
   WiFi Network: WiFi ネットワーク

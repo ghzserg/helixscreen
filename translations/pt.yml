@@ -35,7 +35,7 @@ translations:
   850g: 850g
   = Loosen: = Afrouxar
   = Tighten: = Apertar
-  ABOUT: ''
+  ABOUT: SOBRE
   ABS: ABS
   AMS Settings: Configurações AMS
   APPEARANCE: APARÊNCIA
@@ -57,7 +57,7 @@ translations:
   Adjustments stay active until restart. Save after print completes.: Ajustes permanecem
     ativos até reiniciar. Salve após a impressão terminar.
   Advanced Setting: Configuração Avançada
-  After running the commands, tap Check Again below.: ''
+  After running the commands, tap Check Again below.: 'Após executar os comandos, toque em Verificar Novamente abaixo.'
   All: Todos
   All screws are within tolerance.: Todos os parafusos estão dentro da tolerância.
   Allow display to sleep during active prints: Permitir suspensão da tela durante
@@ -69,8 +69,8 @@ translations:
   An error occurred during probing.: Ocorreu um erro durante a sondagem.
   An error occurred while loading filament.: Ocorreu um erro ao carregar o filamento.
   Animations: Animações
-  Anonymous data to help improve HelixScreen: ''
-  Anonymous stats — no personal data, ever.: ''
+  Anonymous data to help improve HelixScreen: Dados anônimos para melhorar o HelixScreen
+  Anonymous stats — no personal data, ever.: 'Estatísticas anônimas — sem dados pessoais, nunca.'
   App Background: Fundo do Aplicativo
   Apply: Aplicar
   Apply Changes: Aplicar Alterações
@@ -119,7 +119,7 @@ translations:
     255 = sólido)
   Brightness: Brilho
   Browse: Navegar
-  Button taps and navigation sounds: ''
+  Button taps and navigation sounds: Sons de botões e navegação
   Bypass: Bypass
   Bypass Mode: Modo Bypass
   CALIBRATION: CALIBRAÇÃO
@@ -145,7 +145,7 @@ translations:
     imediatamente. Ajuste durante a impressão para calibrar.
   Changes are temporary and reset on printer reboot: Alterações são temporárias e
     resetam ao reiniciar a impressora
-  Check Again: ''
+  Check Again: Verificar Novamente
   Check for Updates: Verificar Atualizações
   Check the filament path and try again.: Verifique o caminho do filamento e tente
     novamente.
@@ -158,11 +158,11 @@ translations:
     visualização do G-code
   Choose rendering mode for bed mesh visualization: Escolha o modo de renderização
     para visualização da malha da mesa
-  Choose sound style: ''
+  Choose sound style: Escolher estilo de som
   Clean Nozzle: Limpar Bico
   Clear: Limpar
   Clear All: Limpar Tudo
-  Clear All Events: ''
+  Clear All Events: Limpar Todos os Eventos
   Clear Assignment: Limpar Atribuição
   Clipboard unavailable - use SSH: Área de transferência indisponível - use SSH
   Close: Fechar
@@ -184,7 +184,7 @@ translations:
     padrão
   Configure timelapse recording: Configurar gravação de timelapse
   Connect: Conectar
-  'Connect to your printer via SSH and run:': ''
+  'Connect to your printer via SSH and run:': 'Conecte-se à sua impressora via SSH e execute:'
   Connected: Conectado
   Connecting to network...: Conectando à rede...
   Connecting...: Conectando...
@@ -269,7 +269,7 @@ translations:
   Error: Erro
   Error state: Estado de erro
   Ethernet: Ethernet
-  Events appear here after sessions and prints: ''
+  Events appear here after sessions and prints: Eventos aparecem aqui após sessões e impressões
   Exclude: Excluir
   Excluded: Excluído
   Execute printer macros: Executar macros da impressora
@@ -315,7 +315,7 @@ translations:
   G-code Preview: Visualização G-code
   G-code commands will appear here: Os comandos G-code aparecerão aqui
   'Ghost:': 'Fantasma:'
-  Got it: ''
+  Got it: Entendi
   Gray: Cinza
   Happy Hare MMU: Happy Hare MMU
   Hardware: Hardware
@@ -324,7 +324,7 @@ translations:
   Hardware Name: Nome do Hardware
   Hardware is validated on startup and reconnection: O hardware é validado na inicialização
     e reconexão
-  Have a piece of paper ready.: ''
+  Have a piece of paper ready.: Tenha uma folha de papel pronta.
   ? Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't
     adjusted with                              thumb wheels or some other built-in
     mechanism.
@@ -333,7 +333,7 @@ translations:
     algum outro mecanismo embutido.
   Heading: Título
   Heat Soak: Aquecimento Prolongado
-  Heat bed before calibrating for accurate offset with thermal expansion.: ''
+  Heat bed before calibrating for accurate offset with thermal expansion.: Aqueça a mesa antes de calibrar para um offset preciso com expansão térmica.
   Heatbed Temperature: Temperatura da Mesa Aquecida
   Heated Bed: Mesa Aquecida
   Heating...: Aquecendo...
@@ -341,7 +341,7 @@ translations:
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     se integrará com seu trocador de filamento para operações de impressão com múltiplos
     carretéis/cores.
-  Help improve HelixScreen?: ''
+  Help improve HelixScreen?: 'Ajudar a melhorar o HelixScreen?'
   Higher = faster: Maior = mais rápido
   Home: Home
   Horizontal Progress (Leveling Wizard): Progresso Horizontal (Assistente de Nivelamento)
@@ -359,7 +359,7 @@ translations:
   Ignore: Ignorar
   In Progress: Em Andamento
   Indexing G-code...: Indexando G-code...
-  Initializing...: ''
+  Initializing...: Inicializando...
   Input: Entrada
   Input Shaper: Input Shaper
   Input Shaping: Input Shaping
@@ -373,7 +373,7 @@ translations:
   'Install the HelixPrint plugin to enable fast G-code modifications. Run this command via SSH on your printer:': 'Instale
     o plugin HelixPrint para habilitar modificações rápidas de G-code. Execute este
     comando via SSH na sua impressora:'
-  Install timelapse plugin: ''
+  Install timelapse plugin: Instalar plugin de timelapse
   Installation Failed: Instalação Falhou
   Installation takes about 30 seconds.: A instalação leva cerca de 30 segundos.
   Installing...: Instalando...
@@ -410,7 +410,7 @@ translations:
     camada captura um quadro por mudança de camada. Melhor para a maioria das impressões.
   'Layer:': 'Camada:'
   Layers: Camadas
-  Learn More: ''
+  Learn More: Saiba Mais
   'Length:': 'Comprimento:'
   Light: Claro
   Load: Carregar
@@ -451,7 +451,7 @@ translations:
   Make bed mesh and QGL skippable: Tornar malha da mesa e QGL opcionais
   Manage: Gerenciar
   Manual Bed Leveling: Nivelamento Manual da Mesa
-  Match your typical print fan speed for best results: ''
+  Match your typical print fan speed for best results: Ajuste a velocidade típica da ventoinha de impressão para melhores resultados
   Material: Material
   Material Design Spinner: Indicador de Carregamento Material Design
   Max Acceleration: Aceleração Máxima
@@ -496,7 +496,7 @@ translations:
   No Macros Found: Nenhuma Macro Encontrada
   No Power Devices: Sem Dispositivos de Energia
   No Spools: Sem Carretéis
-  No events queued: ''
+  No events queued: Nenhum evento na fila
   No file loaded: Nenhum arquivo carregado
   No files available for printing: Nenhum arquivo disponível para impressão
   No mesh loaded: Nenhuma malha carregada
@@ -547,7 +547,7 @@ translations:
   Pick Color: Escolher Cor
   Place plugins in the plugins directory to extend HelixScreen: Coloque plugins no
     diretório de plugins para estender o HelixScreen
-  Play a test beep: ''
+  Play a test beep: Reproduzir um bipe de teste
   Please enter a theme name: Por favor, digite um nome para o tema
   Please wait while the printer homes and probes.: Por favor, aguarde enquanto a impressora
     faz home e sonda.
@@ -600,7 +600,7 @@ translations:
   Profiles: Perfis
   Progress Bar Tests: Testes de Barra de Progresso
   Purge: Purgar
-  QUEUED EVENTS: ''
+  QUEUED EVENTS: EVENTOS NA FILA
   QUICK BUTTONS: BOTÕES RÁPIDOS
   Quad Gantry Level: Nivelamento Quad Gantry
   Quick Actions: Ações Rápidas
@@ -675,7 +675,7 @@ translations:
   Search filename...: Buscar nome do arquivo...
   Secondary: Secundário
   Security: Segurança
-  See exactly what data will be sent: ''
+  See exactly what data will be sent: Veja exatamente quais dados serão enviados
   Select: Selecionar
   Select 'None' if you don't have a filament sensor, or if you don't want to pause on runout.: Selecione
     'Nenhum' se você não tiver um sensor de filamento, ou se não quiser pausar quando
@@ -686,7 +686,7 @@ translations:
   Select Filament: Selecionar Filamento
   Select G-Code File: Selecionar Arquivo G-Code
   Select Heater: Selecionar Aquecedor
-  Select a material or adjust temperature: ''
+  Select a material or adjust temperature: Selecione um material ou ajuste a temperatura
   Select macro for first button: Selecionar macro para o primeiro botão
   Select macro for second button: Selecionar macro para o segundo botão
   Select which LED to control: Selecione qual LED controlar
@@ -696,10 +696,10 @@ translations:
   Sensors: Sensores
   'Set ': 'Definir '
   Settings: Configurações
-  Setup Timelapse: ''
+  Setup Timelapse: Configurar Timelapse
   Shadow Intensity: Intensidade da Sombra
   Shaper: Shaper
-  Share Usage Data: ''
+  Share Usage Data: Compartilhar Dados de Uso
   'Shininess:': 'Brilho:'
   Show detailed print preparation status: Mostrar status detalhado de preparação de
     impressão
@@ -712,7 +712,7 @@ translations:
     os controles calmos e focados.
   Some settings will take effect after restart.: Algumas configurações terão efeito
     após reiniciar.
-  Sound Theme: ''
+  Sound Theme: Tema de Som
   Sounds: Sons
   'Specular:': 'Especular:'
   Speed Settings: Configurações de Velocidade
@@ -750,7 +750,7 @@ translations:
   TPU: TPU
   Tap to show keyboard...: Toque para mostrar o teclado...
   Target Temperature: Temperatura Alvo
-  Telemetry Data: ''
+  Telemetry Data: Dados de Telemetria
   Temperature: Temperatura
   Temperature Sensors: Sensores de Temperatura
   Temperatures: Temperaturas
@@ -760,7 +760,7 @@ translations:
   Test Connection: Testar Conexão
   Test Network: Testar Rede
   Test Print: Impressão de Teste
-  Test Sound: ''
+  Test Sound: Som de Teste
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
   : O plugin HelixPrint permite modificações rápidas de G-code diretamente na sua
@@ -774,8 +774,8 @@ translations:
   Theme, brightness, and sleep settings: Tema, brilho e configurações de suspensão
   This calibration uses the paper friction method to set your Z-offset.: Esta calibração
     usa o método de fricção de papel para definir seu Z-offset.
-  This is exactly the data that will be sent: ''
-  This is what data would be sent if enabled: ''
+  This is exactly the data that will be sent: Estes são exatamente os dados que serão enviados
+  This is what data would be sent if enabled: Estes são os dados que seriam enviados se habilitado
   This may take 1-2 minutes: Isso pode levar 1-2 minutos
   This may take up to 30 seconds: Isso pode levar até 30 segundos
   ? This plugin lets HelixScreen control print start options like bed mesh and QGL.
@@ -814,7 +814,7 @@ translations:
   Turn on LED when printer starts: Ligar LED quando a impressora iniciar
   Type: Tipo
   Type to preview input field...: Digite para visualizar o campo de entrada...
-  UI Sounds: ''
+  UI Sounds: Sons da Interface
   USB: USB
   Uninstall HelixPrint Plugin: Desinstalar Plugin HelixPrint
   Unknown: Desconhecido
@@ -844,14 +844,14 @@ translations:
   View Changelog: Ver Registro de Alterações
   View Full History: Ver Histórico Completo
   View Presets: Ver Predefinições
-  View Telemetry Data: ''
+  View Telemetry Data: Ver Dados de Telemetria
   View Timelapse: Ver Timelapse
   View installed plugins and status: Ver plugins instalados e status
   View print statistics and job history: Ver estatísticas de impressão e histórico
     de trabalhos
-  Waiting for bed to reach temperature for accurate calibration.: ''
-  Warm Bed: ''
-  Warming Bed...: ''
+  Waiting for bed to reach temperature for accurate calibration.: Aguardando a mesa atingir a temperatura para calibração precisa.
+  Warm Bed: Aquecer Mesa
+  Warming Bed...: Aquecendo Mesa...
   Warning: Aviso
   Week: Semana
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
@@ -859,7 +859,7 @@ translations:
   : Dados de peso são sincronizados do Spoolman para exibir filamento restante. Alterações
     também são sincronizadas quando impressões iniciam, pausam ou terminam.
   Weight sync settings: Configurações de sincronização de peso
-  What We Collect: ''
+  What We Collect: O Que Coletamos
   White: Branco
   WiFi: WiFi
   WiFi Network: Rede WiFi

@@ -33,7 +33,7 @@ translations:
   850g: 850г
   = Loosen: = Ослабить
   = Tighten: = Затянуть
-  ABOUT: ''
+  ABOUT: О ПРОГРАММЕ
   ABS: ABS
   AMS Settings: Настройки AMS
   APPEARANCE: ВНЕШНИЙ ВИД
@@ -54,7 +54,7 @@ translations:
   Adjustments stay active until restart. Save after print completes.: Настройки активны
     до перезагрузки. Сохраните после завершения печати.
   Advanced Setting: Расширенные настройки
-  After running the commands, tap Check Again below.: ''
+  After running the commands, tap Check Again below.: После выполнения команд нажмите «Проверить снова» ниже.
   All: Все
   All screws are within tolerance.: Все винты в пределах допуска.
   Allow display to sleep during active prints: Разрешить спящий режим дисплея во время
@@ -66,8 +66,8 @@ translations:
   An error occurred while loading filament.: Во время загрузки филамента произошла
     ошибка.
   Animations: Анимации
-  Anonymous data to help improve HelixScreen: ''
-  Anonymous stats — no personal data, ever.: ''
+  Anonymous data to help improve HelixScreen: Анонимные данные для улучшения HelixScreen
+  Anonymous stats — no personal data, ever.: Анонимная статистика — никаких личных данных.
   App Background: Фон приложения
   Apply: Применить
   Apply Changes: Применить изменения
@@ -115,7 +115,7 @@ translations:
     255 = сплошная)
   Brightness: Яркость
   Browse: Обзор
-  Button taps and navigation sounds: ''
+  Button taps and navigation sounds: Звуки нажатий и навигации
   Bypass: Обход
   Bypass Mode: Режим обхода
   CALIBRATION: КАЛИБРОВКА
@@ -141,7 +141,7 @@ translations:
     немедленно. Корректируйте во время печати.
   Changes are temporary and reset on printer reboot: Изменения временные и сбрасываются
     при перезагрузке принтера
-  Check Again: ''
+  Check Again: Проверить снова
   Check for Updates: Проверить обновления
   Check the filament path and try again.: Проверьте путь филамента и попробуйте снова.
   Checking slots...: Проверка слотов...
@@ -154,11 +154,11 @@ translations:
     G-code
   Choose rendering mode for bed mesh visualization: Выберите режим рендеринга для
     визуализации сетки стола
-  Choose sound style: ''
+  Choose sound style: Выберите стиль звука
   Clean Nozzle: Очистить сопло
   Clear: Очистить
   Clear All: Очистить всё
-  Clear All Events: ''
+  Clear All Events: Очистить все события
   Clear Assignment: Очистить назначение
   Clipboard unavailable - use SSH: Буфер обмена недоступен - используйте SSH
   Close: Закрыть
@@ -180,7 +180,7 @@ translations:
     макросы
   Configure timelapse recording: Настроить запись таймлапса
   Connect: Подключить
-  'Connect to your printer via SSH and run:': ''
+  'Connect to your printer via SSH and run:': 'Подключитесь к принтеру по SSH и выполните:'
   Connected: Подключен
   Connecting to network...: Подключение к сети...
   Connecting...: Подключение...
@@ -266,7 +266,7 @@ translations:
   Error: Ошибка
   Error state: Состояние ошибки
   Ethernet: Ethernet
-  Events appear here after sessions and prints: ''
+  Events appear here after sessions and prints: События появятся здесь после сессий и печатей
   Exclude: Исключить
   Excluded: Исключён
   Execute printer macros: Выполнить макросы принтера
@@ -312,7 +312,7 @@ translations:
   G-code Preview: Просмотр G-code
   G-code commands will appear here: Здесь будут отображаться G-code команды
   'Ghost:': 'Тень:'
-  Got it: ''
+  Got it: Понятно
   Gray: Серый
   Happy Hare MMU: Happy Hare MMU
   Hardware: Оборудование
@@ -321,7 +321,7 @@ translations:
   Hardware Name: Название оборудования
   Hardware is validated on startup and reconnection: Оборудование проверяется при
     запуске и переподключении
-  Have a piece of paper ready.: ''
+  Have a piece of paper ready.: Подготовьте лист бумаги.
   ? Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't
     adjusted with                              thumb wheels or some other built-in
     mechanism.
@@ -330,14 +330,14 @@ translations:
     механизмом.
   Heading: Заголовок
   Heat Soak: Прогрев
-  Heat bed before calibrating for accurate offset with thermal expansion.: ''
+  Heat bed before calibrating for accurate offset with thermal expansion.: Нагрейте стол перед калибровкой для точного смещения с учётом теплового расширения.
   Heatbed Temperature: Температура стола
   Heated Bed: Подогреваемый стол
   Heating...: Нагрев...
   HelixScreen Crashed: HelixScreen аварийно завершился
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     интегрируется с вашим сменщиком филамента для многокатушечной/многоцветной печати.
-  Help improve HelixScreen?: ''
+  Help improve HelixScreen?: 'Помочь улучшить HelixScreen?'
   Higher = faster: Выше = быстрее
   Home: Главная
   Horizontal Progress (Leveling Wizard): Горизонтальный прогресс (мастер выравнивания)
@@ -355,7 +355,7 @@ translations:
   Ignore: Игнорировать
   In Progress: В процессе
   Indexing G-code...: Индексация G-code...
-  Initializing...: ''
+  Initializing...: Инициализация...
   Input: Ввод
   Input Shaper: Компенсатор вибраций
   Input Shaping: Компенсация вибраций
@@ -369,7 +369,7 @@ translations:
   'Install the HelixPrint plugin to enable fast G-code modifications. Run this command via SSH on your printer:': 'Установите
     плагин HelixPrint для быстрой модификации G-code. Выполните эту команду через
     SSH на вашем принтере:'
-  Install timelapse plugin: ''
+  Install timelapse plugin: Установить плагин таймлапса
   Installation Failed: Ошибка установки
   Installation takes about 30 seconds.: Установка занимает около 30 секунд.
   Installing...: Установка...
@@ -405,7 +405,7 @@ translations:
     печатей.
   'Layer:': 'Слой:'
   Layers: Слои
-  Learn More: ''
+  Learn More: Подробнее
   'Length:': 'Длина:'
   Light: Светлый
   Load: Загрузить
@@ -446,7 +446,7 @@ translations:
   Make bed mesh and QGL skippable: Сделать сетку стола и QGL пропускаемыми
   Manage: Управление
   Manual Bed Leveling: Ручное выравнивание стола
-  Match your typical print fan speed for best results: ''
+  Match your typical print fan speed for best results: Установите типичную скорость вентилятора печати для лучших результатов
   Material: Материал
   Material Design Spinner: Индикатор загрузки Material Design
   Max Acceleration: Макс. ускорение
@@ -491,7 +491,7 @@ translations:
   No Macros Found: Макросы не найдены
   No Power Devices: Нет устройств питания
   No Spools: Нет катушек
-  No events queued: ''
+  No events queued: Нет событий в очереди
   No file loaded: Файл не загружен
   No files available for printing: Нет файлов для печати
   No mesh loaded: Сетка не загружена
@@ -542,7 +542,7 @@ translations:
   Pick Color: Выбрать цвет
   Place plugins in the plugins directory to extend HelixScreen: Поместите плагины
     в директорию plugins для расширения HelixScreen
-  Play a test beep: ''
+  Play a test beep: Воспроизвести тестовый сигнал
   Please enter a theme name: Введите название темы
   Please wait while the printer homes and probes.: Пожалуйста, подождите, пока принтер
     паркуется и зондирует.
@@ -595,7 +595,7 @@ translations:
   Profiles: Профили
   Progress Bar Tests: Тесты прогресс-бара
   Purge: Продуть
-  QUEUED EVENTS: ''
+  QUEUED EVENTS: ОЧЕРЕДЬ СОБЫТИЙ
   QUICK BUTTONS: БЫСТРЫЕ КНОПКИ
   Quad Gantry Level: Выравнивание портала
   Quick Actions: Быстрые действия
@@ -669,7 +669,7 @@ translations:
   Search filename...: Поиск файла...
   Secondary: Вторичный
   Security: Безопасность
-  See exactly what data will be sent: ''
+  See exactly what data will be sent: 'Посмотрите, какие именно данные будут отправлены'
   Select: Выбрать
   Select 'None' if you don't have a filament sensor, or if you don't want to pause on runout.: Выберите
     'Нет', если у вас нет датчика филамента или вы не хотите паузу при окончании.
@@ -678,7 +678,7 @@ translations:
   Select Filament: Выбрать филамент
   Select G-Code File: Выбрать файл G-Code
   Select Heater: Выбрать нагреватель
-  Select a material or adjust temperature: ''
+  Select a material or adjust temperature: Выберите материал или настройте температуру
   Select macro for first button: Выберите макрос для первой кнопки
   Select macro for second button: Выберите макрос для второй кнопки
   Select which LED to control: Выберите LED для управления
@@ -688,10 +688,10 @@ translations:
   Sensors: Датчики
   'Set ': 'Установить '
   Settings: Настройки
-  Setup Timelapse: ''
+  Setup Timelapse: Настроить таймлапс
   Shadow Intensity: Интенсивность тени
   Shaper: Шейпер
-  Share Usage Data: ''
+  Share Usage Data: Делиться данными использования
   'Shininess:': 'Блеск:'
   Show detailed print preparation status: Показывать детальный статус подготовки к
     печати
@@ -704,7 +704,7 @@ translations:
     элементы управления аккуратными.
   Some settings will take effect after restart.: Некоторые настройки вступят в силу
     после перезапуска.
-  Sound Theme: ''
+  Sound Theme: Звуковая тема
   Sounds: Звуки
   'Specular:': 'Отражение:'
   Speed Settings: Настройки скорости
@@ -742,7 +742,7 @@ translations:
   TPU: TPU
   Tap to show keyboard...: Нажмите для показа клавиатуры...
   Target Temperature: Целевая температура
-  Telemetry Data: ''
+  Telemetry Data: Данные телеметрии
   Temperature: Температура
   Temperature Sensors: Датчики температуры
   Temperatures: Температуры
@@ -752,7 +752,7 @@ translations:
   Test Connection: Тест соединения
   Test Network: Тест сети
   Test Print: Тестовая печать
-  Test Sound: ''
+  Test Sound: Тестовый звук
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
   : Плагин HelixPrint позволяет быстро модифицировать G-code прямо на принтере — например,
@@ -766,8 +766,8 @@ translations:
   Theme, brightness, and sleep settings: Тема, яркость и настройки сна
   This calibration uses the paper friction method to set your Z-offset.: Эта калибровка
     использует метод трения бумаги для установки Z-смещения.
-  This is exactly the data that will be sent: ''
-  This is what data would be sent if enabled: ''
+  This is exactly the data that will be sent: 'Это именно те данные, которые будут отправлены'
+  This is what data would be sent if enabled: Эти данные были бы отправлены при включении
   This may take 1-2 minutes: Это может занять 1-2 минуты
   This may take up to 30 seconds: Это может занять до 30 секунд
   ? This plugin lets HelixScreen control print start options like bed mesh and QGL.
@@ -805,7 +805,7 @@ translations:
   Turn on LED when printer starts: Включать LED при запуске принтера
   Type: Тип
   Type to preview input field...: Введите для предпросмотра поля ввода...
-  UI Sounds: ''
+  UI Sounds: Звуки интерфейса
   USB: USB
   Uninstall HelixPrint Plugin: Удалить плагин HelixPrint
   Unknown: Неизвестно
@@ -835,13 +835,13 @@ translations:
   View Changelog: Просмотр изменений
   View Full History: Просмотреть полную историю
   View Presets: Просмотр пресетов
-  View Telemetry Data: ''
+  View Telemetry Data: Просмотр данных телеметрии
   View Timelapse: Просмотр таймлапса
   View installed plugins and status: Просмотр установленных плагинов и статуса
   View print statistics and job history: Просмотр статистики печати и истории заданий
-  Waiting for bed to reach temperature for accurate calibration.: ''
-  Warm Bed: ''
-  Warming Bed...: ''
+  Waiting for bed to reach temperature for accurate calibration.: Ожидание нагрева стола для точной калибровки.
+  Warm Bed: Прогреть стол
+  Warming Bed...: Прогрев стола...
   Warning: Предупреждение
   Week: Неделя
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
@@ -849,7 +849,7 @@ translations:
   : Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента.
     Изменения также синхронизируются при начале, паузе или завершении печати.
   Weight sync settings: Настройки синхронизации веса
-  What We Collect: ''
+  What We Collect: Что мы собираем
   White: Белый
   WiFi: WiFi
   WiFi Network: Сеть WiFi
