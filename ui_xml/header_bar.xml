@@ -15,6 +15,7 @@
   <!-- API Properties -->
   <api>
     <prop name="title" type="string"/>
+    <prop name="title_tag" type="string" default=""/>
     <!-- Back button callback - defaults to standard navigation go_back -->
     <prop name="back_button_callback" type="string" default="on_header_back_clicked"/>
     <!-- Text-based action button (use action_button_text) -->
@@ -54,7 +55,7 @@
     </icon>
     <!-- Title (flexible width, centered) -->
     <text_heading name="header_title"
-                  text="$title" flex_grow="1" align="center" style_text_align="left" style_pad_left="#space_lg"
+                  text="$title" translation_tag="$title_tag" flex_grow="1" align="center" style_text_align="left" style_pad_left="#space_lg"
                   scrollable="false"/>
     <!-- Secondary action button (left of primary, hidden by default) -->
     <ui_button name="action_button_2"

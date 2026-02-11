@@ -16,6 +16,7 @@
   <!-- API Properties -->
   <api>
     <prop name="title" type="string" default="Overlay"/>
+    <prop name="title_tag" type="string" default=""/>
     <prop name="action_button_text" type="string" default=""/>
     <prop name="action_button_callback" type="string" default=""/>
     <prop name="action_button_height" type="string" default="content"/>
@@ -36,7 +37,7 @@
         style_bg_color="$bg_color" scrollable="false" flex_flow="column">
     <!-- Header Bar -->
     <header_bar name="overlay_header"
-                title="$title" action_button_text="$action_button_text" hide_action_button="$hide_action_button"
+                title="$title" title_tag="$title_tag" action_button_text="$action_button_text" hide_action_button="$hide_action_button"
                 action_button_callback="$action_button_callback" action_button_height="$action_button_height"
                 action_button_pad="$action_button_pad" action_button_disabled_subject="$action_button_disabled_subject"
                 action_button_2_text="$action_button_2_text" action_button_2_bg_color="$action_button_2_bg_color"
