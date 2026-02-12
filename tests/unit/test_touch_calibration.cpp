@@ -466,28 +466,94 @@ TEST_CASE("TouchCalibration: known touchscreen name detection",
 // Unified Calibration Decision Tests (device_needs_calibration)
 // ============================================================================
 
+// ============================================================================
+// Resistive Touchscreen Detection Tests (is_resistive_touchscreen_name)
+// ============================================================================
+
+TEST_CASE("TouchCalibration: is_resistive_touchscreen_name",
+          "[touch-calibration][resistive-detection]") {
+    // --- Resistive controllers that NEED calibration ---
+
+    SECTION("sun4i resistive (AD5M)") {
+        REQUIRE(is_resistive_touchscreen_name("sun4i-ts") == true);
+    }
+
+    SECTION("resistive touch panel") {
+        REQUIRE(is_resistive_touchscreen_name("rtp") == true);
+    }
+
+    SECTION("touch screen controller") {
+        REQUIRE(is_resistive_touchscreen_name("tsc2046") == true);
+    }
+
+    SECTION("case insensitive") {
+        REQUIRE(is_resistive_touchscreen_name("SUN4I-TS") == true);
+    }
+
+    // --- Capacitive controllers that do NOT need calibration ---
+
+    SECTION("Goodix capacitive") {
+        REQUIRE(is_resistive_touchscreen_name("Goodix Capacitive TouchScreen") == false);
+    }
+
+    SECTION("Goodix GT911") {
+        REQUIRE(is_resistive_touchscreen_name("gt911") == false);
+    }
+
+    SECTION("FocalTech capacitive") {
+        REQUIRE(is_resistive_touchscreen_name("ft5x06_ts") == false);
+    }
+
+    SECTION("ILI capacitive") {
+        REQUIRE(is_resistive_touchscreen_name("ili2130_ts") == false);
+    }
+
+    SECTION("EDT FocalTech") {
+        REQUIRE(is_resistive_touchscreen_name("edt-ft5x06") == false);
+    }
+
+    SECTION("Atmel capacitive") {
+        REQUIRE(is_resistive_touchscreen_name("atmel_mxt_ts") == false);
+    }
+}
+
+// ============================================================================
+// Unified Calibration Decision Tests (device_needs_calibration)
+// ============================================================================
+
 TEST_CASE("TouchCalibration: device_needs_calibration",
           "[touch-calibration][calibration-decision]") {
-    // --- Devices that NEED calibration (resistive/platform touchscreens) ---
+    // --- Devices that NEED calibration (resistive touchscreens only) ---
 
     SECTION("AD5M sun4i resistive touchscreen needs calibration") {
-        // Platform touchscreen: has ABS, not USB, known name
+        // Platform resistive touchscreen: has ABS, not USB, resistive controller
         REQUIRE(device_needs_calibration("sun4i-ts", "sun4i_ts", true) == true);
     }
 
-    SECTION("FocalTech platform touchscreen needs calibration") {
-        REQUIRE(device_needs_calibration("ft5x06_ts", "", true) == true);
+    SECTION("Generic resistive touch panel needs calibration") {
+        REQUIRE(device_needs_calibration("rtp", "", true) == true);
     }
 
-    SECTION("Goodix platform touchscreen needs calibration") {
-        REQUIRE(device_needs_calibration("Goodix Capacitive TouchScreen", "", true) == true);
+    // --- Capacitive touchscreens do NOT need calibration ---
+
+    SECTION("Goodix I2C capacitive (BTT HDMI7) does not need calibration") {
+        // I2C Goodix: has ABS, not USB, but capacitive — factory-calibrated
+        REQUIRE(device_needs_calibration("Goodix Capacitive TouchScreen", "", true) == false);
     }
 
-    SECTION("EDT FocalTech display needs calibration") {
-        REQUIRE(device_needs_calibration("edt-ft5x06", "", true) == true);
+    SECTION("Goodix GT911 I2C does not need calibration") {
+        REQUIRE(device_needs_calibration("gt911", "", true) == false);
     }
 
-    // --- Devices that do NOT need calibration ---
+    SECTION("FocalTech capacitive does not need calibration") {
+        REQUIRE(device_needs_calibration("ft5x06_ts", "", true) == false);
+    }
+
+    SECTION("EDT FocalTech display does not need calibration") {
+        REQUIRE(device_needs_calibration("edt-ft5x06", "", true) == false);
+    }
+
+    // --- USB devices do NOT need calibration ---
 
     SECTION("USB HID touchscreen (BTT HDMI5) does not need calibration") {
         // USB touchscreen: has ABS, IS USB → no calibration
@@ -499,6 +565,8 @@ TEST_CASE("TouchCalibration: device_needs_calibration",
         REQUIRE(device_needs_calibration("USB Touchscreen", "usb-0000:01:00.0-1.3/input0", true) ==
                 false);
     }
+
+    // --- Other non-calibration devices ---
 
     SECTION("Virtual touchscreen (VNC uinput) does not need calibration") {
         // Virtual device: has ABS, not USB, but name contains "virtual"

@@ -112,13 +112,43 @@ inline bool is_known_touchscreen_name(const std::string& name) {
 }
 
 /**
+ * @brief Check if a device name matches a known resistive touchscreen controller
+ *
+ * Only resistive touchscreens need affine calibration. Capacitive controllers
+ * (Goodix, FocalTech, ILI, Atmel, EDT-FT) are factory-calibrated and report
+ * mapped screen coordinates via their kernel driver.
+ *
+ * @param name The device name from /sys/class/input/eventN/device/name
+ * @return true if the name matches a known resistive touchscreen controller
+ */
+inline bool is_resistive_touchscreen_name(const std::string& name) {
+    static const char* patterns[] = {"rtp",   // Resistive touch panel
+                                     "sun4i", // Allwinner resistive controller (AD5M)
+                                     "tsc",   // Generic resistive touch screen controller
+                                     nullptr};
+
+    std::string lower_name = name;
+    for (auto& c : lower_name) {
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+
+    for (int i = 0; patterns[i] != nullptr; ++i) {
+        if (lower_name.find(patterns[i]) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * @brief Determine if a touch input device needs affine calibration
  *
  * Single source of truth for calibration decisions. Returns true ONLY for
- * resistive/platform touchscreens that need the calibration wizard.
+ * resistive touchscreens that need the calibration wizard.
  *
  * Devices that do NOT need calibration:
  * - USB HID touchscreens (report mapped coordinates natively)
+ * - I2C capacitive touchscreens (Goodix, FocalTech, etc. — factory-calibrated)
  * - Virtual/uinput devices (VNC virtual touchscreen, testing)
  * - Non-touch devices used as pointer fallback (CEC remotes, etc.)
  * - Unknown devices (safer to skip than show broken calibration)
@@ -146,8 +176,10 @@ inline bool device_needs_calibration(const std::string& name, const std::string&
         return false;
     }
 
-    // Only known resistive/platform touchscreen controllers need calibration
-    return is_known_touchscreen_name(name);
+    // Only known resistive touchscreen controllers need affine calibration.
+    // Capacitive controllers (Goodix, FocalTech, ILI, Atmel) are factory-calibrated
+    // and report mapped screen coordinates — even when connected via I2C, not USB.
+    return is_resistive_touchscreen_name(name);
 }
 
 } // namespace helix
