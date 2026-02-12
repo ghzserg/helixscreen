@@ -7,6 +7,14 @@
 
 set -euo pipefail
 
+# Auto-load credentials from project root if available
+SCRIPT_DIR_EARLY="$(cd "$(dirname "$0")" && pwd)"
+ENV_FILE="$SCRIPT_DIR_EARLY/../.env.telemetry"
+if [[ -f "$ENV_FILE" ]] && [[ -z "${HELIX_TELEMETRY_ADMIN_KEY:-}" ]]; then
+    # shellcheck source=/dev/null
+    source "$ENV_FILE"
+fi
+
 API_BASE="https://telemetry.helixscreen.org"
 DATA_DIR=".telemetry-data/events"
 
