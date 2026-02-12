@@ -5,6 +5,11 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.14] - 2026-02-12
+
+### Fixed
+- Installer fails on systems without hexdump (e.g., Armbian) with "Cannot read binary header" error
+
 ## [0.9.13] - 2026-02-11
 
 ### Added
@@ -388,6 +393,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.9.14]: https://github.com/prestonbrown/helixscreen/compare/v0.9.13...v0.9.14
 [0.9.13]: https://github.com/prestonbrown/helixscreen/compare/v0.9.12...v0.9.13
 [0.9.12]: https://github.com/prestonbrown/helixscreen/compare/v0.9.11...v0.9.12
 [0.9.11]: https://github.com/prestonbrown/helixscreen/compare/v0.9.10...v0.9.11
