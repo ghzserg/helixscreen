@@ -247,12 +247,11 @@ class AbortManager {
     // Subject for UI binding
     lv_subject_t abort_state_subject_{};
     lv_subject_t progress_message_subject_{};
-    lv_subject_t abort_progress_visible_subject_{};
     char progress_message_buf_[128]{};
     bool subjects_initialized_ = false;
 
-    // Modal widget (created on lv_layer_top() for overlay behavior)
-    lv_obj_t* modal_ = nullptr;
+    // Modal backdrop + dialog (created on lv_layer_top() for overlay behavior)
+    lv_obj_t* backdrop_ = nullptr;
 
     // Observer for klippy state changes during WAITING_RECONNECT
     ObserverGuard klippy_observer_;
@@ -359,7 +358,7 @@ class AbortManager {
     void create_modal();
 
     /**
-     * @brief Update abort_progress_visible subject based on current state
+     * @brief Update modal visibility based on current state
      */
     void update_visibility();
 

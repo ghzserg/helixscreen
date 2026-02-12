@@ -1,50 +1,46 @@
 <?xml version="1.0"?>
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- NOTE: Backdrop created programmatically by Modal system -->
 <component>
-  <!-- Full-screen backdrop overlay -->
-  <view name="klipper_recovery_backdrop"
-        extends="lv_obj" width="100%" height="100%" style_bg_opa="200" style_border_width="0" style_radius="0"
-        style_pad_all="0" align="center" clickable="true">
-    <!-- Dialog card using ui_dialog (provides themed background, height="content") -->
-    <ui_dialog name="klipper_recovery_card"
-               width="85%" height="content" align="center" flex_flow="column" style_flex_main_place="start"
-               style_pad_gap="0" style_border_width="2" style_border_color="#warning">
-      <!-- Content area -->
-      <lv_obj width="100%"
-              height="content" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_lg"
-              style_pad_bottom="#space_lg" flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md">
-        <!-- Warning icon -->
-        <icon src="alert_octagon" size="lg" variant="warning"/>
-        <!-- Title (driven by recovery_title subject) -->
-        <text_heading name="recovery_title" width="100%" bind_text="recovery_title" style_text_align="center"/>
-        <!-- Message (driven by recovery_message subject) -->
-        <text_muted name="recovery_message" width="100%"
-                    bind_text="recovery_message"
-                    long_mode="wrap" style_text_align="center"/>
-      </lv_obj>
-      <!-- Horizontal divider above buttons -->
-      <divider_horizontal/>
-      <!-- Button column -->
-      <lv_obj width="100%" style_pad_all="#space_md" flex_flow="column" style_pad_gap="#space_sm">
-        <!-- Restart Klipper (hidden when disconnected via recovery_can_restart subject) -->
-        <ui_button name="restart_klipper_btn"
-                   width="100%" height="#button_height" variant="warning" icon="refresh" text="Restart Klipper" translation_tag="Restart Klipper">
-          <bind_flag_if_eq subject="recovery_can_restart" flag="hidden" ref_value="0"/>
-          <event_cb trigger="clicked" callback="recovery_restart_klipper_clicked"/>
-        </ui_button>
-        <!-- Firmware Restart (hidden when disconnected via recovery_can_restart subject) -->
-        <ui_button name="firmware_restart_btn"
-                   width="100%" height="#button_height" variant="secondary" icon="update" text="Firmware Restart" translation_tag="Firmware Restart">
-          <bind_flag_if_eq subject="recovery_can_restart" flag="hidden" ref_value="0"/>
-          <event_cb trigger="clicked" callback="recovery_firmware_restart_clicked"/>
-        </ui_button>
-        <!-- Dismiss (tertiary action) -->
-        <ui_button name="recovery_dismiss_btn"
-                   width="100%" height="#button_height" variant="ghost" style_border_width="#border_width" style_border_color="#border" text="Dismiss" translation_tag="Dismiss">
-          <event_cb trigger="clicked" callback="recovery_dismiss_clicked"/>
-        </ui_button>
-      </lv_obj>
-    </ui_dialog>
+  <!-- Dialog card with warning border (backdrop created programmatically) -->
+  <view name="klipper_recovery_card"
+        extends="ui_dialog" width="85%" height="content" align="center" flex_flow="column" style_flex_main_place="start"
+        style_pad_gap="0" style_border_width="2" style_border_color="#warning">
+    <!-- Content area -->
+    <lv_obj width="100%"
+            height="content" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_lg"
+            style_pad_bottom="#space_lg" flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md">
+      <!-- Warning icon -->
+      <icon src="alert_octagon" size="lg" variant="warning"/>
+      <!-- Title (driven by recovery_title subject) -->
+      <text_heading name="recovery_title" width="100%" bind_text="recovery_title" style_text_align="center"/>
+      <!-- Message (driven by recovery_message subject) -->
+      <text_muted name="recovery_message" width="100%"
+                  bind_text="recovery_message"
+                  long_mode="wrap" style_text_align="center"/>
+    </lv_obj>
+    <!-- Horizontal divider above buttons -->
+    <divider_horizontal/>
+    <!-- Button column -->
+    <lv_obj width="100%" style_pad_all="#space_md" flex_flow="column" style_pad_gap="#space_sm">
+      <!-- Restart Klipper (hidden when disconnected via recovery_can_restart subject) -->
+      <ui_button name="restart_klipper_btn"
+                 width="100%" height="#button_height" variant="warning" icon="refresh" text="Restart Klipper" translation_tag="Restart Klipper">
+        <bind_flag_if_eq subject="recovery_can_restart" flag="hidden" ref_value="0"/>
+        <event_cb trigger="clicked" callback="recovery_restart_klipper_clicked"/>
+      </ui_button>
+      <!-- Firmware Restart (hidden when disconnected via recovery_can_restart subject) -->
+      <ui_button name="firmware_restart_btn"
+                 width="100%" height="#button_height" variant="secondary" icon="update" text="Firmware Restart" translation_tag="Firmware Restart">
+        <bind_flag_if_eq subject="recovery_can_restart" flag="hidden" ref_value="0"/>
+        <event_cb trigger="clicked" callback="recovery_firmware_restart_clicked"/>
+      </ui_button>
+      <!-- Dismiss (tertiary action) -->
+      <ui_button name="recovery_dismiss_btn"
+                 width="100%" height="#button_height" variant="ghost" style_border_width="#border_width" style_border_color="#border" text="Dismiss" translation_tag="Dismiss">
+        <event_cb trigger="clicked" callback="recovery_dismiss_clicked"/>
+      </ui_button>
+    </lv_obj>
   </view>
 </component>

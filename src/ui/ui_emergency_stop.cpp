@@ -3,6 +3,7 @@
 
 #include "ui_emergency_stop.h"
 
+#include "ui_modal.h"
 #include "ui_notification.h"
 #include "ui_toast.h"
 #include "ui_update_queue.h"
@@ -223,10 +224,8 @@ void EmergencyStopOverlay::show_confirmation_dialog() {
 
     spdlog::debug("[EmergencyStop] Showing confirmation dialog");
 
-    // Create dialog on current screen
-    lv_obj_t* screen = lv_screen_active();
-    confirmation_dialog_ =
-        static_cast<lv_obj_t*>(lv_xml_create(screen, "estop_confirmation_dialog", nullptr));
+    // Create dialog via Modal system (handles backdrop, z-order, animations)
+    confirmation_dialog_ = ui_modal_show("estop_confirmation_dialog");
 
     if (!confirmation_dialog_) {
         spdlog::error("[EmergencyStop] Failed to create confirmation dialog, executing directly");
@@ -234,15 +233,13 @@ void EmergencyStopOverlay::show_confirmation_dialog() {
         return;
     }
 
-    // Ensure dialog is on top of everything including the E-Stop button
-    lv_obj_move_foreground(confirmation_dialog_);
-
     spdlog::info("[EmergencyStop] Confirmation dialog shown");
 }
 
 void EmergencyStopOverlay::dismiss_confirmation_dialog() {
     if (confirmation_dialog_) {
-        lv_obj_safe_delete(confirmation_dialog_);
+        ui_modal_hide(confirmation_dialog_);
+        confirmation_dialog_ = nullptr;
         spdlog::debug("[EmergencyStop] Confirmation dialog dismissed");
     }
 }
@@ -258,10 +255,8 @@ void EmergencyStopOverlay::show_recovery_dialog() {
 
     spdlog::info("[KlipperRecovery] Creating recovery dialog (Klipper in SHUTDOWN state)");
 
-    // Create dialog on current screen
-    lv_obj_t* screen = lv_screen_active();
-    recovery_dialog_ =
-        static_cast<lv_obj_t*>(lv_xml_create(screen, "klipper_recovery_dialog", nullptr));
+    // Use Modal system — backdrop is created programmatically
+    recovery_dialog_ = ui_modal_show("klipper_recovery_dialog");
     spdlog::debug("[KlipperRecovery] Dialog created, recovery_dialog_={}",
                   static_cast<void*>(recovery_dialog_));
 
@@ -270,17 +265,14 @@ void EmergencyStopOverlay::show_recovery_dialog() {
         return;
     }
 
-    // XML component name attr on <view> is not applied to the LVGL object,
-    // so set it explicitly for lv_obj_find_by_name() lookups
-    lv_obj_set_name(recovery_dialog_, "klipper_recovery_backdrop");
-
-    // Ensure dialog is on top of everything
-    lv_obj_move_foreground(recovery_dialog_);
+    // XML <view name="..."> is not applied by lv_xml_create — set explicitly for lookups
+    lv_obj_set_name(recovery_dialog_, "klipper_recovery_card");
 }
 
 void EmergencyStopOverlay::dismiss_recovery_dialog() {
     if (recovery_dialog_) {
-        lv_obj_safe_delete(recovery_dialog_);
+        ui_modal_hide(recovery_dialog_);
+        recovery_dialog_ = nullptr;
         recovery_reason_ = RecoveryReason::NONE;
         spdlog::debug("[KlipperRecovery] Recovery dialog dismissed");
     }

@@ -60,7 +60,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Unified recovery dialog - SHUTDOWN shows di
     process_lvgl(50); // Allow async callback to execute
 
     // Dialog should be visible - find it by the backdrop name
-    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(dialog != nullptr);
 
     // Title should say "Printer Shutdown"
@@ -76,7 +76,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Unified recovery dialog - DISCONNECTED show
     estop.show_recovery_for(RecoveryReason::DISCONNECTED);
     process_lvgl(50);
 
-    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(dialog != nullptr);
 
     // Title should say "Disconnected"
@@ -93,23 +93,24 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Unified recovery dialog - deduplication",
     estop.show_recovery_for(RecoveryReason::SHUTDOWN);
     process_lvgl(50);
 
-    lv_obj_t* first_dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    lv_obj_t* first_dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(first_dialog != nullptr);
 
     // Try DISCONNECTED - should NOT create a second dialog
     estop.show_recovery_for(RecoveryReason::DISCONNECTED);
     process_lvgl(50);
 
-    // Count recovery backdrops - should only be one
+    // Count recovery dialogs - should only be one (search recursively)
     int count = 0;
     uint32_t child_cnt = lv_obj_get_child_count(lv_screen_active());
     for (uint32_t i = 0; i < child_cnt; i++) {
-        lv_obj_t* child = lv_obj_get_child(lv_screen_active(), i);
-        if (child) {
-            const char* name = lv_obj_get_name(child);
-            if (name && strcmp(name, "klipper_recovery_backdrop") == 0) {
-                count++;
-            }
+        lv_obj_t* backdrop = lv_obj_get_child(lv_screen_active(), i);
+        if (!backdrop)
+            continue;
+        // Modal backdrops are direct children of screen; check if they contain our dialog
+        lv_obj_t* card = lv_obj_find_by_name(backdrop, "klipper_recovery_card");
+        if (card) {
+            count++;
         }
     }
     REQUIRE(count == 1);
@@ -126,13 +127,13 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Unified recovery dialog - suppression preve
     estop.show_recovery_for(RecoveryReason::SHUTDOWN);
     process_lvgl(50);
 
-    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(dialog == nullptr);
 
     estop.show_recovery_for(RecoveryReason::DISCONNECTED);
     process_lvgl(50);
 
-    dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(dialog == nullptr);
 }
 
@@ -143,7 +144,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Unified recovery dialog - buttons present",
     estop.show_recovery_for(RecoveryReason::SHUTDOWN);
     process_lvgl(50);
 
-    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(dialog != nullptr);
 
     // All three buttons should exist
@@ -168,7 +169,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Recovery dialog - SHUTDOWN shows all button
     estop.show_recovery_for(RecoveryReason::SHUTDOWN);
     process_lvgl(50);
 
-    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(dialog != nullptr);
 
     lv_obj_t* restart_btn = lv_obj_find_by_name(dialog, "restart_klipper_btn");
@@ -192,7 +193,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Recovery dialog - DISCONNECTED hides restar
     estop.show_recovery_for(RecoveryReason::DISCONNECTED);
     process_lvgl(50);
 
-    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(dialog != nullptr);
 
     lv_obj_t* restart_btn = lv_obj_find_by_name(dialog, "restart_klipper_btn");
@@ -219,7 +220,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Recovery dialog - SHUTDOWN then DISCONNECTE
     estop.show_recovery_for(RecoveryReason::SHUTDOWN);
     process_lvgl(50);
 
-    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_backdrop");
+    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
     REQUIRE(dialog != nullptr);
 
     lv_obj_t* restart_btn = lv_obj_find_by_name(dialog, "restart_klipper_btn");

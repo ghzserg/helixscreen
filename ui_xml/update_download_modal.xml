@@ -3,156 +3,152 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Update Download Modal - Multi-state: Confirming, Downloading, Verifying, Installing, Complete, Error -->
 <!-- States controlled by download_status subject (DownloadStatus enum) -->
+<!-- NOTE: Backdrop created programmatically by Modal system -->
 <component>
   <view name="update_download_modal"
-        extends="lv_obj" width="100%" height="100%" style_bg_color="0x000000" style_bg_opa="200"
-        style_border_width="0" style_radius="0" style_pad_all="0" align="center"
-        clickable="true" hidden="true" scrollable="false">
+        extends="ui_dialog" width="70%" height="content" align="center"
+        flex_flow="column" style_flex_main_place="start" style_pad_gap="0">
 
-    <ui_dialog name="download_card" width="70%" height="content" align="center"
-               flex_flow="column" style_flex_main_place="start" style_pad_gap="0">
+    <!-- CONFIRMING state (1) -->
+    <lv_obj name="confirm_container" width="100%" height="content"
+            style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_top="#space_xl" style_pad_bottom="#space_lg"
+            flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="1"/>
+      <icon src="download" size="lg" variant="primary"/>
+      <text_heading text="Update Available" translation_tag="Update Available"/>
+      <text_muted name="confirm_version" bind_text="download_text" width="100%"
+                  long_mode="wrap" style_text_align="center"/>
+    </lv_obj>
 
-      <!-- CONFIRMING state (1) -->
-      <lv_obj name="confirm_container" width="100%" height="content"
-              style_pad_left="#space_lg" style_pad_right="#space_lg"
-              style_pad_top="#space_xl" style_pad_bottom="#space_lg"
-              flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="1"/>
-        <icon src="download" size="lg" variant="primary"/>
-        <text_heading text="Update Available" translation_tag="Update Available"/>
-        <text_muted name="confirm_version" bind_text="download_text" width="100%"
-                    long_mode="wrap" style_text_align="center"/>
+    <!-- DOWNLOADING state (2) -->
+    <lv_obj name="downloading_container" width="100%" height="content"
+            style_min_height="160"
+            style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_top="#space_xl" style_pad_bottom="#space_lg"
+            flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="2"/>
+      <text_heading text="Downloading..." translation_tag="Downloading..."/>
+      <lv_bar name="download_bar" bind_value="download_progress" min_value="0" max_value="100"
+              width="90%" height="12" style_bg_color="#card_bg" style_radius="#space_xs"/>
+      <text_muted name="download_progress_text" bind_text="download_text" width="100%"
+                  style_text_align="center"/>
+    </lv_obj>
+
+    <!-- VERIFYING state (3) -->
+    <lv_obj name="verifying_container" width="100%" height="content"
+            style_min_height="160"
+            style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_top="#space_xl" style_pad_bottom="#space_lg"
+            flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="3"/>
+      <spinner size="lg"/>
+      <text_heading text="Verifying..." translation_tag="Verifying..."/>
+      <text_muted bind_text="download_text" width="100%" style_text_align="center"/>
+    </lv_obj>
+
+    <!-- INSTALLING state (4) -->
+    <lv_obj name="installing_container" width="100%" height="content"
+            style_min_height="160"
+            style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_top="#space_xl" style_pad_bottom="#space_lg"
+            flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="4"/>
+      <spinner size="lg"/>
+      <text_heading text="Installing..." translation_tag="Installing..."/>
+      <text_muted text="Do not power off your printer." translation_tag="Do not power off your printer."
+                 width="100%" style_text_align="center"/>
+    </lv_obj>
+
+    <!-- COMPLETE state (5) -->
+    <lv_obj name="complete_container" width="100%" height="content"
+            style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_top="#space_xl" style_pad_bottom="#space_lg"
+            flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="5"/>
+      <icon src="check_circle" size="lg" variant="success"/>
+      <text_heading text="Update Installed" translation_tag="Update Installed"/>
+      <text_muted bind_text="download_text" width="100%" long_mode="wrap" style_text_align="center"/>
+    </lv_obj>
+
+    <!-- ERROR state (6) -->
+    <lv_obj name="error_container" width="100%" height="content"
+            style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_top="#space_xl" style_pad_bottom="#space_lg"
+            flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="6"/>
+      <icon src="alert_circle" size="lg" variant="danger"/>
+      <text_heading text="Update Failed" translation_tag="Update Failed"/>
+      <text_muted bind_text="download_text" width="100%" long_mode="wrap" style_text_align="center"/>
+    </lv_obj>
+
+    <!-- CONFIRMING buttons: Cancel | Install -->
+    <lv_obj name="confirm_buttons" width="100%" height="content"
+            flex_flow="column" style_pad_all="0" style_pad_gap="0"
+            style_border_width="0" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="1"/>
+      <divider_horizontal/>
+      <lv_obj width="100%" height="#button_height" flex_flow="row"
+              style_pad_all="0" style_pad_gap="0" style_border_width="0">
+        <ui_button name="btn_cancel_confirm" text="Cancel" translation_tag="Cancel" flex_grow="1">
+          <event_cb trigger="clicked" callback="on_update_download_cancel"/>
+        </ui_button>
+        <divider_vertical/>
+        <ui_button name="btn_install" text="Install" translation_tag="Install" variant="success" flex_grow="1">
+          <event_cb trigger="clicked" callback="on_update_download_start"/>
+        </ui_button>
       </lv_obj>
+    </lv_obj>
 
-      <!-- DOWNLOADING state (2) -->
-      <lv_obj name="downloading_container" width="100%" height="content"
-              style_min_height="160"
-              style_pad_left="#space_lg" style_pad_right="#space_lg"
-              style_pad_top="#space_xl" style_pad_bottom="#space_lg"
-              flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="2"/>
-        <text_heading text="Downloading..." translation_tag="Downloading..."/>
-        <lv_bar name="download_bar" bind_value="download_progress" min_value="0" max_value="100"
-                width="90%" height="12" style_bg_color="#card_bg" style_radius="#space_xs"/>
-        <text_muted name="download_progress_text" bind_text="download_text" width="100%"
-                    style_text_align="center"/>
+    <!-- DOWNLOADING buttons: Cancel -->
+    <lv_obj name="downloading_buttons" width="100%" height="content"
+            flex_flow="column" style_pad_all="0" style_pad_gap="0"
+            style_border_width="0" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="2"/>
+      <divider_horizontal/>
+      <lv_obj width="100%" height="#button_height" flex_flow="row"
+              style_pad_all="0" style_pad_gap="0" style_border_width="0">
+        <ui_button name="btn_cancel_download" text="Cancel" translation_tag="Cancel" flex_grow="1">
+          <event_cb trigger="clicked" callback="on_update_download_cancel"/>
+        </ui_button>
       </lv_obj>
+    </lv_obj>
 
-      <!-- VERIFYING state (3) -->
-      <lv_obj name="verifying_container" width="100%" height="content"
-              style_min_height="160"
-              style_pad_left="#space_lg" style_pad_right="#space_lg"
-              style_pad_top="#space_xl" style_pad_bottom="#space_lg"
-              flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="3"/>
-        <spinner size="lg"/>
-        <text_heading text="Verifying..." translation_tag="Verifying..."/>
-        <text_muted bind_text="download_text" width="100%" style_text_align="center"/>
+    <!-- COMPLETE buttons: Later | Restart Now -->
+    <lv_obj name="complete_buttons" width="100%" height="content"
+            flex_flow="column" style_pad_all="0" style_pad_gap="0"
+            style_border_width="0" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="5"/>
+      <divider_horizontal/>
+      <lv_obj width="100%" height="#button_height" flex_flow="row"
+              style_pad_all="0" style_pad_gap="0" style_border_width="0">
+        <ui_button name="btn_later" text="Later" translation_tag="Later" flex_grow="1">
+          <event_cb trigger="clicked" callback="on_update_download_dismiss"/>
+        </ui_button>
+        <divider_vertical/>
+        <ui_button name="btn_restart" text="Restart Now" translation_tag="Restart Now" variant="success" flex_grow="1">
+          <event_cb trigger="clicked" callback="on_update_restart"/>
+        </ui_button>
       </lv_obj>
+    </lv_obj>
 
-      <!-- INSTALLING state (4) -->
-      <lv_obj name="installing_container" width="100%" height="content"
-              style_min_height="160"
-              style_pad_left="#space_lg" style_pad_right="#space_lg"
-              style_pad_top="#space_xl" style_pad_bottom="#space_lg"
-              flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="4"/>
-        <spinner size="lg"/>
-        <text_heading text="Installing..." translation_tag="Installing..."/>
-        <text_muted text="Do not power off your printer." translation_tag="Do not power off your printer."
-                   width="100%" style_text_align="center"/>
+    <!-- ERROR buttons: Close | Retry -->
+    <lv_obj name="error_buttons" width="100%" height="content"
+            flex_flow="column" style_pad_all="0" style_pad_gap="0"
+            style_border_width="0" hidden="true">
+      <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="6"/>
+      <divider_horizontal/>
+      <lv_obj width="100%" height="#button_height" flex_flow="row"
+              style_pad_all="0" style_pad_gap="0" style_border_width="0">
+        <ui_button name="btn_close_error" text="Close" translation_tag="Close" flex_grow="1">
+          <event_cb trigger="clicked" callback="on_update_download_dismiss"/>
+        </ui_button>
+        <divider_vertical/>
+        <ui_button name="btn_retry" text="Retry" translation_tag="Retry" variant="warning" flex_grow="1">
+          <event_cb trigger="clicked" callback="on_update_download_start"/>
+        </ui_button>
       </lv_obj>
+    </lv_obj>
 
-      <!-- COMPLETE state (5) -->
-      <lv_obj name="complete_container" width="100%" height="content"
-              style_pad_left="#space_lg" style_pad_right="#space_lg"
-              style_pad_top="#space_xl" style_pad_bottom="#space_lg"
-              flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="5"/>
-        <icon src="check_circle" size="lg" variant="success"/>
-        <text_heading text="Update Installed" translation_tag="Update Installed"/>
-        <text_muted bind_text="download_text" width="100%" long_mode="wrap" style_text_align="center"/>
-      </lv_obj>
-
-      <!-- ERROR state (6) -->
-      <lv_obj name="error_container" width="100%" height="content"
-              style_pad_left="#space_lg" style_pad_right="#space_lg"
-              style_pad_top="#space_xl" style_pad_bottom="#space_lg"
-              flex_flow="column" style_flex_cross_place="center" style_pad_gap="#space_md" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="6"/>
-        <icon src="alert_circle" size="lg" variant="danger"/>
-        <text_heading text="Update Failed" translation_tag="Update Failed"/>
-        <text_muted bind_text="download_text" width="100%" long_mode="wrap" style_text_align="center"/>
-      </lv_obj>
-
-      <!-- CONFIRMING buttons: Cancel | Install -->
-      <lv_obj name="confirm_buttons" width="100%" height="content"
-              flex_flow="column" style_pad_all="0" style_pad_gap="0"
-              style_border_width="0" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="1"/>
-        <divider_horizontal/>
-        <lv_obj width="100%" height="#button_height" flex_flow="row"
-                style_pad_all="0" style_pad_gap="0" style_border_width="0">
-          <ui_button name="btn_cancel_confirm" text="Cancel" translation_tag="Cancel" flex_grow="1">
-            <event_cb trigger="clicked" callback="on_update_download_cancel"/>
-          </ui_button>
-          <divider_vertical/>
-          <ui_button name="btn_install" text="Install" translation_tag="Install" variant="success" flex_grow="1">
-            <event_cb trigger="clicked" callback="on_update_download_start"/>
-          </ui_button>
-        </lv_obj>
-      </lv_obj>
-
-      <!-- DOWNLOADING buttons: Cancel -->
-      <lv_obj name="downloading_buttons" width="100%" height="content"
-              flex_flow="column" style_pad_all="0" style_pad_gap="0"
-              style_border_width="0" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="2"/>
-        <divider_horizontal/>
-        <lv_obj width="100%" height="#button_height" flex_flow="row"
-                style_pad_all="0" style_pad_gap="0" style_border_width="0">
-          <ui_button name="btn_cancel_download" text="Cancel" translation_tag="Cancel" flex_grow="1">
-            <event_cb trigger="clicked" callback="on_update_download_cancel"/>
-          </ui_button>
-        </lv_obj>
-      </lv_obj>
-
-      <!-- COMPLETE buttons: Later | Restart Now -->
-      <lv_obj name="complete_buttons" width="100%" height="content"
-              flex_flow="column" style_pad_all="0" style_pad_gap="0"
-              style_border_width="0" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="5"/>
-        <divider_horizontal/>
-        <lv_obj width="100%" height="#button_height" flex_flow="row"
-                style_pad_all="0" style_pad_gap="0" style_border_width="0">
-          <ui_button name="btn_later" text="Later" translation_tag="Later" flex_grow="1">
-            <event_cb trigger="clicked" callback="on_update_download_dismiss"/>
-          </ui_button>
-          <divider_vertical/>
-          <ui_button name="btn_restart" text="Restart Now" translation_tag="Restart Now" variant="success" flex_grow="1">
-            <event_cb trigger="clicked" callback="on_update_restart"/>
-          </ui_button>
-        </lv_obj>
-      </lv_obj>
-
-      <!-- ERROR buttons: Close | Retry -->
-      <lv_obj name="error_buttons" width="100%" height="content"
-              flex_flow="column" style_pad_all="0" style_pad_gap="0"
-              style_border_width="0" hidden="true">
-        <bind_flag_if_not_eq subject="download_status" flag="hidden" ref_value="6"/>
-        <divider_horizontal/>
-        <lv_obj width="100%" height="#button_height" flex_flow="row"
-                style_pad_all="0" style_pad_gap="0" style_border_width="0">
-          <ui_button name="btn_close_error" text="Close" translation_tag="Close" flex_grow="1">
-            <event_cb trigger="clicked" callback="on_update_download_dismiss"/>
-          </ui_button>
-          <divider_vertical/>
-          <ui_button name="btn_retry" text="Retry" translation_tag="Retry" variant="warning" flex_grow="1">
-            <event_cb trigger="clicked" callback="on_update_download_start"/>
-          </ui_button>
-        </lv_obj>
-      </lv_obj>
-
-    </ui_dialog>
   </view>
 </component>

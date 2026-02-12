@@ -11,7 +11,7 @@
   </consts>
   <!-- Modal card (backdrop created programmatically) -->
   <view name="spoolman_picker_modal"
-        extends="ui_card" width="#modal_width" height="content" align="center" style_pad_all="#space_md"
+        extends="ui_dialog" width="#modal_width" height="content" align="center" style_pad_all="#space_md"
         flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start" style_pad_gap="#space_sm"
         scrollable="false" style_max_height="#modal_max_height">
     <!-- Header row -->

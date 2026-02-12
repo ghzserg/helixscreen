@@ -49,9 +49,6 @@ void AbortManager::init_subjects() {
     UI_MANAGED_SUBJECT_STRING(progress_message_subject_, progress_message_buf_, "",
                               "abort_progress_message", subjects_);
 
-    // Initialize visibility subject (0 = hidden, 1 = visible)
-    UI_MANAGED_SUBJECT_INT(abort_progress_visible_subject_, 0, "abort_progress_visible", subjects_);
-
     subjects_initialized_ = true;
     spdlog::debug("[AbortManager] Subjects initialized");
 
@@ -71,9 +68,9 @@ void AbortManager::deinit_subjects() {
     // (cancel_state_observer_ already handled by cancel_all_timers() above)
     klippy_observer_.reset();
 
-    // Delete modal widget if it exists and display is still available
+    // Delete backdrop (and its child dialog) if it exists
     // (Display may already be deleted if window was closed via X button)
-    lv_obj_safe_delete(modal_);
+    lv_obj_safe_delete(backdrop_);
 
     // Deinitialize all subjects via RAII manager
     subjects_.deinit_all();
@@ -703,25 +700,48 @@ void AbortManager::cancel_all_timers() {
 }
 
 void AbortManager::create_modal() {
-    if (modal_) {
+    if (backdrop_) {
         spdlog::warn("[AbortManager] Modal already exists - skipping creation");
         return;
     }
 
-    // Create modal on lv_layer_top() so it survives screen changes
-    modal_ = static_cast<lv_obj_t*>(lv_xml_create(lv_layer_top(), "abort_progress_modal", nullptr));
-    if (modal_) {
-        spdlog::debug("[AbortManager] Modal created on lv_layer_top()");
-    } else {
-        spdlog::error("[AbortManager] Failed to create abort_progress_modal");
+    // Create fullscreen backdrop on lv_layer_top() so it survives screen changes
+    // (Same pattern as Modal::show() but targeting lv_layer_top() instead of lv_screen_active())
+    // Opacity 200 matches modal_backdrop_opacity in globals.xml
+    backdrop_ = ui_create_fullscreen_backdrop(lv_layer_top(), 200);
+    if (!backdrop_) {
+        spdlog::error("[AbortManager] Failed to create backdrop on lv_layer_top()");
+        return;
     }
+
+    // Create XML dialog component inside backdrop
+    lv_obj_t* dialog =
+        static_cast<lv_obj_t*>(lv_xml_create(backdrop_, "abort_progress_modal", nullptr));
+    if (!dialog) {
+        spdlog::error("[AbortManager] Failed to create abort_progress_modal");
+        lv_obj_del(backdrop_);
+        backdrop_ = nullptr;
+        return;
+    }
+
+    // Start hidden — update_visibility() will show when abort begins
+    lv_obj_add_flag(backdrop_, LV_OBJ_FLAG_HIDDEN);
+    spdlog::debug("[AbortManager] Modal created on lv_layer_top() (hidden)");
 }
 
 void AbortManager::update_visibility() {
+    if (!backdrop_) {
+        return;
+    }
+
     // Modal is visible when state is not IDLE and not COMPLETE
     State current = abort_state_.load();
-    int visible = (current != State::IDLE && current != State::COMPLETE) ? 1 : 0;
-    lv_subject_set_int(&abort_progress_visible_subject_, visible);
+    bool visible = (current != State::IDLE && current != State::COMPLETE);
+    if (visible) {
+        lv_obj_remove_flag(backdrop_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(backdrop_, LV_OBJ_FLAG_HIDDEN);
+    }
     spdlog::debug("[AbortManager] Visibility updated: {}", visible ? "visible" : "hidden");
 }
 

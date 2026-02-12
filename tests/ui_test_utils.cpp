@@ -3,6 +3,7 @@
 
 #include "ui_test_utils.h"
 
+#include "ui_modal.h"
 #include "ui_update_queue.h"
 
 #include "lib/lvgl/src/misc/lv_timer_private.h"
@@ -593,21 +594,17 @@ bool EmergencyStopOverlay::is_recovery_suppressed() const {
 void EmergencyStopOverlay::show_recovery_dialog() {
     if (recovery_dialog_)
         return;
-    lv_obj_t* screen = lv_screen_active();
-    recovery_dialog_ =
-        static_cast<lv_obj_t*>(lv_xml_create(screen, "klipper_recovery_dialog", nullptr));
+    // Use Modal system — backdrop is created programmatically
+    recovery_dialog_ = ui_modal_show("klipper_recovery_dialog");
     if (recovery_dialog_) {
-        lv_obj_set_name(recovery_dialog_, "klipper_recovery_backdrop");
-        lv_obj_move_foreground(recovery_dialog_);
-    }
-    if (recovery_dialog_) {
-        lv_obj_move_foreground(recovery_dialog_);
+        // XML <view name="..."> is not applied by lv_xml_create — set explicitly for lookups
+        lv_obj_set_name(recovery_dialog_, "klipper_recovery_card");
     }
 }
 
 void EmergencyStopOverlay::dismiss_recovery_dialog() {
     if (recovery_dialog_) {
-        lv_obj_delete(recovery_dialog_);
+        ui_modal_hide(recovery_dialog_);
         recovery_dialog_ = nullptr;
         recovery_reason_ = RecoveryReason::NONE;
     }

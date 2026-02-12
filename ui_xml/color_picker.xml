@@ -3,20 +3,16 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Modal color picker with preset swatches -->
 <!-- NOTE: Use 0x prefix for literal hex colors, NOT # (# triggers constant lookup) -->
+<!-- NOTE: Backdrop created programmatically by Modal system -->
 <component>
   <consts>
     <px name="swatch_size" value="32"/>
     <!-- preview_size comes from globals as #color_preview_size (responsive: 40/48/56px) -->
     <px name="picker_size" value="160"/>
   </consts>
-  <!-- Full-screen backdrop overlay -->
   <view name="color_picker"
-        extends="lv_obj" width="100%" height="100%" style_bg_color="0x000000" style_bg_opa="200" style_border_width="0"
-        style_radius="0" style_pad_all="0" align="center" clickable="true">
-    <!-- Dialog card - wider for horizontal layout -->
-    <ui_dialog name="dialog_card"
-               width="470" height="content" align="center" flex_flow="column" style_flex_main_place="start"
-               style_pad_gap="0">
+        extends="ui_dialog" width="470" height="content" align="center" flex_flow="column" style_flex_main_place="start"
+        style_pad_gap="0">
       <!-- Header with title and close button -->
       <lv_obj width="100%"
               height="content" style_pad_left="#space_lg" style_pad_right="#space_md" style_pad_top="#space_lg"
@@ -260,6 +256,5 @@
           <event_cb trigger="clicked" callback="color_picker_select_cb"/>
         </ui_button>
       </lv_obj>
-    </ui_dialog>
   </view>
 </component>
