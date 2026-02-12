@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Printer Image Selection Overlay: left list + right preview layout -->
+<component>
+  <view name="printer_image_overlay"
+        extends="overlay_panel" width="#overlay_panel_width_full" title="Printer Image" title_tag="Printer Image"
+        bg_color="#card_bg">
+    <!-- Main content: left list + right preview in a ROW -->
+    <lv_obj name="overlay_content"
+            width="100%" flex_grow="1" style_pad_all="#space_sm" flex_flow="row" style_pad_gap="#space_sm"
+            scrollable="false">
+
+      <!-- LEFT: Scrollable list -->
+      <lv_obj name="image_list_container"
+              height="100%" flex_grow="5" flex_flow="column" style_pad_all="0" style_pad_top="#space_xs"
+              scrollable="true" style_bg_opa="0" style_border_width="0">
+
+        <!-- Auto-detect option -->
+        <setting_action_row name="row_auto_detect"
+                            label="Auto-Detect" label_tag="Auto-Detect" icon="sync"
+                            description="Use printer type to select image"
+                            description_tag="Use printer type to select image" callback="on_printer_image_auto_detect"/>
+
+        <!-- Shipped section header -->
+        <setting_section_header title="SHIPPED IMAGES" title_tag="SHIPPED IMAGES" icon="printer_3d"/>
+
+        <!-- Shipped images list (populated dynamically in C++) -->
+        <lv_obj name="shipped_images_list"
+                width="100%" height="content" scrollable="false" flex_flow="column" style_pad_all="0" style_bg_opa="0"
+                style_border_width="0"/>
+
+        <!-- Custom section header -->
+        <setting_section_header title="CUSTOM IMAGES" title_tag="CUSTOM IMAGES" icon="image_area"/>
+
+        <!-- Custom images list -->
+        <lv_obj name="custom_images_list"
+                width="100%" height="content" scrollable="false" flex_flow="column" style_pad_all="0" style_bg_opa="0"
+                style_border_width="0"/>
+
+        <!-- USB section (conditionally visible) -->
+        <lv_obj name="usb_import_section"
+                width="100%" height="content" scrollable="false" flex_flow="column" style_pad_all="0" style_bg_opa="0"
+                style_border_width="0" hidden="true">
+          <bind_flag_if_eq subject="printer_image_usb_visible" flag="hidden" ref_value="0"/>
+          <setting_section_header title="IMPORT FROM USB" title_tag="IMPORT FROM USB" icon="usb"/>
+          <lv_obj name="usb_images_list"
+                  width="100%" height="content" scrollable="false" flex_flow="column" style_pad_all="0" style_bg_opa="0"
+                  style_border_width="0"/>
+          <text_muted name="usb_status_label"
+                      width="100%" bind_text="printer_image_usb_status" style_text_align="center"
+                      style_pad_top="#space_sm"/>
+        </lv_obj>
+
+        <!-- Info note -->
+        <info_note icon="info"
+                   text="Place PNG or JPEG files in config/custom_images/ to add custom images"
+                   translation_tag="Place PNG or JPEG files in config/custom_images/ to add custom images"/>
+      </lv_obj>
+
+      <!-- RIGHT: Preview area -->
+      <lv_obj name="preview_container"
+              height="100%" flex_grow="4" flex_flow="column" style_pad_all="#space_sm" scrollable="false"
+              style_bg_color="#elevated_bg" style_bg_opa="255" style_radius="#border_radius" style_flex_main_place="center"
+              style_flex_cross_place="center">
+        <!-- Preview image bound to subject -->
+        <lv_image name="preview_image"
+                  width="100%" flex_grow="1" bind_src="printer_image_preview_src" inner_align="contain" hidden="true">
+          <bind_flag_if_eq subject="printer_image_has_preview" flag="hidden" ref_value="0"/>
+        </lv_image>
+        <!-- Placeholder when no preview -->
+        <icon name="preview_placeholder" src="printer_3d" size="xl" variant="tertiary" hidden="true"
+              align="center">
+          <bind_flag_if_eq subject="printer_image_has_preview" flag="hidden" ref_value="1"/>
+        </icon>
+        <!-- Selected image name -->
+        <text_body name="preview_label"
+                   width="100%" bind_text="printer_image_preview_name" style_text_align="center"
+                   style_pad_top="#space_xs"/>
+      </lv_obj>
+
+    </lv_obj>
+  </view>
+</component>

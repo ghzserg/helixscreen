@@ -94,6 +94,7 @@
 
 #include "data_root_resolver.h"
 #include "printer_detector.h"
+#include "printer_image_manager.h"
 #include "settings_manager.h"
 #include "system/crash_handler.h"
 #include "system/telemetry_manager.h"
@@ -282,6 +283,9 @@ int Application::run(int argc, char** argv) {
     // Note: record_session() is called after init_panel_subjects() so that
     // SettingsManager subjects are ready and the enabled state can be synced.
     TelemetryManager::instance().init();
+
+    // Initialize PrinterImageManager (custom image import/resolution)
+    helix::PrinterImageManager::instance().init("config");
 
     // Phase 9c: Initialize panel subjects with API injection
     // Panels receive API at construction - no deferred set_api() needed

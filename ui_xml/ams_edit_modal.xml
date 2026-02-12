@@ -117,8 +117,8 @@
           </lv_obj>
           <!-- Slider (shown when edit_remaining_mode=1) -->
           <lv_slider name="remaining_slider"
-                     width="100%" height="#slider_height" style_radius="#border_radius" value="75" min_value="0" max_value="100"
-                     hidden="true">
+                     width="100%" height="#slider_height" style_radius="#border_radius" value="75" min_value="0"
+                     max_value="100" hidden="true">
             <bind_flag_if_eq subject="edit_remaining_mode" flag="hidden" ref_value="0"/>
             <event_cb trigger="value_changed" callback="ams_edit_remaining_changed_cb"/>
           </lv_slider>
@@ -138,14 +138,14 @@
         </lv_obj>
         <!-- Sync to Spoolman button (hidden if not linked) -->
         <ui_button name="btn_sync_spoolman"
-                   width="100%" height="#button_height_sm" icon="refresh" text="Sync to Spoolman" translation_tag="Sync to Spoolman" variant="secondary"
-                   hidden="true">
+                   width="100%" height="#button_height_sm" icon="refresh" text="Sync to Spoolman"
+                   translation_tag="Sync to Spoolman" variant="secondary" hidden="true">
           <event_cb trigger="clicked" callback="ams_edit_sync_spoolman_cb"/>
         </ui_button>
       </lv_obj>
     </lv_obj>
     <!-- Action buttons -->
-    <modal_button_row secondary_text="Reset" secondary_callback="ams_edit_reset_cb"
-                      primary_text="Close" primary_callback="ams_edit_save_cb"/>
+    <modal_button_row secondary_text="Reset"
+                      secondary_callback="ams_edit_reset_cb" primary_text="Close" primary_callback="ams_edit_save_cb"/>
   </view>
 </component>

@@ -30,14 +30,18 @@
     <lv_obj width="100%"
             height="content" style_pad_all="#space_lg" flex_flow="column" style_pad_gap="#space_md" scrollable="false">
       <!-- Error message text -->
-      <text_body name="error_message" width="100%" text="An error occurred while loading filament." translation_tag="An error occurred while loading filament." long_mode="wrap"/>
+      <text_body name="error_message"
+                 width="100%" text="An error occurred while loading filament."
+                 translation_tag="An error occurred while loading filament." long_mode="wrap"/>
       <!-- Hint text -->
       <text_small name="error_hint"
-                  width="100%" text="Check the filament path and try again." translation_tag="Check the filament path and try again." style_text_color="#text_muted"
+                  width="100%" text="Check the filament path and try again."
+                  translation_tag="Check the filament path and try again." style_text_color="#text_muted"
                   long_mode="wrap"/>
     </lv_obj>
     <!-- Action buttons -->
-    <modal_button_row secondary_text="Close" secondary_callback="ams_loading_error_cancel_cb"
-                      primary_text="Retry" primary_callback="ams_loading_error_retry_cb"/>
+    <modal_button_row secondary_text="Close"
+                      secondary_callback="ams_loading_error_cancel_cb" primary_text="Retry"
+                      primary_callback="ams_loading_error_retry_cb"/>
   </view>
 </component>

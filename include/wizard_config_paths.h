@@ -43,4 +43,8 @@ constexpr const char* MOONRAKER_PORT = "/printer/moonraker_port";
 constexpr const char* WIFI_SSID = "/wifi/ssid";
 constexpr const char* WIFI_PASSWORD = "/wifi/password";
 } // namespace wizard
+
+// Display settings
+constexpr const char* PRINTER_IMAGE = "/display/printer_image";
+
 } // namespace helix

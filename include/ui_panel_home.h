@@ -79,6 +79,9 @@ class HomePanel : public PanelBase {
      */
     void reload_from_config();
 
+    /// Re-check printer image setting and update the home panel image widget
+    void refresh_printer_image();
+
     /**
      * @brief Trigger a deferred runout check (used after wizard completes)
      *

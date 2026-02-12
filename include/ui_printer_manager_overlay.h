@@ -130,6 +130,15 @@ class PrinterManagerOverlay : public OverlayBase {
     /// Printer image widget (set programmatically - exception to declarative rule)
     lv_obj_t* printer_image_obj_ = nullptr;
 
+    // Name editing widgets
+    lv_obj_t* name_heading_ = nullptr;
+    lv_obj_t* name_input_ = nullptr;
+    bool name_editing_ = false;
+
+    void start_name_edit();
+    void finish_name_edit();
+    void cancel_name_edit();
+
     /// Stored image path (must outlive lv_image_set_src for path stability)
     std::string current_image_path_;
 
@@ -157,6 +166,15 @@ class PrinterManagerOverlay : public OverlayBase {
     static void on_chip_ams_clicked(lv_event_t* e);
     static void on_chip_fans_clicked(lv_event_t* e);
     static void on_chip_speaker_clicked(lv_event_t* e);
+
+    // Name editing callbacks
+    static void pm_printer_name_clicked_cb(lv_event_t* e);
+    static void pm_name_input_ready_cb(lv_event_t* e);
+    static void pm_name_input_cancel_cb(lv_event_t* e);
+
+    // Action row callbacks
+    static void change_printer_image_clicked_cb(lv_event_t* e);
+    void handle_change_printer_image_clicked();
 };
 
 /**

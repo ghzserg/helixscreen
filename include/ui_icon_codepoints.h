@@ -135,6 +135,7 @@ static const IconMapping ICON_MAP[] = {
     {"hourglass",          "\xF3\xB0\x94\x9F"},  // F051F timer-sand (hourglass)
 
     // Info/Image
+    {"image_area",           "\xF3\xB0\x8B\xAB"},  // F02EB image-area (photo/picture)
     {"image_broken_variant", "\xF3\xB0\x8B\xAE"}, // F02EE image-broken-variant (fallback)
     {"inbox_outline",      "\xF3\xB1\x89\xB4"},  // F1274 inbox-outline
     {"info",               "\xF3\xB0\x8B\xBC"},  // F02FC information
@@ -217,6 +218,7 @@ static const IconMapping ICON_MAP[] = {
     {"spoolman",           "\xF3\xB0\x88\xAF"},  // F022F film (same as filament)
     {"stop",               "\xF3\xB0\x93\x9B"},  // F04DB stop
     {"swap_vertical",      "\xF3\xB0\x93\xA2"},  // F04E2 swap-vertical
+    {"sync",               "\xF3\xB0\x93\xA6"},  // F04E6 sync (auto-detect)
     {"sysinfo",            "\xF3\xB0\x8B\xBC"},  // F02FC information
     {"target",             "\xF3\xB0\x93\xBE"},  // F04FE target (touch calibration)
 
@@ -236,8 +238,9 @@ static const IconMapping ICON_MAP[] = {
     {"tune_vertical_variant", "\xF3\xB1\x95\x83"},  // F1543 tune-vertical-variant
     {"undo",               "\xF3\xB0\x95\x8C"},  // F054C undo (counter-clockwise arrow - loosen)
 
-    // Update
+    // Update/USB
     {"update",             "\xF3\xB0\x9A\xB0"},  // F06B0 update
+    {"usb",                "\xF3\xB0\x95\x93"},  // F0553 usb
 
     // Vibrate/Video/View icons
     {"vibrate",            "\xF3\xB0\x95\xA6"},  // F0566 vibrate

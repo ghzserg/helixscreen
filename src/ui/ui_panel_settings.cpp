@@ -402,6 +402,7 @@ void SettingsPanel::init_subjects() {
 
     // Register XML event callbacks for action rows
     lv_xml_register_event_cb(nullptr, "on_display_settings_clicked", on_display_settings_clicked);
+    // Note: on_printer_image_clicked moved to PrinterManagerOverlay
     lv_xml_register_event_cb(nullptr, "on_filament_sensors_clicked", on_filament_sensors_clicked);
 
     // Note: Sensors overlay callbacks are now handled by SensorSettingsOverlay

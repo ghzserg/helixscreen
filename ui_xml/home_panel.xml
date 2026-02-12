@@ -34,9 +34,9 @@
               height="100%" flex_flow="column" style_pad_all="0" style_pad_right="#space_sm" style_pad_gap="0"
               scrollable="false">
         <lv_obj name="printer_container"
-                width="100%" flex_grow="1" style_bg_color="#screen_bg" style_pad_all="0" style_pad_bottom="0" scrollable="false"
-                align="center" flex_flow="row" clickable="true">
-          <event_cb trigger="long_pressed" callback="printer_manager_clicked_cb"/>
+                width="100%" flex_grow="1" style_bg_color="#screen_bg" style_pad_all="0" style_pad_bottom="0"
+                scrollable="false" align="center" flex_flow="row" clickable="true">
+          <event_cb trigger="clicked" callback="printer_manager_clicked_cb"/>
           <lv_image name="printer_image" width="100%" height="100%" align="center" inner_align="contain">
             <!-- Dim image when disconnected (state 0) or connecting (state 1) -->
             <bind_style name="image_dimmed" subject="printer_connection_state" ref_value="0"/>
@@ -68,8 +68,8 @@
       <!-- Tooltip Message with accent bar (flex-grows to fill remaining horizontal space) -->
       <!-- Outer container centers content vertically -->
       <lv_obj height="100%"
-              flex_grow="1" style_bg_opa="0%" style_pad_all="0" style_pad_left="#space_md" flex_flow="column" style_flex_main_place="center"
-              scrollable="false">
+              flex_grow="1" style_bg_opa="0%" style_pad_all="0" style_pad_left="#space_md" flex_flow="column"
+              style_flex_main_place="center" scrollable="false">
         <!-- Tip container: left border acts as accent bar, auto-sizes to text height -->
         <lv_obj width="100%"
                 height="content" flex_flow="row" style_bg_opa="0%" style_radius="0"
@@ -121,29 +121,24 @@
           <!-- Phase message -->
           <text_small bind_text="print_start_message"/>
           <!-- Predicted time remaining -->
-          <text_small name="print_start_eta" bind_text="print_start_time_left"
-                      style_text_color="#text_muted"/>
+          <text_small name="print_start_eta" bind_text="print_start_time_left" style_text_color="#text_muted"/>
         </lv_obj>
         <!-- PRINTING STATE: Actual print progress (hidden when print_show_progress==0) -->
         <!-- Horizontal layout: thumbnail left, info right (mirrors idle state layout) -->
         <lv_obj name="print_card_printing"
-                width="100%" height="100%" style_pad_all="#space_sm" flex_flow="row"
-                style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false" hidden="true"
-                clickable="false">
+                width="100%" height="100%" style_pad_all="#space_sm" flex_flow="row" style_flex_cross_place="center"
+                style_pad_gap="#space_sm" scrollable="false" hidden="true" clickable="false">
           <!-- Single binding: show only when print_active==1 AND print_start_phase==IDLE -->
           <bind_flag_if_eq subject="print_show_progress" flag="hidden" ref_value="0"/>
           <!-- Thumbnail wrapper: constrains size so lv_image_set_src can't blow out layout -->
-          <lv_obj width="40%" height="100%" style_pad_all="0" style_bg_opa="0%" scrollable="false"
-                  clickable="false">
+          <lv_obj width="40%" height="100%" style_pad_all="0" style_bg_opa="0%" scrollable="false" clickable="false">
             <lv_image name="print_card_active_thumb"
-                      width="100%" height="100%" src="A:assets/images/benchy_thumbnail_white.png"
-                      inner_align="contain"/>
+                      width="100%" height="100%" src="A:assets/images/benchy_thumbnail_white.png" inner_align="contain"/>
           </lv_obj>
           <!-- Info column: e-stop, filename, progress bar, percentage -->
-          <lv_obj flex_grow="1"
-                  height="100%" style_pad_all="0" flex_flow="column" style_flex_main_place="center"
-                  style_flex_cross_place="center" style_pad_gap="#space_xs" scrollable="false"
-                  clickable="false">
+          <lv_obj height="100%"
+                  flex_grow="1" style_pad_all="0" flex_flow="column" style_flex_main_place="center"
+                  style_flex_cross_place="center" style_pad_gap="#space_xs" scrollable="false" clickable="false">
             <!-- E-stop button (only visible when printing) -->
             <ui_button name="estop_button_print"
                        width="#button_height_sm" height="#button_height_sm" variant="danger" style_radius="24"
@@ -177,7 +172,8 @@
           <!-- Printer Status -->
           <ui_button name="status_btn_printer"
                      height="100%" variant="ghost" flex_grow="1" flex_flow="column" style_flex_main_place="center"
-                     style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0" focusable="false">
+                     style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0"
+                     focusable="false">
             <event_cb trigger="clicked" callback="printer_status_clicked_cb"/>
             <!-- Ready (green) - state 0 -->
             <icon name="printer_icon_ready" src="printer_3d" size="#icon_size_card" variant="success" hidden="true">
@@ -205,7 +201,8 @@
           <!-- Note: Uses different subject than navigation_bar's network_icon_state (simpler 3-state) -->
           <ui_button name="network_btn"
                      height="100%" variant="ghost" flex_grow="1" flex_flow="column" style_flex_main_place="center"
-                     style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0" focusable="false">
+                     style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0"
+                     focusable="false">
             <event_cb trigger="clicked" callback="network_clicked_cb"/>
             <!-- Disconnected (state 0) -->
             <icon name="net_disconnected" src="wifi_off" size="#icon_size_card" variant="disabled">
@@ -273,8 +270,8 @@
             <bind_flag_if_not_eq subject="klippy_state" flag="hidden" ref_value="2"/>
             <!-- Circular button: uses primary to indicate "safe" recovery action -->
             <ui_button name="firmware_restart_button_home"
-                       width="#button_height_sm" height="#button_height_sm" style_radius="24" style_border_width="0" align="center"
-                       focusable="false">
+                       width="#button_height_sm" height="#button_height_sm" style_radius="24" style_border_width="0"
+                       align="center" focusable="false">
               <icon src="refresh" size="sm" variant="text" align="center"/>
               <event_cb trigger="clicked" callback="firmware_restart_clicked"/>
             </ui_button>
@@ -289,7 +286,8 @@
           <!-- Disabled when not connected (state != 2) using LVGL's native disabled state -->
           <ui_button name="temp_btn"
                      height="100%" variant="ghost" flex_grow="1" flex_flow="column" style_flex_main_place="center"
-                     style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0" focusable="false">
+                     style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0"
+                     focusable="false">
             <bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
             <event_cb trigger="clicked" callback="temp_clicked_cb"/>
             <icon name="temp_icon" src="heater" size="#icon_size_card" variant="secondary"/>
@@ -304,7 +302,8 @@
           </divider_vertical>
 
           <!-- Light control button - single icon with dynamic brightness/color -->
-          <ui_button name="light_button" height="100%" variant="ghost" flex_grow="1" style_border_width="0" focusable="false">
+          <ui_button name="light_button"
+                     height="100%" variant="ghost" flex_grow="1" style_border_width="0" focusable="false">
             <bind_flag_if_eq subject="printer_has_led" flag="hidden" ref_value="0"/>
             <bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
             <!-- Dynamic icon - source and color set by C++ based on LED brightness/color -->

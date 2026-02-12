@@ -2,8 +2,11 @@
 
 #include "ui_printer_manager_overlay.h"
 
+#include "ui_event_safety.h"
 #include "ui_fan_control_overlay.h"
+#include "ui_keyboard_manager.h"
 #include "ui_nav_manager.h"
+#include "ui_overlay_printer_image.h"
 #include "ui_overlay_retraction_settings.h"
 #include "ui_overlay_timelapse_settings.h"
 #include "ui_panel_ams.h"
@@ -18,6 +21,7 @@
 #include "config.h"
 #include "helix_version.h"
 #include "printer_detector.h"
+#include "printer_image_manager.h"
 #include "printer_images.h"
 #include "static_panel_registry.h"
 #include "subject_debug_registry.h"
@@ -90,6 +94,17 @@ lv_obj_t* PrinterManagerOverlay::create(lv_obj_t* parent) {
     // Find the printer image widget for programmatic image source setting
     printer_image_obj_ = lv_obj_find_by_name(overlay_root_, "pm_printer_image");
 
+    // Find name editing widgets
+    name_heading_ = lv_obj_find_by_name(overlay_root_, "pm_printer_name");
+    name_input_ = lv_obj_find_by_name(overlay_root_, "pm_printer_name_input");
+
+    // Register READY/CANCEL on textarea for name edit lifecycle
+    // (acceptable exception to declarative rule — textarea lifecycle event, like DELETE cleanup)
+    if (name_input_) {
+        lv_obj_add_event_cb(name_input_, pm_name_input_ready_cb, LV_EVENT_READY, nullptr);
+        lv_obj_add_event_cb(name_input_, pm_name_input_cancel_cb, LV_EVENT_CANCEL, nullptr);
+    }
+
     return overlay_root_;
 }
 
@@ -109,6 +124,13 @@ void PrinterManagerOverlay::register_callbacks() {
     lv_xml_register_event_cb(nullptr, "pm_chip_ams_clicked", on_chip_ams_clicked);
     lv_xml_register_event_cb(nullptr, "pm_chip_fans_clicked", on_chip_fans_clicked);
     lv_xml_register_event_cb(nullptr, "pm_chip_speaker_clicked", on_chip_speaker_clicked);
+
+    // Printer name click callback (inline rename)
+    lv_xml_register_event_cb(nullptr, "pm_printer_name_clicked", pm_printer_name_clicked_cb);
+
+    // Image click callback (opens printer image picker)
+    lv_xml_register_event_cb(nullptr, "on_change_printer_image_clicked",
+                             change_printer_image_clicked_cb);
 }
 
 // =============================================================================
@@ -226,11 +248,121 @@ void PrinterManagerOverlay::on_chip_speaker_clicked(lv_event_t* e) {
 }
 
 // =============================================================================
+// Printer Image Click
+// =============================================================================
+
+void PrinterManagerOverlay::change_printer_image_clicked_cb(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrinterManagerOverlay] change_printer_image_clicked_cb");
+    (void)e;
+    get_printer_manager_overlay().handle_change_printer_image_clicked();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void PrinterManagerOverlay::handle_change_printer_image_clicked() {
+    spdlog::debug("[{}] Printer image clicked — opening image picker", get_name());
+    auto& overlay = helix::settings::get_printer_image_overlay();
+    overlay.show(lv_display_get_screen_active(nullptr));
+}
+
+// =============================================================================
+// Printer Name Editing
+// =============================================================================
+
+void PrinterManagerOverlay::pm_printer_name_clicked_cb(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrinterManagerOverlay] pm_printer_name_clicked_cb");
+    (void)e;
+    get_printer_manager_overlay().start_name_edit();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void PrinterManagerOverlay::pm_name_input_ready_cb(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrinterManagerOverlay] pm_name_input_ready_cb");
+    (void)e;
+    get_printer_manager_overlay().finish_name_edit();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void PrinterManagerOverlay::pm_name_input_cancel_cb(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrinterManagerOverlay] pm_name_input_cancel_cb");
+    (void)e;
+    get_printer_manager_overlay().cancel_name_edit();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void PrinterManagerOverlay::start_name_edit() {
+    if (name_editing_ || !name_heading_ || !name_input_)
+        return;
+
+    name_editing_ = true;
+
+    // Pre-fill input with current name
+    lv_textarea_set_text(name_input_, name_buf_);
+
+    // Swap visibility: hide heading, show input
+    lv_obj_add_flag(name_heading_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(name_input_, LV_OBJ_FLAG_HIDDEN);
+
+    // Focus the input and show keyboard
+    ui_keyboard_show(name_input_);
+
+    spdlog::debug("[{}] Started name edit, current: '{}'", get_name(), name_buf_);
+}
+
+void PrinterManagerOverlay::finish_name_edit() {
+    if (!name_editing_ || !name_input_)
+        return;
+
+    name_editing_ = false;
+
+    // Get the new name from the textarea
+    const char* new_name = lv_textarea_get_text(name_input_);
+    std::string name_str = (new_name && new_name[0] != '\0') ? new_name : "My Printer";
+
+    // Save to config
+    Config* config = Config::get_instance();
+    if (config) {
+        config->set<std::string>(helix::wizard::PRINTER_NAME, name_str);
+        config->save();
+        spdlog::info("[{}] Printer name changed to: '{}'", get_name(), name_str);
+    }
+
+    // Update the subject to reflect new name
+    std::strncpy(name_buf_, name_str.c_str(), sizeof(name_buf_) - 1);
+    name_buf_[sizeof(name_buf_) - 1] = '\0';
+    lv_subject_copy_string(&printer_manager_name_, name_buf_);
+
+    // Swap back: show heading, hide input
+    lv_obj_remove_flag(name_heading_, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(name_input_, LV_OBJ_FLAG_HIDDEN);
+}
+
+void PrinterManagerOverlay::cancel_name_edit() {
+    if (!name_editing_)
+        return;
+
+    name_editing_ = false;
+
+    // Swap back without saving
+    if (name_heading_)
+        lv_obj_remove_flag(name_heading_, LV_OBJ_FLAG_HIDDEN);
+    if (name_input_)
+        lv_obj_add_flag(name_input_, LV_OBJ_FLAG_HIDDEN);
+
+    spdlog::debug("[{}] Name edit cancelled", get_name());
+}
+
+// =============================================================================
 // Lifecycle
 // =============================================================================
 
 void PrinterManagerOverlay::on_activate() {
     OverlayBase::on_activate();
+
+    // Cancel any in-progress name edit when overlay is re-activated
+    if (name_editing_) {
+        cancel_name_edit();
+    }
+
     refresh_printer_info();
 }
 
@@ -269,11 +401,17 @@ void PrinterManagerOverlay::refresh_printer_info() {
     spdlog::debug("[{}] Refreshed: name='{}', model='{}', version='{}'", get_name(), name_buf_,
                   model_buf_, version_buf_);
 
-    // Update printer image programmatically (exception to declarative rule)
-    // Store path in member to ensure string lifetime outlives lv_image_set_src
-    if (printer_image_obj_ && !model.empty()) {
-        current_image_path_ = PrinterImages::get_best_printer_image(model);
+    // Update printer image — check user-selected image first, then auto-detect
+    if (printer_image_obj_) {
+        lv_display_t* disp = lv_display_get_default();
+        int screen_width = disp ? lv_display_get_horizontal_resolution(disp) : 800;
+
+        auto& pim = helix::PrinterImageManager::instance();
+        current_image_path_ = pim.get_active_image_path(screen_width);
+        if (current_image_path_.empty()) {
+            current_image_path_ = PrinterImages::get_best_printer_image(model);
+        }
         lv_image_set_src(printer_image_obj_, current_image_path_.c_str());
-        spdlog::debug("[{}] Printer image: '{}' for '{}'", get_name(), current_image_path_, model);
+        spdlog::debug("[{}] Printer image: '{}'", get_name(), current_image_path_);
     }
 }
