@@ -35,7 +35,8 @@
               scrollable="false">
         <lv_obj name="printer_container"
                 width="100%" flex_grow="1" style_bg_color="#screen_bg" style_pad_all="0" style_pad_bottom="0" scrollable="false"
-                align="center" flex_flow="row">
+                align="center" flex_flow="row" clickable="true">
+          <event_cb trigger="long_pressed" callback="printer_manager_clicked_cb"/>
           <lv_image name="printer_image" width="100%" height="100%" align="center" inner_align="contain">
             <!-- Dim image when disconnected (state 0) or connecting (state 1) -->
             <bind_style name="image_dimmed" subject="printer_connection_state" ref_value="0"/>

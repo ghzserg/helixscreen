@@ -145,6 +145,7 @@ class HomePanel : public PanelBase {
     void handle_temp_clicked();
     void handle_printer_status_clicked();
     void handle_network_clicked();
+    void handle_printer_manager_clicked();
     void handle_ams_clicked();
     void on_extruder_temp_changed(int temp);
     void on_extruder_target_changed(int target);
@@ -158,6 +159,7 @@ class HomePanel : public PanelBase {
     static void temp_clicked_cb(lv_event_t* e);
     static void printer_status_clicked_cb(lv_event_t* e);
     static void network_clicked_cb(lv_event_t* e);
+    static void printer_manager_clicked_cb(lv_event_t* e);
     static void ams_clicked_cb(lv_event_t* e);
     static void tip_rotation_timer_cb(lv_timer_t* timer);
 

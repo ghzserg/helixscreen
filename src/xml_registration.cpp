@@ -313,6 +313,9 @@ void register_xml_components() {
     register_xml("wifi_network_item.xml");
     register_xml("telemetry_data_overlay.xml");
 
+    // Printer manager overlay (launched from home screen printer image)
+    register_xml("printer_manager_overlay.xml");
+
     // Development tools
     register_xml("memory_stats_overlay.xml");
 

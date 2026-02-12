@@ -211,6 +211,11 @@ class PrinterCapabilitiesState {
         return const_cast<lv_subject_t*>(&printer_has_webcam_);
     }
 
+    /// 1 if printer has controllable fans beyond part cooling (generic fans, exhaust, etc.)
+    lv_subject_t* get_printer_has_extra_fans_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_extra_fans_);
+    }
+
     // ========================================================================
     // Convenience methods
     // ========================================================================
@@ -251,6 +256,7 @@ class PrinterCapabilitiesState {
     lv_subject_t printer_has_chamber_sensor_{};      // chamber temperature sensor
     lv_subject_t printer_has_screws_tilt_{};         // screws_tilt_adjust
     lv_subject_t printer_has_webcam_{};              // enabled webcam configured
+    lv_subject_t printer_has_extra_fans_{};          // extra controllable fans beyond part cooling
 };
 
 } // namespace helix

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "lvgl/lvgl.h"
+#include "prerendered_images.h"
 #include "printer_detector.h"
 
 #include <filesystem>
@@ -129,6 +131,46 @@ inline std::string get_image_path_for_name(const std::string& printer_name) {
 
     // Fall back to default
     return DEFAULT_IMAGE;
+}
+
+/**
+ * @brief Get the best available printer image for a printer type name
+ *
+ * Performs the full smart image lookup:
+ * 1. Looks up image filename from printer database
+ * 2. Strips .png extension to get base name
+ * 3. Selects responsive size based on current screen width (300px or 150px)
+ * 4. Prefers pre-rendered .bin (faster on embedded), falls back to PNG
+ * 5. Falls back to generic CoreXY image if nothing found
+ *
+ * This is the recommended function for displaying printer images.
+ *
+ * @param printer_type Printer type name from config (e.g., "Voron 2.4", "FlashForge Adventurer 5M")
+ * @return Full LVGL path to the best available image
+ */
+inline std::string get_best_printer_image(const std::string& printer_type) {
+    if (printer_type.empty()) {
+        return DEFAULT_IMAGE;
+    }
+
+    // Look up image filename from printer database
+    std::string image_filename = PrinterDetector::get_image_for_printer(printer_type);
+    if (image_filename.empty()) {
+        return DEFAULT_IMAGE;
+    }
+
+    // Strip .png extension to get base name for prerendered lookup
+    std::string base_name = image_filename;
+    if (base_name.size() > 4 && base_name.substr(base_name.size() - 4) == ".png") {
+        base_name = base_name.substr(0, base_name.size() - 4);
+    }
+
+    // Get screen width for responsive image sizing
+    lv_display_t* disp = lv_display_get_default();
+    int screen_width = disp ? lv_display_get_horizontal_resolution(disp) : 800;
+
+    // Use prerendered .bin if available (screen-responsive), else fallback to PNG
+    return helix::get_prerendered_printer_path(base_name, screen_width);
 }
 
 /**
