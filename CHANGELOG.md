@@ -5,6 +5,23 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.16] - 2026-02-12
+
+### Added
+- Printer Manager overlay accessible from home screen with tap-to-open, custom printer images, inline name editing, and capability chips
+- Theme-aware markdown viewer
+- Custom printer image selection with import support and list+preview layout
+
+### Fixed
+- Setup wizard now defaults IP to 127.0.0.1 for local Moonraker connections
+- Whitespace in IP and port input fields no longer causes validation errors
+
+### Changed
+- All modals standardized to use the Modal system with ui_dialog
+- AMS modals refactored to use modal_button_row component
+- Release assets now include install.sh (thanks @Major_Buzzkill)
+- Markdown submodule updated with faux bold fix
+
 ## [0.9.15] - 2026-02-12
 
 ### Fixed
@@ -403,6 +420,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.9.16]: https://github.com/prestonbrown/helixscreen/compare/v0.9.15...v0.9.16
 [0.9.15]: https://github.com/prestonbrown/helixscreen/compare/v0.9.14...v0.9.15
 [0.9.14]: https://github.com/prestonbrown/helixscreen/compare/v0.9.13...v0.9.14
 [0.9.13]: https://github.com/prestonbrown/helixscreen/compare/v0.9.12...v0.9.13
