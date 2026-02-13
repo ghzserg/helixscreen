@@ -929,13 +929,10 @@ void LedSettingsOverlay::populate_led_chips() {
     // Clear existing chips
     lv_obj_clean(chip_container);
 
-    // Source LED list from LedController backends (native + WLED)
+    // Source LED list from all backends (native + WLED + macros)
     auto& led_ctrl = helix::led::LedController::instance();
     discovered_leds_.clear();
-    for (const auto& strip : led_ctrl.native().strips()) {
-        discovered_leds_.push_back(strip.id);
-    }
-    for (const auto& strip : led_ctrl.wled().strips()) {
+    for (const auto& strip : led_ctrl.all_selectable_strips()) {
         discovered_leds_.push_back(strip.id);
     }
 

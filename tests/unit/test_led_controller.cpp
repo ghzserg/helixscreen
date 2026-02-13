@@ -393,3 +393,304 @@ TEST_CASE("LedController: apply_startup_preference with no strips is a no-op",
 
     ctrl.deinit();
 }
+
+// ============================================================================
+// Phase 1: macro: prefix handling
+// ============================================================================
+
+TEST_CASE("LedController: backend_for_strip with macro: prefix", "[led][controller]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    helix::led::LedMacroInfo macro;
+    macro.display_name = "Cabinet Light";
+    macro.type = helix::led::MacroLedType::ON_OFF;
+    macro.on_macro = "LIGHTS_ON";
+    macro.off_macro = "LIGHTS_OFF";
+    ctrl.macro().add_macro(macro);
+    ctrl.set_configured_macros({macro});
+
+    // Both prefixed and unprefixed should resolve to MACRO
+    REQUIRE(ctrl.backend_for_strip("macro:Cabinet Light") == helix::led::LedBackendType::MACRO);
+    REQUIRE(ctrl.backend_for_strip("Cabinet Light") == helix::led::LedBackendType::MACRO);
+
+    ctrl.deinit();
+}
+
+TEST_CASE("LedController: toggle_all dispatches macro: prefixed strips", "[led][controller]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    helix::led::LedMacroInfo macro;
+    macro.display_name = "Cabinet Light";
+    macro.type = helix::led::MacroLedType::ON_OFF;
+    macro.on_macro = "LIGHTS_ON";
+    macro.off_macro = "LIGHTS_OFF";
+    ctrl.macro().add_macro(macro);
+    ctrl.set_configured_macros({macro});
+
+    // Use prefixed strip ID (as the control overlay would)
+    ctrl.set_selected_strips({"macro:Cabinet Light"});
+
+    // Should not crash (will warn about no API, which is expected)
+    ctrl.toggle_all(true);
+    ctrl.toggle_all(false);
+
+    ctrl.deinit();
+}
+
+// ============================================================================
+// Phase 2: all_selectable_strips
+// ============================================================================
+
+TEST_CASE("LedController: all_selectable_strips includes native + WLED + macros",
+          "[led][controller]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    // Add a native strip
+    helix::led::LedStripInfo native_strip;
+    native_strip.name = "Chamber Light";
+    native_strip.id = "neopixel chamber_light";
+    native_strip.backend = helix::led::LedBackendType::NATIVE;
+    native_strip.supports_color = true;
+    native_strip.supports_white = true;
+    ctrl.native().add_strip(native_strip);
+
+    // Add a WLED strip
+    helix::led::LedStripInfo wled_strip;
+    wled_strip.name = "Printer LED";
+    wled_strip.id = "wled_printer_led";
+    wled_strip.backend = helix::led::LedBackendType::WLED;
+    wled_strip.supports_color = true;
+    wled_strip.supports_white = false;
+    ctrl.wled().add_strip(wled_strip);
+
+    // Add ON_OFF macro (should appear)
+    helix::led::LedMacroInfo on_off_macro;
+    on_off_macro.display_name = "Cabinet Light";
+    on_off_macro.type = helix::led::MacroLedType::ON_OFF;
+    on_off_macro.on_macro = "LIGHTS_ON";
+    on_off_macro.off_macro = "LIGHTS_OFF";
+
+    // Add TOGGLE macro (should appear)
+    helix::led::LedMacroInfo toggle_macro;
+    toggle_macro.display_name = "Desk Lamp";
+    toggle_macro.type = helix::led::MacroLedType::TOGGLE;
+    toggle_macro.toggle_macro = "TOGGLE_DESK";
+
+    // Add PRESET macro (should NOT appear)
+    helix::led::LedMacroInfo preset_macro;
+    preset_macro.display_name = "Party Mode";
+    preset_macro.type = helix::led::MacroLedType::PRESET;
+
+    ctrl.set_configured_macros({on_off_macro, toggle_macro, preset_macro});
+
+    auto strips = ctrl.all_selectable_strips();
+
+    // Should have native + WLED + 2 macros (not PRESET) = 4
+    REQUIRE(strips.size() == 4);
+    REQUIRE(strips[0].id == "neopixel chamber_light");
+    REQUIRE(strips[1].id == "wled_printer_led");
+    REQUIRE(strips[2].id == "macro:Cabinet Light");
+    REQUIRE(strips[2].backend == helix::led::LedBackendType::MACRO);
+    REQUIRE(strips[3].id == "macro:Desk Lamp");
+
+    ctrl.deinit();
+}
+
+TEST_CASE("LedController: all_selectable_strips empty when no backends", "[led][controller]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    auto strips = ctrl.all_selectable_strips();
+    REQUIRE(strips.empty());
+
+    ctrl.deinit();
+}
+
+// ============================================================================
+// Phase 3: first_available_strip
+// ============================================================================
+
+TEST_CASE("LedController: first_available_strip priority order", "[led][controller]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    // With nothing: empty
+    REQUIRE(ctrl.first_available_strip().empty());
+
+    // Add macro only
+    helix::led::LedMacroInfo macro;
+    macro.display_name = "Cabinet Light";
+    macro.type = helix::led::MacroLedType::ON_OFF;
+    macro.on_macro = "LIGHTS_ON";
+    macro.off_macro = "LIGHTS_OFF";
+    ctrl.set_configured_macros({macro});
+
+    REQUIRE(ctrl.first_available_strip() == "macro:Cabinet Light");
+
+    // Add WLED -- should now prefer WLED over macro
+    helix::led::LedStripInfo wled_strip;
+    wled_strip.name = "WLED Strip";
+    wled_strip.id = "wled_test";
+    wled_strip.backend = helix::led::LedBackendType::WLED;
+    wled_strip.supports_color = true;
+    wled_strip.supports_white = false;
+    ctrl.wled().add_strip(wled_strip);
+
+    REQUIRE(ctrl.first_available_strip() == "wled_test");
+
+    // Add native -- should now prefer native
+    helix::led::LedStripInfo native_strip;
+    native_strip.name = "Chamber Light";
+    native_strip.id = "neopixel chamber_light";
+    native_strip.backend = helix::led::LedBackendType::NATIVE;
+    native_strip.supports_color = true;
+    native_strip.supports_white = true;
+    ctrl.native().add_strip(native_strip);
+
+    REQUIRE(ctrl.first_available_strip() == "neopixel chamber_light");
+
+    // Set selected -- should prefer that
+    ctrl.set_selected_strips({"wled_test"});
+    REQUIRE(ctrl.first_available_strip() == "wled_test");
+
+    ctrl.deinit();
+}
+
+TEST_CASE("LedController: first_available_strip skips PRESET macros", "[led][controller]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    helix::led::LedMacroInfo preset_macro;
+    preset_macro.display_name = "Party Mode";
+    preset_macro.type = helix::led::MacroLedType::PRESET;
+
+    helix::led::LedMacroInfo toggle_macro;
+    toggle_macro.display_name = "Desk Lamp";
+    toggle_macro.type = helix::led::MacroLedType::TOGGLE;
+    toggle_macro.toggle_macro = "TOGGLE_DESK";
+
+    ctrl.set_configured_macros({preset_macro, toggle_macro});
+
+    // Should skip PRESET and return TOGGLE
+    REQUIRE(ctrl.first_available_strip() == "macro:Desk Lamp");
+
+    ctrl.deinit();
+}
+
+// ============================================================================
+// Phase 4: MacroBackend state tracking + abstract API
+// ============================================================================
+
+TEST_CASE("MacroBackend: optimistic state tracking", "[led][macro]") {
+    helix::led::MacroBackend backend;
+
+    helix::led::LedMacroInfo on_off;
+    on_off.display_name = "Cabinet Light";
+    on_off.type = helix::led::MacroLedType::ON_OFF;
+    on_off.on_macro = "LIGHTS_ON";
+    on_off.off_macro = "LIGHTS_OFF";
+    backend.add_macro(on_off);
+
+    // Initially off
+    REQUIRE(!backend.is_on("Cabinet Light"));
+
+    // ON_OFF has known state
+    REQUIRE(backend.has_known_state("Cabinet Light"));
+
+    // After execute_on (will warn about no API, but state should track)
+    backend.execute_on("Cabinet Light");
+    REQUIRE(!backend.is_on("Cabinet Light")); // No API -> state NOT tracked (early return)
+
+    // Clear resets state
+    backend.clear();
+    REQUIRE(!backend.is_on("Cabinet Light"));
+}
+
+TEST_CASE("MacroBackend: TOGGLE has unknown state", "[led][macro]") {
+    helix::led::MacroBackend backend;
+
+    helix::led::LedMacroInfo toggle;
+    toggle.display_name = "Desk Lamp";
+    toggle.type = helix::led::MacroLedType::TOGGLE;
+    toggle.toggle_macro = "TOGGLE_DESK";
+    backend.add_macro(toggle);
+
+    // TOGGLE macros don't have known state
+    REQUIRE(!backend.has_known_state("Desk Lamp"));
+}
+
+TEST_CASE("LedController: light_state_trackable with various selections", "[led][controller]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    // Native only -- trackable
+    helix::led::LedStripInfo native_strip;
+    native_strip.name = "Chamber Light";
+    native_strip.id = "neopixel chamber_light";
+    native_strip.backend = helix::led::LedBackendType::NATIVE;
+    native_strip.supports_color = true;
+    native_strip.supports_white = true;
+    ctrl.native().add_strip(native_strip);
+    ctrl.set_selected_strips({"neopixel chamber_light"});
+    REQUIRE(ctrl.light_state_trackable());
+
+    // Add ON_OFF macro -- still trackable
+    helix::led::LedMacroInfo on_off;
+    on_off.display_name = "Cabinet Light";
+    on_off.type = helix::led::MacroLedType::ON_OFF;
+    on_off.on_macro = "LIGHTS_ON";
+    on_off.off_macro = "LIGHTS_OFF";
+    ctrl.macro().add_macro(on_off);
+    ctrl.set_configured_macros({on_off});
+    ctrl.set_selected_strips({"neopixel chamber_light", "macro:Cabinet Light"});
+    REQUIRE(ctrl.light_state_trackable());
+
+    // Add TOGGLE macro -- NOT trackable
+    helix::led::LedMacroInfo toggle;
+    toggle.display_name = "Desk Lamp";
+    toggle.type = helix::led::MacroLedType::TOGGLE;
+    toggle.toggle_macro = "TOGGLE_DESK";
+    ctrl.macro().add_macro(toggle);
+    ctrl.set_configured_macros({on_off, toggle});
+    ctrl.set_selected_strips({"neopixel chamber_light", "macro:Desk Lamp"});
+    REQUIRE(!ctrl.light_state_trackable());
+
+    ctrl.deinit();
+}
+
+TEST_CASE("LedController: light_toggle and light_is_on", "[led][controller]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    // Add ON_OFF macro
+    helix::led::LedMacroInfo macro;
+    macro.display_name = "Cabinet Light";
+    macro.type = helix::led::MacroLedType::ON_OFF;
+    macro.on_macro = "LIGHTS_ON";
+    macro.off_macro = "LIGHTS_OFF";
+    ctrl.macro().add_macro(macro);
+    ctrl.set_configured_macros({macro});
+    ctrl.set_selected_strips({"macro:Cabinet Light"});
+
+    // Initially off
+    REQUIRE(!ctrl.light_is_on());
+
+    // Toggle on (no API so macro state won't track, but light_toggle uses toggle_all)
+    ctrl.light_toggle();
+
+    // Toggle off
+    ctrl.light_toggle();
+
+    ctrl.deinit();
+}
