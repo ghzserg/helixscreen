@@ -336,6 +336,50 @@
       ]
     },
     {
+      "id": "voron_micron",
+      "name": "Voron Micron",
+      "manufacturer": "Voron",
+      "image": "voron-micron.png",
+      "heuristics": [
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "corexy",
+          "confidence": 40,
+          "reason": "CoreXY kinematics"
+        },
+        {
+          "type": "build_volume_range",
+          "field": "bed_mesh",
+          "max_x": 130,
+          "max_y": 130,
+          "confidence": 60,
+          "reason": "Small build volume (~120mm, Micron size)"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "neopixel",
+          "confidence": 40,
+          "reason": "Neopixel LEDs (common on Vorons)"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "voron",
+          "confidence": 75,
+          "reason": "Hostname contains 'voron'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "micron",
+          "confidence": 95,
+          "reason": "Hostname contains 'micron'"
+        }
+      ]
+    },
+    {
       "id": "voron_trident",
       "name": "Voron Trident",
       "manufacturer": "Voron",
@@ -1926,95 +1970,6 @@
       ]
     },
     {
-      "id": "qidi_q2_pro",
-      "name": "Qidi Q2 Pro",
-      "manufacturer": "Qidi",
-      "image": "qidi-q2-pro.png",
-      "print_start_profile": "qidi",
-      "heuristics": [
-        {
-          "type": "kinematics_match",
-          "field": "kinematics",
-          "pattern": "corexy",
-          "confidence": 40,
-          "reason": "CoreXY kinematics"
-        },
-        {
-          "type": "sensor_match",
-          "field": "sensors",
-          "pattern": "chamber",
-          "confidence": 70,
-          "reason": "Chamber temperature sensor (enclosed printer)"
-        },
-        {
-          "type": "object_exists",
-          "field": "printer_objects",
-          "pattern": "heater_generic chamber",
-          "confidence": 80,
-          "reason": "Active chamber heater (Qidi signature)"
-        },
-        {
-          "type": "build_volume_range",
-          "field": "bed_mesh",
-          "min_x": 230,
-          "max_x": 260,
-          "min_y": 230,
-          "max_y": 260,
-          "confidence": 50,
-          "reason": "Build volume ~245mm (Q2 Pro size)"
-        },
-        {
-          "type": "hostname_match",
-          "field": "hostname",
-          "pattern": "qidi",
-          "confidence": 80,
-          "reason": "Hostname contains 'qidi'"
-        },
-        {
-          "type": "hostname_match",
-          "field": "hostname",
-          "pattern": "q2pro",
-          "confidence": 95,
-          "reason": "Hostname contains 'q2pro'"
-        },
-        {
-          "type": "hostname_match",
-          "field": "hostname",
-          "pattern": "q2-pro",
-          "confidence": 95,
-          "reason": "Hostname contains 'q2-pro'"
-        },
-        {
-          "type": "macro_match",
-          "field": "macros",
-          "pattern": "M141",
-          "confidence": 75,
-          "reason": "M141 chamber heater macro (QIDI signature)"
-        },
-        {
-          "type": "macro_match",
-          "field": "macros",
-          "pattern": "M191",
-          "confidence": 80,
-          "reason": "M191 chamber temp wait macro (QIDI signature)"
-        },
-        {
-          "type": "macro_match",
-          "field": "macros",
-          "pattern": "CLEAR_NOZZLE",
-          "confidence": 60,
-          "reason": "CLEAR_NOZZLE macro (common on QIDI printers)"
-        },
-        {
-          "type": "mcu_match",
-          "field": "mcu",
-          "pattern": "rp2040",
-          "confidence": 45,
-          "reason": "RP2040 toolhead MCU (QIDI dual-MCU design)"
-        }
-      ]
-    },
-    {
       "id": "flsun_v400",
       "name": "FLSUN V400",
       "manufacturer": "FLSUN",
@@ -2996,6 +2951,98 @@
           "pattern": "u1",
           "confidence": 95,
           "reason": "Hostname contains 'u1'"
+        }
+      ]
+    },
+    {
+      "id": "geralkom_x400_ht",
+      "name": "Geralkom X400 HT",
+      "manufacturer": "Geralkom",
+      "image": "geralcom_x400.png",
+      "heuristics": [
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "corexy",
+          "confidence": 40,
+          "reason": "CoreXY kinematics"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "geralkom",
+          "confidence": 95,
+          "reason": "Hostname contains 'geralkom'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "x400",
+          "confidence": 90,
+          "reason": "Hostname contains 'x400'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "vector",
+          "confidence": 70,
+          "reason": "Hostname contains 'vector' (Geralkom Vector line)"
+        },
+        {
+          "type": "build_volume_range",
+          "field": "bed_mesh",
+          "min_x": 390,
+          "max_x": 420,
+          "min_y": 390,
+          "max_y": 420,
+          "confidence": 75,
+          "reason": "~410mm build volume (Geralkom X400 HT size)"
+        }
+      ]
+    },
+    {
+      "id": "geralkom_x500_ht",
+      "name": "Geralkom X500 HT",
+      "manufacturer": "Geralkom",
+      "image": "geralcom_x500.png",
+      "heuristics": [
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "corexy",
+          "confidence": 40,
+          "reason": "CoreXY kinematics"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "geralkom",
+          "confidence": 95,
+          "reason": "Hostname contains 'geralkom'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "x500",
+          "confidence": 90,
+          "reason": "Hostname contains 'x500'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "vector",
+          "confidence": 70,
+          "reason": "Hostname contains 'vector' (Geralkom Vector line)"
+        },
+        {
+          "type": "build_volume_range",
+          "field": "bed_mesh",
+          "min_x": 490,
+          "max_x": 520,
+          "min_y": 490,
+          "max_y": 520,
+          "confidence": 75,
+          "reason": "~510mm build volume (Geralkom X500 HT size)"
         }
       ]
     },

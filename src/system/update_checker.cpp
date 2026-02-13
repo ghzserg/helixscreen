@@ -17,6 +17,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_modal.h"
+#include "ui_notification.h"
 #include "ui_panel_settings.h"
 #include "ui_update_queue.h"
 
@@ -1219,6 +1220,10 @@ void UpdateChecker::dismiss_current_version() {
     config->set<std::string>("/update/dismissed_version", version);
     config->save();
     spdlog::info("[UpdateChecker] Dismissed version: {}", version);
+
+    // Add history-only notification so user can find the update later
+    std::string msg = fmt::format("v{} is available. Tap to update.", version);
+    ui_notification_info_with_action("Update Available", msg.c_str(), "show_update_modal");
 }
 
 // ============================================================================

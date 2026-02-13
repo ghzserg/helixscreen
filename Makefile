@@ -494,6 +494,9 @@ else ifeq ($(UNAME_S),Darwin)
 
     CFLAGS += $(MACOS_DEPLOYMENT_TARGET)
     CXXFLAGS += $(MACOS_DEPLOYMENT_TARGET)
+    # macOS has no gettid() — override libhv's hconfig.h which incorrectly assumes it
+    CFLAGS += -DHAVE_GETTID=0
+    CXXFLAGS += -DHAVE_GETTID=0
     SUBMODULE_CFLAGS += $(MACOS_DEPLOYMENT_TARGET)
     SUBMODULE_CXXFLAGS += $(MACOS_DEPLOYMENT_TARGET)
     # -Wl,-w suppresses linker warnings about macOS version mismatches between

@@ -247,9 +247,16 @@ class MacroBackend {
                                NativeBackend::SuccessCallback on_success = nullptr,
                                NativeBackend::ErrorCallback on_error = nullptr);
 
+    /// Check if a macro is currently "on" (optimistic tracking)
+    [[nodiscard]] bool is_on(const std::string& macro_name) const;
+
+    /// Check if a macro's state can be tracked (ON_OFF = yes, TOGGLE = no)
+    [[nodiscard]] bool has_known_state(const std::string& macro_name) const;
+
   private:
     MoonrakerAPI* api_ = nullptr;
     std::vector<LedMacroInfo> macros_;
+    std::unordered_map<std::string, bool> macro_states_; // Optimistic state tracking
 };
 
 class LedController {
@@ -311,6 +318,25 @@ class LedController {
     // Determine which backend a given strip belongs to
     [[nodiscard]] LedBackendType backend_for_strip(const std::string& strip_id) const;
 
+    /// Get all selectable strips across all backends (native + WLED + non-PRESET macros)
+    /// Macro entries use "macro:" prefixed IDs.
+    [[nodiscard]] std::vector<LedStripInfo> all_selectable_strips() const;
+
+    /// Get the first available strip to use as default selection.
+    /// Priority: first selected > first native > first WLED > first non-PRESET macro.
+    /// Returns empty string if nothing available.
+    [[nodiscard]] std::string first_available_strip() const;
+
+    /// Whether the current selection's state can be reliably tracked.
+    /// Returns false if ANY selected strip is a TOGGLE macro (state unknown).
+    [[nodiscard]] bool light_state_trackable() const;
+
+    /// Toggle light state and dispatch to all selected backends.
+    void light_toggle();
+
+    /// Get composite on/off state across all selected backends.
+    [[nodiscard]] bool light_is_on() const;
+
     // LED on at start preference
     [[nodiscard]] bool get_led_on_at_start() const;
     void set_led_on_at_start(bool enabled);
@@ -371,6 +397,7 @@ class LedController {
     std::vector<LedMacroInfo> configured_macros_;
     std::vector<std::string> discovered_led_macros_; // Raw macro names from hardware
     bool led_on_at_start_ = false;
+    bool light_on_ = false; // Internal light state for abstract API
 
     // Default color presets
     static constexpr uint32_t DEFAULT_COLOR_PRESETS[] = {0xFFFFFF, 0xFFD700, 0xFF6B35, 0x4FC3F7,

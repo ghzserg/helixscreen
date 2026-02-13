@@ -136,6 +136,10 @@ class NotificationHistoryPanel : public PanelBase {
     //
 
     static void on_clear_clicked(lv_event_t* e);
+
+    // Action dispatch
+    static void on_item_clicked(lv_event_t* e);
+    void dispatch_action(const char* action);
 };
 
 // Global instance accessor (needed by main.cpp)

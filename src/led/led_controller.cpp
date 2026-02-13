@@ -15,6 +15,16 @@
 
 namespace helix::led {
 
+/// Strip "macro:" prefix from a strip ID, returning the raw macro name.
+/// If the ID doesn't have the prefix, returns it unchanged.
+static std::string strip_macro_name(const std::string& id) {
+    const std::string prefix = "macro:";
+    if (id.rfind(prefix, 0) == 0) {
+        return id.substr(prefix.size());
+    }
+    return id;
+}
+
 // ============================================================================
 // LedController
 // ============================================================================
@@ -63,6 +73,7 @@ void LedController::deinit() {
     configured_macros_.clear();
     discovered_led_macros_.clear();
     led_on_at_start_ = false;
+    light_on_ = false;
 
     spdlog::info("[LedController] Deinitialized");
 }
@@ -801,6 +812,8 @@ void WledBackend::set_on(const std::string& strip_name, NativeBackend::SuccessCa
     }
 
     spdlog::debug("[WledBackend] set_on: {}", strip_name);
+    // Optimistic state tracking
+    strip_states_[strip_name].is_on = true;
     api_->wled_set_strip(strip_name, "on", -1, -1, on_success,
                          [on_error](const MoonrakerError& err) {
                              if (on_error) {
@@ -820,6 +833,8 @@ void WledBackend::set_off(const std::string& strip_name, NativeBackend::SuccessC
     }
 
     spdlog::debug("[WledBackend] set_off: {}", strip_name);
+    // Optimistic state tracking
+    strip_states_[strip_name].is_on = false;
     api_->wled_set_strip(strip_name, "off", -1, -1, on_success,
                          [on_error](const MoonrakerError& err) {
                              if (on_error) {
@@ -1010,6 +1025,7 @@ void MacroBackend::add_macro(const LedMacroInfo& macro) {
 
 void MacroBackend::clear() {
     macros_.clear();
+    macro_states_.clear();
 }
 
 void MacroBackend::execute_on(const std::string& macro_name,
@@ -1039,6 +1055,7 @@ void MacroBackend::execute_on(const std::string& macro_name,
                 return;
             }
             spdlog::debug("[MacroBackend] execute_on: {} -> {}", macro_name, gcode);
+            macro_states_[macro_name] = true;
             api_->execute_gcode(gcode, on_success, [on_error](const MoonrakerError& err) {
                 if (on_error) {
                     on_error(err.message);
@@ -1081,6 +1098,7 @@ void MacroBackend::execute_off(const std::string& macro_name,
                 return;
             }
             spdlog::debug("[MacroBackend] execute_off: {} -> {}", macro_name, gcode);
+            macro_states_[macro_name] = false;
             api_->execute_gcode(gcode, on_success, [on_error](const MoonrakerError& err) {
                 if (on_error) {
                     on_error(err.message);
@@ -1113,6 +1131,9 @@ void MacroBackend::execute_toggle(const std::string& macro_name,
             if (!macro.toggle_macro.empty()) {
                 spdlog::debug("[MacroBackend] execute_toggle: {} -> {}", macro_name,
                               macro.toggle_macro);
+                // Toggle macros flip state optimistically (but state is unknowable)
+                auto it = macro_states_.find(macro_name);
+                macro_states_[macro_name] = (it == macro_states_.end()) ? true : !it->second;
                 api_->execute_gcode(macro.toggle_macro, on_success,
                                     [on_error](const MoonrakerError& err) {
                                         if (on_error) {
@@ -1152,6 +1173,20 @@ void MacroBackend::execute_custom_action(const std::string& macro_gcode,
             on_error(err.message);
         }
     });
+}
+
+bool MacroBackend::is_on(const std::string& macro_name) const {
+    auto it = macro_states_.find(macro_name);
+    return it != macro_states_.end() && it->second;
+}
+
+bool MacroBackend::has_known_state(const std::string& macro_name) const {
+    for (const auto& macro : macros_) {
+        if (macro.display_name == macro_name) {
+            return macro.type == MacroLedType::ON_OFF;
+        }
+    }
+    return false;
 }
 
 // ============================================================================
@@ -1315,6 +1350,35 @@ void LedController::load_config() {
         }
     }
 
+    // Config migration: ensure macro strips have "macro:" prefix
+    bool needs_resave = false;
+    for (auto& s : selected_strips_) {
+        // Check if this matches a configured macro display_name but lacks the prefix
+        if (s.rfind("macro:", 0) != 0) {
+            for (const auto& m : configured_macros_) {
+                if (m.display_name == s) {
+                    spdlog::info(
+                        "[LedController] Migrating unprefixed macro strip '{}' -> 'macro:{}'", s,
+                        s);
+                    s = "macro:" + s;
+                    needs_resave = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (needs_resave) {
+        // Save just the strips (can't call save_config() since we haven't finished loading)
+        auto* cfg2 = Config::get_instance();
+        if (cfg2) {
+            nlohmann::json arr = nlohmann::json::array();
+            for (const auto& s2 : selected_strips_)
+                arr.push_back(s2);
+            cfg2->set("/printer/leds/selected_strips", arr);
+            cfg2->save();
+        }
+    }
+
     // LED on at start preference
     auto& on_at_start_json = cfg->get_json("/printer/leds/led_on_at_start");
     led_on_at_start_ = on_at_start_json.is_boolean() ? on_at_start_json.get<bool>() : false;
@@ -1416,8 +1480,9 @@ void LedController::toggle_all(bool on) {
 
         case LedBackendType::MACRO: {
             // Find the macro device matching this strip_id (by display name)
+            std::string raw_name = strip_macro_name(strip_id);
             for (const auto& macro : configured_macros_) {
-                if (macro.display_name == strip_id) {
+                if (macro.display_name == raw_name) {
                     switch (macro.type) {
                     case MacroLedType::ON_OFF:
                         if (on) {
@@ -1466,15 +1531,96 @@ LedBackendType LedController::backend_for_strip(const std::string& strip_id) con
         }
     }
 
-    // Check macro devices (matched by display name)
+    // Check macro devices (matched by display name, with or without "macro:" prefix)
+    std::string raw_name = strip_macro_name(strip_id);
     for (const auto& macro : configured_macros_) {
-        if (macro.display_name == strip_id) {
+        if (macro.display_name == raw_name) {
             return LedBackendType::MACRO;
         }
     }
 
     // Default to native (for backward compat with old configs)
     return LedBackendType::NATIVE;
+}
+
+std::vector<LedStripInfo> LedController::all_selectable_strips() const {
+    std::vector<LedStripInfo> result;
+
+    // Native strips
+    for (const auto& strip : native_.strips()) {
+        result.push_back(strip);
+    }
+
+    // WLED strips
+    for (const auto& strip : wled_.strips()) {
+        result.push_back(strip);
+    }
+
+    // Configured macros (skip PRESET type - those aren't toggleable strips)
+    for (const auto& macro : configured_macros_) {
+        if (macro.type == MacroLedType::PRESET)
+            continue;
+        LedStripInfo info;
+        info.name = macro.display_name;
+        info.id = "macro:" + macro.display_name;
+        info.backend = LedBackendType::MACRO;
+        info.supports_color = false;
+        info.supports_white = false;
+        result.push_back(info);
+    }
+
+    return result;
+}
+
+std::string LedController::first_available_strip() const {
+    // Prefer selected strips
+    if (!selected_strips_.empty()) {
+        return selected_strips_[0];
+    }
+
+    // Fall back to first native
+    if (!native_.strips().empty()) {
+        return native_.strips()[0].id;
+    }
+
+    // Fall back to first WLED
+    if (!wled_.strips().empty()) {
+        return wled_.strips()[0].id;
+    }
+
+    // Fall back to first non-PRESET macro
+    for (const auto& macro : configured_macros_) {
+        if (macro.type != MacroLedType::PRESET) {
+            return "macro:" + macro.display_name;
+        }
+    }
+
+    return "";
+}
+
+bool LedController::light_state_trackable() const {
+    for (const auto& strip_id : selected_strips_) {
+        if (backend_for_strip(strip_id) == LedBackendType::MACRO) {
+            std::string raw_name = strip_macro_name(strip_id);
+            if (!macro_.has_known_state(raw_name)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void LedController::light_toggle() {
+    light_on_ = !light_on_;
+    toggle_all(light_on_);
+}
+
+bool LedController::light_is_on() const {
+    // Return the optimistic internal state set by light_toggle().
+    // This is immediately correct after toggling. For native LEDs, the
+    // Moonraker status update will subsequently confirm via PrinterState subjects.
+    // For WLED/macros, we track state optimistically in their backends.
+    return light_on_;
 }
 
 bool LedController::get_led_on_at_start() const {

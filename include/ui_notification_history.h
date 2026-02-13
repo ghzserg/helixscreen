@@ -20,6 +20,7 @@ struct NotificationHistoryEntry {
     char message[256];      ///< Notification message
     bool was_modal;         ///< true if shown as modal dialog
     bool was_read;          ///< true if user viewed in history panel
+    char action[64];        ///< Action identifier (empty = no action, e.g. "show_update_modal")
 };
 
 /**

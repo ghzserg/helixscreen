@@ -5,6 +5,16 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.18] - 2026-02-13
+
+### Added
+- Actionable notifications: tapping notification history items now dispatches their associated action (e.g. navigate to update panel)
+- Skipped-update notifications persist in notification history with tap-to-navigate
+
+### Fixed
+- LED macro integration: macro backend now correctly tracks LED state and handles device transitions
+- Pre-rendered generic printer images updated with correct corexy model
+
 ## [0.9.17] - 2026-02-13
 
 ### Added
@@ -438,6 +448,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.9.18]: https://github.com/prestonbrown/helixscreen/compare/v0.9.17...v0.9.18
 [0.9.17]: https://github.com/prestonbrown/helixscreen/compare/v0.9.16...v0.9.17
 [0.9.16]: https://github.com/prestonbrown/helixscreen/compare/v0.9.15...v0.9.16
 [0.9.15]: https://github.com/prestonbrown/helixscreen/compare/v0.9.14...v0.9.15

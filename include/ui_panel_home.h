@@ -145,6 +145,7 @@ class HomePanel : public PanelBase {
 
     void handle_light_toggle();
     void handle_light_long_press();
+    void flash_light_icon();
     void ensure_led_observers();
     void handle_print_card_clicked();
     void handle_tip_text_clicked();

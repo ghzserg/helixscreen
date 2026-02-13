@@ -77,6 +77,22 @@ void ui_notification_info(const char* message);
 void ui_notification_info(const char* title, const char* message);
 
 /**
+ * @brief Add an info notification to history only (no toast)
+ *
+ * Creates a notification history entry with an action identifier.
+ * When the user taps this entry in notification history, the action
+ * is dispatched (e.g., "show_update_modal" re-shows the update modal).
+ *
+ * No toast is shown — use this when the user has already seen context
+ * (e.g., just dismissed a modal) and a popup would be redundant.
+ *
+ * @param title Title for the history entry
+ * @param message Message text
+ * @param action Action identifier (e.g., "show_update_modal")
+ */
+void ui_notification_info_with_action(const char* title, const char* message, const char* action);
+
+/**
  * @brief Show a success toast notification
  *
  * Displays a non-blocking green toast message that auto-dismisses after 4 seconds.

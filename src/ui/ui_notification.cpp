@@ -364,6 +364,51 @@ void ui_notification_info(const char* title, const char* message) {
     show_titled_notification(title, message, ToastSeverity::INFO, 4000);
 }
 
+void ui_notification_info_with_action(const char* title, const char* message, const char* action) {
+    if (!message || !action) {
+        spdlog::warn("[Notification] info_with_action called with null message or action");
+        return;
+    }
+
+    // Build entry directly — no toast, history only
+    NotificationHistoryEntry entry = {};
+    entry.timestamp_ms = lv_tick_get();
+    entry.severity = ToastSeverity::INFO;
+    entry.was_modal = false;
+    entry.was_read = false;
+
+    if (title) {
+        strncpy(entry.title, title, sizeof(entry.title) - 1);
+        entry.title[sizeof(entry.title) - 1] = '\0';
+    }
+    strncpy(entry.message, message, sizeof(entry.message) - 1);
+    entry.message[sizeof(entry.message) - 1] = '\0';
+    strncpy(entry.action, action, sizeof(entry.action) - 1);
+    entry.action[sizeof(entry.action) - 1] = '\0';
+
+    if (is_main_thread()) {
+        NotificationHistory::instance().add(entry);
+        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+    } else {
+        auto* data = new (std::nothrow) NotificationHistoryEntry(entry);
+        if (!data) {
+            spdlog::error("[Notification] Failed to allocate for async action notification");
+            return;
+        }
+        ui_async_call(
+            [](void* user_data) {
+                auto* e = static_cast<NotificationHistoryEntry*>(user_data);
+                NotificationHistory::instance().add(*e);
+                ui_status_bar_update_notification_count(
+                    NotificationHistory::instance().get_unread_count());
+                delete e;
+            },
+            data);
+    }
+
+    spdlog::info("[Notification] History-only notification: '{}' action='{}'", message, action);
+}
+
 void ui_notification_success(const char* title, const char* message) {
     show_titled_notification(title, message, ToastSeverity::SUCCESS, 4000);
 }

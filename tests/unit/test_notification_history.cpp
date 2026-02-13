@@ -354,3 +354,46 @@ TEST_CASE("NotificationHistory: Empty title and message handling", "[ui][edge]")
     REQUIRE(entries[0].title[0] == '\0');
     REQUIRE(entries[0].message[0] == '\0');
 }
+
+// ============================================================================
+// Action Field Tests
+// ============================================================================
+
+TEST_CASE("NotificationHistory: Action field stored and retrieved", "[ui][action]") {
+    NotificationHistory& history = NotificationHistory::instance();
+    history.clear();
+
+    NotificationHistoryEntry entry = {};
+    entry.timestamp_ms = 1000;
+    entry.severity = ToastSeverity::INFO;
+    entry.was_modal = false;
+    entry.was_read = false;
+    strncpy(entry.title, "Update Available", sizeof(entry.title) - 1);
+    strncpy(entry.message, "Version 1.0 available", sizeof(entry.message) - 1);
+    strncpy(entry.action, "show_update_modal", sizeof(entry.action) - 1);
+
+    history.add(entry);
+
+    auto entries = history.get_all();
+    REQUIRE(entries.size() == 1);
+    REQUIRE(std::string(entries[0].action) == "show_update_modal");
+    REQUIRE(std::string(entries[0].title) == "Update Available");
+}
+
+TEST_CASE("NotificationHistory: Empty action field by default", "[ui][action]") {
+    NotificationHistory& history = NotificationHistory::instance();
+    history.clear();
+
+    NotificationHistoryEntry entry = {};
+    entry.timestamp_ms = 1000;
+    entry.severity = ToastSeverity::INFO;
+    entry.was_modal = false;
+    entry.was_read = false;
+    strncpy(entry.message, "Normal notification", sizeof(entry.message) - 1);
+
+    history.add(entry);
+
+    auto entries = history.get_all();
+    REQUIRE(entries.size() == 1);
+    REQUIRE(entries[0].action[0] == '\0');
+}

@@ -117,19 +117,7 @@ void LedControlOverlay::on_activate() {
     auto& controller = LedController::instance();
     if (controller.is_initialized()) {
         // Read current color from the selected strip's cached state
-        const auto& selected = controller.selected_strips();
-        std::string active_strip;
-        if (!selected.empty()) {
-            active_strip = selected[0];
-        } else if (!controller.native().strips().empty()) {
-            active_strip = controller.native().strips()[0].id;
-        }
-
-        // Default to first WLED strip if no native strips and nothing selected
-        if (active_strip.empty() && !controller.wled().strips().empty()) {
-            active_strip = controller.wled().strips()[0].id;
-            selected_backend_type_ = LedBackendType::WLED;
-        }
+        std::string active_strip = controller.first_available_strip();
 
         // Determine the backend type of the active strip
         if (!active_strip.empty()) {
@@ -165,12 +153,7 @@ void LedControlOverlay::on_activate() {
         // Poll WLED status on overlay activation for live state
         if (selected_backend_type_ == LedBackendType::WLED) {
             // Sync WLED brightness slider to active strip's brightness
-            std::string wled_strip_id;
-            if (!selected.empty()) {
-                wled_strip_id = selected[0];
-            } else if (!controller.wled().strips().empty()) {
-                wled_strip_id = controller.wled().strips()[0].id;
-            }
+            std::string wled_strip_id = active_strip;
             if (!wled_strip_id.empty()) {
                 auto strip_state = controller.wled().get_strip_state(wled_strip_id);
                 int pct = (strip_state.brightness * 100) / 255;

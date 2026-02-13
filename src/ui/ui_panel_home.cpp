@@ -514,7 +514,6 @@ void HomePanel::detect_network_type() {
 void HomePanel::handle_light_toggle() {
     spdlog::info("[{}] Light button clicked", get_name());
 
-    // Read selected strips lazily - hardware discovery may have completed since construction
     auto& led_ctrl = helix::led::LedController::instance();
     const auto& strips = led_ctrl.selected_strips();
     if (strips.empty()) {
@@ -522,12 +521,16 @@ void HomePanel::handle_light_toggle() {
         return;
     }
 
-    // Ensure observers are set up now that we know strips exist
     ensure_led_observers();
 
-    // Toggle all LEDs via LedController (handles API calls and error reporting)
-    // UI will update when Moonraker notification arrives (via PrinterState observer)
-    led_ctrl.toggle_all(!light_on_);
+    led_ctrl.light_toggle();
+
+    if (led_ctrl.light_state_trackable()) {
+        light_on_ = led_ctrl.light_is_on();
+        update_light_icon();
+    } else {
+        flash_light_icon();
+    }
 }
 
 void HomePanel::handle_light_long_press() {
@@ -716,14 +719,15 @@ void HomePanel::ensure_led_observers() {
 }
 
 void HomePanel::on_led_state_changed(int state) {
-    // Update local light_on_ state from PrinterState's led_state subject
-    light_on_ = (state != 0);
-
-    spdlog::debug("[{}] LED state changed: {} (from PrinterState)", get_name(),
-                  light_on_ ? "ON" : "OFF");
-
-    // Update light icon when state changes
-    update_light_icon();
+    auto& led_ctrl = helix::led::LedController::instance();
+    if (led_ctrl.light_state_trackable()) {
+        light_on_ = (state != 0);
+        spdlog::debug("[{}] LED state changed: {} (from PrinterState)", get_name(),
+                      light_on_ ? "ON" : "OFF");
+        update_light_icon();
+    } else {
+        spdlog::debug("[{}] LED state changed but not trackable (TOGGLE macro mode)", get_name());
+    }
 }
 
 void HomePanel::update_light_icon() {
@@ -772,6 +776,38 @@ void HomePanel::update_light_icon() {
     }
 
     spdlog::trace("[{}] Light icon: {} at {}%", get_name(), icon_name, brightness);
+}
+
+void HomePanel::flash_light_icon() {
+    if (!light_icon_)
+        return;
+
+    // Flash gold briefly then fade back to muted
+    ui_icon_set_color(light_icon_, theme_manager_get_color("light_icon_on"), LV_OPA_COVER);
+
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        // No animations -- the next status update will restore the icon naturally
+        return;
+    }
+
+    // Animate opacity 255 -> 0 then restore to muted on completion
+    lv_anim_t anim;
+    lv_anim_init(&anim);
+    lv_anim_set_var(&anim, light_icon_);
+    lv_anim_set_values(&anim, LV_OPA_COVER, LV_OPA_TRANSP);
+    lv_anim_set_duration(&anim, 300);
+    lv_anim_set_path_cb(&anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), static_cast<lv_opa_t>(value), 0);
+    });
+    lv_anim_set_completed_cb(&anim, [](lv_anim_t* a) {
+        auto* icon = static_cast<lv_obj_t*>(a->var);
+        lv_obj_set_style_opa(icon, LV_OPA_COVER, 0);
+        ui_icon_set_color(icon, theme_manager_get_color("light_icon_off"), LV_OPA_COVER);
+    });
+    lv_anim_start(&anim);
+
+    spdlog::debug("[{}] Flash light icon (TOGGLE macro, state unknown)", get_name());
 }
 
 void HomePanel::on_extruder_temp_changed(int temp_centi) {
