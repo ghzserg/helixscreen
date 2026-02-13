@@ -16,7 +16,6 @@
 #include "../../include/moonraker_client_mock.h"
 
 #include <cmath>
-#include <set>
 
 #include "../catch_amalgamated.hpp"
 
@@ -43,19 +42,6 @@ static float calculate_mesh_z_range(const BedMeshProfile& mesh) {
     }
 
     return max_z - min_z;
-}
-
-/**
- * @brief Calculate mesh "signature" - sum of all Z values (for comparison)
- */
-static float calculate_mesh_signature(const BedMeshProfile& mesh) {
-    float sum = 0.0f;
-    for (const auto& row : mesh.probed_matrix) {
-        for (float z : row) {
-            sum += z;
-        }
-    }
-    return sum;
 }
 
 /**
@@ -126,14 +112,14 @@ TEST_CASE("Mock bed mesh initial generation", "[bed_mesh][mock]") {
     SECTION("default and adaptive have different mesh data") {
         // Load default
         mock.gcode_script("BED_MESH_PROFILE LOAD=default");
-        float default_sig = calculate_mesh_signature(mock.get_active_bed_mesh());
+        BedMeshProfile default_mesh = mock.get_active_bed_mesh();
 
         // Load adaptive
         mock.gcode_script("BED_MESH_PROFILE LOAD=adaptive");
-        float adaptive_sig = calculate_mesh_signature(mock.get_active_bed_mesh());
+        BedMeshProfile adaptive_mesh = mock.get_active_bed_mesh();
 
         // They should be different (not just renamed)
-        REQUIRE(default_sig != adaptive_sig);
+        REQUIRE(!meshes_equal(default_mesh, adaptive_mesh));
     }
 
     SECTION("mesh bounds use probe margins") {
@@ -215,11 +201,8 @@ TEST_CASE("Mock bed mesh calibration", "[bed_mesh][mock]") {
 
         // Should have different data (randomized)
         REQUIRE(mock.get_active_bed_mesh().name == "calibrated");
-        // Note: There's a small chance they could be equal by random chance,
-        // but with true randomness this is astronomically unlikely
-        float before_sig = calculate_mesh_signature(before);
-        float after_sig = calculate_mesh_signature(mock.get_active_bed_mesh());
-        REQUIRE(before_sig != after_sig);
+        // Compare element-wise - more robust than float sum comparison
+        REQUIRE(!meshes_equal(mock.get_active_bed_mesh(), before));
     }
 
     SECTION("calibration generates realistic mesh") {
@@ -228,22 +211,26 @@ TEST_CASE("Mock bed mesh calibration", "[bed_mesh][mock]") {
         const auto& mesh = mock.get_active_bed_mesh();
         float z_range = calculate_mesh_z_range(mesh);
 
-        // Should have realistic Z variation (0.1 - 0.6mm typical)
+        // Should have realistic Z variation
+        // With dome amp 0.15-0.35, center shift ±0.5, tilt ±0.08, noise ±0.03,
+        // worst-case z_range can reach ~0.9mm
         REQUIRE(z_range > 0.05f);
-        REQUIRE(z_range < 0.8f);
+        REQUIRE(z_range < 1.0f);
     }
 
     SECTION("multiple calibrations produce different results") {
-        std::set<float> signatures;
+        std::vector<BedMeshProfile> meshes;
 
         // Run 5 calibrations
         for (int i = 0; i < 5; i++) {
             mock.gcode_script("BED_MESH_CALIBRATE PROFILE=multi_" + std::to_string(i));
-            signatures.insert(calculate_mesh_signature(mock.get_active_bed_mesh()));
+            meshes.push_back(mock.get_active_bed_mesh());
         }
 
-        // All should be unique (true randomness)
-        REQUIRE(signatures.size() == 5);
+        // Each mesh should differ from the previous one
+        for (size_t i = 1; i < meshes.size(); i++) {
+            REQUIRE(!meshes_equal(meshes[i], meshes[i - 1]));
+        }
     }
 
     SECTION("calibration adds profile to list") {

@@ -842,9 +842,14 @@ void MoonrakerClientMock::generate_mock_bed_mesh_with_variation() {
     active_bed_mesh_.y_count = 7;
     active_bed_mesh_.algo = "lagrange";
 
-    // True random number generator for realistic variation
+    // Seed with both random_device and a monotonic counter to guarantee
+    // distinct meshes even if random_device is deterministic (some Linux/embedded platforms)
+    static std::atomic<uint32_t> calibration_counter{0};
     std::random_device rd;
-    std::mt19937 gen(rd());
+    std::seed_seq seed{
+        rd(), rd(), calibration_counter.fetch_add(1),
+        static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())};
+    std::mt19937 gen(seed);
     std::uniform_real_distribution<float> noise(-0.03f, 0.03f);      // ±0.03mm probe noise
     std::uniform_real_distribution<float> amplitude(0.15f, 0.35f);   // Overall dome height
     std::uniform_real_distribution<float> tilt(-0.08f, 0.08f);       // Bed tilt per axis
