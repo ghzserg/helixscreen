@@ -73,7 +73,7 @@ uninstall() {
     # Clean up PID files and log file
     $SUDO rm -f /var/run/helixscreen.pid 2>/dev/null || true
     $SUDO rm -f /var/run/helix-splash.pid 2>/dev/null || true
-    $SUDO rm -f /tmp/helixscreen.log 2>/dev/null || true
+    rm -f /tmp/helixscreen.log 2>/dev/null || true
 
     # Re-enable services from state file (before removing install dir)
     reenable_disabled_services
@@ -129,23 +129,23 @@ uninstall() {
     for cache_dir in /root/.cache/helix /tmp/helix_thumbs /.cache/helix /data/helixscreen/cache /usr/data/helixscreen/cache; do
         if [ -d "$cache_dir" ] 2>/dev/null; then
             log_info "Removing cache: $cache_dir"
-            $SUDO rm -rf "$cache_dir"
+            $(file_sudo "$cache_dir") rm -rf "$cache_dir"
         fi
     done
     # Clean up /var/tmp helix files
     for tmp_pattern in /var/tmp/helix_*; do
         if [ -e "$tmp_pattern" ] 2>/dev/null; then
             log_info "Removing cache: $tmp_pattern"
-            $SUDO rm -rf "$tmp_pattern"
+            $(file_sudo "$tmp_pattern") rm -rf "$tmp_pattern"
         fi
     done
 
     # Clean up active flag file
-    $SUDO rm -f /tmp/helixscreen_active 2>/dev/null || true
+    rm -f /tmp/helixscreen_active 2>/dev/null || true
 
     # Clean up macOS resource fork files (created by scp from Mac)
     for pattern in /opt/._helixscreen /root/._helixscreen; do
-        $SUDO rm -f "$pattern" 2>/dev/null || true
+        $(file_sudo "$pattern") rm -f "$pattern" 2>/dev/null || true
     done
 
     # Remove update_manager section from moonraker.conf (if present)

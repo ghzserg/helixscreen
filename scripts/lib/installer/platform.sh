@@ -410,7 +410,7 @@ setup_config_symlink() {
         fi
         # Wrong target — update it
         log_info "Updating config symlink (was: $current_target)"
-        $SUDO rm -f "$symlink_path"
+        $(file_sudo "$symlink_path") rm -f "$symlink_path"
     elif [ -e "$symlink_path" ]; then
         # Something exists but isn't a symlink — don't destroy it
         log_warn "Config symlink path already exists as a regular file/directory: $symlink_path"
@@ -419,7 +419,7 @@ setup_config_symlink() {
     fi
 
     # Create the symlink
-    if $SUDO ln -s "$target" "$symlink_path" 2>/dev/null; then
+    if $(file_sudo "$config_dir") ln -s "$target" "$symlink_path" 2>/dev/null; then
         log_success "Config symlink: $symlink_path → $target"
         log_info "You can now edit HelixScreen config from Mainsail/Fluidd"
     else

@@ -50,6 +50,21 @@ HELIX_INIT_SCRIPTS="/etc/init.d/S80helixscreen /etc/init.d/S90helixscreen /etc/i
 # HelixScreen process names (order matters: watchdog first to prevent crash dialog)
 HELIX_PROCESSES="helix-watchdog helix-screen helix-splash"
 
+# Get sudo prefix needed for a file operation.
+# Returns empty string if current user has write access, $SUDO otherwise.
+# For existing files, checks file writability. For new files, checks parent dir.
+# This avoids creating root-owned files in user-writable directories.
+file_sudo() {
+    local path="$1"
+    if [ -e "$path" ]; then
+        [ -w "$path" ] && echo "" || echo "$SUDO"
+    else
+        local dir
+        dir="$(dirname "$path")"
+        [ -w "$dir" ] && echo "" || echo "$SUDO"
+    fi
+}
+
 # Track what we've done for cleanup
 CLEANUP_TMP=false
 CLEANUP_SERVICE=false
@@ -585,7 +600,7 @@ setup_config_symlink() {
         fi
         # Wrong target — update it
         log_info "Updating config symlink (was: $current_target)"
-        $SUDO rm -f "$symlink_path"
+        $(file_sudo "$symlink_path") rm -f "$symlink_path"
     elif [ -e "$symlink_path" ]; then
         # Something exists but isn't a symlink — don't destroy it
         log_warn "Config symlink path already exists as a regular file/directory: $symlink_path"
@@ -594,7 +609,7 @@ setup_config_symlink() {
     fi
 
     # Create the symlink
-    if $SUDO ln -s "$target" "$symlink_path" 2>/dev/null; then
+    if $(file_sudo "$config_dir") ln -s "$target" "$symlink_path" 2>/dev/null; then
         log_success "Config symlink: $symlink_path → $target"
         log_info "You can now edit HelixScreen config from Mainsail/Fluidd"
     else
@@ -1366,12 +1381,14 @@ EOF
 # Args: $1 = moonraker.conf path
 add_update_manager_section() {
     local conf="$1"
+    local fs
+    fs=$(file_sudo "$conf")
 
     # Create backup
-    $SUDO cp "$conf" "${conf}.bak.helixscreen" 2>/dev/null || true
+    $fs cp "$conf" "${conf}.bak.helixscreen" 2>/dev/null || true
 
     # Append configuration
-    generate_update_manager_config | $SUDO tee -a "$conf" >/dev/null
+    generate_update_manager_config | $fs tee -a "$conf" >/dev/null
 
     log_success "Added update_manager section to $conf"
     log_info "You can now update HelixScreen from the Mainsail/Fluidd web interface!"
@@ -1471,8 +1488,10 @@ ensure_moonraker_asvc() {
         return 0
     fi
 
+    local fs
+    fs=$(file_sudo "$asvc")
     log_info "Adding helixscreen to $asvc..."
-    echo "helixscreen" | $SUDO tee -a "$asvc" >/dev/null
+    echo "helixscreen" | $fs tee -a "$asvc" >/dev/null
     log_success "Added helixscreen to Moonraker service allowlist"
 }
 
@@ -1555,23 +1574,24 @@ remove_update_manager_section() {
     log_info "Removing update_manager section from $conf..."
 
     # Create backup
-    $SUDO cp "$conf" "${conf}.bak.helixscreen-uninstall" 2>/dev/null || true
+    local fs
+    fs=$(file_sudo "$conf")
+    $fs cp "$conf" "${conf}.bak.helixscreen-uninstall" 2>/dev/null || true
 
     # Remove the section (from [update_manager helixscreen] to next section or EOF)
     # This uses awk to skip lines between [update_manager helixscreen] and the next [section]
-    # Note: Need to run awk through sudo to handle permission on output file
-    $SUDO sh -c "awk '
+    $fs sh -c "awk '
         /^\[update_manager helixscreen\]/ { skip=1; next }
         /^\[/ { skip=0 }
         !skip { print }
-    ' \"$conf\" > \"${conf}.tmp\"" && $SUDO mv "${conf}.tmp" "$conf"
+    ' \"$conf\" > \"${conf}.tmp\"" && $fs mv "${conf}.tmp" "$conf"
 
     # Also remove any "Added by HelixScreen" comment lines that precede it
-    $SUDO sed -i '/# HelixScreen Update Manager/d' "$conf" 2>/dev/null || \
-    $SUDO sed -i '' '/# HelixScreen Update Manager/d' "$conf" 2>/dev/null || true
+    $fs sed -i '/# HelixScreen Update Manager/d' "$conf" 2>/dev/null || \
+    $fs sed -i '' '/# HelixScreen Update Manager/d' "$conf" 2>/dev/null || true
 
-    $SUDO sed -i '/# Added by HelixScreen installer/d' "$conf" 2>/dev/null || \
-    $SUDO sed -i '' '/# Added by HelixScreen installer/d' "$conf" 2>/dev/null || true
+    $fs sed -i '/# Added by HelixScreen installer/d' "$conf" 2>/dev/null || \
+    $fs sed -i '' '/# Added by HelixScreen installer/d' "$conf" 2>/dev/null || true
 
     log_success "Removed update_manager section from $conf"
 }
@@ -1644,7 +1664,7 @@ uninstall() {
     # Clean up PID files and log file
     $SUDO rm -f /var/run/helixscreen.pid 2>/dev/null || true
     $SUDO rm -f /var/run/helix-splash.pid 2>/dev/null || true
-    $SUDO rm -f /tmp/helixscreen.log 2>/dev/null || true
+    rm -f /tmp/helixscreen.log 2>/dev/null || true
 
     # Re-enable services from state file (before removing install dir)
     reenable_disabled_services
@@ -1700,23 +1720,23 @@ uninstall() {
     for cache_dir in /root/.cache/helix /tmp/helix_thumbs /.cache/helix /data/helixscreen/cache /usr/data/helixscreen/cache; do
         if [ -d "$cache_dir" ] 2>/dev/null; then
             log_info "Removing cache: $cache_dir"
-            $SUDO rm -rf "$cache_dir"
+            $(file_sudo "$cache_dir") rm -rf "$cache_dir"
         fi
     done
     # Clean up /var/tmp helix files
     for tmp_pattern in /var/tmp/helix_*; do
         if [ -e "$tmp_pattern" ] 2>/dev/null; then
             log_info "Removing cache: $tmp_pattern"
-            $SUDO rm -rf "$tmp_pattern"
+            $(file_sudo "$tmp_pattern") rm -rf "$tmp_pattern"
         fi
     done
 
     # Clean up active flag file
-    $SUDO rm -f /tmp/helixscreen_active 2>/dev/null || true
+    rm -f /tmp/helixscreen_active 2>/dev/null || true
 
     # Clean up macOS resource fork files (created by scp from Mac)
     for pattern in /opt/._helixscreen /root/._helixscreen; do
-        $SUDO rm -f "$pattern" 2>/dev/null || true
+        $(file_sudo "$pattern") rm -f "$pattern" 2>/dev/null || true
     done
 
     # Remove update_manager section from moonraker.conf (if present)

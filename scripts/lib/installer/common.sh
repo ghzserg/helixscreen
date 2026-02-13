@@ -28,6 +28,21 @@ HELIX_INIT_SCRIPTS="/etc/init.d/S80helixscreen /etc/init.d/S90helixscreen /etc/i
 # HelixScreen process names (order matters: watchdog first to prevent crash dialog)
 HELIX_PROCESSES="helix-watchdog helix-screen helix-splash"
 
+# Get sudo prefix needed for a file operation.
+# Returns empty string if current user has write access, $SUDO otherwise.
+# For existing files, checks file writability. For new files, checks parent dir.
+# This avoids creating root-owned files in user-writable directories.
+file_sudo() {
+    local path="$1"
+    if [ -e "$path" ]; then
+        [ -w "$path" ] && echo "" || echo "$SUDO"
+    else
+        local dir
+        dir="$(dirname "$path")"
+        [ -w "$dir" ] && echo "" || echo "$SUDO"
+    fi
+}
+
 # Track what we've done for cleanup
 CLEANUP_TMP=false
 CLEANUP_SERVICE=false

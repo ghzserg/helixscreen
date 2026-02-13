@@ -72,12 +72,14 @@ EOF
 # Args: $1 = moonraker.conf path
 add_update_manager_section() {
     local conf="$1"
+    local fs
+    fs=$(file_sudo "$conf")
 
     # Create backup
-    $SUDO cp "$conf" "${conf}.bak.helixscreen" 2>/dev/null || true
+    $fs cp "$conf" "${conf}.bak.helixscreen" 2>/dev/null || true
 
     # Append configuration
-    generate_update_manager_config | $SUDO tee -a "$conf" >/dev/null
+    generate_update_manager_config | $fs tee -a "$conf" >/dev/null
 
     log_success "Added update_manager section to $conf"
     log_info "You can now update HelixScreen from the Mainsail/Fluidd web interface!"
@@ -177,8 +179,10 @@ ensure_moonraker_asvc() {
         return 0
     fi
 
+    local fs
+    fs=$(file_sudo "$asvc")
     log_info "Adding helixscreen to $asvc..."
-    echo "helixscreen" | $SUDO tee -a "$asvc" >/dev/null
+    echo "helixscreen" | $fs tee -a "$asvc" >/dev/null
     log_success "Added helixscreen to Moonraker service allowlist"
 }
 
@@ -261,23 +265,24 @@ remove_update_manager_section() {
     log_info "Removing update_manager section from $conf..."
 
     # Create backup
-    $SUDO cp "$conf" "${conf}.bak.helixscreen-uninstall" 2>/dev/null || true
+    local fs
+    fs=$(file_sudo "$conf")
+    $fs cp "$conf" "${conf}.bak.helixscreen-uninstall" 2>/dev/null || true
 
     # Remove the section (from [update_manager helixscreen] to next section or EOF)
     # This uses awk to skip lines between [update_manager helixscreen] and the next [section]
-    # Note: Need to run awk through sudo to handle permission on output file
-    $SUDO sh -c "awk '
+    $fs sh -c "awk '
         /^\[update_manager helixscreen\]/ { skip=1; next }
         /^\[/ { skip=0 }
         !skip { print }
-    ' \"$conf\" > \"${conf}.tmp\"" && $SUDO mv "${conf}.tmp" "$conf"
+    ' \"$conf\" > \"${conf}.tmp\"" && $fs mv "${conf}.tmp" "$conf"
 
     # Also remove any "Added by HelixScreen" comment lines that precede it
-    $SUDO sed -i '/# HelixScreen Update Manager/d' "$conf" 2>/dev/null || \
-    $SUDO sed -i '' '/# HelixScreen Update Manager/d' "$conf" 2>/dev/null || true
+    $fs sed -i '/# HelixScreen Update Manager/d' "$conf" 2>/dev/null || \
+    $fs sed -i '' '/# HelixScreen Update Manager/d' "$conf" 2>/dev/null || true
 
-    $SUDO sed -i '/# Added by HelixScreen installer/d' "$conf" 2>/dev/null || \
-    $SUDO sed -i '' '/# Added by HelixScreen installer/d' "$conf" 2>/dev/null || true
+    $fs sed -i '/# Added by HelixScreen installer/d' "$conf" 2>/dev/null || \
+    $fs sed -i '' '/# Added by HelixScreen installer/d' "$conf" 2>/dev/null || true
 
     log_success "Removed update_manager section from $conf"
 }
