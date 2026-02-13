@@ -97,14 +97,19 @@ class MotionPanel : public OverlayBase {
     lv_obj_t* parent_screen_ = nullptr;
     bool callbacks_registered_ = false;
 
+    // Homing state subjects (0=unhomed, 1=homed) for declarative XML bind_style
+    lv_subject_t motion_x_homed_;
+    lv_subject_t motion_y_homed_;
+    lv_subject_t motion_z_homed_;
+
     ObserverGuard position_x_observer_;
     ObserverGuard position_y_observer_;
     ObserverGuard gcode_z_observer_;
     ObserverGuard actual_z_observer_;
     ObserverGuard bed_moves_observer_;
+    ObserverGuard homed_axes_observer_;
 
     void setup_jog_pad();
-    void setup_z_buttons();
     void register_position_observers();
 
     static void jog_pad_jog_cb(jog_direction_t direction, float distance_mm, void* user_data);

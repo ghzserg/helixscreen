@@ -4,61 +4,13 @@
 <component>
   <!-- Motion Sub-Screen: XYZ Movement & Homing -->
   <!-- Simplified button grid design (vs circular jog pad) -->
-  <!-- Component-local constants for jog pad colors (theme-aware) -->
-  <consts>
-    <!-- Jog pad colors using Nord frost blues for contrast -->
-    <!-- Outer ring background - lighter frost blue -->
-    <const name="jog_outer_ring_light" value="#88c0d0"/>
-    <!-- nord8 frost light blue -->
-    <const name="jog_outer_ring_dark" value="#81a1c1"/>
-    <!-- nord9 frost blue -->
-    <!-- Inner circle background - darker frost blue -->
-    <const name="jog_inner_circle_light" value="#81a1c1"/>
-    <!-- nord9 frost blue -->
-    <const name="jog_inner_circle_dark" value="#5e81ac"/>
-    <!-- nord10 frost dark blue -->
-    <!-- Grid divider lines -->
-    <const name="jog_grid_lines_light" value="#2e3440"/>
-    <!-- nord0 dark for contrast -->
-    <const name="jog_grid_lines_dark" value="#2e3440"/>
-    <!-- nord0 -->
-    <!-- Home button background -->
-    <const name="jog_home_bg_light" value="#d8dee9"/>
-    <!-- nord4 -->
-    <const name="jog_home_bg_dark" value="#4c566a"/>
-    <!-- nord3 -->
-    <!-- Home button border -->
-    <const name="jog_home_border_light" value="#81a1c1"/>
-    <!-- nord9 -->
-    <const name="jog_home_border_dark" value="#81a1c1"/>
-    <!-- nord9 -->
-    <!-- Home icon text color -->
-    <const name="jog_home_text_light" value="#2e3440"/>
-    <!-- nord0 -->
-    <const name="jog_home_text_dark" value="#eceff4"/>
-    <!-- nord6 -->
-    <!-- Zone boundary lines -->
-    <const name="jog_boundary_lines_light" value="#2e3440"/>
-    <!-- nord0 dark for contrast -->
-    <const name="jog_boundary_lines_dark" value="#2e3440"/>
-    <!-- nord0 -->
-    <!-- Distance labels (1mm/10mm text) -->
-    <const name="jog_distance_labels_light" value="#2e3440"/>
-    <!-- nord0 -->
-    <const name="jog_distance_labels_dark" value="#d8dee9"/>
-    <!-- nord4 -->
-    <!-- Axis labels (X+/Y+ etc) -->
-    <const name="jog_axis_labels_light" value="#2e3440"/>
-    <!-- nord0 -->
-    <const name="jog_axis_labels_dark" value="#eceff4"/>
-    <!-- nord6 -->
-    <!-- Press highlight overlay -->
-    <const name="jog_highlight_light" value="#2e3440"/>
-    <!-- nord0 -->
-    <const name="jog_highlight_dark" value="#eceff4"/>
-    <!-- nord6 -->
-  </consts>
+  <!-- Jog pad colors are loaded from semantic theme tokens in C++ (ui_jog_pad.cpp) -->
   <!-- Uses shared backdrop from navigation system -->
+  <styles>
+    <!-- Homing indicator styles for position display -->
+    <style name="indicator_homed" bg_color="#success"/>
+    <style name="indicator_unhomed" bg_color="#text_muted"/>
+  </styles>
   <view name="motion_panel"
         extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_pad_all="0"
         style_border_width="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
@@ -89,40 +41,54 @@
       <lv_obj name="right_column"
               width="35%" height="100%" style_pad_all="0" scrollable="false" style_border_opa="0" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_md">
-        <!-- Position Display - compact vertical layout -->
-        <lv_obj name="position_col"
-                width="100%" height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
-                style_flex_cross_place="start" style_pad_gap="#space_xs">
-          <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs">
+        <!-- Position Display - wrapped in card for consistent visual grouping -->
+        <ui_card name="position_card" width="100%" height="content"
+                 style_pad_all="#space_sm" flex_flow="column" style_pad_gap="#space_xs">
+          <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs"
+                  style_flex_cross_place="center">
             <text_small text="X:" translation_tag="X:"/>
-            <text_small name="pos_x" bind_text="motion_pos_x"/>
+            <text_small name="pos_x" bind_text="motion_pos_x" flex_grow="1"/>
+            <lv_obj width="8" height="8" style_radius="9999">
+              <bind_style name="indicator_homed" subject="motion_x_homed" ref_value="1"/>
+              <bind_style name="indicator_unhomed" subject="motion_x_homed" ref_value="0"/>
+            </lv_obj>
           </lv_obj>
-          <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs">
+          <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs"
+                  style_flex_cross_place="center">
             <text_small text="Y:" translation_tag="Y:"/>
-            <text_small name="pos_y" bind_text="motion_pos_y"/>
+            <text_small name="pos_y" bind_text="motion_pos_y" flex_grow="1"/>
+            <lv_obj width="8" height="8" style_radius="9999">
+              <bind_style name="indicator_homed" subject="motion_y_homed" ref_value="1"/>
+              <bind_style name="indicator_unhomed" subject="motion_y_homed" ref_value="0"/>
+            </lv_obj>
           </lv_obj>
-          <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs">
+          <lv_obj width="100%" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs"
+                  style_flex_cross_place="center">
             <text_small text="Z:"/>
-            <text_small name="pos_z" bind_text="motion_pos_z"/>
+            <text_small name="pos_z" bind_text="motion_pos_z" flex_grow="1"/>
+            <lv_obj width="8" height="8" style_radius="9999">
+              <bind_style name="indicator_homed" subject="motion_z_homed" ref_value="1"/>
+              <bind_style name="indicator_unhomed" subject="motion_z_homed" ref_value="0"/>
+            </lv_obj>
           </lv_obj>
-        </lv_obj>
+        </ui_card>
         <!-- Z-Axis Button Group (responsive: uses flex_grow to fill available space) -->
         <!-- Label centered between up/down button pairs -->
         <lv_obj name="z_controls"
                 width="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" scrollable="false" flex_flow="column"
                 style_flex_main_place="space_evenly" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <ui_button name="z_up_10" width="100%" flex_grow="1" style_max_height="80" icon="arrow_up" bind_icon="motion_z_up_icon" text="10mm" translation_tag="10mm">
+          <ui_button name="z_up_10" width="100%" flex_grow="1" style_max_height="#button_height_lg" icon="arrow_up" bind_icon="motion_z_up_icon" text="10mm" translation_tag="10mm">
             <event_cb trigger="clicked" callback="on_motion_z_button" user_data="z_up_10"/>
           </ui_button>
-          <ui_button name="z_up_1" width="100%" flex_grow="1" style_max_height="80" icon="arrow_up" bind_icon="motion_z_up_icon" text="1mm" translation_tag="1mm">
+          <ui_button name="z_up_1" width="100%" flex_grow="1" style_max_height="#button_height_lg" icon="arrow_up" bind_icon="motion_z_up_icon" text="1mm" translation_tag="1mm">
             <event_cb trigger="clicked" callback="on_motion_z_button" user_data="z_up_1"/>
           </ui_button>
           <!-- Z-Axis label - shows "Bed" or "Print Head" based on kinematics -->
           <text_body name="z_axis_label" width="100%" bind_text="motion_z_axis_label" style_text_align="center"/>
-          <ui_button name="z_down_1" width="100%" flex_grow="1" style_max_height="80" icon="arrow_down" bind_icon="motion_z_down_icon" text="1mm" translation_tag="1mm">
+          <ui_button name="z_down_1" width="100%" flex_grow="1" style_max_height="#button_height_lg" icon="arrow_down" bind_icon="motion_z_down_icon" text="1mm" translation_tag="1mm">
             <event_cb trigger="clicked" callback="on_motion_z_button" user_data="z_down_1"/>
           </ui_button>
-          <ui_button name="z_down_10" width="100%" flex_grow="1" style_max_height="80" icon="arrow_down" bind_icon="motion_z_down_icon" text="10mm" translation_tag="10mm">
+          <ui_button name="z_down_10" width="100%" flex_grow="1" style_max_height="#button_height_lg" icon="arrow_down" bind_icon="motion_z_down_icon" text="10mm" translation_tag="10mm">
             <event_cb trigger="clicked" callback="on_motion_z_button" user_data="z_down_10"/>
           </ui_button>
         </lv_obj>

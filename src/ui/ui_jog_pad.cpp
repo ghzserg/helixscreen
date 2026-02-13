@@ -81,85 +81,28 @@ static jog_pad_state_t* get_state(lv_obj_t* obj) {
     return (jog_pad_state_t*)lv_obj_get_user_data(obj);
 }
 
-// Helper: Load theme-aware colors from component scope or use fallbacks
-static void load_colors(jog_pad_state_t* state, const char* component_scope_name) {
-    // Try to get component scope (if widget used in XML component)
-    lv_xml_component_scope_t* scope =
-        component_scope_name ? lv_xml_component_get_scope(component_scope_name) : nullptr;
+// Helper: Load colors from semantic theme tokens
+static void load_colors(jog_pad_state_t* state, const char* /*component_scope_name*/) {
+    // Use semantic theme tokens — these adapt to any theme automatically
+    state->jog_color_outer_ring = theme_manager_get_color("secondary");
+    state->jog_color_inner_circle = theme_manager_get_color("primary");
+    state->jog_color_home_bg = theme_manager_get_color("elevated_bg");
+    state->jog_color_home_border = theme_manager_get_color("secondary");
+    state->jog_color_home_text = theme_manager_get_color("text");
 
-    if (!scope) {
-        spdlog::debug("[JogPad] No component scope '{}', using fallback colors",
-                      component_scope_name ? component_scope_name : "(null)");
-        // Fallback to theme token defaults based on current mode
-        bool use_dark_mode = theme_manager_is_dark_mode();
-        state->jog_color_outer_ring =
-            theme_manager_get_color(use_dark_mode ? "jog_outer_ring_dark" : "jog_outer_ring_light");
-        state->jog_color_inner_circle = theme_manager_get_color(
-            use_dark_mode ? "jog_inner_circle_dark" : "jog_inner_circle_light");
-        state->jog_color_grid_lines =
-            theme_manager_get_color(use_dark_mode ? "jog_grid_lines_dark" : "jog_grid_lines_light");
-        state->jog_color_home_bg =
-            theme_manager_get_color(use_dark_mode ? "jog_home_bg_dark" : "jog_home_bg_light");
-        state->jog_color_home_border = theme_manager_get_color(
-            use_dark_mode ? "jog_home_border_dark" : "jog_home_border_light");
-        state->jog_color_home_text =
-            theme_manager_get_color(use_dark_mode ? "jog_home_text_dark" : "jog_home_text_light");
-        state->jog_color_boundary_lines = theme_manager_get_color(
-            use_dark_mode ? "jog_boundary_lines_dark" : "jog_boundary_lines_light");
-        state->jog_color_distance_labels = theme_manager_get_color(
-            use_dark_mode ? "jog_distance_labels_dark" : "jog_distance_labels_light");
-        state->jog_color_axis_labels = theme_manager_get_color(
-            use_dark_mode ? "jog_axis_labels_dark" : "jog_axis_labels_light");
-        state->jog_color_highlight =
-            theme_manager_get_color(use_dark_mode ? "jog_highlight_dark" : "jog_highlight_light");
-        return;
-    }
+    // Divider lines use a dark border color for subtle separation
+    lv_color_t border = theme_manager_get_color("border");
+    state->jog_color_grid_lines = border;
+    state->jog_color_boundary_lines = border;
 
-    // Read light/dark variants for each color
-    bool use_dark_mode = theme_manager_is_dark_mode();
+    // Labels and highlight still need contrast against ring backgrounds
+    lv_color_t ring_contrast = theme_manager_get_contrast_text(state->jog_color_outer_ring);
+    state->jog_color_axis_labels = ring_contrast;
+    state->jog_color_distance_labels = ring_contrast;
+    state->jog_color_highlight = ring_contrast;
 
-    const char* outer_ring =
-        lv_xml_get_const(scope, use_dark_mode ? "jog_outer_ring_dark" : "jog_outer_ring_light");
-    const char* inner_circle =
-        lv_xml_get_const(scope, use_dark_mode ? "jog_inner_circle_dark" : "jog_inner_circle_light");
-    const char* grid_lines =
-        lv_xml_get_const(scope, use_dark_mode ? "jog_grid_lines_dark" : "jog_grid_lines_light");
-    const char* home_bg =
-        lv_xml_get_const(scope, use_dark_mode ? "jog_home_bg_dark" : "jog_home_bg_light");
-    const char* home_border =
-        lv_xml_get_const(scope, use_dark_mode ? "jog_home_border_dark" : "jog_home_border_light");
-    const char* home_text =
-        lv_xml_get_const(scope, use_dark_mode ? "jog_home_text_dark" : "jog_home_text_light");
-    const char* boundary_lines = lv_xml_get_const(
-        scope, use_dark_mode ? "jog_boundary_lines_dark" : "jog_boundary_lines_light");
-    const char* distance_labels = lv_xml_get_const(
-        scope, use_dark_mode ? "jog_distance_labels_dark" : "jog_distance_labels_light");
-    const char* axis_labels =
-        lv_xml_get_const(scope, use_dark_mode ? "jog_axis_labels_dark" : "jog_axis_labels_light");
-    const char* highlight =
-        lv_xml_get_const(scope, use_dark_mode ? "jog_highlight_dark" : "jog_highlight_light");
-
-    // Parse colors using theme utility
-    state->jog_color_outer_ring =
-        theme_manager_parse_hex_color(outer_ring ? outer_ring : "#3A3A3A");
-    state->jog_color_inner_circle =
-        theme_manager_parse_hex_color(inner_circle ? inner_circle : "#2A2A2A");
-    state->jog_color_grid_lines =
-        theme_manager_parse_hex_color(grid_lines ? grid_lines : "#000000");
-    state->jog_color_home_bg = theme_manager_parse_hex_color(home_bg ? home_bg : "#404040");
-    state->jog_color_home_border =
-        theme_manager_parse_hex_color(home_border ? home_border : "#606060");
-    state->jog_color_home_text = theme_manager_parse_hex_color(home_text ? home_text : "#FFFFFF");
-    state->jog_color_boundary_lines =
-        theme_manager_parse_hex_color(boundary_lines ? boundary_lines : "#484848");
-    state->jog_color_distance_labels =
-        theme_manager_parse_hex_color(distance_labels ? distance_labels : "#CCCCCC");
-    state->jog_color_axis_labels =
-        theme_manager_parse_hex_color(axis_labels ? axis_labels : "#FFFFFF");
-    state->jog_color_highlight = theme_manager_parse_hex_color(highlight ? highlight : "#FFFFFF");
-
-    spdlog::debug("[JogPad] Colors loaded from component scope '{}' ({} mode)",
-                  component_scope_name, use_dark_mode ? "dark" : "light");
+    spdlog::debug("[JogPad] Colors loaded from theme tokens ({} mode)",
+                  theme_manager_is_dark_mode() ? "dark" : "light");
 }
 
 // Helper: Calculate angle from center point (0° = North, clockwise)

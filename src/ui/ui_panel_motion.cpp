@@ -86,6 +86,12 @@ void MotionPanel::init_subjects() {
     UI_MANAGED_SUBJECT_STRING(z_down_icon_subject_, z_down_icon_buf_, "arrow_down",
                               "motion_z_down_icon", subjects_);
 
+    // Homing status subjects for declarative bind_style indicators (0=unhomed, 1=homed)
+    // Prefixed with motion_ to avoid collision with ControlsPanel's x_homed/y_homed/z_homed
+    UI_MANAGED_SUBJECT_INT(motion_x_homed_, 0, "motion_x_homed", subjects_);
+    UI_MANAGED_SUBJECT_INT(motion_y_homed_, 0, "motion_y_homed", subjects_);
+    UI_MANAGED_SUBJECT_INT(motion_z_homed_, 0, "motion_z_homed", subjects_);
+
     // Register PrinterState observers (RAII - auto-removed on destruction)
     register_position_observers();
 
@@ -164,37 +170,11 @@ void MotionPanel::register_callbacks() {
 // ============================================================================
 
 lv_obj_t* MotionPanel::create(lv_obj_t* parent) {
-    if (!parent) {
-        spdlog::error("[{}] Cannot create: null parent", get_name());
+    overlay_root_ = create_overlay_from_xml(parent, "motion_panel");
+    if (!overlay_root_)
         return nullptr;
-    }
 
-    spdlog::debug("[{}] Creating overlay from XML", get_name());
-
-    parent_screen_ = parent;
-
-    // Reset cleanup flag when (re)creating
-    cleanup_called_ = false;
-
-    // Create overlay from XML
-    overlay_root_ = static_cast<lv_obj_t*>(lv_xml_create(parent, "motion_panel", nullptr));
-
-    if (!overlay_root_) {
-        spdlog::error("[{}] Failed to create from XML", get_name());
-        return nullptr;
-    }
-
-    // Use standard overlay panel setup (wires header, handles responsive padding)
-    // Note: Back button is wired via header_bar.xml default callback (on_header_back_clicked)
-    ui_overlay_panel_setup_standard(overlay_root_, parent_screen_, "overlay_header",
-                                    "overlay_content");
-
-    // Setup jog pad and Z-axis controls
     setup_jog_pad();
-    setup_z_buttons();
-
-    // Initially hidden
-    lv_obj_add_flag(overlay_root_, LV_OBJ_FLAG_HIDDEN);
 
     spdlog::info("[{}] Overlay created successfully", get_name());
     return overlay_root_;
@@ -280,11 +260,6 @@ void MotionPanel::setup_jog_pad() {
     }
 }
 
-void MotionPanel::setup_z_buttons() {
-    // Z buttons use declarative XML event_cb - callbacks registered in register_callbacks()
-    spdlog::debug("[{}] Z-axis controls (declarative XML event_cb)", get_name());
-}
-
 // ============================================================================
 // Position Observers
 // ============================================================================
@@ -294,6 +269,7 @@ void MotionPanel::register_position_observers() {
     // Using observer factory for type-safe lambda-based observers with RAII cleanup
 
     using helix::ui::observe_int_sync;
+    using helix::ui::observe_string;
 
     // Use gcode position (commanded) for X/Y display and jog calculations
     position_x_observer_ = observe_int_sync<MotionPanel>(
@@ -347,7 +323,27 @@ void MotionPanel::register_position_observers() {
                                           self->update_z_axis_label(bed_moves != 0);
                                       });
 
-    spdlog::debug("[{}] Position + kinematics observers registered (observer factory)", get_name());
+    // Observe homed_axes from PrinterState to update homing indicator subjects
+    // Same pattern as ControlsPanel - parse "xyz" string into individual integer subjects
+    homed_axes_observer_ =
+        observe_string<MotionPanel>(get_printer_state().get_homed_axes_subject(), this,
+                                    [](MotionPanel* self, const char* axes) {
+                                        if (!self->subjects_initialized_)
+                                            return;
+                                        int x = (strchr(axes, 'x') != nullptr) ? 1 : 0;
+                                        int y = (strchr(axes, 'y') != nullptr) ? 1 : 0;
+                                        int z = (strchr(axes, 'z') != nullptr) ? 1 : 0;
+
+                                        if (lv_subject_get_int(&self->motion_x_homed_) != x)
+                                            lv_subject_set_int(&self->motion_x_homed_, x);
+                                        if (lv_subject_get_int(&self->motion_y_homed_) != y)
+                                            lv_subject_set_int(&self->motion_y_homed_, y);
+                                        if (lv_subject_get_int(&self->motion_z_homed_) != z)
+                                            lv_subject_set_int(&self->motion_z_homed_, z);
+                                    });
+
+    spdlog::debug("[{}] Position + kinematics + homing observers registered (observer factory)",
+                  get_name());
 }
 
 // Observer callbacks migrated to lambda-based observer factory pattern
