@@ -3,10 +3,11 @@ apply plugin: 'com.android.application'
 android {
     namespace "org.helixscreen.app"
     compileSdkVersion 34
+    ndkVersion "29.0.14206865"
 
     defaultConfig {
         applicationId "org.helixscreen.app"
-        minSdkVersion 21
+        minSdkVersion 28
         targetSdkVersion 34
         versionCode 1
         versionName "1.0.0"
@@ -30,6 +31,10 @@ android {
         cmake {
             path 'jni/CMakeLists.txt'
         }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     lint {

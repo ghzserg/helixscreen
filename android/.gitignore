@@ -2,8 +2,7 @@
 build/
 app/build/
 app/.cxx/
-app/src/main/assets/assets/
-app/src/main/assets/config/
+app/src/main/assets/
 local.properties
 *.iml
 .idea/
