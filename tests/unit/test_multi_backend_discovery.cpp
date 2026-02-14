@@ -282,3 +282,88 @@ TEST_CASE("AmsState: init_backends skips when no systems detected", "[ams][multi
 
     ams.deinit_subjects();
 }
+
+// ============================================================================
+// Task 8: Integration and lifecycle tests
+// ============================================================================
+
+TEST_CASE("Multi-backend: full lifecycle", "[ams][multi-backend]") {
+    lv_init_safe();
+
+    AmsState& ams = AmsState::instance();
+    ams.deinit_subjects();
+    ams.init_subjects(false);
+
+    // Add two mock backends
+    ams.add_backend(AmsBackend::create_mock(4));
+    ams.add_backend(AmsBackend::create_mock(2));
+
+    REQUIRE(ams.backend_count() == 2);
+    REQUIRE(lv_subject_get_int(ams.get_backend_count_subject()) == 2);
+
+    // Sync both backends
+    ams.sync_backend(0);
+    ams.sync_backend(1);
+
+    // Primary backend slots via flat accessors
+    REQUIRE(ams.get_slot_color_subject(0) != nullptr);
+    REQUIRE(ams.get_slot_color_subject(3) != nullptr);
+
+    // Secondary backend slots via indexed accessors
+    REQUIRE(ams.get_slot_color_subject(1, 0) != nullptr);
+    REQUIRE(ams.get_slot_color_subject(1, 1) != nullptr);
+    REQUIRE(ams.get_slot_color_subject(1, 2) == nullptr); // mock2 only has 2 slots
+
+    // Active backend selection
+    ams.set_active_backend(1);
+    REQUIRE(ams.active_backend_index() == 1);
+    REQUIRE(lv_subject_get_int(ams.get_active_backend_subject()) == 1);
+
+    // Out of range selection is ignored
+    ams.set_active_backend(5);
+    REQUIRE(ams.active_backend_index() == 1); // unchanged
+
+    // Deinit cleans everything up
+    ams.deinit_subjects();
+    REQUIRE(ams.backend_count() == 0);
+    REQUIRE(lv_subject_get_int(ams.get_backend_count_subject()) == 0);
+}
+
+TEST_CASE("Multi-backend: deinit then re-init is safe", "[ams][multi-backend]") {
+    lv_init_safe();
+
+    AmsState& ams = AmsState::instance();
+
+    // First cycle
+    ams.deinit_subjects();
+    ams.init_subjects(false);
+    ams.add_backend(AmsBackend::create_mock(4));
+    REQUIRE(ams.backend_count() == 1);
+    ams.deinit_subjects();
+
+    // Second cycle
+    ams.init_subjects(false);
+    REQUIRE(ams.backend_count() == 0);
+    ams.add_backend(AmsBackend::create_mock(2));
+    REQUIRE(ams.backend_count() == 1);
+    ams.deinit_subjects();
+}
+
+TEST_CASE("Multi-backend: active backend resets on clear", "[ams][multi-backend]") {
+    lv_init_safe();
+
+    AmsState& ams = AmsState::instance();
+    ams.deinit_subjects();
+    ams.init_subjects(false);
+
+    ams.add_backend(AmsBackend::create_mock(4));
+    ams.add_backend(AmsBackend::create_mock(2));
+    ams.set_active_backend(1);
+    REQUIRE(ams.active_backend_index() == 1);
+
+    ams.clear_backends();
+    REQUIRE(ams.active_backend_index() == 0);
+    REQUIRE(ams.backend_count() == 0);
+
+    ams.deinit_subjects();
+}
