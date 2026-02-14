@@ -831,8 +831,9 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to:
 
 ### Still Stuck?
 
-1. Check [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues) for known problems
-2. Open a new issue with:
+1. Ask in the [HelixScreen Discord](https://discord.gg/rZ9dB74V) for quick help
+2. Check [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues) for known problems
+3. Open a new issue with:
    - Your hardware (Pi model, display type)
    - HelixScreen version
    - Relevant log output
