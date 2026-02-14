@@ -33,6 +33,7 @@
 #include "printer_detector.h"
 #include "printer_state.h"
 #include "sound_manager.h"
+#include "tool_state.h"
 
 #include <spdlog/spdlog.h>
 
@@ -203,6 +204,17 @@ void MoonrakerManager::process_notifications() {
         } else {
             // Regular Moonraker notification
             get_printer_state().update_from_notification(notification);
+
+            // Forward status updates to ToolState for tool changer tracking
+            if (notification.contains("method") && notification.contains("params")) {
+                const auto& method = notification["method"];
+                if (method.is_string() && method.get<std::string>() == "notify_status_update") {
+                    const auto& params = notification["params"];
+                    if (params.is_array() && !params.empty()) {
+                        helix::ToolState::instance().update_from_status(params[0]);
+                    }
+                }
+            }
         }
     }
 }

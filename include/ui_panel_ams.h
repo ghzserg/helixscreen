@@ -130,6 +130,7 @@ class AmsPanel : public PanelBase {
     ObserverGuard path_segment_observer_;
     ObserverGuard path_topology_observer_;
     ObserverGuard extruder_temp_observer_; ///< For preheat completion detection
+    ObserverGuard backend_count_observer_; ///< For backend selector visibility
 
     // === Dynamic Slot State ===
 
@@ -170,6 +171,15 @@ class AmsPanel : public PanelBase {
     // === Endless Spool Arrows Canvas ===
 
     lv_obj_t* endless_arrows_ = nullptr; ///< Endless spool backup chain visualization
+
+    // === Backend Selector State ===
+
+    int active_backend_idx_ = 0; ///< Currently selected backend index
+
+    // === Backend Selector Helpers ===
+
+    void rebuild_backend_selector();
+    void on_backend_segment_selected(int index);
 
     // === Setup Helpers ===
 

@@ -55,6 +55,7 @@
 #include "static_subject_registry.h"
 #include "system/telemetry_manager.h"
 #include "temperature_sensor_manager.h"
+#include "tool_state.h"
 #include "usb_manager.h"
 #include "width_sensor_manager.h"
 #include "xml_registration.h"
@@ -162,6 +163,11 @@ void SubjectInitializer::init_ams_subjects() {
     // Register AmsState cleanup (StaticSubjectRegistry - core state singleton)
     StaticSubjectRegistry::instance().register_deinit(
         "AmsState", []() { AmsState::instance().deinit_subjects(); });
+
+    // Initialize ToolState subjects (tool changer state tracking)
+    helix::ToolState::instance().init_subjects();
+    StaticSubjectRegistry::instance().register_deinit(
+        "ToolState", []() { helix::ToolState::instance().deinit_subjects(); });
 
     // Initialize sensor manager subjects BEFORE panels so XML bindings can work
     REGISTER_SENSOR_MANAGER(helix::FilamentSensorManager);

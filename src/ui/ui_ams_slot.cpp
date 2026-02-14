@@ -582,9 +582,10 @@ static void setup_slot_observers(AmsSlotData* data) {
     using helix::ui::observe_int_sync;
     AmsState& state = AmsState::instance();
 
-    // Get per-slot subjects
-    lv_subject_t* color_subject = state.get_slot_color_subject(data->slot_index);
-    lv_subject_t* status_subject = state.get_slot_status_subject(data->slot_index);
+    // Get per-slot subjects (using active backend for multi-backend systems)
+    int backend_idx = state.active_backend_index();
+    lv_subject_t* color_subject = state.get_slot_color_subject(backend_idx, data->slot_index);
+    lv_subject_t* status_subject = state.get_slot_status_subject(backend_idx, data->slot_index);
     lv_subject_t* current_slot_subject = state.get_current_slot_subject();
     lv_subject_t* filament_loaded_subject = state.get_filament_loaded_subject();
 
@@ -834,14 +835,15 @@ void ui_ams_slot_refresh(lv_obj_t* obj) {
     }
 
     AmsState& state = AmsState::instance();
+    int backend_idx = state.active_backend_index();
 
     // Trigger updates with current values (using helper functions instead of callbacks)
-    lv_subject_t* color_subject = state.get_slot_color_subject(data->slot_index);
+    lv_subject_t* color_subject = state.get_slot_color_subject(backend_idx, data->slot_index);
     if (color_subject) {
         apply_slot_color(data, lv_subject_get_int(color_subject));
     }
 
-    lv_subject_t* status_subject = state.get_slot_status_subject(data->slot_index);
+    lv_subject_t* status_subject = state.get_slot_status_subject(backend_idx, data->slot_index);
     if (status_subject) {
         apply_slot_status(data, lv_subject_get_int(status_subject));
     }

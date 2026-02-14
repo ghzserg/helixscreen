@@ -654,6 +654,112 @@ class MyModal : public Modal {
 
 ---
 
+## Multi-Extruder & Multi-Tool Access
+
+Quick patterns for working with the multi-extruder and tool abstraction systems.
+
+### Accessing Multi-Extruder Temperatures
+
+```cpp
+#include "printer_state.h"
+
+auto& ps = PrinterState::instance();
+auto& pts = ps.temperature();
+
+// Legacy: first extruder (backward compatible)
+lv_subject_t* temp = pts.get_extruder_temp_subject();     // centidegrees
+lv_subject_t* target = pts.get_extruder_target_subject();
+
+// Per-extruder by Klipper name
+lv_subject_t* t1_temp = pts.get_extruder_temp_subject("extruder1");
+if (t1_temp) {
+    int centi = lv_subject_get_int(t1_temp);   // 2053 = 205.3C
+    float degrees = centi / 10.0f;
+}
+
+// Enumerate all extruders
+for (const auto& [name, info] : pts.extruders()) {
+    spdlog::info("{}: {:.1f}/{:.1f}C",
+        info.display_name, info.temperature, info.target);
+}
+
+// React to extruder list changes
+add_observer(observe_int_async<MyPanel>(
+    pts.get_extruder_version_subject(), this,
+    [](MyPanel* self, int32_t) { self->rebuild_temp_display(); }
+));
+```
+
+### Getting Active Tool Info
+
+```cpp
+#include "tool_state.h"
+
+auto& ts = helix::ToolState::instance();
+const auto* tool = ts.active_tool();
+if (tool) {
+    spdlog::info("Tool: {} extruder: {} fan: {}",
+        tool->name,
+        tool->extruder_name.value_or("none"),
+        tool->fan_name.value_or("none"));
+
+    // Get temperature for this tool's extruder
+    if (tool->extruder_name) {
+        auto* temp = ps.temperature().get_extruder_temp_subject(*tool->extruder_name);
+    }
+}
+```
+
+### Enumerating Tools
+
+```cpp
+auto& ts = helix::ToolState::instance();
+
+for (const auto& tool : ts.tools()) {
+    spdlog::info("T{}: mounted={} active={} detect={}",
+        tool.index, tool.mounted, tool.active,
+        static_cast<int>(tool.detect_state));
+}
+
+// Observe tool changes
+add_observer(observe_int_async<MyPanel>(
+    ts.get_tools_version_subject(), this,
+    [](MyPanel* self, int32_t) { self->rebuild_tool_list(); }
+));
+
+// Hide UI element on single-tool printers (XML)
+// <bind_flag_if_eq subject="tool_count" flag="hidden" ref_value="1"/>
+```
+
+### Multi-Backend AMS Access
+
+```cpp
+#include "ams_state.h"
+
+auto& ams = AmsState::instance();
+
+// Number of filament system backends
+int count = ams.backend_count();
+
+// Access specific backend
+AmsBackend* primary = ams.get_backend(0);
+AmsBackend* secondary = ams.get_backend(1);
+
+// Per-backend slot subjects (for UI binding)
+lv_subject_t* color = ams.get_slot_color_subject(/*backend=*/1, /*slot=*/0);
+lv_subject_t* status = ams.get_slot_status_subject(/*backend=*/1, /*slot=*/0);
+
+// Switch active backend (updates all system-level subjects)
+ams.set_active_backend(1);
+
+// Observe backend count changes
+// <bind_flag_if_gt subject="backend_count" flag="hidden" ref_value="1"/>
+```
+
+**Full docs:** [TOOL_ABSTRACTION.md](TOOL_ABSTRACTION.md), [MULTI_EXTRUDER_TEMPERATURE.md](MULTI_EXTRUDER_TEMPERATURE.md), [FILAMENT_MANAGEMENT.md](FILAMENT_MANAGEMENT.md)
+
+---
+
 ## See Also
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design, patterns, architectural decisions

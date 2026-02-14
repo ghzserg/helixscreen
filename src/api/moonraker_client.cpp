@@ -1517,6 +1517,16 @@ void MoonrakerClient::complete_discovery_subscription(std::function<void()> on_c
         subscription_objects[sensor] = nullptr;
     }
 
+    // All discovered tool objects (for toolchanger support)
+    if (hardware_.has_tool_changer()) {
+        subscription_objects["toolchanger"] = nullptr;
+        for (const auto& tool_name : hardware_.tool_names()) {
+            subscription_objects["tool " + tool_name] = nullptr;
+        }
+        spdlog::info("[Moonraker Client] Subscribing to toolchanger + {} tool objects",
+                     hardware_.tool_names().size());
+    }
+
     // Firmware retraction settings (if printer has firmware_retraction module)
     if (hardware_.has_firmware_retraction()) {
         subscription_objects["firmware_retraction"] = nullptr;

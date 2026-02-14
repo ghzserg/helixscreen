@@ -115,7 +115,7 @@ Use `ObserverGuard` for RAII cleanup. See `observer_factory.h` for `observe_int_
 ## Where Things Live
 
 **Singletons** (all `::instance()`):
-`PrinterState` (all printer data/subjects), `SettingsManager` (persistent settings), `NavigationManager` (panel/overlay stack), `UpdateQueue` (thread-safe UI updates), `SoundManager`, `DisplayManager`, `ModalStack`, `PrinterDetector` (printer DB + capabilities)
+`PrinterState` (all printer data/subjects), `SettingsManager` (persistent settings), `NavigationManager` (panel/overlay stack), `UpdateQueue` (thread-safe UI updates), `SoundManager`, `DisplayManager`, `ModalStack`, `PrinterDetector` (printer DB + capabilities), `ToolState` (multi-tool tracking), `AmsState` (multi-backend filament systems)
 
 **Entry flow**: `main.cpp` → `Application` → `DisplayManager` → panels via `NavigationManager`
 

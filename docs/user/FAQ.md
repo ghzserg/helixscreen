@@ -183,9 +183,12 @@ The web frontend you use (Mainsail, Fluidd, etc.) doesn't matter - HelixScreen t
 
 ### Does it support multiple extruders / toolchangers?
 
-**Partial.** Current support:
-- ✅ Primary extruder temperature control
-- ⚠️ Full multi-extruder and toolchanger support is planned but not yet implemented
+**Yes.** Full multi-extruder and toolchanger support:
+- ✅ Per-extruder temperature control with extruder selector in the Temperature panel
+- ✅ Toolchanger support via [klipper-toolchanger](https://github.com/viesturz/klipper-toolchanger) — active tool badge on Home panel (T0, T1, etc.)
+- ✅ Tool-prefixed temperatures on the print status overlay
+- ✅ Dynamic discovery of all extruders from Klipper (extruder, extruder1, extruder2, etc.)
+- ✅ Multiple filament systems can run simultaneously (e.g. toolchanger + Happy Hare)
 
 ### Can I use my webcam?
 

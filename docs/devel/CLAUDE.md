@@ -34,7 +34,9 @@ All developer documentation lives here. When working on features, look up the re
 
 | Doc | When to read |
 |-----|-------------|
-| `FILAMENT_MANAGEMENT.md` | AMS, AFC (Box Turtle), Happy Hare, ValgACE, Tool Changer |
+| `FILAMENT_MANAGEMENT.md` | AMS, AFC (Box Turtle), Happy Hare, ValgACE, Tool Changer, multi-backend |
+| `MULTI_EXTRUDER_TEMPERATURE.md` | Multi-extruder temperature tracking, ExtruderInfo, dynamic subjects |
+| `TOOL_ABSTRACTION.md` | ToolState singleton, ToolInfo, tool-to-backend mapping, DetectState |
 | `INPUT_SHAPER.md` | Calibration panels, frequency response charts, CSV parser, PID |
 | `PREPRINT_PREDICTION.md` | ETA prediction engine, phase timing, weighted history |
 | `EXCLUDE_OBJECTS.md` | Object exclusion, per-object thumbnails, slicer setup |

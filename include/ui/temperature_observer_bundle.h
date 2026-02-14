@@ -138,6 +138,37 @@ template <typename Panel> class TemperatureObserverBundle {
     }
 
     /**
+     * @brief Setup observers for a specific extruder (by Klipper name)
+     *
+     * Binds only nozzle temp/target observers to named extruder subjects.
+     * Does not touch bed observers. Returns silently if subjects not found.
+     *
+     * @param panel Panel instance (must outlive observers)
+     * @param state PrinterState reference for temperature subjects
+     * @param extruder_name Klipper heater name (e.g. "extruder", "extruder1")
+     * @param on_nozzle_temp Called when nozzle current temperature changes
+     * @param on_nozzle_target Called when nozzle target temperature changes
+     */
+    template <typename NozzleTempHandler, typename NozzleTargetHandler>
+    void setup_for_extruder(Panel* panel, PrinterState& state, const std::string& extruder_name,
+                            NozzleTempHandler&& on_nozzle_temp,
+                            NozzleTargetHandler&& on_nozzle_target) {
+        clear(); // Release any existing observers before rebinding
+
+        auto* temp_subj = state.get_extruder_temp_subject(extruder_name);
+        auto* target_subj = state.get_extruder_target_subject(extruder_name);
+
+        if (temp_subj) {
+            nozzle_temp_observer_ = observe_int_sync<Panel>(
+                temp_subj, panel, std::forward<NozzleTempHandler>(on_nozzle_temp));
+        }
+        if (target_subj) {
+            nozzle_target_observer_ = observe_int_sync<Panel>(
+                target_subj, panel, std::forward<NozzleTargetHandler>(on_nozzle_target));
+        }
+    }
+
+    /**
      * @brief Clear all observers (automatic on destruction)
      *
      * Safe to call multiple times. Observers are released via RAII.

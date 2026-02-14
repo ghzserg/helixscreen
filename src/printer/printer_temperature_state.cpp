@@ -4,7 +4,8 @@
  * @brief Temperature state management extracted from PrinterState
  *
  * Manages extruder and bed temperature subjects with centidegree precision.
- * Extracted from PrinterState as part of god class decomposition.
+ * Supports multiple extruders via dynamic ExtruderInfo map while maintaining
+ * legacy static subjects for backward compatibility.
  */
 
 #include "printer_temperature_state.h"
@@ -25,12 +26,15 @@ void PrinterTemperatureState::init_subjects(bool register_xml) {
     spdlog::trace("[PrinterTemperatureState] Initializing subjects (register_xml={})",
                   register_xml);
 
-    // Temperature subjects (integer, centidegrees for 0.1C resolution)
+    // Legacy temperature subjects (integer, centidegrees for 0.1C resolution)
     INIT_SUBJECT_INT(extruder_temp, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(extruder_target, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(bed_temp, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(bed_target, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(chamber_temp, 0, subjects_, register_xml);
+
+    // Extruder version subject (bumped when extruder list changes)
+    INIT_SUBJECT_INT(extruder_version, 0, subjects_, register_xml);
 
     subjects_initialized_ = true;
     spdlog::trace("[PrinterTemperatureState] Subjects initialized successfully");
@@ -42,6 +46,18 @@ void PrinterTemperatureState::deinit_subjects() {
     }
 
     spdlog::debug("[PrinterTemperatureState] Deinitializing subjects");
+
+    // Deinit dynamic per-extruder subjects before clearing map
+    for (auto& [name, info] : extruders_) {
+        if (info.temp_subject) {
+            lv_subject_deinit(info.temp_subject.get());
+        }
+        if (info.target_subject) {
+            lv_subject_deinit(info.target_subject.get());
+        }
+    }
+    extruders_.clear();
+
     subjects_.deinit_all();
     subjects_initialized_ = false;
 }
@@ -58,10 +74,103 @@ void PrinterTemperatureState::register_xml_subjects() {
     lv_xml_register_subject(nullptr, "bed_temp", &bed_temp_);
     lv_xml_register_subject(nullptr, "bed_target", &bed_target_);
     lv_xml_register_subject(nullptr, "chamber_temp", &chamber_temp_);
+    lv_xml_register_subject(nullptr, "extruder_version", &extruder_version_);
+}
+
+void PrinterTemperatureState::init_extruders(const std::vector<std::string>& heaters) {
+    // Deinit existing per-extruder subjects before clearing
+    for (auto& [name, info] : extruders_) {
+        if (info.temp_subject) {
+            lv_subject_deinit(info.temp_subject.get());
+        }
+        if (info.target_subject) {
+            lv_subject_deinit(info.target_subject.get());
+        }
+    }
+    extruders_.clear();
+
+    // Filter for extruder* names and count them
+    std::vector<std::string> extruder_names;
+    for (const auto& name : heaters) {
+        // Accept "extruder" and "extruderN" (digit suffix), reject "extruder_stepper" etc.
+        if (name == "extruder" ||
+            (name.size() > 8 && name.rfind("extruder", 0) == 0 && std::isdigit(name[8]))) {
+            extruder_names.push_back(name);
+        }
+    }
+
+    bool multi = extruder_names.size() > 1;
+
+    extruders_.reserve(extruder_names.size());
+    for (size_t i = 0; i < extruder_names.size(); ++i) {
+        const auto& name = extruder_names[i];
+        ExtruderInfo info;
+        info.name = name;
+
+        // Single extruder: "Nozzle". Multiple: "Nozzle 1", "Nozzle 2", ...
+        if (multi) {
+            info.display_name = "Nozzle " + std::to_string(i + 1);
+        } else {
+            info.display_name = "Nozzle";
+        }
+
+        // Create heap-allocated subjects (stable across rehash)
+        info.temp_subject = std::make_unique<lv_subject_t>();
+        lv_subject_init_int(info.temp_subject.get(), 0);
+
+        info.target_subject = std::make_unique<lv_subject_t>();
+        lv_subject_init_int(info.target_subject.get(), 0);
+
+        spdlog::trace("[PrinterTemperatureState] Registered extruder: {} -> \"{}\"", name,
+                      info.display_name);
+        extruders_.emplace(name, std::move(info));
+    }
+
+    // Bump version to notify UI of extruder list change
+    lv_subject_set_int(&extruder_version_, lv_subject_get_int(&extruder_version_) + 1);
+    spdlog::debug("[PrinterTemperatureState] Initialized {} extruders (version {})",
+                  extruders_.size(), lv_subject_get_int(&extruder_version_));
+}
+
+lv_subject_t* PrinterTemperatureState::get_extruder_temp_subject(const std::string& name) {
+    auto it = extruders_.find(name);
+    if (it != extruders_.end() && it->second.temp_subject) {
+        return it->second.temp_subject.get();
+    }
+    return nullptr;
+}
+
+lv_subject_t* PrinterTemperatureState::get_extruder_target_subject(const std::string& name) {
+    auto it = extruders_.find(name);
+    if (it != extruders_.end() && it->second.target_subject) {
+        return it->second.target_subject.get();
+    }
+    return nullptr;
 }
 
 void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
-    // Update extruder temperature (stored as centidegrees for 0.1C resolution)
+    // Update dynamic per-extruder subjects
+    for (auto& [name, info] : extruders_) {
+        if (!status.contains(name))
+            continue;
+        const auto& data = status[name];
+
+        if (data.contains("temperature") && data["temperature"].is_number()) {
+            int temp_centi = helix::units::json_to_centidegrees(data, "temperature");
+            info.temperature = data["temperature"].get<float>();
+            lv_subject_set_int(info.temp_subject.get(), temp_centi);
+            // Force notify for graph updates even when value unchanged
+            lv_subject_notify(info.temp_subject.get());
+        }
+
+        if (data.contains("target") && data["target"].is_number()) {
+            int target_centi = helix::units::json_to_centidegrees(data, "target");
+            info.target = data["target"].get<float>();
+            lv_subject_set_int(info.target_subject.get(), target_centi);
+        }
+    }
+
+    // Legacy: update static extruder subjects from "extruder" key (backward compatibility)
     if (status.contains("extruder")) {
         const auto& extruder = status["extruder"];
 

@@ -38,6 +38,19 @@ Tap a preset to set both current and target. Custom presets can be configured vi
 
 ---
 
+## Multi-Extruder Temperature Control
+
+On printers with multiple extruders, an extruder selector appears at the top of the Temperature Control panel:
+
+- **Tap an extruder** to switch which one you are controlling
+- Each extruder has independent temperature targets and presets
+- Toolchanger printers show tool names (T0, T1) rather than "Nozzle 1", "Nozzle 2"
+- The selector only appears when Klipper reports more than one extruder
+
+Single-extruder printers are unaffected — the panel works exactly as before.
+
+---
+
 ## Temperature Graphs
 
 Live graphs show:

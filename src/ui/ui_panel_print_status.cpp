@@ -41,6 +41,7 @@
 #include "theme_manager.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_processor.h"
+#include "tool_state.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
@@ -83,6 +84,11 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, MoonrakerAPI* ap
         this, printer_state_, [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
+        [](PrintStatusPanel* self, int) { self->on_temperature_changed(); });
+
+    // Subscribe to active tool changes (refreshes nozzle temp with tool name prefix)
+    active_tool_observer_ = observe_int_sync<PrintStatusPanel>(
+        helix::ToolState::instance().get_active_tool_subject(), this,
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); });
 
     // Subscribe to print progress and state
@@ -1110,8 +1116,17 @@ void PrintStatusPanel::on_temperature_changed() {
     // Update only temperature-related subjects (not the full display refresh).
     // Temperature observers fire frequently during heating (4 subjects × ~1Hz each),
     // and update_all_displays() re-renders ALL subjects causing visible flickering.
-    format_temperature_pair(centi_to_degrees(nozzle_current_), centi_to_degrees(nozzle_target_),
-                            nozzle_temp_buf_, sizeof(nozzle_temp_buf_));
+    auto& ts = helix::ToolState::instance();
+    if (ts.tool_count() > 1 && ts.active_tool()) {
+        size_t prefix_len = std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_),
+                                          "%s: ", ts.active_tool()->name.c_str());
+        format_temperature_pair(centi_to_degrees(nozzle_current_), centi_to_degrees(nozzle_target_),
+                                nozzle_temp_buf_ + prefix_len,
+                                sizeof(nozzle_temp_buf_) - prefix_len);
+    } else {
+        format_temperature_pair(centi_to_degrees(nozzle_current_), centi_to_degrees(nozzle_target_),
+                                nozzle_temp_buf_, sizeof(nozzle_temp_buf_));
+    }
     lv_subject_copy_string(&nozzle_temp_subject_, nozzle_temp_buf_);
 
     format_temperature_pair(centi_to_degrees(bed_current_), centi_to_degrees(bed_target_),

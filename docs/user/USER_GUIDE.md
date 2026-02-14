@@ -26,7 +26,7 @@ Navigation basics, touch gestures, connection status, first-time setup wizard, W
 ![Setup Wizard](../images/user/wizard-wifi.png)
 
 ### [Home Panel](guide/home-panel.md)
-Your printer dashboard — status area, temperatures, AMS/filament status, quick actions, and the Printer Manager with custom images.
+Your printer dashboard — status area, temperatures, AMS/filament status, active tool badge for toolchanger printers, quick actions, and the Printer Manager with custom images.
 
 ### [Printing](guide/printing.md)
 The full printing workflow — file selection, preview, pre-print options, monitoring active prints, tune overlay, Z-offset baby steps, pressure advance, exclude object, and post-print summary.
@@ -34,7 +34,7 @@ The full printing workflow — file selection, preview, pre-print options, monit
 ![Print File Detail](../images/user/print-detail.png)
 
 ### [Temperature Control](guide/temperature.md)
-Nozzle and bed temperature panels, material presets, and live temperature graphs.
+Nozzle and bed temperature panels, multi-extruder selector for printers with multiple extruders, material presets, and live temperature graphs.
 
 ### [Motion & Positioning](guide/motion.md)
 Jog pad controls, homing, distance increments, and emergency stop.
@@ -42,7 +42,7 @@ Jog pad controls, homing, distance increments, and emergency stop.
 ![Motion Controls](../images/screenshot-motion-panel.png)
 
 ### [Filament Management](guide/filament.md)
-Extrusion controls, load/unload procedures, AMS multi-material systems, Spoolman integration, and dryer control.
+Extrusion controls, load/unload procedures, AMS multi-material systems with multi-backend support (run Happy Hare, AFC, ValgACE, or Tool Changer simultaneously), Spoolman integration, and dryer control.
 
 ![AMS Panel](../images/user/ams.png)
 

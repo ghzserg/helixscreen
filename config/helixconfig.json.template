@@ -42,7 +42,8 @@
     "moonraker_timeout_check_interval_ms": 2000,
     "heaters": {
       "bed": "heater_bed",
-      "hotend": "extruder"
+      "hotend": "extruder",
+      "_hotend_comment": "Primary extruder heater. Additional extruders (extruder1, extruder2, etc.) are auto-discovered from Klipper. Toolchangers and multi-backend AMS systems are also auto-detected. No manual configuration needed for multi-extruder or multi-tool setups."
     },
     "temp_sensors": {
       "bed": "temperature_sensor bed",

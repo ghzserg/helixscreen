@@ -291,6 +291,7 @@ The central `PrinterState` class was decomposed into 13 focused domain classes, 
 ```
 PrinterState (orchestrator)
 ├── PrinterTemperatureState      # Nozzle, bed, chamber temps + targets
+│   └── ExtruderInfo[]           # Per-extruder: name, temp/target subjects (heap-allocated)
 ├── PrinterMotionState           # Position, speed, homed axes
 ├── PrinterFanState              # Fan speeds, types
 ├── PrinterPrintState            # Print progress, filename, layers, ETA
@@ -348,6 +349,52 @@ private:
 - Each domain registers with `StaticSubjectRegistry` for shutdown cleanup
 
 **Files:** `include/printer_*_state.h`, `src/printer/printer_*_state.cpp`
+
+### ToolState Singleton
+
+`ToolState` (`include/tool_state.h`) manages tool information for multi-tool printers (tool changers, multi-extruder setups). It is a standalone singleton, separate from `PrinterState`, because tool tracking spans both temperature and filament management domains.
+
+**Lifecycle:**
+
+```
+init_subjects()                    Register LVGL subjects (active_tool, tool_count, tools_version)
+    ↓
+init_tools(PrinterDiscovery)       Populate ToolInfo vector from discovered "tool T*" objects
+    ↓
+update_from_status(json)           Called on each Moonraker status update (tool states, offsets)
+    ↓
+deinit_subjects()                  Clean shutdown before lv_deinit()
+```
+
+**Key types:**
+
+```cpp
+enum class DetectState { PRESENT, ABSENT, UNAVAILABLE };
+
+struct ToolInfo {
+    int index;                          // Tool number (0, 1, 2, ...)
+    std::string name;                   // "T0", "T1", etc.
+    std::optional<std::string> extruder_name;  // Associated extruder
+    std::optional<std::string> heater_name;    // Override heater
+    float gcode_x_offset, gcode_y_offset, gcode_z_offset;
+    bool active, mounted;
+    DetectState detect_state;
+    int backend_index;                  // AMS backend index (-1 = direct drive)
+    int backend_slot;                   // Slot in that backend (-1 = dynamic)
+};
+```
+
+**Subjects:**
+
+| Subject | Type | Description |
+|---------|------|-------------|
+| `active_tool` | int | Currently active tool index (0-based) |
+| `tool_count` | int | Number of discovered tools |
+| `tools_version` | int | Bumped when tool list changes (UI rebuild trigger) |
+
+**Single-tool fallback:** On non-toolchanger printers, `ToolState` holds a single implicit T0 entry. UI code can always query `ToolState::tool_count()` to decide whether to show multi-tool controls.
+
+**Files:** `include/tool_state.h`, `src/printer/tool_state.cpp`
 
 ---
 
@@ -861,6 +908,12 @@ void WiFiManager::handle_scan_complete(const std::string& data) {
 - Just logging or updating non-LVGL state
 
 **Key insight:** If you're in a callback from libhv, std::thread, or any networking library, assume you're on a background thread and use `ui_async_call()`.
+
+### Multi-Backend AmsState Coordination
+
+`AmsState` uses a `std::recursive_mutex` to protect the `backends_` vector and all backend operations. When a backend emits an event on a background thread, the handler acquires the mutex, reads backend state, then posts subject updates via `ui_async_call()`. Each backend's event callback captures its index at registration time, so events are routed to the correct per-backend subject storage without ambiguity.
+
+For secondary backends (index 1+), slot subjects live in `BackendSlotSubjects` structs rather than the flat `slot_colors_[]`/`slot_statuses_[]` arrays. The `sync_backend(int)` and `update_slot_for_backend(int, int)` methods handle this routing. All subject writes happen on the LVGL thread via `ui_async_call()`, so no additional synchronization is needed for the subject values themselves.
 
 ## Sensor Framework
 

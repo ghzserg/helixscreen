@@ -257,12 +257,42 @@ class PrinterState {
     // Temperature subjects (centidegrees: value * 10 for 0.1C resolution)
     // Example: 205.3C is stored as 2053. Divide by 10 for display.
     // Delegated to PrinterTemperatureState component.
+
+    // Legacy: returns static subject mirrored from "extruder" — NOT the same pointer
+    // as get_extruder_temp_subject("extruder"). Both track the same value.
     lv_subject_t* get_extruder_temp_subject() {
         return temperature_state_.get_extruder_temp_subject();
     }
     lv_subject_t* get_extruder_target_subject() {
         return temperature_state_.get_extruder_target_subject();
     }
+
+    // Multi-extruder discovery
+    void init_extruders(const std::vector<std::string>& heaters) {
+        temperature_state_.init_extruders(heaters);
+    }
+
+    // Per-extruder subject access (returns nullptr if not found)
+    lv_subject_t* get_extruder_temp_subject(const std::string& name) {
+        return temperature_state_.get_extruder_temp_subject(name);
+    }
+    lv_subject_t* get_extruder_target_subject(const std::string& name) {
+        return temperature_state_.get_extruder_target_subject(name);
+    }
+
+    int extruder_count() const {
+        return temperature_state_.extruder_count();
+    }
+
+    lv_subject_t* get_extruder_version_subject() {
+        return temperature_state_.get_extruder_version_subject();
+    }
+
+    // Direct access to temperature state (for UI enumeration)
+    const helix::PrinterTemperatureState& temperature_state() const {
+        return temperature_state_;
+    }
+
     lv_subject_t* get_bed_temp_subject() {
         return temperature_state_.get_bed_temp_subject();
     }
@@ -1618,6 +1648,7 @@ class PrinterState {
     // lv_async_call to defer to these internal methods, ensuring thread safety.
 
     friend class PrinterStateTestAccess;
+    friend class PrinterTemperatureStateTestAccess;
     friend void async_klipper_version_callback(void* user_data);
     friend void async_moonraker_version_callback(void* user_data);
     friend void async_klippy_state_callback(void* user_data);

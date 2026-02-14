@@ -299,6 +299,11 @@ void AmsPanel::init_subjects() {
             self->check_pending_load();
         });
 
+    // Backend count observer for multi-backend selector
+    backend_count_observer_ = observe_int_sync<AmsPanel>(
+        AmsState::instance().get_backend_count_subject(), this,
+        [](AmsPanel* self, int /*count*/) { self->rebuild_backend_selector(); });
+
     // UI module subjects are now encapsulated in their respective classes:
     // - helix::ui::AmsEditModal
     // - helix::ui::AmsSpoolmanPicker
@@ -422,6 +427,7 @@ void AmsPanel::clear_panel_reference() {
     slot_count_observer_.reset();
     path_segment_observer_.reset();
     path_topology_observer_.reset();
+    backend_count_observer_.reset();
     // extruder_temp_observer_ intentionally NOT reset - needed for preheat completion
 
     // Don't cancel preheat or clear pending load state when panel closes.
@@ -491,6 +497,109 @@ void AmsPanel::setup_system_header() {
         lv_obj_add_flag(system_logo, LV_OBJ_FLAG_HIDDEN);
         spdlog::debug("[{}] No logo for system '{}'", get_name(), info.type_name);
     }
+}
+
+void AmsPanel::rebuild_backend_selector() {
+    if (!panel_) {
+        return;
+    }
+
+    lv_obj_t* row = lv_obj_find_by_name(panel_, "backend_selector_row");
+    if (!row) {
+        return;
+    }
+
+    auto& ams = AmsState::instance();
+    int count = ams.backend_count();
+
+    if (count <= 1) {
+        lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    lv_obj_remove_flag(row, LV_OBJ_FLAG_HIDDEN);
+
+    // Clear existing children
+    while (lv_obj_get_child_count(row) > 0) {
+        lv_obj_delete(lv_obj_get_child(row, 0));
+    }
+
+    for (int i = 0; i < count; ++i) {
+        auto* backend = ams.get_backend(i);
+        if (!backend) {
+            continue;
+        }
+
+        std::string label = ams_type_to_string(backend->get_type());
+
+        // Create a button-like segment for each backend
+        lv_obj_t* btn = lv_obj_create(row);
+        lv_obj_set_size(btn, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_set_style_pad_all(btn, 8, 0);
+        lv_obj_set_style_pad_left(btn, 12, 0);
+        lv_obj_set_style_pad_right(btn, 12, 0);
+        lv_obj_set_style_radius(btn, 8, 0);
+        lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
+
+        if (i == active_backend_idx_) {
+            lv_obj_set_style_bg_color(btn, theme_manager_get_color("primary"), 0);
+        } else {
+            lv_obj_set_style_bg_color(btn, theme_manager_get_color("card_bg_secondary"), 0);
+        }
+
+        lv_obj_t* lbl = lv_label_create(btn);
+        lv_label_set_text(lbl, label.c_str());
+        lv_obj_set_style_text_color(lbl, lv_color_white(), 0);
+        lv_obj_set_style_text_font(lbl, theme_manager_get_font("text_sm"), 0);
+
+        // Store index and add click handler (dynamic buttons are a documented exception)
+        lv_obj_set_user_data(btn, reinterpret_cast<void*>(static_cast<intptr_t>(i)));
+        lv_obj_add_event_cb(
+            btn,
+            [](lv_event_t* e) {
+                auto* btn_obj = static_cast<lv_obj_t*>(lv_event_get_target(e));
+                int idx =
+                    static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(btn_obj)));
+                AmsPanel* panel = g_ams_panel_instance.load();
+                if (panel) {
+                    panel->on_backend_segment_selected(idx);
+                }
+            },
+            LV_EVENT_CLICKED, nullptr);
+    }
+
+    spdlog::debug("[AmsPanel] Backend selector rebuilt with {} segments (active={})", count,
+                  active_backend_idx_);
+}
+
+void AmsPanel::on_backend_segment_selected(int index) {
+    if (index == active_backend_idx_) {
+        return;
+    }
+
+    active_backend_idx_ = index;
+    AmsState::instance().set_active_backend(index);
+
+    // Rebuild selector to update visual highlight
+    rebuild_backend_selector();
+
+    // Sync the selected backend and recreate slots
+    AmsState::instance().sync_backend(index);
+
+    auto* backend = AmsState::instance().get_backend(index);
+    if (backend) {
+        auto info = backend->get_system_info();
+        create_slots(info.total_slots);
+
+        // Update system header (logo + name)
+        setup_system_header();
+
+        // Update path visualization for this backend
+        update_path_canvas_from_backend();
+    }
+
+    spdlog::info("[AmsPanel] Switched to backend {} ({})", index,
+                 backend ? ams_type_to_string(backend->get_type()) : "null");
 }
 
 void AmsPanel::setup_slots() {
@@ -1199,7 +1308,8 @@ void AmsPanel::refresh_slots() {
 
 void AmsPanel::update_slot_colors() {
     int slot_count = lv_subject_get_int(AmsState::instance().get_slot_count_subject());
-    AmsBackend* backend = AmsState::instance().get_backend();
+    int backend_idx = AmsState::instance().active_backend_index();
+    AmsBackend* backend = AmsState::instance().get_backend(backend_idx);
 
     for (int i = 0; i < MAX_VISIBLE_SLOTS; ++i) {
         if (!slot_widgets_[i]) {
@@ -1214,8 +1324,8 @@ void AmsPanel::update_slot_colors() {
 
         lv_obj_remove_flag(slot_widgets_[i], LV_OBJ_FLAG_HIDDEN);
 
-        // Get slot color from AmsState subject
-        lv_subject_t* color_subject = AmsState::instance().get_slot_color_subject(i);
+        // Get slot color from AmsState subject (using active backend)
+        lv_subject_t* color_subject = AmsState::instance().get_slot_color_subject(backend_idx, i);
         if (color_subject) {
             uint32_t rgb = static_cast<uint32_t>(lv_subject_get_int(color_subject));
             lv_color_t color = lv_color_hex(rgb);
@@ -1267,7 +1377,9 @@ void AmsPanel::update_slot_status(int slot_index) {
         return;
     }
 
-    lv_subject_t* status_subject = AmsState::instance().get_slot_status_subject(slot_index);
+    int backend_idx = AmsState::instance().active_backend_index();
+    lv_subject_t* status_subject =
+        AmsState::instance().get_slot_status_subject(backend_idx, slot_index);
     if (!status_subject) {
         return;
     }

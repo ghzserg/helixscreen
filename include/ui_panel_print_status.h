@@ -502,7 +502,8 @@ class PrintStatusPanel : public OverlayBase {
     ObserverGuard preprint_elapsed_observer_;
     ObserverGuard exclude_objects_observer_;
     ObserverGuard excluded_objects_version_observer_;
-    ObserverGuard ams_color_observer_; ///< Tracks AMS/Spoolman filament color for gcode viewer
+    ObserverGuard ams_color_observer_;   ///< Tracks AMS/Spoolman filament color for gcode viewer
+    ObserverGuard active_tool_observer_; ///< Refreshes nozzle temp display with tool name prefix
 
     //
     // === Exclude Object Manager ===

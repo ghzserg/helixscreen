@@ -15,20 +15,31 @@ HelixScreen uses a backend abstraction layer to support multiple multi-filament 
                          │  AmsState   │  Singleton LVGL subject bridge
                          │ (ams_state) │  Thread-safe subject updates
                          └──────┬──────┘
-                                │ owns
-                    ┌───────────▼───────────┐
-                    │     AmsBackend        │  Abstract interface
-                    │  (ams_backend.h)      │  Factory: create() / create_mock()
-                    └───────────┬───────────┘
-           ┌──────────┬────────┼─────────┬───────────┐
-           ▼          ▼        ▼         ▼           ▼
-    ┌──────────┐ ┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐
-    │Happy Hare│ │  AFC   │ │ValgACE │ │  Tool    │ │  Mock    │
-    │ Backend  │ │Backend │ │Backend │ │ Changer  │ │ Backend  │
-    └──────────┘ └────────┘ └────────┘ └──────────┘ └──────────┘
-         │            │          │           │            │
-    Moonraker    Moonraker    REST API   Moonraker    In-memory
-    WebSocket    WebSocket    Polling    WebSocket    simulation
+                                │ owns backends_[] vector
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                  ▼
+       Backend 0 (primary)   Backend 1        Backend N
+       flat slot subjects    BackendSlot-      BackendSlot-
+       (backward compat)     Subjects          Subjects
+              │                 │                  │
+    ┌─────────▼─────────┐      │                  │
+    │     AmsBackend     │  Abstract interface     │
+    │  (ams_backend.h)   │  Factory: create() / create_mock()
+    └─────────┬──────────┘                         │
+     ┌────────┼─────────┬───────────┬──────────────┘
+     ▼        ▼         ▼           ▼           ▼
+  ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐
+  │Happy   │ │  AFC   │ │ValgACE │ │  Tool    │ │  Mock    │
+  │Hare    │ │Backend │ │Backend │ │ Changer  │ │ Backend  │
+  └────────┘ └────────┘ └────────┘ └──────────┘ └──────────┘
+       │          │          │           │            │
+  Moonraker  Moonraker   REST API   Moonraker    In-memory
+  WebSocket  WebSocket   Polling    WebSocket    simulation
+
+                         ┌─────────────┐
+                         │  ToolState  │  Singleton: tool abstraction
+                         │(tool_state) │  Maps tools ↔ AMS backends
+                         └─────────────┘
 ```
 
 ### Key Files
@@ -46,6 +57,8 @@ HelixScreen uses a backend abstraction layer to support multiple multi-filament 
 | `include/ams_backend_mock.h` | Mock backend for development and testing |
 | `src/printer/ams_backend.cpp` | Factory method implementations |
 | `include/printer_discovery.h` | Hardware detection from Klipper object list |
+| `include/tool_state.h` | Tool abstraction: `ToolInfo`, `ToolState` singleton, tool-backend mapping |
+| `include/printer_temperature_state.h` | `ExtruderInfo` struct, multi-extruder dynamic subjects |
 | `include/ui_ams_context_menu.h` | Slot context menu (load, unload, edit, spoolman) |
 | `include/ui_ams_device_operations_overlay.h` | Device operations overlay (home, recover, bypass, etc.) |
 
@@ -59,6 +72,101 @@ HelixScreen uses a backend abstraction layer to support multiple multi-filament 
 ### Threading Model
 
 All Moonraker/libhv callbacks arrive on a background thread. Backends update internal state under mutex, then `AmsState` posts subject updates to the LVGL thread via `lv_async_call()`. The UI never directly accesses backend state.
+
+---
+
+## Multi-Backend Architecture
+
+Some printers have multiple filament management systems simultaneously (e.g., a tool changer where each toolhead has its own AFC unit). AmsState supports multiple concurrent backends via a `backends_` vector that replaces the former single `backend_` pointer.
+
+### Backend Storage
+
+```cpp
+// AmsState private members
+std::vector<std::unique_ptr<AmsBackend>> backends_;       // All backends
+std::vector<BackendSlotSubjects> secondary_slot_subjects_; // Per-backend subjects (index 1+)
+```
+
+- **Primary backend (index 0)** uses the existing flat `slot_colors_[MAX_SLOTS]` and `slot_statuses_[MAX_SLOTS]` subject arrays. This preserves backward compatibility with all existing XML bindings and single-backend printers.
+- **Secondary backends (index 1+)** each get a `BackendSlotSubjects` struct with dynamically allocated `lv_subject_t` vectors:
+
+```cpp
+struct BackendSlotSubjects {
+    std::vector<lv_subject_t> colors;
+    std::vector<lv_subject_t> statuses;
+    int slot_count = 0;
+    void init(int count);   // Allocate and init subjects
+    void deinit();          // Deinit subjects
+};
+```
+
+### Discovery of Multiple Systems
+
+`PrinterDiscovery::parse_objects()` collects all detected AMS/filament systems into a `detected_ams_systems_` vector of `DetectedAmsSystem` structs:
+
+```cpp
+struct DetectedAmsSystem {
+    AmsType type = AmsType::NONE;
+    std::string name;  // "Happy Hare", "AFC", "Tool Changer"
+};
+```
+
+A printer with both a tool changer and an AFC unit will have two entries. The `init_backends_from_hardware()` method iterates this list and creates a backend for each detected system.
+
+### Backend Selection
+
+Two new subjects track backend selection:
+
+| Subject | Type | Description |
+|---------|------|-------------|
+| `backend_count_` | int | Number of registered backends |
+| `active_backend_` | int | Index of the currently selected backend |
+
+The AMS panel UI shows a backend selector when `backend_count > 1`, allowing users to switch between systems. API:
+
+- `active_backend_index()` -- returns the currently selected backend index
+- `set_active_backend(int)` -- switches the active backend (bounds-checked)
+
+### Per-Backend Event Routing
+
+When backends are added via `add_backend()`, each backend's event callback captures its backend index at registration time:
+
+```
+Backend 0 emits STATE_CHANGED  -->  on_backend_event(0, "STATE_CHANGED", ...)
+Backend 1 emits SLOT_CHANGED   -->  on_backend_event(1, "SLOT_CHANGED", ...)
+```
+
+The `on_backend_event()` handler routes to `sync_backend(int)` or `update_slot_for_backend(int, int)` which update the correct set of subjects. All subject updates are posted via `ui_async_call()` for thread safety.
+
+### Per-Backend Subject Access
+
+Two-argument overloads of `get_slot_color_subject()` and `get_slot_status_subject()` route to the correct subject storage:
+
+```cpp
+// Backend 0: flat arrays (backward compat)
+lv_subject_t* get_slot_color_subject(0, slot_index);  // -> slot_colors_[slot_index]
+
+// Backend 1+: per-backend storage
+lv_subject_t* get_slot_color_subject(1, slot_index);  // -> secondary_slot_subjects_[0].colors[slot_index]
+```
+
+### Tool-Backend Integration
+
+The `ToolState` singleton (see `tool_state.h`) maps tools to specific AMS backends via two fields on `ToolInfo`:
+
+```cpp
+struct ToolInfo {
+    int backend_index = -1;  // Which AMS backend feeds this tool (-1 = direct drive)
+    int backend_slot = -1;   // Fixed slot in that backend (-1 = any/dynamic)
+    // ... other fields
+};
+```
+
+- `backend_index = -1` means the tool uses direct-drive filament (no AMS).
+- `backend_index >= 0` maps the tool to a specific AMS backend. For example, on a dual-toolhead printer where each head has its own AFC unit, T0 might map to backend 0 and T1 to backend 1.
+- `backend_slot` pins the tool to a specific slot within that backend, or `-1` for dynamic slot selection (e.g., Happy Hare tool-to-gate mapping).
+
+`ToolState` and `AmsState` coordinate through `PrinterDiscovery`: tools are discovered from `tool T*` Klipper objects, and the mapping between tools and AMS backends is established during `init_backends_from_hardware()`.
 
 ---
 

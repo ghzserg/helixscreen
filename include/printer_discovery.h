@@ -29,6 +29,12 @@
 
 namespace helix {
 
+/// Describes one detected AMS/filament system
+struct DetectedAmsSystem {
+    AmsType type = AmsType::NONE;
+    std::string name; // Human-readable: "Happy Hare", "AFC", "Tool Changer"
+};
+
 class PrinterDiscovery {
   public:
     PrinterDiscovery() = default;
@@ -324,7 +330,21 @@ class PrinterDiscovery {
             std::sort(tool_names_.begin(), tool_names_.end());
         }
 
-        // Set mmu_type_ for tool changers (after all objects processed)
+        // Collect all detected AMS systems
+        detected_ams_systems_.clear();
+
+        if (has_tool_changer_ && !tool_names_.empty()) {
+            detected_ams_systems_.push_back({AmsType::TOOL_CHANGER, "Tool Changer"});
+        }
+        if (has_mmu_) {
+            if (mmu_type_ == AmsType::HAPPY_HARE) {
+                detected_ams_systems_.push_back({AmsType::HAPPY_HARE, "Happy Hare"});
+            } else if (mmu_type_ == AmsType::AFC) {
+                detected_ams_systems_.push_back({AmsType::AFC, "AFC"});
+            }
+        }
+
+        // Update mmu_type_ for backward compat: toolchanger takes priority
         if (has_tool_changer_ && !tool_names_.empty()) {
             mmu_type_ = AmsType::TOOL_CHANGER;
         }
@@ -426,6 +446,7 @@ class PrinterDiscovery {
         has_klippain_shaketune_ = false;
         has_speaker_ = false;
         mmu_type_ = AmsType::NONE;
+        detected_ams_systems_.clear();
 
         // Printer info
         hostname_.clear();
@@ -579,6 +600,11 @@ class PrinterDiscovery {
     /// @brief Alias for mmu_type() - compatibility with PrinterCapabilities API
     [[nodiscard]] AmsType get_mmu_type() const {
         return mmu_type_;
+    }
+
+    /// @brief All detected AMS/filament systems (may include multiple backends)
+    [[nodiscard]] const std::vector<DetectedAmsSystem>& detected_ams_systems() const {
+        return detected_ams_systems_;
     }
 
     [[nodiscard]] const std::vector<std::string>& afc_lane_names() const {
@@ -902,6 +928,7 @@ class PrinterDiscovery {
     bool has_klippain_shaketune_ = false;
     bool has_speaker_ = false;
     AmsType mmu_type_ = AmsType::NONE;
+    std::vector<DetectedAmsSystem> detected_ams_systems_;
 
     // Printer info (from server.info / printer.info)
     std::string hostname_;

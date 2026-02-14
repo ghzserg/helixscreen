@@ -40,6 +40,16 @@ If you have a multi-material system (Happy Hare, AFC-Klipper, Bambu AMS):
 
 ---
 
+## Active Tool Badge
+
+On printers with a toolchanger, the Home Panel displays an active tool badge:
+
+- Shows the current active tool (e.g. "T0", "T1")
+- Updates automatically when tools are switched during a print or via macros
+- Only visible on multi-tool printers — single-extruder printers will not see this badge
+
+---
+
 ## Quick Actions
 
 Buttons for common operations:

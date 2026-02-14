@@ -378,6 +378,42 @@ api->suppress_disconnect_modal(15000);
 6. **IMoonrakerDomainService deleted:** `BedMeshProfile` and `GcodeStoreEntry` now in `moonraker_types.h`
 7. **UI abstraction boundary:** UI code uses API proxy methods, never `get_client()` or `get_moonraker_client()`
 
+## Multi-Tool & Multi-Extruder Subscriptions
+
+When `PrinterDiscovery` detects multiple extruders or a tool changer, additional Moonraker subscription keys are registered:
+
+### Extruder Subscriptions
+
+For each discovered extruder (`"extruder"`, `"extruder1"`, etc.), the status subscription includes:
+
+```
+extruder: temperature, target
+extruder1: temperature, target
+...
+```
+
+`PrinterTemperatureState::update_from_status()` iterates its `extruders_` map and updates per-extruder subjects for any matching keys in the status JSON.
+
+### Toolchanger Subscriptions
+
+When a tool changer is detected, the subscription includes:
+
+```
+toolchanger: tool_number
+tool T0: active, mounted, detect_state, gcode_x_offset, gcode_y_offset, gcode_z_offset, extruder, fan
+tool T1: active, mounted, detect_state, ...
+```
+
+`ToolState::update_from_status()` parses these keys and bumps the `tools_version` subject on changes.
+
+### Multi-Backend AMS
+
+Each AMS backend manages its own Moonraker subscriptions independently. When `AmsState::init_backends_from_hardware()` creates multiple backends, each backend registers its own WebSocket subscriptions for its object types (e.g., `mmu` for Happy Hare, `AFC` for AFC, `tool T*` for tool changers). Backend state changes are synced to per-backend slot subjects via `AmsState::sync_backend()`.
+
+**Full docs:** [TOOL_ABSTRACTION.md](TOOL_ABSTRACTION.md), [MULTI_EXTRUDER_TEMPERATURE.md](MULTI_EXTRUDER_TEMPERATURE.md), [FILAMENT_MANAGEMENT.md](FILAMENT_MANAGEMENT.md)
+
+---
+
 ## See Also
 
 - `docs/TESTING_MOONRAKER_API.md` - Manual testing procedures

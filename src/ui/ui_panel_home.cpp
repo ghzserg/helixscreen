@@ -39,6 +39,7 @@
 #include "settings_manager.h"
 #include "static_panel_registry.h"
 #include "theme_manager.h"
+#include "tool_state.h"
 #include "wifi_manager.h"
 #include "wizard_config_paths.h"
 
@@ -87,6 +88,17 @@ HomePanel::HomePanel(PrinterState& printer_state, MoonrakerAPI* api)
     print_thumbnail_path_observer_ = observe_string<HomePanel>(
         printer_state_.get_print_thumbnail_path_subject(), this,
         [](HomePanel* self, const char* path) { self->on_print_thumbnail_path_changed(path); });
+
+    // Subscribe to active tool changes for tool badge display
+    active_tool_observer_ = observe_int_sync<HomePanel>(
+        helix::ToolState::instance().get_active_tool_subject(), this,
+        [](HomePanel* self, int tool_idx) { self->update_tool_badge(tool_idx); });
+
+    // Also subscribe to tools_version so badge appears when tools are discovered after panel init
+    tools_version_observer_ = observe_int_sync<HomePanel>(
+        helix::ToolState::instance().get_tools_version_subject(), this, [](HomePanel* self, int) {
+            self->update_tool_badge(helix::ToolState::instance().active_tool_index());
+        });
 
     spdlog::debug("[{}] Subscribed to PrinterState extruder temperature and target", get_name());
     spdlog::debug("[{}] Subscribed to PrinterState print state/progress/time/thumbnail",
@@ -185,6 +197,9 @@ void HomePanel::init_subjects() {
     // Show when sensors exist AND (no AMS OR bypass active)
     // NOTE: Must be initialized BEFORE creating observers that call
     // update_filament_status_visibility()
+    UI_MANAGED_SUBJECT_STRING(tool_badge_subject_, tool_badge_buf_, "", "tool_badge_text",
+                              subjects_);
+
     UI_MANAGED_SUBJECT_INT(show_filament_status_, 0, "show_filament_status", subjects_);
 
     // Subscribe to AmsState slot_count to show/hide AMS indicator
@@ -1313,6 +1328,21 @@ void HomePanel::show_idle_runout_modal() {
     });
 
     runout_modal_.show(parent_screen_);
+}
+
+void HomePanel::update_tool_badge(int /* tool_idx */) {
+    auto& ts = helix::ToolState::instance();
+    if (ts.tool_count() <= 1) {
+        tool_badge_buf_[0] = '\0';
+    } else {
+        const auto* tool = ts.active_tool();
+        if (tool) {
+            std::snprintf(tool_badge_buf_, sizeof(tool_badge_buf_), "%s", tool->name.c_str());
+        }
+    }
+    if (subjects_initialized_) {
+        lv_subject_copy_string(&tool_badge_subject_, tool_badge_buf_);
+    }
 }
 
 static std::unique_ptr<HomePanel> g_home_panel;

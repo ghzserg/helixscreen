@@ -291,6 +291,7 @@
             <bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
             <event_cb trigger="clicked" callback="temp_clicked_cb"/>
             <icon name="temp_icon" src="heater" size="#icon_size" variant="secondary"/>
+            <text_tiny name="tool_badge" bind_text="tool_badge_text" style_text_color="#text_secondary"/>
             <temp_display name="temp_text_label"
                           width="100%" size="md" show_target="false" bind_current="extruder_temp"
                           bind_target="extruder_target" align="center"/>
