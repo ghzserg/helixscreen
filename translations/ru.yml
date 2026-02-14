@@ -352,7 +352,7 @@ translations:
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen аварийно завершился
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen интегрируется с вашим сменщиком филамента для многокатушечной/многоцветной печати.
-  Help improve HelixScreen?: 'Помочь улучшить HelixScreen?'
+  Help improve HelixScreen?: Помочь улучшить HelixScreen?
   Higher = faster: Выше = быстрее
   Home: Главная
   Horizontal Progress (Leveling Wizard): Горизонтальный прогресс (мастер выравнивания)
@@ -419,7 +419,7 @@ translations:
   Layers: Слои
   Learn More: Подробнее
   'Length:': 'Длина:'
-  Light: Светлый
+  Light: Подсветка
   Load: Загрузить
   Load Filament: Загрузить филамент
   Loaded: Загружен
@@ -715,7 +715,7 @@ translations:
   Search filename...: Поиск файла...
   Secondary: Вторичный
   Security: Безопасность
-  See exactly what data will be sent: 'Посмотрите, какие именно данные будут отправлены'
+  See exactly what data will be sent: Посмотрите, какие именно данные будут отправлены
   Select: Выбрать
   Select 'None' if you don't have a filament sensor, or if you don't want to pause on runout.: Выберите 'Нет', если у вас нет датчика филамента или пауза по окончании филамента не нужна.
   Select 'None' if you have a dedicated probe, or don't use bed mesh leveling.: Выберите 'Нет', если у вас отдельный зонд или вы не используете сетку стола.
@@ -814,11 +814,11 @@ translations:
   Theme changes apply after restart.: Изменения темы применяются после перезапуска.
   Theme, brightness, and sleep settings: Тема, яркость и настройки сна
   This calibration uses the paper friction method to set your Z-offset.: Эта калибровка использует метод трения бумаги об сопло для установки Z-смещения.
-  This is exactly the data that will be sent: 'Это именно те данные, которые будут отправлены'
+  This is exactly the data that will be sent: Это именно те данные, которые будут отправлены
   This is what data would be sent if enabled: Эти данные были бы отправлены при включении
   This may take up to 30 seconds: Это может занять до 30 секунд
   ? This plugin lets HelixScreen control print start options like bed mesh and QGL. Once installed, use Configure PRINT_START below to enable optional steps.
-  : Этот плагин позволяет HelixScreen управлять опциями старта печати, такими как сетка стола и QGL. После установки используйте «Настроить PRINT_START» ниже для включения опциональных шагов.
+  : Этот плагин позволяет HelixScreen управлять опциями начала печати, такими как сетка стола и QGL. После установки используйте «Настроить PRINT_START» ниже для включения опциональных шагов.
   This tool probes each bed screw and tells you how much to adjust.: Этот инструмент проверяет каждый винт стола и показывает, насколько его нужно отрегулировать.
   'This will apply the Z-offset to your endstop and restart Klipper to save the ': 'Z-смещение будет применено к вашему концевику и Klipper перезапустится для сохранения '
   'This will apply the Z-offset to your probe and restart Klipper to save the ': 'Z-смещение будет применено к вашему зонду и Klipper перезапустится для сохранения '
@@ -923,7 +923,7 @@ translations:
   Z Movement: Движение Z
   Z Range: Диапазон Z
   Z probes for bed leveling and mesh generation: Z-зонды для выравнивания стола и создания сетки
-  Z-Offset: Z-смещение
+  Z-Offset: Z-Offset
   Z-Offset Calibration: Калибровка Z-смещения
   'Z-Offset:': 'Z-Offset:'
   Z-Tilt: Z-наклон
@@ -939,3 +939,44 @@ translations:
   of: из
   used: использ.
   v{} is available. Tap to update.: v{} доступна. Нажмите для обновления.
+  ' 0 / 0': ' 0 / 0'
+  10mm: 10мм
+  1mm: 1мм
+  200-230°C: 200-230°C
+  210°C / 60°C: 210°C / 60°C
+  230°C / 50°C: 230°C / 50°C
+  240°C / 80°C: 240°C / 80°C
+  250°C / 100°C: 250°C / 100°C
+  25mm: 25мм
+  5mm: 5мм
+  60°C: 60°C
+  6mm: 6мм
+  850g: 850г
+  Apply saves for this session only: Применить только для этой сессии
+  Automatic PID Calibration: Автоматическая PID-калибровка
+  Calibrate resonance compensation: Калибровка компенсации резонанса
+  Freq: Частота
+  'Kd:': 'Kd:'
+  'Ki:': 'Ki:'
+  Klipper has entered shutdown state. This may be due to an emergency stop, thermal runaway, or configuration error.: Klipper перешёл в аварийное состояние. Это может быть вызвано аварийной остановкой, ошибкой по нагреву или ошибкой конфигурации.
+  'Kp:': 'Kp:'
+  Main LED: Основной LED
+  Match your typical print fan speed for best results: Установите типичную скорость вентилятора печати для лучших результатов
+  Measure Noise: Измерить шум
+  New PID Values: Новые значения PID
+  PID Tuning: PID-настройка
+  PID tuning optimizes temperature control for stable heating.: PID-настройка оптимизирует контроль температуры для стабильного нагрева.
+  Recommended: Рекомендуется
+  Reduce Ringing: Уменьшить звон
+  Resonance compensation tuning: Настройка компенсации резонанса
+  Save Config: Сохранить конфигурацию
+  Select Heater: Выбрать нагреватель
+  Select which LED to control: Выберите LED для управления
+  Shaper: Шейпер
+  Test Print: Тестовая печать
+  This may take 1-2 minutes: Это может занять 1-2 минуты
+  This process takes 3-5 minutes. Do not interrupt.: Этот процесс занимает 3-5 минут. Не прерывайте.
+  Tune heater PID parameters: Настроить PID-параметры нагревателя
+  Turn on LED when printer starts: Включать LED при запуске принтера
+  Values have been saved to printer configuration.: Значения сохранены в конфигурацию принтера.
+  mzv @ 36.7 Hz: mzv @ 36.7 Hz

@@ -939,3 +939,44 @@ translations:
   of: of
   used: used
   v{} is available. Tap to update.: v{} is available. Tap to update.
+  ' 0 / 0': ' 0 / 0'
+  10mm: 10mm
+  1mm: 1mm
+  200-230°C: 200-230°C
+  210°C / 60°C: 210°C / 60°C
+  230°C / 50°C: 230°C / 50°C
+  240°C / 80°C: 240°C / 80°C
+  250°C / 100°C: 250°C / 100°C
+  25mm: 25mm
+  5mm: 5mm
+  60°C: 60°C
+  6mm: 6mm
+  850g: 850g
+  Apply saves for this session only: Apply saves for this session only
+  Automatic PID Calibration: Automatic PID Calibration
+  Calibrate resonance compensation: Calibrate resonance compensation
+  Freq: Freq
+  'Kd:': 'Kd:'
+  'Ki:': 'Ki:'
+  Klipper has entered shutdown state. This may be due to an emergency stop, thermal runaway, or configuration error.: Klipper has entered shutdown state. This may be due to an emergency stop, thermal runaway, or configuration error.
+  'Kp:': 'Kp:'
+  Main LED: Main LED
+  Match your typical print fan speed for best results: Match your typical print fan speed for best results
+  Measure Noise: Measure Noise
+  New PID Values: New PID Values
+  PID Tuning: PID Tuning
+  PID tuning optimizes temperature control for stable heating.: PID tuning optimizes temperature control for stable heating.
+  Recommended: Recommended
+  Reduce Ringing: Reduce Ringing
+  Resonance compensation tuning: Resonance compensation tuning
+  Save Config: Save Config
+  Select Heater: Select Heater
+  Select which LED to control: Select which LED to control
+  Shaper: Shaper
+  Test Print: Test Print
+  This may take 1-2 minutes: This may take 1-2 minutes
+  This process takes 3-5 minutes. Do not interrupt.: This process takes 3-5 minutes. Do not interrupt.
+  Tune heater PID parameters: Tune heater PID parameters
+  Turn on LED when printer starts: Turn on LED when printer starts
+  Values have been saved to printer configuration.: Values have been saved to printer configuration.
+  mzv @ 36.7 Hz: mzv @ 36.7 Hz
