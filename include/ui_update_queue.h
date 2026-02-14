@@ -186,8 +186,14 @@ class UpdateQueue {
 
         // Execute all pending updates - safe because render hasn't started yet
         while (!to_process.empty()) {
-            auto& callback = to_process.front();
-            callback();
+            try {
+                auto& callback = to_process.front();
+                callback();
+            } catch (const std::exception& e) {
+                spdlog::error("[UpdateQueue] Exception in queued callback: {}", e.what());
+            } catch (...) {
+                spdlog::error("[UpdateQueue] Unknown exception in queued callback");
+            }
             to_process.pop();
         }
     }
@@ -254,14 +260,11 @@ inline void ui_update_queue_shutdown() {
 }
 
 /**
- * @brief Drop-in replacement for lv_async_call (low-level, no exception safety)
+ * @brief Drop-in replacement for lv_async_call
  *
  * Has the EXACT same signature as lv_async_call() but uses the UI update queue
- * to ensure callbacks run BEFORE rendering, not during.
- *
- * WARNING: Callbacks are invoked without try-catch. If your callback invokes C++
- * code that may throw, use helix::async::invoke() instead — it wraps callbacks
- * with exception handling to prevent std::terminate() / SIGABRT.
+ * to ensure callbacks run BEFORE rendering, not during. Exceptions thrown by
+ * callbacks are caught and logged by UpdateQueue::process_pending().
  *
  * Migration: Simply replace `lv_async_call(` with `ui_async_call(`
  *
