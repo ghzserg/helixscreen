@@ -31,8 +31,6 @@
 
 // Forward declarations
 static void notification_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
-static void modal_ok_btn_clicked(lv_event_t* e);
-
 // Thread tracking for auto-detection
 static std::thread::id g_main_thread_id;
 static std::atomic<bool> g_main_thread_id_initialized{false};
@@ -126,18 +124,7 @@ static void async_error_callback(void* user_data) {
             }
 
             // Show modal dialog for critical errors
-            const char* attrs[] = {"title", data->title, "message", data->message, nullptr};
-
-            // Configure modal_dialog: ERROR severity, single OK button
-            ui_modal_configure(ModalSeverity::Error, false, "OK", nullptr);
-            lv_obj_t* modal = ui_modal_show("modal_dialog", attrs);
-
-            if (modal) {
-                lv_obj_t* ok_btn = lv_obj_find_by_name(modal, "btn_primary");
-                if (ok_btn) {
-                    lv_obj_add_event_cb(ok_btn, modal_ok_btn_clicked, LV_EVENT_CLICKED, modal);
-                }
-            }
+            ui_modal_show_alert(data->title, data->message, ModalSeverity::Error, "OK");
 
             ui_status_bar_update_notification(NotificationStatus::ERROR);
         } else {
@@ -442,18 +429,7 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
             }
 
             // Show modal dialog for critical errors
-            const char* attrs[] = {"title", title, "message", message, nullptr};
-
-            // Configure modal_dialog: ERROR severity, single OK button
-            ui_modal_configure(ModalSeverity::Error, false, "OK", nullptr);
-            lv_obj_t* modal_obj = ui_modal_show("modal_dialog", attrs);
-
-            if (modal_obj) {
-                lv_obj_t* ok_btn = lv_obj_find_by_name(modal_obj, "btn_primary");
-                if (ok_btn) {
-                    lv_obj_add_event_cb(ok_btn, modal_ok_btn_clicked, LV_EVENT_CLICKED, modal_obj);
-                }
-            }
+            ui_modal_show_alert(title, message, ModalSeverity::Error, "OK");
 
             ui_status_bar_update_notification(NotificationStatus::ERROR);
         } else {
@@ -550,12 +526,4 @@ static void notification_observer_cb(lv_observer_t* observer, lv_subject_t* subj
 
     spdlog::debug("[Notification] Notification routed: modal={}, severity={}, msg={}",
                   data->show_modal, static_cast<int>(data->severity), data->message);
-}
-
-// Modal OK button callback
-static void modal_ok_btn_clicked(lv_event_t* e) {
-    lv_obj_t* modal = (lv_obj_t*)lv_event_get_user_data(e);
-    if (modal) {
-        ui_modal_hide(modal);
-    }
 }
