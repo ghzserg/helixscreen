@@ -5,6 +5,25 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.19] - 2026-02-13
+
+### Added
+- Crash reports now include fault info, CPU registers, and frame pointers for better diagnostics
+- XLARGE breakpoint tier for responsive UI on larger displays
+- Responsive fan card rendering with dynamic arc sizing and tiny breakpoint support
+- Unified responsive icon sizing via design tokens
+- Geralkom X400/X500 and Voron Micron added to printer database
+- HelixScreen Discord community link in documentation
+
+### Fixed
+- Overlay close callback deferred to prevent use-after-free crash (#70)
+- macOS build error caused by libhv gettid() conflict
+
+### Changed
+- 182 missing translation keys added across the UI
+- Navigation bar width moved from C++ to XML for declarative layout control
+- Qidi and Creality printer images updated; Qidi Q2 Pro removed
+
 ## [0.9.18] - 2026-02-13
 
 ### Added
@@ -448,6 +467,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.9.19]: https://github.com/prestonbrown/helixscreen/compare/v0.9.18...v0.9.19
 [0.9.18]: https://github.com/prestonbrown/helixscreen/compare/v0.9.17...v0.9.18
 [0.9.17]: https://github.com/prestonbrown/helixscreen/compare/v0.9.16...v0.9.17
 [0.9.16]: https://github.com/prestonbrown/helixscreen/compare/v0.9.15...v0.9.16
