@@ -41,6 +41,7 @@ static std::atomic<bool> s_shutdown_flag{false};
 static constexpr uint32_t SPOOLMAN_POLL_INTERVAL_MS = 30000;
 
 struct AsyncSyncData {
+    int backend_index;
     bool full_sync;
     int slot_index; // Only used if full_sync == false
 };
@@ -125,10 +126,10 @@ AmsState::~AmsState() {
     }
 
     // Note: During static destruction, the MoonrakerClient may already be destroyed.
-    // We just release the backend without calling stop() to avoid accessing
+    // We just release the backends without calling stop() to avoid accessing
     // potentially destroyed dependencies. The RAII SubscriptionGuard in the backend
     // will handle cleanup safely.
-    backend_.reset();
+    backends_.clear();
 }
 
 void AmsState::init_subjects(bool register_xml) {
@@ -250,7 +251,7 @@ void AmsState::init_subjects(bool register_xml) {
     // Ask the factory for a backend. In mock mode, it returns a mock backend.
     // In real mode with no printer connected, it returns nullptr.
     // This keeps mock/real decision entirely in the factory.
-    if (!backend_) {
+    if (backends_.empty()) {
         auto backend = AmsBackend::create(AmsType::NONE);
         if (backend) {
             backend->start();
@@ -288,6 +289,9 @@ void AmsState::deinit_subjects() {
 
     spdlog::trace("[AMS State] Deinitializing subjects");
 
+    // Clean up backends and secondary slot subjects
+    clear_backends();
+
     // Use SubjectManager for automatic cleanup of all registered subjects
     subjects_.deinit_all();
 
@@ -313,7 +317,7 @@ void AmsState::init_backend_from_hardware(const helix::PrinterDiscovery& hardwar
     // Check if backend already exists (with lock)
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
-        if (backend_) {
+        if (!backends_.empty()) {
             spdlog::debug("[AMS State] Backend already exists, skipping initialization");
             return;
         }
@@ -334,9 +338,10 @@ void AmsState::init_backend_from_hardware(const helix::PrinterDiscovery& hardwar
         // Now start the backend
         {
             std::lock_guard<std::recursive_mutex> lock(mutex_);
-            if (backend_) {
+            auto* primary = get_backend(0);
+            if (primary) {
                 spdlog::debug("[AMS State] Starting backend");
-                auto result = backend_->start();
+                auto result = primary->start();
                 spdlog::debug("[AMS State] backend->start() returned, result={}",
                               static_cast<bool>(result));
             }
@@ -357,32 +362,79 @@ void AmsState::init_backend_from_hardware(const helix::PrinterDiscovery& hardwar
 void AmsState::set_backend(std::unique_ptr<AmsBackend> backend) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    // Stop existing backend
-    if (backend_) {
-        backend_->stop();
-    }
+    clear_backends();
 
-    backend_ = std::move(backend);
-
-    if (backend_) {
-        // Register event callback
-        backend_->set_event_callback([this](const std::string& event, const std::string& data) {
-            on_backend_event(event, data);
-        });
-
-        spdlog::debug("[AMS State] Backend set (type={})",
-                      ams_type_to_string(backend_->get_type()));
+    if (backend) {
+        auto type = backend->get_type();
+        add_backend(std::move(backend));
+        spdlog::debug("[AMS State] Backend set (type={})", ams_type_to_string(type));
     }
 }
 
-AmsBackend* AmsState::get_backend() const {
+int AmsState::add_backend(std::unique_ptr<AmsBackend> backend) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    return backend_.get();
+
+    int index = static_cast<int>(backends_.size());
+    backends_.push_back(std::move(backend));
+
+    if (backends_[index]) {
+        // Register event callback with captured index
+        backends_[index]->set_event_callback(
+            [this, index](const std::string& event, const std::string& data) {
+                on_backend_event(index, event, data);
+            });
+
+        // Allocate per-backend slot subjects for secondary backends
+        if (index > 0) {
+            auto info = backends_[index]->get_system_info();
+            BackendSlotSubjects subs;
+            subs.init(info.total_slots);
+            secondary_slot_subjects_.push_back(std::move(subs));
+        }
+    }
+
+    return index;
+}
+
+AmsBackend* AmsState::get_backend(int index) const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    if (index < 0 || index >= static_cast<int>(backends_.size())) {
+        return nullptr;
+    }
+    return backends_[index].get();
+}
+
+int AmsState::backend_count() const {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    return static_cast<int>(backends_.size());
+}
+
+void AmsState::clear_backends() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
+    // Stop all backends
+    for (auto& b : backends_) {
+        if (b) {
+            b->stop();
+        }
+    }
+    backends_.clear();
+
+    // Clean up secondary slot subjects
+    for (auto& subs : secondary_slot_subjects_) {
+        subs.deinit();
+    }
+    secondary_slot_subjects_.clear();
+}
+
+AmsBackend* AmsState::get_backend() const {
+    return get_backend(0);
 }
 
 bool AmsState::is_available() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    return backend_ && backend_->get_type() != AmsType::NONE;
+    auto* primary = get_backend(0);
+    return primary && primary->get_type() != AmsType::NONE;
 }
 
 void AmsState::set_moonraker_api(MoonrakerAPI* api) {
@@ -406,14 +458,134 @@ lv_subject_t* AmsState::get_slot_status_subject(int slot_index) {
     return &slot_statuses_[slot_index];
 }
 
-void AmsState::sync_from_backend() {
+lv_subject_t* AmsState::get_slot_color_subject(int backend_index, int slot_index) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    if (backend_index == 0) {
+        return get_slot_color_subject(slot_index);
+    }
+    int sec_idx = backend_index - 1;
+    if (sec_idx < 0 || sec_idx >= static_cast<int>(secondary_slot_subjects_.size())) {
+        return nullptr;
+    }
+    auto& subs = secondary_slot_subjects_[sec_idx];
+    if (slot_index < 0 || slot_index >= subs.slot_count) {
+        return nullptr;
+    }
+    return &subs.colors[slot_index];
+}
+
+lv_subject_t* AmsState::get_slot_status_subject(int backend_index, int slot_index) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    if (backend_index == 0) {
+        return get_slot_status_subject(slot_index);
+    }
+    int sec_idx = backend_index - 1;
+    if (sec_idx < 0 || sec_idx >= static_cast<int>(secondary_slot_subjects_.size())) {
+        return nullptr;
+    }
+    auto& subs = secondary_slot_subjects_[sec_idx];
+    if (slot_index < 0 || slot_index >= subs.slot_count) {
+        return nullptr;
+    }
+    return &subs.statuses[slot_index];
+}
+
+void AmsState::BackendSlotSubjects::init(int count) {
+    slot_count = count;
+    colors.resize(count);
+    statuses.resize(count);
+    for (int i = 0; i < count; ++i) {
+        lv_subject_init_int(&colors[i], static_cast<int>(AMS_DEFAULT_SLOT_COLOR));
+        lv_subject_init_int(&statuses[i], static_cast<int>(SlotStatus::UNKNOWN));
+    }
+}
+
+void AmsState::BackendSlotSubjects::deinit() {
+    for (auto& c : colors)
+        lv_subject_deinit(&c);
+    for (auto& s : statuses)
+        lv_subject_deinit(&s);
+    colors.clear();
+    statuses.clear();
+    slot_count = 0;
+}
+
+void AmsState::sync_backend(int backend_index) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    if (!backend_) {
+    if (backend_index == 0) {
+        sync_from_backend();
         return;
     }
 
-    AmsSystemInfo info = backend_->get_system_info();
+    auto* backend = get_backend(backend_index);
+    if (!backend) {
+        return;
+    }
+
+    int sec_idx = backend_index - 1;
+    if (sec_idx < 0 || sec_idx >= static_cast<int>(secondary_slot_subjects_.size())) {
+        return;
+    }
+
+    AmsSystemInfo info = backend->get_system_info();
+    auto& subs = secondary_slot_subjects_[sec_idx];
+
+    for (int i = 0; i < std::min(info.total_slots, subs.slot_count); ++i) {
+        const SlotInfo* slot = info.get_slot_global(i);
+        if (slot) {
+            lv_subject_set_int(&subs.colors[i], static_cast<int>(slot->color_rgb));
+            lv_subject_set_int(&subs.statuses[i], static_cast<int>(slot->status));
+        }
+    }
+
+    spdlog::debug("[AMS State] Synced secondary backend {} - slots={}", backend_index,
+                  info.total_slots);
+}
+
+void AmsState::update_slot_for_backend(int backend_index, int slot_index) {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
+    if (backend_index == 0) {
+        update_slot(slot_index);
+        return;
+    }
+
+    auto* backend = get_backend(backend_index);
+    if (!backend || slot_index < 0) {
+        return;
+    }
+
+    int sec_idx = backend_index - 1;
+    if (sec_idx < 0 || sec_idx >= static_cast<int>(secondary_slot_subjects_.size())) {
+        return;
+    }
+
+    auto& subs = secondary_slot_subjects_[sec_idx];
+    if (slot_index >= subs.slot_count) {
+        return;
+    }
+
+    SlotInfo slot = backend->get_slot_info(slot_index);
+    if (slot.slot_index >= 0) {
+        lv_subject_set_int(&subs.colors[slot_index], static_cast<int>(slot.color_rgb));
+        lv_subject_set_int(&subs.statuses[slot_index], static_cast<int>(slot.status));
+
+        spdlog::trace("[AMS State] Updated backend {} slot {} - color=0x{:06X}, status={}",
+                      backend_index, slot_index, slot.color_rgb,
+                      slot_status_to_string(slot.status));
+    }
+}
+
+void AmsState::sync_from_backend() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+
+    auto* backend = get_backend(0);
+    if (!backend) {
+        return;
+    }
+
+    AmsSystemInfo info = backend->get_system_info();
 
     // Update system-level subjects
     lv_subject_set_int(&ams_type_, static_cast<int>(info.type));
@@ -452,10 +624,10 @@ void AmsState::sync_from_backend() {
     }
 
     // Update path visualization subjects
-    lv_subject_set_int(&path_topology_, static_cast<int>(backend_->get_topology()));
+    lv_subject_set_int(&path_topology_, static_cast<int>(backend->get_topology()));
     lv_subject_set_int(&path_active_slot_, info.current_slot);
-    lv_subject_set_int(&path_filament_segment_, static_cast<int>(backend_->get_filament_segment()));
-    lv_subject_set_int(&path_error_segment_, static_cast<int>(backend_->infer_error_segment()));
+    lv_subject_set_int(&path_filament_segment_, static_cast<int>(backend->get_filament_segment()));
+    lv_subject_set_int(&path_error_segment_, static_cast<int>(backend->infer_error_segment()));
     // Note: path_anim_progress_ is controlled by UI animation, not synced from backend
 
     // Update per-slot subjects
@@ -484,7 +656,7 @@ void AmsState::sync_from_backend() {
     spdlog::debug("[AMS State] Synced from backend - type={}, slots={}, action={}, segment={}",
                   ams_type_to_string(info.type), info.total_slots,
                   ams_action_to_string(info.action),
-                  path_segment_to_string(backend_->get_filament_segment()));
+                  path_segment_to_string(backend->get_filament_segment()));
 
     // Refresh Spoolman weights now that slot data is available
     // (this catches initial load and any re-syncs)
@@ -494,11 +666,12 @@ void AmsState::sync_from_backend() {
 void AmsState::update_slot(int slot_index) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    if (!backend_ || slot_index < 0 || slot_index >= MAX_SLOTS) {
+    auto* backend = get_backend(0);
+    if (!backend || slot_index < 0 || slot_index >= MAX_SLOTS) {
         return;
     }
 
-    SlotInfo slot = backend_->get_slot_info(slot_index);
+    SlotInfo slot = backend->get_slot_info(slot_index);
     if (slot.slot_index >= 0) {
         lv_subject_set_int(&slot_colors_[slot_index], static_cast<int>(slot.color_rgb));
         lv_subject_set_int(&slot_statuses_[slot_index], static_cast<int>(slot.status));
@@ -509,16 +682,19 @@ void AmsState::update_slot(int slot_index) {
     }
 }
 
-void AmsState::on_backend_event(const std::string& event, const std::string& data) {
-    spdlog::trace("[AMS State] Received event '{}' data='{}'", event, data);
+void AmsState::on_backend_event(int backend_index, const std::string& event,
+                                const std::string& data) {
+    spdlog::trace("[AMS State] Received event '{}' data='{}' from backend {}", event, data,
+                  backend_index);
 
     // Use ui_queue_update to post updates to LVGL's main thread
     // This is required because backend events may come from background threads
     // and LVGL is not thread-safe
 
     // Helper to safely queue async call using RAII pattern
-    auto queue_sync = [](bool full_sync, int slot_index) {
-        auto sync_data = std::make_unique<AsyncSyncData>(AsyncSyncData{full_sync, slot_index});
+    auto queue_sync = [backend_index](bool full_sync, int slot_index) {
+        auto sync_data =
+            std::make_unique<AsyncSyncData>(AsyncSyncData{backend_index, full_sync, slot_index});
         ui_queue_update<AsyncSyncData>(std::move(sync_data), [](AsyncSyncData* d) {
             // Skip if shutdown is in progress - AmsState singleton may be destroyed
             if (s_shutdown_flag.load(std::memory_order_acquire)) {
@@ -526,9 +702,9 @@ void AmsState::on_backend_event(const std::string& event, const std::string& dat
             }
 
             if (d->full_sync) {
-                AmsState::instance().sync_from_backend();
+                AmsState::instance().sync_backend(d->backend_index);
             } else {
-                AmsState::instance().update_slot(d->slot_index);
+                AmsState::instance().update_slot_for_backend(d->backend_index, d->slot_index);
             }
         });
     };
@@ -570,14 +746,15 @@ void AmsState::bump_slots_version() {
 void AmsState::sync_dryer_from_backend() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    if (!backend_) {
+    auto* backend = get_backend(0);
+    if (!backend) {
         // No backend - clear dryer state
         lv_subject_set_int(&dryer_supported_, 0);
         lv_subject_set_int(&dryer_active_, 0);
         return;
     }
 
-    DryerInfo dryer = backend_->get_dryer_info();
+    DryerInfo dryer = backend->get_dryer_info();
 
     // Update integer subjects
     lv_subject_set_int(&dryer_supported_, dryer.supported ? 1 : 0);
@@ -636,7 +813,8 @@ void AmsState::set_action(AmsAction action) {
 void AmsState::sync_current_loaded_from_backend() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    if (!backend_) {
+    auto* backend = get_backend(0);
+    if (!backend) {
         // No backend - show empty state
         lv_subject_copy_string(&current_material_text_, "---");
         lv_subject_copy_string(&current_slot_text_, "None");
@@ -650,7 +828,7 @@ void AmsState::sync_current_loaded_from_backend() {
     bool filament_loaded = lv_subject_get_int(&filament_loaded_) != 0;
 
     // Check for bypass mode (slot_index == -2)
-    if (slot_index == -2 && backend_->is_bypass_active()) {
+    if (slot_index == -2 && backend->is_bypass_active()) {
         lv_subject_copy_string(&current_material_text_, "External");
         lv_subject_copy_string(&current_slot_text_, "Bypass");
         lv_subject_copy_string(&current_weight_text_, "");
@@ -658,7 +836,7 @@ void AmsState::sync_current_loaded_from_backend() {
         lv_subject_set_int(&current_color_, 0x888888);
     } else if (slot_index >= 0 && filament_loaded) {
         // Filament is loaded - show slot info
-        SlotInfo slot_info = backend_->get_slot_info(slot_index);
+        SlotInfo slot_info = backend->get_slot_info(slot_index);
 
         // Sync Spoolman active spool when slot with spoolman_id is loaded
         if (api_ && slot_info.spoolman_id > 0 &&
@@ -722,8 +900,9 @@ void AmsState::adjust_modal_temp(int delta_c) {
     // Get limits from backend if available, fallback to constants
     float min_temp = static_cast<float>(MIN_DRYER_TEMP_C);
     float max_temp = static_cast<float>(MAX_DRYER_TEMP_C);
-    if (backend_) {
-        DryerInfo dryer = backend_->get_dryer_info();
+    auto* backend = get_backend(0);
+    if (backend) {
+        DryerInfo dryer = backend->get_dryer_info();
         min_temp = dryer.min_temp_c;
         max_temp = dryer.max_temp_c;
     }
@@ -741,8 +920,9 @@ void AmsState::adjust_modal_duration(int delta_min) {
 
     // Get max duration from backend if available, fallback to constant
     int max_duration = MAX_DRYER_DURATION_MIN;
-    if (backend_) {
-        DryerInfo dryer = backend_->get_dryer_info();
+    auto* backend = get_backend(0);
+    if (backend) {
+        DryerInfo dryer = backend->get_dryer_info();
         max_duration = dryer.max_duration_min;
     }
 
@@ -786,15 +966,16 @@ void AmsState::refresh_spoolman_weights() {
         return;
     }
 
-    if (!backend_) {
+    auto* backend = get_backend(0);
+    if (!backend) {
         return;
     }
 
-    int slot_count = backend_->get_system_info().total_slots;
+    int slot_count = backend->get_system_info().total_slots;
     int linked_count = 0;
 
     for (int i = 0; i < slot_count; ++i) {
-        SlotInfo slot = backend_->get_slot_info(i);
+        SlotInfo slot = backend->get_slot_info(i);
         if (slot.spoolman_id > 0) {
             ++linked_count;
             int slot_index = i;
@@ -831,12 +1012,13 @@ void AmsState::refresh_spoolman_weights() {
                         AmsState& state = AmsState::instance();
                         std::lock_guard<std::recursive_mutex> lock(state.mutex_);
 
-                        if (!state.backend_) {
+                        auto* primary = state.get_backend(0);
+                        if (!primary) {
                             return;
                         }
 
                         // Get current slot info and verify it wasn't reassigned
-                        SlotInfo slot = state.backend_->get_slot_info(d->slot_index);
+                        SlotInfo slot = primary->get_slot_info(d->slot_index);
                         if (slot.spoolman_id != d->expected_spoolman_id) {
                             spdlog::debug(
                                 "[AmsState] Slot {} spoolman_id changed ({} -> {}), skipping stale "
@@ -848,7 +1030,7 @@ void AmsState::refresh_spoolman_weights() {
                         // Update weights and set back
                         slot.remaining_weight_g = d->remaining_weight_g;
                         slot.total_weight_g = d->total_weight_g;
-                        state.backend_->set_slot_info(d->slot_index, slot);
+                        primary->set_slot_info(d->slot_index, slot);
                         state.bump_slots_version();
 
                         spdlog::trace("[AmsState] Updated slot {} weights: {:.0f}g / {:.0f}g",
