@@ -57,6 +57,17 @@ class CrashReporter {
         int uptime_sec = 0;
         std::vector<std::string> backtrace;
 
+        // Fault info (Phase 2 - from siginfo_t)
+        std::string fault_addr;
+        int fault_code = 0;
+        std::string fault_code_name;
+
+        // Register state (Phase 2 - from ucontext_t)
+        std::string reg_pc;
+        std::string reg_sp;
+        std::string reg_lr; // ARM only
+        std::string reg_bp; // x86_64 only
+
         // Additional context (collected at startup)
         std::string platform;
         std::string printer_model;

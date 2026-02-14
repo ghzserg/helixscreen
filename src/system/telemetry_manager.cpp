@@ -744,6 +744,27 @@ void TelemetryManager::check_previous_crash() {
     if (crash_data.contains("backtrace")) {
         event["backtrace"] = crash_data["backtrace"];
     }
+    if (crash_data.contains("fault_addr")) {
+        event["fault_addr"] = crash_data["fault_addr"];
+    }
+    if (crash_data.contains("fault_code")) {
+        event["fault_code"] = crash_data["fault_code"];
+    }
+    if (crash_data.contains("fault_code_name")) {
+        event["fault_code_name"] = crash_data["fault_code_name"];
+    }
+    if (crash_data.contains("reg_pc")) {
+        event["reg_pc"] = crash_data["reg_pc"];
+    }
+    if (crash_data.contains("reg_sp")) {
+        event["reg_sp"] = crash_data["reg_sp"];
+    }
+    if (crash_data.contains("reg_lr")) {
+        event["reg_lr"] = crash_data["reg_lr"];
+    }
+    if (crash_data.contains("reg_bp")) {
+        event["reg_bp"] = crash_data["reg_bp"];
+    }
 
     // Only enqueue if telemetry is enabled (respect user opt-in)
     if (enabled_.load()) {

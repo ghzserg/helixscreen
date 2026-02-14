@@ -94,6 +94,24 @@ CrashReporter::CrashReport CrashReporter::collect_report() {
         }
     }
 
+    // Fault info (Phase 2)
+    if (crash_data.contains("fault_addr"))
+        report.fault_addr = crash_data["fault_addr"];
+    if (crash_data.contains("fault_code"))
+        report.fault_code = crash_data["fault_code"];
+    if (crash_data.contains("fault_code_name"))
+        report.fault_code_name = crash_data["fault_code_name"];
+
+    // Register state (Phase 2)
+    if (crash_data.contains("reg_pc"))
+        report.reg_pc = crash_data["reg_pc"];
+    if (crash_data.contains("reg_sp"))
+        report.reg_sp = crash_data["reg_sp"];
+    if (crash_data.contains("reg_lr"))
+        report.reg_lr = crash_data["reg_lr"];
+    if (crash_data.contains("reg_bp"))
+        report.reg_bp = crash_data["reg_bp"];
+
     // Collect additional system context
     report.platform = UpdateChecker::get_platform_key();
 
@@ -193,6 +211,25 @@ nlohmann::json CrashReporter::report_to_json(const CrashReport& report) {
     j["ram_mb"] = report.ram_total_mb;
     j["cpu_cores"] = report.cpu_cores;
 
+    // Fault info (only when present)
+    if (!report.fault_addr.empty()) {
+        j["fault_addr"] = report.fault_addr;
+        j["fault_code"] = report.fault_code;
+        j["fault_code_name"] = report.fault_code_name;
+    }
+
+    // Register state (only when present)
+    if (!report.reg_pc.empty()) {
+        json regs;
+        regs["pc"] = report.reg_pc;
+        regs["sp"] = report.reg_sp;
+        if (!report.reg_lr.empty())
+            regs["lr"] = report.reg_lr;
+        if (!report.reg_bp.empty())
+            regs["bp"] = report.reg_bp;
+        j["registers"] = regs;
+    }
+
     // Worker expects log_tail as an array of lines
     if (!report.log_tail.empty()) {
         json lines = json::array();
@@ -217,6 +254,22 @@ std::string CrashReporter::report_to_text(const CrashReport& report) {
     ss << "Version:   " << report.app_version << "\n";
     ss << "Timestamp: " << report.timestamp << "\n";
     ss << "Uptime:    " << report.uptime_sec << " seconds\n\n";
+
+    if (!report.fault_addr.empty()) {
+        ss << "Fault Information\n";
+        ss << "  Fault Address: " << report.fault_addr << "\n";
+        ss << "  Fault Code: " << report.fault_code << " (" << report.fault_code_name << ")\n";
+    }
+
+    if (!report.reg_pc.empty()) {
+        ss << "Registers\n";
+        ss << "  PC: " << report.reg_pc << "\n";
+        ss << "  SP: " << report.reg_sp << "\n";
+        if (!report.reg_lr.empty())
+            ss << "  LR: " << report.reg_lr << "\n";
+        if (!report.reg_bp.empty())
+            ss << "  BP: " << report.reg_bp << "\n";
+    }
 
     ss << "--- System Info ---\n";
     ss << "Platform:  " << report.platform << "\n";
@@ -257,7 +310,11 @@ std::string CrashReporter::generate_github_url(const CrashReport& report) {
     body << "- **Signal:** " << report.signal << " (" << report.signal_name << ")\n";
     body << "- **Version:** " << report.app_version << "\n";
     body << "- **Platform:** " << report.platform << "\n";
-    body << "- **Uptime:** " << report.uptime_sec << "s\n\n";
+    body << "- **Uptime:** " << report.uptime_sec << "s\n";
+    if (!report.fault_code_name.empty()) {
+        body << "- **Fault:** " << report.fault_code_name << " at " << report.fault_addr << "\n";
+    }
+    body << "\n";
 
     if (!report.backtrace.empty()) {
         body << "## Backtrace\n```\n";

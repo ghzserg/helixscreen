@@ -145,8 +145,8 @@ DEPFLAGS = -MMD -MP
 
 # Project source flags - warnings enabled, strict mode optional
 # Use WERROR=1 to treat warnings as errors (for CI or `make strict`)
-CFLAGS := -std=c11 -Wall -Wextra -O2 -g -D_GNU_SOURCE
-CXXFLAGS := -std=c++17 -Wall -Wextra -O2 -g
+CFLAGS := -std=c11 -Wall -Wextra -O2 -g -D_GNU_SOURCE -fno-omit-frame-pointer
+CXXFLAGS := -std=c++17 -Wall -Wextra -O2 -g -fno-omit-frame-pointer
 
 # Version information (read from VERSION.txt file)
 # Format: MAJOR.MINOR.PATCH following Semantic Versioning 2.0.0

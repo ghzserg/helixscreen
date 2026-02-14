@@ -19,6 +19,15 @@
 #include <string>
 #include <unistd.h>
 
+// ucontext_t is needed for register state capture in the signal handler.
+// On macOS, <sys/ucontext.h> is available without _XOPEN_SOURCE.
+// On Linux, <ucontext.h> or <signal.h> provides it.
+#ifdef __APPLE__
+#include <sys/ucontext.h>
+#else
+#include <ucontext.h>
+#endif
+
 // backtrace() is available on glibc (Linux) and macOS
 #if defined(__GLIBC__) || defined(__APPLE__)
 #include <execinfo.h>
@@ -152,8 +161,43 @@ static const char* signal_name(int sig) {
     }
 }
 
+/// Async-signal-safe: map signal + code to a human-readable name
+static const char* get_fault_code_name(int sig, int code) {
+    if (sig == SIGSEGV) {
+        switch (code) {
+        case SEGV_MAPERR:
+            return "SEGV_MAPERR";
+        case SEGV_ACCERR:
+            return "SEGV_ACCERR";
+        default:
+            return "UNKNOWN";
+        }
+    } else if (sig == SIGBUS) {
+        switch (code) {
+        case BUS_ADRALN:
+            return "BUS_ADRALN";
+        case BUS_ADRERR:
+            return "BUS_ADRERR";
+        default:
+            return "UNKNOWN";
+        }
+    } else if (sig == SIGFPE) {
+        switch (code) {
+        case FPE_INTDIV:
+            return "FPE_INTDIV";
+        case FPE_FLTDIV:
+            return "FPE_FLTDIV";
+        case FPE_FLTOVF:
+            return "FPE_FLTOVF";
+        default:
+            return "UNKNOWN";
+        }
+    }
+    return "UNKNOWN";
+}
+
 /// The signal handler itself -- async-signal-safe ONLY
-static void crash_signal_handler(int sig) {
+static void crash_signal_handler(int sig, siginfo_t* info, void* ucontext) {
     // Open crash file (O_CREAT | O_WRONLY | O_TRUNC)
     // These are all async-signal-safe
     int fd = open(s_crash_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
@@ -194,13 +238,86 @@ static void crash_signal_handler(int sig) {
     safe_write(fd, int_to_str(num_buf, sizeof(num_buf), uptime));
     safe_write(fd, "\n");
 
+    char hex_buf[32];
+
+    // Write fault address (from siginfo_t)
+    if (info) {
+        safe_write(fd, "fault_addr:");
+        safe_write(
+            fd, ptr_to_hex(hex_buf, sizeof(hex_buf), reinterpret_cast<uintptr_t>(info->si_addr)));
+        safe_write(fd, "\n");
+
+        safe_write(fd, "fault_code:");
+        safe_write(fd, int_to_str(num_buf, sizeof(num_buf), info->si_code));
+        safe_write(fd, "\n");
+
+        safe_write(fd, "fault_code_name:");
+        safe_write(fd, get_fault_code_name(sig, info->si_code));
+        safe_write(fd, "\n");
+    }
+
+    // Write register state from ucontext
+    if (ucontext) {
+        const auto* uctx = static_cast<const ucontext_t*>(ucontext);
+#if defined(__APPLE__) && defined(__aarch64__)
+        safe_write(fd, "reg_pc:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext->__ss.__pc));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_sp:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext->__ss.__sp));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_lr:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext->__ss.__lr));
+        safe_write(fd, "\n");
+#elif defined(__APPLE__) && defined(__x86_64__)
+        safe_write(fd, "reg_pc:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext->__ss.__rip));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_sp:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext->__ss.__rsp));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_bp:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext->__ss.__rbp));
+        safe_write(fd, "\n");
+#elif defined(__arm__)
+        safe_write(fd, "reg_pc:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.arm_pc));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_sp:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.arm_sp));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_lr:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.arm_lr));
+        safe_write(fd, "\n");
+#elif defined(__aarch64__)
+        safe_write(fd, "reg_pc:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.pc));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_sp:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.sp));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_lr:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.regs[30]));
+        safe_write(fd, "\n");
+#elif defined(__x86_64__)
+        safe_write(fd, "reg_pc:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.gregs[REG_RIP]));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_sp:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.gregs[REG_RSP]));
+        safe_write(fd, "\n");
+        safe_write(fd, "reg_bp:");
+        safe_write(fd, ptr_to_hex(hex_buf, sizeof(hex_buf), uctx->uc_mcontext.gregs[REG_RBP]));
+        safe_write(fd, "\n");
+#endif
+    }
+
     // Write backtrace if available
     // backtrace() is not formally async-signal-safe but is widely used
     // in crash handlers on Linux (glibc) and macOS
 #ifdef HAVE_BACKTRACE
     void* frames[64];
     int frame_count = backtrace(frames, 64);
-    char hex_buf[32];
     for (int i = 0; i < frame_count; ++i) {
         safe_write(fd, "bt:");
         safe_write(fd,
@@ -250,10 +367,11 @@ void crash_handler::install(const std::string& crash_file_path) {
     // Install signal handlers via sigaction (not signal())
     struct sigaction sa;
     std::memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = crash_signal_handler;
+    sa.sa_sigaction = crash_signal_handler;
     sigemptyset(&sa.sa_mask);
     // SA_RESETHAND: restore default after first signal (prevents recursive crash handler)
-    sa.sa_flags = SA_RESETHAND;
+    // SA_SIGINFO: pass siginfo_t and ucontext to handler for fault/register capture
+    sa.sa_flags = SA_RESETHAND | SA_SIGINFO;
 
     sigaction(SIGSEGV, &sa, &s_old_sigsegv);
     sigaction(SIGABRT, &sa, &s_old_sigabrt);
@@ -343,6 +461,24 @@ nlohmann::json crash_handler::read_crash_file(const std::string& crash_file_path
                 } catch (...) {
                     result["uptime_sec"] = 0;
                 }
+            } else if (key == "fault_addr") {
+                result["fault_addr"] = value;
+            } else if (key == "fault_code") {
+                try {
+                    result["fault_code"] = std::stoi(value);
+                } catch (...) {
+                    result["fault_code"] = 0;
+                }
+            } else if (key == "fault_code_name") {
+                result["fault_code_name"] = value;
+            } else if (key == "reg_pc") {
+                result["reg_pc"] = value;
+            } else if (key == "reg_sp") {
+                result["reg_sp"] = value;
+            } else if (key == "reg_lr") {
+                result["reg_lr"] = value;
+            } else if (key == "reg_bp") {
+                result["reg_bp"] = value;
             } else if (key == "bt") {
                 backtrace_arr.push_back(value);
             }
@@ -391,6 +527,11 @@ void crash_handler::write_mock_crash_file(const std::string& crash_file_path) {
     ofs << "version:" << HELIX_VERSION << "\n";
     ofs << "timestamp:" << now << "\n";
     ofs << "uptime:1234\n";
+    ofs << "fault_addr:0x00000000\n";
+    ofs << "fault_code:1\n";
+    ofs << "fault_code_name:SEGV_MAPERR\n";
+    ofs << "reg_pc:0x00400abc\n";
+    ofs << "reg_sp:0x7ffd12345678\n";
     ofs << "bt:0x00400abc\n";
     ofs << "bt:0x00400def\n";
     ofs << "bt:0x00401234\n";

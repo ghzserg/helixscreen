@@ -128,37 +128,28 @@ New fields:
 
 ### Platform-Specific Register Access
 
-Registers live in `ucontext_t.uc_mcontext`, which differs per architecture:
+Registers live in `ucontext_t.uc_mcontext`, which differs per architecture.
+
+> **IMPORTANT:** Apple-specific `#ifdef` guards MUST come before generic architecture guards. On macOS, `__aarch64__` and `__x86_64__` are defined alongside `__APPLE__`, so generic `#elif defined(__aarch64__)` would match first and use the wrong `mcontext` structure.
 
 ```cpp
-static void write_register_state(int fd, const ucontext_t* uctx) {
-#if defined(__arm__)
-    // ARM32 (Pi32)
-    write_field(fd, "reg_pc", uctx->uc_mcontext.arm_pc);
-    write_field(fd, "reg_sp", uctx->uc_mcontext.arm_sp);
-    write_field(fd, "reg_lr", uctx->uc_mcontext.arm_lr);
-#elif defined(__aarch64__)
-    // ARM64 (Pi 4/5 64-bit)
-    write_field(fd, "reg_pc", uctx->uc_mcontext.pc);
-    write_field(fd, "reg_sp", uctx->uc_mcontext.sp);
-    // ARM64 doesn't expose LR directly in mcontext on all kernels
-    // x30 is the link register
-    write_field(fd, "reg_lr", uctx->uc_mcontext.regs[30]);
-#elif defined(__x86_64__)
-    // x86_64 (AD5M, dev machines)
-    write_field(fd, "reg_pc", uctx->uc_mcontext.gregs[REG_RIP]);
-    write_field(fd, "reg_sp", uctx->uc_mcontext.gregs[REG_RSP]);
-    write_field(fd, "reg_bp", uctx->uc_mcontext.gregs[REG_RBP]);
+// Correct ordering: Apple-specific FIRST, then generic
+#if defined(__APPLE__) && defined(__aarch64__)
+    // macOS Apple Silicon
+    uctx->uc_mcontext->__ss.__pc / __sp / __lr
 #elif defined(__APPLE__) && defined(__x86_64__)
-    write_field(fd, "reg_pc", uctx->uc_mcontext->__ss.__rip);
-    write_field(fd, "reg_sp", uctx->uc_mcontext->__ss.__rsp);
-    write_field(fd, "reg_bp", uctx->uc_mcontext->__ss.__rbp);
-#elif defined(__APPLE__) && defined(__aarch64__)
-    write_field(fd, "reg_pc", uctx->uc_mcontext->__ss.__pc);
-    write_field(fd, "reg_sp", uctx->uc_mcontext->__ss.__sp);
-    write_field(fd, "reg_lr", uctx->uc_mcontext->__ss.__lr);
+    // macOS Intel
+    uctx->uc_mcontext->__ss.__rip / __rsp / __rbp
+#elif defined(__arm__)
+    // Linux ARM32 (Pi32)
+    uctx->uc_mcontext.arm_pc / arm_sp / arm_lr
+#elif defined(__aarch64__)
+    // Linux ARM64 (Pi 4/5 64-bit)
+    uctx->uc_mcontext.pc / sp / regs[30]
+#elif defined(__x86_64__)
+    // Linux x86_64 (AD5M)
+    uctx->uc_mcontext.gregs[REG_RIP] / [REG_RSP] / [REG_RBP]
 #endif
-}
 ```
 
 ### Signal Handler Signature Change
@@ -614,21 +605,34 @@ The signal handler does NOT read symbols.gz. It continues to write raw addresses
 
 ## Implementation Order
 
-| Phase | What | Files Changed | Depends On |
-|-------|------|---------------|------------|
-| **1** | Frame pointers in release | `Makefile` | Nothing |
-| **2** | Fault address + registers + fault code | `crash_handler.cpp`, `crash_handler.h`, `crash_reporter.cpp`, parser, tests | Nothing |
-| **3** | Log tail in GitHub issues | Telemetry CF Worker template | Nothing |
-| **4** | Breadcrumb ring buffer | New files + integration across ~10-15 source files | Nothing (but benefits from Phase 2 testing) |
-| **5** | On-device symbol map | `Makefile`, `crash_reporter.cpp`, release packaging | Nothing |
+| Phase | What | Files Changed | Depends On | Status |
+|-------|------|---------------|------------|--------|
+| **1** | Frame pointers in release | `Makefile` | Nothing | **DONE** |
+| **2** | Fault address + registers + fault code | `crash_handler.cpp`, `crash_reporter.h`, `crash_reporter.cpp`, `telemetry_manager.cpp`, tests | Nothing | **DONE** |
+| **3** | Log tail + fault/register data in GitHub issues | `server/crash-worker/src/index.js` | Phase 2 | **DONE** |
+| **4** | Breadcrumb ring buffer | New files + integration across ~10-15 source files | Nothing (but benefits from Phase 2 testing) | Not started |
+| **5** | On-device symbol map | `Makefile`, `crash_reporter.cpp`, release packaging | Nothing | Not started |
 
 Phases 1-3 are independent and can be done in any order or in parallel. Phase 4 is the largest effort. Phase 5 is independent but less urgent (we can always resolve offline).
 
-**Recommended execution:**
-1. Phase 1 first (trivial, immediate impact on next crash)
-2. Phase 2 + Phase 3 together (moderate effort, big diagnostic improvement)
-3. Phase 4 (breadcrumbs — biggest effort, biggest long-term payoff)
-4. Phase 5 (symbol map — nice to have, can defer)
+### Implementation Notes (Phases 1-3)
+
+**Phase 1:** Added `-fno-omit-frame-pointer` to `CFLAGS` and `CXXFLAGS` (not submodule flags). Zero binary size impact, negligible perf impact for this UI app.
+
+**Phase 2:** Implemented on `feature/crash-reporting-v2` branch.
+- Signal handler switched to `SA_SIGINFO` with `sa.sa_sigaction`
+- Fault info: `fault_addr` (si_addr), `fault_code` (si_code), `fault_code_name` (lookup table)
+- Register state: platform-specific via `ucontext_t` for 5 platforms (macOS ARM64, macOS x86_64, Linux ARM32, Linux ARM64, Linux x86_64)
+- **Bug fix from plan:** Preprocessor guards reordered — Apple-specific checks come BEFORE generic architecture checks to prevent unreachable branches
+- Function renamed to `get_fault_code_name()` to avoid shadowing the struct field name
+- 16 new tests (8 crash_handler, 8 crash_reporter), all passing
+- Backward compatibility: old crash files without new fields parse without error
+- Telemetry events include fault fields AND register state
+
+**Phase 3:** The worker already had log tail support (collapsible `<details>` section). The actual gap was that the worker didn't render Phase 2's fault/register data. Updated:
+- Issue title now includes fault type: `Crash: SIGSEGV (SEGV_MAPERR at 0x00000000) in v0.9.18`
+- Fault row added to Crash Summary table
+- Registers section added with PC/SP/LR or BP values
 
 ---
 

@@ -102,7 +102,11 @@ function validateRequiredFields(body, fields) {
  * Build a markdown issue body from the crash report and create it via GitHub API.
  */
 async function createGitHubIssue(env, report) {
-  const title = `Crash: ${report.signal_name} in v${report.app_version}`;
+  // Include fault type in title when available (e.g., "SEGV_MAPERR at 0x00000000")
+  let title = `Crash: ${report.signal_name} in v${report.app_version}`;
+  if (report.fault_code_name && report.fault_addr) {
+    title = `Crash: ${report.signal_name} (${report.fault_code_name} at ${report.fault_addr}) in v${report.app_version}`;
+  }
   const body = formatIssueBody(report);
 
   const response = await fetch(
@@ -147,6 +151,24 @@ function formatIssueBody(r) {
 | **Uptime** | ${uptime} |
 | **Timestamp** | ${timestamp} |
 `;
+
+  // Fault info (Phase 2)
+  if (r.fault_code_name && r.fault_addr) {
+    md += `| **Fault** | ${r.fault_code_name} at ${r.fault_addr} |\n`;
+  }
+
+  // Register state (Phase 2)
+  if (r.registers) {
+    md += `\n## Registers
+
+| Register | Value |
+|----------|-------|
+`;
+    if (r.registers.pc) md += `| **PC** | ${r.registers.pc} |\n`;
+    if (r.registers.sp) md += `| **SP** | ${r.registers.sp} |\n`;
+    if (r.registers.lr) md += `| **LR** | ${r.registers.lr} |\n`;
+    if (r.registers.bp) md += `| **BP** | ${r.registers.bp} |\n`;
+  }
 
   // System info section (all fields optional)
   if (r.platform || r.display_backend || r.ram_mb || r.cpu_info || r.printer_model || r.klipper_version) {

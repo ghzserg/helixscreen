@@ -426,3 +426,148 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: crash event has correct device_id for
 
     tm.shutdown();
 }
+
+// ============================================================================
+// Phase 2: Fault Info & Register State Parsing [telemetry][crash]
+// ============================================================================
+
+TEST_CASE_METHOD(CrashTestFixture, "Crash: parse crash file extracts fault_addr",
+                 "[telemetry][crash]") {
+    write_crash_file("signal:11\nname:SIGSEGV\nversion:0.9.18\ntimestamp:1707350400\nuptime:3174\n"
+                     "fault_addr:0x00000000\nfault_code:1\nfault_code_name:SEGV_MAPERR\n"
+                     "reg_pc:0x00920bac\nreg_sp:0xbe8ff420\nreg_lr:0x0091a3c0\n"
+                     "bt:0x920bac\nbt:0xf7101290\n");
+    auto result = crash_handler::read_crash_file(crash_path());
+    REQUIRE_FALSE(result.is_null());
+    REQUIRE(result.contains("fault_addr"));
+    REQUIRE(result["fault_addr"] == "0x00000000");
+}
+
+TEST_CASE_METHOD(CrashTestFixture, "Crash: parse crash file extracts fault_code and name",
+                 "[telemetry][crash]") {
+    write_crash_file("signal:11\nname:SIGSEGV\nversion:0.9.18\ntimestamp:1707350400\nuptime:3174\n"
+                     "fault_addr:0x00000000\nfault_code:1\nfault_code_name:SEGV_MAPERR\n"
+                     "bt:0x920bac\n");
+    auto result = crash_handler::read_crash_file(crash_path());
+    REQUIRE_FALSE(result.is_null());
+    REQUIRE(result.contains("fault_code"));
+    REQUIRE(result["fault_code"] == 1);
+    REQUIRE(result.contains("fault_code_name"));
+    REQUIRE(result["fault_code_name"] == "SEGV_MAPERR");
+}
+
+TEST_CASE_METHOD(CrashTestFixture, "Crash: parse crash file extracts register state",
+                 "[telemetry][crash]") {
+    write_crash_file("signal:11\nname:SIGSEGV\nversion:0.9.18\ntimestamp:1707350400\nuptime:3174\n"
+                     "fault_addr:0xdeadbeef\nfault_code:2\nfault_code_name:SEGV_ACCERR\n"
+                     "reg_pc:0x00920bac\nreg_sp:0xbe8ff420\nreg_lr:0x0091a3c0\n"
+                     "bt:0x920bac\n");
+    auto result = crash_handler::read_crash_file(crash_path());
+    REQUIRE_FALSE(result.is_null());
+    REQUIRE(result.contains("reg_pc"));
+    REQUIRE(result["reg_pc"] == "0x00920bac");
+    REQUIRE(result.contains("reg_sp"));
+    REQUIRE(result["reg_sp"] == "0xbe8ff420");
+    REQUIRE(result.contains("reg_lr"));
+    REQUIRE(result["reg_lr"] == "0x0091a3c0");
+}
+
+TEST_CASE_METHOD(CrashTestFixture, "Crash: parse crash file extracts reg_bp for x86_64",
+                 "[telemetry][crash]") {
+    write_crash_file("signal:11\nname:SIGSEGV\nversion:0.9.18\ntimestamp:1707350400\nuptime:3174\n"
+                     "fault_addr:0x00000000\nfault_code:1\nfault_code_name:SEGV_MAPERR\n"
+                     "reg_pc:0x00400abc\nreg_sp:0x7ffd12345678\nreg_bp:0x7ffd12345690\n"
+                     "bt:0x400abc\n");
+    auto result = crash_handler::read_crash_file(crash_path());
+    REQUIRE_FALSE(result.is_null());
+    REQUIRE(result.contains("reg_bp"));
+    REQUIRE(result["reg_bp"] == "0x7ffd12345690");
+    // Should NOT have reg_lr when reg_bp is present
+    REQUIRE_FALSE(result.contains("reg_lr"));
+}
+
+TEST_CASE_METHOD(CrashTestFixture,
+                 "Crash: parse old format crash file without fault/register fields",
+                 "[telemetry][crash]") {
+    // This is the existing format - should continue working
+    write_realistic_crash_file();
+    auto result = crash_handler::read_crash_file(crash_path());
+    REQUIRE_FALSE(result.is_null());
+    REQUIRE(result["signal"] == 11);
+    REQUIRE(result["signal_name"] == "SIGSEGV");
+    // New fields should be absent, not error
+    REQUIRE_FALSE(result.contains("fault_addr"));
+    REQUIRE_FALSE(result.contains("fault_code"));
+    REQUIRE_FALSE(result.contains("fault_code_name"));
+    REQUIRE_FALSE(result.contains("reg_pc"));
+    REQUIRE_FALSE(result.contains("reg_sp"));
+    REQUIRE_FALSE(result.contains("reg_lr"));
+}
+
+TEST_CASE_METHOD(CrashTestFixture, "Crash: parse crash file with partial fault fields",
+                 "[telemetry][crash]") {
+    // Only fault_addr, no fault_code or registers
+    write_crash_file("signal:11\nname:SIGSEGV\nversion:0.9.18\ntimestamp:1707350400\nuptime:100\n"
+                     "fault_addr:0x00000000\n"
+                     "bt:0x920bac\n");
+    auto result = crash_handler::read_crash_file(crash_path());
+    REQUIRE_FALSE(result.is_null());
+    REQUIRE(result.contains("fault_addr"));
+    REQUIRE(result["fault_addr"] == "0x00000000");
+    REQUIRE_FALSE(result.contains("fault_code"));
+    REQUIRE_FALSE(result.contains("reg_pc"));
+}
+
+TEST_CASE_METHOD(CrashTestFixture,
+                 "Crash: write_mock_crash_file includes fault and register fields",
+                 "[telemetry][crash]") {
+    crash_handler::write_mock_crash_file(crash_path());
+    auto result = crash_handler::read_crash_file(crash_path());
+    REQUIRE_FALSE(result.is_null());
+    // Mock file should include fault info
+    REQUIRE(result.contains("fault_addr"));
+    REQUIRE(result.contains("fault_code"));
+    REQUIRE(result.contains("fault_code_name"));
+    // Mock file should include at least PC and SP registers
+    REQUIRE(result.contains("reg_pc"));
+    REQUIRE(result.contains("reg_sp"));
+}
+
+TEST_CASE_METHOD(CrashTestFixture, "Crash: TelemetryManager crash event includes fault fields",
+                 "[telemetry][crash]") {
+    std::string tm_crash_path = (temp_dir() / "crash.txt").string();
+    {
+        std::ofstream ofs(tm_crash_path);
+        ofs << "signal:11\nname:SIGSEGV\nversion:0.9.18\ntimestamp:1707350400\nuptime:3174\n"
+            << "fault_addr:0x00000000\nfault_code:1\nfault_code_name:SEGV_MAPERR\n"
+            << "reg_pc:0x00920bac\nreg_sp:0xbe8ff420\nreg_lr:0x0091a3c0\n"
+            << "bt:0x920bac\nbt:0xf7101290\n";
+    }
+    {
+        std::ofstream ofs((temp_dir() / "telemetry_config.json").string());
+        ofs << R"({"enabled": true})";
+    }
+
+    auto& tm = TelemetryManager::instance();
+    tm.shutdown();
+    tm.init(temp_dir().string());
+
+    auto snapshot = tm.get_queue_snapshot();
+    bool found = false;
+    for (const auto& event : snapshot) {
+        if (event.contains("event") && event["event"] == "crash") {
+            found = true;
+            REQUIRE(event.contains("fault_addr"));
+            REQUIRE(event["fault_addr"] == "0x00000000");
+            REQUIRE(event.contains("fault_code"));
+            REQUIRE(event["fault_code"] == 1);
+            REQUIRE(event.contains("fault_code_name"));
+            REQUIRE(event["fault_code_name"] == "SEGV_MAPERR");
+            break;
+        }
+    }
+    REQUIRE(found);
+
+    fs::remove(tm_crash_path);
+    tm.shutdown();
+}
