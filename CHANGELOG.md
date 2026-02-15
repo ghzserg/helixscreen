@@ -5,6 +5,23 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.21] - 2026-02-14
+
+### Added
+- G-code console gated behind beta features setting
+- Cancel escalation system: configurable e-stop timeout with settings toggle and dropdown
+- Internationalization for hardcoded settings strings
+
+### Fixed
+- Nested overlay backdrops no longer double-stack
+- Crash handler and report dialog disabled in test mode to prevent test interference
+- Installer now extracts install.sh from tarball to prevent stale script failures
+- Operation timeout guards increased for homing, QGL, and Z-tilt commands
+- Touch calibration option hidden for USB HID input devices
+
+### Changed
+- G-code console and cancel escalation documented in user guide
+
 ## [0.9.20] - 2026-02-14
 
 This release adds multi-extruder temperature support, tool state tracking, multi-backend AMS (allowing printers with multiple filament systems), and fixes a critical installer bug that prevented Moonraker from starting on ForgeX AD5M printers after reboot.
@@ -494,6 +511,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.9.21]: https://github.com/prestonbrown/helixscreen/compare/v0.9.20...v0.9.21
 [0.9.20]: https://github.com/prestonbrown/helixscreen/compare/v0.9.19...v0.9.20
 [0.9.19]: https://github.com/prestonbrown/helixscreen/compare/v0.9.18...v0.9.19
 [0.9.18]: https://github.com/prestonbrown/helixscreen/compare/v0.9.17...v0.9.18
