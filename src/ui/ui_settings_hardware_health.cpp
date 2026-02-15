@@ -214,52 +214,62 @@ void HardwareHealthOverlay::populate_hardware_issues() {
                         lv_obj_clear_flag(save_btn, LV_OBJ_FLAG_HIDDEN);
                     }
 
-                    // Store hardware name in row for callback (freed on row delete)
+                    // Store hardware name for callbacks (freed on row delete).
+                    // NOTE: We do NOT use lv_obj_set_user_data() here because
+                    // severity_card (our parent XML component) owns that slot
+                    // to store its severity string. Using event cb user_data instead.
                     char* name_copy = strdup(issue.hardware_name.c_str());
                     if (!name_copy) {
                         spdlog::error("[{}] Failed to allocate memory for hardware name",
                                       get_name());
                         continue;
                     }
-                    lv_obj_set_user_data(row, name_copy);
 
                     // Add delete handler to free the strdup'd name
                     // (acceptable exception to declarative UI rule for cleanup)
                     lv_obj_add_event_cb(
                         row,
                         [](lv_event_t* e) {
-                            auto* obj = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-                            void* data = lv_obj_get_user_data(obj);
+                            void* data = lv_event_get_user_data(e);
                             if (data) {
                                 free(data);
                             }
                         },
-                        LV_EVENT_DELETE, nullptr);
+                        LV_EVENT_DELETE, name_copy);
 
                     // Helper lambda for button click handlers
                     // (acceptable exception to declarative UI rule for dynamic rows)
                     auto add_button_handler = [&](lv_obj_t* btn, bool is_ignore) {
+                        // Pack hardware name pointer and is_ignore flag into a single
+                        // user_data value. name_copy is owned by the row's DELETE handler.
+                        struct ActionCtx {
+                            const char* hw_name;
+                            bool is_ignore;
+                        };
+                        auto* ctx = new ActionCtx{name_copy, is_ignore};
+
                         lv_obj_add_event_cb(
                             btn,
                             [](lv_event_t* e) {
                                 LVGL_SAFE_EVENT_CB_BEGIN("[HardwareHealthOverlay] action_clicked");
-                                auto* btn = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-                                // Navigate up: btn -> action_buttons -> row
-                                lv_obj_t* action_container = lv_obj_get_parent(btn);
-                                lv_obj_t* row = lv_obj_get_parent(action_container);
-                                const char* hw_name =
-                                    static_cast<const char*>(lv_obj_get_user_data(row));
-                                bool is_ignore = static_cast<bool>(
-                                    reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
+                                auto* ctx = static_cast<ActionCtx*>(lv_event_get_user_data(e));
 
-                                if (hw_name) {
-                                    get_hardware_health_overlay().handle_hardware_action(hw_name,
-                                                                                         is_ignore);
+                                if (ctx && ctx->hw_name) {
+                                    get_hardware_health_overlay().handle_hardware_action(
+                                        ctx->hw_name, ctx->is_ignore);
                                 }
                                 LVGL_SAFE_EVENT_CB_END();
                             },
-                            LV_EVENT_CLICKED,
-                            reinterpret_cast<void*>(static_cast<uintptr_t>(is_ignore)));
+                            LV_EVENT_CLICKED, ctx);
+
+                        // Clean up the ActionCtx when the button is destroyed
+                        lv_obj_add_event_cb(
+                            btn,
+                            [](lv_event_t* e) {
+                                auto* ctx = static_cast<ActionCtx*>(lv_event_get_user_data(e));
+                                delete ctx;
+                            },
+                            LV_EVENT_DELETE, ctx);
                     };
 
                     // Wire up Ignore button (always visible for non-critical)

@@ -68,6 +68,9 @@ class CrashReporter {
         std::string reg_lr; // ARM only
         std::string reg_bp; // x86_64 only
 
+        // ASLR load base (for symbol resolution)
+        std::string load_base;
+
         // Additional context (collected at startup)
         std::string platform;
         std::string printer_model;

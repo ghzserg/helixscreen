@@ -237,15 +237,15 @@ void SensorSettingsOverlay::populate_switch_sensors() {
                 lv_obj_add_flag(enable_container, LV_OBJ_FLAG_HIDDEN);
             }
 
-            lv_obj_set_user_data(enable_toggle, klipper_name);
-
+            // Pass klipper_name via event user_data rather than lv_obj_set_user_data
+            // on the child widget -- XML-created children may use user_data internally
             lv_obj_add_event_cb(
                 enable_toggle,
                 [](lv_event_t* e) {
-                    auto* toggle = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-                    auto* klipper_name_ptr = static_cast<const char*>(lv_obj_get_user_data(toggle));
+                    auto* klipper_name_ptr = static_cast<const char*>(lv_event_get_user_data(e));
                     if (!klipper_name_ptr)
                         return;
+                    auto* toggle = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
 
                     bool enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
 
@@ -255,23 +255,23 @@ void SensorSettingsOverlay::populate_switch_sensors() {
                     spdlog::info("[SensorSettingsOverlay] Switch sensor {} enabled: {}",
                                  klipper_name_ptr, enabled ? "ON" : "OFF");
                 },
-                LV_EVENT_VALUE_CHANGED, nullptr);
+                LV_EVENT_VALUE_CHANGED, klipper_name);
         }
 
         // Wire up role dropdown
         lv_obj_t* role_dropdown = lv_obj_find_by_name(row, "role_dropdown");
         if (role_dropdown) {
             lv_dropdown_set_selected(role_dropdown, static_cast<uint32_t>(sensor.role));
-            lv_obj_set_user_data(role_dropdown, klipper_name);
 
+            // Pass klipper_name via event user_data rather than lv_obj_set_user_data
+            // on the child widget -- XML-created children may use user_data internally
             lv_obj_add_event_cb(
                 role_dropdown,
                 [](lv_event_t* e) {
-                    auto* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-                    auto* klipper_name_ptr =
-                        static_cast<const char*>(lv_obj_get_user_data(dropdown));
+                    auto* klipper_name_ptr = static_cast<const char*>(lv_event_get_user_data(e));
                     if (!klipper_name_ptr)
                         return;
+                    auto* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
 
                     int index = static_cast<int>(lv_dropdown_get_selected(dropdown));
                     auto role = static_cast<helix::FilamentSensorRole>(index);
@@ -294,7 +294,7 @@ void SensorSettingsOverlay::populate_switch_sensors() {
                         }
                     }
                 },
-                LV_EVENT_VALUE_CHANGED, nullptr);
+                LV_EVENT_VALUE_CHANGED, klipper_name);
         }
 
         spdlog::debug("[{}]   Created row for switch sensor: {}", get_name(), sensor.sensor_name);

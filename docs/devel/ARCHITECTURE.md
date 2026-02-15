@@ -1257,6 +1257,13 @@ Centralized caching shared between history panels:
 - **FileHistoryStatus** - Enum for print status indicators (Completed, Cancelled, Error, etc.)
 - **Observer pattern** - Panels register for change notifications, cleanup on destruction
 
+### Timelapse State
+
+`TimelapseState` is a singleton that handles timelapse event dispatch and state management. It subscribes to WebSocket `notify_timelapse_event` notifications, tracks frame capture counts and render progress via LVGL subjects, and emits throttled toast notifications during rendering.
+
+**Files:** `include/timelapse_state.h`, `src/printer/timelapse_state.cpp`
+**See [TIMELAPSE.md](TIMELAPSE.md) for the full developer guide.**
+
 ### Active Print Media
 
 Handles async file operations during print selection:

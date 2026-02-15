@@ -42,6 +42,11 @@
 
 #include "hv/json.hpp"
 
+// Compile-time installer filename from Makefile (-DINSTALLER_FILENAME=...)
+#ifndef INSTALLER_FILENAME
+#define INSTALLER_FILENAME "install.sh"
+#endif
+
 using json = nlohmann::json;
 
 namespace {
@@ -922,8 +927,8 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
     mkdir(extracted_dir.c_str(), 0750);
 
     // Try tar xzf first (GNU tar), fall back to gunzip+tar (BusyBox)
-    auto ext_ret =
-        safe_exec({"tar", "xzf", tarball_path, "-C", extracted_dir, "helixscreen/install.sh"});
+    std::string tar_member = std::string("helixscreen/") + INSTALLER_FILENAME;
+    auto ext_ret = safe_exec({"tar", "xzf", tarball_path, "-C", extracted_dir, tar_member});
     if (ext_ret != 0) {
         // BusyBox tar may not support -z; decompress then extract
         std::string tar_path = tarball_path;
@@ -933,13 +938,12 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
         }
         // gunzip -k keeps original, creates .tar
         if (safe_exec({"gunzip", "-k", "-f", tarball_path}) == 0) {
-            ext_ret =
-                safe_exec({"tar", "xf", tar_path, "-C", extracted_dir, "helixscreen/install.sh"});
+            ext_ret = safe_exec({"tar", "xf", tar_path, "-C", extracted_dir, tar_member});
             std::remove(tar_path.c_str());
         }
     }
 
-    std::string extracted_installer = extracted_dir + "/helixscreen/install.sh";
+    std::string extracted_installer = extracted_dir + "/helixscreen/" + INSTALLER_FILENAME;
     if (ext_ret == 0 && access(extracted_installer.c_str(), R_OK) == 0) {
         // Make executable
         chmod(extracted_installer.c_str(), 0755);
@@ -1014,18 +1018,19 @@ UpdateChecker::find_local_installer(const std::vector<std::string>& extra_search
             exe_dir = exe_dir.substr(0, slash); // strip binary name → bin/
             if (exe_dir.size() >= 4 && exe_dir.substr(exe_dir.size() - 4) == "/bin") {
                 std::string install_root = exe_dir.substr(0, exe_dir.size() - 4);
-                search_paths.push_back(install_root + "/install.sh");
+                search_paths.push_back(install_root + "/" + INSTALLER_FILENAME);
             }
         }
     }
 
     // Well-known install locations as fallback
-    search_paths.push_back("/opt/helixscreen/install.sh");
-    search_paths.push_back("/root/printer_software/helixscreen/install.sh");
-    search_paths.push_back("/usr/data/helixscreen/install.sh");
-    search_paths.push_back("/home/biqu/helixscreen/install.sh");
-    search_paths.push_back("/home/pi/helixscreen/install.sh");
-    search_paths.push_back("scripts/install.sh"); // development fallback
+    std::string fname = INSTALLER_FILENAME;
+    search_paths.push_back("/opt/helixscreen/" + fname);
+    search_paths.push_back("/root/printer_software/helixscreen/" + fname);
+    search_paths.push_back("/usr/data/helixscreen/" + fname);
+    search_paths.push_back("/home/biqu/helixscreen/" + fname);
+    search_paths.push_back("/home/pi/helixscreen/" + fname);
+    search_paths.push_back("scripts/" + fname); // development fallback
 
     for (const auto& path : search_paths) {
         if (access(path.c_str(), X_OK) == 0) {

@@ -17,9 +17,11 @@ using helix::ui::temperature::centi_to_degrees_f;
 // Gradient colors now use theme tokens: temp_gradient_cold, temp_gradient_warm, temp_gradient_hot
 
 HeatingIconAnimator::~HeatingIconAnimator() {
-    // Don't cleanup LVGL resources in destructor - may be called during static destruction
-    // when LVGL is already torn down. LVGL will clean up animations on its own shutdown.
-    // Just reset our state.
+    // Cancel pulse animation if running — the callback uses `this` as var,
+    // so it must be cancelled before the instance is freed
+    if (pulse_active_ && lv_is_initialized()) {
+        stop_pulse();
+    }
     pulse_active_ = false;
     icon_ = nullptr;
 }

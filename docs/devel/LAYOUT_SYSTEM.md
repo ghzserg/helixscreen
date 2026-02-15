@@ -2,6 +2,8 @@
 
 > Alternative XML layouts for different screen aspect ratios and orientations.
 
+> **For contributors:** If you want to create or fix layouts, start with the **[UI Contributor Guide](UI_CONTRIBUTOR_GUIDE.md)** instead. This document covers the LayoutManager C++ API and auto-detection internals.
+
 ## Overview
 
 HelixScreen's UI is built from XML files that define the layout and structure of each panel.

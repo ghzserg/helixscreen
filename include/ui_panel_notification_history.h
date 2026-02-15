@@ -132,6 +132,18 @@ class NotificationHistoryPanel : public PanelBase {
     void handle_clear_clicked();
 
     //
+    // === Per-item click context ===
+    //
+
+    /// Stored in event callback user_data (NOT lv_obj user_data, which belongs to
+    /// the XML widget layer — e.g. severity_card uses it for the severity string).
+    /// Freed automatically via LV_EVENT_DELETE callback when the item is destroyed.
+    struct ClickContext {
+        NotificationHistoryPanel* panel;
+        char action[64];
+    };
+
+    //
     // === Static Trampolines ===
     //
 
@@ -139,6 +151,7 @@ class NotificationHistoryPanel : public PanelBase {
 
     // Action dispatch
     static void on_item_clicked(lv_event_t* e);
+    static void on_item_deleted(lv_event_t* e);
     void dispatch_action(const char* action);
 };
 

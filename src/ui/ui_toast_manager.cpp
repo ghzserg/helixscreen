@@ -311,8 +311,15 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
 
     // Immediately delete existing toast if any (skip animation for replacement)
     if (active_toast_) {
+        // Take ownership of the old toast pointer and nullify the member FIRST.
+        // This prevents exit_animation_complete_cb from also deleting the object
+        // if lv_anim_delete triggers the completion callback synchronously.
+        lv_obj_t* old_toast = active_toast_;
+        active_toast_ = nullptr;
+        animating_exit_ = false;
+
         // Cancel any running animations on the old toast
-        lv_anim_delete(active_toast_, nullptr);
+        lv_anim_delete(old_toast, nullptr);
 
         // Cancel dismiss timer if active
         if (dismiss_timer_) {
@@ -320,9 +327,13 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
             dismiss_timer_ = nullptr;
         }
 
-        // Delete immediately (no exit animation when replacing)
-        lv_obj_safe_delete(active_toast_);
-        animating_exit_ = false;
+        // Remove from focus group before deleting
+        lv_group_t* group = lv_group_get_default();
+        if (group) {
+            lv_group_remove_obj(old_toast);
+        }
+
+        lv_obj_delete(old_toast);
     }
 
     // Clear action state for basic toasts, keep for action toasts

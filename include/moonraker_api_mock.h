@@ -237,6 +237,15 @@ class MoonrakerAPIMock : public MoonrakerAPI {
                             StringCallback on_success, ErrorCallback on_error) override;
 
     // ========================================================================
+    // Overridden Timelapse Methods (mock render/frame operations)
+    // ========================================================================
+
+    void render_timelapse(SuccessCallback on_success, ErrorCallback on_error) override;
+    void save_timelapse_frames(SuccessCallback on_success, ErrorCallback on_error) override;
+    void get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
+                             ErrorCallback on_error) override;
+
+    // ========================================================================
     // Overridden Power Device Methods (return mock data)
     // ========================================================================
 

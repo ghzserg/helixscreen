@@ -47,104 +47,30 @@ Integration with [moonraker-timelapse](https://github.com/mainsail-crew/moonrake
 
 ---
 
-## Phase 2: Enhanced Timelapse Features
+## Phase 2: Enhanced Timelapse Features — COMPLETE
 
-**Status:** Not started
+**Status:** Implemented
 **Goal:** Make the timelapse feature fully functional with real-time events, render progress, and video management.
 
-### Prerequisite
+### What was built
 
-Phase 1 must be validated on real printers first. Install moonraker-timelapse on at least one test printer (Voron recommended — more RAM) and verify the install wizard works end-to-end.
+| Component | Files | Description |
+|-----------|-------|-------------|
+| TimelapseState singleton | `include/timelapse_state.h`, `src/printer/timelapse_state.cpp` | Event-driven state manager with subjects for render progress (int 0-100), render status (string), and frame count (int) |
+| WebSocket event subscription | `src/application/application.cpp` | `notify_timelapse_event` callback registered on connect, unregistered on shutdown; dispatches to `TimelapseState::handle_timelapse_event()` |
+| Event dispatch | `src/printer/timelapse_state.cpp` | Parses `action` field: "newframe" increments frame count, "render" updates progress/status with throttled notifications at 25% boundaries |
+| Render progress notifications | `src/printer/timelapse_state.cpp` | Toast notifications for render start, progress (25/50/75%), completion, and errors via `NOTIFY_INFO`/`NOTIFY_ERROR` |
+| New API methods | `include/moonraker_api.h`, `src/api/moonraker_api_history.cpp` | `render_timelapse()`, `save_timelapse_frames()`, `get_last_frame_info()` |
+| Video management UI | `ui_xml/timelapse_settings_overlay.xml`, `src/ui/ui_overlay_timelapse_settings.cpp` | Video list via `list_files("timelapse", ...)`, manual render button, delete videos via `delete_file("timelapse/...")` |
+| Subject initialization | `src/ui/subject_initializer.cpp` | TimelapseState subjects registered in global init, reset on new print |
 
-### 2A. WebSocket Event Subscription
+### Architecture decisions
 
-moonraker-timelapse emits `notify_timelapse_event` notifications:
-
-```json
-{"action": "newframe", "framefile": "frame000042.jpg", "framenum": 42}
-{"action": "render", "status": "running", "progress": 45}
-{"action": "render", "status": "success", "filename": "timelapse_20260209.mp4"}
-{"action": "render", "status": "error", "msg": "ffmpeg failed"}
-```
-
-**Implementation:**
-- Register callback in `moonraker_client.cpp` during discovery when timelapse is detected:
-  ```cpp
-  register_method_callback("notify_timelapse_event", "timelapse_handler", callback);
-  ```
-- Parse `action` field to dispatch to appropriate handler
-- Unregister on disconnect/cleanup
-
-**Files:** `src/api/moonraker_client.cpp`
-
-### 2B. TimelapseState Manager
-
-New domain state class following `PrinterPrintState` pattern:
-
-```cpp
-class TimelapseState {
-  public:
-    void init_subjects(bool register_xml = true);
-    void deinit_subjects();
-    void handle_timelapse_event(const json& event);
-
-    lv_subject_t* get_render_progress_subject();  // int 0-100
-    lv_subject_t* get_render_status_subject();     // string: idle/rendering/complete/error
-    lv_subject_t* get_frame_count_subject();       // int: frames captured this print
-  private:
-    lv_subject_t render_progress_{};
-    lv_subject_t render_status_{};
-    lv_subject_t frame_count_{};
-};
-```
-
-**Files:** NEW `include/timelapse_state.h`, NEW `src/printer/timelapse_state.cpp`
-
-### 2C. Render Progress Notifications
-
-When print completes and autorender triggers, show render progress via toast:
-- "Rendering timelapse... 45%" (updated as progress events arrive)
-- "Timelapse rendered successfully" (on completion)
-- "Timelapse render failed" (on error)
-
-Use existing `ui_toast_show()` pattern. Progress updates via `NOTIFY_INFO` or a persistent toast.
-
-**Files:** `src/printer/timelapse_state.cpp` (event handler triggers notifications)
-
-### 2D. New API Methods
-
-| Method | HTTP | Moonraker Endpoint | Purpose |
-|--------|------|-------------------|---------|
-| `render_timelapse()` | POST | `/machine/timelapse/render` | Trigger manual render |
-| `save_timelapse_frames()` | POST | `/machine/timelapse/saveframes` | Save frames as ZIP |
-| `get_last_frame_info()` | GET | `/machine/timelapse/lastframeinfo` | Get last captured frame info |
-
-**Files:** `include/moonraker_api.h`, `src/api/moonraker_api_history.cpp`, `include/moonraker_types.h`
-
-### 2E. Video Management UI
-
-Extend timelapse settings overlay with:
-- **Video list:** Use existing `list_files("timelapse", ...)` API to show rendered videos
-- **Manual render button:** Trigger render via `render_timelapse()`
-- **Delete videos:** Remove old timelapse files
-- **Frame count display:** Show frames captured for current/last print
-
-**Files:** `ui_xml/timelapse_settings_overlay.xml`, `src/ui/ui_overlay_timelapse_settings.cpp`, `include/ui_overlay_timelapse_settings.h`
-
-### Phase 2 Implementation Order
-
-| Step | Description | Dependencies |
-|------|-------------|--------------|
-| 1 | TimelapseState manager + subjects | None |
-| 2 | WebSocket event subscription + dispatch | Step 1 |
-| 3 | Render progress notifications | Steps 1-2 |
-| 4 | New API methods (render, saveframes, lastframeinfo) | None (parallel with 1-3) |
-| 5 | Video management UI in settings overlay | Steps 1-4 |
-| 6 | Tests for event parsing + state management | Steps 1-2 |
-
-### Phase 2 Estimated Scope
-
-~300-500 lines of new code across ~10 files. Smaller than Phase 1 since most infrastructure (overlay, API patterns, subjects) is already in place.
+- **Singleton pattern:** `TimelapseState::instance()` follows the same pattern as `AmsState`, `ToolState`, and other domain state managers.
+- **Throttled notifications:** Render progress notifications fire only at 25% boundaries (25/50/75/100) to avoid spamming the UI with frequent updates.
+- **Thread safety:** WebSocket event callback uses `ui_queue_update()` to marshal subject updates to the LVGL thread, consistent with all other WebSocket handlers.
+- **Subject lifecycle:** Subjects initialized in `subject_initializer.cpp` alongside other printer state, frame count reset when a new print starts.
+- **Event dispatch:** `handle_timelapse_event()` uses a simple action-string dispatch ("newframe" vs "render") matching the moonraker-timelapse plugin's event format.
 
 ---
 

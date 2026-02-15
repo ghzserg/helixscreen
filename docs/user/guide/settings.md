@@ -37,16 +37,79 @@ Access via the **Gear icon** in the navigation bar.
 
 ## Sound Settings
 
-Tap **Sound** in Settings to open the dedicated sound overlay:
+HelixScreen can play sounds for button presses, navigation, print events, and alerts. Sounds work on all supported hardware — from desktop speakers to the tiny buzzer on your Creality printer.
 
-| Setting | Options |
-|---------|---------|
-| **Enable sounds** | Toggle all sound effects on/off |
-| **Volume slider** | Adjust volume level (plays a test beep when you release the slider) |
-| **Sound theme** | Choose a theme: Minimal (subtle) or Retro Chiptune (8-bit) |
-| **Completion alert** | How to notify when prints finish (Off, Notification, Alert) |
+> **Note:** Sound settings only appear when HelixScreen detects a speaker or buzzer on your printer. If you don't see the sound section in Settings, your printer may not have audio output hardware. See [Troubleshooting](#sound-troubleshooting) below.
 
-> **Note:** Sound uses the best available backend for your hardware: SDL audio on Pi/desktop, PWM on embedded boards, or M300 G-code commands as fallback. Sound is currently a beta feature.
+### Toggles
+
+| Setting | Effect |
+|---------|--------|
+| **Sounds Enabled** | Master toggle. Turns all sounds on or off. |
+| **UI Sounds Enabled** | Controls button taps, navigation, and toggle sounds. When off, only important sounds still play (print complete, errors, alarms). Useful if you want notifications but not click feedback. |
+
+Both toggles take effect immediately.
+
+### Sound Themes
+
+HelixScreen comes with three built-in themes:
+
+| Theme | Description |
+|-------|-------------|
+| **Default** | Balanced, tasteful sounds. Subtle clicks, smooth navigation chirps, and a melodic fanfare when your print completes. |
+| **Minimal** | Only plays sounds for important events: print complete, errors, and alarms. No button or navigation sounds at all. |
+| **Retro** | 8-bit chiptune style. Punchy square-wave arpeggios, a Mario-style victory fanfare, and buzzy retro alarms. |
+
+To change themes, go to **Settings > Sound Theme** and select from the dropdown. A test sound plays immediately so you can preview.
+
+Advanced users can create custom sound themes by adding a JSON file to `config/sounds/` on the printer. Custom themes appear automatically in the dropdown — no restart required. See the [Sound System developer docs](../../devel/SOUND_SYSTEM.md#adding-a-new-sound-theme) for the file format.
+
+### What Sounds When
+
+| Event | Sound | When It Plays |
+|-------|-------|---------------|
+| Button press | Short click | Any button tapped |
+| Toggle on | Rising chirp | A switch turned on |
+| Toggle off | Falling chirp | A switch turned off |
+| Navigate forward | Ascending tone | Opening a screen or overlay |
+| Navigate back | Descending tone | Closing an overlay or going back |
+| Print complete | Victory melody | Print finished successfully |
+| Print cancelled | Descending tone | Print job cancelled |
+| Error alert | Pulsing alarm | A significant error occurred |
+| Error notification | Short buzz | An error toast appeared |
+| Critical alarm | Urgent siren | Critical failure requiring attention |
+| Test sound | Short beep | "Test Sound" button in settings |
+
+The first five (button press, toggles, navigation) are **UI sounds** and respect the "UI Sounds Enabled" toggle. The rest always play as long as the master toggle is on.
+
+### Supported Hardware
+
+HelixScreen auto-detects your audio hardware at startup:
+
+| Hardware | How It Works |
+|----------|-------------|
+| **Desktop (SDL)** | Full audio synthesis through your computer speakers. Best sound quality. |
+| **Creality AD5M / AD5M Pro** | Hardware PWM buzzer. Supports different tones and volume levels. |
+| **Other Klipper printers** | Beeper commands sent through Moonraker. Requires `[output_pin beeper]` in your Klipper config. Basic beep tones only. |
+
+If no audio hardware is detected, sound settings are hidden and HelixScreen operates silently.
+
+### Sound Troubleshooting
+
+**I don't see sound settings in the Settings panel.**
+Your printer doesn't have a detected speaker or buzzer. For Klipper printers, make sure you have `[output_pin beeper]` configured in your `printer.cfg`, then restart HelixScreen.
+
+**Sounds are too quiet or too loud.**
+Volume varies by theme. Try switching to a different theme. Custom themes let you adjust volume per sound.
+
+**Print complete sound doesn't play.**
+Make sure the master "Sounds Enabled" toggle is on. The "UI Sounds" toggle does not affect print completion sounds.
+
+**Button click sounds are annoying.**
+Turn off "UI Sounds Enabled" in Settings. This disables button, toggle, and navigation sounds while keeping important notifications.
+
+**Sounds work on desktop but not on my printer.**
+Confirm your printer has audio hardware. For Klipper printers, verify `[output_pin beeper]` is present and correctly configured. Test by sending an `M300` command from the Klipper console.
 
 ---
 

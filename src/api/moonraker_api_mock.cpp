@@ -1675,3 +1675,30 @@ void MoonrakerAPIMock::consume_filament(float grams, int slot_index) {
         }
     }
 }
+
+// ============================================================================
+// Timelapse Mock Operations
+// ============================================================================
+
+void MoonrakerAPIMock::render_timelapse(SuccessCallback on_success, ErrorCallback /*on_error*/) {
+    spdlog::debug("[MoonrakerAPIMock] render_timelapse (mock)");
+    if (on_success)
+        on_success();
+}
+
+void MoonrakerAPIMock::save_timelapse_frames(SuccessCallback on_success,
+                                             ErrorCallback /*on_error*/) {
+    spdlog::debug("[MoonrakerAPIMock] save_timelapse_frames (mock)");
+    if (on_success)
+        on_success();
+}
+
+void MoonrakerAPIMock::get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
+                                           ErrorCallback /*on_error*/) {
+    spdlog::debug("[MoonrakerAPIMock] get_last_frame_info (mock)");
+    if (on_success) {
+        LastFrameInfo info;
+        info.frame_count = 0;
+        on_success(info);
+    }
+}

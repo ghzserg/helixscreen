@@ -55,6 +55,7 @@
 #include "static_subject_registry.h"
 #include "system/telemetry_manager.h"
 #include "temperature_sensor_manager.h"
+#include "timelapse_state.h"
 #include "tool_state.h"
 #include "usb_manager.h"
 #include "width_sensor_manager.h"
@@ -217,6 +218,9 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
 
     // HistoryDashboardPanel is now lazy-initialized (OverlayBase pattern)
     // HistoryListPanel is now lazy-initialized by HistoryDashboardPanel (OverlayBase pattern)
+
+    // Timelapse state (event-driven, not a panel)
+    helix::TimelapseState::instance().init_subjects();
 
     // Settings overlays
     init_global_timelapse_settings(api);

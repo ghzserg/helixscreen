@@ -112,6 +112,10 @@ CrashReporter::CrashReport CrashReporter::collect_report() {
     if (crash_data.contains("reg_bp"))
         report.reg_bp = crash_data["reg_bp"];
 
+    // ASLR load base (for symbol resolution)
+    if (crash_data.contains("load_base"))
+        report.load_base = crash_data["load_base"];
+
     // Collect additional system context
     report.platform = UpdateChecker::get_platform_key();
 
@@ -230,6 +234,11 @@ nlohmann::json CrashReporter::report_to_json(const CrashReport& report) {
         j["registers"] = regs;
     }
 
+    // ASLR load base (for symbol resolution)
+    if (!report.load_base.empty()) {
+        j["load_base"] = report.load_base;
+    }
+
     // Worker expects log_tail as an array of lines
     if (!report.log_tail.empty()) {
         json lines = json::array();
@@ -269,6 +278,10 @@ std::string CrashReporter::report_to_text(const CrashReport& report) {
             ss << "  LR: " << report.reg_lr << "\n";
         if (!report.reg_bp.empty())
             ss << "  BP: " << report.reg_bp << "\n";
+    }
+
+    if (!report.load_base.empty()) {
+        ss << "Load Base: " << report.load_base << "\n";
     }
 
     ss << "--- System Info ---\n";
@@ -313,6 +326,9 @@ std::string CrashReporter::generate_github_url(const CrashReport& report) {
     body << "- **Uptime:** " << report.uptime_sec << "s\n";
     if (!report.fault_code_name.empty()) {
         body << "- **Fault:** " << report.fault_code_name << " at " << report.fault_addr << "\n";
+    }
+    if (!report.load_base.empty()) {
+        body << "- **Load Base:** " << report.load_base << "\n";
     }
     body << "\n";
 

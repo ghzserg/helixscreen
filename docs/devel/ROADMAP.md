@@ -105,7 +105,7 @@ Remaining items for production readiness:
 - **Calibration Workflows:** PID tuning (live graph, fan control, material presets), Z-offset with live adjust, Screws Tilt, Input Shaper (frequency response charts, CSV parser, per-axis results)
 - **Bed Mesh:** 3D visualization with touch rotation, profile switching, 38 FPS optimized rendering
 - **Sound system:** Multi-backend audio (SDL, PWM, M300) with JSON themes and volume control
-- **Timelapse:** Plugin detection, install wizard, and settings UI
+- **Timelapse:** Plugin detection, install wizard, settings UI, real-time event handling, render progress, video management
 - **Filament tracking:** Live consumption during printing, slicer estimate on completion
 - **Display rotation:** Support for 0/90/180/270 across all binaries
 - **Telemetry:** Opt-in crash reporting and session analytics with Cloudflare Worker backend

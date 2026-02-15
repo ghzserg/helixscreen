@@ -769,7 +769,7 @@ define deploy-common
 	@if [ -f $(3)/helix-watchdog ]; then rsync -avz $(3)/helix-watchdog $(1):$(2)/bin/; fi
 	rsync -avz scripts/helix-launcher.sh $(1):$(2)/bin/
 	@# Sync installer script (needed for auto-updates)
-	rsync -avz scripts/install.sh $(1):$(2)/
+	rsync -avz scripts/$(INSTALLER_FILENAME) $(1):$(2)/
 	@# Sync assets (--delete removes stale files)
 	rsync $(DEPLOY_RSYNC_FLAGS) $(DEPLOY_ASSET_EXCLUDES) $(DEPLOY_ASSET_DIRS) $(1):$(2)/
 	@# Sync pre-rendered images
@@ -946,7 +946,7 @@ deploy-ad5m:
 	fi
 	cat scripts/helix-launcher.sh | ssh $(AD5M_SSH_TARGET) "cat > $(AD5M_DEPLOY_DIR)/bin/helix-launcher.sh && chmod +x $(AD5M_DEPLOY_DIR)/bin/helix-launcher.sh"
 	@# Transfer installer script (needed for auto-updates)
-	cat scripts/install.sh | ssh $(AD5M_SSH_TARGET) "cat > $(AD5M_DEPLOY_DIR)/install.sh && chmod +x $(AD5M_DEPLOY_DIR)/install.sh"
+	cat scripts/$(INSTALLER_FILENAME) | ssh $(AD5M_SSH_TARGET) "cat > $(AD5M_DEPLOY_DIR)/$(INSTALLER_FILENAME) && chmod +x $(AD5M_DEPLOY_DIR)/$(INSTALLER_FILENAME)"
 	@# Transfer assets via tar (uses shared DEPLOY_TAR_EXCLUDES and DEPLOY_ASSET_DIRS)
 	@echo "$(DIM)Transferring assets...$(RESET)"
 	COPYFILE_DISABLE=1 tar -cf - $(DEPLOY_TAR_EXCLUDES) $(DEPLOY_ASSET_DIRS) | ssh $(AD5M_SSH_TARGET) "cd $(AD5M_DEPLOY_DIR) && tar -xf -"
@@ -1455,6 +1455,8 @@ release-pi: | build/pi/bin/helix-screen build/pi/bin/helix-splash
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1490,6 +1492,8 @@ release-pi32: | build/pi32/bin/helix-screen build/pi32/bin/helix-splash
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1528,6 +1532,8 @@ release-ad5m: | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
 	@# Copy AD5M Pro default config as config/helixconfig.json (skips wizard on first run)
 	@cp config/presets/ad5m.json $(RELEASE_DIR)/helixscreen/config/helixconfig.json
 	@echo "  $(DIM)Included pre-configured config/helixconfig.json for AD5M Pro$(RESET)"
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1569,6 +1575,8 @@ release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1603,6 +1611,8 @@ release-k1-dynamic: | build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/hel
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1637,6 +1647,8 @@ release-k2: | build/k2/bin/helix-screen build/k2/bin/helix-splash
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1670,6 +1682,8 @@ release-snapmaker-u1: | build/snapmaker-u1/bin/helix-screen
 	@cp scripts/helix-launcher.sh $(RELEASE_DIR)/helixscreen/bin/ 2>/dev/null || true
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/ 2>/dev/null || true
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME) 2>/dev/null || true
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/ 2>/dev/null || true
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets

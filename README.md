@@ -21,7 +21,7 @@ Fast, beautiful, and built for every Klipper printer — from a Creality K1 to a
 
 ---
 
-> **Beta Release — v0.9.18**
+> **Beta Release — v0.9.23**
 >
 > Core features are complete and stabilizing. We're looking for testers across different printer setups.
 >
@@ -108,7 +108,7 @@ See [docs/GALLERY.md](docs/GALLERY.md) for all screenshots.
 curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/scripts/install.sh | sh
 ```
 
-**Adventurer 5M/Pro:** Requires downloading to your computer first, then copying to the printer (BusyBox lacks HTTPS support).
+**Adventurer 5M/Pro:** We provide a [ready-made firmware image](https://github.com/prestonbrown/ff5m) (Forge-X 1.4.0 fork with HelixScreen pre-configured) — just flash from a USB drive. Or install manually on an existing Forge-X/Klipper Mod setup.
 
 See [Installation Guide](docs/user/INSTALL.md) for detailed instructions, display configuration, and troubleshooting.
 

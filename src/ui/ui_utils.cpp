@@ -463,8 +463,11 @@ void ui_create_ripple(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, int start_si
     });
     lv_anim_set_completed_cb(&fade_anim, [](lv_anim_t* a) {
         // Delete ripple object when animation completes
+        // Validate first — parent deletion may have already freed this widget
         lv_obj_t* widget = static_cast<lv_obj_t*>(a->var);
-        lv_obj_safe_delete(widget);
+        if (widget && lv_obj_is_valid(widget)) {
+            lv_obj_delete(widget);
+        }
     });
     lv_anim_start(&fade_anim);
 }

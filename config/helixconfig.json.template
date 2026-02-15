@@ -62,21 +62,21 @@
       "_selected_strips_comment": "Klipper LED strip IDs to control (e.g., [\"neopixel caselight\"]). Configured via Settings > LED Settings.",
       "led_on_at_start": false,
       "_led_on_at_start_comment": "Automatically turn on selected LED strips when Klipper becomes ready. Default: false.",
-      "last_color": 16777215,
-      "_last_color_comment": "Last used LED color as integer RGB (16777215 = white). Remembered between sessions.",
+      "last_color": "#FFFFFF",
+      "_last_color_comment": "Last used LED color as #RRGGBB hex string (also accepts legacy integer RGB). Remembered between sessions.",
       "last_brightness": 100,
       "_last_brightness_comment": "Last used brightness percentage (0-100). Remembered between sessions.",
-      "color_presets": [16777215, 16711680, 65280, 255, 16776960, 16711935, 65535],
-      "_color_presets_comment": "Preset colors (integer RGB) shown in the color picker. Default: white, red, green, blue, yellow, magenta, cyan.",
+      "color_presets": ["#FFFFFF", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF"],
+      "_color_presets_comment": "Preset colors (#RRGGBB) shown in the color picker. Default: white, red, green, blue, yellow, magenta, cyan.",
       "auto_state": {
         "enabled": false,
         "mappings": {
-          "idle": { "action": "brightness", "brightness": 50, "color": 0 },
-          "heating": { "action": "color", "color": 16711680, "brightness": 100 },
-          "printing": { "action": "brightness", "brightness": 100, "color": 0 },
+          "idle": { "action": "brightness", "brightness": 50, "color": "#000000" },
+          "heating": { "action": "color", "color": "#FF0000", "brightness": 100 },
+          "printing": { "action": "brightness", "brightness": 100, "color": "#000000" },
           "paused": { "action": "off" },
-          "error": { "action": "color", "color": 16711680, "brightness": 100 },
-          "complete": { "action": "color", "color": 65280, "brightness": 100 }
+          "error": { "action": "color", "color": "#FF0000", "brightness": 100 },
+          "complete": { "action": "color", "color": "#00FF00", "brightness": 100 }
         },
         "_comment": "Automatic state-based LED lighting. Actions: off, brightness, color, effect, wled_preset, macro."
       },

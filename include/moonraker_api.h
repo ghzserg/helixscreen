@@ -937,6 +937,27 @@ class MoonrakerAPI {
     virtual void set_timelapse_enabled(bool enabled, SuccessCallback on_success,
                                        ErrorCallback on_error);
 
+    /**
+     * @brief Trigger timelapse video rendering
+     *
+     * Starts the rendering process for captured frames into a video file.
+     * Progress is reported via notify_timelapse_event WebSocket events.
+     */
+    virtual void render_timelapse(SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Save timelapse frames without rendering
+     *
+     * Saves captured frame files for later processing.
+     */
+    virtual void save_timelapse_frames(SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Get information about the last captured frame
+     */
+    virtual void get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
+                                     ErrorCallback on_error);
+
     // ========================================================================
     // Webcam Operations
     // ========================================================================

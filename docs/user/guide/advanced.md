@@ -107,6 +107,30 @@ Configure Moonraker-Timelapse (beta feature):
    - Set framerate (15/24/30/60 fps)
    - Enable auto-render for automatic video creation
 
+### Render Controls
+
+Below the settings, a **Render Now** section shows:
+
+- **Frame count**: How many frames have been captured during the current print
+- **Render progress bar**: Appears during rendering with a percentage indicator
+- **Render Now button**: Manually trigger video rendering from captured frames
+
+### Recorded Videos
+
+The bottom of the timelapse settings shows all rendered timelapse videos:
+
+- View file names and sizes
+- Delete individual videos (with confirmation)
+- Videos are stored on your printer and managed by the timelapse plugin
+
+### Notifications
+
+During rendering, HelixScreen shows toast notifications:
+
+- Progress updates at 25%, 50%, 75%, and 100%
+- Success notification when rendering completes
+- Error notification if rendering fails
+
 ---
 
 **Next:** [Beta Features](beta-features.md) | **Prev:** [Settings](settings.md) | [Back to User Guide](../USER_GUIDE.md)

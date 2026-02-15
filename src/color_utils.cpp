@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 
 namespace helix {
@@ -219,6 +220,12 @@ bool parse_hex_color(const char* input, uint32_t& out_rgb) {
 
     out_rgb = value;
     return true;
+}
+
+std::string color_to_hex_string(uint32_t rgb) {
+    char buf[8];
+    std::snprintf(buf, sizeof(buf), "#%06X", rgb & 0xFFFFFF);
+    return std::string(buf);
 }
 
 } // namespace helix

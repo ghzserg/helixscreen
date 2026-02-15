@@ -463,6 +463,52 @@ void MoonrakerAPI::set_timelapse_enabled(bool enabled, SuccessCallback on_succes
 }
 
 // ============================================================================
+// Timelapse Render / Frame Operations
+// ============================================================================
+
+void MoonrakerAPI::render_timelapse(SuccessCallback on_success, ErrorCallback on_error) {
+    spdlog::debug("[MoonrakerAPI] Triggering timelapse render");
+    client_.send_jsonrpc(
+        "machine.timelapse.render", json::object(),
+        [on_success](json /*response*/) {
+            if (on_success)
+                on_success();
+        },
+        on_error);
+}
+
+void MoonrakerAPI::save_timelapse_frames(SuccessCallback on_success, ErrorCallback on_error) {
+    spdlog::debug("[MoonrakerAPI] Saving timelapse frames");
+    client_.send_jsonrpc(
+        "machine.timelapse.saveframes", json::object(),
+        [on_success](json /*response*/) {
+            if (on_success)
+                on_success();
+        },
+        on_error);
+}
+
+void MoonrakerAPI::get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
+                                       ErrorCallback on_error) {
+    spdlog::debug("[MoonrakerAPI] Getting last frame info");
+    client_.send_jsonrpc(
+        "machine.timelapse.lastframeinfo", json::object(),
+        [on_success](json response) {
+            LastFrameInfo info;
+            const auto& result = response.contains("result") ? response["result"] : response;
+            if (result.contains("count") && result["count"].is_number()) {
+                info.frame_count = result["count"].get<int>();
+            }
+            if (result.contains("lastframefile") && result["lastframefile"].is_string()) {
+                info.last_frame_file = result["lastframefile"].get<std::string>();
+            }
+            if (on_success)
+                on_success(info);
+        },
+        on_error);
+}
+
+// ============================================================================
 // Webcam Operations
 // ============================================================================
 

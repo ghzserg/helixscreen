@@ -304,6 +304,13 @@ Modal::~Modal() {
     // RAII: auto-hide if still visible
     // Use safe delete to handle shutdown race conditions
     if (backdrop_) {
+        // Cancel any exit animations BEFORE deleting — prevents exit_animation_done
+        // callback from firing on the soon-to-be-freed backdrop
+        lv_anim_delete(backdrop_, nullptr);
+        if (dialog_) {
+            lv_anim_delete(dialog_, nullptr);
+        }
+
         // Hide immediately without calling virtual on_hide() - derived class already destroyed
         // Note: lv_obj_safe_delete handles focus group cleanup (ui_defocus_tree)
         ModalStack::instance().remove(backdrop_);
@@ -332,6 +339,11 @@ Modal& Modal::operator=(Modal&& other) noexcept {
         // functions during move operations. Callers should call hide() before
         // move-assigning if they need lifecycle hooks.
         if (backdrop_) {
+            // Cancel animations before deleting
+            lv_anim_delete(backdrop_, nullptr);
+            if (dialog_) {
+                lv_anim_delete(dialog_, nullptr);
+            }
             // Note: lv_obj_safe_delete handles focus group cleanup (ui_defocus_tree)
             ModalStack::instance().remove(backdrop_);
             lv_obj_safe_delete(backdrop_);
@@ -644,6 +656,11 @@ bool Modal::create_and_show(lv_obj_t* parent, const char* comp_name, const char*
 
 void Modal::destroy() {
     if (backdrop_) {
+        // Cancel any exit animations before deleting
+        lv_anim_delete(backdrop_, nullptr);
+        if (dialog_) {
+            lv_anim_delete(dialog_, nullptr);
+        }
         ModalStack::instance().remove(backdrop_);
         lv_obj_safe_delete(backdrop_);
         // dialog_ is a child of backdrop_ and was destroyed with it

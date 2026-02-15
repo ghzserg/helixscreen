@@ -158,12 +158,16 @@ HELIX_VERSION_MINOR := $(word 2,$(subst ., ,$(HELIX_VERSION)))
 HELIX_VERSION_PATCH := $(word 3,$(subst ., ,$(HELIX_VERSION)))
 HELIX_GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
+# Installer script filename (single source of truth for Makefile packaging + C++ extraction)
+INSTALLER_FILENAME := install.sh
+
 # Add version defines to compiler flags
 VERSION_DEFINES := -DHELIX_VERSION=\"$(HELIX_VERSION)\" \
                    -DHELIX_VERSION_MAJOR=$(HELIX_VERSION_MAJOR) \
                    -DHELIX_VERSION_MINOR=$(HELIX_VERSION_MINOR) \
                    -DHELIX_VERSION_PATCH=$(HELIX_VERSION_PATCH) \
-                   -DHELIX_GIT_HASH=\"$(HELIX_GIT_HASH)\"
+                   -DHELIX_GIT_HASH=\"$(HELIX_GIT_HASH)\" \
+                   -DINSTALLER_FILENAME=\"$(INSTALLER_FILENAME)\"
 CFLAGS += $(VERSION_DEFINES)
 CXXFLAGS += $(VERSION_DEFINES)
 

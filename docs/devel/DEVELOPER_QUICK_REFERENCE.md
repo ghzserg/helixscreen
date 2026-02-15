@@ -349,79 +349,22 @@ registry.register_manager("accel", std::make_unique<AccelSensorManager>());
 
 ## Responsive Design Tokens
 
-**Screen breakpoints (height-based, 5-tier):** TINY (≤390), SMALL (391-460), MEDIUM (461-550), LARGE (551-700), XLARGE (>700)
+See **[UI Contributor Guide](UI_CONTRIBUTOR_GUIDE.md)** for the complete responsive token reference (breakpoints, spacing, fonts, component tokens, colors, and how to add new tokens).
 
-_tiny falls back to _small, _xlarge falls back to _large. Core triplet (_small/_medium/_large) is required.
-
-**For theme architecture and rationale, see [ARCHITECTURE.md](ARCHITECTURE.md#custom-helixscreen-theme).**
-
-### Spacing (`#space_*`)
-
-| Token | SMALL | MEDIUM | LARGE |
-|-------|-------|--------|-------|
-| `#space_xxs` | 2px | 3px | 4px |
-| `#space_xs` | 4px | 5px | 6px |
-| `#space_sm` | 6px | 7px | 8px |
-| `#space_md` | 8px | 10px | 12px |
-| `#space_lg` | 12px | 16px | 20px |
-| `#space_xl` | 16px | 20px | 24px |
-
-> TINY uses _small values, XLARGE uses _large values (unless _tiny/_xlarge overrides are defined).
-
-### Typography (`#font_*` or semantic components)
-
-| Token | Component | SMALL | MEDIUM | LARGE |
-|-------|-----------|-------|--------|-------|
-| `#font_heading` | `<text_heading>` | montserrat_20 | montserrat_26 | montserrat_28 |
-| `#font_body` | `<text_body>` | montserrat_14 | montserrat_18 | montserrat_20 |
-| `#font_small` | `<text_small>` | montserrat_12 | montserrat_16 | montserrat_18 |
-
-### Theme Colors (XML)
-
-Define `mycolor_light` + `mycolor_dark` in globals.xml → use as `#mycolor`:
-
-```xml
-<lv_obj style_bg_color="#card_bg"/>  <!-- Auto-selects light/dark variant -->
-```
-
-### Theme Colors (C++ API)
-
+**C++ access patterns:**
 ```cpp
-// ✅ For theme tokens - auto-handles light/dark mode:
-lv_color_t bg = ui_theme_get_color("card_bg");      // Looks up card_bg_light or card_bg_dark
-lv_color_t ok = ui_theme_get_color("success_color");
-lv_color_t err = ui_theme_get_color("error_color");
+// Spacing
+int padding = theme_manager_get_spacing("space_lg");
 
-// ✅ For hex strings only:
-lv_color_t custom = ui_theme_parse_color("#FF4444");  // Parses literal hex
+// Colors — token lookup (handles light/dark)
+lv_color_t bg = theme_manager_get_color("card_bg");
 
-// ❌ WRONG - parse_color does NOT look up tokens:
-// lv_color_t bg = ui_theme_parse_color("#card_bg");  // Parses "card_bg" as hex → garbage!
+// Colors — hex parsing only (NOT for tokens)
+lv_color_t c = theme_manager_parse_hex_color("#FF0000");
 
-// Pre-defined macros for common colors:
-lv_color_t text = UI_COLOR_TEXT_PRIMARY;   // White text
-lv_font_t* font = UI_FONT_SMALL;           // Responsive small font
+// Fonts
+const lv_font_t* font = theme_manager_get_font("font_body");
 ```
-
-**Reference:** See `src/ui_icon.cpp` for semantic color usage pattern.
-
-### Adding Tokens
-
-Add all variants to globals.xml - theme system auto-discovers by suffix:
-- **Colors:** `mycolor_light` + `mycolor_dark` → use as `#mycolor`
-- **Spacing:** `mytoken_small` + `mytoken_medium` + `mytoken_large` → use as `#mytoken`
-
-```xml
-<!-- globals.xml -->
-<px name="keypad_btn_height_small" value="48"/>
-<px name="keypad_btn_height_medium" value="56"/>
-<px name="keypad_btn_height_large" value="72"/>
-
-<!-- Usage - auto-selects based on screen size -->
-<lv_button height="#keypad_btn_height"/>
-```
-
-⚠️ Don't define base names (`space_lg`) in globals.xml - only variants.
 
 ---
 

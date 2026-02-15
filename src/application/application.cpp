@@ -34,6 +34,7 @@
 #include "streaming_policy.h"
 #include "subject_initializer.h"
 #include "temperature_history_manager.h"
+#include "timelapse_state.h"
 
 // UI headers
 #include "ui_ams_mini_status.h"
@@ -1511,6 +1512,12 @@ void Application::setup_discovery_callbacks() {
                                                     get_global_settings_panel().fetch_print_hours();
                                                 });
 
+            // Register for timelapse events when timelapse is detected
+            c->client->register_method_callback(
+                "notify_timelapse_event", "timelapse_state", [](const nlohmann::json& data) {
+                    helix::TimelapseState::instance().handle_timelapse_event(data);
+                });
+
             // Hardware validation: check config expectations vs discovered hardware
             HardwareValidator validator;
             auto validation_result = validator.validate(Config::get_instance(), c->hardware);
@@ -2159,6 +2166,12 @@ void Application::shutdown() {
     // History manager MUST be reset before moonraker (uses client for unregistration)
     m_history_manager.reset();
     m_temp_history_manager.reset();
+
+    // Unregister timelapse event callback
+    if (m_moonraker && m_moonraker->client()) {
+        m_moonraker->client()->unregister_method_callback("notify_timelapse_event",
+                                                          "timelapse_state");
+    }
 
     // Unregister action prompt callback before moonraker is destroyed
     if (m_moonraker && m_moonraker->client() && m_action_prompt_manager) {

@@ -24,8 +24,8 @@
 - **Uses**: 12 | **Velocity**: 0 | **Learned**: 2025-12-14 | **Last**: 2026-01-08 | **Category**: gotcha | **Type**: constraint
 > Avoid mutex locks in destructors during static destruction phase. Other objects may already be destroyed, causing deadlock or crash on exit
 
-### [L014] [***--|***--] Register all XML components
-- **Uses**: 26 | **Velocity**: 1 | **Learned**: 2025-12-14 | **Last**: 2026-02-05 | **Category**: gotcha | **Type**: constraint
+### [L014] [***--|****-] Register all XML components
+- **Uses**: 27 | **Velocity**: 2 | **Learned**: 2025-12-14 | **Last**: 2026-02-15 | **Category**: gotcha | **Type**: constraint
 > When adding new XML components, must add lv_xml_component_register_from_file() call in main.cpp. Forgetting causes silent failures
 
 ### [L020] [***--|*----] ObserverGuard for cleanup
@@ -160,4 +160,12 @@
 ### [L067] [-----|-----] Wrap C++ UI strings in lv_tr()
 - **Uses**: 0 | **Velocity**: 0 | **Learned**: 2026-02-14 | **Last**: 2026-02-14 | **Category**: ui
 > All user-visible English strings in C++ code must be wrapped in lv_tr() for i18n. Dropdown options are concatenated strings so they're harder to translate - but labels, help text, toasts, etc. must use lv_tr().
+
+### [L068] [-----|-----] Cancel LVGL animations before object deletion
+- **Uses**: 0 | **Velocity**: 0 | **Learned**: 2026-02-15 | **Last**: 2026-02-15 | **Category**: lvgl
+> When deleting LVGL objects that have animations with completion callbacks, ALWAYS cancel animations FIRST (lv_anim_delete) before lv_obj_delete/lv_obj_safe_delete. The completion callback may fire synchronously during lv_anim_delete, causing use-after-free if the object is already freed. Pattern: (1) nullify member pointer, (2) clear state flags, (3) lv_anim_delete, (4) lv_obj_delete. For animations using 'this' as var: set guard flags to false BEFORE lv_anim_delete so callbacks become no-ops.
+
+### [L069] [-----|-----] Never assume lv_obj user_data ownership — it may already be set
+- **Uses**: 0 | **Velocity**: 0 | **Learned**: 2026-02-15 | **Last**: 2026-02-15 | **Category**: architecture
+> LVGL's lv_obj_set_user_data() is a single shared slot per object. Custom XML widgets, component handlers, and LVGL internals may set user_data during object creation (e.g., severity_card stores a severity string). NEVER call delete/free on lv_obj_get_user_data() unless you are 100% certain you set it yourself on that specific object. NEVER use user_data as general-purpose storage on objects you didn't fully create — XML components and custom widgets may have claimed it already. For per-item data, prefer: (1) event callback user_data (separate per-callback), (2) a C++ side container (map/vector indexed by object pointer), or (3) lv_obj_find_by_name to stash data in a hidden child label.
 

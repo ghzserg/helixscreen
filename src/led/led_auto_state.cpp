@@ -2,6 +2,7 @@
 
 #include "led/led_auto_state.h"
 
+#include "color_utils.h"
 #include "config.h"
 #include "led/led_controller.h"
 #include "observer_factory.h"
@@ -278,7 +279,18 @@ void LedAutoState::load_config() {
             }
             LedStateAction action;
             action.action_type = it.value().value("action", "color");
-            action.color = static_cast<uint32_t>(it.value().value("color", 0xFFFFFF));
+            // Color: accept both integer (legacy) and "#RRGGBB" string
+            auto color_it = it.value().find("color");
+            if (color_it != it.value().end()) {
+                if (color_it->is_number()) {
+                    action.color = static_cast<uint32_t>(color_it->get<int>());
+                } else if (color_it->is_string()) {
+                    uint32_t rgb = 0;
+                    if (helix::parse_hex_color(color_it->get<std::string>().c_str(), rgb)) {
+                        action.color = rgb;
+                    }
+                }
+            }
             action.brightness = it.value().value("brightness", 100);
             action.effect_name = it.value().value("effect_name", "");
             action.wled_preset = it.value().value("wled_preset", 0);
@@ -308,7 +320,7 @@ void LedAutoState::save_config() {
     for (const auto& [key, action] : mappings_) {
         nlohmann::json obj;
         obj["action"] = action.action_type;
-        obj["color"] = static_cast<int>(action.color);
+        obj["color"] = helix::color_to_hex_string(action.color);
         obj["brightness"] = action.brightness;
         if (!action.effect_name.empty()) {
             obj["effect_name"] = action.effect_name;

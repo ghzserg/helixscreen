@@ -81,6 +81,34 @@ load helpers
 # LZ4 compression enabled
 # ============================================================================
 
+# ============================================================================
+# install.sh included in release packages
+# ============================================================================
+
+@test "all release targets include install.sh in package" {
+    # Every release target must copy install.sh into the tarball root (helixscreen/).
+    # This is critical: update_checker.cpp extracts helixscreen/INSTALLER_FILENAME
+    # from the tarball to run the version-matched installer. Without it, updates
+    # fail with "Installer not found".
+    local targets=(release-pi release-pi32 release-ad5m release-k1 release-k1-dynamic release-k2 release-snapmaker-u1)
+    local count
+    count=$(grep -c 'cp scripts/\$(INSTALLER_FILENAME).*\$(RELEASE_DIR)' mk/cross.mk)
+    # Must have one cp per release target
+    [ "$count" -ge "${#targets[@]}" ]
+}
+
+@test "install.sh exists in scripts directory" {
+    [ -f scripts/install.sh ]
+}
+
+@test "install.sh is executable" {
+    [ -x scripts/install.sh ]
+}
+
+# ============================================================================
+# LZ4 compression enabled
+# ============================================================================
+
 @test "LV_USE_LZ4_INTERNAL is enabled in lv_conf.h" {
     grep -q '#define LV_USE_LZ4_INTERNAL.*1' lv_conf.h
 }

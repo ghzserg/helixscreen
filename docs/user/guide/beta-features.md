@@ -36,8 +36,8 @@ When beta features are enabled, the following appear in the UI with an orange "B
 | **Z-Offset Calibration** | Advanced panel | Interactive probe-based Z calibration | Functional; requires probe (BLTouch, etc.) |
 | **HelixPrint Plugin** | Advanced panel | Install/uninstall the HelixPrint Klipper plugin for advanced print start control | Functional; plugin manages bed mesh, QGL, z-tilt skipping |
 | **Configure PRINT_START** | Advanced panel | Make bed mesh and QGL skippable in your print start macro | Functional; requires HelixPrint plugin installed |
-| **Timelapse** | Advanced panel | Configure Moonraker-Timelapse recording settings | Functional; requires timelapse plugin or webcam |
-| **Timelapse Setup** | Advanced panel | Install the timelapse plugin (shown when not installed but webcam detected) | Functional |
+| **Timelapse** | Advanced panel | Configure recording settings, render videos, manage timelapse files | Functional; requires timelapse plugin |
+| **Timelapse Setup** | Advanced panel | Guided install wizard for the timelapse plugin | Functional; shown when plugin not installed but webcam detected |
 | **Sound System** | Settings panel | Sound effects with volume control and theme selection | Functional; multi-backend (SDL/PWM/M300) |
 | **Plugins** | Settings panel | View installed plugins and their status | Functional; plugin system is early-stage |
 | **Update Channel** | Settings panel | Switch between Stable, Beta, and Dev update channels | Functional; Beta/Dev channels may have less-tested releases |

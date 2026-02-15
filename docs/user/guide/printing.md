@@ -90,6 +90,12 @@ The Print Status panel shows:
 | **Cancel** | Stops print (confirmation required). By default, waits for the printer's cancel routine to finish. If **Cancel Escalation** is enabled in **Settings > Safety**, an emergency stop triggers automatically after the configured timeout. |
 | **Tune** | Opens Print Tune overlay for real-time adjustments |
 
+### Timelapse Toggle
+
+If the Moonraker-Timelapse plugin is installed, a **timelapse button** appears in the print controls. Tap it to enable or disable recording for the current print. The button shows a camera icon and toggles between "On" and "Off" states.
+
+During printing, frame captures happen automatically based on your timelapse settings (per-layer or time-based). When the print finishes, the video renders automatically if auto-render is enabled.
+
 ---
 
 ## Print Tune Overlay

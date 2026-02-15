@@ -1086,17 +1086,11 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
             if (is_first_overlay && mgr.overlay_backdrop_) {
                 mgr.set_backdrop_visible(true);
                 lv_obj_move_foreground(mgr.overlay_backdrop_);
-            } else if (!is_first_overlay) {
-                lv_obj_t* backdrop =
-                    static_cast<lv_obj_t*>(lv_xml_create(screen, "overlay_backdrop", nullptr));
-                if (backdrop) {
-                    mgr.overlay_backdrops_[overlay_panel] = backdrop;
-                    lv_obj_remove_flag(backdrop, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_move_foreground(backdrop);
-                    lv_obj_add_event_cb(backdrop, backdrop_click_event_cb, LV_EVENT_CLICKED,
-                                        nullptr);
-                }
             }
+            // Nested overlays do NOT get their own backdrop — the primary
+            // backdrop already provides dimming for the entire overlay stack.
+            // Secondary/deeper settings panels (e.g. theme editor inside
+            // display settings) should not add additional darkening layers.
         }
 
         // Show overlay

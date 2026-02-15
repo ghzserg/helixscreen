@@ -516,9 +516,9 @@ Located in the `printer.leds` section. Configured via **Settings > LED Settings*
 **Description:** Automatically turn on selected LED strips when Klipper becomes ready. Useful for chamber lights that should always be on. This setting has moved from `output.led_on_at_start` to here, though the legacy location is still read for backward compatibility.
 
 ### `leds.last_color`
-**Type:** integer
-**Default:** `16777215` (white)
-**Description:** Last used LED color as an integer RGB value (e.g., `16777215` = white, `16711680` = red, `65280` = green, `255` = blue). Remembered between sessions.
+**Type:** string (or integer)
+**Default:** `"#FFFFFF"` (white)
+**Description:** Last used LED color as a `#RRGGBB` hex string (e.g., `"#FFFFFF"` = white, `"#FF0000"` = red, `"#00FF00"` = green). Legacy integer RGB values (e.g., `16777215`) are also accepted for backward compatibility. Remembered between sessions.
 
 ### `leds.last_brightness`
 **Type:** integer
@@ -527,9 +527,9 @@ Located in the `printer.leds` section. Configured via **Settings > LED Settings*
 **Description:** Last used brightness percentage. Remembered between sessions.
 
 ### `leds.color_presets`
-**Type:** array of integers
-**Default:** `[16777215, 16711680, 65280, 255, 16776960, 16711935, 65535]`
-**Description:** Preset color values (integer RGB) shown in the color picker. Default presets are white, red, green, blue, yellow, magenta, and cyan.
+**Type:** array of strings (or integers)
+**Default:** `["#FFFFFF", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF"]`
+**Description:** Preset colors shown in the color picker as `#RRGGBB` hex strings. Legacy integer RGB values are also accepted. Default presets are white, red, green, blue, yellow, magenta, and cyan.
 
 ### `leds.auto_state`
 **Type:** object
@@ -540,12 +540,12 @@ Located in the `printer.leds` section. Configured via **Settings > LED Settings*
   "auto_state": {
     "enabled": false,
     "mappings": {
-      "idle": { "action": "brightness", "brightness": 50, "color": 0 },
-      "heating": { "action": "color", "color": 16711680, "brightness": 100 },
-      "printing": { "action": "brightness", "brightness": 100, "color": 0 },
-      "paused": { "action": "effect", "effect_name": "breathing", "color": 0, "brightness": 100 },
-      "error": { "action": "color", "color": 16711680, "brightness": 100 },
-      "complete": { "action": "color", "color": 65280, "brightness": 100 }
+      "idle": { "action": "brightness", "brightness": 50, "color": "#000000" },
+      "heating": { "action": "color", "color": "#FF0000", "brightness": 100 },
+      "printing": { "action": "brightness", "brightness": 100, "color": "#000000" },
+      "paused": { "action": "effect", "effect_name": "breathing", "color": "#000000", "brightness": 100 },
+      "error": { "action": "color", "color": "#FF0000", "brightness": 100 },
+      "complete": { "action": "color", "color": "#00FF00", "brightness": 100 }
     }
   }
 }
@@ -554,7 +554,7 @@ Located in the `printer.leds` section. Configured via **Settings > LED Settings*
 - `enabled` — Boolean, enable/disable automatic state-based lighting
 - `mappings` — Object mapping printer state keys (`idle`, `heating`, `printing`, `paused`, `error`, `complete`) to actions
 - Each mapping has an `action` type: `"off"`, `"brightness"`, `"color"`, `"effect"`, `"wled_preset"`, or `"macro"`
-- Additional fields depend on the action: `brightness` (0-100), `color` (integer RGB), `effect_name` (string), `wled_preset` (integer), `macro` (string)
+- Additional fields depend on the action: `brightness` (0-100), `color` (`#RRGGBB` hex string or legacy integer RGB), `effect_name` (string), `wled_preset` (integer), `macro` (string)
 
 ### `leds.macro_devices`
 **Type:** array of objects
@@ -1144,6 +1144,8 @@ Environment="HELIX_TOUCH_DEVICE=/dev/input/event0"
 ```
 
 > **Note:** Most users won't need environment variables. The config file options are preferred. Environment variables are mainly for debugging when the config file isn't accessible.
+>
+> For a comprehensive list of all environment variables (including mock/testing, touch calibration, UI automation, and more), see the [Environment Variables Reference](../devel/ENVIRONMENT_VARIABLES.md).
 
 ---
 

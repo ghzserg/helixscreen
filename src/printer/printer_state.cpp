@@ -32,6 +32,7 @@
 #include "runtime_config.h"
 #include "settings_manager.h"
 #include "temperature_sensor_manager.h"
+#include "timelapse_state.h"
 #include "unit_conversions.h"
 #include "width_sensor_manager.h"
 
@@ -415,6 +416,7 @@ json& PrinterState::get_json_state() {
 
 void PrinterState::reset_for_new_print() {
     print_domain_.reset_for_new_print();
+    helix::TimelapseState::instance().reset();
 }
 
 // Note: Multi-fan tracking (init_fans, update_fan_speed, get_fan_speed_subject) is now

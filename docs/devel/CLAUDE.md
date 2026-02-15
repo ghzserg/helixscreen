@@ -19,11 +19,12 @@ All developer documentation lives here. When working on features, look up the re
 
 | Doc | When to read |
 |-----|-------------|
+| `UI_CONTRIBUTOR_GUIDE.md` | **Start here** for UI/layout work: breakpoints, tokens, colors, widgets, layout overrides |
 | `LVGL9_XML_GUIDE.md` | XML syntax, all widgets (ui_card, ui_button, ui_markdown, etc.), bindings |
 | `DEVELOPER_QUICK_REFERENCE.md` | Quick code patterns: modals, CSV parser, layout, migration |
 | `MODAL_SYSTEM.md` | ui_dialog, modal_button_row, Modal subclass pattern |
-| `THEME_SYSTEM.md` | Color tokens, spacing tokens, responsive sizing |
-| `LAYOUT_SYSTEM.md` | Alternative layouts, LayoutManager, CLI override, ultrawide |
+| `THEME_SYSTEM.md` | Theme internals: style architecture, theme_core C API, adding themed widgets |
+| `LAYOUT_SYSTEM.md` | Layout system internals: LayoutManager C++ API, auto-detection logic |
 | `TRANSLATION_SYSTEM.md` | i18n: YAML strings -> code generation -> runtime lookups |
 | `UI_TESTING.md` | Headless LVGL testing, UITest utilities |
 | `GCODE_VIEWER_CONFIG.md` | GCode viewer configuration |
@@ -43,8 +44,7 @@ All developer documentation lives here. When working on features, look up the re
 | `PRINT_START_PROFILES.md` | Print start phase detection, JSON profiles |
 | `PRINT_START_INTEGRATION.md` | User-facing macro setup for print start tracking |
 | `UPDATE_SYSTEM.md` | Update channels (stable/beta/dev), R2 CDN, Moonraker updater |
-| `SOUND_SYSTEM.md` | Audio architecture, JSON themes, backends (SDL, PWM, M300) |
-| `SOUND_SETTINGS.md` | Sound settings user guide |
+| `SOUND_SYSTEM.md` | Audio architecture, JSON themes, backends (SDL, PWM, M300). User guide: `../user/guide/settings.md#sound-settings` |
 | `LED_CONTROL.md` | LED control system: 4 backends, auto-state lighting, control/settings overlays |
 | `PRINTER_MANAGER.md` | Printer overlay, custom images, inline name editing |
 | `TIMELAPSE.md` | Moonraker timelapse plugin integration |
@@ -58,9 +58,9 @@ All developer documentation lives here. When working on features, look up the re
 | Doc | When to read |
 |-----|-------------|
 | `INSTALLER.md` | Installation system, KIAUH extension, shell tests (bats) |
-| `QIDI_SUPPORT.md` | QIDI Q1 Pro/Plus platform |
-| `SNAPMAKER_U1_SUPPORT.md` | Snapmaker U1 toolchanger platform |
-| `CREALITY_K2_SUPPORT.md` | Creality K2 series platform |
+| `printers/QIDI_SUPPORT.md` | QIDI Q1 Pro/Plus platform |
+| `printers/SNAPMAKER_U1_SUPPORT.md` | Snapmaker U1 toolchanger platform |
+| `printers/CREALITY_K2_SUPPORT.md` | Creality K2 series platform |
 | `ENVIRONMENT_VARIABLES.md` | All runtime and build env vars |
 
 ## Integration
@@ -68,6 +68,7 @@ All developer documentation lives here. When working on features, look up the re
 | Doc | When to read |
 |-----|-------------|
 | `MOONRAKER_ARCHITECTURE.md` | Moonraker API abstraction, WebSocket integration |
+| `PLUGIN_DEVELOPMENT.md` | Plugin API, lifecycle, UI injection, threading, examples |
 | `TELEMETRY_ADMIN.md` | Telemetry pipeline, Analytics Engine, dashboard, scripts, secrets |
 
 ## Planning & Research

@@ -220,6 +220,11 @@ lv_obj_t* PrinterImageOverlay::create_list_row(lv_obj_t* parent, const std::stri
     }
 
     // Store image_id in user_data (freed on row delete)
+    // TODO: lv_obj user_data is safe here ONLY because printer_image_list_item
+    // extends lv_button (which doesn't claim user_data). If the XML component
+    // ever extends a custom widget like severity_card that uses user_data
+    // internally, this will silently collide. Consider event callback user_data
+    // or a C++ side map instead. See L069.
     char* id_copy = strdup(image_id.c_str());
     if (!id_copy) {
         spdlog::error("[{}] Failed to allocate memory for image id", get_name());

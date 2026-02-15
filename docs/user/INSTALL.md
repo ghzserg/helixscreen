@@ -36,7 +36,7 @@ curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/script
 
 The installer automatically detects your platform and downloads the correct release.
 
-**Adventurer 5M:** The AD5M's BusyBox doesn't support HTTPS downloads. See [Adventurer 5M Installation](#adventurer-5m-installation) for the two-step process (download on your computer, then copy to printer).
+**Adventurer 5M:** The easiest option is our [ready-made firmware image](https://github.com/prestonbrown/ff5m) — just flash from a USB drive. For manual installation on existing Forge-X or Klipper Mod setups, see [Adventurer 5M Installation](#adventurer-5m-installation).
 
 > **Note:** Both `bash` and `sh` work. The installer is POSIX-compatible for BusyBox environments.
 
@@ -70,6 +70,8 @@ After installation, the setup wizard will guide you through initial configuratio
 > **32-bit vs 64-bit:** The installer automatically detects your OS architecture and downloads the correct binary. If you're unsure which you have, run `uname -m` — `aarch64` means 64-bit, `armv7l` means 32-bit.
 
 ### Adventurer 5M / 5M Pro
+
+> **Easiest option:** We provide a [ready-made firmware image](https://github.com/prestonbrown/ff5m) — a fork of Forge-X 1.4.0 with HelixScreen pre-configured. Just put it on a flash drive and install on your printer. No SSH, no manual setup. If you'd rather install HelixScreen on an existing Forge-X or Klipper Mod setup, follow the manual instructions below.
 
 - **Hardware:**
   - FlashForge Adventurer 5M or 5M Pro
@@ -215,6 +217,20 @@ See [First Boot & Setup Wizard](#first-boot--setup-wizard) for details.
 ---
 
 ## Adventurer 5M Installation
+
+### Ready-Made Firmware Image (Easiest)
+
+We maintain a [ready-made firmware image](https://github.com/prestonbrown/ff5m) — a fork of Forge-X 1.4.0 with HelixScreen pre-configured. This is the fastest way to get up and running:
+
+1. Download the image from [github.com/prestonbrown/ff5m](https://github.com/prestonbrown/ff5m)
+2. Copy it to a USB flash drive
+3. Insert the flash drive into your AD5M or AD5M Pro and install
+
+That's it — no SSH, no manual commands. HelixScreen will be ready to go after the firmware installs.
+
+> If you already have Forge-X or Klipper Mod installed and prefer to add HelixScreen manually, continue with the instructions below.
+
+### Manual Installation
 
 > **Important:** Installing HelixScreen replaces your current screen UI (GuppyScreen on Forge-X, KlipperScreen on Klipper Mod). Make sure you have a backup method to access your printer (SSH, Mainsail/Fluidd web interface).
 

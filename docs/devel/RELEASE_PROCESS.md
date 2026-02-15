@@ -55,35 +55,38 @@ git push origin v1.2.0
 
 ### Pipeline Stages
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Tag Push (v1.2.0)                       │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-    ┌────────────┼────────────┼────────────┐
-    │            │            │            │
-    ▼            ▼            ▼            ▼
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│ build-pi │ │build-pi32│ │build-ad5m│ │ build-k1 │
-│ (45 min) │ │ (45 min) │ │ (45 min) │ │ (45 min) │
-│          │ │          │ │          │ │          │
-│ • Docker │ │ • Docker │ │ • Docker │ │ • Docker │
-│ • arm64  │ │ • armhf  │ │ • armv7l │ │ • mips32 │
-│ • Package│ │ • Package│ │ • Package│ │ • Package│
-└────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
-     │            │            │            │
-     └────────────┼────────────┼────────────┘
-                  │
-                  ▼
-       ┌──────────────────┐
-       │     release      │
-       │                  │
-       │ • Download all   │
-       │   artifacts      │
-       │ • Extract version│
-       │ • Generate notes │
-       │ • Create release │
-       └──────────────────┘
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                         Build Matrix                        │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│ build-pi │ │build-pi32│ │build-ad5m│ │ build-k1 │ │ build-k2 │
+│ (45 min) │ │ (45 min) │ │ (45 min) │ │ (45 min) │ │ (45 min) │
+│          │ │          │ │          │ │          │ │          │
+│ • Docker │ │ • Docker │ │ • Docker │ │ • Docker │ │ • Docker │
+│ • arm64  │ │ • armhf  │ │ • armv7l │ │ • mips32 │ │ • mips32 │
+│ • Package│ │ • Package│ │ • Package│ │ • Package│ │ • Package│
+└────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
+     │            │            │            │            │
+     └────────────┼────────────┼────────────┼────────────┘
+                               │
+                               ▼
+                     ┌──────────────────┐
+                     │     release      │
+                     │                  │
+                     │ • Download all   │
+                     │   artifacts      │
+                     │ • Extract version│
+                     │ • Generate notes │
+                     │ • Create release │
+                     └──────────────────┘
 ```
 
 ### Build Artifacts
@@ -94,9 +97,7 @@ git push origin v1.2.0
 | Raspberry Pi (32-bit) | `helixscreen-pi32-v{version}.tar.gz` | armhf binary, assets, configs |
 | AD5M | `helixscreen-ad5m-v{version}.tar.gz` | armv7l binary (static), assets, configs |
 | K1/Simple AF | `helixscreen-k1-v{version}.tar.gz` | MIPS32 binary (static, musl), assets, configs |
-
-> **Note:** K1 builds use Docker (`make k1-docker`) with the musl MIPS32 toolchain. CI integration is in progress.
-
+| K2/Simple AF | `helixscreen-k2-v{version}.tar.gz` | ARM binary (static, musl), assets, configs |
 ---
 
 ## Creating a Release

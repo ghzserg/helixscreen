@@ -5,6 +5,47 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.23] - 2026-02-15
+
+### Added
+- LED colors stored as human-readable #RRGGBB hex strings with automatic legacy integer migration
+- ASLR auto-detection in backtrace resolver for more accurate crash report symbol resolution
+
+### Fixed
+- Crash from LVGL object user_data ownership collisions causing SIGABRT
+- Crash from NULL pointer passed to lv_strdup
+- Use-after-free in animation completion callbacks
+- Use-after-free when replacing toast notifications during exit animation
+
+## [0.9.22] - 2026-02-15
+
+### Added
+- Timelapse phase 2: event handling, render notifications, and video management
+- AD5M ready-made firmware image as primary install option in docs
+
+### Fixed
+- **Critical**: install.sh now included in release packages, fixing "Installer not found" error during UI-initiated updates (thanks @bassco)
+
+### Changed
+- CI release pipeline refactored to matrix builds for easier platform maintenance (thanks @bassco)
+
+## [0.9.21] - 2026-02-14
+
+### Added
+- G-code console gated behind beta features setting
+- Cancel escalation system: configurable e-stop timeout with settings toggle and dropdown
+- Internationalization for hardcoded settings strings
+
+### Fixed
+- Nested overlay backdrops no longer double-stack
+- Crash handler and report dialog disabled in test mode to prevent test interference
+- Installer now extracts install.sh from tarball to prevent stale script failures
+- Operation timeout guards increased for homing, QGL, and Z-tilt commands
+- Touch calibration option hidden for USB HID input devices
+
+### Changed
+- G-code console and cancel escalation documented in user guide
+
 ## [0.9.20] - 2026-02-14
 
 This release adds multi-extruder temperature support, tool state tracking, multi-backend AMS (allowing printers with multiple filament systems), and fixes a critical installer bug that prevented Moonraker from starting on ForgeX AD5M printers after reboot.
@@ -494,6 +535,11 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.9.22]: https://github.com/prestonbrown/helixscreen/compare/v0.9.21...v0.9.22
+[0.9.21]: https://github.com/prestonbrown/helixscreen/compare/v0.9.20...v0.9.21
+[0.9.23]: https://github.com/prestonbrown/helixscreen/compare/v0.9.22...v0.9.23
+[0.9.22]: https://github.com/prestonbrown/helixscreen/compare/v0.9.21...v0.9.22
+[0.9.21]: https://github.com/prestonbrown/helixscreen/compare/v0.9.20...v0.9.21
 [0.9.20]: https://github.com/prestonbrown/helixscreen/compare/v0.9.19...v0.9.20
 [0.9.19]: https://github.com/prestonbrown/helixscreen/compare/v0.9.18...v0.9.19
 [0.9.18]: https://github.com/prestonbrown/helixscreen/compare/v0.9.17...v0.9.18

@@ -32,6 +32,7 @@ Most commonly needed:
 
 | Doc | When |
 |-----|------|
+| `docs/devel/UI_CONTRIBUTOR_GUIDE.md` | UI/layout work: breakpoints, tokens, colors, widgets, layout overrides |
 | `docs/devel/LVGL9_XML_GUIDE.md` | XML layouts, widgets, bindings, observer cleanup |
 | `docs/devel/MODAL_SYSTEM.md` | Modal architecture: ui_dialog, modal_button_row, Modal pattern |
 | `docs/devel/FILAMENT_MANAGEMENT.md` | AMS, AFC, Happy Hare, ValgACE, Tool Changer |

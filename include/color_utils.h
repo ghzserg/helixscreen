@@ -57,4 +57,12 @@ void rgb_to_hsl(uint32_t rgb, float& h, float& s, float& l);
  */
 bool parse_hex_color(const char* input, uint32_t& out_rgb);
 
+/**
+ * @brief Convert RGB value to #RRGGBB hex string
+ *
+ * @param rgb RGB color value (0x00RRGGBB format)
+ * @return Hex string in "#RRGGBB" format (e.g., "#FF0000")
+ */
+std::string color_to_hex_string(uint32_t rgb);
+
 } // namespace helix

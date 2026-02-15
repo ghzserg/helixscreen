@@ -295,6 +295,10 @@ void LedSettingsOverlay::populate_macro_devices() {
                                          "variant", "secondary", nullptr};
         lv_xml_create(edit_btn, "icon", edit_icon_attrs);
 
+        // TODO: lv_obj user_data is safe on these buttons because they're
+        // plain lv_button_create() (not XML widgets). If buttons are ever
+        // created via lv_xml_create() from a component that claims user_data,
+        // move to event callback user_data instead. See L069.
         auto* edit_idx = new int(i);
         lv_obj_set_user_data(edit_btn, edit_idx);
         lv_obj_add_event_cb(

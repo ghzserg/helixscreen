@@ -1367,6 +1367,50 @@ static void send_led_gcode() {
 
 ---
 
+## Known Limitations
+
+These are documented limitations accepted in the current design.
+
+### Moonraker Subscription Persistence
+
+Once a plugin registers a Moonraker subscription via `MoonrakerClient::register_notify_update()`, the subscription cannot be removed until the client is destroyed. Calling `unsubscribe_moonraker()` marks the subscription as removed in plugin tracking, and the `alive_flag_` pattern ensures callbacks are skipped. The actual WebSocket subscription persists until reconnect. This is minor overhead for long-running sessions.
+
+### Subject Name Collisions
+
+Subjects are registered globally. Two plugins using the same subject name will conflict. Always prefix with your plugin ID: `"my-plugin.subject_name"`. There is no technical enforcement — convention is sufficient.
+
+### Single Injection Point Instance
+
+Each injection point can only exist once in the UI at a time. Injected widgets are removed when navigating away from the panel. This matches HelixScreen's single-panel navigation model. Plugins can re-inject on `NAVIGATION_CHANGED` events.
+
+### Subject Unregistration
+
+Subjects registered via `api->register_subject()` are tracked but not actually unregistered from LVGL's XML system during cleanup (LVGL 9.4 does not provide `lv_xml_unregister_subject()`). Re-loading a plugin with the same subject names works fine (registration is idempotent). Only affects development scenarios with frequent plugin reloads.
+
+---
+
+## Future Directions
+
+These are enhancement ideas captured for future consideration. Implementation should be driven by actual user needs.
+
+### Filter System
+
+Allow plugins to intercept and modify data, not just observe. Events are fire-and-forget; filters would allow transformation (e.g., G-code preprocessing, temperature calibration offsets). Would require a new `FilterManager` class. Implement when a real use case emerges.
+
+### Plugin Hot-Reload
+
+Reload plugins without restarting the application. Deferred due to complexity: LVGL widget cleanup, subject/observer lifecycle, service dependencies, state preservation, and `dlclose()` limitations. Current approach (restart app after changes) is simple and reliable.
+
+### Plugin Marketplace
+
+In-app discovery and installation of community plugins. Would require registry infrastructure, code signing, version compatibility matrix. Simpler alternatives: documented manual installation, curated plugin lists, GitHub releases, or a CLI install tool.
+
+### Plugin Sandboxing
+
+Currently plugins are trusted code with full access (similar to VS Code extensions, Klipper macros, OctoPrint plugins). Sandboxing would require separate processes with IPC, capability-based permissions, and significantly increased complexity. The trust-based model is appropriate for the user base.
+
+---
+
 ## Additional Resources
 
 - [LVGL9_XML_GUIDE.md](LVGL9_XML_GUIDE.md) - Complete XML component reference

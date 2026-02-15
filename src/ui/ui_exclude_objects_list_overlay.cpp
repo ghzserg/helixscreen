@@ -392,6 +392,10 @@ lv_obj_t* ExcludeObjectsListOverlay::create_object_row(lv_obj_t* parent, const s
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
         // Allocate name string for callback
+        // TODO: lv_obj user_data is safe here ONLY because row is created via
+        // lv_obj_create() (not XML). If row is ever changed to lv_xml_create(),
+        // user_data may already be claimed by the XML widget — move to event
+        // callback user_data or a C++ side container instead. See L069.
         char* name_copy = static_cast<char*>(lv_malloc(name.size() + 1));
         if (name_copy) {
             memcpy(name_copy, name.c_str(), name.size() + 1);

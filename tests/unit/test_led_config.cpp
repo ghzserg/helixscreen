@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "color_utils.h"
 #include "config.h"
 #include "led/led_controller.h"
 
@@ -189,7 +190,7 @@ TEST_CASE("LedController config: paths use /printer/leds/ prefix", "[led][config
     REQUIRE(strips_json.size() == 1);
     REQUIRE(strips_json[0].get<std::string>() == "neopixel test_strip");
 
-    REQUIRE(cfg->get<int>("/printer/leds/last_color", 0) == static_cast<int>(0xAABBCC));
+    REQUIRE(cfg->get<std::string>("/printer/leds/last_color", "") == "#AABBCC");
     REQUIRE(cfg->get<int>("/printer/leds/last_brightness", 0) == 42);
 
     // Reload and verify
@@ -460,6 +461,130 @@ TEST_CASE("LedController config: full migration chain end-to-end", "[led][config
     cfg->save();
 
     ctrl.deinit();
+}
+
+TEST_CASE("LedController config: hex string colors saved to config", "[led][config]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    ctrl.set_last_color(0xFF0000);
+    ctrl.set_color_presets({0x00FF00, 0x0000FF});
+    ctrl.save_config();
+
+    auto* cfg = Config::get_instance();
+
+    // Verify saved as hex strings, not integers
+    auto& color_json = cfg->get_json("/printer/leds/last_color");
+    REQUIRE(color_json.is_string());
+    REQUIRE(color_json.get<std::string>() == "#FF0000");
+
+    auto& presets_json = cfg->get_json("/printer/leds/color_presets");
+    REQUIRE(presets_json.is_array());
+    REQUIRE(presets_json.size() == 2);
+    REQUIRE(presets_json[0].is_string());
+    REQUIRE(presets_json[0].get<std::string>() == "#00FF00");
+    REQUIRE(presets_json[1].get<std::string>() == "#0000FF");
+
+    // Cleanup
+    cfg->set("/printer/leds/last_color", nlohmann::json());
+    cfg->set("/printer/leds/color_presets", nlohmann::json());
+    cfg->save();
+
+    ctrl.deinit();
+}
+
+TEST_CASE("LedController config: loads hex string colors from config", "[led][config]") {
+    auto* cfg = Config::get_instance();
+    REQUIRE(cfg != nullptr);
+
+    // Write hex string colors to config
+    cfg->set<std::string>("/printer/leds/last_color", "#AABB00");
+    nlohmann::json presets = nlohmann::json::array({"#FF0000", "#00FF00", "#0000FF"});
+    cfg->set("/printer/leds/color_presets", presets);
+    cfg->save();
+
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    REQUIRE(ctrl.last_color() == 0xAABB00);
+    REQUIRE(ctrl.color_presets().size() == 3);
+    REQUIRE(ctrl.color_presets()[0] == 0xFF0000);
+    REQUIRE(ctrl.color_presets()[1] == 0x00FF00);
+    REQUIRE(ctrl.color_presets()[2] == 0x0000FF);
+
+    // Cleanup
+    cfg->set("/printer/leds/last_color", nlohmann::json());
+    cfg->set("/printer/leds/color_presets", nlohmann::json());
+    cfg->save();
+
+    ctrl.deinit();
+}
+
+TEST_CASE("LedController config: loads legacy integer colors from config", "[led][config]") {
+    auto* cfg = Config::get_instance();
+    REQUIRE(cfg != nullptr);
+
+    // Write old-style integer colors
+    cfg->set("/printer/leds/last_color", static_cast<int>(0xFF8800));
+    nlohmann::json presets =
+        nlohmann::json::array({static_cast<int>(0xFF0000), static_cast<int>(0x00FF00)});
+    cfg->set("/printer/leds/color_presets", presets);
+    cfg->save();
+
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    REQUIRE(ctrl.last_color() == 0xFF8800);
+    REQUIRE(ctrl.color_presets().size() == 2);
+    REQUIRE(ctrl.color_presets()[0] == 0xFF0000);
+    REQUIRE(ctrl.color_presets()[1] == 0x00FF00);
+
+    // Cleanup
+    cfg->set("/printer/leds/last_color", nlohmann::json());
+    cfg->set("/printer/leds/color_presets", nlohmann::json());
+    cfg->save();
+
+    ctrl.deinit();
+}
+
+TEST_CASE("LedController config: mixed integer and hex string presets", "[led][config]") {
+    auto* cfg = Config::get_instance();
+    REQUIRE(cfg != nullptr);
+
+    // Mix of old integers and new hex strings
+    nlohmann::json presets = nlohmann::json::array();
+    presets.push_back("#FF0000");
+    presets.push_back(static_cast<int>(0x00FF00));
+    presets.push_back("#0000FF");
+    cfg->set("/printer/leds/color_presets", presets);
+    cfg->save();
+
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+
+    REQUIRE(ctrl.color_presets().size() == 3);
+    REQUIRE(ctrl.color_presets()[0] == 0xFF0000);
+    REQUIRE(ctrl.color_presets()[1] == 0x00FF00);
+    REQUIRE(ctrl.color_presets()[2] == 0x0000FF);
+
+    // Cleanup
+    cfg->set("/printer/leds/color_presets", nlohmann::json());
+    cfg->save();
+
+    ctrl.deinit();
+}
+
+TEST_CASE("color_to_hex_string produces correct output", "[color][utils]") {
+    REQUIRE(helix::color_to_hex_string(0xFFFFFF) == "#FFFFFF");
+    REQUIRE(helix::color_to_hex_string(0xFF0000) == "#FF0000");
+    REQUIRE(helix::color_to_hex_string(0x00FF00) == "#00FF00");
+    REQUIRE(helix::color_to_hex_string(0x0000FF) == "#0000FF");
+    REQUIRE(helix::color_to_hex_string(0x000000) == "#000000");
+    REQUIRE(helix::color_to_hex_string(0xAABBCC) == "#AABBCC");
 }
 
 TEST_CASE("LedController config: migration skips when new paths already populated",

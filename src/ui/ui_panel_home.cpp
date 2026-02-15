@@ -137,6 +137,8 @@ HomePanel::~HomePanel() {
     // Check lv_is_initialized() to avoid crash during static destruction
     if (lv_is_initialized()) {
         // Stop tip fade animations (var=this, not an lv_obj_t*, so lv_obj_delete won't clean them)
+        // Clear flag first so completion callbacks become no-ops if triggered synchronously
+        tip_animating_ = false;
         lv_anim_delete(this, nullptr);
 
         if (signal_poll_timer_) {
@@ -371,6 +373,12 @@ void HomePanel::on_activate() {
 
 void HomePanel::on_deactivate() {
     AmsState::instance().stop_spoolman_polling();
+
+    // Cancel any in-flight tip fade animations (var=this, not an lv_obj_t*)
+    if (tip_animating_) {
+        tip_animating_ = false;
+        lv_anim_delete(this, nullptr);
+    }
 
     // Stop signal polling timer when panel is hidden (saves CPU)
     if (signal_poll_timer_) {
