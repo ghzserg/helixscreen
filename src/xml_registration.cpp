@@ -172,6 +172,7 @@ void register_xml_components() {
 
     // Core UI components
     register_xml("icon.xml");
+    register_xml("status_pill.xml");
     register_xml("filament_sensor_indicator.xml");
     register_xml("humidity_indicator.xml");
     register_xml("width_indicator.xml");
