@@ -432,3 +432,83 @@ jobs:
         for CHANNEL in $UPLOAD_CHANNELS; do
           echo "  ${CHANNEL}: ${R2_PUBLIC_URL}/${CHANNEL}/manifest.json"
         done
+
+    - name: Clean up old releases (retain 10 most recent)
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        R2_BUCKET: ${{ vars.R2_BUCKET_NAME || 'helixscreen-releases' }}
+        UPLOAD_CHANNELS: ${{ steps.channels.outputs.channels }}
+        RETAIN_COUNT: 10
+      run: |
+        # Sort versions using semver-aware sort (numeric on each dotted component)
+        semver_sort() {
+          sort -t. -k1,1n -k2,2n -k3,3n
+        }
+
+        for CHANNEL in $UPLOAD_CHANNELS; do
+          echo "=== Pruning old releases from ${CHANNEL} ==="
+
+          # List all .tar.gz files in channel, extract unique versions
+          VERSIONS=$(aws s3 ls "s3://${R2_BUCKET}/${CHANNEL}/" \
+            --endpoint-url "$R2_ENDPOINT" \
+            | grep -oP 'helixscreen-\w+-v\K[0-9]+\.[0-9]+\.[0-9]+(?:[-.][a-zA-Z0-9.]+)?' \
+            | sort -u \
+            | semver_sort)
+
+          VERSION_COUNT=$(echo "$VERSIONS" | grep -c . || true)
+          echo "Found ${VERSION_COUNT} versions in ${CHANNEL}"
+
+          if [ "$VERSION_COUNT" -le "$RETAIN_COUNT" ]; then
+            echo "Within retention limit, nothing to prune"
+            continue
+          fi
+
+          # Get versions to delete (all but the most recent N)
+          DELETE_VERSIONS=$(echo "$VERSIONS" | head -n -${RETAIN_COUNT})
+          DELETE_COUNT=$(echo "$DELETE_VERSIONS" | grep -c . || true)
+          echo "Pruning ${DELETE_COUNT} old versions: $(echo $DELETE_VERSIONS | tr '\n' ' ')"
+
+          for VERSION in $DELETE_VERSIONS; do
+            # Delete all files matching this version in the channel
+            aws s3 ls "s3://${R2_BUCKET}/${CHANNEL}/" \
+              --endpoint-url "$R2_ENDPOINT" \
+              | awk '{print $4}' \
+              | grep -- "-v${VERSION}\." \
+              | while read -r filename; do
+                echo "  Deleting ${CHANNEL}/${filename}"
+                aws s3 rm "s3://${R2_BUCKET}/${CHANNEL}/${filename}" \
+                  --endpoint-url "$R2_ENDPOINT"
+              done
+          done
+
+          echo "=== ${CHANNEL} pruning complete ==="
+        done
+
+        # Prune old symbol maps
+        echo "=== Pruning old symbol maps ==="
+        SYM_VERSIONS=$(aws s3 ls "s3://${R2_BUCKET}/symbols/" \
+          --endpoint-url "$R2_ENDPOINT" \
+          | grep -oP 'PRE v\K[0-9]+\.[0-9]+\.[0-9]+(?:[-.][a-zA-Z0-9.]+)?' \
+          | sort -u \
+          | semver_sort)
+
+        SYM_COUNT=$(echo "$SYM_VERSIONS" | grep -c . || true)
+        echo "Found ${SYM_COUNT} symbol versions"
+
+        if [ "$SYM_COUNT" -gt "$RETAIN_COUNT" ]; then
+          DELETE_SYM_VERSIONS=$(echo "$SYM_VERSIONS" | head -n -${RETAIN_COUNT})
+          DELETE_SYM_COUNT=$(echo "$DELETE_SYM_VERSIONS" | grep -c . || true)
+          echo "Pruning ${DELETE_SYM_COUNT} old symbol versions"
+
+          for VERSION in $DELETE_SYM_VERSIONS; do
+            echo "  Deleting symbols/v${VERSION}/"
+            aws s3 rm "s3://${R2_BUCKET}/symbols/v${VERSION}/" \
+              --endpoint-url "$R2_ENDPOINT" \
+              --recursive
+          done
+        else
+          echo "Within retention limit, nothing to prune"
+        fi
+        echo "=== Symbol pruning complete ==="
