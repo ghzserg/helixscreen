@@ -36,32 +36,32 @@ TEST_CASE("DeviceSection struct exists and has required fields", "[ams][device_a
 
         CHECK(section.id.empty());
         CHECK(section.label.empty());
-        CHECK(section.icon.empty());
         // Value-initialized struct has display_order = 0
         CHECK(section.display_order == 0);
+        CHECK(section.description.empty());
     }
 
     SECTION("can construct with values") {
-        DeviceSection section{"calibration", "Calibration", "wrench", 0};
+        DeviceSection section{"calibration", "Calibration", 0, "Bowden length calibration"};
 
         CHECK(section.id == "calibration");
         CHECK(section.label == "Calibration");
-        CHECK(section.icon == "wrench");
         CHECK(section.display_order == 0);
+        CHECK(section.description == "Bowden length calibration");
     }
 
     SECTION("sections can have different display orders") {
-        DeviceSection section1{"first", "First", "one", 0};
-        DeviceSection section2{"second", "Second", "two", 1};
-        DeviceSection section3{"third", "Third", "three", 2};
+        DeviceSection section1{"first", "First", 0};
+        DeviceSection section2{"second", "Second", 1};
+        DeviceSection section3{"third", "Third", 2};
 
         CHECK(section1.display_order < section2.display_order);
         CHECK(section2.display_order < section3.display_order);
     }
 
     SECTION("sections with same display_order are allowed") {
-        DeviceSection section1{"a", "A", "icon", 0};
-        DeviceSection section2{"b", "B", "icon", 0};
+        DeviceSection section1{"a", "A", 0};
+        DeviceSection section2{"b", "B", 0};
 
         CHECK(section1.display_order == section2.display_order);
     }
@@ -287,7 +287,7 @@ TEST_CASE("AmsBackendMock device actions - default configuration", "[ams][device
                                [](const DeviceSection& s) { return s.id == "calibration"; });
         REQUIRE(it != sections.end());
         CHECK(it->label == "Calibration");
-        CHECK_FALSE(it->icon.empty());
+        CHECK_FALSE(it->label.empty());
 
         // Find speed section
         it = std::find_if(sections.begin(), sections.end(),
@@ -410,7 +410,7 @@ TEST_CASE("AmsBackendMock device action setters", "[ams][device_actions][mock]")
 
     SECTION("set_device_sections replaces sections") {
         std::vector<DeviceSection> custom_sections = {
-            {"custom", "Custom Section", "star", 0},
+            {"custom", "Custom Section", 0},
         };
 
         backend.set_device_sections(custom_sections);
@@ -751,9 +751,9 @@ TEST_CASE("Device actions section ordering", "[ams][device_actions][edge]") {
 
     SECTION("sections maintain insertion order") {
         std::vector<DeviceSection> sections = {
-            {"z_section", "Z Section", "icon_z", 2},
-            {"a_section", "A Section", "icon_a", 0},
-            {"m_section", "M Section", "icon_m", 1},
+            {"z_section", "Z Section", 2},
+            {"a_section", "A Section", 0},
+            {"m_section", "M Section", 1},
         };
 
         backend.set_device_sections(sections);
@@ -782,7 +782,7 @@ TEST_CASE("Device actions thread safety", "[ams][device_actions][mock]") {
 
     SECTION("concurrent reads are safe") {
         // Set up some test data
-        std::vector<DeviceSection> sections = {{"test", "Test", "icon", 0}};
+        std::vector<DeviceSection> sections = {{"test", "Test", 0}};
         std::vector<DeviceAction> actions;
         DeviceAction action;
         action.id = "test_action";

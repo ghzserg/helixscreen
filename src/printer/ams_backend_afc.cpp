@@ -1958,14 +1958,14 @@ bool AmsBackendAfc::get_macro_var_bool(const std::string& key, bool default_val)
 // ============================================================================
 
 std::vector<helix::printer::DeviceSection> AmsBackendAfc::get_device_sections() const {
-    return {{"calibration", "Calibration", "wrench", 0, "Bowden length and lane calibration"},
-            {"speed", "Speed Settings", "dashboard", 1, "Move speed multipliers"},
-            {"maintenance", "Maintenance", "wrench", 2, "Lane tests and motor resets"},
-            {"led", "LED & Modes", "lightbulb_outline", 3, "LED control and quiet mode"},
-            {"hub", "Hub & Cutter", "filament", 4, "Blade change and parking"},
-            {"tip_forming", "Tip Forming", "thermometer", 5, "Tip shaping configuration"},
-            {"purge", "Purge & Wipe", "water", 6, "Purge tower and brush settings"},
-            {"config", "Configuration", "cog", 7, "System configuration and mapping"}};
+    return {{"calibration", "Calibration", 0, "Bowden length and lane calibration"},
+            {"speed", "Speed Settings", 1, "Move speed multipliers"},
+            {"maintenance", "Maintenance", 2, "Lane tests and motor resets"},
+            {"led", "LED & Modes", 3, "LED control and quiet mode"},
+            {"hub", "Hub & Cutter", 4, "Blade change and parking"},
+            {"tip_forming", "Tip Forming", 5, "Tip shaping configuration"},
+            {"purge", "Purge & Wipe", 6, "Purge tower and brush settings"},
+            {"config", "Configuration", 7, "System configuration and mapping"}};
 }
 
 std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() const {

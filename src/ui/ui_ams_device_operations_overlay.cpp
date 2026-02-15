@@ -281,15 +281,39 @@ void AmsDeviceOperationsOverlay::populate_section_list() {
     spdlog::debug("[{}] Populated {} section rows", get_name(), cached_sections_.size());
 }
 
+/// Map section ID to icon name (UI concern — backends don't specify icons)
+static const char* section_icon_for_id(const std::string& id) {
+    // Ordered by expected frequency
+    if (id == "calibration")
+        return "wrench";
+    if (id == "speed")
+        return "speed_up";
+    if (id == "maintenance")
+        return "wrench";
+    if (id == "led")
+        return "lightbulb_outline";
+    if (id == "hub")
+        return "filament";
+    if (id == "tip_forming")
+        return "thermometer";
+    if (id == "purge")
+        return "water";
+    if (id == "config")
+        return "cog";
+    return "cog"; // fallback for unknown sections
+}
+
 void AmsDeviceOperationsOverlay::create_section_row(lv_obj_t* parent,
                                                     const helix::printer::DeviceSection& section) {
+    const char* icon = section_icon_for_id(section.id);
+
     // Reuse the standard setting_action_row XML component
     const char* attrs[] = {"label",
                            section.label.c_str(),
                            "label_tag",
                            section.label.c_str(),
                            "icon",
-                           section.icon.c_str(),
+                           icon,
                            "description",
                            section.description.c_str(),
                            "description_tag",

@@ -109,7 +109,6 @@ TEST_CASE("New device sections include hub, tip_forming, purge",
         auto* hub = find_section(sections, "hub");
         REQUIRE(hub != nullptr);
         CHECK(hub->label == "Hub & Cutter");
-        CHECK(hub->icon == "content-cut");
         CHECK(hub->display_order == 4);
     }
 
@@ -117,7 +116,6 @@ TEST_CASE("New device sections include hub, tip_forming, purge",
         auto* tip = find_section(sections, "tip_forming");
         REQUIRE(tip != nullptr);
         CHECK(tip->label == "Tip Forming");
-        CHECK(tip->icon == "thermometer");
         CHECK(tip->display_order == 5);
     }
 
@@ -125,7 +123,6 @@ TEST_CASE("New device sections include hub, tip_forming, purge",
         auto* purge = find_section(sections, "purge");
         REQUIRE(purge != nullptr);
         CHECK(purge->label == "Purge & Wipe");
-        CHECK(purge->icon == "spray");
         CHECK(purge->display_order == 6);
     }
 
