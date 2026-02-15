@@ -1998,7 +1998,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
                 DeviceAction{id,
                              label,
                              "ruler",
-                             "calibration",
+                             "setup",
                              desc,
                              ActionType::SLIDER,
                              bowden_length_, // shared default until per-extruder tracking
@@ -2012,7 +2012,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
         }
     }
 
-    // ---- Config-backed actions (Hub & Cutter, Tip Forming, Purge) ----
+    // ---- Overlay dynamic values from config onto default actions ----
 
     // Acquire barrier pairs with release in load_afc_configs() to ensure
     // parser state written on bg thread is visible here on the main thread.
@@ -2021,231 +2021,130 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
     bool macro_ready = loaded && macro_vars_config_ && macro_vars_config_->is_loaded();
     std::string not_loaded_reason = "Loading configuration...";
 
-    // Hub & Cutter section — reads from afc_config_, first AFC_hub section
-    {
-        std::string hub_section;
-        if (cfg_ready) {
-            auto hubs = afc_config_->parser().get_sections_matching("AFC_hub");
-            if (!hubs.empty()) {
-                hub_section = hubs[0];
+    // Find first AFC_hub section from config (for hub actions)
+    std::string hub_section;
+    if (cfg_ready) {
+        auto hubs = afc_config_->parser().get_sections_matching("AFC_hub");
+        if (!hubs.empty()) {
+            hub_section = hubs[0];
+        }
+    }
+    bool hub_ready = cfg_ready && !hub_section.empty();
+
+    // Config save state
+    bool has_changes = (afc_config_ && afc_config_->has_unsaved_changes()) ||
+                       (macro_vars_config_ && macro_vars_config_->has_unsaved_changes());
+
+    for (auto& a : actions) {
+        // Hub & Cutter actions — from afc_config_ hub section
+        if (a.id == "hub_cut_enabled") {
+            if (hub_ready) {
+                a.current_value =
+                    std::any(afc_config_->parser().get_bool(hub_section, "cut", false));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        } else if (a.id == "hub_cut_dist") {
+            if (hub_ready) {
+                a.current_value =
+                    std::any(afc_config_->parser().get_float(hub_section, "cut_dist", 0.0f));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        } else if (a.id == "hub_bowden_length") {
+            if (hub_ready) {
+                a.current_value = std::any(
+                    afc_config_->parser().get_float(hub_section, "afc_bowden_length", 450.0f));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        } else if (a.id == "assisted_retract") {
+            if (hub_ready) {
+                a.current_value = std::any(
+                    afc_config_->parser().get_bool(hub_section, "assisted_retract", false));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
             }
         }
 
-        bool hub_ready = cfg_ready && !hub_section.empty();
+        // Tip Forming actions — from macro_vars_config_
+        else if (a.id == "ramming_volume") {
+            if (macro_ready) {
+                a.current_value = std::any(get_macro_var_float("variable_ramming_volume", 0.0f));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        } else if (a.id == "unloading_speed_start") {
+            if (macro_ready) {
+                a.current_value =
+                    std::any(get_macro_var_float("variable_unloading_speed_start", 0.0f));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        } else if (a.id == "cooling_tube_length") {
+            if (macro_ready) {
+                a.current_value =
+                    std::any(get_macro_var_float("variable_cooling_tube_length", 0.0f));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        } else if (a.id == "cooling_tube_retraction") {
+            if (macro_ready) {
+                a.current_value =
+                    std::any(get_macro_var_float("variable_cooling_tube_retraction", 0.0f));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        }
 
-        actions.push_back(DeviceAction{
-            "hub_cut_enabled",
-            "Cutter Enabled",
-            "content-cut",
-            "hub",
-            "Enable or disable the filament cutter",
-            ActionType::TOGGLE,
-            hub_ready ? std::any(afc_config_->parser().get_bool(hub_section, "cut", false))
-                      : std::any(false),
-            {},
-            0,
-            0,
-            "",
-            -1,
-            hub_ready,
-            hub_ready ? "" : not_loaded_reason});
+        // Purge & Wipe actions — from macro_vars_config_
+        else if (a.id == "purge_enabled") {
+            if (macro_ready) {
+                a.current_value = std::any(get_macro_var_bool("variable_purge_enabled", false));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        } else if (a.id == "purge_length") {
+            if (macro_ready) {
+                a.current_value = std::any(get_macro_var_float("variable_purge_length", 0.0f));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        } else if (a.id == "brush_enabled") {
+            if (macro_ready) {
+                a.current_value = std::any(get_macro_var_bool("variable_brush_enabled", false));
+                a.enabled = true;
+            } else {
+                a.enabled = false;
+                a.disable_reason = not_loaded_reason;
+            }
+        }
 
-        actions.push_back(DeviceAction{
-            "hub_cut_dist",
-            "Cut Distance",
-            "ruler",
-            "hub",
-            "Distance to advance for filament cut",
-            ActionType::SLIDER,
-            hub_ready ? std::any(afc_config_->parser().get_float(hub_section, "cut_dist", 0.0f))
-                      : std::any(0.0f),
-            {},
-            0.0f,
-            100.0f,
-            "mm",
-            -1,
-            hub_ready,
-            hub_ready ? "" : not_loaded_reason});
-
-        actions.push_back(DeviceAction{"hub_bowden_length",
-                                       "Hub Bowden Length",
-                                       "ruler",
-                                       "hub",
-                                       "Bowden tube length from hub to toolhead",
-                                       ActionType::SLIDER,
-                                       hub_ready ? std::any(afc_config_->parser().get_float(
-                                                       hub_section, "afc_bowden_length", 450.0f))
-                                                 : std::any(450.0f),
-                                       {},
-                                       100.0f,
-                                       2000.0f,
-                                       "mm",
-                                       -1,
-                                       hub_ready,
-                                       hub_ready ? "" : not_loaded_reason});
-
-        actions.push_back(DeviceAction{"assisted_retract",
-                                       "Assisted Retract",
-                                       "arrow-u-left-bottom",
-                                       "hub",
-                                       "Enable assisted retract for filament changes",
-                                       ActionType::TOGGLE,
-                                       hub_ready ? std::any(afc_config_->parser().get_bool(
-                                                       hub_section, "assisted_retract", false))
-                                                 : std::any(false),
-                                       {},
-                                       0,
-                                       0,
-                                       "",
-                                       -1,
-                                       hub_ready,
-                                       hub_ready ? "" : not_loaded_reason});
-    }
-
-    // Tip Forming section — reads from macro_vars_config_
-    {
-        actions.push_back(DeviceAction{
-            "ramming_volume",
-            "Ramming Volume",
-            "hydraulic-oil-level",
-            "tip_forming",
-            "Volume of filament to ram during tip forming",
-            ActionType::SLIDER,
-            macro_ready ? std::any(get_macro_var_float("variable_ramming_volume", 0.0f))
-                        : std::any(0.0f),
-            {},
-            0.0f,
-            100.0f,
-            "",
-            -1,
-            macro_ready,
-            macro_ready ? "" : not_loaded_reason});
-
-        actions.push_back(DeviceAction{
-            "unloading_speed_start",
-            "Unloading Start Speed",
-            "speedometer",
-            "tip_forming",
-            "Initial speed for filament unloading",
-            ActionType::SLIDER,
-            macro_ready ? std::any(get_macro_var_float("variable_unloading_speed_start", 0.0f))
-                        : std::any(0.0f),
-            {},
-            0.0f,
-            200.0f,
-            "mm/s",
-            -1,
-            macro_ready,
-            macro_ready ? "" : not_loaded_reason});
-
-        actions.push_back(DeviceAction{
-            "cooling_tube_length",
-            "Cooling Tube Length",
-            "thermometer",
-            "tip_forming",
-            "Length of the cooling tube zone",
-            ActionType::SLIDER,
-            macro_ready ? std::any(get_macro_var_float("variable_cooling_tube_length", 0.0f))
-                        : std::any(0.0f),
-            {},
-            0.0f,
-            100.0f,
-            "mm",
-            -1,
-            macro_ready,
-            macro_ready ? "" : not_loaded_reason});
-
-        actions.push_back(DeviceAction{
-            "cooling_tube_retraction",
-            "Cooling Tube Retraction",
-            "thermometer",
-            "tip_forming",
-            "Retraction distance in cooling tube",
-            ActionType::SLIDER,
-            macro_ready ? std::any(get_macro_var_float("variable_cooling_tube_retraction", 0.0f))
-                        : std::any(0.0f),
-            {},
-            0.0f,
-            100.0f,
-            "mm",
-            -1,
-            macro_ready,
-            macro_ready ? "" : not_loaded_reason});
-    }
-
-    // Purge & Wipe section — reads from macro_vars_config_
-    {
-        actions.push_back(
-            DeviceAction{"purge_enabled",
-                         "Enable Purge",
-                         "spray",
-                         "purge",
-                         "Enable filament purge after tool change",
-                         ActionType::TOGGLE,
-                         macro_ready ? std::any(get_macro_var_bool("variable_purge_enabled", false))
-                                     : std::any(false),
-                         {},
-                         0,
-                         0,
-                         "",
-                         -1,
-                         macro_ready,
-                         macro_ready ? "" : not_loaded_reason});
-
-        actions.push_back(
-            DeviceAction{"purge_length",
-                         "Purge Length",
-                         "ruler",
-                         "purge",
-                         "Length of filament to purge",
-                         ActionType::SLIDER,
-                         macro_ready ? std::any(get_macro_var_float("variable_purge_length", 0.0f))
-                                     : std::any(0.0f),
-                         {},
-                         0.0f,
-                         200.0f,
-                         "mm",
-                         -1,
-                         macro_ready,
-                         macro_ready ? "" : not_loaded_reason});
-
-        actions.push_back(
-            DeviceAction{"brush_enabled",
-                         "Enable Brush Wipe",
-                         "broom",
-                         "purge",
-                         "Enable brush wipe after purge",
-                         ActionType::TOGGLE,
-                         macro_ready ? std::any(get_macro_var_bool("variable_brush_enabled", false))
-                                     : std::any(false),
-                         {},
-                         0,
-                         0,
-                         "",
-                         -1,
-                         macro_ready,
-                         macro_ready ? "" : not_loaded_reason});
-    }
-
-    // Config save section
-    {
-        bool has_changes = (afc_config_ && afc_config_->has_unsaved_changes()) ||
-                           (macro_vars_config_ && macro_vars_config_->has_unsaved_changes());
-
-        actions.push_back(DeviceAction{"save_restart",
-                                       "Save & Restart",
-                                       "content-save",
-                                       "config",
-                                       "Save config changes and restart Klipper",
-                                       ActionType::BUTTON,
-                                       {},
-                                       {},
-                                       0,
-                                       0,
-                                       "",
-                                       -1,
-                                       has_changes,
-                                       has_changes ? "" : "No unsaved changes"});
+        // Config section — save_restart enabled only when there are unsaved changes
+        else if (a.id == "save_restart") {
+            a.enabled = has_changes;
+            a.disable_reason = has_changes ? "" : "No unsaved changes";
+        }
     }
 
     return actions;
