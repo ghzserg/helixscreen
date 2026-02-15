@@ -5,6 +5,12 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.24] - 2026-02-15
+
+### Fixed
+- OTA updates now correctly extract the installer from release tarballs (path mismatch between packaging and extraction)
+- Button visual shift on release by setting transform pivot in base button style
+
 ## [0.9.23] - 2026-02-15
 
 ### Added
@@ -537,6 +543,7 @@ Initial tagged release. Foundation for all subsequent development.
 
 [0.9.22]: https://github.com/prestonbrown/helixscreen/compare/v0.9.21...v0.9.22
 [0.9.21]: https://github.com/prestonbrown/helixscreen/compare/v0.9.20...v0.9.21
+[0.9.24]: https://github.com/prestonbrown/helixscreen/compare/v0.9.23...v0.9.24
 [0.9.23]: https://github.com/prestonbrown/helixscreen/compare/v0.9.22...v0.9.23
 [0.9.22]: https://github.com/prestonbrown/helixscreen/compare/v0.9.21...v0.9.22
 [0.9.21]: https://github.com/prestonbrown/helixscreen/compare/v0.9.20...v0.9.21
