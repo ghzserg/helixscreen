@@ -940,13 +940,16 @@ void LedControlOverlay::handle_strip_selected(const std::string& strip_id) {
         }
     }
 
-    // Rebuild strip selector to update visual states
-    if (strip_selector_section_) {
-        lv_obj_clean(strip_selector_section_);
-        populate_strip_selector();
-    }
-
-    update_section_visibility();
+    // SAFETY: Defer strip selector rebuild — the clicked chip is a child of
+    // strip_selector_section_ being cleaned. Destroying it mid-callback causes
+    // use-after-free (issue #80).
+    ui_queue_update([this]() {
+        if (strip_selector_section_) {
+            lv_obj_clean(strip_selector_section_);
+            populate_strip_selector();
+        }
+        update_section_visibility();
+    });
 }
 
 // ============================================================================

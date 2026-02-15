@@ -13,6 +13,7 @@
 #include "ui_nav_manager.h"
 #include "ui_severity_card.h"
 #include "ui_toast.h"
+#include "ui_update_queue.h"
 
 #include "config.h"
 #include "hardware_validator.h"
@@ -317,7 +318,9 @@ void HardwareHealthOverlay::handle_hardware_action(const char* hardware_name, bo
         if (printer_state_) {
             printer_state_->remove_hardware_issue(hw_name);
         }
-        populate_hardware_issues();
+        // SAFETY: Defer rebuild — the Ignore button that fired this event is a child
+        // of the list being cleaned by populate_hardware_issues() (issue #80).
+        ui_queue_update([this]() { populate_hardware_issues(); });
     } else {
         // "Save" - Add to expected hardware (with confirmation)
         // Close any existing dialog first (must happen before writing to static buffer)
@@ -360,7 +363,8 @@ void HardwareHealthOverlay::handle_hardware_save_confirm() {
     if (printer_state_) {
         printer_state_->remove_hardware_issue(pending_hardware_save_);
     }
-    populate_hardware_issues();
+    // SAFETY: Defer rebuild for consistency with the Ignore path (issue #80).
+    ui_queue_update([this]() { populate_hardware_issues(); });
     pending_hardware_save_.clear();
 }
 

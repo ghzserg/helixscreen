@@ -10,6 +10,7 @@
 #include "ui_subject_registry.h"
 #include "ui_temp_graph_scaling.h"
 #include "ui_temperature_utils.h"
+#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "app_constants.h"
@@ -1161,6 +1162,13 @@ void TempControlPanel::select_extruder(const std::string& name) {
 }
 
 void TempControlPanel::rebuild_extruder_segments() {
+    // SAFETY: Defer the clean+rebuild. When called from the extruder button click
+    // handler (select_extruder), the clicked button is a child of the selector being
+    // cleaned. Destroying it mid-callback causes use-after-free (issue #80).
+    ui_queue_update([this]() { rebuild_extruder_segments_impl(); });
+}
+
+void TempControlPanel::rebuild_extruder_segments_impl() {
     auto* selector = lv_obj_find_by_name(nozzle_panel_, "extruder_selector");
     if (!selector) {
         return;
@@ -1173,7 +1181,7 @@ void TempControlPanel::rebuild_extruder_segments() {
     }
 
     lv_obj_remove_flag(selector, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clean(selector); // Remove previous buttons
+    lv_obj_clean(selector);
 
     // Build sorted extruder list for deterministic button order
     const auto& extruders = printer_state_.temperature_state().extruders();

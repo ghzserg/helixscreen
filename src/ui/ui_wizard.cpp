@@ -907,9 +907,11 @@ void ui_wizard_complete() {
     ui_wizard_cleanup_current_screen();
 
     // 3. Delete wizard container (main UI is already created underneath)
+    // SAFETY: Use lv_obj_del_async — the Finish button that triggered this call is a
+    // child of wizard_container. Synchronous delete causes use-after-free (issue #80).
     if (wizard_container) {
-        spdlog::debug("[Wizard] Deleting wizard container");
-        lv_obj_del(wizard_container);
+        spdlog::debug("[Wizard] Deleting wizard container (async)");
+        lv_obj_del_async(wizard_container);
         wizard_container = nullptr;
     }
 

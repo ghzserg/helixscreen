@@ -247,8 +247,11 @@ void GcodeTestPanel::show_file_picker() {
 }
 
 void GcodeTestPanel::close_file_picker() {
+    // SAFETY: Use lv_obj_del_async — the Cancel button that triggered this call
+    // is a child of file_picker_overlay_. Synchronous delete causes use-after-free
+    // (issue #80).
     if (file_picker_overlay_) {
-        lv_obj_del(file_picker_overlay_);
+        lv_obj_del_async(file_picker_overlay_);
         file_picker_overlay_ = nullptr;
         spdlog::debug("[{}] File picker closed", get_name());
     }

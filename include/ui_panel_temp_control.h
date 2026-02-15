@@ -234,6 +234,7 @@ class TempControlPanel {
 
     void select_extruder(const std::string& name);
     void rebuild_extruder_segments();
+    void rebuild_extruder_segments_impl();
 
     // Temperature state
     int nozzle_current_ = 25;

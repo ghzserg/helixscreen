@@ -705,6 +705,30 @@ Set `HELIX_SCREENSHOT_DISPLAY=0` to prevent the app from opening a visible displ
 
 Replace `home` with any panel or overlay name: `controls`, `filament`, `settings`, `print-status`, `motion`, etc.
 
+### Widget destruction safety
+
+**Never call `lv_obj_clean()` or `lv_obj_del()` on a container from inside an event callback on a child of that container.** This destroys the widget whose callback is still on the call stack, causing a use-after-free crash (see [issue #80](https://github.com/356C-LLC/helixscreen/issues/80)).
+
+If your event callback needs to rebuild or destroy its own parent container:
+- For `lv_obj_clean()`: wrap the rebuild in `ui_queue_update()` to defer it to the next tick
+- For `lv_obj_del()`: use `lv_obj_del_async()` instead
+
+```cpp
+// BAD: swatch click handler destroys its own parent
+void handle_color_selected(...) {
+    lv_obj_clean(container);  // container is parent of the clicked swatch!
+    rebuild(container);
+}
+
+// GOOD: defer the destruction
+void handle_color_selected(...) {
+    ui_queue_update([this]() {
+        lv_obj_clean(container);
+        rebuild(container);
+    });
+}
+```
+
 ### Verification checklist
 
 Before submitting, verify these for every change:

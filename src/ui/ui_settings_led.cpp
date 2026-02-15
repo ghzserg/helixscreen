@@ -13,6 +13,7 @@
 #include "ui_led_chip_factory.h"
 #include "ui_nav_manager.h"
 #include "ui_toast_manager.h"
+#include "ui_update_queue.h"
 
 #include "device_display_name.h"
 #include "led/led_auto_state.h"
@@ -192,11 +193,20 @@ void LedSettingsOverlay::populate_macro_devices() {
     if (!overlay_root_)
         return;
 
+    // SAFETY: Defer the clean+rebuild. This function is called from many event
+    // callbacks (dropdown change, remove/add/edit/save buttons) where the event-
+    // firing widget is a child of the container being cleaned (issue #80).
+    ui_queue_update([this]() { populate_macro_devices_impl(); });
+}
+
+void LedSettingsOverlay::populate_macro_devices_impl() {
+    if (!overlay_root_)
+        return;
+
     lv_obj_t* container = lv_obj_find_by_name(overlay_root_, "macro_devices_container");
     if (!container)
         return;
 
-    // Clear existing children
     lv_obj_clean(container);
 
     auto& led_ctrl = helix::led::LedController::instance();
@@ -924,6 +934,15 @@ void LedSettingsOverlay::populate_led_chips() {
     if (!overlay_root_)
         return;
 
+    // SAFETY: Defer the clean+rebuild. Called from handle_led_chip_toggle() where
+    // the clicked chip is a child of chip_container being cleaned (issue #80).
+    ui_queue_update([this]() { populate_led_chips_impl(); });
+}
+
+void LedSettingsOverlay::populate_led_chips_impl() {
+    if (!overlay_root_)
+        return;
+
     lv_obj_t* led_chip_row = lv_obj_find_by_name(overlay_root_, "row_led_select");
     if (!led_chip_row)
         return;
@@ -934,7 +953,6 @@ void LedSettingsOverlay::populate_led_chips() {
         return;
     }
 
-    // Clear existing chips
     lv_obj_clean(chip_container);
 
     // Source LED list from all backends (native + WLED + macros)
@@ -1511,10 +1529,15 @@ void LedSettingsOverlay::handle_action_type_changed(const std::string& state_key
         }
     }
 
-    // Rebuild contextual controls
-    std::string ctx_name = fmt::format("ctx_{}", state_key);
-    lv_obj_t* ctx = lv_obj_find_by_name(overlay_root_, ctx_name.c_str());
-    rebuild_contextual_controls(state_key, ctx);
+    // SAFETY: Defer rebuild — the dropdown that fired this VALUE_CHANGED event is a
+    // child of the container that rebuild_contextual_controls() will clean (issue #80).
+    ui_queue_update([this, state_key]() {
+        if (!overlay_root_)
+            return;
+        std::string ctx_name = fmt::format("ctx_{}", state_key);
+        lv_obj_t* ctx = lv_obj_find_by_name(overlay_root_, ctx_name.c_str());
+        rebuild_contextual_controls(state_key, ctx);
+    });
 }
 
 void LedSettingsOverlay::handle_brightness_changed(const std::string& state_key, int value) {
@@ -1543,10 +1566,16 @@ void LedSettingsOverlay::handle_color_selected(const std::string& state_key, uin
     auto_state.set_mapping(state_key, action);
     save_and_evaluate(state_key);
 
-    // Rebuild to update swatch highlight
-    std::string ctx_name = fmt::format("ctx_{}", state_key);
-    lv_obj_t* ctx = lv_obj_find_by_name(overlay_root_, ctx_name.c_str());
-    rebuild_contextual_controls(state_key, ctx);
+    // SAFETY: Defer rebuild — the clicked color swatch is a child of the container
+    // that rebuild_contextual_controls() will clean. Destroying it mid-callback
+    // causes use-after-free (see issue #80).
+    ui_queue_update([this, state_key]() {
+        if (!overlay_root_)
+            return;
+        std::string ctx_name = fmt::format("ctx_{}", state_key);
+        lv_obj_t* ctx = lv_obj_find_by_name(overlay_root_, ctx_name.c_str());
+        rebuild_contextual_controls(state_key, ctx);
+    });
 }
 
 void LedSettingsOverlay::handle_effect_selected(const std::string& state_key,
