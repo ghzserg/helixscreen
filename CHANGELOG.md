@@ -5,6 +5,18 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.23] - 2026-02-15
+
+### Added
+- LED colors stored as human-readable #RRGGBB hex strings with automatic legacy integer migration
+- ASLR auto-detection in backtrace resolver for more accurate crash report symbol resolution
+
+### Fixed
+- Crash from LVGL object user_data ownership collisions causing SIGABRT
+- Crash from NULL pointer passed to lv_strdup
+- Use-after-free in animation completion callbacks
+- Use-after-free when replacing toast notifications during exit animation
+
 ## [0.9.22] - 2026-02-15
 
 ### Added
@@ -523,6 +535,9 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.9.22]: https://github.com/prestonbrown/helixscreen/compare/v0.9.21...v0.9.22
+[0.9.21]: https://github.com/prestonbrown/helixscreen/compare/v0.9.20...v0.9.21
+[0.9.23]: https://github.com/prestonbrown/helixscreen/compare/v0.9.22...v0.9.23
 [0.9.22]: https://github.com/prestonbrown/helixscreen/compare/v0.9.21...v0.9.22
 [0.9.21]: https://github.com/prestonbrown/helixscreen/compare/v0.9.20...v0.9.21
 [0.9.20]: https://github.com/prestonbrown/helixscreen/compare/v0.9.19...v0.9.20
