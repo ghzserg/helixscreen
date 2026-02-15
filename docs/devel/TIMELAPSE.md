@@ -2,7 +2,7 @@
 
 Integration with [moonraker-timelapse](https://github.com/mainsail-crew/moonraker-timelapse) plugin for automated timelapse recording during prints. Currently a **beta feature** gated behind the beta features flag.
 
-**Design doc**: [docs/plans/TIMELAPSE_FEATURE.md](plans/TIMELAPSE_FEATURE.md) (phased plan, architecture decisions, future work)
+**Design doc**: [archived](../../docs/archive/plans/2026-02-15-timelapse-feature.md) (phased plan, architecture decisions, future work)
 
 ---
 
@@ -202,4 +202,4 @@ The timelapse settings overlay (Phase 1) was extended with video management capa
 | `include/timelapse_state.h` | TimelapseState singleton class |
 | `src/printer/timelapse_state.cpp` | Event dispatch, subject management, render notifications |
 | `tests/unit/test_timelapse_state.cpp` | Unit tests for TimelapseState event handling and notifications |
-| `docs/plans/TIMELAPSE_FEATURE.md` | Full design doc with future phases |
+| `docs/archive/plans/2026-02-15-timelapse-feature.md` | Archived design doc with future phases |
