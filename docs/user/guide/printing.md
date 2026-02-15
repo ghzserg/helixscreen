@@ -87,7 +87,7 @@ The Print Status panel shows:
 |--------|--------|
 | **Pause** | Parks nozzle safely, pauses print |
 | **Resume** | Continues from paused state |
-| **Cancel** | Stops print (confirmation required) |
+| **Cancel** | Stops print (confirmation required). By default, waits for the printer's cancel routine to finish. If **Cancel Escalation** is enabled in **Settings > Safety**, an emergency stop triggers automatically after the configured timeout. |
 | **Tune** | Opens Print Tune overlay for real-time adjustments |
 
 ---

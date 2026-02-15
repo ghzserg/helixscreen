@@ -837,7 +837,9 @@ Located in the `safety` section:
 ```json
 {
   "safety": {
-    "estop_require_confirmation": false
+    "estop_require_confirmation": false,
+    "cancel_escalation_enabled": false,
+    "cancel_escalation_timeout_seconds": 30
   }
 }
 ```
@@ -846,6 +848,17 @@ Located in the `safety` section:
 **Type:** boolean
 **Default:** `false`
 **Description:** Require confirmation dialog before emergency stop. When `false`, E-Stop triggers immediately. Default is `false` for faster emergency response.
+
+### `cancel_escalation_enabled`
+**Type:** boolean
+**Default:** `false`
+**Description:** When enabled, a cancel that doesn't complete within the configured timeout will automatically escalate to an emergency stop (M112). When `false` (the default), cancel waits indefinitely for the printer to finish its cancel routine. Leave this off if your printer has a long cancel macro (e.g., toolchangers that need to park tools).
+
+### `cancel_escalation_timeout_seconds`
+**Type:** integer
+**Default:** `30`
+**Options:** `15`, `30`, `60`, `120`
+**Description:** How long to wait (in seconds) after sending a cancel before escalating to emergency stop. Only applies when `cancel_escalation_enabled` is `true`.
 
 ---
 

@@ -270,6 +270,8 @@ Use this when adding or removing hardware to keep HelixScreen's expectations acc
 | Setting | Description |
 |---------|-------------|
 | **E-Stop confirmation** | Require tap-and-hold before emergency stop |
+| **Cancel Escalation** | When enabled, automatically escalates a stalled cancel to an emergency stop after the configured timeout. **Off by default** — cancel waits for the printer to finish its cancel routine. Useful to leave off for toolchangers and printers with long cancel macros. |
+| **Escalation Timeout** | Only visible when Cancel Escalation is on. How long to wait before escalating: 15, 30, 60, or 120 seconds. |
 
 ---
 
