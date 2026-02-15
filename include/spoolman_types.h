@@ -21,6 +21,59 @@
 // ============================================================================
 
 /**
+ * @brief Vendor information from Spoolman
+ */
+struct VendorInfo {
+    int id = 0;       ///< Spoolman vendor ID
+    std::string name; ///< Vendor name (e.g., "Hatchbox", "Polymaker")
+    std::string url;  ///< Vendor website URL (optional)
+
+    /**
+     * @brief Get display name for the vendor
+     */
+    [[nodiscard]] std::string display_name() const {
+        return name.empty() ? "Unknown Vendor" : name;
+    }
+};
+
+/**
+ * @brief Filament definition from Spoolman
+ *
+ * Represents a filament type (e.g., "Hatchbox PLA Red"). Multiple spools
+ * can reference the same filament definition.
+ */
+struct FilamentInfo {
+    int id = 0;              ///< Spoolman filament ID
+    int vendor_id = 0;       ///< Associated vendor ID
+    std::string vendor_name; ///< Vendor name (denormalized for display)
+    std::string material;    ///< Material type (PLA, PETG, ABS, TPU, ASA, etc.)
+    std::string color_name;  ///< Color name (e.g., "Jet Black")
+    std::string color_hex;   ///< Hex color code (e.g., "#1A1A2E")
+    float density = 0;       ///< Material density (g/cm³)
+    float diameter = 1.75f;  ///< Filament diameter in mm
+    float weight = 0;        ///< Net weight per spool (g)
+    float spool_weight = 0;  ///< Empty spool weight (g)
+    int nozzle_temp_min = 0; ///< Minimum nozzle temperature
+    int nozzle_temp_max = 0; ///< Maximum nozzle temperature
+    int bed_temp_min = 0;    ///< Minimum bed temperature
+    int bed_temp_max = 0;    ///< Maximum bed temperature
+
+    /**
+     * @brief Get display name combining vendor, material, and color
+     */
+    [[nodiscard]] std::string display_name() const {
+        std::string result;
+        if (!vendor_name.empty())
+            result += vendor_name + " ";
+        if (!material.empty())
+            result += material;
+        if (!color_name.empty())
+            result += " - " + color_name;
+        return result.empty() ? "Unknown Filament" : result;
+    }
+};
+
+/**
  * @brief Filament spool information from Spoolman
  */
 struct SpoolInfo {
@@ -35,6 +88,9 @@ struct SpoolInfo {
     double remaining_length_m = 0; ///< Remaining filament length in meters
     double spool_weight_g = 0;     ///< Empty spool weight in grams
     double initial_weight_g = 0;   ///< Initial filament weight when new
+    double price = 0;              ///< Spool price (user currency)
+    std::string lot_nr;            ///< Lot/batch number
+    std::string comment;           ///< User notes/comment
     bool is_active = false;        ///< True if this is the currently tracked spool
 
     // Temperature recommendations from filament database
@@ -110,3 +166,18 @@ using SpoolCallback = std::function<void(const std::optional<SpoolInfo>&)>;
 
 /// Filament usage history callback
 using FilamentUsageCallback = std::function<void(const std::vector<FilamentUsageRecord>&)>;
+
+/// Vendor list callback
+using VendorListCallback = std::function<void(const std::vector<VendorInfo>&)>;
+
+/// Filament list callback
+using FilamentListCallback = std::function<void(const std::vector<FilamentInfo>&)>;
+
+/// Single spool creation callback (returns the created spool)
+using SpoolCreateCallback = std::function<void(const SpoolInfo&)>;
+
+/// Single vendor creation callback (returns the created vendor)
+using VendorCreateCallback = std::function<void(const VendorInfo&)>;
+
+/// Single filament creation callback (returns the created filament)
+using FilamentCreateCallback = std::function<void(const FilamentInfo&)>;

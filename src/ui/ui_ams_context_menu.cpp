@@ -16,11 +16,7 @@ namespace helix::ui {
 
 // Static member initialization
 bool AmsContextMenu::callbacks_registered_ = false;
-
-// Active instance pointer - only one context menu can be visible at a time.
-// This avoids the user_data traversal problem where ui_button and other widgets
-// also set user_data, causing get_instance_from_event to find the wrong object.
-static AmsContextMenu* s_active_instance = nullptr;
+AmsContextMenu* AmsContextMenu::s_active_instance_ = nullptr;
 
 // ============================================================================
 // Construction / Destruction
@@ -39,7 +35,10 @@ AmsContextMenu::AmsContextMenu() {
 }
 
 AmsContextMenu::~AmsContextMenu() {
-    hide();
+    // Clear active instance before base destructor calls hide()
+    if (s_active_instance_ == this) {
+        s_active_instance_ = nullptr;
+    }
 
     // Clean up subjects
     if (subject_initialized_ && lv_is_initialized()) {
@@ -51,42 +50,42 @@ AmsContextMenu::~AmsContextMenu() {
 }
 
 AmsContextMenu::AmsContextMenu(AmsContextMenu&& other) noexcept
-    : menu_(other.menu_), parent_(other.parent_), slot_index_(other.slot_index_),
-      action_callback_(std::move(other.action_callback_)),
+    : ContextMenu(std::move(other)), action_callback_(std::move(other.action_callback_)),
       subject_initialized_(other.subject_initialized_), backend_(other.backend_),
       total_slots_(other.total_slots_), tool_dropdown_(other.tool_dropdown_),
-      backup_dropdown_(other.backup_dropdown_) {
-    // Transfer subject ownership - copy the subject state
+      backup_dropdown_(other.backup_dropdown_), pending_is_loaded_(other.pending_is_loaded_) {
+    // Transfer subject ownership
     if (other.subject_initialized_) {
         slot_is_loaded_subject_ = other.slot_is_loaded_subject_;
         slot_can_load_subject_ = other.slot_can_load_subject_;
     }
-    // Update static instance to point to new location
-    if (s_active_instance == &other) {
-        s_active_instance = this;
+    // Update static instance
+    if (s_active_instance_ == &other) {
+        s_active_instance_ = this;
     }
-    other.menu_ = nullptr;
-    other.parent_ = nullptr;
-    other.slot_index_ = -1;
     other.backend_ = nullptr;
     other.total_slots_ = 0;
     other.tool_dropdown_ = nullptr;
     other.backup_dropdown_ = nullptr;
-    other.subject_initialized_ = false; // Prevent double-cleanup
+    other.subject_initialized_ = false;
 }
 
 AmsContextMenu& AmsContextMenu::operator=(AmsContextMenu&& other) noexcept {
     if (this != &other) {
-        hide();
+        // Clear our active instance before base hide()
+        if (s_active_instance_ == this) {
+            s_active_instance_ = nullptr;
+        }
 
-        menu_ = other.menu_;
-        parent_ = other.parent_;
-        slot_index_ = other.slot_index_;
+        // Let base class handle its state
+        ContextMenu::operator=(std::move(other));
+
         action_callback_ = std::move(other.action_callback_);
         backend_ = other.backend_;
         total_slots_ = other.total_slots_;
         tool_dropdown_ = other.tool_dropdown_;
         backup_dropdown_ = other.backup_dropdown_;
+        pending_is_loaded_ = other.pending_is_loaded_;
 
         // Transfer subject ownership
         if (other.subject_initialized_) {
@@ -95,19 +94,15 @@ AmsContextMenu& AmsContextMenu::operator=(AmsContextMenu&& other) noexcept {
         }
         subject_initialized_ = other.subject_initialized_;
 
-        // Update static instance to point to new location
-        if (s_active_instance == &other) {
-            s_active_instance = this;
+        if (s_active_instance_ == &other) {
+            s_active_instance_ = this;
         }
 
-        other.menu_ = nullptr;
-        other.parent_ = nullptr;
-        other.slot_index_ = -1;
         other.backend_ = nullptr;
         other.total_slots_ = 0;
         other.tool_dropdown_ = nullptr;
         other.backup_dropdown_ = nullptr;
-        other.subject_initialized_ = false; // Prevent double-cleanup
+        other.subject_initialized_ = false;
     }
     return *this;
 }
@@ -122,28 +117,39 @@ void AmsContextMenu::set_action_callback(ActionCallback callback) {
 
 bool AmsContextMenu::show_near_widget(lv_obj_t* parent, int slot_index, lv_obj_t* near_widget,
                                       bool is_loaded, AmsBackend* backend) {
-    // Hide any existing menu first
-    hide();
-
-    if (!parent || !near_widget) {
-        spdlog::warn("[AmsContextMenu] Cannot show - missing parent or widget");
-        return false;
-    }
-
     // Register callbacks once (idempotent)
     register_callbacks();
 
-    // Store state
-    parent_ = parent;
-    slot_index_ = slot_index;
+    // Store AMS-specific state BEFORE base class calls on_created
     backend_ = backend;
+    pending_is_loaded_ = is_loaded;
 
-    // Get total slots from backend if available
+    // Get total slots from backend
     if (backend_) {
         total_slots_ = backend_->get_system_info().total_slots;
     } else {
         total_slots_ = 0;
     }
+
+    // Set as active instance for static callbacks
+    s_active_instance_ = this;
+
+    // Base class handles: XML creation, on_created callback, positioning
+    bool result = ContextMenu::show_near_widget(parent, slot_index, near_widget);
+    if (!result) {
+        s_active_instance_ = nullptr;
+    }
+
+    spdlog::debug("[AmsContextMenu] Shown for slot {}", slot_index);
+    return result;
+}
+
+// ============================================================================
+// ContextMenu override
+// ============================================================================
+
+void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
+    int slot_index = get_item_index();
 
     // Check if system is busy (operation in progress)
     bool system_busy = false;
@@ -157,34 +163,20 @@ bool AmsContextMenu::show_near_widget(lv_obj_t* parent, int slot_index, lv_obj_t
     }
 
     // Update subject for Unload button state (1=enabled, 0=disabled)
-    // Disable if busy or slot not loaded
-    lv_subject_set_int(&slot_is_loaded_subject_, (!system_busy && is_loaded) ? 1 : 0);
+    lv_subject_set_int(&slot_is_loaded_subject_, (!system_busy && pending_is_loaded_) ? 1 : 0);
 
     // Determine if slot has filament for Load button state
-    // Load should be disabled if slot is empty, system is busy, or already loaded
     bool can_load = !system_busy;
     if (can_load && backend_) {
         SlotInfo slot_info = backend_->get_slot_info(slot_index);
-        // Only allow load if slot has filament (AVAILABLE, LOADED, or FROM_BUFFER)
-        // Disable for EMPTY or UNKNOWN status
         can_load =
             (slot_info.status == SlotStatus::AVAILABLE || slot_info.status == SlotStatus::LOADED ||
              slot_info.status == SlotStatus::FROM_BUFFER);
     }
     lv_subject_set_int(&slot_can_load_subject_, can_load ? 1 : 0);
 
-    // Create context menu from XML
-    menu_ = static_cast<lv_obj_t*>(lv_xml_create(parent, "ams_context_menu", nullptr));
-    if (!menu_) {
-        spdlog::error("[AmsContextMenu] Failed to create menu from XML");
-        return false;
-    }
-
-    // Set as active instance for static callbacks (only one menu visible at a time)
-    s_active_instance = this;
-
     // Update the slot header text (1-based for user display)
-    lv_obj_t* slot_header = lv_obj_find_by_name(menu_, "slot_header");
+    lv_obj_t* slot_header = lv_obj_find_by_name(menu_obj, "slot_header");
     if (slot_header) {
         char header_text[32];
         snprintf(header_text, sizeof(header_text), "Slot %d", slot_index + 1);
@@ -193,138 +185,49 @@ bool AmsContextMenu::show_near_widget(lv_obj_t* parent, int slot_index, lv_obj_t
 
     // Configure dropdowns based on backend capabilities
     configure_dropdowns();
-
-    // Find the menu card to position it
-    lv_obj_t* menu_card = lv_obj_find_by_name(menu_, "context_menu");
-
-    if (menu_card) {
-        // Update layout to get accurate dimensions
-        lv_obj_update_layout(menu_card);
-
-        // Get the position of the slot widget in screen coordinates
-        lv_point_t slot_pos;
-        lv_obj_get_coords(near_widget, (lv_area_t*)&slot_pos);
-
-        // Calculate positioning
-        int32_t screen_width = lv_obj_get_width(parent);
-        int32_t menu_width = lv_obj_get_width(menu_card);
-        int32_t slot_center_x = slot_pos.x + lv_obj_get_width(near_widget) / 2;
-        int32_t slot_center_y = slot_pos.y + lv_obj_get_height(near_widget) / 2;
-
-        // Position to the right of slot, or left if near screen edge
-        int32_t menu_x = slot_center_x + 20;
-        if (menu_x + menu_width > screen_width - 10) {
-            menu_x = slot_center_x - menu_width - 20;
-        }
-
-        // Center vertically on the slot
-        int32_t menu_y = slot_center_y - lv_obj_get_height(menu_card) / 2;
-
-        // Clamp to screen bounds
-        int32_t screen_height = lv_obj_get_height(parent);
-        if (menu_y < 10) {
-            menu_y = 10;
-        }
-        if (menu_y + lv_obj_get_height(menu_card) > screen_height - 10) {
-            menu_y = screen_height - lv_obj_get_height(menu_card) - 10;
-        }
-
-        lv_obj_set_pos(menu_card, menu_x, menu_y);
-    }
-
-    spdlog::debug("[AmsContextMenu] Shown for slot {}", slot_index);
-    return true;
-}
-
-void AmsContextMenu::hide() {
-    if (!menu_)
-        return;
-
-    // Clear active instance FIRST so callbacks won't find us
-    if (s_active_instance == this) {
-        s_active_instance = nullptr;
-    }
-
-    // Use async delete since we may be called during event processing
-    // (e.g., button click handler). Deleting during event causes crash.
-    if (lv_is_initialized()) {
-        lv_obj_delete_async(menu_);
-    }
-    menu_ = nullptr;
-    slot_index_ = -1;
-    spdlog::debug("[AmsContextMenu] hide()");
 }
 
 // ============================================================================
 // Event Handlers
 // ============================================================================
 
-void AmsContextMenu::handle_backdrop_clicked() {
-    int slot = slot_index_;
+void AmsContextMenu::dispatch_ams_action(MenuAction action) {
+    int slot = get_item_index();
     ActionCallback callback_copy = action_callback_;
-    spdlog::debug("[AmsContextMenu] Backdrop clicked");
 
+    if (s_active_instance_ == this) {
+        s_active_instance_ = nullptr;
+    }
     hide();
 
     if (callback_copy) {
-        callback_copy(MenuAction::CANCELLED, slot);
+        callback_copy(action, slot);
     }
+}
+
+void AmsContextMenu::handle_backdrop_clicked() {
+    spdlog::debug("[AmsContextMenu] Backdrop clicked");
+    dispatch_ams_action(MenuAction::CANCELLED);
 }
 
 void AmsContextMenu::handle_load() {
-    int slot = slot_index_;
-
-    // Capture callback BEFORE hide() - hide() may trigger destruction
-    // that invalidates our callback. Copy, don't move, so menu stays usable.
-    ActionCallback callback_copy = action_callback_;
-
-    spdlog::info("[AmsContextMenu] Load requested for slot {}, callback={}", slot,
-                 static_cast<bool>(callback_copy));
-
-    hide();
-
-    if (callback_copy) {
-        spdlog::debug("[AmsContextMenu] Invoking callback for LOAD slot {}", slot);
-        callback_copy(MenuAction::LOAD, slot);
-    } else {
-        spdlog::warn("[AmsContextMenu] No callback set for LOAD action");
-    }
+    spdlog::info("[AmsContextMenu] Load requested for slot {}", get_item_index());
+    dispatch_ams_action(MenuAction::LOAD);
 }
 
 void AmsContextMenu::handle_unload() {
-    int slot = slot_index_;
-    ActionCallback callback_copy = action_callback_;
-    spdlog::info("[AmsContextMenu] Unload requested for slot {}", slot);
-
-    hide();
-
-    if (callback_copy) {
-        callback_copy(MenuAction::UNLOAD, slot);
-    }
+    spdlog::info("[AmsContextMenu] Unload requested for slot {}", get_item_index());
+    dispatch_ams_action(MenuAction::UNLOAD);
 }
 
 void AmsContextMenu::handle_edit() {
-    int slot = slot_index_;
-    ActionCallback callback_copy = action_callback_;
-    spdlog::info("[AmsContextMenu] Edit requested for slot {}", slot);
-
-    hide();
-
-    if (callback_copy) {
-        callback_copy(MenuAction::EDIT, slot);
-    }
+    spdlog::info("[AmsContextMenu] Edit requested for slot {}", get_item_index());
+    dispatch_ams_action(MenuAction::EDIT);
 }
 
 void AmsContextMenu::handle_spoolman() {
-    int slot = slot_index_;
-    ActionCallback callback_copy = action_callback_;
-    spdlog::info("[AmsContextMenu] Spoolman requested for slot {}", slot);
-
-    hide();
-
-    if (callback_copy) {
-        callback_copy(MenuAction::SPOOLMAN, slot);
-    }
+    spdlog::info("[AmsContextMenu] Spoolman requested for slot {}", get_item_index());
+    dispatch_ams_action(MenuAction::SPOOLMAN);
 }
 
 // ============================================================================
@@ -349,63 +252,60 @@ void AmsContextMenu::register_callbacks() {
 }
 
 // ============================================================================
-// Static Callbacks (Instance Lookup via User Data)
+// Static Callbacks (Instance Lookup via Static Pointer)
 // ============================================================================
 
-AmsContextMenu* AmsContextMenu::get_instance_from_event(lv_event_t* /*e*/) {
-    // Use static instance pointer instead of traversing user_data chain.
-    // This avoids conflicts with ui_button and other widgets that also
-    // store their own data in user_data.
-    if (!s_active_instance) {
+AmsContextMenu* AmsContextMenu::get_active_instance() {
+    if (!s_active_instance_) {
         spdlog::warn("[AmsContextMenu] No active instance for event");
     }
-    return s_active_instance;
+    return s_active_instance_;
 }
 
-void AmsContextMenu::on_backdrop_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
+void AmsContextMenu::on_backdrop_cb(lv_event_t* /*e*/) {
+    auto* self = get_active_instance();
     if (self) {
         self->handle_backdrop_clicked();
     }
 }
 
-void AmsContextMenu::on_load_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
+void AmsContextMenu::on_load_cb(lv_event_t* /*e*/) {
+    auto* self = get_active_instance();
     if (self) {
         self->handle_load();
     }
 }
 
-void AmsContextMenu::on_unload_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
+void AmsContextMenu::on_unload_cb(lv_event_t* /*e*/) {
+    auto* self = get_active_instance();
     if (self) {
         self->handle_unload();
     }
 }
 
-void AmsContextMenu::on_edit_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
+void AmsContextMenu::on_edit_cb(lv_event_t* /*e*/) {
+    auto* self = get_active_instance();
     if (self) {
         self->handle_edit();
     }
 }
 
-void AmsContextMenu::on_spoolman_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
+void AmsContextMenu::on_spoolman_cb(lv_event_t* /*e*/) {
+    auto* self = get_active_instance();
     if (self) {
         self->handle_spoolman();
     }
 }
 
-void AmsContextMenu::on_tool_changed_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
+void AmsContextMenu::on_tool_changed_cb(lv_event_t* /*e*/) {
+    auto* self = get_active_instance();
     if (self) {
         self->handle_tool_changed();
     }
 }
 
-void AmsContextMenu::on_backup_changed_cb(lv_event_t* e) {
-    auto* self = get_instance_from_event(e);
+void AmsContextMenu::on_backup_changed_cb(lv_event_t* /*e*/) {
+    auto* self = get_active_instance();
     if (self) {
         self->handle_backup_changed();
     }
@@ -424,12 +324,12 @@ void AmsContextMenu::handle_tool_changed() {
     // Option 0 = "None", options 1+ = T0, T1, T2...
     int tool_number = selected - 1; // -1 = None
 
-    spdlog::info("[AmsContextMenu] Tool mapping changed for slot {}: tool {}", slot_index_,
+    spdlog::info("[AmsContextMenu] Tool mapping changed for slot {}: tool {}", get_item_index(),
                  tool_number >= 0 ? tool_number : -1);
 
     if (tool_number >= 0) {
         // Set this slot as the mapping for the selected tool
-        auto result = backend_->set_tool_mapping(tool_number, slot_index_);
+        auto result = backend_->set_tool_mapping(tool_number, get_item_index());
         if (!result.success()) {
             spdlog::warn("[AmsContextMenu] Failed to set tool mapping: {}", result.user_msg);
         }
@@ -451,7 +351,7 @@ void AmsContextMenu::handle_backup_changed() {
         // Find the actual slot index by counting through slots (skipping current)
         int dropdown_idx = 0;
         for (int i = 0; i < total_slots_; ++i) {
-            if (i != slot_index_) {
+            if (i != get_item_index()) {
                 dropdown_idx++;
                 if (dropdown_idx == selected) {
                     backup_slot = i;
@@ -462,8 +362,8 @@ void AmsContextMenu::handle_backup_changed() {
     }
 
     // Validate material compatibility if a backup slot was selected
-    if (backup_slot >= 0 && slot_index_ >= 0) {
-        std::string current_material = backend_->get_slot_info(slot_index_).material;
+    if (backup_slot >= 0 && get_item_index() >= 0) {
+        std::string current_material = backend_->get_slot_info(get_item_index()).material;
         std::string backup_material = backend_->get_slot_info(backup_slot).material;
 
         // Only check compatibility if both slots have materials set
@@ -483,10 +383,10 @@ void AmsContextMenu::handle_backup_changed() {
         }
     }
 
-    spdlog::info("[AmsContextMenu] Backup slot changed for slot {}: backup {}", slot_index_,
+    spdlog::info("[AmsContextMenu] Backup slot changed for slot {}: backup {}", get_item_index(),
                  backup_slot >= 0 ? backup_slot : -1);
 
-    auto result = backend_->set_endless_spool_backup(slot_index_, backup_slot);
+    auto result = backend_->set_endless_spool_backup(get_item_index(), backup_slot);
     if (!result.success()) {
         spdlog::warn("[AmsContextMenu] Failed to set endless spool backup: {}", result.user_msg);
     }
@@ -497,18 +397,18 @@ void AmsContextMenu::handle_backup_changed() {
 // ============================================================================
 
 void AmsContextMenu::configure_dropdowns() {
-    if (!menu_) {
+    if (!menu()) {
         return;
     }
 
     // Find dropdown widgets
-    tool_dropdown_ = lv_obj_find_by_name(menu_, "tool_dropdown");
-    backup_dropdown_ = lv_obj_find_by_name(menu_, "backup_dropdown");
+    tool_dropdown_ = lv_obj_find_by_name(menu(), "tool_dropdown");
+    backup_dropdown_ = lv_obj_find_by_name(menu(), "backup_dropdown");
 
     // Find row containers and divider
-    lv_obj_t* tool_row = lv_obj_find_by_name(menu_, "tool_dropdown_row");
-    lv_obj_t* backup_row = lv_obj_find_by_name(menu_, "backup_dropdown_row");
-    lv_obj_t* divider = lv_obj_find_by_name(menu_, "dropdown_divider");
+    lv_obj_t* tool_row = lv_obj_find_by_name(menu(), "tool_dropdown_row");
+    lv_obj_t* backup_row = lv_obj_find_by_name(menu(), "backup_dropdown_row");
+    lv_obj_t* divider = lv_obj_find_by_name(menu(), "dropdown_divider");
 
     bool show_any_dropdown = false;
 
@@ -566,8 +466,8 @@ void AmsContextMenu::populate_tool_dropdown() {
     int selected_index = (current_tool >= 0) ? (current_tool + 1) : 0;
     lv_dropdown_set_selected(tool_dropdown_, static_cast<uint32_t>(selected_index));
 
-    spdlog::debug("[AmsContextMenu] Tool dropdown populated: slot {} maps to tool {}", slot_index_,
-                  current_tool);
+    spdlog::debug("[AmsContextMenu] Tool dropdown populated: slot {} maps to tool {}",
+                  get_item_index(), current_tool);
 }
 
 void AmsContextMenu::populate_backup_dropdown() {
@@ -587,15 +487,15 @@ void AmsContextMenu::populate_backup_dropdown() {
         // (which skips the current slot)
         selected_index = 1; // Start after "None"
         for (int i = 0; i < current_backup; ++i) {
-            if (i != slot_index_) {
+            if (i != get_item_index()) {
                 selected_index++;
             }
         }
     }
     lv_dropdown_set_selected(backup_dropdown_, static_cast<uint32_t>(selected_index));
 
-    spdlog::debug("[AmsContextMenu] Backup dropdown populated: slot {} backup is {}", slot_index_,
-                  current_backup);
+    spdlog::debug("[AmsContextMenu] Backup dropdown populated: slot {} backup is {}",
+                  get_item_index(), current_backup);
 }
 
 std::string AmsContextMenu::build_tool_options() const {
@@ -612,15 +512,15 @@ std::string AmsContextMenu::build_backup_options() const {
 
     // Get current slot's material for compatibility checking
     std::string current_material;
-    if (backend_ && slot_index_ >= 0) {
-        current_material = backend_->get_slot_info(slot_index_).material;
+    if (backend_ && get_item_index() >= 0) {
+        current_material = backend_->get_slot_info(get_item_index()).material;
     }
 
     // Add slot options Slot 1, Slot 2... based on total slots
     // Skip the current slot (can't be backup for itself)
     // Mark incompatible materials
     for (int i = 0; i < total_slots_; ++i) {
-        if (i != slot_index_) {
+        if (i != get_item_index()) {
             std::string slot_option = "\nSlot " + std::to_string(i + 1);
 
             // Check material compatibility if we have a current material
@@ -646,7 +546,7 @@ int AmsContextMenu::get_current_tool_for_slot() const {
     // Get tool mapping and find which tool maps to this slot
     auto mapping = backend_->get_tool_mapping();
     for (size_t tool = 0; tool < mapping.size(); ++tool) {
-        if (mapping[tool] == slot_index_) {
+        if (mapping[tool] == get_item_index()) {
             return static_cast<int>(tool);
         }
     }
@@ -660,7 +560,7 @@ int AmsContextMenu::get_current_backup_for_slot() const {
 
     auto configs = backend_->get_endless_spool_config();
     for (const auto& config : configs) {
-        if (config.slot_index == slot_index_) {
+        if (config.slot_index == get_item_index()) {
             return config.backup_slot;
         }
     }

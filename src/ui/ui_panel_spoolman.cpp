@@ -4,12 +4,14 @@
 #include "ui_panel_spoolman.h"
 
 #include "ui_global_panel_helper.h"
+#include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_spool_canvas.h"
 #include "ui_subject_registry.h"
 #include "ui_toast.h"
+#include "ui_update_queue.h"
 
 #include "ams_state.h"
 #include "app_globals.h"
@@ -274,7 +276,7 @@ void SpoolmanPanel::update_row_visuals(lv_obj_t* row, const SpoolInfo& spool) {
             }
             unsigned int color_val = 0;
             if (sscanf(hex.c_str(), "%x", &color_val) == 1) {
-                color = lv_color_hex(color_val);
+                color = lv_color_hex(color_val); // parse spool color_hex
             }
         }
         ui_spool_canvas_set_color(canvas, color);
@@ -294,7 +296,8 @@ void SpoolmanPanel::update_row_visuals(lv_obj_t* row, const SpoolInfo& spool) {
     // Update vendor
     lv_obj_t* vendor_label = lv_obj_find_by_name(row, "spool_vendor");
     if (vendor_label) {
-        lv_label_set_text(vendor_label, spool.vendor.empty() ? "Unknown" : spool.vendor.c_str());
+        const char* vendor = spool.vendor.empty() ? "Unknown" : spool.vendor.c_str();
+        lv_label_set_text(vendor_label, vendor);
     }
 
     // Update weight
@@ -349,8 +352,55 @@ void SpoolmanPanel::handle_spool_clicked(lv_obj_t* row) {
 
     spdlog::info("[{}] Spool {} clicked", get_name(), spool_id);
 
-    // Set as active spool
-    set_active_spool(spool_id);
+    // Find the matching SpoolInfo from cache
+    const SpoolInfo* spool = nullptr;
+    for (const auto& s : cached_spools_) {
+        if (s.id == spool_id) {
+            spool = &s;
+            break;
+        }
+    }
+
+    if (!spool) {
+        spdlog::warn("[{}] Spool {} not found in cache", get_name(), spool_id);
+        return;
+    }
+
+    // Set up context menu action handler
+    context_menu_.set_action_callback([this](helix::ui::SpoolmanContextMenu::MenuAction action,
+                                             int id) { handle_context_action(action, id); });
+
+    // Show context menu near the clicked row
+    context_menu_.show_for_spool(lv_screen_active(), *spool, row);
+}
+
+void SpoolmanPanel::handle_context_action(helix::ui::SpoolmanContextMenu::MenuAction action,
+                                          int spool_id) {
+    using MenuAction = helix::ui::SpoolmanContextMenu::MenuAction;
+
+    switch (action) {
+    case MenuAction::SET_ACTIVE:
+        set_active_spool(spool_id);
+        break;
+
+    case MenuAction::EDIT:
+        show_edit_modal(spool_id);
+        break;
+
+    case MenuAction::PRINT_LABEL:
+        // TODO: Print label (Phase 4)
+        spdlog::info("[{}] Print label for spool {} (not yet implemented)", get_name(), spool_id);
+        ui_toast_show(ToastSeverity::INFO, "Label printing coming soon", 2000);
+        break;
+
+    case MenuAction::DELETE:
+        delete_spool(spool_id);
+        break;
+
+    case MenuAction::CANCELLED:
+        spdlog::debug("[{}] Context menu cancelled", get_name());
+        break;
+    }
 }
 
 void SpoolmanPanel::set_active_spool(int spool_id) {
@@ -385,6 +435,99 @@ void SpoolmanPanel::set_active_spool(int spool_id) {
                           err.message);
             ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to set active spool"), 3000);
         });
+}
+
+// ============================================================================
+// Edit Spool Modal
+// ============================================================================
+
+void SpoolmanPanel::show_edit_modal(int spool_id) {
+    // Find the spool in cache
+    const SpoolInfo* spool = nullptr;
+    for (const auto& s : cached_spools_) {
+        if (s.id == spool_id) {
+            spool = &s;
+            break;
+        }
+    }
+
+    if (!spool) {
+        spdlog::warn("[{}] Cannot edit - spool {} not in cache", get_name(), spool_id);
+        return;
+    }
+
+    MoonrakerAPI* api = get_moonraker_api();
+
+    edit_modal_.set_completion_callback([this](bool saved) {
+        if (saved) {
+            // Refresh the spool list to show updated values
+            refresh_spools();
+        }
+    });
+
+    edit_modal_.show_for_spool(lv_screen_active(), *spool, api);
+}
+
+// ============================================================================
+// Delete Spool
+// ============================================================================
+
+void SpoolmanPanel::delete_spool(int spool_id) {
+    // Build confirmation message with spool info
+    std::string spool_desc;
+    for (const auto& s : cached_spools_) {
+        if (s.id == spool_id) {
+            std::string vendor_prefix = s.vendor.empty() ? "" : s.vendor + " ";
+            spool_desc = vendor_prefix + s.display_name() + " (#" + std::to_string(spool_id) + ")";
+            break;
+        }
+    }
+
+    if (spool_desc.empty()) {
+        spool_desc = "Spool #" + std::to_string(spool_id);
+    }
+
+    std::string message = spool_desc + "\nThis cannot be undone.";
+
+    // Store spool_id for the confirmation callback via a static (only one delete at a time)
+    static int s_pending_delete_id = 0;
+    s_pending_delete_id = spool_id;
+
+    ui_modal_show_confirmation(
+        "Delete Spool?", message.c_str(), ModalSeverity::Warning, "Delete",
+        [](lv_event_t* /*e*/) {
+            int id = s_pending_delete_id;
+            spdlog::info("[Spoolman] Confirmed delete of spool {}", id);
+
+            MoonrakerAPI* api = get_moonraker_api();
+            if (!api) {
+                ui_toast_show(ToastSeverity::ERROR, "API not available", 3000);
+                return;
+            }
+
+            api->delete_spoolman_spool(
+                id,
+                [id]() {
+                    spdlog::info("[Spoolman] Spool {} deleted successfully", id);
+                    // Schedule UI work on LVGL thread (API callbacks run on background thread)
+                    ui_async_call(
+                        [](void*) {
+                            ui_toast_show(ToastSeverity::SUCCESS, "Spool deleted", 2000);
+                            get_global_spoolman_panel().refresh_spools();
+                        },
+                        nullptr);
+                },
+                [id](const MoonrakerError& err) {
+                    spdlog::error("[Spoolman] Failed to delete spool {}: {}", id, err.message);
+                    ui_async_call(
+                        [](void*) {
+                            ui_toast_show(ToastSeverity::ERROR, "Failed to delete spool", 3000);
+                        },
+                        nullptr);
+                });
+        },
+        nullptr, // No cancel callback needed
+        nullptr);
 }
 
 // ============================================================================

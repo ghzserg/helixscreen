@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <api>
+    <prop name="spool_id" type="int" default="0"/>
+  </api>
+  <!-- Full-screen backdrop overlay - tap to dismiss -->
+  <view name="context_backdrop"
+        extends="lv_obj" width="100%" height="100%" style_bg_opa="128" style_bg_color="0x000000" style_border_width="0"
+        style_pad_all="0" style_radius="0" clickable="true">
+    <event_cb trigger="clicked" callback="spoolman_context_backdrop_cb"/>
+    <!-- Context menu card - positioned by C++ -->
+    <lv_obj name="context_menu"
+            width="170" height="content" style_bg_color="#elevated_bg" style_bg_opa="255" style_radius="#border_radius"
+            style_pad_all="#space_sm" style_pad_gap="#space_xs" flex_flow="column" style_flex_main_place="start"
+            style_flex_cross_place="start" scrollable="false" clickable="true">
+      <!-- Header: spool display name -->
+      <text_body name="spool_header" text="Spool" style_text_color="#text"/>
+      <!-- Vendor subtitle -->
+      <text_small name="spool_vendor_label" text="" style_text_color="#text_muted"/>
+      <!-- Header Divider -->
+      <lv_obj width="100%"
+              height="1" style_bg_color="#text_muted" style_bg_opa="38" style_pad_all="0" scrollable="false"/>
+      <!-- Set Active Button -->
+      <ui_button name="btn_set_active"
+                 width="100%" height="#button_height_sm" icon="check_circle" text="Set Active"
+                 translation_tag="Set Active" variant="ghost" clickable="true" style_flex_main_place="start">
+        <event_cb trigger="clicked" callback="spoolman_context_set_active_cb"/>
+      </ui_button>
+      <!-- Edit Button -->
+      <ui_button name="btn_edit"
+                 width="100%" height="#button_height_sm" icon="pencil" text="Edit" translation_tag="Edit"
+                 variant="ghost" clickable="true" style_flex_main_place="start">
+        <event_cb trigger="clicked" callback="spoolman_context_edit_cb"/>
+      </ui_button>
+      <!-- Print Label Button (hidden until label printer is configured) -->
+      <ui_button name="btn_print_label"
+                 width="100%" height="#button_height_sm" icon="print" text="Print Label" translation_tag="Print Label"
+                 variant="ghost" clickable="true" style_flex_main_place="start" hidden="true">
+        <event_cb trigger="clicked" callback="spoolman_context_print_label_cb"/>
+      </ui_button>
+      <!-- Divider before destructive action -->
+      <lv_obj width="100%"
+              height="1" style_bg_color="#text_muted" style_bg_opa="38" style_pad_all="0" scrollable="false"/>
+      <!-- Delete Button -->
+      <ui_button name="btn_delete"
+                 width="100%" height="#button_height_sm" icon="delete" text="Delete" translation_tag="Delete"
+                 variant="ghost" clickable="true" style_flex_main_place="start" style_text_color="#danger">
+        <event_cb trigger="clicked" callback="spoolman_context_delete_cb"/>
+      </ui_button>
+    </lv_obj>
+  </view>
+</component>

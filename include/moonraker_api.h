@@ -1354,6 +1354,20 @@ class MoonrakerAPI {
                                               SuccessCallback on_success, ErrorCallback on_error);
 
     /**
+     * @brief Update a spool's properties in Spoolman
+     *
+     * General-purpose PATCH for spool fields (remaining_weight, price, lot_nr, comment, etc.).
+     * Uses Moonraker's Spoolman proxy to PATCH /v1/spool/{id}.
+     *
+     * @param spool_id Spoolman spool ID
+     * @param spool_data JSON object with fields to update
+     * @param on_success Called when update succeeds
+     * @param on_error Called on failure
+     */
+    virtual void update_spoolman_spool(int spool_id, const nlohmann::json& spool_data,
+                                       SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
      * @brief Update a filament's color in Spoolman
      *
      * Uses Moonraker's Spoolman proxy to PATCH /v1/filament/{id}.
@@ -1366,6 +1380,63 @@ class MoonrakerAPI {
      */
     virtual void update_spoolman_filament_color(int filament_id, const std::string& color_hex,
                                                 SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Get list of vendors from Spoolman
+     *
+     * @param on_success Called with vendor list
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_vendors(VendorListCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Get list of filaments from Spoolman
+     *
+     * @param on_success Called with filament list
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_filaments(FilamentListCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Create a new vendor in Spoolman
+     *
+     * @param vendor_data JSON body with vendor fields (name, url)
+     * @param on_success Called with created vendor info
+     * @param on_error Called on failure
+     */
+    virtual void create_spoolman_vendor(const nlohmann::json& vendor_data,
+                                        VendorCreateCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Create a new filament in Spoolman
+     *
+     * @param filament_data JSON body with filament fields
+     * @param on_success Called with created filament info
+     * @param on_error Called on failure
+     */
+    virtual void create_spoolman_filament(const nlohmann::json& filament_data,
+                                          FilamentCreateCallback on_success,
+                                          ErrorCallback on_error);
+
+    /**
+     * @brief Create a new spool in Spoolman
+     *
+     * @param spool_data JSON body with spool fields
+     * @param on_success Called with created spool info
+     * @param on_error Called on failure
+     */
+    virtual void create_spoolman_spool(const nlohmann::json& spool_data,
+                                       SpoolCreateCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Delete a spool from Spoolman
+     *
+     * @param spool_id Spoolman spool ID to delete
+     * @param on_success Called when deletion succeeds
+     * @param on_error Called on failure
+     */
+    virtual void delete_spoolman_spool(int spool_id, SuccessCallback on_success,
+                                       ErrorCallback on_error);
 
     // ========================================================================
     // Advanced Panel Operations - Machine Limits

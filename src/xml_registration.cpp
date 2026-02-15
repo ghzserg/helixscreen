@@ -5,6 +5,7 @@
 
 #include "ui_ams_current_tool.h"
 #include "ui_ams_device_operations_overlay.h"
+#include "ui_ams_device_section_detail_overlay.h"
 #include "ui_button.h"
 #include "ui_confetti.h"
 #include "ui_fan_dial.h"
@@ -165,6 +166,8 @@ void register_xml_components() {
 
     // Spoolman components (MUST be after spool_canvas registration)
     register_xml("spoolman_spool_row.xml");
+    register_xml("spoolman_context_menu.xml");
+    register_xml("spoolman_edit_modal.xml");
     register_xml("spoolman_panel.xml");
 
     // Core UI components
@@ -247,6 +250,8 @@ void register_xml_components() {
     // AMS Device Operations (accessed from Settings > AMS)
     helix::ui::get_ams_device_operations_overlay().register_callbacks();
     register_xml("ams_device_operations.xml");
+    helix::ui::get_ams_device_section_detail_overlay().register_callbacks();
+    register_xml("ams_device_section_detail.xml");
 
     // Spoolman Settings (accessed from Settings > Spoolman, future)
     register_xml("ams_settings_spoolman.xml");

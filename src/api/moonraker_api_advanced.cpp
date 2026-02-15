@@ -1575,6 +1575,9 @@ static SpoolInfo parse_spool_info(const nlohmann::json& spool_json) {
     info.remaining_weight_g = spool_json.value("remaining_weight", 0.0);
     info.initial_weight_g = spool_json.value("initial_weight", 0.0);
     info.spool_weight_g = spool_json.value("spool_weight", 0.0);
+    info.price = spool_json.value("price", 0.0);
+    info.lot_nr = spool_json.value("lot_nr", "");
+    info.comment = spool_json.value("comment", "");
 
     // Length is in mm from Spoolman, convert to meters
     double remaining_length_mm = spool_json.value("remaining_length", 0.0);
@@ -1747,6 +1750,26 @@ void MoonrakerAPI::update_spoolman_spool_weight(int spool_id, double remaining_w
         on_error);
 }
 
+void MoonrakerAPI::update_spoolman_spool(int spool_id, const nlohmann::json& spool_data,
+                                         SuccessCallback on_success, ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Updating spool {} with {} fields", spool_id, spool_data.size());
+
+    nlohmann::json params;
+    params["request_method"] = "PATCH";
+    params["path"] = "/v1/spool/" + std::to_string(spool_id);
+    params["body"] = spool_data;
+
+    client_.send_jsonrpc(
+        "server.spoolman.proxy", params,
+        [on_success, spool_id](json /*response*/) {
+            spdlog::debug("[Moonraker API] Spool {} updated successfully", spool_id);
+            if (on_success) {
+                on_success();
+            }
+        },
+        on_error);
+}
+
 void MoonrakerAPI::update_spoolman_filament_color(int filament_id, const std::string& color_hex,
                                                   SuccessCallback on_success,
                                                   ErrorCallback on_error) {
@@ -1766,6 +1789,192 @@ void MoonrakerAPI::update_spoolman_filament_color(int filament_id, const std::st
         [on_success, filament_id, color_hex](json /*response*/) {
             spdlog::debug("[Moonraker API] Filament {} color updated to {}", filament_id,
                           color_hex);
+            if (on_success) {
+                on_success();
+            }
+        },
+        on_error);
+}
+
+// ============================================================================
+// Spoolman CRUD Operations
+// ============================================================================
+
+static VendorInfo parse_vendor_info(const nlohmann::json& vendor_json) {
+    VendorInfo info;
+    info.id = vendor_json.value("id", 0);
+    info.name = vendor_json.value("name", "");
+    info.url = vendor_json.value("url", "");
+    return info;
+}
+
+static FilamentInfo parse_filament_info(const nlohmann::json& filament_json) {
+    FilamentInfo info;
+    info.id = filament_json.value("id", 0);
+    info.material = filament_json.value("material", "");
+    info.color_name = filament_json.value("name", "");
+    info.color_hex = filament_json.value("color_hex", "");
+    info.density = filament_json.value("density", 0.0f);
+    info.diameter = filament_json.value("diameter", 1.75f);
+    info.weight = filament_json.value("weight", 0.0f);
+    info.spool_weight = filament_json.value("spool_weight", 0.0f);
+    info.nozzle_temp_min = filament_json.value("settings_extruder_temp_min", 0);
+    info.nozzle_temp_max = filament_json.value("settings_extruder_temp_max", 0);
+    info.bed_temp_min = filament_json.value("settings_bed_temp_min", 0);
+    info.bed_temp_max = filament_json.value("settings_bed_temp_max", 0);
+
+    // Extract vendor_id from top-level field (always present in Spoolman response)
+    info.vendor_id = filament_json.value("vendor_id", 0);
+
+    // Nested vendor object (may override vendor_id, adds vendor_name)
+    if (filament_json.contains("vendor") && filament_json["vendor"].is_object()) {
+        info.vendor_id = filament_json["vendor"].value("id", info.vendor_id);
+        info.vendor_name = filament_json["vendor"].value("name", "");
+    }
+
+    return info;
+}
+
+void MoonrakerAPI::get_spoolman_vendors(VendorListCallback on_success, ErrorCallback on_error) {
+    spdlog::debug("[Moonraker API] get_spoolman_vendors()");
+
+    json params;
+    params["request_method"] = "GET";
+    params["path"] = "/v1/vendor";
+
+    client_.send_jsonrpc(
+        "server.spoolman.proxy", params,
+        [on_success](json response) {
+            std::vector<VendorInfo> vendors;
+
+            if (response.contains("result") && response["result"].is_array()) {
+                for (const auto& vendor_json : response["result"]) {
+                    vendors.push_back(parse_vendor_info(vendor_json));
+                }
+            }
+
+            spdlog::debug("[Moonraker API] Got {} vendors from Spoolman", vendors.size());
+
+            if (on_success) {
+                on_success(vendors);
+            }
+        },
+        on_error);
+}
+
+void MoonrakerAPI::get_spoolman_filaments(FilamentListCallback on_success, ErrorCallback on_error) {
+    spdlog::debug("[Moonraker API] get_spoolman_filaments()");
+
+    json params;
+    params["request_method"] = "GET";
+    params["path"] = "/v1/filament";
+
+    client_.send_jsonrpc(
+        "server.spoolman.proxy", params,
+        [on_success](json response) {
+            std::vector<FilamentInfo> filaments;
+
+            if (response.contains("result") && response["result"].is_array()) {
+                for (const auto& filament_json : response["result"]) {
+                    filaments.push_back(parse_filament_info(filament_json));
+                }
+            }
+
+            spdlog::debug("[Moonraker API] Got {} filaments from Spoolman", filaments.size());
+
+            if (on_success) {
+                on_success(filaments);
+            }
+        },
+        on_error);
+}
+
+void MoonrakerAPI::create_spoolman_vendor(const nlohmann::json& vendor_data,
+                                          VendorCreateCallback on_success, ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Creating Spoolman vendor: {}",
+                 vendor_data.value("name", "unknown"));
+
+    json params;
+    params["request_method"] = "POST";
+    params["path"] = "/v1/vendor";
+    params["body"] = vendor_data;
+
+    client_.send_jsonrpc(
+        "server.spoolman.proxy", params,
+        [on_success](json response) {
+            if (response.contains("result") && response["result"].is_object()) {
+                VendorInfo vendor = parse_vendor_info(response["result"]);
+                spdlog::debug("[Moonraker API] Created vendor {}: {}", vendor.id, vendor.name);
+                if (on_success) {
+                    on_success(vendor);
+                }
+            }
+        },
+        on_error);
+}
+
+void MoonrakerAPI::create_spoolman_filament(const nlohmann::json& filament_data,
+                                            FilamentCreateCallback on_success,
+                                            ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Creating Spoolman filament: {} {}",
+                 filament_data.value("material", "?"), filament_data.value("name", "?"));
+
+    json params;
+    params["request_method"] = "POST";
+    params["path"] = "/v1/filament";
+    params["body"] = filament_data;
+
+    client_.send_jsonrpc(
+        "server.spoolman.proxy", params,
+        [on_success](json response) {
+            if (response.contains("result") && response["result"].is_object()) {
+                FilamentInfo filament = parse_filament_info(response["result"]);
+                spdlog::debug("[Moonraker API] Created filament {}: {}", filament.id,
+                              filament.display_name());
+                if (on_success) {
+                    on_success(filament);
+                }
+            }
+        },
+        on_error);
+}
+
+void MoonrakerAPI::create_spoolman_spool(const nlohmann::json& spool_data,
+                                         SpoolCreateCallback on_success, ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Creating Spoolman spool");
+
+    json params;
+    params["request_method"] = "POST";
+    params["path"] = "/v1/spool";
+    params["body"] = spool_data;
+
+    client_.send_jsonrpc(
+        "server.spoolman.proxy", params,
+        [on_success](json response) {
+            if (response.contains("result") && response["result"].is_object()) {
+                SpoolInfo spool = parse_spool_info(response["result"]);
+                spdlog::debug("[Moonraker API] Created spool {}: {}", spool.id,
+                              spool.display_name());
+                if (on_success) {
+                    on_success(spool);
+                }
+            }
+        },
+        on_error);
+}
+
+void MoonrakerAPI::delete_spoolman_spool(int spool_id, SuccessCallback on_success,
+                                         ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Deleting Spoolman spool {}", spool_id);
+
+    json params;
+    params["request_method"] = "DELETE";
+    params["path"] = "/v1/spool/" + std::to_string(spool_id);
+
+    client_.send_jsonrpc(
+        "server.spoolman.proxy", params,
+        [on_success, spool_id](json /*response*/) {
+            spdlog::debug("[Moonraker API] Spool {} deleted successfully", spool_id);
             if (on_success) {
                 on_success();
             }

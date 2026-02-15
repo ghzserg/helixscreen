@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include "ui_spoolman_context_menu.h"
+#include "ui_spoolman_edit_modal.h"
+
 #include "overlay_base.h"
 #include "spoolman_types.h" // For SpoolInfo
 #include "subject_managed_panel.h"
@@ -91,7 +94,15 @@ class SpoolmanPanel : public OverlayBase {
     void update_spool_count();
 
     void handle_spool_clicked(lv_obj_t* row);
+    void handle_context_action(helix::ui::SpoolmanContextMenu::MenuAction action, int spool_id);
     void set_active_spool(int spool_id);
+    void delete_spool(int spool_id);
+
+    void show_edit_modal(int spool_id);
+
+    // === Context Menu ===
+    helix::ui::SpoolmanContextMenu context_menu_;
+    helix::ui::SpoolEditModal edit_modal_;
 
     // ========== Static Event Callbacks ==========
     static void on_spool_row_clicked(lv_event_t* e);
