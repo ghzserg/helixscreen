@@ -551,10 +551,26 @@ void KeyboardManager::keyboard_event_cb(lv_event_t* e) {
 
             } else if (btn_text && strcmp(btn_text, ICON_KEYBOARD_RETURN) == 0) {
                 if (mgr.context_textarea_) {
+                    // Multiline textareas: keep the newline, keep keyboard open
+                    if (!lv_textarea_get_one_line(mgr.context_textarea_)) {
+                        spdlog::debug("[KeyboardManager] Enter: newline inserted (multiline)");
+                        return;
+                    }
+                    // Single-line: remove the inserted newline
                     const char* current_text = lv_textarea_get_text(mgr.context_textarea_);
                     if (str_ends_with(current_text, "\n")) {
                         lv_textarea_delete_char(mgr.context_textarea_);
                         spdlog::debug("[KeyboardManager] Removed inserted newline");
+                    }
+                    // Fire READY on the textarea so forms can handle Enter-to-next-field.
+                    // Save current textarea — if a handler switches to another field via
+                    // show(), context_textarea_ will change and we should NOT hide.
+                    lv_obj_t* ta_before = mgr.context_textarea_;
+                    lv_obj_send_event(ta_before, LV_EVENT_READY, nullptr);
+                    if (mgr.context_textarea_ != ta_before) {
+                        // Handler switched to a new textarea — keyboard already reassigned
+                        spdlog::debug("[KeyboardManager] Enter: advanced to next field");
+                        return;
                     }
                 }
                 mgr.hide();

@@ -8,7 +8,7 @@
     <prop name="primary_bg_color" type="string" default=""/>
     <prop name="show_secondary" type="string" default="true"/>
   </api>
-  <view extends="lv_obj" width="100%" height="content" style_pad_all="0" flex_flow="column">
+  <view extends="lv_obj" width="100%" height="content" style_pad_all="0" style_pad_gap="0" flex_flow="column">
     <!-- Horizontal divider -->
     <divider_horizontal/>
     <!-- Button row -->

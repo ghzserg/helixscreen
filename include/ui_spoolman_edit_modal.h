@@ -82,6 +82,7 @@ class SpoolEditModal : public Modal {
 
     // === Internal Methods ===
     void populate_fields();
+    void register_textareas();
     void update_spool_preview();
     [[nodiscard]] bool is_dirty() const;
     void update_save_button_text();

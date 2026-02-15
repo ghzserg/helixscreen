@@ -143,10 +143,19 @@ static void* ui_text_input_create(lv_xml_parser_state_t* state, const char** att
  * - keyboard_hint: initial keyboard mode hint
  */
 static void ui_text_input_apply(lv_xml_parser_state_t* state, const char** attrs) {
-    // First apply standard textarea properties
-    lv_xml_textarea_apply(state, attrs);
-
     lv_obj_t* textarea = static_cast<lv_obj_t*>(lv_xml_state_get_item(state));
+
+    // Pre-scan for multiline BEFORE standard apply, so height/size attrs are applied
+    // after one_line mode is already correct (prevents auto-sizing from overriding height)
+    for (int i = 0; attrs[i]; i += 2) {
+        if (lv_streq("multiline", attrs[i]) && lv_streq("true", attrs[i + 1])) {
+            lv_textarea_set_one_line(textarea, false);
+            break;
+        }
+    }
+
+    // Apply standard textarea properties (handles height, width, etc.)
+    lv_xml_textarea_apply(state, attrs);
 
     // Then handle our custom attributes
     for (int i = 0; attrs[i]; i += 2) {
@@ -183,6 +192,8 @@ static void ui_text_input_apply(lv_xml_parser_state_t* state, const char** attrs
                                 subject);
 
             spdlog::trace("[text_input] Bound subject '{}' to textarea (two-way)", value);
+        } else if (lv_streq("multiline", name)) {
+            // Handled in pre-scan above (before standard apply)
         } else if (lv_streq("keyboard_hint", name)) {
             // Parse keyboard hint and store in user_data
             KeyboardHint hint = KeyboardHint::TEXT;

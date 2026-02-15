@@ -3,6 +3,7 @@
 
 #include "ui_spoolman_edit_modal.h"
 
+#include "ui_keyboard_manager.h"
 #include "ui_spool_canvas.h"
 #include "ui_toast.h"
 #include "ui_update_queue.h"
@@ -13,8 +14,34 @@
 #include <spdlog/spdlog.h>
 
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+namespace {
+
+/**
+ * Parse a hex color string (with or without '#' prefix) into an lv_color_t.
+ * Returns fallback_color if the string is empty or unparseable.
+ */
+lv_color_t parse_spool_color(const std::string& color_hex, lv_color_t fallback_color) {
+    if (color_hex.empty()) {
+        return fallback_color;
+    }
+
+    const char* hex = color_hex.c_str();
+    if (hex[0] == '#') {
+        hex++;
+    }
+
+    unsigned int color_val = 0;
+    if (sscanf(hex, "%x", &color_val) == 1) {
+        return lv_color_hex(color_val);
+    }
+    return fallback_color;
+}
+
+} // namespace
 
 namespace helix::ui {
 
@@ -31,6 +58,9 @@ SpoolEditModal::SpoolEditModal() {
 }
 
 SpoolEditModal::~SpoolEditModal() {
+    if (active_instance_ == this) {
+        active_instance_ = nullptr;
+    }
     spdlog::trace("[SpoolEditModal] Destroyed");
 }
 
@@ -65,6 +95,7 @@ void SpoolEditModal::on_show() {
     active_instance_ = this;
     callback_guard_ = std::make_shared<bool>(true);
     populate_fields();
+    register_textareas();
     update_spool_preview();
     update_save_button_text();
 }
@@ -156,6 +187,53 @@ void SpoolEditModal::populate_fields() {
     }
 }
 
+void SpoolEditModal::register_textareas() {
+    if (!dialog_) {
+        return;
+    }
+
+    // Field names in tab order — single-line fields first, then multiline Notes
+    static constexpr const char* field_names[] = {
+        "field_remaining", "field_spool_weight", "field_price", "field_lot_nr", "field_comment",
+    };
+    static constexpr int num_fields = sizeof(field_names) / sizeof(field_names[0]);
+
+    // Collect textarea widgets
+    lv_obj_t* fields[num_fields] = {};
+    for (int i = 0; i < num_fields; i++) {
+        fields[i] = find_widget(field_names[i]);
+    }
+
+    // Register each with keyboard manager (sets up auto-show/hide + adds to input group)
+    for (int i = 0; i < num_fields; i++) {
+        if (fields[i]) {
+            ui_keyboard_register_textarea(fields[i]);
+        }
+    }
+
+    // Add Enter-to-next-field for single-line fields (not the multiline Notes)
+    // LVGL fires LV_EVENT_READY on the textarea when Enter is pressed on a one-line textarea.
+    // For multiline textareas, Enter inserts a newline instead (no READY event).
+    // We must explicitly re-show the keyboard because LVGL's default keyboard handler
+    // hides it on READY before our handler runs.
+    for (int i = 0; i < num_fields - 1; i++) {
+        if (fields[i] && fields[i + 1]) {
+            lv_obj_add_event_cb(
+                fields[i],
+                [](lv_event_t* e) {
+                    auto* next = static_cast<lv_obj_t*>(lv_event_get_user_data(e));
+                    if (next) {
+                        lv_group_focus_obj(next);
+                        KeyboardManager::instance().show(next);
+                    }
+                },
+                LV_EVENT_READY, fields[i + 1]);
+        }
+    }
+
+    spdlog::debug("[SpoolEditModal] Registered {} textareas with keyboard", num_fields);
+}
+
 void SpoolEditModal::update_spool_preview() {
     if (!dialog_) {
         return;
@@ -167,17 +245,8 @@ void SpoolEditModal::update_spool_preview() {
     }
 
     // Set color from spool's hex color
-    lv_color_t color = theme_manager_get_color("text_muted"); // Default gray
-    if (!working_spool_.color_hex.empty()) {
-        std::string hex = working_spool_.color_hex;
-        if (!hex.empty() && hex[0] == '#') {
-            hex = hex.substr(1);
-        }
-        unsigned int color_val = 0;
-        if (sscanf(hex.c_str(), "%x", &color_val) == 1) {
-            color = lv_color_hex(color_val); // parse spool color_hex
-        }
-    }
+    lv_color_t color =
+        parse_spool_color(working_spool_.color_hex, theme_manager_get_color("text_muted"));
     ui_spool_canvas_set_color(canvas, color);
 
     // Set fill level from remaining weight
@@ -298,9 +367,12 @@ void SpoolEditModal::handle_save() {
     nlohmann::json spool_patch;
     nlohmann::json filament_patch;
 
-    // Spool-level fields
+    // Spool-level fields (per-spool in Spoolman API)
     if (std::abs(working_spool_.remaining_weight_g - original_spool_.remaining_weight_g) > 0.1) {
         spool_patch["remaining_weight"] = working_spool_.remaining_weight_g;
+    }
+    if (std::abs(working_spool_.price - original_spool_.price) > 0.001) {
+        spool_patch["price"] = working_spool_.price;
     }
     if (working_spool_.lot_nr != original_spool_.lot_nr) {
         spool_patch["lot_nr"] = working_spool_.lot_nr;
@@ -312,9 +384,6 @@ void SpoolEditModal::handle_save() {
     // Filament-level fields (affect all spools using this filament definition)
     if (std::abs(working_spool_.spool_weight_g - original_spool_.spool_weight_g) > 0.1) {
         filament_patch["spool_weight"] = working_spool_.spool_weight_g;
-    }
-    if (std::abs(working_spool_.price - original_spool_.price) > 0.001) {
-        filament_patch["price"] = working_spool_.price;
     }
 
     int spool_id = working_spool_.id;
