@@ -5,6 +5,7 @@
 
 #include "ui_fonts.h"
 #include "ui_icon_codepoints.h"
+#include "ui_variant.h"
 
 #include "lvgl/lvgl.h"
 #include "lvgl/src/xml/lv_xml.h"
@@ -24,32 +25,6 @@
  * Icon size enum - maps to MDI font sizes
  */
 enum class IconSize { XS, SM, MD, LG, XL };
-
-/**
- * Variant mapping: semantic name -> color styling
- *
- * NEW semantic names (Phase 2.2):
- *   TEXT     - Primary text color (was PRIMARY)
- *   MUTED    - De-emphasized text (was SECONDARY)
- *   PRIMARY  - Accent/brand color (was ACCENT)
- *   SECONDARY- Secondary accent color (NEW)
- *   TERTIARY - Tertiary accent color (NEW)
- *   DANGER   - Error/danger state (was ERROR)
- *   INFO     - Info state (NEW)
- */
-enum class IconVariant {
-    NONE,      // Uses text style (default)
-    TEXT,      // Primary text color
-    MUTED,     // De-emphasized text
-    PRIMARY,   // Accent/brand color
-    SECONDARY, // Secondary accent
-    TERTIARY,  // Tertiary accent
-    DISABLED,  // Text @ 50% opacity
-    SUCCESS,
-    WARNING,
-    DANGER, // Was ERROR
-    INFO    // NEW
-};
 
 /**
  * Parse size string to IconSize enum
@@ -95,53 +70,6 @@ static const lv_font_t* get_font_for_size(IconSize size) {
 }
 
 /**
- * Parse variant string to IconVariant enum
- *
- * Semantic variant names:
- *   "text"      -> TEXT (primary text color)
- *   "muted"     -> MUTED (de-emphasized text)
- *   "primary"   -> PRIMARY (accent/brand color)
- *   "secondary" -> SECONDARY (secondary accent color)
- *   "tertiary"  -> TERTIARY (tertiary accent color)
- *   "disabled"  -> DISABLED (text @ 50% opacity)
- *   "success"   -> SUCCESS (green)
- *   "warning"   -> WARNING (amber)
- *   "danger"    -> DANGER (red)
- *   "info"      -> INFO (blue)
- *   "none"      -> NONE (uses text style)
- */
-static IconVariant parse_variant(const char* variant_str) {
-    if (!variant_str || strlen(variant_str) == 0) {
-        return IconVariant::NONE;
-    } else if (strcmp(variant_str, "text") == 0) {
-        return IconVariant::TEXT;
-    } else if (strcmp(variant_str, "muted") == 0) {
-        return IconVariant::MUTED;
-    } else if (strcmp(variant_str, "primary") == 0) {
-        return IconVariant::PRIMARY;
-    } else if (strcmp(variant_str, "secondary") == 0) {
-        return IconVariant::SECONDARY;
-    } else if (strcmp(variant_str, "tertiary") == 0) {
-        return IconVariant::TERTIARY;
-    } else if (strcmp(variant_str, "disabled") == 0) {
-        return IconVariant::DISABLED;
-    } else if (strcmp(variant_str, "success") == 0) {
-        return IconVariant::SUCCESS;
-    } else if (strcmp(variant_str, "warning") == 0) {
-        return IconVariant::WARNING;
-    } else if (strcmp(variant_str, "danger") == 0) {
-        return IconVariant::DANGER;
-    } else if (strcmp(variant_str, "info") == 0) {
-        return IconVariant::INFO;
-    } else if (strcmp(variant_str, "none") == 0) {
-        return IconVariant::NONE;
-    }
-
-    spdlog::warn("[Icon] Invalid variant '{}', using default 'none'", variant_str);
-    return IconVariant::NONE;
-}
-
-/**
  * Apply size to icon widget (font only - let content determine dimensions)
  *
  * Uses LV_SIZE_CONTENT so the widget automatically sizes to fit the font glyph.
@@ -153,90 +81,6 @@ static void apply_size(lv_obj_t* obj, IconSize size) {
 
     lv_obj_set_style_text_font(obj, font, LV_PART_MAIN);
     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-}
-
-/**
- * Remove any previously applied icon variant style from the object.
- *
- * This prevents style accumulation when changing variants multiple times.
- * We remove all known icon styles - only one will be present at a time.
- */
-static void remove_icon_styles(lv_obj_t* obj) {
-    auto& tm = ThemeManager::instance();
-    // Remove all possible icon styles - only one should be attached
-    lv_style_t* styles_to_remove[] = {
-        tm.get_style(StyleRole::IconText),     tm.get_style(StyleRole::TextMuted),
-        tm.get_style(StyleRole::IconPrimary),  tm.get_style(StyleRole::IconSecondary),
-        tm.get_style(StyleRole::IconTertiary), tm.get_style(StyleRole::IconSuccess),
-        tm.get_style(StyleRole::IconWarning),  tm.get_style(StyleRole::IconDanger),
-        tm.get_style(StyleRole::IconInfo),
-    };
-
-    for (lv_style_t* style : styles_to_remove) {
-        if (style) {
-            lv_obj_remove_style(obj, style, LV_PART_MAIN);
-        }
-    }
-}
-
-/**
- * Apply variant color styling to icon widget
- *
- * Uses shared styles from ThemeManager instead of inline colors. This enables
- * reactive theming - when theme changes, icons automatically update because
- * they reference the shared style objects.
- *
- * Removes any previously applied icon style first to prevent accumulation.
- */
-static void apply_variant(lv_obj_t* obj, IconVariant variant) {
-    // Remove any existing icon style first to prevent accumulation
-    remove_icon_styles(obj);
-
-    auto& tm = ThemeManager::instance();
-    lv_style_t* style = nullptr;
-    lv_opa_t opa = LV_OPA_COVER;
-
-    switch (variant) {
-    case IconVariant::TEXT:
-    case IconVariant::NONE:
-        style = tm.get_style(StyleRole::IconText);
-        break;
-    case IconVariant::MUTED:
-        style = tm.get_style(StyleRole::TextMuted);
-        break;
-    case IconVariant::PRIMARY:
-        style = tm.get_style(StyleRole::IconPrimary);
-        break;
-    case IconVariant::SECONDARY:
-        style = tm.get_style(StyleRole::IconSecondary);
-        break;
-    case IconVariant::TERTIARY:
-        style = tm.get_style(StyleRole::IconTertiary);
-        break;
-    case IconVariant::DISABLED:
-        style = tm.get_style(StyleRole::IconText);
-        opa = LV_OPA_50;
-        break;
-    case IconVariant::SUCCESS:
-        style = tm.get_style(StyleRole::IconSuccess);
-        break;
-    case IconVariant::WARNING:
-        style = tm.get_style(StyleRole::IconWarning);
-        break;
-    case IconVariant::DANGER:
-        style = tm.get_style(StyleRole::IconDanger);
-        break;
-    case IconVariant::INFO:
-        style = tm.get_style(StyleRole::IconInfo);
-        break;
-    }
-
-    if (style) {
-        lv_obj_add_style(obj, style, LV_PART_MAIN);
-        lv_obj_set_style_text_opa(obj, opa, LV_PART_MAIN);
-    } else {
-        spdlog::error("[Icon] Failed to get style for variant - theme not initialized?");
-    }
 }
 
 /**
@@ -287,7 +131,7 @@ static void* ui_icon_xml_create(lv_xml_parser_state_t* state, const char** attrs
     apply_source(obj, "image_broken_variant");
 
     // Default variant (primary text color)
-    apply_variant(obj, IconVariant::NONE);
+    helix::ui::apply_variant_text_style(obj, helix::ui::Variant::NONE);
 
     return obj;
 }
@@ -304,7 +148,7 @@ static void ui_icon_xml_apply(lv_xml_parser_state_t* state, const char** attrs) 
 
     // Then process icon-specific properties
     IconSize size = IconSize::XL;
-    IconVariant variant = IconVariant::NONE;
+    helix::ui::Variant variant = helix::ui::Variant::NONE;
     const char* src = nullptr;
     bool size_set = false;
     bool variant_set = false;
@@ -321,7 +165,7 @@ static void ui_icon_xml_apply(lv_xml_parser_state_t* state, const char** attrs) 
             size = parse_size(value);
             size_set = true;
         } else if (strcmp(name, "variant") == 0) {
-            variant = parse_variant(value);
+            variant = helix::ui::parse_variant(value);
             variant_set = true;
         } else if (strcmp(name, "color") == 0) {
             custom_color = lv_xml_to_color(value);
@@ -344,7 +188,7 @@ static void ui_icon_xml_apply(lv_xml_parser_state_t* state, const char** attrs) 
         lv_obj_set_style_text_color(obj, custom_color, LV_PART_MAIN);
         lv_obj_set_style_text_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
     } else if (variant_set) {
-        apply_variant(obj, variant);
+        helix::ui::apply_variant_text_style(obj, variant);
     }
 }
 
@@ -385,8 +229,8 @@ void ui_icon_set_variant(lv_obj_t* icon, const char* variant_str) {
         return;
     }
 
-    IconVariant variant = parse_variant(variant_str);
-    apply_variant(icon, variant);
+    auto variant = helix::ui::parse_variant(variant_str);
+    helix::ui::apply_variant_text_style(icon, variant);
     spdlog::trace("[Icon] Changed icon variant to '{}'", variant_str);
 }
 
