@@ -98,6 +98,17 @@ static void on_completion_alert_dropdown_changed(lv_event_t* e) {
     SettingsManager::instance().set_completion_alert_mode(mode);
 }
 
+// Static callback for cancel escalation timeout dropdown
+static void on_cancel_escalation_timeout_changed(lv_event_t* e) {
+    lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    int index = static_cast<int>(lv_dropdown_get_selected(dropdown));
+    static constexpr int TIMEOUT_VALUES[] = {15, 30, 60, 120};
+    int seconds = TIMEOUT_VALUES[std::max(0, std::min(3, index))];
+    spdlog::info("[SettingsPanel] Cancel escalation timeout changed: {}s (index {})", seconds,
+                 index);
+    SettingsManager::instance().set_cancel_escalation_timeout_seconds(seconds);
+}
+
 // Static callback for display dim dropdown
 static void on_display_dim_dropdown_changed(lv_event_t* e) {
     lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
@@ -400,6 +411,9 @@ void SettingsPanel::init_subjects() {
     // Note: on_retraction_row_clicked is registered by RetractionSettingsOverlay
     lv_xml_register_event_cb(nullptr, "on_sound_settings_clicked", on_sound_settings_clicked);
     lv_xml_register_event_cb(nullptr, "on_estop_confirm_changed", on_estop_confirm_changed);
+    lv_xml_register_event_cb(nullptr, "on_cancel_escalation_changed", on_cancel_escalation_changed);
+    lv_xml_register_event_cb(nullptr, "on_cancel_escalation_timeout_changed",
+                             on_cancel_escalation_timeout_changed);
     lv_xml_register_event_cb(nullptr, "on_telemetry_changed", SettingsPanel::on_telemetry_changed);
     lv_xml_register_event_cb(nullptr, "on_telemetry_view_data",
                              SettingsPanel::on_telemetry_view_data);
@@ -811,6 +825,11 @@ void SettingsPanel::handle_estop_confirm_changed(bool enabled) {
     EmergencyStopOverlay::instance().set_require_confirmation(enabled);
 }
 
+void SettingsPanel::handle_cancel_escalation_changed(bool enabled) {
+    spdlog::info("[{}] Cancel escalation toggled: {}", get_name(), enabled ? "ON" : "OFF");
+    SettingsManager::instance().set_cancel_escalation_enabled(enabled);
+}
+
 void SettingsPanel::handle_telemetry_changed(bool enabled) {
     spdlog::info("[{}] Telemetry toggled: {}", get_name(), enabled ? "ON" : "OFF");
     SettingsManager::instance().set_telemetry_enabled(enabled);
@@ -1189,6 +1208,14 @@ void SettingsPanel::on_estop_confirm_changed(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
+void SettingsPanel::on_cancel_escalation_changed(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_cancel_escalation_changed");
+    auto* toggle = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    bool enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    get_global_settings_panel().handle_cancel_escalation_changed(enabled);
+    LVGL_SAFE_EVENT_CB_END();
+}
+
 void SettingsPanel::on_about_clicked(lv_event_t* /*e*/) {
     LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_about_clicked");
     get_global_settings_panel().handle_about_clicked();
@@ -1362,6 +1389,10 @@ void register_settings_panel_callbacks() {
                              SettingsPanel::on_sound_settings_clicked);
     lv_xml_register_event_cb(nullptr, "on_estop_confirm_changed",
                              SettingsPanel::on_estop_confirm_changed);
+    lv_xml_register_event_cb(nullptr, "on_cancel_escalation_changed",
+                             SettingsPanel::on_cancel_escalation_changed);
+    lv_xml_register_event_cb(nullptr, "on_cancel_escalation_timeout_changed",
+                             on_cancel_escalation_timeout_changed);
     lv_xml_register_event_cb(nullptr, "on_telemetry_changed", SettingsPanel::on_telemetry_changed);
     lv_xml_register_event_cb(nullptr, "on_telemetry_view_data",
                              SettingsPanel::on_telemetry_view_data);

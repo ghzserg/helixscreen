@@ -212,6 +212,7 @@ class SettingsPanel : public PanelBase {
     void handle_led_settings_clicked();
     void handle_sound_settings_clicked();
     void handle_estop_confirm_changed(bool enabled);
+    void handle_cancel_escalation_changed(bool enabled);
     void handle_telemetry_changed(bool enabled);
     void handle_telemetry_view_data_clicked();
 
@@ -262,6 +263,7 @@ class SettingsPanel : public PanelBase {
     static void on_led_settings_clicked(lv_event_t* e);
     static void on_sound_settings_clicked(lv_event_t* e);
     static void on_estop_confirm_changed(lv_event_t* e);
+    static void on_cancel_escalation_changed(lv_event_t* e);
     static void on_about_clicked(lv_event_t* e);
     static void on_telemetry_changed(lv_event_t* e);
     static void on_display_settings_clicked(lv_event_t* e);
