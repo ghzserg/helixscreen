@@ -3,6 +3,7 @@
 
 #include "ams_backend_mock.h"
 
+#include "afc_defaults.h"
 #include "filament_database.h"
 #include "runtime_config.h"
 
@@ -66,13 +67,15 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
     system_info_.filament_loaded = false;
     system_info_.action = AmsAction::IDLE;
     system_info_.total_slots = slot_count;
-    system_info_.supports_endless_spool = true;
-    system_info_.supports_spoolman = true;
-    system_info_.supports_tool_mapping = true;
-    system_info_.supports_bypass = true;
-    system_info_.has_hardware_bypass_sensor = false; // Default: virtual (manual toggle)
-    system_info_.tip_method = TipMethod::CUT;        // Happy Hare typically has cutter
-    system_info_.supports_purge = true;              // Happy Hare supports purging
+    // Use shared AFC defaults for capabilities
+    auto caps = helix::printer::afc_default_capabilities();
+    system_info_.supports_endless_spool = caps.supports_endless_spool;
+    system_info_.supports_spoolman = caps.supports_spoolman;
+    system_info_.supports_tool_mapping = caps.supports_tool_mapping;
+    system_info_.supports_bypass = caps.supports_bypass;
+    system_info_.supports_purge = caps.supports_purge;
+    system_info_.tip_method = caps.tip_method;
+    system_info_.has_hardware_bypass_sensor = false; // Mock default: virtual toggle
 
     // Create single unit with all slots
     AmsUnit unit;
@@ -171,74 +174,25 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
         }
     }
 
-    // Initialize default device sections (AFC-like)
-    mock_device_sections_ = {
-        {"calibration", "Calibration", 0, "Bowden length and lane calibration"},
-        {"speed", "Speed Settings", 1, "Move speed multipliers"},
-    };
+    // Initialize default device sections (subset of shared AFC defaults)
+    {
+        auto all_sections = helix::printer::afc_default_sections();
+        for (const auto& s : all_sections) {
+            if (s.id == "calibration" || s.id == "speed") {
+                mock_device_sections_.push_back(s);
+            }
+        }
+    }
 
-    // Initialize default device actions
-    using helix::printer::ActionType;
-    mock_device_actions_ = {
-        // Calibration section
-        {"calibration_wizard",
-         "Run Calibration Wizard",
-         "play",
-         "calibration",
-         "Interactive calibration for all lanes",
-         ActionType::BUTTON,
-         {},
-         {},
-         0,
-         100,
-         "",
-         -1,
-         true,
-         ""},
-        {"bowden_length",
-         "Bowden Length",
-         "ruler",
-         "calibration",
-         "Distance from hub to toolhead",
-         ActionType::SLIDER,
-         450.0f,
-         {},
-         100.0f,
-         1000.0f,
-         "mm",
-         -1,
-         true,
-         ""},
-        // Speed section
-        {"speed_fwd",
-         "Forward Multiplier",
-         "fast-forward",
-         "speed",
-         "Speed multiplier for forward moves",
-         ActionType::SLIDER,
-         1.0f,
-         {},
-         0.5f,
-         2.0f,
-         "x",
-         -1,
-         true,
-         ""},
-        {"speed_rev",
-         "Reverse Multiplier",
-         "rewind",
-         "speed",
-         "Speed multiplier for reverse moves",
-         ActionType::SLIDER,
-         1.0f,
-         {},
-         0.5f,
-         2.0f,
-         "x",
-         -1,
-         true,
-         ""},
-    };
+    // Initialize default device actions (only for active sections)
+    {
+        auto all_actions = helix::printer::afc_default_actions();
+        for (auto& a : all_actions) {
+            if (a.section == "calibration" || a.section == "speed") {
+                mock_device_actions_.push_back(std::move(a));
+            }
+        }
+    }
 
     spdlog::debug("[AmsBackendMock] Created with {} slots", slot_count);
 }
@@ -1069,13 +1023,16 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
         system_info_.type_name = "AFC (Mock)";
         system_info_.version = "1.0.32-mock";
         system_info_.total_slots = 4;
-        system_info_.supports_bypass = true;
-        system_info_.supports_endless_spool = true;
-        system_info_.supports_spoolman = true;
-        system_info_.supports_tool_mapping = true;
+
+        // Use shared AFC defaults for capabilities
+        auto afc_caps = helix::printer::afc_default_capabilities();
+        system_info_.supports_endless_spool = afc_caps.supports_endless_spool;
+        system_info_.supports_spoolman = afc_caps.supports_spoolman;
+        system_info_.supports_tool_mapping = afc_caps.supports_tool_mapping;
+        system_info_.supports_bypass = afc_caps.supports_bypass;
+        system_info_.supports_purge = afc_caps.supports_purge;
+        system_info_.tip_method = afc_caps.tip_method;
         system_info_.has_hardware_bypass_sensor = false;
-        system_info_.tip_method = TipMethod::CUT;
-        system_info_.supports_purge = true;
 
         // HUB topology, single unit
         topology_ = PathTopology::HUB;
@@ -1191,176 +1148,29 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             endless_spool_configs_.push_back(config);
         }
 
-        // AFC-specific device sections
-        using helix::printer::ActionType;
-        mock_device_sections_ = {
-            {"calibration", "Calibration", 0, "Bowden length and lane calibration"},
-            {"maintenance", "Maintenance", 1, "Lane tests and motor resets"},
-            {"speed", "Speed Settings", 2, "Move speed multipliers"},
-            {"led", "LEDs & Modes", 3, "LED control and quiet mode"},
-        };
+        // AFC-specific device sections (from shared defaults)
+        mock_device_sections_.clear();
+        {
+            auto all_sections = helix::printer::afc_default_sections();
+            for (const auto& s : all_sections) {
+                if (s.id == "calibration" || s.id == "maintenance" || s.id == "speed" ||
+                    s.id == "led") {
+                    mock_device_sections_.push_back(s);
+                }
+            }
+        }
 
-        // AFC-specific device actions
-        mock_device_actions_ = {
-            // Calibration section
-            {"calibration_wizard",
-             "Run Calibration Wizard",
-             "play",
-             "calibration",
-             "Interactive calibration for all lanes",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"bowden_length",
-             "Bowden Length",
-             "ruler",
-             "calibration",
-             "Distance from hub to toolhead",
-             ActionType::SLIDER,
-             450.0f,
-             {},
-             100.0f,
-             1000.0f,
-             "mm",
-             -1,
-             true,
-             ""},
-            {"test_lanes",
-             "Test All Lanes",
-             "refresh",
-             "calibration",
-             "Load and unload each lane to verify operation",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            // Maintenance section
-            {"change_blade",
-             "Change Blade",
-             "scissors",
-             "maintenance",
-             "Prepare cutter for blade replacement",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"park",
-             "Park Filament",
-             "download",
-             "maintenance",
-             "Retract filament to parking position",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"brush",
-             "Clean Brush",
-             "paint-roller",
-             "maintenance",
-             "Run nozzle cleaning brush cycle",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"reset_motor",
-             "Reset Motor",
-             "rotate-ccw",
-             "maintenance",
-             "Reset stepper motor to default state",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            // Speed section
-            {"speed_fwd",
-             "Forward Multiplier",
-             "fast-forward",
-             "speed",
-             "Speed multiplier for forward moves",
-             ActionType::SLIDER,
-             1.0f,
-             {},
-             0.5f,
-             2.0f,
-             "x",
-             -1,
-             true,
-             ""},
-            {"speed_rev",
-             "Reverse Multiplier",
-             "rewind",
-             "speed",
-             "Speed multiplier for reverse moves",
-             ActionType::SLIDER,
-             1.0f,
-             {},
-             0.5f,
-             2.0f,
-             "x",
-             -1,
-             true,
-             ""},
-            // LED section
-            {"led_toggle",
-             "Status LEDs",
-             "lightbulb",
-             "led",
-             "Toggle lane status indicator LEDs",
-             ActionType::TOGGLE,
-             true,
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"quiet_mode",
-             "Quiet Mode",
-             "volume-x",
-             "led",
-             "Reduce motor noise at the cost of speed",
-             ActionType::TOGGLE,
-             false,
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-        };
+        // AFC-specific device actions (from shared defaults)
+        mock_device_actions_.clear();
+        {
+            auto all_actions = helix::printer::afc_default_actions();
+            for (auto& a : all_actions) {
+                if (a.section == "calibration" || a.section == "maintenance" ||
+                    a.section == "speed" || a.section == "led") {
+                    mock_device_actions_.push_back(std::move(a));
+                }
+            }
+        }
 
         spdlog::info("[AmsBackendMock] AFC mode enabled (4-lane Box Turtle)");
     } else {
@@ -1376,71 +1186,26 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             system_info_.units[0].name = "Mock MMU";
         }
 
-        // Restore default device sections and actions (from constructor pattern)
-        mock_device_sections_ = {
-            {"calibration", "Calibration", 0, "Bowden length and lane calibration"},
-            {"speed", "Speed Settings", 1, "Move speed multipliers"},
-        };
+        // Restore default device sections and actions (from shared defaults)
+        mock_device_sections_.clear();
+        {
+            auto all_sections = helix::printer::afc_default_sections();
+            for (const auto& s : all_sections) {
+                if (s.id == "calibration" || s.id == "speed") {
+                    mock_device_sections_.push_back(s);
+                }
+            }
+        }
 
-        using helix::printer::ActionType;
-        mock_device_actions_ = {
-            {"calibration_wizard",
-             "Run Calibration Wizard",
-             "play",
-             "calibration",
-             "Interactive calibration for all lanes",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"bowden_length",
-             "Bowden Length",
-             "ruler",
-             "calibration",
-             "Distance from hub to toolhead",
-             ActionType::SLIDER,
-             450.0f,
-             {},
-             100.0f,
-             1000.0f,
-             "mm",
-             -1,
-             true,
-             ""},
-            {"speed_fwd",
-             "Forward Multiplier",
-             "fast-forward",
-             "speed",
-             "Speed multiplier for forward moves",
-             ActionType::SLIDER,
-             1.0f,
-             {},
-             0.5f,
-             2.0f,
-             "x",
-             -1,
-             true,
-             ""},
-            {"speed_rev",
-             "Reverse Multiplier",
-             "rewind",
-             "speed",
-             "Speed multiplier for reverse moves",
-             ActionType::SLIDER,
-             1.0f,
-             {},
-             0.5f,
-             2.0f,
-             "x",
-             -1,
-             true,
-             ""},
-        };
+        mock_device_actions_.clear();
+        {
+            auto all_actions = helix::printer::afc_default_actions();
+            for (auto& a : all_actions) {
+                if (a.section == "calibration" || a.section == "speed") {
+                    mock_device_actions_.push_back(std::move(a));
+                }
+            }
+        }
 
         spdlog::info("[AmsBackendMock] AFC mode disabled, reverting to Happy Hare");
     }
