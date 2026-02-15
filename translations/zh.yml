@@ -6,6 +6,7 @@ translations:
   '- Check [resonance_tester] in printer.cfg': '- 检查 printer.cfg 中的 [resonance_tester]'
   '- Ensure ADXL345 is connected': '- 确保 ADXL345 已连接'
   '- Try Measure Noise first': '- 先尝试测量噪声'
+  0 slots: '{0} 个料仓'
   0.4-2mm direct drive, 4-6mm bowden: 直驱 0.4-2mm，远程挤出 4-6mm
   1 more tap to {} beta features: ''
   1. Printer homes and probes the bed: 1. 打印机归位并探测热床
@@ -19,15 +20,25 @@ translations:
   4. Repeat until bed is level: 4. 重复直到热床水平
   = Loosen: = 松开
   = Tighten: = 拧紧
+  '@spoolman_edit_save_text': ''
   ABOUT: 关于
   ABS: ABS
   ADXL: ADXL
+  AFC abort failed: AFC中止失败
+  AFC homing complete: AFC归位完成
+  AFC homing failed: AFC归位失败
+  AFC operation aborted: AFC操作已中止
+  AFC recovery complete: AFC恢复完成
+  AFC recovery failed: AFC恢复失败
   AMS: AMS
-  AMS Settings: AMS 设置
+  AMS Management: AMS 管理
+  API not available: API 不可用
   APPEARANCE: 外观
   AUTO STATE: 自动状态
   AUTOMATION: 自动化
   Abort: 中止
+  Abort failed: 中止失败
+  Aborting AFC operation...: 正在中止AFC操作...
   About HelixScreen: 关于 HelixScreen
   Accel to Decel: 加速到减速
   Acceleration to deceleration limit (mm/s²): 加速到减速限制 (mm/s²)
@@ -62,7 +73,8 @@ translations:
   Apply Changes: 应用更改
   Applying...: 正在应用...
   Are you sure you want to cancel this print? All progress will be lost.: 确定要取消此打印吗？所有进度将丢失。
-  Assign Klipper macros to control LEDs via on/off, toggle, or presets: 分配 Klipper 宏通过开/关、切换或预设控制 LED
+  Assign Klipper macros to control LEDs via on/off, toggle, or presets: 分配 Klipper
+    宏通过开/关、切换或预设控制 LED
   Assign Spool: 分配料盘
   Assign a role to enable sensor monitoring: 分配角色以启用传感器监控
   Assigning to Slot 1: 正在分配到料仓 1
@@ -107,6 +119,7 @@ translations:
   Button taps and navigation sounds: 按钮点击和导航声音
   Bypass: 旁路
   Bypass Mode: 旁路模式
+  Bypass controlled by hardware sensor: 旁路由硬件传感器控制
   CALIBRATION: 校准
   CAPABILITIES: 功能
   CHANGED FROM LAST SESSION: 与上次会话相比有更改
@@ -118,7 +131,6 @@ translations:
   Calibrate Y: 校准 Y 轴
   Calibrated: ''
   Calibrating...: 正在校准...
-  Calibration: 校准
   Calibration & Tools: 校准与工具
   Calibration Complete!: 校准完成！
   Calibration Failed: 校准失败
@@ -138,7 +150,9 @@ translations:
   Check Again: 重新检查
   Check for Updates: 检查更新
   Check the filament path and try again.: 检查耗材路径并重试。
+  Checking for plugin...: 正在检查插件...
   Checking slots...: 正在检查料仓...
+  Checking timelapse plugin...: 正在检查延时摄影插件...
   Choose 12-hour or 24-hour time display: 选择 12 小时制或 24 小时制
   Choose display language: 选择显示语言
   Choose how frames are captured during printing: 选择打印期间的帧捕获方式
@@ -161,6 +175,8 @@ translations:
   Completed: 已完成
   Completed in 3 probes: 已完成 3 次探测
   Config-defined (read-only): 配置定义（只读）
+  Configuration added successfully.: 配置添加成功。
+  Configuration already present.: 配置已存在。
   Configure G10/G11 firmware retraction: 配置 G10/G11 固件回抽
   Configure PRINT_START: 配置 PRINT_START
   Configure Spoolman integration and weight sync settings.: 配置 Spoolman 集成和重量同步设置。
@@ -168,9 +184,10 @@ translations:
   Configure filament detection sensors: 配置耗材检测传感器
   Configure quick buttons and standard macros: 配置快捷按钮和标准宏
   Configure timelapse recording: 配置延时录像
+  Configuring Moonraker...: 正在配置 Moonraker...
   Connect: 连接
   Connect an ADXL345 accelerometer to calibrate: 连接 ADXL345 加速度计以进行校准
-  'Connect to your printer via SSH and run:': '通过 SSH 连接到打印机并运行：'
+  'Connect to your printer via SSH and run:': 通过 SSH 连接到打印机并运行：
   Connected: 已连接
   Connected (%s): 已连接 (%s)
   Connected (no discovery): 已连接（无发现）
@@ -185,11 +202,13 @@ translations:
   Connection successful!: 连接成功！
   Console: 控制台
   Control optional print start features: 控制可选的打印启动功能
+  Controlled by hardware sensor: 由硬件传感器控制
   Cool Down: 冷却
   Cooling: 冷却中
   Copy Command: 复制命令
   Corner roundness (0 = sharp, 40 = very round): 圆角程度（0 = 尖锐，40 = 非常圆润）
   Correction (Ki): 校正 (Ki)
+  Could not check webcam status.\nCheck printer connection.: 无法检查摄像头状态。\n请检查打印机连接。
   Crash report sent — thank you!: 崩溃报告已发送 — 谢谢！
   Create video when print completes: 打印完成时创建视频
   Current / Target: 当前 / 目标
@@ -215,9 +234,9 @@ translations:
   Delete: 删除
   Delete File?: 删除文件？
   Delete Profile?: 删除配置？
+  Delete Spool?: 删除料盘？
   'Delta:': 差值：
   Dev channel requires dev_url in config: ''
-  Device Operations: 设备操作
   Device name is required: 设备名称为必填项
   Disable: 禁用
   Disable Motors?: 关闭电机？
@@ -246,6 +265,7 @@ translations:
   Edit: 编辑
   Edit Preset: 编辑预设
   Edit Slot 1: 编辑料仓 1
+  Edit Spool: 编辑料盘
   Edit Theme Colors: 编辑主题颜色
   Edit Theme Colors (Modified): 编辑主题颜色（已修改）
   Effects: 特效
@@ -298,6 +318,9 @@ translations:
   Failed to analyze PRINT_START macro: 分析 PRINT_START 宏失败
   Failed to apply limits: 应用限制失败
   Failed to apply settings: 应用设置失败
+  Failed to delete spool: 删除料盘失败
+  Failed to download moonraker.conf.\nCheck printer connection.: 下载 moonraker.conf
+    失败。\n请检查打印机连接。
   Failed to enable tuning tower: 启用调优塔失败
   Failed to get limits: 获取限制失败
   Failed to load overlay: 加载覆盖层失败
@@ -305,9 +328,12 @@ translations:
   Failed to open history: 打开历史记录失败
   Failed to open history list: 打开历史列表失败
   Failed to open wizard: 打开向导失败
+  Failed to restart Moonraker.: 重启 Moonraker 失败。
   Failed to save configuration: 保存配置失败
+  Failed to save spool: 保存料盘失败
   Failed to save theme file: 保存主题文件失败
   Failed to set active spool: 设置活动料盘失败
+  Failed to update configuration.\nCheck printer connection.: 更新配置失败。\n请检查打印机连接。
   Failed to update phase tracking: 更新相位跟踪失败
   Fans: 风扇
   Farther: 更远
@@ -348,7 +374,9 @@ translations:
   Hardware marked as optional: 硬件已标记为可选
   Hardware saved to config: 硬件已保存到配置
   Have a piece of paper ready.: 请准备好一张纸。
-  ? Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't adjusted with                              thumb wheels or some other built-in mechanism.
+  ? Have your bed adjustment tool (screwdriver, hex-key, etc.) ready if your bed isn't
+    adjusted with                              thumb wheels or some other built-in
+    mechanism.
   : 如果您的热床不是用旋钮或其他内置机构调整的，请准备好热床调整工具（螺丝刀、内六角扳手等）。
   Heading: 标题
   Heat Soak: 预热浸泡
@@ -359,10 +387,13 @@ translations:
   Heating...: 正在加热...
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen 崩溃
-  HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen 将与您的耗材更换器集成，用于多料盘/多色打印操作。
+  HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
+    将与您的耗材更换器集成，用于多料盘/多色打印操作。
   Help improve HelixScreen?: 帮助改进 HelixScreen？
   Higher = faster: 越高 = 越快
   Home: 归位
+  Home failed: 归位失败
+  Homing AFC system...: AFC系统归位中...
   Horizontal Progress (Leveling Wizard): 水平进度（调平向导）
   Host: 主机
   Hotend: 热端
@@ -377,6 +408,7 @@ translations:
   Idle: 空闲
   Ignore: 忽略
   In Progress: 进行中
+  Inactive: 未激活
   Indexing G-code...: 正在索引 G-code...
   Initializing...: 初始化中...
   Input: 输入
@@ -390,7 +422,9 @@ translations:
   Install HelixPrint Plugin: 安装 HelixPrint 插件
   Install Plugin: 安装插件
   Install Update: 安装更新
-  'Install the HelixPrint plugin to enable fast G-code modifications. Run this command via SSH on your printer:': 安装 HelixPrint 插件以启用快速 G-code 修改。通过 SSH 在打印机上运行此命令：
+  'Install the HelixPrint plugin to enable fast G-code modifications. Run this command via SSH on your printer:': 安装
+    HelixPrint 插件以启用快速 G-code 修改。通过 SSH 在打印机上运行此命令：
+  Install the timelapse plugin via SSH,\nthen tap \"Check Again\".: 通过SSH安装延时摄影插件，\n然后点击"重新检查"。
   Install timelapse plugin: 安装延时摄影插件
   Installation Failed: 安装失败
   Installation takes about 30 seconds.: 安装大约需要 30 秒。
@@ -405,7 +439,8 @@ translations:
   Keyboard Test (Gboard-style): 键盘测试（Gboard 风格）
   Klipper: Klipper
   'Klipper firmware has disconnected from the host. ': 'Klipper 固件已与主机断开连接。 '
-  'Klipper has entered shutdown state. This may be due to an emergency stop, ': 'Klipper 已进入关机状态。这可能是由于紧急停止、'
+  'Klipper has entered shutdown state. This may be due to an emergency stop, ': Klipper
+    已进入关机状态。这可能是由于紧急停止、
   Klipper will restart to apply changes: Klipper 将重启以应用更改
   Klipper will restart to apply changes.: Klipper 将重启以应用更改。
   Klipper will restart to apply new PID values.: Klipper 将重启以应用新的 PID 值。
@@ -417,6 +452,7 @@ translations:
   LEDs: LED
   LEDs controlled by the light button: 由灯光按钮控制的 LED
   LOADED: 已加载
+  Label printing coming soon: 标签打印即将推出
   Language: 语言
   Last print cancelled: 上次打印已取消
   Last print failed: 上次打印失败
@@ -438,6 +474,7 @@ translations:
   Loading spools...: 正在加载料盘...
   Loading...: 正在加载...
   Locked during print: 打印期间锁定
+  Lot/Batch Nr: 批次号
   M to toggle: 按 M 切换
   'MAC:': MAC：
   MACRO DEVICES: 宏设备
@@ -485,13 +522,16 @@ translations:
   Modified: 已修改
   Month: 月
   Moonraker: Moonraker
+  Moonraker restarting...\nWaiting for reconnection...: Moonraker 重启中...\n等待重新连接...
   Motion: 运动
   'Motion: XYZ': 运动：XYZ
   Motors Off: 关闭电机
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: 调整时前后移动纸张。当纸张有轻微阻力但仍能滑动时停止。
   Movement speed: 移动速度
-  ? Moves the print head to measure vibration frequencies on each axis. Takes 2-3 minutes. The printer will make noise — this is normal.
+  ? Moves the print head to measure vibration frequencies on each axis. Takes 2-3
+    minutes. The printer will make noise — this is normal.
   : 移动打印头以测量每个轴上的振动频率。需要 2-3 分钟。打印机会发出噪音——这是正常的。
+  Multi Filament System Overview: 多耗材系统概览
   Multi-Filament: 多耗材
   Multi-Material: 多材料
   My Custom Theme: 我的自定义主题
@@ -508,6 +548,7 @@ translations:
   New Version Available: 发现新版本
   New profile name: 新配置名称
   Next: 下一步
+  No AMS system connected: 未连接 AMS 系统
   No AMS system connected.: 未连接 AMS 系统。
   No Filament Detected: 未检测到耗材
   No History: 无历史记录
@@ -528,6 +569,7 @@ translations:
   No networks found: 未找到网络
   No notifications: 无通知
   No plugins found: 未找到插件
+  No presets: 无预设
   No preview: 无预览
   No print history yet: 暂无打印历史
   No print start macro found: 未找到打印启动宏
@@ -535,11 +577,13 @@ translations:
   No profiles available: 无可用配置
   No sensors detected: 未检测到传感器
   No spools available: 无可用料盘
+  No webcam detected.\nA webcam is required for timelapse.: 未检测到摄像头。\n延时摄影需要摄像头。
   Not Now: 暂不
   Not calibrated: ''
   Not connected: 未连接
   Not connected to printer: 未连接到打印机
   Not yet calibrated: 尚未校准
+  Notes: 备注
   Notifications: 通知
   Notify when print finishes: 打印完成时通知
   Nozzle: 喷嘴
@@ -553,6 +597,7 @@ translations:
   'Off': 关
   'On': 开
   On and Off macros must be different: 开和关的宏必须不同
+  On/Off (state-aware): 开/关（状态跟踪）
   Open: 打开
   Operations: 操作
   Optimize Your Printing: 优化您的打印
@@ -579,8 +624,10 @@ translations:
   Phase tracking enabled: 相位跟踪已启用
   Phase tracking update failed: 相位跟踪更新失败
   Pick Color: 选择颜色
-  Place PNG or JPEG files in config/custom_images/ to add custom images: 将 PNG 或 JPEG 文件放在 config/custom_images/ 中以添加自定义图片
-  Place plugins in the plugins directory to extend HelixScreen: 将插件放在 plugins 目录中以扩展 HelixScreen
+  Place PNG or JPEG files in config/custom_images/ to add custom images: 将 PNG 或 JPEG
+    文件放在 config/custom_images/ 中以添加自定义图片
+  Place plugins in the plugins directory to extend HelixScreen: 将插件放在 plugins 目录中以扩展
+    HelixScreen
   Play a test beep: 播放测试提示音
   Please enter a theme name: 请输入主题名称
   Please wait while the printer homes and probes.: 请等待打印机归位和探测。
@@ -589,6 +636,7 @@ translations:
   Plugin disabled: 插件已禁用
   Plugin installed successfully: 插件安装成功
   Plugin installed successfully.: 插件安装成功。
+  Plugin not responding after restart.\nIt may need more time to load.: 重启后插件无响应。\n可能需要更多时间加载。
   Plugins: 插件
   Plugins are discovered on application startup: 插件在应用程序启动时被发现
   Polymaker: Polymaker
@@ -600,6 +648,7 @@ translations:
   Preset: 预设
   Presets: 预设
   Previous: 上一步
+  Price: 价格
   Primary: 主要
   Print: 打印
   Print Cancelled: 打印已取消
@@ -612,6 +661,7 @@ translations:
   Print Files: 打印文件
   Print History: 打印历史
   Print Hours: 打印时长
+  Print Label: 打印标签
   Print Objects: 打印对象
   Print Speed: 打印速度
   Print Status: 打印状态
@@ -658,11 +708,14 @@ translations:
   Record timelapses of your prints: 录制打印延时摄影
   Recording Mode: 录制模式
   Recover: 恢复
+  Recovering AFC system...: AFC系统恢复中...
+  Recovery failed: 恢复失败
   Reduce ringing and ghosting artifacts: 减少振纹和残影
   Reduce vibration artifacts like ringing and ghosting: 减少振纹和残影等振动伪影
   Refresh Interval: 刷新间隔
   Release all stepper motors. Position will be lost.: 释放所有步进电机。位置信息将丢失。
   Remaining: 剩余
+  Remaining (g): 剩余 (g)
   Remove plugin from printer: 从打印机移除插件
   Rename: 重命名
   Rename Mesh Profile: 重命名网格配置
@@ -673,6 +726,7 @@ translations:
   Reset: 重置
   Reset Speed & Flow to 100%: 重置速度和流量为 100%
   Reset all settings and restart wizard: 重置所有设置并重新启动向导
+  Reset to original values: 重置为原始值
   Resetting...: 正在重置...
   Response (Kp): 响应 (Kp)
   Restart HelixScreen: 重启 HelixScreen
@@ -683,6 +737,7 @@ translations:
   Restart the display application: 重启显示应用程序
   Restarting HelixScreen...: ''
   Restarting Klipper...: 正在重启 Klipper...
+  Restarting Moonraker...: 正在重启 Moonraker...
   Resume: 恢复
   Resume Print: 恢复打印
   Retract Length: 回抽长度
@@ -724,7 +779,10 @@ translations:
   Screws Tilt: 螺丝倾斜
   Scroll Speed: 滚动速度
   Search filename...: 搜索文件名...
+  Search spools...: 搜索料盘...
+  Searching...: 搜索中...
   Secondary: 次要
+  Section Detail: 区域详情
   Security: 安全
   See exactly what data will be sent: 查看将发送的确切数据
   Select: 选择
@@ -744,6 +802,7 @@ translations:
   Sensors: 传感器
   Separate on/off macros. HelixScreen tracks the state.: ''
   'Set ': '设置 '
+  Set Active: 设为活动
   Settings: 设置
   Settings reset to defaults: 设置已重置为默认值
   Setup Timelapse: 设置延时摄影
@@ -764,10 +823,13 @@ translations:
   Sounds: 声音
   Speaker: 扬声器
   'Specular:': 镜面反射：
-  Speed Settings: 速度设置
   Speed of prime movement: 预挤移动速度
   Speed of retraction movement: 回抽移动速度
+  Spool: 料盘
   Spool Visualization (Pseudo-3D Canvas): 料盘可视化（伪 3D 画布）
+  Spool deleted: 料盘已删除
+  Spool saved: 料盘已保存
+  Spool wt (g): 料盘重量 (g)
   Spoolman: Spoolman
   Spoolman has no spools configured: Spoolman 未配置料盘
   Square Corner Velocity: 直角转弯速度
@@ -796,6 +858,7 @@ translations:
   Sync to Spoolman: 同步到 Spoolman
   Sync with Spoolman: 与 Spoolman 同步
   Sysfs: Sysfs
+  System: 系统
   System detected: 检测到系统
   TD-1 filament color detection: TD-1 耗材颜色检测
   THEME COLORS: 主题颜色
@@ -814,8 +877,10 @@ translations:
   Test Network: 测试网络
   Test Sound: 测试声音
   Thanks! Anonymous usage data helps improve HelixScreen.: 感谢！匿名使用数据有助于改进 HelixScreen。
-  Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: 感谢！完全匿名的使用数据有助于改进 HelixScreen。
-  ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints.
+  Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: 感谢！完全匿名的使用数据有助于改进
+    HelixScreen。
+  ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
+    skipping bed mesh for quick reprints.
   : HelixPrint 插件可在打印机上直接进行快速 G-code 修改——例如跳过热床网格以快速重新打印。
   The heater will cycle on and off several times.: 加热器将多次开关循环。
   'The runout sensor indicates no filament is loaded. ': '断料传感器显示未装载耗材。 '
@@ -826,15 +891,20 @@ translations:
   Theme Preset: 主题预设
   Theme changes apply after restart.: 主题更改在重启后生效。
   Theme, brightness, and sleep settings: 主题、亮度和休眠设置
-  This calibration uses the paper friction method to set your Z-offset.: 此校准使用纸张摩擦法设置 Z 偏移。
+  This calibration uses the paper friction method to set your Z-offset.: 此校准使用纸张摩擦法设置
+    Z 偏移。
+  This cannot be undone.: 此操作无法撤销。
   This is exactly the data that will be sent: 这正是将要发送的数据
   This is what data would be sent if enabled: 这是启用后将发送的数据
   This may take up to 30 seconds: 这可能需要 30 秒
-  ? This plugin lets HelixScreen control print start options like bed mesh and QGL. Once installed, use Configure PRINT_START below to enable optional steps.
+  ? This plugin lets HelixScreen control print start options like bed mesh and QGL.
+    Once installed, use Configure PRINT_START below to enable optional steps.
   : 此插件让 HelixScreen 控制打印启动选项，如热床网格和 QGL。安装后，使用下面的配置 PRINT_START 启用可选步骤。
   This tool probes each bed screw and tells you how much to adjust.: 此工具探测每个热床螺丝并告诉您需要调整多少。
-  'This will apply the Z-offset to your endstop and restart Klipper to save the ': '这将把 Z 偏移应用到限位开关并重启 Klipper 以保存'
-  'This will apply the Z-offset to your probe and restart Klipper to save the ': '这将把 Z 偏移应用到探针并重启 Klipper 以保存'
+  'This will apply the Z-offset to your endstop and restart Klipper to save the ': 这将把
+    Z 偏移应用到限位开关并重启 Klipper 以保存
+  'This will apply the Z-offset to your probe and restart Klipper to save the ': 这将把
+    Z 偏移应用到探针并重启 Klipper 以保存
   This will immediately halt all printer operations. The printer will require a restart to resume.: 这将立即停止所有打印机操作。打印机需要重启才能恢复。
   This will reset all settings to defaults. This action cannot be undone.: 这将把所有设置重置为默认值。此操作无法撤销。
   This will restart Klipper.: 这将重启 Klipper。
@@ -844,8 +914,13 @@ translations:
   Timelapse: 延时摄影
   Timelapse Available: 延时摄影可用
   Timelapse Settings: 延时摄影设置
+  Timelapse plugin installed successfully!: 延时摄影插件安装成功！
+  Timelapse plugin installed!: 延时摄影插件已安装！
+  Timelapse plugin is already installed!: 延时摄影插件已安装！
+  Timelapse plugin is installed!: 延时摄影插件已安装！
   'Tip:': 提示：
   Toggle: 切换
+  Toggle (fire-and-forget): 切换（无状态跟踪）
   Toggle Feature: 切换功能
   Tool: 工具
   Tool Changer: 换刀器
@@ -868,6 +943,8 @@ translations:
   USB: USB
   Uninstall HelixPrint Plugin: 卸载 HelixPrint 插件
   'Uninstall: Coming soon': '卸载: 即将推出'
+  Unit: 单元
+  'Unit ': '单元 '
   Unknown: 未知
   Unknown Spool: 未知料盘
   Unknown Step: 未知步骤
@@ -886,6 +963,7 @@ translations:
   ValgACE (ACE Pro): ValgACE (ACE Pro)
   Velocity and acceleration limits: 速度和加速度限制
   Vendor: 供应商
+  Verifying timelapse plugin...: 正在验证延时摄影插件...
   Verifying...: 验证中...
   Version: 版本
   Vertical Progress (Retract Wizard): 垂直进度（回抽向导）
@@ -908,7 +986,8 @@ translations:
   Warning: 警告
   Webcam: 摄像头
   Week: 周
-  ? Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete.
+  ? Weight data is synced from Spoolman to display remaining filament. Changes are
+    also synced when prints start, pause, or complete.
   : 重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。
   Weight sync settings: 重量同步设置
   What We Collect: 我们收集的内容
@@ -948,11 +1027,15 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   Zoom: 缩放
   disable: ''
+  disabled: 已禁用
   elapsed: 已用时
   enable: ''
+  enabled: 已启用
   est: est
   layers: 层
   of: 的
+  set to: 设置为
+  started: 已启动
   used: 已使用
   v{} is available. Tap to update.: v{} 可用。点击以更新。
   '{} more taps to {} beta features': ''

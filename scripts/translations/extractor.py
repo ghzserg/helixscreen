@@ -62,10 +62,10 @@ LANGUAGE_NAMES = {
 
 # C++ patterns that indicate translatable text
 CPP_TRANSLATABLE_PATTERNS = [
-    # lv_tr("text") - explicitly marked for translation
-    r'lv_tr\s*\(\s*"([^"]+)"',
+    # lv_tr("text") - explicitly marked for translation (handles escaped quotes)
+    r'lv_tr\s*\(\s*"((?:[^"\\]|\\.)+)"',
     # lv_label_set_text(label, "text")
-    r'lv_label_set_text\s*\([^,]+,\s*"([^"]+)"',
+    r'lv_label_set_text\s*\([^,]+,\s*"((?:[^"\\]|\\.)+)"',
     # return "Status Text"  (for status strings)
     r'return\s+"([A-Z][a-z][^"]{2,30})"',
 ]

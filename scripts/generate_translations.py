@@ -182,13 +182,39 @@ static uint8_t {locale}_plural_fn(int32_t num)
 
 
 def escape_c_string(text: str) -> str:
-    """Escape special characters for C strings."""
-    text = text.replace("\\", "\\\\")
-    text = text.replace('"', '\\"')
-    text = text.replace("\n", "\\n")
-    text = text.replace("\r", "\\r")
-    text = text.replace("\t", "\\t")
-    return text
+    """Escape special characters for C strings.
+
+    Handles both real control characters and literal escape sequences from YAML.
+    YAML single-quoted strings store \\n as two chars (backslash + n), which must
+    stay as \\n in C (the compiler interprets it as a real newline at runtime).
+    """
+    result = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\n":
+            result.append("\\n")
+        elif ch == "\r":
+            result.append("\\r")
+        elif ch == "\t":
+            result.append("\\t")
+        elif ch == '"':
+            result.append('\\"')
+        elif ch == "\\" and i + 1 < len(text):
+            next_ch = text[i + 1]
+            if next_ch in ("n", "r", "t", "\\", '"'):
+                # Recognized C escape sequence — preserve as-is
+                result.append("\\")
+                result.append(next_ch)
+                i += 1
+            else:
+                result.append("\\\\")
+        elif ch == "\\":
+            result.append("\\\\")
+        else:
+            result.append(ch)
+        i += 1
+    return "".join(result)
 
 
 def get_plural_forms_for_locale(locale: str) -> list[str]:
