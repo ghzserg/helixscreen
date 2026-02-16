@@ -106,33 +106,12 @@ MoonrakerClient::~MoonrakerClient() {
     // Clear state change callback without locking (destructor context)
     state_change_callback_ = nullptr;
 
-    // Try to cleanup pending requests if mutex is available.
-    // During static destruction (via exit()), mutexes may be in an invalid state,
-    // so we use try_lock() to avoid blocking on a potentially corrupted mutex.
-    // If try_lock fails, we skip cleanup - any pending callbacks will be abandoned.
-    std::vector<std::function<void()>> cleanup_callbacks;
+    // Clear pending requests without invoking error callbacks.
+    // During destruction, callback targets (UI panels, file providers, etc.) may
+    // already be destroyed — invoking them would be use-after-free. Just drop them.
     if (requests_mutex_.try_lock()) {
-        // Successfully acquired lock - safe to clean up
-        for (auto& [id, request] : pending_requests_) {
-            if (request.error_callback) {
-                MoonrakerError error = MoonrakerError::connection_lost(request.method);
-                cleanup_callbacks.push_back(
-                    [cb = std::move(request.error_callback), error]() mutable {
-                        try {
-                            cb(error);
-                        } catch (...) {
-                            // Swallow exceptions during destruction cleanup
-                        }
-                    });
-            }
-        }
         pending_requests_.clear();
         requests_mutex_.unlock();
-
-        // Invoke callbacks outside the lock
-        for (auto& callback : cleanup_callbacks) {
-            callback();
-        }
     }
     // If try_lock failed, we're likely in static destruction - skip cleanup
 
