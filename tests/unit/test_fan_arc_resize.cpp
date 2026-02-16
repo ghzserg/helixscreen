@@ -64,9 +64,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "fan_arc_resize_to_fit: arc is square and trac
     REQUIRE(track_w == indicator_w);
     REQUIRE(track_w >= 6); // Minimum track width
 
-    // Verify the 11:1 ratio
+    // Verify approximately 11:1 ratio (±1px for LVGL layout rounding)
     int32_t expected_track = LV_MAX(arc_w / 11, 6);
-    REQUIRE(track_w == expected_track);
+    REQUIRE(abs(track_w - expected_track) <= 1);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "fan_arc_resize_to_fit: clamps to minimum 60px",

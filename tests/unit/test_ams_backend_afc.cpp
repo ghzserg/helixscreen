@@ -193,6 +193,13 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
         return AmsErrorHelper::success();
     }
 
+    // Override execute_gcode_notify to capture commands (avoids real API call)
+    AmsError execute_gcode_notify(const std::string& gcode, const std::string& /*success_msg*/,
+                                  const std::string& /*error_prefix*/) override {
+        captured_gcodes.push_back(gcode);
+        return AmsErrorHelper::success();
+    }
+
     void clear_captured_gcodes() {
         captured_gcodes.clear();
     }

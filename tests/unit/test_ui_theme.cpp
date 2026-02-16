@@ -260,27 +260,35 @@ TEST_CASE("UI Theme: Parse colors from globals.xml", "[ui_theme][color][integrat
 // ============================================================================
 
 TEST_CASE("UI Theme: Breakpoint suffix detection", "[ui_theme][responsive]") {
-    SECTION("Small breakpoint (height ≤460px)") {
-        // Heights at or below 460 should select _small variants
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(320), "_small") == 0);
+    SECTION("Tiny breakpoint (height ≤390px)") {
+        // Heights at or below 390 should select _tiny variants
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(320), "_tiny") == 0);
+    }
+
+    SECTION("Small breakpoint (height 391-460px)") {
+        // Heights between 391 and 460 should select _small variants
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(400), "_small") == 0);
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(440), "_small") == 0);
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(460), "_small") == 0);
     }
 
-    SECTION("Medium breakpoint (height 461-700px)") {
-        // Heights between 461 and 700 should select _medium variants
+    SECTION("Medium breakpoint (height 461-550px)") {
+        // Heights between 461 and 550 should select _medium variants
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(461), "_medium") == 0);
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(480), "_medium") == 0);
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(600), "_medium") == 0);
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(700), "_medium") == 0);
     }
 
-    SECTION("Large breakpoint (height >700px)") {
-        // Heights above 700 should select _large variants
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(701), "_large") == 0);
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(720), "_large") == 0);
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(1080), "_large") == 0);
+    SECTION("Large breakpoint (height 551-700px)") {
+        // Heights between 551 and 700 should select _large variants
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(600), "_large") == 0);
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(700), "_large") == 0);
+    }
+
+    SECTION("XLarge breakpoint (height >700px)") {
+        // Heights above 700 should select _xlarge variants
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(701), "_xlarge") == 0);
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(720), "_xlarge") == 0);
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(1080), "_xlarge") == 0);
     }
 }
 
@@ -293,45 +301,45 @@ TEST_CASE("UI Theme: Breakpoint boundary conditions", "[ui_theme][responsive]") 
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(461), "_medium") == 0);
     }
 
-    SECTION("Exact boundary: 700 → medium") {
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(700), "_medium") == 0);
+    SECTION("Exact boundary: 700 → large") {
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(700), "_large") == 0);
     }
 
-    SECTION("Exact boundary: 701 → large") {
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(701), "_large") == 0);
+    SECTION("Exact boundary: 701 → xlarge") {
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(701), "_xlarge") == 0);
     }
 }
 
 TEST_CASE("UI Theme: Target hardware resolutions", "[ui_theme][responsive]") {
     // Test against the specific target hardware — breakpoint uses screen HEIGHT
-    SECTION("480x320 (tiny screen) → SMALL") {
-        // height=320 ≤460 → SMALL
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(320), "_small") == 0);
+    SECTION("480x320 (tiny screen) → TINY") {
+        // height=320 ≤390 → TINY
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(320), "_tiny") == 0);
     }
 
     SECTION("480x400 (K1 screen) → SMALL") {
-        // height=400 ≤460 → SMALL
+        // height=400, 391-460 → SMALL
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(400), "_small") == 0);
     }
 
     SECTION("1920x440 (ultra-wide) → SMALL") {
-        // height=440 ≤460 → SMALL (was broken: LARGE with max-based logic)
+        // height=440, 391-460 → SMALL
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(440), "_small") == 0);
     }
 
     SECTION("800x480 (AD5M screen) → MEDIUM") {
-        // height=480, 461-700 → MEDIUM
+        // height=480, 461-550 → MEDIUM
         REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(480), "_medium") == 0);
     }
 
-    SECTION("1024x600 (medium screen) → MEDIUM") {
-        // height=600, 461-700 → MEDIUM (was LARGE with max-based logic)
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(600), "_medium") == 0);
+    SECTION("1024x600 (medium screen) → LARGE") {
+        // height=600, 551-700 → LARGE
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(600), "_large") == 0);
     }
 
-    SECTION("1280x720 (large screen) → LARGE") {
-        // height=720 >700 → LARGE
-        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(720), "_large") == 0);
+    SECTION("1280x720 (large screen) → XLARGE") {
+        // height=720 >700 → XLARGE
+        REQUIRE(strcmp(theme_manager_get_breakpoint_suffix(720), "_xlarge") == 0);
     }
 }
 

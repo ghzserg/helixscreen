@@ -221,11 +221,11 @@ TEST_CASE("UI Utils: ui_get_responsive_header_height - screen sizes", "[ui_utils
     }
 
     SECTION("Small screen (480px)") {
-        REQUIRE(ui_get_responsive_header_height(480) == 48);
+        REQUIRE(ui_get_responsive_header_height(480) == 60);
     }
 
-    SECTION("Small screen upper boundary (599px)") {
-        REQUIRE(ui_get_responsive_header_height(599) == 48);
+    SECTION("Medium screen (599px)") {
+        REQUIRE(ui_get_responsive_header_height(599) == 60);
     }
 
     SECTION("Medium screen (600px)") {
@@ -243,20 +243,20 @@ TEST_CASE("UI Utils: ui_get_responsive_header_height - screen sizes", "[ui_utils
 
 TEST_CASE("UI Utils: ui_get_responsive_header_height - boundary values",
           "[ui_utils][responsive][edge]") {
-    SECTION("At tiny/small boundary (479px)") {
-        REQUIRE(ui_get_responsive_header_height(479) == 40);
+    SECTION("One pixel before small threshold (399px)") {
+        REQUIRE(ui_get_responsive_header_height(399) == 40);
     }
 
-    SECTION("Exactly at small threshold (480px)") {
-        REQUIRE(ui_get_responsive_header_height(480) == 48);
+    SECTION("Exactly at small threshold (400px)") {
+        REQUIRE(ui_get_responsive_header_height(400) == 48);
     }
 
-    SECTION("At small/medium boundary (600px)") {
-        REQUIRE(ui_get_responsive_header_height(600) == 60);
+    SECTION("One pixel before medium threshold (479px)") {
+        REQUIRE(ui_get_responsive_header_height(479) == 48);
     }
 
-    SECTION("One pixel before medium (599px)") {
-        REQUIRE(ui_get_responsive_header_height(599) == 48);
+    SECTION("Exactly at medium threshold (480px)") {
+        REQUIRE(ui_get_responsive_header_height(480) == 60);
     }
 }
 
