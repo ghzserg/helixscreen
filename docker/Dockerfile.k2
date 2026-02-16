@@ -67,6 +67,23 @@ RUN wget -q "https://toolchains.bootlin.com/downloads/releases/toolchains/armv7-
     mv "armv7-eabihf--musl--stable-2024.02-1" arm-musl-toolchain
 
 # ==============================================================================
+# zlib 1.3.1 - Static Cross-Compiled Library
+# ==============================================================================
+# Required for debug bundle gzip compression (debug_bundle_collector.cpp).
+# Bootlin's musl toolchain doesn't include zlib, so we build it from source.
+WORKDIR /tmp
+RUN export PATH="/opt/arm-musl-toolchain/bin:$PATH" && \
+    wget -q https://zlib.net/zlib-1.3.1.tar.gz && \
+    tar xzf zlib-1.3.1.tar.gz && \
+    cd zlib-1.3.1 && \
+    CHOST=arm-buildroot-linux-musleabihf ./configure --static \
+        --prefix=/opt/arm-musl-toolchain/arm-buildroot-linux-musleabihf/sysroot/usr && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rf zlib-1.3.1 zlib-1.3.1.tar.gz
+
+# ==============================================================================
 # Cross-Compilation Environment
 # ==============================================================================
 

@@ -132,6 +132,23 @@ COPY --from=builder /opt/k1-toolchain /opt/k1-toolchain
 COPY k1-sysroot/lib/ /opt/k1-toolchain/mipsel-k1-linux-gnu/sysroot/lib/
 
 # ==============================================================================
+# zlib 1.3.1 - Cross-Compiled Library
+# ==============================================================================
+# Required for debug bundle gzip compression (debug_bundle_collector.cpp).
+# The crosstool-NG toolchain doesn't include zlib, so we build it from source.
+WORKDIR /tmp
+RUN export PATH="/opt/k1-toolchain/bin:$PATH" && \
+    wget -q https://zlib.net/zlib-1.3.1.tar.gz && \
+    tar xzf zlib-1.3.1.tar.gz && \
+    cd zlib-1.3.1 && \
+    CHOST=mipsel-k1-linux-gnu ./configure \
+        --prefix=/opt/k1-toolchain/mipsel-k1-linux-gnu/sysroot/usr && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rf zlib-1.3.1 zlib-1.3.1.tar.gz
+
+# ==============================================================================
 # Cross-Compilation Environment
 # ==============================================================================
 

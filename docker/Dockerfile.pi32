@@ -64,6 +64,7 @@ RUN dpkg --add-architecture armhf && apt-get update && apt-get install -y --no-i
     libudev-dev:armhf \
     libssl-dev:armhf \
     libsystemd-dev:armhf \
+    zlib1g-dev:armhf \
     && rm -rf /var/lib/apt/lists/*
 
 # ==============================================================================
