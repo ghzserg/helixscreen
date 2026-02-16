@@ -71,6 +71,7 @@ void SpoolmanListView::cleanup() {
     trailing_spacer_ = nullptr;
     visible_start_ = -1;
     visible_end_ = -1;
+    total_items_ = 0;
     cached_row_height_ = 0;
     cached_row_gap_ = 0;
     spdlog::debug("[SpoolmanListView] cleanup()");
@@ -147,6 +148,14 @@ void SpoolmanListView::configure_row(lv_obj_t* row, const SpoolInfo& spool, int 
         float fill_level = static_cast<float>(spool.remaining_percent()) / 100.0f;
         ui_spool_canvas_set_fill_level(canvas, fill_level);
         ui_spool_canvas_redraw(canvas);
+    }
+
+    // Update spool ID label
+    lv_obj_t* id_label = lv_obj_find_by_name(row, "spool_id_label");
+    if (id_label) {
+        char id_buf[16];
+        snprintf(id_buf, sizeof(id_buf), "#%d", spool.id);
+        lv_label_set_text(id_label, id_buf);
     }
 
     // Update spool name (Material - Color)
@@ -253,6 +262,7 @@ void SpoolmanListView::update_visible(const std::vector<SpoolInfo>& spools, int 
             lv_obj_set_height(trailing_spacer_, 0);
         visible_start_ = -1;
         visible_end_ = -1;
+        total_items_ = 0;
         return;
     }
 
@@ -270,13 +280,19 @@ void SpoolmanListView::update_visible(const std::vector<SpoolInfo>& spools, int 
     int last_visible = std::min(
         total_rows, static_cast<int>((scroll_y + viewport_height) / row_stride) + 1 + BUFFER_ROWS);
 
-    // Skip if unchanged
-    if (first_visible == visible_start_ && last_visible == visible_end_) {
+    // Force re-render if total item count changed (e.g. filter applied)
+    bool data_changed = (total_rows != total_items_);
+
+    // Skip if unchanged (unless data set size changed)
+    if (!data_changed && first_visible == visible_start_ && last_visible == visible_end_) {
         return;
     }
 
-    spdlog::trace("[SpoolmanListView] Scroll: y={} viewport={} visible={}-{}/{} stride={}",
-                  scroll_y, viewport_height, first_visible, last_visible, total_rows, row_stride);
+    total_items_ = total_rows;
+
+    spdlog::trace(
+        "[SpoolmanListView] Rendering rows {}-{} of {} (scroll_y={} viewport={} data_changed={})",
+        first_visible, last_visible, total_rows, scroll_y, viewport_height, data_changed);
 
     // Update leading spacer
     int leading_height = first_visible * row_stride;

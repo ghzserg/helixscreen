@@ -16,6 +16,10 @@
     <event_cb trigger="clicked" callback="on_spoolman_spool_row_clicked"/>
     <!-- LEFT: 3D Spool Canvas (48x48 fixed size) -->
     <spool_canvas name="spool_canvas" size="#button_height" color="0x808080" fill_level="0.5"/>
+    <!-- Spool Number -->
+    <text_small name="spool_id_label"
+                width="content" text="" style_text_color="#text_muted" style_pad_all="0"
+                clickable="false"/>
     <!-- MIDDLE: Material/Vendor Info (flex-grow to fill space) -->
     <lv_obj name="info_column"
             width="content" height="content" flex_grow="1" style_pad_all="0" scrollable="false" flex_flow="column"

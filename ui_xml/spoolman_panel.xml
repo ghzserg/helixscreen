@@ -12,7 +12,7 @@
                 hide_action_button_text="true" action_button_callback="on_spoolman_refresh_clicked"
                 action_button_bg_color="#elevated_bg" action_button_width="40" action_button_height="40"
                 action_button_radius="9999"
-                hide_action_button_2="false" action_button_2_text="+"
+                hide_action_button_2="false" action_button_2_text="+ Add"
                 action_button_2_callback="on_spoolman_add_spool_clicked"
                 action_button_2_bg_color="#primary"/>
     <!-- Search Row -->

@@ -106,6 +106,7 @@ class SpoolmanListView {
     // === Visible Range ===
     int visible_start_ = -1;
     int visible_end_ = -1;
+    int total_items_ = 0; ///< Track data size to detect filter changes
 
     // === Cached Dimensions ===
     int cached_row_height_ = 0;

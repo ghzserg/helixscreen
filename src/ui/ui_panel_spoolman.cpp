@@ -4,6 +4,7 @@
 #include "ui_panel_spoolman.h"
 
 #include "ui_global_panel_helper.h"
+#include "ui_keyboard_manager.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_nav_manager.h"
@@ -15,7 +16,6 @@
 
 #include "ams_state.h"
 #include "app_globals.h"
-#include "config.h"
 #include "format_utils.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
@@ -163,6 +163,7 @@ void SpoolmanPanel::on_activate() {
     lv_obj_t* search_box = lv_obj_find_by_name(overlay_root_, "search_box");
     if (search_box) {
         lv_textarea_set_text(search_box, "");
+        ui_keyboard_register_textarea(search_box);
     }
 
     // Refresh spool list when panel becomes visible
@@ -578,13 +579,6 @@ void SpoolmanPanel::on_refresh_clicked(lv_event_t* /*e*/) {
 }
 
 void SpoolmanPanel::on_add_spool_clicked(lv_event_t* /*e*/) {
-    // Gate behind beta features (defense-in-depth — button is also hidden via subject binding)
-    Config* config = Config::get_instance();
-    if (config && !config->is_beta_features_enabled()) {
-        spdlog::debug("[SpoolmanPanel] Beta features disabled, ignoring add spool");
-        return;
-    }
-
     spdlog::info("[SpoolmanPanel] Add spool clicked — launching wizard");
     auto& panel = get_global_spoolman_panel();
 
