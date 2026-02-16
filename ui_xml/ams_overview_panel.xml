@@ -5,8 +5,6 @@
   <consts>
     <!-- Sidebar width for status/controls column (matches ams_panel right_col_width) -->
     <percentage name="sidebar_width" value="28%"/>
-    <!-- Swatch size for currently loaded card -->
-    <px name="current_swatch_size" value="40"/>
   </consts>
   <!-- Overlay panel - right-aligned, uses standard large width -->
   <view name="ams_overview_panel"
@@ -54,29 +52,8 @@
                    style_border_width="0" scrollable="false">
             <lv_obj name="detail_slot_area"
                     width="100%" height="content" style_pad_all="0" scrollable="false">
-              <!-- Tray visual drawn FIRST so it renders BEHIND slot widgets.
-                   Slot numbers and active glow need to be visible on top of the tray. -->
-              <lv_obj name="detail_slot_tray"
-                      width="100%" height="30" align="bottom_mid"
-                      style_bg_color="#elevated_bg" style_bg_opa="200"
-                      style_border_width="1" style_border_color="#border" style_border_opa="140"
-                      style_radius="#border_radius" style_pad_all="0" scrollable="false" clickable="false">
-                <lv_obj width="#space_xs" height="80%" align="left_mid"
-                        style_translate_x="#space_xs" style_border_width="#space_xxs"
-                        style_border_color="#text_muted" style_border_opa="180" style_border_side="left"
-                        style_radius="#border_radius" style_pad_all="0" scrollable="false" clickable="false"/>
-                <lv_obj width="#space_xs" height="80%" align="right_mid"
-                        style_translate_x="-#space_xxs" style_border_width="#space_xxs"
-                        style_border_color="#text_muted" style_border_opa="180" style_border_side="right"
-                        style_radius="#border_radius" style_pad_all="0" scrollable="false" clickable="false"/>
-              </lv_obj>
-              <!-- Slot Grid Container (filled dynamically by C++) - renders ON TOP of tray -->
-              <lv_obj name="detail_slot_grid"
-                      width="content" height="content" style_pad_all="0" style_pad_row="0" style_pad_column="0"
-                      flex_flow="row" style_flex_main_place="start" style_flex_cross_place="start" scrollable="false"/>
-              <!-- Labels Layer - renders on top of everything for overlapping slots -->
-              <lv_obj name="detail_labels_layer"
-                      width="100%" height="80" style_pad_all="0" scrollable="false" clickable="false"/>
+              <!-- Shared spool grid + tray + labels component -->
+              <ams_unit_detail name="detail_unit_detail"/>
             </lv_obj>
           </ui_card>
           <!-- Path Canvas - shows filament routing from slots through hub to nozzle -->
@@ -92,29 +69,8 @@
               style_flex_main_place="start" style_flex_cross_place="start" scrollable="false">
         <!-- Currently Loaded Section Header -->
         <text_small width="100%" text="Currently Loaded" translation_tag="Currently Loaded"/>
-        <!-- Currently Loaded Card - horizontal layout: swatch left, details stacked right -->
-        <ui_card name="current_loaded_card"
-                 width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_sm" flex_flow="row"
-                 style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
-          <!-- Color swatch for current filament (left side) -->
-          <lv_obj name="overview_swatch"
-                  width="#current_swatch_size" height="#current_swatch_size" style_radius="#border_radius"
-                  style_bg_color="#text_muted" style_bg_opa="255" style_border_width="#space_xxs"
-                  style_border_color="#text_muted" style_border_opa="80" scrollable="false" clickable="false"/>
-          <!-- Details column (stacked to the right of swatch) -->
-          <lv_obj name="current_details"
-                  height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="center"
-                  style_flex_cross_place="start" style_pad_gap="0" scrollable="false" flex_grow="1">
-            <!-- Primary label: material name -->
-            <text_body name="overview_material" width="100%" bind_text="ams_current_material_text" long_mode="wrap"/>
-            <!-- Slot indicator (e.g., "Box Turtle 1 · Slot 1") -->
-            <text_small name="overview_slot" bind_text="ams_current_slot_text"/>
-            <!-- Weight on separate line - hidden when not available -->
-            <text_small name="overview_weight" bind_text="ams_current_weight_text">
-              <bind_flag_if_eq subject="ams_current_has_weight" flag="hidden" ref_value="0"/>
-            </text_small>
-          </lv_obj>
-        </ui_card>
+        <!-- Shared loaded card component -->
+        <ams_loaded_card name="current_loaded_card"/>
         <!-- Spacer to push buttons to bottom -->
         <lv_obj width="1" flex_grow="1" style_bg_opa="0" style_border_width="0" scrollable="false"/>
         <!-- Bypass Toggle Row (only shown if bypass supported) -->

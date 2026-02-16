@@ -4,6 +4,7 @@
 #include "ui_panel_ams_overview.h"
 
 #include "ui_ams_context_menu.h"
+#include "ui_ams_detail.h"
 #include "ui_ams_device_operations_overlay.h"
 #include "ui_ams_slot.h"
 #include "ui_ams_slot_layout.h"
@@ -222,9 +223,8 @@ void AmsOverviewPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
 
     // Find detail view containers
     detail_container_ = lv_obj_find_by_name(panel_, "unit_detail_container");
-    detail_slot_grid_ = lv_obj_find_by_name(panel_, "detail_slot_grid");
-    detail_labels_layer_ = lv_obj_find_by_name(panel_, "detail_labels_layer");
-    detail_slot_tray_ = lv_obj_find_by_name(panel_, "detail_slot_tray");
+    lv_obj_t* detail_unit = lv_obj_find_by_name(panel_, "detail_unit_detail");
+    detail_widgets_ = ams_detail_find_widgets(detail_unit);
     detail_path_canvas_ = lv_obj_find_by_name(panel_, "detail_path_canvas");
 
     // Store global instance for callback access
@@ -610,7 +610,7 @@ void AmsOverviewPanel::refresh_system_path(const AmsSystemInfo& info, int curren
 
     // Update currently loaded swatch color (imperative — color subject is int, not CSS)
     if (panel_) {
-        lv_obj_t* swatch = lv_obj_find_by_name(panel_, "overview_swatch");
+        lv_obj_t* swatch = lv_obj_find_by_name(panel_, "loaded_swatch");
         if (swatch) {
             lv_color_t color = lv_color_hex(static_cast<uint32_t>(
                 lv_subject_get_int(AmsState::instance().get_current_color_subject())));
@@ -855,160 +855,53 @@ void AmsOverviewPanel::update_detail_header(const AmsUnit& unit, const AmsSystem
 }
 
 void AmsOverviewPanel::create_detail_slots(const AmsUnit& unit) {
-    if (!detail_slot_grid_)
+    ams_detail_destroy_slots(detail_widgets_, detail_slot_widgets_, detail_slot_count_);
+
+    // Find unit index from backend
+    auto* backend = AmsState::instance().get_backend();
+    if (!backend)
         return;
 
-    // Clear any existing detail slots
-    destroy_detail_slots();
-
-    int count = unit.slot_count;
-    if (count <= 0 || count > MAX_DETAIL_SLOTS)
-        return;
-
-    int slot_offset = unit.first_slot_global_index;
-
-    // Create slot widgets via XML
-    for (int i = 0; i < count; ++i) {
-        lv_obj_t* slot =
-            static_cast<lv_obj_t*>(lv_xml_create(detail_slot_grid_, "ams_slot", nullptr));
-        if (!slot) {
-            spdlog::error("[{}] Failed to create ams_slot for detail index {}", get_name(), i);
-            continue;
-        }
-
-        int global_index = i + slot_offset;
-        ui_ams_slot_set_index(slot, global_index);
-        ui_ams_slot_set_layout_info(slot, i, count);
-        detail_slot_widgets_[i] = slot;
-
-        // Wire up click handler for context menu
-        lv_obj_set_user_data(slot, reinterpret_cast<void*>(static_cast<intptr_t>(global_index)));
-        lv_obj_add_event_cb(slot, on_detail_slot_clicked, LV_EVENT_CLICKED, this);
-    }
-
-    detail_slot_count_ = count;
-
-    // Calculate slot sizing using shared layout helper
-    lv_obj_t* slot_area = lv_obj_get_parent(detail_slot_grid_);
-    lv_obj_update_layout(slot_area);
-    int32_t available_width = lv_obj_get_content_width(slot_area);
-    auto layout = calculate_ams_slot_layout(available_width, count);
-
-    lv_obj_set_style_pad_column(detail_slot_grid_, layout.overlap > 0 ? -layout.overlap : 0,
-                                LV_PART_MAIN);
-
-    for (int i = 0; i < count; ++i) {
-        if (detail_slot_widgets_[i]) {
-            lv_obj_set_width(detail_slot_widgets_[i], layout.slot_width);
+    AmsSystemInfo info = backend->get_system_info();
+    int unit_index = -1;
+    for (int i = 0; i < static_cast<int>(info.units.size()); ++i) {
+        if (info.units[i].first_slot_global_index == unit.first_slot_global_index) {
+            unit_index = i;
+            break;
         }
     }
 
-    // Update tray height to ~1/3 of slot height
-    if (detail_slot_tray_ && count > 0 && detail_slot_widgets_[0]) {
-        lv_obj_update_layout(detail_slot_widgets_[0]);
-        int32_t slot_height = lv_obj_get_height(detail_slot_widgets_[0]);
-        int32_t tray_height = slot_height / 3;
-        if (tray_height < 20)
-            tray_height = 20;
-        lv_obj_set_height(detail_slot_tray_, tray_height);
-    }
+    auto result = ams_detail_create_slots(detail_widgets_, detail_slot_widgets_, MAX_DETAIL_SLOTS,
+                                          unit_index, on_detail_slot_clicked, this);
 
-    // Move labels to overlay layer so they render on top of overlapping slots.
-    // Only needed when slots overlap (5+ slots use negative column padding).
-    if (detail_labels_layer_ && count > 4) {
-        lv_obj_clean(detail_labels_layer_);
+    detail_slot_count_ = result.slot_count;
 
-        int32_t slot_spacing = layout.slot_width - layout.overlap;
-        for (int i = 0; i < count; ++i) {
-            if (detail_slot_widgets_[i]) {
-                int32_t slot_center_x = layout.slot_width / 2 + i * slot_spacing;
-                ui_ams_slot_move_label_to_layer(detail_slot_widgets_[i], detail_labels_layer_,
-                                                slot_center_x);
-            }
-        }
-        spdlog::debug("[{}] Moved {} detail labels to overlay layer", get_name(), count);
-    }
+    ams_detail_update_labels(detail_widgets_, detail_slot_widgets_, result.slot_count,
+                             result.layout);
+    ams_detail_update_tray(detail_widgets_);
 
-    spdlog::debug("[{}] Created {} detail slots (offset={}, width={})", get_name(), count,
-                  slot_offset, layout.slot_width);
+    spdlog::debug("[{}] Created {} detail slots via shared helpers", get_name(), result.slot_count);
 }
 
 void AmsOverviewPanel::destroy_detail_slots() {
-    if (detail_slot_grid_) {
-        lv_obj_clean(detail_slot_grid_);
-    }
-    std::fill(std::begin(detail_slot_widgets_), std::end(detail_slot_widgets_), nullptr);
-    detail_slot_count_ = 0;
+    ams_detail_destroy_slots(detail_widgets_, detail_slot_widgets_, detail_slot_count_);
 }
 
 void AmsOverviewPanel::setup_detail_path_canvas(const AmsUnit& unit, const AmsSystemInfo& info) {
     if (!detail_path_canvas_)
         return;
 
-    auto* backend = AmsState::instance().get_backend();
-    if (!backend)
-        return;
-
-    // Hub-only mode: only draw slots → hub, skip downstream (shown by system_path_canvas)
-    ui_filament_path_canvas_set_hub_only(detail_path_canvas_, true);
-
-    // Configure canvas for this unit's local slot count
-    ui_filament_path_canvas_set_slot_count(detail_path_canvas_, unit.slot_count);
-    ui_filament_path_canvas_set_topology(detail_path_canvas_,
-                                         static_cast<int>(backend->get_topology()));
-
-    // Sync slot sizing with the detail slot grid layout
-    if (detail_slot_grid_) {
-        lv_obj_t* slot_area = lv_obj_get_parent(detail_slot_grid_);
-        lv_obj_update_layout(slot_area);
-        int32_t available_width = lv_obj_get_content_width(slot_area);
-        auto layout = calculate_ams_slot_layout(available_width, unit.slot_count);
-
-        ui_filament_path_canvas_set_slot_width(detail_path_canvas_, layout.slot_width);
-        ui_filament_path_canvas_set_slot_overlap(detail_path_canvas_, layout.overlap);
-    }
-
-    // Map global active slot to local index for this unit
-    int local_active = info.current_slot - unit.first_slot_global_index;
-    if (local_active >= 0 && local_active < unit.slot_count) {
-        ui_filament_path_canvas_set_active_slot(detail_path_canvas_, local_active);
-
-        // Set filament color from the active slot
-        SlotInfo slot_info = backend->get_slot_info(info.current_slot);
-        ui_filament_path_canvas_set_filament_color(detail_path_canvas_, slot_info.color_rgb);
-    } else {
-        ui_filament_path_canvas_set_active_slot(detail_path_canvas_, -1);
-    }
-
-    // Set filament segment position
-    PathSegment segment = backend->get_filament_segment();
-    ui_filament_path_canvas_set_filament_segment(detail_path_canvas_, static_cast<int>(segment));
-
-    // Set error segment if any
-    PathSegment error_seg = backend->infer_error_segment();
-    ui_filament_path_canvas_set_error_segment(detail_path_canvas_, static_cast<int>(error_seg));
-
-    // Use Stealthburner toolhead for Voron printers
-    if (PrinterDetector::is_voron_printer()) {
-        ui_filament_path_canvas_set_faceted_toolhead(detail_path_canvas_, true);
-    }
-
-    // Set per-slot filament states using LOCAL indices (0..unit.slot_count-1)
-    ui_filament_path_canvas_clear_slot_filaments(detail_path_canvas_);
-    for (int i = 0; i < unit.slot_count; ++i) {
-        int global_idx = i + unit.first_slot_global_index;
-        PathSegment slot_seg = backend->get_slot_filament_segment(global_idx);
-        if (slot_seg != PathSegment::NONE) {
-            SlotInfo si = backend->get_slot_info(global_idx);
-            ui_filament_path_canvas_set_slot_filament(detail_path_canvas_, i,
-                                                      static_cast<int>(slot_seg), si.color_rgb);
+    // Find unit index
+    int unit_index = -1;
+    for (int i = 0; i < static_cast<int>(info.units.size()); ++i) {
+        if (info.units[i].first_slot_global_index == unit.first_slot_global_index) {
+            unit_index = i;
+            break;
         }
     }
 
-    ui_filament_path_canvas_refresh(detail_path_canvas_);
-
-    spdlog::debug("[{}] Detail path canvas configured: slots={}, topology={}", get_name(),
-                  unit.slot_count, static_cast<int>(backend->get_topology()));
+    ams_detail_setup_path_canvas(detail_path_canvas_, detail_widgets_.slot_grid, unit_index,
+                                 true /* hub_only */);
 }
 
 // ============================================================================
@@ -1040,9 +933,7 @@ void AmsOverviewPanel::clear_panel_reference() {
 
     // Clear detail view state
     detail_container_ = nullptr;
-    detail_slot_grid_ = nullptr;
-    detail_labels_layer_ = nullptr;
-    detail_slot_tray_ = nullptr;
+    detail_widgets_ = AmsDetailWidgets{};
     detail_path_canvas_ = nullptr;
     detail_unit_index_ = -1;
     detail_slot_count_ = 0;
@@ -1090,7 +981,9 @@ static void ensure_overview_registered() {
     ui_spool_canvas_register();
     ui_ams_slot_register();
 
-    // Register the XML components (unit card must be registered before overview panel)
+    // Register the XML components (dependencies must be registered before overview panel)
+    lv_xml_register_component_from_file("A:ui_xml/components/ams_unit_detail.xml");
+    lv_xml_register_component_from_file("A:ui_xml/components/ams_loaded_card.xml");
     lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml");
     lv_xml_register_component_from_file("A:ui_xml/ams_unit_card.xml");
     lv_xml_register_component_from_file("A:ui_xml/ams_overview_panel.xml");

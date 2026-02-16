@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ui_ams_context_menu.h"
+#include "ui_ams_detail.h"
 #include "ui_observer_guard.h"
 #include "ui_panel_base.h"
 
@@ -93,12 +94,10 @@ class AmsOverviewPanel : public PanelBase {
 
     // === Detail View State ===
     static constexpr int MAX_DETAIL_SLOTS = 16;
-    int detail_unit_index_ = -1;              ///< Currently shown unit (-1 = overview mode)
-    lv_obj_t* detail_container_ = nullptr;    ///< Detail view root container
-    lv_obj_t* detail_slot_grid_ = nullptr;    ///< Slot grid in detail view
-    lv_obj_t* detail_labels_layer_ = nullptr; ///< Labels overlay for staggered slots
-    lv_obj_t* detail_slot_tray_ = nullptr;    ///< Tray visual
-    lv_obj_t* detail_path_canvas_ = nullptr;  ///< Filament path visualization
+    int detail_unit_index_ = -1;             ///< Currently shown unit (-1 = overview mode)
+    lv_obj_t* detail_container_ = nullptr;   ///< Detail view root container
+    AmsDetailWidgets detail_widgets_;        ///< Shared widget pointers for detail view
+    lv_obj_t* detail_path_canvas_ = nullptr; ///< Filament path visualization
     lv_obj_t* detail_slot_widgets_[MAX_DETAIL_SLOTS] = {nullptr};
     int detail_slot_count_ = 0;
 
