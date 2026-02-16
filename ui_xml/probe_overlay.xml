@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <view name="probe_overlay"
+        extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_border_width="0"
+        style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
+    <!-- Header Bar -->
+    <header_bar name="overlay_header" title="Probe" title_tag="Probe"/>
+    <!-- Content Area -->
+    <lv_obj name="panel_content"
+            width="100%" flex_grow="1" style_pad_all="#space_lg" style_pad_gap="#space_md" scrollable="true"
+            flex_flow="column">
+
+      <!-- ============================================================ -->
+      <!-- PROBE IDENTITY CARD -->
+      <!-- ============================================================ -->
+      <lv_obj width="100%"
+              height="content" style_bg_color="#screen_bg" style_bg_opa="255" style_radius="#border_radius"
+              style_pad_all="#space_lg" flex_flow="column" style_pad_gap="#space_sm" scrollable="false">
+
+        <!-- Probe name and type -->
+        <text_heading bind_text="probe_display_name"/>
+        <text_small bind_text="probe_type_label" style_text_color="#text_muted"/>
+
+        <!-- Status row: indicator + Z offset -->
+        <lv_obj width="100%"
+                height="content" style_pad_all="0" style_pad_top="#space_sm" flex_flow="row"
+                style_flex_cross_place="center" style_pad_gap="#space_lg" scrollable="false">
+          <text_body text="Status" translation_tag="Status"/>
+          <probe_indicator/>
+          <text_body text="Z Offset" translation_tag="Z Offset"/>
+          <text_body bind_text="probe_z_offset_display" style_text_color="#text_accent"/>
+        </lv_obj>
+      </lv_obj>
+
+      <!-- ============================================================ -->
+      <!-- TYPE-SPECIFIC PANEL (swapped on activation) -->
+      <!-- ============================================================ -->
+      <lv_obj name="probe_type_panel" width="100%" height="content" style_pad_all="0" scrollable="false"/>
+
+      <!-- ============================================================ -->
+      <!-- UNIVERSAL ACTIONS -->
+      <!-- ============================================================ -->
+
+      <!-- Probe Accuracy Test -->
+      <setting_action_row name="btn_probe_accuracy"
+                          label="Probe Accuracy Test" label_tag="Probe Accuracy Test" icon="target"
+                          description="Test probe repeatability" description_tag="Test probe repeatability">
+        <event_cb trigger="clicked" callback="on_probe_accuracy"/>
+      </setting_action_row>
+
+      <!-- Accuracy result (hidden by default) -->
+      <lv_obj width="100%"
+              height="content" style_bg_color="#screen_bg" style_bg_opa="255" style_radius="#border_radius"
+              style_pad_all="#space_md" scrollable="false">
+        <bind_flag_if_eq subject="probe_accuracy_visible" flag="hidden" ref_value="0"/>
+        <text_small bind_text="probe_accuracy_result" style_text_color="#text_muted"/>
+      </lv_obj>
+
+      <!-- Z-Offset Calibration -->
+      <setting_action_row name="btn_zoffset"
+                          label="Z-Offset Calibration" label_tag="Z-Offset Calibration" icon="z_closer"
+                          description="Interactive probe offset adjustment"
+                          description_tag="Interactive probe offset adjustment">
+        <event_cb trigger="clicked" callback="on_zoffset_cal"/>
+      </setting_action_row>
+
+      <!-- Bed Mesh -->
+      <setting_action_row name="btn_bedmesh"
+                          label="Bed Mesh" label_tag="Bed Mesh" icon="grid_large"
+                          description="Probe bed surface for compensation"
+                          description_tag="Probe bed surface for compensation">
+        <event_cb trigger="clicked" callback="on_bed_mesh"/>
+      </setting_action_row>
+
+    </lv_obj>
+  </view>
+</component>

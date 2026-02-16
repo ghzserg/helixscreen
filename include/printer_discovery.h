@@ -167,7 +167,8 @@ class PrinterDiscovery {
                 has_z_tilt_ = true;
             } else if (name == "bed_mesh") {
                 has_bed_mesh_ = true;
-            } else if (name == "probe" || name == "bltouch") {
+            } else if (name == "probe" || name == "bltouch" || name == "smart_effector" ||
+                       name == "cartographer" || name == "beacon") {
                 has_probe_ = true;
             } else if (name.rfind("probe_eddy_current ", 0) == 0) {
                 has_probe_ = true;

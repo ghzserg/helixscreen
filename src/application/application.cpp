@@ -79,6 +79,7 @@
 #include "ui_panel_test.h"
 #include "ui_print_tune_overlay.h"
 #include "ui_printer_status_icon.h"
+#include "ui_probe_overlay.h"
 #include "ui_settings_display.h"
 #include "ui_settings_hardware_health.h"
 #include "ui_settings_sensors.h"
@@ -829,6 +830,7 @@ bool Application::init_panel_subjects() {
     ui_status_bar_register_callbacks();
     ui_panel_screws_tilt_register_callbacks();
     ui_panel_input_shaper_register_callbacks();
+    ui_probe_overlay_register_callbacks();
 
     // Create temperature history manager (collects temp samples from PrinterState subjects)
     m_temp_history_manager = std::make_unique<TemperatureHistoryManager>(get_printer_state());

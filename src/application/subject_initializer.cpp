@@ -34,6 +34,7 @@
 #include "ui_panel_spoolman.h"
 #include "ui_panel_temp_control.h"
 #include "ui_printer_status_icon.h"
+#include "ui_probe_overlay.h"
 #include "ui_wizard.h"
 
 #include "abort_manager.h"
@@ -246,6 +247,7 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     init_input_shaper_row_handler();
     init_zoffset_row_handler();
     init_zoffset_event_callbacks();
+    init_probe_row_handler();
 
     // Wizard and keypad - register cleanup with StaticPanelRegistry
     ui_wizard_init_subjects();

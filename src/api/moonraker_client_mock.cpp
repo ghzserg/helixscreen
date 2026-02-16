@@ -283,6 +283,27 @@ void MoonrakerClientMock::populate_capabilities() {
     // MMU/AMS system - Happy Hare uses "mmu" object name
     mock_objects.push_back("mmu");
 
+    // Probe sensor (HELIX_MOCK_PROBE_TYPE: cartographer, tap, bltouch, beacon, klicky, standard,
+    // none)
+    const char* probe_env = std::getenv("HELIX_MOCK_PROBE_TYPE");
+    std::string mock_probe_type = (probe_env && probe_env[0]) ? probe_env : "cartographer";
+    if (mock_probe_type == "none") {
+        spdlog::debug("[MoonrakerClientMock] Probe disabled via env var");
+    } else if (mock_probe_type == "cartographer") {
+        mock_objects.push_back("cartographer");
+        spdlog::debug("[MoonrakerClientMock] Mock probe: cartographer");
+    } else if (mock_probe_type == "bltouch") {
+        mock_objects.push_back("bltouch");
+        spdlog::debug("[MoonrakerClientMock] Mock probe: bltouch");
+    } else if (mock_probe_type == "beacon") {
+        mock_objects.push_back("beacon");
+        spdlog::debug("[MoonrakerClientMock] Mock probe: beacon");
+    } else {
+        // tap, klicky, standard, etc. → generic "probe" object
+        mock_objects.push_back("probe");
+        spdlog::debug("[MoonrakerClientMock] Mock probe: {} (as generic probe)", mock_probe_type);
+    }
+
     // Filament sensors (common setup: runout sensor at spool holder)
     // Check HELIX_MOCK_FILAMENT_SENSORS env var for custom sensor names
     // Default: single switch sensor named "runout_sensor"
