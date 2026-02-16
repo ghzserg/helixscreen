@@ -1473,6 +1473,60 @@ class MoonrakerAPI {
     virtual void delete_spoolman_spool(int spool_id, SuccessCallback on_success,
                                        ErrorCallback on_error);
 
+    /**
+     * @brief Get list of vendors from SpoolmanDB (external database)
+     *
+     * Queries the Spoolman server's external vendor endpoint.
+     *
+     * @param on_success Called with vendor list from SpoolmanDB
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_external_vendors(VendorListCallback on_success,
+                                               ErrorCallback on_error);
+
+    /**
+     * @brief Get list of filaments from SpoolmanDB filtered by vendor name
+     *
+     * Queries the Spoolman server's external filament endpoint.
+     *
+     * @param vendor_name Vendor name to filter by
+     * @param on_success Called with filament list from SpoolmanDB
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_external_filaments(const std::string& vendor_name,
+                                                 FilamentListCallback on_success,
+                                                 ErrorCallback on_error);
+
+    /**
+     * @brief Get list of filaments from Spoolman filtered by vendor ID
+     *
+     * @param vendor_id Vendor ID to filter by
+     * @param on_success Called with filament list
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_filaments(int vendor_id, FilamentListCallback on_success,
+                                        ErrorCallback on_error);
+
+    /**
+     * @brief Delete a vendor from Spoolman
+     *
+     * @param vendor_id Spoolman vendor ID to delete
+     * @param on_success Called when deletion succeeds
+     * @param on_error Called on failure
+     */
+    virtual void delete_spoolman_vendor(int vendor_id, SuccessCallback on_success,
+                                        ErrorCallback on_error);
+
+    /**
+     * @brief Delete a filament from Spoolman
+     *
+     * @param filament_id Spoolman filament ID to delete
+     * @param on_success Called when deletion succeeds
+     * @param on_error Called on failure
+     */
+    virtual void delete_spoolman_filament(int filament_id, SuccessCallback on_success,
+                                          ErrorCallback on_error);
+
     // ========================================================================
     // Advanced Panel Operations - Machine Limits
     // ========================================================================

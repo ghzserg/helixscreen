@@ -1,0 +1,355 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Spool Wizard: 3-step overlay for creating new spools in Spoolman -->
+<!-- Steps: 0=Select Vendor, 1=Select Filament, 2=Spool Details -->
+<component>
+  <view name="spool_wizard"
+        extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_border_width="0"
+        style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
+
+    <!-- ==================== HEADER ==================== -->
+    <header_bar name="wizard_header" title="New Spool" title_tag="New Spool"/>
+
+    <!-- Step indicator -->
+    <lv_obj width="100%" height="content" style_pad_hor="#space_lg" style_pad_ver="#space_xs" scrollable="false">
+      <text_small name="step_label"
+                  width="100%" bind_text="spool_wizard_step_label" style_text_color="#text_muted"
+                  style_text_align="center"/>
+    </lv_obj>
+
+    <!-- ==================== CONTENT AREA ==================== -->
+    <lv_obj name="wizard_content"
+            width="100%" flex_grow="1" style_pad_all="#space_lg" style_pad_gap="#space_md" scrollable="false"
+            flex_flow="column">
+
+      <!-- ==================== STEP 0: SELECT VENDOR ==================== -->
+      <lv_obj name="step_vendor"
+              width="100%" flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_md"
+              scrollable="false" hidden="true">
+        <bind_flag_if_not_eq subject="spool_wizard_step" flag="hidden" ref_value="0"/>
+
+        <!-- Search input -->
+        <text_input name="vendor_search"
+                    width="100%" placeholder_text="Search vendors..." placeholder_tag="Search vendors...">
+          <event_cb trigger="value_changed" callback="on_wizard_vendor_search_changed"/>
+        </text_input>
+
+        <!-- Create New Vendor card (expandable) -->
+        <ui_card name="create_vendor_card"
+                 width="100%" height="content" style_pad_all="#space_md" flex_flow="column" style_pad_gap="#space_sm"
+                 hidden="true">
+          <bind_flag_if_not_eq subject="spool_wizard_show_create_vendor" flag="hidden" ref_value="1"/>
+
+          <text_body text="Create New Vendor" translation_tag="Create New Vendor" style_text_color="#primary"/>
+
+          <!-- Vendor name input -->
+          <lv_obj width="100%"
+                  height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+            <text_small text="Vendor Name" translation_tag="Vendor Name" style_text_color="#text_muted"/>
+            <text_input name="new_vendor_name"
+                        width="100%" placeholder_text="e.g. Polymaker" placeholder_tag="e.g. Polymaker">
+              <event_cb trigger="value_changed" callback="on_wizard_new_vendor_name_changed"/>
+            </text_input>
+          </lv_obj>
+
+          <!-- Vendor URL input (optional) -->
+          <lv_obj width="100%"
+                  height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+            <text_small text="Website (optional)" translation_tag="Website (optional)" style_text_color="#text_muted"/>
+            <text_input name="new_vendor_url" width="100%" placeholder_text="https://..." placeholder_tag="https://...">
+              <event_cb trigger="value_changed" callback="on_wizard_new_vendor_url_changed"/>
+            </text_input>
+          </lv_obj>
+
+          <!-- Confirm create vendor button -->
+          <ui_button name="confirm_create_vendor_btn"
+                     width="100%" variant="primary" text="Add Vendor" translation_tag="Add Vendor">
+            <bind_flag_if_eq subject="spool_wizard_can_create_vendor" flag="disabled" ref_value="0"/>
+            <event_cb trigger="clicked" callback="on_wizard_confirm_create_vendor"/>
+          </ui_button>
+        </ui_card>
+
+        <!-- Toggle to show/hide create vendor form -->
+        <ui_button name="toggle_create_vendor_btn"
+                   width="100%" variant="ghost" text="+ Create New Vendor" translation_tag="+ Create New Vendor"
+                   hidden="true">
+          <bind_flag_if_eq subject="spool_wizard_show_create_vendor" flag="hidden" ref_value="1"/>
+          <event_cb trigger="clicked" callback="on_wizard_toggle_create_vendor"/>
+        </ui_button>
+
+        <!-- Vendor list (scrollable) -->
+        <lv_obj name="vendor_list"
+                width="100%" flex_grow="1" scrollable="true" flex_flow="column" style_pad_all="0"
+                style_pad_gap="#space_sm"/>
+
+        <!-- Empty state for vendor list -->
+        <centered_column name="vendor_empty_state" flex_grow="1" hidden="true">
+          <bind_flag_if_not_eq subject="spool_wizard_vendor_count" flag="hidden" ref_value="0"/>
+          <icon src="inbox_outline" size="xl" variant="secondary"/>
+          <text_body text="No vendors found"
+                     translation_tag="No vendors found" style_text_align="center" style_text_color="#text_muted"/>
+        </centered_column>
+
+        <!-- Loading state for vendor list -->
+        <centered_column name="vendor_loading_state" flex_grow="1" hidden="true">
+          <bind_flag_if_not_eq subject="spool_wizard_vendors_loading" flag="hidden" ref_value="1"/>
+          <spinner size="lg"/>
+          <text_small text="Loading vendors..." translation_tag="Loading vendors..." style_text_align="center"/>
+        </centered_column>
+      </lv_obj>
+
+      <!-- ==================== STEP 1: SELECT FILAMENT ==================== -->
+      <lv_obj name="step_filament"
+              width="100%" flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_md"
+              scrollable="false" hidden="true">
+        <bind_flag_if_not_eq subject="spool_wizard_step" flag="hidden" ref_value="1"/>
+
+        <!-- Selected vendor display -->
+        <lv_obj width="100%"
+                height="content" flex_flow="row" style_pad_all="0" style_flex_cross_place="center"
+                style_pad_gap="#space_sm" scrollable="false">
+          <text_small text="Vendor:" translation_tag="Vendor:" style_text_color="#text_muted"/>
+          <text_body name="selected_vendor_label" bind_text="wizard_selected_vendor_name"/>
+        </lv_obj>
+
+        <!-- Filament list (scrollable) -->
+        <lv_obj name="filament_list"
+                width="100%" flex_grow="1" scrollable="true" flex_flow="column" style_pad_all="0"
+                style_pad_gap="#space_sm"/>
+
+        <!-- Empty state for filament list -->
+        <centered_column name="filament_empty_state" flex_grow="1" hidden="true">
+          <bind_flag_if_not_eq subject="spool_wizard_filament_count" flag="hidden" ref_value="0"/>
+          <icon src="inbox_outline" size="xl" variant="secondary"/>
+          <text_body text="No filaments found"
+                     translation_tag="No filaments found" style_text_align="center" style_text_color="#text_muted"/>
+        </centered_column>
+
+        <!-- Create New Filament card (expandable) -->
+        <ui_card name="create_filament_card"
+                 width="100%" height="content" style_pad_all="#space_md" flex_flow="column" style_pad_gap="#space_sm"
+                 hidden="true">
+          <bind_flag_if_not_eq subject="spool_wizard_show_create_filament" flag="hidden" ref_value="1"/>
+
+          <text_body text="Create New Filament" translation_tag="Create New Filament" style_text_color="#primary"/>
+
+          <!-- Material dropdown -->
+          <lv_obj width="100%"
+                  height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+            <text_small text="Material" translation_tag="Material" style_text_color="#text_muted"/>
+            <lv_dropdown name="material_dropdown"
+                         width="100%"
+                         options="PLA&#10;PETG&#10;ABS&#10;ASA&#10;TPU&#10;Nylon&#10;PC&#10;PVA&#10;HIPS&#10;Other">
+              <event_cb trigger="value_changed" callback="on_wizard_material_changed"/>
+            </lv_dropdown>
+          </lv_obj>
+
+          <!-- Filament name -->
+          <lv_obj width="100%"
+                  height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+            <text_small text="Name (optional)" translation_tag="Name (optional)" style_text_color="#text_muted"/>
+            <text_input name="new_filament_name"
+                        width="100%" placeholder_text="e.g. Jet Black" placeholder_tag="e.g. Jet Black">
+              <event_cb trigger="value_changed" callback="on_wizard_new_filament_name_changed"/>
+            </text_input>
+          </lv_obj>
+
+          <!-- Color swatch + picker button row -->
+          <lv_obj width="100%"
+                  height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm"
+                  style_flex_cross_place="center" scrollable="false">
+            <text_small width="60" text="Color" translation_tag="Color" style_text_color="#text_muted"/>
+            <lv_obj name="filament_color_swatch"
+                    width="32" height="32" style_radius="16" style_bg_color="0x808080" style_bg_opa="255"
+                    style_border_width="1" style_border_color="#border"/>
+            <ui_button name="pick_color_btn"
+                       variant="ghost" text="Pick Color" translation_tag="Pick Color" icon="palette">
+              <event_cb trigger="clicked" callback="on_wizard_pick_filament_color"/>
+            </ui_button>
+          </lv_obj>
+
+          <!-- Temperature ranges -->
+          <lv_obj width="100%"
+                  height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" scrollable="false">
+            <!-- Nozzle temp range -->
+            <lv_obj height="content"
+                    flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+              <text_small text="Nozzle Temp" translation_tag="Nozzle Temp" style_text_color="#text_muted"/>
+              <lv_obj width="100%"
+                      height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_xs"
+                      style_flex_cross_place="center" scrollable="false">
+                <text_input name="nozzle_temp_min" width="60" placeholder_text="190" keyboard_hint="numeric">
+                  <event_cb trigger="value_changed" callback="on_wizard_nozzle_temp_changed"/>
+                </text_input>
+                <text_small text="-" style_text_color="#text_muted"/>
+                <text_input name="nozzle_temp_max" width="60" placeholder_text="220" keyboard_hint="numeric">
+                  <event_cb trigger="value_changed" callback="on_wizard_nozzle_temp_changed"/>
+                </text_input>
+              </lv_obj>
+            </lv_obj>
+            <!-- Bed temp range -->
+            <lv_obj height="content"
+                    flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+              <text_small text="Bed Temp" translation_tag="Bed Temp" style_text_color="#text_muted"/>
+              <lv_obj width="100%"
+                      height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_xs"
+                      style_flex_cross_place="center" scrollable="false">
+                <text_input name="bed_temp_min" width="60" placeholder_text="50" keyboard_hint="numeric">
+                  <event_cb trigger="value_changed" callback="on_wizard_bed_temp_changed"/>
+                </text_input>
+                <text_small text="-" style_text_color="#text_muted"/>
+                <text_input name="bed_temp_max" width="60" placeholder_text="70" keyboard_hint="numeric">
+                  <event_cb trigger="value_changed" callback="on_wizard_bed_temp_changed"/>
+                </text_input>
+              </lv_obj>
+            </lv_obj>
+          </lv_obj>
+
+          <!-- Weight fields -->
+          <lv_obj width="100%"
+                  height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm" scrollable="false">
+            <lv_obj height="content"
+                    flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+              <text_small text="Net Weight (g)" translation_tag="Net Weight (g)" style_text_color="#text_muted"/>
+              <text_input name="filament_weight" width="100%" placeholder_text="1000" keyboard_hint="numeric">
+                <event_cb trigger="value_changed" callback="on_wizard_filament_weight_changed"/>
+              </text_input>
+            </lv_obj>
+            <lv_obj height="content"
+                    flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+              <text_small text="Spool Weight (g)" translation_tag="Spool Weight (g)" style_text_color="#text_muted"/>
+              <text_input name="filament_spool_weight" width="100%" placeholder_text="250" keyboard_hint="numeric">
+                <event_cb trigger="value_changed" callback="on_wizard_spool_weight_changed"/>
+              </text_input>
+            </lv_obj>
+          </lv_obj>
+
+          <!-- Confirm create filament button -->
+          <ui_button name="confirm_create_filament_btn"
+                     width="100%" variant="primary" text="Add Filament" translation_tag="Add Filament">
+            <event_cb trigger="clicked" callback="on_wizard_confirm_create_filament"/>
+          </ui_button>
+        </ui_card>
+
+        <!-- Toggle to show/hide create filament form -->
+        <ui_button name="toggle_create_filament_btn"
+                   width="100%" variant="ghost" text="+ Create New Filament" translation_tag="+ Create New Filament"
+                   hidden="true">
+          <bind_flag_if_eq subject="spool_wizard_show_create_filament" flag="hidden" ref_value="1"/>
+          <event_cb trigger="clicked" callback="on_wizard_toggle_create_filament"/>
+        </ui_button>
+      </lv_obj>
+
+      <!-- ==================== STEP 2: SPOOL DETAILS ==================== -->
+      <lv_obj name="step_spool"
+              width="100%" flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_md"
+              scrollable="true" hidden="true">
+        <bind_flag_if_not_eq subject="spool_wizard_step" flag="hidden" ref_value="2"/>
+
+        <!-- Summary card: vendor + filament selection -->
+        <ui_card name="summary_card"
+                 width="100%" height="content" style_pad_all="#space_md" flex_flow="column" style_pad_gap="#space_xs">
+          <lv_obj width="100%"
+                  height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm"
+                  style_flex_cross_place="center" scrollable="false">
+            <text_small width="70" text="Vendor:" translation_tag="Vendor:" style_text_color="#text_muted"/>
+            <text_body name="summary_vendor" bind_text="wizard_summary_vendor" flex_grow="1"/>
+          </lv_obj>
+          <lv_obj width="100%"
+                  height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm"
+                  style_flex_cross_place="center" scrollable="false">
+            <text_small width="70" text="Filament:" translation_tag="Filament:" style_text_color="#text_muted"/>
+            <text_body name="summary_filament" bind_text="wizard_summary_filament" flex_grow="1"/>
+          </lv_obj>
+          <!-- Color preview in summary -->
+          <lv_obj width="100%"
+                  height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm"
+                  style_flex_cross_place="center" scrollable="false">
+            <text_small width="70" text="Color:" translation_tag="Color:" style_text_color="#text_muted"/>
+            <lv_obj name="summary_color_swatch"
+                    width="24" height="24" style_radius="12" style_bg_color="0x808080" style_bg_opa="255"
+                    style_border_width="1" style_border_color="#border"/>
+          </lv_obj>
+        </ui_card>
+
+        <!-- Remaining weight -->
+        <lv_obj width="100%"
+                height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+          <text_small text="Remaining Weight (g)" translation_tag="Remaining Weight (g)" style_text_color="#text_muted"/>
+          <text_input name="remaining_weight" width="100%" placeholder_text="1000" keyboard_hint="numeric">
+            <event_cb trigger="value_changed" callback="on_wizard_remaining_weight_changed"/>
+          </text_input>
+        </lv_obj>
+
+        <!-- Price -->
+        <lv_obj width="100%"
+                height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+          <text_small text="Price" translation_tag="Price" style_text_color="#text_muted"/>
+          <text_input name="spool_price"
+                      width="100%" placeholder_text="25.00" placeholder_tag="25.00" keyboard_hint="numeric">
+            <event_cb trigger="value_changed" callback="on_wizard_price_changed"/>
+          </text_input>
+        </lv_obj>
+
+        <!-- Lot number -->
+        <lv_obj width="100%"
+                height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+          <text_small text="Lot Number (optional)"
+                      translation_tag="Lot Number (optional)" style_text_color="#text_muted"/>
+          <text_input name="spool_lot" width="100%" placeholder_text="LOT-2024-001" placeholder_tag="LOT-2024-001">
+            <event_cb trigger="value_changed" callback="on_wizard_lot_changed"/>
+          </text_input>
+        </lv_obj>
+
+        <!-- Notes -->
+        <lv_obj width="100%"
+                height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" scrollable="false">
+          <text_small text="Notes (optional)" translation_tag="Notes (optional)" style_text_color="#text_muted"/>
+          <text_input name="spool_notes"
+                      width="100%" placeholder_text="Any additional notes..." placeholder_tag="Any additional notes...">
+            <event_cb trigger="value_changed" callback="on_wizard_notes_changed"/>
+          </text_input>
+        </lv_obj>
+      </lv_obj>
+
+      <!-- ==================== CREATING STATE ==================== -->
+      <centered_column name="creating_state" flex_grow="1" hidden="true">
+        <bind_flag_if_not_eq subject="wizard_creating" flag="hidden" ref_value="1"/>
+        <spinner size="lg"/>
+        <text_body text="Creating spool..." translation_tag="Creating spool..." style_text_align="center"/>
+      </centered_column>
+
+    </lv_obj>
+
+    <!-- ==================== FOOTER: NAVIGATION BUTTONS ==================== -->
+    <lv_obj name="wizard_footer"
+            width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
+            style_flex_cross_place="center" style_pad_hor="#space_lg" style_pad_ver="#space_md" scrollable="false">
+
+      <!-- Back button: hidden on step 0 -->
+      <ui_button name="back_btn" variant="ghost" text="Back" translation_tag="Back" hidden="true">
+        <bind_flag_if_eq subject="spool_wizard_step" flag="hidden" ref_value="0"/>
+        <event_cb trigger="clicked" callback="on_wizard_back"/>
+      </ui_button>
+
+      <!-- Spacer to push Next/Create to the right when Back is hidden -->
+      <lv_obj name="footer_spacer" width="0" height="1" flex_grow="1"/>
+
+      <!-- Next button: visible on steps 0 and 1 -->
+      <ui_button name="next_btn" variant="primary" text="Next" translation_tag="Next" hidden="true">
+        <bind_flag_if_eq subject="spool_wizard_step" flag="hidden" ref_value="2"/>
+        <bind_flag_if_eq subject="spool_wizard_can_proceed" flag="disabled" ref_value="0"/>
+        <event_cb trigger="clicked" callback="on_wizard_next"/>
+      </ui_button>
+
+      <!-- Create button: visible on step 2 only -->
+      <ui_button name="create_btn" variant="primary" text="Create Spool" translation_tag="Create Spool" hidden="true">
+        <bind_flag_if_not_eq subject="spool_wizard_step" flag="hidden" ref_value="2"/>
+        <bind_flag_if_eq subject="spool_wizard_can_proceed" flag="disabled" ref_value="0"/>
+        <bind_flag_if_eq subject="wizard_creating" flag="disabled" ref_value="1"/>
+        <event_cb trigger="clicked" callback="on_wizard_create"/>
+      </ui_button>
+    </lv_obj>
+  </view>
+</component>

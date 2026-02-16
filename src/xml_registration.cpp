@@ -170,6 +170,11 @@ void register_xml_components() {
     register_xml("spoolman_edit_modal.xml");
     register_xml("spoolman_panel.xml");
 
+    // Spool wizard components
+    register_xml("wizard_vendor_row.xml");
+    register_xml("wizard_filament_row.xml");
+    register_xml("spool_wizard.xml");
+
     // Core UI components
     register_xml("icon.xml");
     register_xml("status_pill.xml");

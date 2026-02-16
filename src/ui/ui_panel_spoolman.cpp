@@ -20,6 +20,7 @@
 #include "moonraker_api.h"
 #include "printer_state.h"
 #include "theme_manager.h"
+#include "ui/ui_lazy_panel_helper.h"
 
 #include <spdlog/spdlog.h>
 
@@ -90,6 +91,7 @@ void SpoolmanPanel::register_callbacks() {
     // Register XML event callbacks
     lv_xml_register_event_cb(nullptr, "on_spoolman_spool_row_clicked", on_spool_row_clicked);
     lv_xml_register_event_cb(nullptr, "on_spoolman_refresh_clicked", on_refresh_clicked);
+    lv_xml_register_event_cb(nullptr, "on_spoolman_add_spool_clicked", on_add_spool_clicked);
     lv_xml_register_event_cb(nullptr, "on_spoolman_search_changed", on_search_changed);
     lv_xml_register_event_cb(nullptr, "on_spoolman_search_clear", on_search_clear);
 
@@ -565,6 +567,19 @@ void SpoolmanPanel::on_spool_row_clicked(lv_event_t* e) {
 void SpoolmanPanel::on_refresh_clicked(lv_event_t* /*e*/) {
     spdlog::debug("[Spoolman] Refresh clicked");
     get_global_spoolman_panel().refresh_spools();
+}
+
+void SpoolmanPanel::on_add_spool_clicked(lv_event_t* /*e*/) {
+    spdlog::info("[SpoolmanPanel] Add spool clicked — launching wizard");
+    auto& panel = get_global_spoolman_panel();
+
+    // Set completion callback on the wizard to refresh spool list after creation
+    auto& wizard = get_global_spool_wizard();
+    wizard.set_completion_callback([]() { get_global_spoolman_panel().refresh_spools(); });
+
+    helix::ui::lazy_create_and_push_overlay<SpoolWizardOverlay>(
+        get_global_spool_wizard, panel.wizard_panel_, lv_display_get_screen_active(nullptr),
+        "Spool Wizard", "SpoolmanPanel");
 }
 
 void SpoolmanPanel::on_scroll(lv_event_t* e) {

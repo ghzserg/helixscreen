@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Wizard filament row: color swatch + material + name + temp range -->
+<!-- Used in spool_wizard step 1 filament list -->
+<component>
+  <view name="wizard_filament_row"
+        extends="ui_card" width="100%" height="content" style_pad_all="#space_sm" flex_flow="row"
+        style_flex_cross_place="center" style_pad_gap="#space_sm" clickable="true" scrollable="false">
+    <!-- Color swatch circle -->
+    <lv_obj name="color_swatch"
+            width="24" height="24" style_radius="12" style_bg_color="0x808080" style_bg_opa="255" style_border_width="1"
+            style_border_color="#border" scrollable="false"/>
+    <!-- Material + name info column -->
+    <lv_obj name="info_col"
+            height="content" flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs"
+            scrollable="false">
+      <text_body name="filament_material" width="100%" text="PLA" long_mode="dots" clickable="false"/>
+      <text_small name="filament_name"
+                  width="100%" text="Red" style_text_color="#text_muted" long_mode="dots" clickable="false"/>
+    </lv_obj>
+    <!-- Temperature info -->
+    <text_small name="filament_temps" text="200-220°C" style_text_color="#text_muted" clickable="false"/>
+    <!-- Click handler -->
+    <event_cb trigger="clicked" callback="on_wizard_filament_selected"/>
+  </view>
+</component>

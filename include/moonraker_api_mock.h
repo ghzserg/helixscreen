@@ -480,6 +480,22 @@ class MoonrakerAPIMock : public MoonrakerAPI {
     void delete_spoolman_spool(int spool_id, SuccessCallback on_success,
                                ErrorCallback on_error) override;
 
+    void get_spoolman_external_vendors(VendorListCallback on_success,
+                                       ErrorCallback on_error) override;
+
+    void get_spoolman_external_filaments(const std::string& vendor_name,
+                                         FilamentListCallback on_success,
+                                         ErrorCallback on_error) override;
+
+    void get_spoolman_filaments(int vendor_id, FilamentListCallback on_success,
+                                ErrorCallback on_error) override;
+
+    void delete_spoolman_vendor(int vendor_id, SuccessCallback on_success,
+                                ErrorCallback on_error) override;
+
+    void delete_spoolman_filament(int filament_id, SuccessCallback on_success,
+                                  ErrorCallback on_error) override;
+
     /**
      * @brief Enable or disable mock Spoolman integration
      *

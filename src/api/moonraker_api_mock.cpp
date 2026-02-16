@@ -1510,6 +1510,147 @@ void MoonrakerAPIMock::delete_spoolman_spool(int spool_id, SuccessCallback on_su
     }
 }
 
+void MoonrakerAPIMock::get_spoolman_external_vendors(VendorListCallback on_success,
+                                                     ErrorCallback /*on_error*/) {
+    spdlog::debug("[MoonrakerAPIMock] get_spoolman_external_vendors()");
+
+    std::vector<VendorInfo> vendors;
+
+    VendorInfo v1;
+    v1.id = 1;
+    v1.name = "Hatchbox";
+    v1.url = "https://www.hatchbox3d.com";
+    vendors.push_back(v1);
+
+    VendorInfo v2;
+    v2.id = 2;
+    v2.name = "Polymaker";
+    v2.url = "https://www.polymaker.com";
+    vendors.push_back(v2);
+
+    VendorInfo v3;
+    v3.id = 3;
+    v3.name = "eSUN";
+    v3.url = "https://www.esun3d.com";
+    vendors.push_back(v3);
+
+    VendorInfo v4;
+    v4.id = 4;
+    v4.name = "Prusament";
+    v4.url = "https://www.prusa3d.com";
+    vendors.push_back(v4);
+
+    spdlog::debug("[MoonrakerAPIMock] Returning {} external vendors", vendors.size());
+    if (on_success) {
+        on_success(vendors);
+    }
+}
+
+void MoonrakerAPIMock::get_spoolman_external_filaments(const std::string& vendor_name,
+                                                       FilamentListCallback on_success,
+                                                       ErrorCallback /*on_error*/) {
+    spdlog::debug("[MoonrakerAPIMock] get_spoolman_external_filaments(vendor={})", vendor_name);
+
+    std::vector<FilamentInfo> filaments;
+
+    FilamentInfo f1;
+    f1.id = 1;
+    f1.vendor_name = vendor_name;
+    f1.material = "PLA";
+    f1.color_name = "Black";
+    f1.color_hex = "000000";
+    f1.diameter = 1.75f;
+    f1.weight = 1000.0f;
+    f1.nozzle_temp_min = 190;
+    f1.nozzle_temp_max = 220;
+    f1.bed_temp_min = 50;
+    f1.bed_temp_max = 60;
+    filaments.push_back(f1);
+
+    FilamentInfo f2;
+    f2.id = 2;
+    f2.vendor_name = vendor_name;
+    f2.material = "PLA";
+    f2.color_name = "White";
+    f2.color_hex = "FFFFFF";
+    f2.diameter = 1.75f;
+    f2.weight = 1000.0f;
+    f2.nozzle_temp_min = 190;
+    f2.nozzle_temp_max = 220;
+    f2.bed_temp_min = 50;
+    f2.bed_temp_max = 60;
+    filaments.push_back(f2);
+
+    FilamentInfo f3;
+    f3.id = 3;
+    f3.vendor_name = vendor_name;
+    f3.material = "PETG";
+    f3.color_name = "Blue";
+    f3.color_hex = "0000FF";
+    f3.diameter = 1.75f;
+    f3.weight = 1000.0f;
+    f3.nozzle_temp_min = 220;
+    f3.nozzle_temp_max = 250;
+    f3.bed_temp_min = 70;
+    f3.bed_temp_max = 80;
+    filaments.push_back(f3);
+
+    spdlog::debug("[MoonrakerAPIMock] Returning {} external filaments for vendor '{}'",
+                  filaments.size(), vendor_name);
+    if (on_success) {
+        on_success(filaments);
+    }
+}
+
+void MoonrakerAPIMock::get_spoolman_filaments(int vendor_id, FilamentListCallback on_success,
+                                              ErrorCallback /*on_error*/) {
+    spdlog::debug("[MoonrakerAPIMock] get_spoolman_filaments(vendor_id={})", vendor_id);
+
+    // Return all mock filaments (simplified - no actual vendor_id filtering)
+    std::vector<FilamentInfo> filaments;
+    int next_id = 1;
+
+    for (const auto& spool : mock_spools_) {
+        FilamentInfo f;
+        f.id = next_id++;
+        f.vendor_name = spool.vendor;
+        f.material = spool.material;
+        f.color_name = spool.color_name;
+        f.color_hex = spool.color_hex;
+        f.diameter = 1.75f;
+        f.weight = static_cast<float>(spool.initial_weight_g);
+        f.nozzle_temp_min = spool.nozzle_temp_min;
+        f.nozzle_temp_max = spool.nozzle_temp_max;
+        f.bed_temp_min = spool.bed_temp_min;
+        f.bed_temp_max = spool.bed_temp_max;
+        filaments.push_back(f);
+    }
+
+    spdlog::debug("[MoonrakerAPIMock] Returning {} filaments for vendor_id {}", filaments.size(),
+                  vendor_id);
+    if (on_success) {
+        on_success(filaments);
+    }
+}
+
+void MoonrakerAPIMock::delete_spoolman_vendor(int vendor_id, SuccessCallback on_success,
+                                              ErrorCallback /*on_error*/) {
+    spdlog::info("[MoonrakerAPIMock] delete_spoolman_vendor({})", vendor_id);
+
+    if (on_success) {
+        on_success();
+    }
+}
+
+void MoonrakerAPIMock::delete_spoolman_filament(int filament_id, SuccessCallback on_success,
+                                                ErrorCallback /*on_error*/) {
+    spdlog::info("[MoonrakerAPIMock] delete_spoolman_filament({})", filament_id);
+
+    if (on_success) {
+        on_success();
+    }
+}
+
 // ============================================================================
 // MoonrakerAPIMock - REST Endpoint Methods
 // ============================================================================

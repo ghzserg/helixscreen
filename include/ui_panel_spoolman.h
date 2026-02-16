@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ui_spool_wizard.h"
 #include "ui_spoolman_context_menu.h"
 #include "ui_spoolman_edit_modal.h"
 #include "ui_spoolman_list_view.h"
@@ -118,9 +119,13 @@ class SpoolmanPanel : public OverlayBase {
     helix::ui::SpoolmanContextMenu context_menu_;
     helix::ui::SpoolEditModal edit_modal_;
 
+    // === Spool Wizard ===
+    lv_obj_t* wizard_panel_ = nullptr;
+
     // ========== Static Event Callbacks ==========
     static void on_spool_row_clicked(lv_event_t* e);
     static void on_refresh_clicked(lv_event_t* e);
+    static void on_add_spool_clicked(lv_event_t* e);
     static void on_scroll(lv_event_t* e);
     static void on_search_changed(lv_event_t* e);
     static void on_search_clear(lv_event_t* e);
