@@ -1,8 +1,9 @@
 # Spoolman Management & Label Printing
 
 **Date**: 2026-02-09
-**Status**: Design
-**Branch**: TBD (worktree)
+**Status**: In Progress
+**Branch**: `feature/spool-wizard-v2` (worktree: `.worktrees/spool-wizard-v2`, based on `feature/multi-unit-ams`)
+**Status doc**: `2026-02-15-spool-wizard-status.md`
 
 ## Overview
 

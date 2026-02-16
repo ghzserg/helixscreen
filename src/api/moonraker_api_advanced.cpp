@@ -1923,12 +1923,19 @@ void MoonrakerAPI::create_spoolman_vendor(const nlohmann::json& vendor_data,
 
     client_.send_jsonrpc(
         "server.spoolman.proxy", params,
-        [on_success](json response) {
+        [on_success, on_error](json response) {
             if (response.contains("result") && response["result"].is_object()) {
                 VendorInfo vendor = parse_vendor_info(response["result"]);
                 spdlog::debug("[Moonraker API] Created vendor {}: {}", vendor.id, vendor.name);
                 if (on_success) {
                     on_success(vendor);
+                }
+            } else {
+                spdlog::error("[Moonraker API] create_spoolman_vendor: unexpected response format");
+                if (on_error) {
+                    on_error(MoonrakerError{MoonrakerErrorType::UNKNOWN, 0,
+                                            "Unexpected response format",
+                                            "create_spoolman_vendor"});
                 }
             }
         },
@@ -1948,13 +1955,21 @@ void MoonrakerAPI::create_spoolman_filament(const nlohmann::json& filament_data,
 
     client_.send_jsonrpc(
         "server.spoolman.proxy", params,
-        [on_success](json response) {
+        [on_success, on_error](json response) {
             if (response.contains("result") && response["result"].is_object()) {
                 FilamentInfo filament = parse_filament_info(response["result"]);
                 spdlog::debug("[Moonraker API] Created filament {}: {}", filament.id,
                               filament.display_name());
                 if (on_success) {
                     on_success(filament);
+                }
+            } else {
+                spdlog::error(
+                    "[Moonraker API] create_spoolman_filament: unexpected response format");
+                if (on_error) {
+                    on_error(MoonrakerError{MoonrakerErrorType::UNKNOWN, 0,
+                                            "Unexpected response format",
+                                            "create_spoolman_filament"});
                 }
             }
         },
@@ -1972,13 +1987,19 @@ void MoonrakerAPI::create_spoolman_spool(const nlohmann::json& spool_data,
 
     client_.send_jsonrpc(
         "server.spoolman.proxy", params,
-        [on_success](json response) {
+        [on_success, on_error](json response) {
             if (response.contains("result") && response["result"].is_object()) {
                 SpoolInfo spool = parse_spool_info(response["result"]);
                 spdlog::debug("[Moonraker API] Created spool {}: {}", spool.id,
                               spool.display_name());
                 if (on_success) {
                     on_success(spool);
+                }
+            } else {
+                spdlog::error("[Moonraker API] create_spoolman_spool: unexpected response format");
+                if (on_error) {
+                    on_error(MoonrakerError{MoonrakerErrorType::UNKNOWN, 0,
+                                            "Unexpected response format", "create_spoolman_spool"});
                 }
             }
         },
@@ -2048,7 +2069,7 @@ void MoonrakerAPI::get_spoolman_external_filaments(const std::string& vendor_nam
             encoded += "%20";
         } else {
             char buf[4];
-            snprintf(buf, sizeof(buf), "%%%02X", static_cast<unsigned char>(c));
+            std::snprintf(buf, sizeof(buf), "%%%02X", static_cast<unsigned char>(c));
             encoded += buf;
         }
     }

@@ -7,7 +7,6 @@
 #include "spoolman_types.h"
 #include "subject_managed_panel.h"
 
-#include <algorithm>
 #include <functional>
 #include <memory>
 #include <string>
@@ -297,6 +296,9 @@ class SpoolWizardOverlay : public OverlayBase {
     // ========== Creation flow tracking ==========
     int created_vendor_id_ = -1;
     int created_filament_id_ = -1;
+
+    // ========== State management ==========
+    void reset_state();
 
     // ========== Navigation helpers ==========
     void navigate_to_step(Step step);
