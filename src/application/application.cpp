@@ -675,7 +675,7 @@ bool Application::init_display() {
     // Suppress LVGL rendering while splash is alive — prevents framebuffer flicker
     // from both processes writing to the same framebuffer simultaneously.
     // Re-enabled in main loop when splash exits.
-    if (!m_splash_manager.has_exited()) {
+    if (get_runtime_config()->splash_pid > 0 && !m_splash_manager.has_exited()) {
         lv_display_enable_invalidation(nullptr, false);
         spdlog::debug("[Application] Display invalidation suppressed while splash is active");
     }
