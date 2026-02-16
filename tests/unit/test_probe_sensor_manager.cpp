@@ -154,6 +154,33 @@ TEST_CASE("ProbeSensorTypes - type string conversion", "[probe][types]") {
     }
 }
 
+TEST_CASE("Probe type string conversions - new types", "[probe][types]") {
+    SECTION("cartographer type to string") {
+        REQUIRE(probe_type_to_string(ProbeSensorType::CARTOGRAPHER) == "cartographer");
+    }
+    SECTION("beacon type to string") {
+        REQUIRE(probe_type_to_string(ProbeSensorType::BEACON) == "beacon");
+    }
+    SECTION("tap type to string") {
+        REQUIRE(probe_type_to_string(ProbeSensorType::TAP) == "tap");
+    }
+    SECTION("klicky type to string") {
+        REQUIRE(probe_type_to_string(ProbeSensorType::KLICKY) == "klicky");
+    }
+    SECTION("cartographer from string") {
+        REQUIRE(probe_type_from_string("cartographer") == ProbeSensorType::CARTOGRAPHER);
+    }
+    SECTION("beacon from string") {
+        REQUIRE(probe_type_from_string("beacon") == ProbeSensorType::BEACON);
+    }
+    SECTION("tap from string") {
+        REQUIRE(probe_type_from_string("tap") == ProbeSensorType::TAP);
+    }
+    SECTION("klicky from string") {
+        REQUIRE(probe_type_from_string("klicky") == ProbeSensorType::KLICKY);
+    }
+}
+
 // ============================================================================
 // Sensor Discovery Tests
 // ============================================================================

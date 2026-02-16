@@ -19,6 +19,10 @@ enum class ProbeSensorType {
     BLTOUCH = 2,        ///< BLTouch probe
     SMART_EFFECTOR = 3, ///< Duet Smart Effector
     EDDY_CURRENT = 4,   ///< Eddy current probe (e.g., probe_eddy_current btt)
+    CARTOGRAPHER = 5,   ///< Cartographer 3D scanning/contact probe
+    BEACON = 6,         ///< Beacon eddy current probe
+    TAP = 7,            ///< Voron Tap nozzle-contact probe
+    KLICKY = 8,         ///< Klicky magnetic probe (macro-based)
 };
 
 /// @brief Configuration for a probe sensor
@@ -95,6 +99,14 @@ struct ProbeSensorState {
         return "smart_effector";
     case ProbeSensorType::EDDY_CURRENT:
         return "eddy_current";
+    case ProbeSensorType::CARTOGRAPHER:
+        return "cartographer";
+    case ProbeSensorType::BEACON:
+        return "beacon";
+    case ProbeSensorType::TAP:
+        return "tap";
+    case ProbeSensorType::KLICKY:
+        return "klicky";
     default:
         return "standard";
     }
@@ -110,6 +122,14 @@ struct ProbeSensorState {
         return ProbeSensorType::SMART_EFFECTOR;
     if (str == "eddy_current")
         return ProbeSensorType::EDDY_CURRENT;
+    if (str == "cartographer")
+        return ProbeSensorType::CARTOGRAPHER;
+    if (str == "beacon")
+        return ProbeSensorType::BEACON;
+    if (str == "tap")
+        return ProbeSensorType::TAP;
+    if (str == "klicky")
+        return ProbeSensorType::KLICKY;
     return ProbeSensorType::STANDARD;
 }
 
