@@ -1606,7 +1606,8 @@ void MoonrakerAPIMock::get_spoolman_filaments(int vendor_id, FilamentListCallbac
                                               ErrorCallback /*on_error*/) {
     spdlog::debug("[MoonrakerAPIMock] get_spoolman_filaments(vendor_id={})", vendor_id);
 
-    // Return all mock filaments (simplified - no actual vendor_id filtering)
+    // Return mock filaments — SpoolInfo doesn't have vendor_id so we can't
+    // filter here. The wizard applies client-side vendor filtering after merge.
     std::vector<FilamentInfo> filaments;
     int next_id = 1;
 

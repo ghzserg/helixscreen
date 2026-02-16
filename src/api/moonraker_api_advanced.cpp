@@ -4,6 +4,7 @@
 #include "ui_error_reporting.h"
 #include "ui_notification.h"
 
+#include "json_utils.h"
 #include "moonraker_api.h"
 #include "moonraker_api_internal.h"
 #include "shaper_csv_parser.h"
@@ -1567,6 +1568,11 @@ void MoonrakerAPI::get_input_shaper_config(InputShaperConfigCallback on_success,
         on_error);
 }
 
+// Aliases for json_utils.h helpers
+using helix::json::safe_float;
+using helix::json::safe_int;
+using helix::json::safe_string;
+
 // Helper to parse a Spoolman spool JSON object into SpoolInfo
 static SpoolInfo parse_spool_info(const nlohmann::json& spool_json) {
     SpoolInfo info;
@@ -1576,8 +1582,8 @@ static SpoolInfo parse_spool_info(const nlohmann::json& spool_json) {
     info.initial_weight_g = spool_json.value("initial_weight", 0.0);
     info.spool_weight_g = spool_json.value("spool_weight", 0.0);
     info.price = spool_json.value("price", 0.0);
-    info.lot_nr = spool_json.value("lot_nr", "");
-    info.comment = spool_json.value("comment", "");
+    info.lot_nr = safe_string(spool_json, "lot_nr");
+    info.comment = safe_string(spool_json, "comment");
 
     // Length is in mm from Spoolman, convert to meters
     double remaining_length_mm = spool_json.value("remaining_length", 0.0);
@@ -1588,10 +1594,10 @@ static SpoolInfo parse_spool_info(const nlohmann::json& spool_json) {
         const auto& filament = spool_json["filament"];
 
         info.filament_id = filament.value("id", 0);
-        info.material = filament.value("material", "");
-        info.color_name = filament.value("name", "");
-        info.color_hex = filament.value("color_hex", "");
-        info.multi_color_hexes = filament.value("multi_color_hexes", "");
+        info.material = safe_string(filament, "material");
+        info.color_name = safe_string(filament, "name");
+        info.color_hex = safe_string(filament, "color_hex");
+        info.multi_color_hexes = safe_string(filament, "multi_color_hexes");
 
         // Temperature settings
         info.nozzle_temp_recommended = filament.value("settings_extruder_temp", 0);
@@ -1599,7 +1605,7 @@ static SpoolInfo parse_spool_info(const nlohmann::json& spool_json) {
 
         // Nested vendor
         if (filament.contains("vendor") && filament["vendor"].is_object()) {
-            info.vendor = filament["vendor"].value("name", "");
+            info.vendor = safe_string(filament["vendor"], "name");
         }
     }
 
@@ -1825,33 +1831,33 @@ void MoonrakerAPI::update_spoolman_filament_color(int filament_id, const std::st
 static VendorInfo parse_vendor_info(const nlohmann::json& vendor_json) {
     VendorInfo info;
     info.id = vendor_json.value("id", 0);
-    info.name = vendor_json.value("name", "");
-    info.url = vendor_json.value("url", "");
+    info.name = safe_string(vendor_json, "name");
+    info.url = safe_string(vendor_json, "url");
     return info;
 }
 
 static FilamentInfo parse_filament_info(const nlohmann::json& filament_json) {
     FilamentInfo info;
-    info.id = filament_json.value("id", 0);
-    info.material = filament_json.value("material", "");
-    info.color_name = filament_json.value("name", "");
-    info.color_hex = filament_json.value("color_hex", "");
-    info.density = filament_json.value("density", 0.0f);
-    info.diameter = filament_json.value("diameter", 1.75f);
-    info.weight = filament_json.value("weight", 0.0f);
-    info.spool_weight = filament_json.value("spool_weight", 0.0f);
-    info.nozzle_temp_min = filament_json.value("settings_extruder_temp_min", 0);
-    info.nozzle_temp_max = filament_json.value("settings_extruder_temp_max", 0);
-    info.bed_temp_min = filament_json.value("settings_bed_temp_min", 0);
-    info.bed_temp_max = filament_json.value("settings_bed_temp_max", 0);
+    info.id = safe_int(filament_json, "id", 0);
+    info.material = safe_string(filament_json, "material");
+    info.color_name = safe_string(filament_json, "name");
+    info.color_hex = safe_string(filament_json, "color_hex");
+    info.density = safe_float(filament_json, "density", 0.0f);
+    info.diameter = safe_float(filament_json, "diameter", 1.75f);
+    info.weight = safe_float(filament_json, "weight", 0.0f);
+    info.spool_weight = safe_float(filament_json, "spool_weight", 0.0f);
+    info.nozzle_temp_min = safe_int(filament_json, "settings_extruder_temp_min", 0);
+    info.nozzle_temp_max = safe_int(filament_json, "settings_extruder_temp_max", 0);
+    info.bed_temp_min = safe_int(filament_json, "settings_bed_temp_min", 0);
+    info.bed_temp_max = safe_int(filament_json, "settings_bed_temp_max", 0);
 
     // Extract vendor_id from top-level field (always present in Spoolman response)
-    info.vendor_id = filament_json.value("vendor_id", 0);
+    info.vendor_id = safe_int(filament_json, "vendor_id", 0);
 
     // Nested vendor object (may override vendor_id, adds vendor_name)
     if (filament_json.contains("vendor") && filament_json["vendor"].is_object()) {
         info.vendor_id = filament_json["vendor"].value("id", info.vendor_id);
-        info.vendor_name = filament_json["vendor"].value("name", "");
+        info.vendor_name = safe_string(filament_json["vendor"], "name");
     }
 
     return info;
@@ -2033,6 +2039,8 @@ void MoonrakerAPI::get_spoolman_external_vendors(VendorListCallback on_success,
     params["request_method"] = "GET";
     params["path"] = "/v1/external/vendor";
 
+    // Silent: /v1/external/ endpoints require SpoolmanDB integration which
+    // is not available on all Spoolman versions (e.g. v0.22.x)
     client_.send_jsonrpc(
         "server.spoolman.proxy", params,
         [on_success](json response) {
@@ -2051,7 +2059,7 @@ void MoonrakerAPI::get_spoolman_external_vendors(VendorListCallback on_success,
                 on_success(vendors);
             }
         },
-        on_error);
+        on_error, 0, /*silent=*/true);
 }
 
 void MoonrakerAPI::get_spoolman_external_filaments(const std::string& vendor_name,
@@ -2078,6 +2086,8 @@ void MoonrakerAPI::get_spoolman_external_filaments(const std::string& vendor_nam
     params["request_method"] = "GET";
     params["path"] = "/v1/external/filament?vendor_name=" + encoded;
 
+    // Silent: /v1/external/ endpoints require SpoolmanDB integration which
+    // is not available on all Spoolman versions (e.g. v0.22.x)
     client_.send_jsonrpc(
         "server.spoolman.proxy", params,
         [on_success, vendor_name](json response) {
@@ -2096,7 +2106,7 @@ void MoonrakerAPI::get_spoolman_external_filaments(const std::string& vendor_nam
                 on_success(filaments);
             }
         },
-        on_error);
+        on_error, 0, /*silent=*/true);
 }
 
 void MoonrakerAPI::get_spoolman_filaments(int vendor_id, FilamentListCallback on_success,
@@ -2105,7 +2115,7 @@ void MoonrakerAPI::get_spoolman_filaments(int vendor_id, FilamentListCallback on
 
     json params;
     params["request_method"] = "GET";
-    params["path"] = "/v1/filament?vendor_id=" + std::to_string(vendor_id);
+    params["path"] = "/v1/filament?vendor.id=" + std::to_string(vendor_id);
 
     client_.send_jsonrpc(
         "server.spoolman.proxy", params,
