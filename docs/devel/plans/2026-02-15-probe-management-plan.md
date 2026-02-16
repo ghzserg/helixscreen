@@ -8,7 +8,9 @@
 
 **Tech Stack:** C++17, LVGL 9.4 XML, Catch2, Moonraker JSON-RPC + file API, spdlog
 
-**Design doc:** `docs/plans/2026-02-15-probe-management-design.md`
+**Design doc:** `docs/devel/plans/2026-02-15-probe-management-design.md`
+
+**Status:** Phases 1-2 complete (on `feature/probe-management` branch). Phases 3-5 remaining.
 
 **Key docs to read before starting:**
 - `docs/devel/LVGL9_XML_GUIDE.md` — XML widget patterns, bindings, event callbacks
@@ -21,7 +23,7 @@
 
 ---
 
-## Phase 1: Expanded Probe Detection
+## Phase 1: Expanded Probe Detection ✅ COMPLETE
 
 ### Task 1.1: Add new probe type enum values
 
@@ -374,7 +376,7 @@ git commit -m "feat(probe): add human-readable display strings for all probe typ
 
 ---
 
-## Phase 2: Klipper Config Editor
+## Phase 2: Klipper Config Editor ✅ COMPLETE
 
 ### Task 2.1: Config file structure parser
 
