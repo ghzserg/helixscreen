@@ -22,7 +22,7 @@
       <!-- Crash details -->
       <lv_obj width="100%"
               height="content" flex_flow="column" style_pad_all="#space_sm" style_pad_gap="#space_xs"
-              style_bg_opa="cover" style_bg_color="#card_bg" style_radius="#radius_md">
+              style_bg_opa="cover" style_bg_color="#card_bg" style_radius="#border_radius">
         <text_body width="100%" bind_text="crash_report_details" long_mode="wrap"/>
       </lv_obj>
       <!-- Status message -->

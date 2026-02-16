@@ -36,7 +36,7 @@
       <!-- Large touch test area - user taps here to verify calibration -->
       <lv_obj name="test_touch_area"
               height="100%" flex_grow="1" style_bg_color="#card_bg" style_bg_opa="255" style_border_width="1"
-              style_border_color="#border" style_radius="#radius_md" flag_clickable="true" scrollable="false">
+              style_border_color="#border" style_radius="#border_radius" flag_clickable="true" scrollable="false">
         <event_cb trigger="pressed" callback="on_touch_cal_test_area_touched"/>
         <!-- Instruction label centered -->
         <text_body text="Touch anywhere to test calibration" translation_tag="Touch anywhere to test calibration" align="center"/>
