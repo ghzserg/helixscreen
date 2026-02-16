@@ -118,6 +118,9 @@ class SettingsPanel : public PanelBase {
     // Change host modal (lazy-created)
     std::unique_ptr<ChangeHostModal> change_host_modal_;
 
+    // History dashboard overlay (lazy-created)
+    lv_obj_t* history_dashboard_panel_ = nullptr;
+
     // Info rows (for dynamic updates)
     lv_obj_t* printer_value_ = nullptr;
 
@@ -228,6 +231,7 @@ class SettingsPanel : public PanelBase {
     void handle_touch_calibration_clicked();
     void handle_restart_helix_clicked();
     void handle_factory_reset_clicked();
+    void handle_print_hours_clicked();
     // Note: populate_sensor_list() moved to SensorSettingsOverlay
     // Note: populate_macro_dropdowns() moved to MacroButtonsOverlay
     // Note: populate_hardware_issues() moved to HardwareHealthOverlay
@@ -280,6 +284,7 @@ class SettingsPanel : public PanelBase {
     static void on_plugins_clicked(lv_event_t* e);
     static void on_telemetry_view_data(lv_event_t* e);
     static void on_restart_helix_settings_clicked(lv_event_t* e);
+    static void on_print_hours_clicked(lv_event_t* e);
 
   private:
     //

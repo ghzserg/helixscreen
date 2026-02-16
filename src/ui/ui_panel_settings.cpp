@@ -12,6 +12,7 @@
 #include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_overlay_network_settings.h"
+#include "ui_panel_history_dashboard.h"
 #include "ui_panel_memory_stats.h"
 #include "ui_settings_about.h"
 #include "ui_settings_display.h"
@@ -53,6 +54,7 @@
 #include "system/telemetry_manager.h"
 #include "system/update_checker.h"
 #include "theme_manager.h"
+#include "ui/ui_lazy_panel_helper.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
@@ -1328,6 +1330,18 @@ void SettingsPanel::on_restart_helix_settings_clicked(lv_event_t* /*e*/) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
+void SettingsPanel::on_print_hours_clicked(lv_event_t* /*e*/) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_print_hours_clicked");
+    get_global_settings_panel().handle_print_hours_clicked();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void SettingsPanel::handle_print_hours_clicked() {
+    helix::ui::lazy_create_and_push_overlay<HistoryDashboardPanel>(
+        get_global_history_dashboard_panel, history_dashboard_panel_, parent_screen_,
+        "Print History", get_name());
+}
+
 // ============================================================================
 // STATIC TRAMPOLINES - OVERLAYS
 // ============================================================================
@@ -1417,6 +1431,8 @@ void register_settings_panel_callbacks() {
                              SettingsPanel::on_hardware_health_clicked);
     lv_xml_register_event_cb(nullptr, "on_restart_helix_settings_clicked",
                              SettingsPanel::on_restart_helix_settings_clicked);
+    lv_xml_register_event_cb(nullptr, "on_print_hours_clicked",
+                             SettingsPanel::on_print_hours_clicked);
     lv_xml_register_event_cb(nullptr, "on_change_host_clicked",
                              SettingsPanel::on_change_host_clicked);
     lv_xml_register_event_cb(nullptr, "on_about_clicked", SettingsPanel::on_about_clicked);
