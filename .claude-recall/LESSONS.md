@@ -16,8 +16,8 @@
 - **Uses**: 7 | **Velocity**: 0 | **Learned**: 2025-12-14 | **Last**: 2026-01-30 | **Category**: pattern | **Type**: informational
 > No hardcoded colors or spacing. Prefer semantic widgets (ui_card, ui_button, text_*, divider_*) which apply tokens automatically. Don't redundantly specify their built-in defaults (e.g., style_radius on ui_card, button_height on ui_button). See docs/LVGL9_XML_GUIDE.md "Custom Semantic Widgets" for defaults.
 
-### [L009] [***--|-----] Icon font sync workflow
-- **Uses**: 11 | **Velocity**: 0 | **Learned**: 2025-12-14 | **Last**: 2026-01-17 | **Category**: gotcha | **Type**: constraint
+### [L009] [***--|***--] Icon font sync workflow
+- **Uses**: 12 | **Velocity**: 1 | **Learned**: 2025-12-14 | **Last**: 2026-02-17 | **Category**: gotcha | **Type**: constraint
 > After adding icon to codepoints.h: add to regen_mdi_fonts.sh, run make regen-fonts, then rebuild. Forgetting any step = missing icon
 
 ### [L011] [***--|-----] No mutex in destructors
@@ -168,4 +168,8 @@
 ### [L069] [-----|-----] Never assume lv_obj user_data ownership — it may already be set
 - **Uses**: 0 | **Velocity**: 0 | **Learned**: 2026-02-15 | **Last**: 2026-02-15 | **Category**: architecture
 > LVGL's lv_obj_set_user_data() is a single shared slot per object. Custom XML widgets, component handlers, and LVGL internals may set user_data during object creation (e.g., severity_card stores a severity string). NEVER call delete/free on lv_obj_get_user_data() unless you are 100% certain you set it yourself on that specific object. NEVER use user_data as general-purpose storage on objects you didn't fully create — XML components and custom widgets may have claimed it already. For per-item data, prefer: (1) event callback user_data (separate per-callback), (2) a C++ side container (map/vector indexed by object pointer), or (3) lv_obj_find_by_name to stash data in a hidden child label.
+
+### [L070] [-----|-----] Don't lv_tr() non-translatable strings
+- **Uses**: 0 | **Velocity**: 0 | **Learned**: 2026-02-17 | **Last**: 2026-02-17 | **Category**: i18n
+> Never wrap product names (Spoolman, Klipper, Moonraker, HelixScreen), URLs/domains, technical abbreviations used as standalone labels (AMS, QGL, ADXL), or universal terms (OK, WiFi) in lv_tr(). Add '// i18n: do not translate' comment explaining why. Sentences CONTAINING product names ARE translatable — 'Restarting HelixScreen...' is fine because 'Restarting' translates. Material names (PLA, PETG, ABS, TPU, PA) also don't get translated or translation_tag in XML.
 
