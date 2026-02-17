@@ -190,6 +190,7 @@ void register_xml_components() {
     register_xml("probe_indicator.xml");
     register_xml("filament_sensor_row.xml");
     register_xml("temp_display.xml");
+    register_xml("components/nozzle_icon.xml");
     register_xml("header_bar.xml");
     register_xml("overlay_backdrop.xml");
     register_xml("overlay_panel.xml");

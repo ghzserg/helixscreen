@@ -175,8 +175,6 @@ class HomePanel : public PanelBase {
 
     ObserverGuard extruder_temp_observer_;
     ObserverGuard extruder_target_observer_;
-    ObserverGuard active_tool_observer_;
-    ObserverGuard tools_version_observer_;
     ObserverGuard led_state_observer_;
     ObserverGuard led_brightness_observer_;
     ObserverGuard ams_slot_count_observer_;
@@ -185,12 +183,6 @@ class HomePanel : public PanelBase {
 
     // Computed subject: show filament status when sensors exist AND (no AMS OR bypass active)
     lv_subject_t show_filament_status_;
-
-    // Tool badge subject (shows active tool name when multi-tool)
-    lv_subject_t tool_badge_subject_;
-    lv_subject_t show_tool_badge_;
-    char tool_badge_buf_[16] = "";
-    void update_tool_badge(int tool_idx);
 
     // Print card observers (for showing progress during active print)
     ObserverGuard print_state_observer_;

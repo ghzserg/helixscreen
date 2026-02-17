@@ -67,7 +67,7 @@
             <lv_obj height="content"
                     flex_flow="column" style_flex_cross_place="start" style_pad_all="0" style_pad_gap="#space_xs"
                     scrollable="false">
-              <icon name="heater_icon" src="heater" size="xl" variant="secondary"/>
+              <nozzle_icon name="heater_icon_container" size="xl"/>
               <lv_obj style_pad_all="0"
                       scrollable="false" flex_flow="column" style_flex_main_place="center"
                       style_flex_cross_place="start" style_pad_gap="#space_xxs">

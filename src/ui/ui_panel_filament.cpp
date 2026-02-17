@@ -395,18 +395,8 @@ void FilamentPanel::check_and_auto_select_preset() {
 }
 
 void FilamentPanel::update_nozzle_label() {
-    auto& ts = helix::ToolState::instance();
-    if (ts.tool_count() <= 1) {
-        std::snprintf(nozzle_label_buf_, sizeof(nozzle_label_buf_), "Nozzle");
-    } else {
-        const auto* tool = ts.active_tool();
-        if (tool) {
-            std::snprintf(nozzle_label_buf_, sizeof(nozzle_label_buf_), "Nozzle %s",
-                          tool->name.c_str());
-        } else {
-            std::snprintf(nozzle_label_buf_, sizeof(nozzle_label_buf_), "Nozzle");
-        }
-    }
+    auto label = helix::ToolState::instance().nozzle_label();
+    std::snprintf(nozzle_label_buf_, sizeof(nozzle_label_buf_), "%s", label.c_str());
     if (subjects_initialized_) {
         lv_subject_copy_string(&nozzle_label_subject_, nozzle_label_buf_);
     }

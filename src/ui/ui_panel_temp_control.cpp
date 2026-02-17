@@ -871,7 +871,7 @@ void TempControlPanel::setup_nozzle_panel(lv_obj_t* panel, lv_obj_t* parent_scre
     replay_nozzle_history_to_graph();
 
     // Attach heating icon animator (simplified to single icon, color controlled programmatically)
-    lv_obj_t* heater_icon = lv_obj_find_by_name(panel, "heater_icon");
+    lv_obj_t* heater_icon = lv_obj_find_by_name(panel, "nozzle_icon_glyph");
     if (heater_icon) {
         nozzle_animator_.attach(heater_icon);
         // Initialize with current state
@@ -896,7 +896,7 @@ void TempControlPanel::setup_nozzle_panel(lv_obj_t* panel, lv_obj_t* parent_scre
     // observe_int_sync defers callbacks automatically (issue #82), so
     // select_extruder()'s observer reassignment is safe from re-entrancy.
     auto& tool_state = helix::ToolState::instance();
-    if (tool_state.tool_count() > 1) {
+    if (tool_state.is_multi_tool()) {
         active_tool_observer_ =
             observe_int_sync<TempControlPanel>(tool_state.get_active_tool_subject(), this,
                                                [](TempControlPanel* self, int /*tool_idx*/) {
@@ -1206,6 +1206,9 @@ void TempControlPanel::rebuild_extruder_segments_impl() {
                           LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(selector, 8, 0);
 
+    // For multi-tool printers, use tool names (T0, T1) instead of generic display names
+    auto& tool_state = helix::ToolState::instance();
+
     for (const auto& ext_name : names) {
         const auto& info = extruders.at(ext_name);
         lv_obj_t* btn = lv_button_create(selector);
@@ -1220,8 +1223,12 @@ void TempControlPanel::rebuild_extruder_segments_impl() {
             lv_obj_remove_state(btn, LV_STATE_CHECKED);
         }
 
+        // Use tool name (T0, T1) for multi-tool printers, otherwise display_name
+        std::string tool_name = tool_state.tool_name_for_extruder(ext_name);
+        const std::string& btn_label = tool_name.empty() ? info.display_name : tool_name;
+
         lv_obj_t* label = lv_label_create(btn);
-        lv_label_set_text(label, info.display_name.c_str());
+        lv_label_set_text(label, btn_label.c_str());
         lv_obj_center(label);
 
         // Store TempControlPanel pointer as user data on the button.
@@ -1245,7 +1252,8 @@ void TempControlPanel::rebuild_extruder_segments_impl() {
                 }
                 const char* display_text = lv_label_get_text(lbl);
 
-                // Match display name back to klipper name
+                // Match label text back to klipper extruder name.
+                // Button may show display_name ("Nozzle 1") or tool name ("T0").
                 const auto& exts = self->printer_state_.temperature_state().extruders();
                 for (const auto& [kname, kinfo] : exts) {
                     if (kinfo.display_name == display_text) {
@@ -1253,8 +1261,15 @@ void TempControlPanel::rebuild_extruder_segments_impl() {
                         return;
                     }
                 }
-                spdlog::warn("[TempPanel] Could not find extruder for display name '{}'",
-                             display_text);
+                // Fallback: match tool name (T0, T1) back to extruder via ToolState
+                auto& ts = helix::ToolState::instance();
+                for (const auto& [kname, kinfo] : exts) {
+                    if (ts.tool_name_for_extruder(kname) == display_text) {
+                        self->select_extruder(kname);
+                        return;
+                    }
+                }
+                spdlog::warn("[TempPanel] Could not find extruder for label '{}'", display_text);
             },
             LV_EVENT_CLICKED, this);
     }

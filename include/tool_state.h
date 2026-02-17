@@ -72,6 +72,15 @@ class ToolState {
     [[nodiscard]] int tool_count() const {
         return static_cast<int>(tools_.size());
     }
+    [[nodiscard]] bool is_multi_tool() const {
+        return tools_.size() > 1;
+    }
+
+    /// Returns "Nozzle" for single-tool, "Nozzle T0" for multi-tool (active tool).
+    [[nodiscard]] std::string nozzle_label() const;
+
+    /// Returns tool name (e.g. "T0") for the given extruder name, or empty if not found.
+    [[nodiscard]] std::string tool_name_for_extruder(const std::string& extruder_name) const;
 
     lv_subject_t* get_active_tool_subject() {
         return &active_tool_;
@@ -90,6 +99,14 @@ class ToolState {
     lv_subject_t active_tool_{};
     lv_subject_t tool_count_{};
     lv_subject_t tools_version_{};
+
+    // Tool badge subjects for nozzle_icon component (XML-bound).
+    // Updated automatically by update_from_status() and init_tools().
+    lv_subject_t tool_badge_text_{};
+    char tool_badge_text_buf_[16] = {};
+    lv_subject_t show_tool_badge_{};
+
+    void update_tool_badge();
 
     std::vector<ToolInfo> tools_;
     int active_tool_index_ = 0;

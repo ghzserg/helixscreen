@@ -38,6 +38,8 @@ void ToolState::init_subjects(bool register_xml) {
     INIT_SUBJECT_INT(active_tool, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(tool_count, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(tools_version, 0, subjects_, register_xml);
+    INIT_SUBJECT_STRING(tool_badge_text, "", subjects_, register_xml);
+    INIT_SUBJECT_INT(show_tool_badge, 0, subjects_, register_xml);
 
     subjects_initialized_ = true;
 
@@ -120,6 +122,8 @@ void ToolState::init_tools(const helix::PrinterDiscovery& hardware) {
     lv_subject_set_int(&active_tool_, active_tool_index_);
     int version = lv_subject_get_int(&tools_version_) + 1;
     lv_subject_set_int(&tools_version_, version);
+
+    update_tool_badge();
 
     spdlog::info("[ToolState] Initialized {} tools (version {})", tools_.size(), version);
 }
@@ -241,6 +245,7 @@ void ToolState::update_from_status(const nlohmann::json& status) {
     }
 
     if (changed) {
+        update_tool_badge();
         int version = lv_subject_get_int(&tools_version_) + 1;
         lv_subject_set_int(&tools_version_, version);
         spdlog::trace("[ToolState] Status updated, version {}", version);
@@ -252,6 +257,42 @@ const ToolInfo* ToolState::active_tool() const {
         return nullptr;
     }
     return &tools_[active_tool_index_];
+}
+
+std::string ToolState::nozzle_label() const {
+    if (!is_multi_tool()) {
+        return "Nozzle";
+    }
+    const auto* tool = active_tool();
+    if (tool) {
+        return "Nozzle " + tool->name;
+    }
+    return "Nozzle";
+}
+
+void ToolState::update_tool_badge() {
+    if (!subjects_initialized_) {
+        return;
+    }
+
+    const auto* tool = is_multi_tool() ? active_tool() : nullptr;
+    if (tool) {
+        std::snprintf(tool_badge_text_buf_, sizeof(tool_badge_text_buf_), "%s", tool->name.c_str());
+    } else {
+        tool_badge_text_buf_[0] = '\0';
+    }
+
+    lv_subject_copy_string(&tool_badge_text_, tool_badge_text_buf_);
+    lv_subject_set_int(&show_tool_badge_, tool ? 1 : 0);
+}
+
+std::string ToolState::tool_name_for_extruder(const std::string& extruder_name) const {
+    for (const auto& tool : tools_) {
+        if (tool.extruder_name && *tool.extruder_name == extruder_name) {
+            return tool.name;
+        }
+    }
+    return {};
 }
 
 } // namespace helix

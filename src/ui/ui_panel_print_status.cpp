@@ -1121,7 +1121,7 @@ void PrintStatusPanel::on_temperature_changed() {
     // Temperature observers fire frequently during heating (4 subjects × ~1Hz each),
     // and update_all_displays() re-renders ALL subjects causing visible flickering.
     auto& ts = helix::ToolState::instance();
-    if (ts.tool_count() > 1 && ts.active_tool()) {
+    if (ts.is_multi_tool() && ts.active_tool()) {
         size_t prefix_len = std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_),
                                           "%s: ", ts.active_tool()->name.c_str());
         format_temperature_pair(centi_to_degrees(nozzle_current_), centi_to_degrees(nozzle_target_),
