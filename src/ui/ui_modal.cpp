@@ -891,7 +891,8 @@ lv_obj_t* helix::ui::modal_show_confirmation(const char* title, const char* mess
     const char* attrs[] = {"title", title, "message", message, nullptr};
 
     // Configure modal with severity and button text
-    helix::ui::modal_configure(severity, true, confirm_text ? confirm_text : lv_tr("OK"),
+    helix::ui::modal_configure(severity, true,
+                               confirm_text ? confirm_text : "OK", // i18n: universal
                                lv_tr("Cancel"));
 
     // Show the modal
@@ -931,7 +932,8 @@ lv_obj_t* helix::ui::modal_show_alert(const char* title, const char* message,
     const char* attrs[] = {"title", title, "message", message, nullptr};
 
     // Configure modal: no cancel button
-    helix::ui::modal_configure(severity, false, ok_text ? ok_text : lv_tr("OK"), nullptr);
+    helix::ui::modal_configure(severity, false, ok_text ? ok_text : "OK",
+                               nullptr); // i18n: universal
 
     // Show the modal
     lv_obj_t* dialog = Modal::show("modal_dialog", attrs);

@@ -945,7 +945,7 @@ void SpoolWizardOverlay::populate_vendor_list() {
             if (vendor.from_server && vendor.from_database) {
                 lv_label_set_text(source_label, lv_tr("Both"));
             } else if (vendor.from_server) {
-                lv_label_set_text(source_label, lv_tr("Spoolman"));
+                lv_label_set_text(source_label, "Spoolman"); // i18n: product name, do not translate
             } else {
                 lv_label_set_text(source_label, lv_tr("Database"));
             }

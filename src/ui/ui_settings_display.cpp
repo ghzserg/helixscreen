@@ -639,7 +639,7 @@ void DisplaySettingsOverlay::on_preview_open_modal(lv_event_t* e) {
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod "
         "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim "
         "veniam, quis nostrud exercitation ullamco laboris.",
-        ModalSeverity::Info, lv_tr("OK"), nullptr, nullptr, nullptr);
+        ModalSeverity::Info, "OK", nullptr, nullptr, nullptr); // i18n: universal
 
     // Apply preview palette to the newly created modal
     // (modal is created with global theme colors, need to update for preview)
