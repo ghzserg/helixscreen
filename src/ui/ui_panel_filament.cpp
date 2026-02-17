@@ -848,7 +848,7 @@ void FilamentPanel::handle_extruder_changed() {
         [this](const std::string& err) {
             NOTIFY_ERROR("Tool change failed: {}", err);
             // Revert dropdown to actual active tool on UI thread
-            ui_async_call(
+            helix::ui::async_call(
                 [](void* ctx) {
                     auto* panel = static_cast<FilamentPanel*>(ctx);
                     if (panel->extruder_dropdown_) {

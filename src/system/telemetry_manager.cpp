@@ -1159,7 +1159,7 @@ void on_print_state_changed_for_telemetry(lv_observer_t* observer, lv_subject_t*
                         // marshal cache write to main thread via ui_queue_update
                         std::string ftype = metadata.filament_type;
                         float ftotal = static_cast<float>(metadata.filament_total);
-                        ui_queue_update([ftype = std::move(ftype), ftotal]() {
+                        helix::ui::queue_update([ftype = std::move(ftype), ftotal]() {
                             s_telemetry_filament_type = ftype;
                             s_telemetry_filament_used_mm = ftotal;
                             spdlog::debug("[Telemetry] Cached filament: type='{}', total={:.1f}mm",
