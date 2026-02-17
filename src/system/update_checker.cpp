@@ -31,6 +31,7 @@
 
 #include <chrono>
 #include <climits>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
@@ -38,6 +39,7 @@
 #include <sys/statvfs.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
 
 #include "hv/json.hpp"
@@ -1004,21 +1006,24 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
     std::string install_log = tarball_path + ".install.log";
 
     spdlog::info("[UpdateChecker] Running: {} --local {} --update", install_script, tarball_path);
-    spdlog::info("[UpdateChecker] install_script exists/executable: access={}", access(install_script.c_str(), X_OK));
-    spdlog::info("[UpdateChecker] tarball_path exists/readable:     access={}", access(tarball_path.c_str(), R_OK));
-    spdlog::info("[UpdateChecker] extracted_dir: {}", extracted_dir);
-    spdlog::info("[UpdateChecker] install log:   {}", install_log);
+    spdlog::debug("[UpdateChecker] install_script exists/executable: access={}",
+                  access(install_script.c_str(), X_OK));
+    spdlog::debug("[UpdateChecker] tarball_path exists/readable:     access={}",
+                  access(tarball_path.c_str(), R_OK));
+    spdlog::debug("[UpdateChecker] extracted_dir: {}", extracted_dir);
+    spdlog::debug("[UpdateChecker] install log:   {}", install_log);
     {
         // Log current process context
         char cwd_buf[PATH_MAX] = {};
         const char* cwd = getcwd(cwd_buf, sizeof(cwd_buf));
-        spdlog::info("[UpdateChecker] cwd={} uid={} euid={}", cwd ? cwd : "(error)", getuid(), geteuid());
+        spdlog::debug("[UpdateChecker] cwd={} uid={} euid={}", cwd ? cwd : "(error)", getuid(),
+                      geteuid());
     }
     {
         // Log tarball file size
         struct stat st{};
         if (stat(tarball_path.c_str(), &st) == 0) {
-            spdlog::info("[UpdateChecker] tarball size: {} bytes", st.st_size);
+            spdlog::debug("[UpdateChecker] tarball size: {} bytes", st.st_size);
         } else {
             spdlog::error("[UpdateChecker] stat({}) failed: {}", tarball_path, strerror(errno));
         }
@@ -1038,7 +1043,8 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
         pid_t pid = fork();
         if (pid < 0) {
             spdlog::error("[UpdateChecker] fork() for install failed: {}", strerror(errno));
-            if (log_fd >= 0) close(log_fd);
+            if (log_fd >= 0)
+                close(log_fd);
         } else if (pid == 0) {
             // Child: redirect stdout+stderr to log file
             if (log_fd >= 0) {
@@ -1054,14 +1060,35 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
             execv(install_script.c_str(), const_cast<char**>(argv));
             _exit(127);
         } else {
-            // Parent: close our copy of the log fd and wait
-            if (log_fd >= 0) close(log_fd);
+            // Parent: close our copy of the log fd and wait with timeout
+            if (log_fd >= 0)
+                close(log_fd);
+
+            constexpr int timeout_seconds = 120;
             int status = 0;
-            if (waitpid(pid, &status, 0) < 0) {
-                spdlog::error("[UpdateChecker] waitpid(install) failed: {}", strerror(errno));
-            } else {
+            bool exited = false;
+
+            for (int elapsed = 0; elapsed < timeout_seconds; ++elapsed) {
+                pid_t result = waitpid(pid, &status, WNOHANG);
+                if (result < 0) {
+                    spdlog::error("[UpdateChecker] waitpid(install) failed: {}", strerror(errno));
+                    break;
+                }
+                if (result > 0) {
+                    exited = true;
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+
+            if (exited) {
                 ret = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
                 spdlog::info("[UpdateChecker] install.sh exited with code {}", ret);
+            } else {
+                spdlog::error("[UpdateChecker] install.sh timed out after {}s, killing",
+                              timeout_seconds);
+                kill(pid, SIGKILL);
+                waitpid(pid, nullptr, 0); // reap zombie
             }
         }
 
