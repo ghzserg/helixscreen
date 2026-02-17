@@ -3,9 +3,11 @@ translations:
   ' elapsed · ': ' elapsed · '
   ' frames captured': ' フレームをキャプチャしました'
   ' left': ' left'
+  + Add: '+ 追加'
   + Add Preset: + プリセットを追加
   + Create New Filament: '+ 新しいフィラメントを作成'
   + Create New Vendor: '+ 新しいベンダーを作成'
+  + New: '+ 新規'
   '- Check [resonance_tester] in printer.cfg': '- printer.cfg の [resonance_tester] を確認してください'
   '- Ensure ADXL345 is connected': '- ADXL345 が接続されていることを確認してください'
   '- Try Measure Noise first': '- まず「ノイズ測定」をお試しください'
@@ -74,6 +76,7 @@ translations:
   Anonymous data to help improve HelixScreen: HelixScreen改善のための匿名データ
   Anonymous stats — no personal data, ever.: 匿名の統計情報 — 個人データは一切収集しません。
   Any additional notes...: 追加のメモ...
+  Any notes...: 'メモ...'
   App Background: アプリ背景
   Apply: 適用
   Apply Changes: 変更を適用
@@ -124,7 +127,7 @@ translations:
   Both: 両方
   Brightness: 明るさ
   Browse: 参照
-  Bundle Uploaded: ''
+  Bundle Uploaded: バンドルをアップロードしました
   Button taps and navigation sounds: ボタンタップとナビゲーション音
   Bypass: バイパス
   Bypass Mode: バイパスモード
@@ -163,6 +166,7 @@ translations:
   Checking slots...: スロットを確認中...
   Checking timelapse plugin...: タイムラプスプラグインを確認中...
   Choose 12-hour or 24-hour time display: 12時間表示または24時間表示を選択
+  Choose an existing filament, or tap + New to create one.: '既存のフィラメントを選択するか、+ 新規をタップして作成してください。'
   Choose display language: 表示言語を選択
   Choose how frames are captured during printing: 印刷中のフレームキャプチャ方法を選択
   Choose rendering mode for G-code visualization: G-codeの視覚化レンダリングモードを選択
@@ -177,8 +181,8 @@ translations:
   Close: 閉じる
   Closer: 近く
   Closer = more squish | Farther = less squish: 近い = より圧縮 | 遠い = 圧縮少なめ
-  Collect logs and system info for support: ''
-  Collecting data...: ''
+  Collect logs and system info for support: サポート用にログとシステム情報を収集
+  Collecting data...: データを収集中...
   Color: 色
   Color Mismatch: 色の不一致
   Color Sensors: カラーセンサー
@@ -217,7 +221,9 @@ translations:
   Controlled by hardware sensor: ハードウェアセンサーで制御
   Cool Down: 冷却
   Cooling: 冷却中
+  Copied to clipboard!: クリップボードにコピーしました！
   Copy Command: コマンドをコピー
+  Copy failed - use SSH manually: コピー失敗 - SSHを手動で使用してください
   Corner roundness (0 = sharp, 40 = very round): 角の丸み (0 = 鋭い、40 = 非常に丸い)
   Correction (Ki): 補正 (Ki)
   Could not check webcam status.\nCheck printer connection.: ウェブカメラの状態を確認できませんでした。\nプリンター接続を確認してください。
@@ -259,14 +265,14 @@ translations:
   Disable Motors?: モーターを無効にしますか？
   Discard: 破棄
   Discard Changes?: 変更を破棄しますか？
-  Discord Community: ''
+  Discord Community: Discordコミュニティ
   Discovered Printers: 検出されたプリンター
   Dismiss: 閉じる
   Display Settings: ディスプレイ設定
   Display Sleep: ディスプレイスリープ
   Do not power off your printer.: プリンターの電源を切らないでください。
   Do not touch the printer during calibration: キャリブレーション中はプリンターに触れないでください
-  Documentation: ''
+  Documentation: ドキュメント
   Don't Save: 保存しない
   Don't ask again: 今後表示しない
   Done: 完了
@@ -346,6 +352,7 @@ translations:
   Failed to open history: 履歴を開けませんでした
   Failed to open history list: 履歴リストを開けませんでした
   Failed to open wizard: ウィザードを開けませんでした
+  Failed to reset theme: テーマのリセットに失敗しました
   Failed to restart Moonraker.: Moonrakerの再起動に失敗しました。
   Failed to save configuration: 設定の保存に失敗しました
   Failed to save spool: スプールの保存に失敗しました
@@ -361,6 +368,7 @@ translations:
   Filament Sensor: フィラメントセンサー
   Filament Sensors: フィラメントセンサー
   Filament Used: 使用済みフィラメント
+  Filament already exists: フィラメントはすでに存在します
   Filament by Type: 種類別フィラメント
   Filament diameter sensors for flow compensation: フロー補正用フィラメント直径センサー
   Filament runout and motion detection sensors: フィラメント切れとモーション検出センサー
@@ -381,12 +389,12 @@ translations:
   G-code Console: G-code コンソール
   G-code Preview: G-code プレビュー
   G-code commands will appear here: G-code コマンドがここに表示されます
-  Get help and share feedback: ''
+  Get help and share feedback: ヘルプとフィードバック
   'Ghost:': 'Ghost:'
   Got it: 了解
   Gray: グレー
-  Guides and reference: ''
-  HELP & SUPPORT: ''
+  Guides and reference: ガイドとリファレンス
+  HELP & SUPPORT: ヘルプとサポート
   Happy Hare MMU: Happy Hare MMU
   Hardware: ハードウェア
   Hardware Health: ハードウェア状態
@@ -428,7 +436,7 @@ translations:
   Ignore: 無視
   In Progress: 進行中
   Inactive: 非アクティブ
-  Include Klipper/Moonraker logs: ''
+  Include Klipper/Moonraker logs: Klipper/Moonrakerのログを含める
   Indexing G-code...: G-codeをインデックス中...
   Initializing...: 初期化中...
   Input: 入力
@@ -453,6 +461,7 @@ translations:
   Interactive probe calibration: インタラクティブプローブキャリブレーション
   Interactive probe offset adjustment: 対話型プローブオフセット調整
   Issue description: 問題の説明
+  Join us at discord.gg/helixscreen: ''
   Just now: たった今
   Keep Printing: 印刷を続行
   Keep Required: 必須を維持
@@ -490,11 +499,13 @@ translations:
   Loading Error: 装填エラー
   Loading G-code...: G-codeを読み込み中...
   Loading filament...: フィラメントを装填中...
+  Loading filaments...: フィラメントを読み込み中...
   Loading history...: 履歴を読み込み中...
   Loading spools...: スプールを読み込み中...
   Loading vendors...: ベンダーを読み込み中...
   Loading...: 読み込み中...
   Locked during print: 印刷中はロックされています
+  'Lot # (optional)': 'ロット番号（オプション）'
   Lot Number (optional): ロット番号（オプション）
   Lot/Batch Nr: ロット/バッチ番号
   M to toggle: M で切り替え
@@ -569,6 +580,8 @@ translations:
   Network Settings: ネットワーク設定
   Network Test: ネットワークテスト
   New Spool: 新しいスプール
+  'New Spool: Step ': '新しいスプール: ステップ '
+  'New Spool: Step 1 of 3': '新しいスプール: ステップ 1 / 3'
   New Version Available: 新バージョンあり
   New profile name: 新しいプロファイル名
   Next: 次へ
@@ -583,6 +596,7 @@ translations:
   No PRINT_START macro found: PRINT_START マクロが見つかりません
   No Power Devices: 電源デバイスなし
   No Spools: スプールなし
+  No changes to revert: 元に戻す変更はありません
   No effects available: 利用可能なエフェクトがありません
   No events queued: キューにイベントはありません
   No filaments found: フィラメントが見つかりません
@@ -615,6 +629,7 @@ translations:
   Notifications: 通知
   Notify when print finishes: 印刷完了時に通知
   Nozzle: ノズル
+  'Nozzle ': 'ノズル '
   Nozzle Clean: ノズル清掃
   Nozzle Priming: ノズルプライミング
   Nozzle Temp: ノズル温度
@@ -654,6 +669,7 @@ translations:
   Phase tracking disabled: フェーズトラッキング無効
   Phase tracking enabled: フェーズトラッキング有効
   Phase tracking update failed: フェーズトラッキングの更新に失敗
+  Pick: 選択
   Pick Color: 色を選択
   Place PNG or JPEG files in config/custom_images/ to add custom images: カスタム画像を追加するには config/custom_images/ に PNG または JPEG ファイルを配置してください
   Place plugins in the plugins directory to extend HelixScreen: HelixScreen を拡張するには、プラグインディレクトリにプラグインを配置してください
@@ -847,7 +863,7 @@ translations:
   Setup Timelapse: タイムラプスを設定
   Shadow Intensity: 影の強度
   Share Usage Data: 使用データを共有
-  'Share this code in Discord or support:': ''
+  'Share this code in Discord or support:': 'このコードをDiscordまたはサポートで共有してください:'
   'Shininess:': '光沢:'
   Show detailed print preparation status: 詳細な印刷準備ステータスを表示
   Side: 側面
@@ -855,6 +871,7 @@ translations:
   Size: サイズ
   Skip: スキップ
   Sleep While Printing: 印刷中のスリープ
+  Sleep timeout adjusted: スリープタイムアウトを調整しました
   Slot 1: スロット1
   Small labels help keep controls calm and focused.: 小さなラベルはコントロールを落ち着いた集中した状態に保ちます。
   Some settings will take effect after restart.: 一部の設定は再起動後に有効になります。
@@ -868,6 +885,7 @@ translations:
   Spool: スプール
   Spool Visualization (Pseudo-3D Canvas): スプール可視化（疑似3Dキャンバス）
   Spool Weight (g): スプール重量（g）
+  Spool created successfully: スプールを作成しました
   Spool deleted: スプールを削除しました
   Spool saved: スプールを保存しました
   Spool wt (g): スプール重量 (g)
@@ -932,6 +950,7 @@ translations:
   Theme Colors: テーマカラー
   Theme Preset: テーマプリセット
   Theme changes apply after restart.: テーマの変更は再起動後に適用されます。
+  Theme reset to defaults: テーマをデフォルトにリセットしました
   Theme, brightness, and sleep settings: テーマ、明るさ、スリープ設定
   This calibration uses the paper friction method to set your Z-offset.: このキャリブレーションは紙の摩擦方式を使用して Z-offset を設定します。
   This cannot be undone.: この操作は元に戻せません。
@@ -944,7 +963,7 @@ translations:
   'This will apply the Z-offset to your endstop and restart Klipper to save the ': 'Z-offset をエンドストップに適用し、保存のために Klipper を再起動します。 '
   'This will apply the Z-offset to your probe and restart Klipper to save the ': 'Z-offset をプローブに適用し、保存のために Klipper を再起動します。 '
   ? This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included.
-  : ''
+  : システム情報、ログ、設定、プリンターデータを収集して問題の診断に役立てます。パスワードや個人情報は含まれません。
   This will immediately halt all printer operations. The printer will require a restart to resume.: これはすべてのプリンター操作を直ちに停止します。再開するにはプリンターの再起動が必要です。
   This will reset all settings to defaults. This action cannot be undone.: これはすべての設定をデフォルトにリセットします。この操作は元に戻せません。
   This will restart Klipper.: これにより Klipper が再起動します。
@@ -958,6 +977,7 @@ translations:
   Timelapse plugin installed!: タイムラプスプラグインをインストールしました！
   Timelapse plugin is already installed!: タイムラプスプラグインは既にインストール済みです！
   Timelapse plugin is installed!: タイムラプスプラグインがインストールされています！
+  Timelapse rendered successfully: タイムラプスのレンダリングが完了しました
   'Tip:': 'ヒント:'
   Toggle: トグル
   Toggle (fire-and-forget): トグル（状態追跡なし）
@@ -997,9 +1017,9 @@ translations:
   Update Channel: 更新チャンネル
   Update Failed: 更新失敗
   Update Installed: 更新完了
-  Upload: ''
-  Upload Debug Bundle: ''
-  Upload Failed: ''
+  Upload: アップロード
+  Upload Debug Bundle: デバッグバンドルをアップロード
+  Upload Failed: アップロード失敗
   Upload gcode files to get started: 開始するには gcode ファイルをアップロードしてください
   Use G10/G11 firmware retraction: G10/G11 ファームウェアリトラクションを使用
   Use printer type to select image: プリンタータイプで画像を選択
@@ -1007,6 +1027,7 @@ translations:
   Velocity and acceleration limits: 速度と加速度の制限
   Vendor: ベンダー
   Vendor Name: ベンダー名
+  Vendor already exists: ベンダーはすでに存在します
   'Vendor:': 'ベンダー：'
   Verifying timelapse plugin...: タイムラプスプラグインを確認中...
   Verifying...: 検証中...
@@ -1022,6 +1043,7 @@ translations:
   View Timelapse: タイムラプスを表示
   View installed plugins and status: インストール済みプラグインとステータスを表示
   View print statistics and job history: 印刷統計とジョブ履歴を表示
+  Visit docs.helixscreen.org: ''
   Volume: 音量
   Volume, themes, and UI sounds: 音量、テーマ、UIサウンド
   WLED: WLED

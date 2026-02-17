@@ -3,9 +3,11 @@ translations:
   ' elapsed · ': ' elapsed · '
   ' frames captured': ' Bilder aufgenommen'
   ' left': ' left'
+  + Add: '+ Hinzufügen'
   + Add Preset: + Voreinstellung
   + Create New Filament: '+ Neues Filament erstellen'
   + Create New Vendor: '+ Neuen Hersteller erstellen'
+  + New: '+ Neu'
   '- Check [resonance_tester] in printer.cfg': '- Prüfen Sie [resonance_tester] in printer.cfg'
   '- Ensure ADXL345 is connected': '- Stellen Sie sicher, dass der ADXL345 angeschlossen ist'
   '- Try Measure Noise first': '- Versuchen Sie zuerst Rauschen messen'
@@ -74,6 +76,7 @@ translations:
   Anonymous data to help improve HelixScreen: Anonyme Daten zur Verbesserung von HelixScreen
   Anonymous stats — no personal data, ever.: Anonyme Statistiken — niemals persönliche Daten.
   Any additional notes...: Zusätzliche Notizen...
+  Any notes...: 'Notizen...'
   App Background: App-Hintergrund
   Apply: Anwenden
   Apply Changes: Änderungen anwenden
@@ -124,7 +127,7 @@ translations:
   Both: Beide
   Brightness: Helligkeit
   Browse: Durchsuchen
-  Bundle Uploaded: ''
+  Bundle Uploaded: 'Paket hochgeladen'
   Button taps and navigation sounds: Tastentöne und Navigationstöne
   Bypass: Bypass
   Bypass Mode: Bypass-Modus
@@ -163,6 +166,7 @@ translations:
   Checking slots...: Prüfe Slots...
   Checking timelapse plugin...: Prüfe Zeitraffer-Plugin...
   Choose 12-hour or 24-hour time display: 12-Stunden- oder 24-Stunden-Zeitformat wählen
+  Choose an existing filament, or tap + New to create one.: 'Vorhandenes Filament wählen oder + Neu tippen.'
   Choose display language: Anzeigesprache wählen
   Choose how frames are captured during printing: Wählen Sie, wie Bilder während des Drucks aufgenommen werden
   Choose rendering mode for G-code visualization: Darstellungsmodus für G-Code-Visualisierung wählen
@@ -177,8 +181,8 @@ translations:
   Close: Schließen
   Closer: Näher
   Closer = more squish | Farther = less squish: Näher = mehr Quetschung | Weiter = weniger Quetschung
-  Collect logs and system info for support: ''
-  Collecting data...: ''
+  Collect logs and system info for support: 'Protokolle und Systemdaten für Support sammeln'
+  Collecting data...: 'Daten werden gesammelt...'
   Color: Farbe
   Color Mismatch: Farbabweichung
   Color Sensors: Farbsensoren
@@ -217,7 +221,9 @@ translations:
   Controlled by hardware sensor: Durch Hardware-Sensor gesteuert
   Cool Down: Abkühlen
   Cooling: Kühlung
+  Copied to clipboard!: 'In Zwischenablage kopiert!'
   Copy Command: Befehl kopieren
+  Copy failed - use SSH manually: 'Kopieren fehlgeschlagen – SSH verwenden'
   Corner roundness (0 = sharp, 40 = very round): Eckenrundung (0 = scharf, 40 = sehr rund)
   Correction (Ki): Korrektur (Ki)
   Could not check webcam status.\nCheck printer connection.: Webcam-Status konnte nicht geprüft werden.\nDruckerverbindung prüfen.
@@ -259,14 +265,14 @@ translations:
   Disable Motors?: Motoren deaktivieren?
   Discard: Verwerfen
   Discard Changes?: Änderungen verwerfen?
-  Discord Community: ''
+  Discord Community: 'Discord Community'
   Discovered Printers: Gefundene Drucker
   Dismiss: Verwerfen
   Display Settings: Anzeigeeinstellungen
   Display Sleep: Bildschirm-Ruhezustand
   Do not power off your printer.: Drucker nicht ausschalten.
   Do not touch the printer during calibration: Drucker während der Kalibrierung nicht berühren
-  Documentation: ''
+  Documentation: 'Dokumentation'
   Don't Save: Nicht speichern
   Don't ask again: Nicht erneut fragen
   Done: Fertig
@@ -346,6 +352,7 @@ translations:
   Failed to open history: Verlauf konnte nicht geöffnet werden
   Failed to open history list: Verlaufsliste konnte nicht geöffnet werden
   Failed to open wizard: Assistent konnte nicht geöffnet werden
+  Failed to reset theme: 'Thema zurücksetzen fehlgeschlagen'
   Failed to restart Moonraker.: Moonraker konnte nicht neu gestartet werden.
   Failed to save configuration: Konfiguration konnte nicht gespeichert werden
   Failed to save spool: Spule konnte nicht gespeichert werden
@@ -361,6 +368,7 @@ translations:
   Filament Sensor: Filamentsensor
   Filament Sensors: Filamentsensoren
   Filament Used: Filament verwendet
+  Filament already exists: 'Filament bereits vorhanden'
   Filament by Type: Filament nach Typ
   Filament diameter sensors for flow compensation: Filamentdurchmessersensoren für Flusskompensation
   Filament runout and motion detection sensors: Filament-Auslauf- und Bewegungserkennungssensoren
@@ -381,12 +389,12 @@ translations:
   G-code Console: G-Code-Konsole
   G-code Preview: G-Code-Vorschau
   G-code commands will appear here: G-Code-Befehle werden hier angezeigt
-  Get help and share feedback: ''
+  Get help and share feedback: 'Hilfe erhalten und Feedback teilen'
   'Ghost:': 'Geist:'
   Got it: Verstanden
   Gray: Grau
-  Guides and reference: ''
-  HELP & SUPPORT: ''
+  Guides and reference: 'Anleitungen und Referenz'
+  HELP & SUPPORT: 'HILFE & SUPPORT'
   Happy Hare MMU: Happy Hare MMU
   Hardware: Hardware
   Hardware Health: Hardware-Zustand
@@ -428,7 +436,7 @@ translations:
   Ignore: Ignorieren
   In Progress: In Bearbeitung
   Inactive: Inaktiv
-  Include Klipper/Moonraker logs: ''
+  Include Klipper/Moonraker logs: 'Klipper/Moonraker-Protokolle einschließen'
   Indexing G-code...: G-Code wird indiziert...
   Initializing...: Initialisiere...
   Input: Eingabe
@@ -453,6 +461,7 @@ translations:
   Interactive probe calibration: Interaktive Sondenkalibrierung
   Interactive probe offset adjustment: Interaktive Taster-Offset-Anpassung
   Issue description: Problembeschreibung
+  Join us at discord.gg/helixscreen: ''
   Just now: Gerade eben
   Keep Printing: Weiter drucken
   Keep Required: Erforderlich behalten
@@ -490,11 +499,13 @@ translations:
   Loading Error: Ladefehler
   Loading G-code...: G-Code wird geladen...
   Loading filament...: Filament wird geladen...
+  Loading filaments...: 'Filamente werden geladen...'
   Loading history...: Lade Verlauf...
   Loading spools...: Lade Spulen...
   Loading vendors...: Hersteller werden geladen...
   Loading...: Lade...
   Locked during print: Während des Drucks gesperrt
+  'Lot # (optional)': 'Los-Nr. (optional)'
   Lot Number (optional): Chargennummer (optional)
   Lot/Batch Nr: Los-/Chargennr.
   M to toggle: M zum Umschalten
@@ -569,6 +580,8 @@ translations:
   Network Settings: Netzwerkeinstellungen
   Network Test: Netzwerktest
   New Spool: Neue Spule
+  'New Spool: Step ': 'Neue Spule: Schritt '
+  'New Spool: Step 1 of 3': 'Neue Spule: Schritt 1 von 3'
   New Version Available: Neue Version verfügbar
   New profile name: Neuer Profilname
   Next: Weiter
@@ -583,6 +596,7 @@ translations:
   No PRINT_START macro found: Kein PRINT_START-Makro gefunden
   No Power Devices: Keine Stromgeräte
   No Spools: Keine Spulen
+  No changes to revert: 'Keine Änderungen zum Zurücksetzen'
   No effects available: Keine Effekte verfügbar
   No events queued: Keine Ereignisse in Warteschlange
   No filaments found: Keine Filamente gefunden
@@ -615,6 +629,7 @@ translations:
   Notifications: Benachrichtigungen
   Notify when print finishes: Benachrichtigen wenn Druck beendet
   Nozzle: Düse
+  'Nozzle ': 'Düse '
   Nozzle Clean: Düsenreinigung
   Nozzle Priming: Düsen-Priming
   Nozzle Temp: Düsentemperatur
@@ -654,6 +669,7 @@ translations:
   Phase tracking disabled: Phasenverfolgung deaktiviert
   Phase tracking enabled: Phasenverfolgung aktiviert
   Phase tracking update failed: Phasenverfolgung-Update fehlgeschlagen
+  Pick: 'Auswählen'
   Pick Color: Farbe wählen
   Place PNG or JPEG files in config/custom_images/ to add custom images: PNG- oder JPEG-Dateien in config/custom_images/ ablegen, um eigene Bilder hinzuzufügen
   Place plugins in the plugins directory to extend HelixScreen: Platzieren Sie Plugins im Plugin-Verzeichnis, um HelixScreen zu erweitern
@@ -847,7 +863,7 @@ translations:
   Setup Timelapse: Zeitraffer einrichten
   Shadow Intensity: Schattenintensität
   Share Usage Data: Nutzungsdaten teilen
-  'Share this code in Discord or support:': ''
+  'Share this code in Discord or support:': 'Code in Discord oder Support teilen:'
   'Shininess:': 'Glanz:'
   Show detailed print preparation status: Detaillierten Druckvorbereitungsstatus anzeigen
   Side: Seite
@@ -855,6 +871,7 @@ translations:
   Size: Größe
   Skip: Überspringen
   Sleep While Printing: Ruhemodus beim Drucken
+  Sleep timeout adjusted: 'Ruhemodus-Zeitlimit angepasst'
   Slot 1: Slot 1
   Small labels help keep controls calm and focused.: Kleine Beschriftungen helfen, Steuerelemente ruhig und fokussiert zu halten.
   Some settings will take effect after restart.: Einige Einstellungen werden nach dem Neustart wirksam.
@@ -868,6 +885,7 @@ translations:
   Spool: Spule
   Spool Visualization (Pseudo-3D Canvas): Spulen-Visualisierung (Pseudo-3D-Canvas)
   Spool Weight (g): Spulengewicht (g)
+  Spool created successfully: 'Spule erfolgreich erstellt'
   Spool deleted: Spule gelöscht
   Spool saved: Spule gespeichert
   Spool wt (g): Spulengewicht (g)
@@ -932,6 +950,7 @@ translations:
   Theme Colors: Themenfarben
   Theme Preset: Thema-Voreinstellung
   Theme changes apply after restart.: Themenänderungen werden nach dem Neustart wirksam.
+  Theme reset to defaults: 'Thema auf Standardwerte zurückgesetzt'
   Theme, brightness, and sleep settings: Thema, Helligkeit und Ruhezustandseinstellungen
   This calibration uses the paper friction method to set your Z-offset.: Diese Kalibrierung verwendet die Papierreibungsmethode zur Einstellung Ihres Z-Offsets.
   This cannot be undone.: Dies kann nicht rückgängig gemacht werden.
@@ -944,7 +963,7 @@ translations:
   'This will apply the Z-offset to your endstop and restart Klipper to save the ': 'Dies wendet den Z-Offset auf Ihren Endschalter an und startet Klipper neu, um '
   'This will apply the Z-offset to your probe and restart Klipper to save the ': 'Dies wendet den Z-Offset auf Ihre Sonde an und startet Klipper neu, um '
   ? This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included.
-  : ''
+  : 'Systemdaten, Protokolle, Einstellungen und Druckerdaten werden gesammelt. Keine Passwörter oder sensiblen Daten.'
   This will immediately halt all printer operations. The printer will require a restart to resume.: Dies stoppt sofort alle Druckeroperationen. Der Drucker erfordert einen Neustart, um fortzufahren.
   This will reset all settings to defaults. This action cannot be undone.: Dies setzt alle Einstellungen auf die Standardwerte zurück. Diese Aktion kann nicht rückgängig gemacht werden.
   This will restart Klipper.: Dies startet Klipper neu.
@@ -958,6 +977,7 @@ translations:
   Timelapse plugin installed!: Zeitraffer-Plugin installiert!
   Timelapse plugin is already installed!: Zeitraffer-Plugin ist bereits installiert!
   Timelapse plugin is installed!: Zeitraffer-Plugin ist installiert!
+  Timelapse rendered successfully: 'Zeitraffer erfolgreich gerendert'
   'Tip:': 'Tipp:'
   Toggle: Umschalten
   Toggle (fire-and-forget): Umschalten (fire-and-forget)
@@ -997,9 +1017,9 @@ translations:
   Update Channel: Update-Kanal
   Update Failed: Update fehlgeschlagen
   Update Installed: Update installiert
-  Upload: ''
-  Upload Debug Bundle: ''
-  Upload Failed: ''
+  Upload: 'Hochladen'
+  Upload Debug Bundle: 'Debug-Paket hochladen'
+  Upload Failed: 'Hochladen fehlgeschlagen'
   Upload gcode files to get started: Laden Sie G-Code-Dateien hoch, um zu beginnen
   Use G10/G11 firmware retraction: G10/G11-Firmware-Retraktion verwenden
   Use printer type to select image: Druckertyp zur Bildauswahl verwenden
@@ -1007,6 +1027,7 @@ translations:
   Velocity and acceleration limits: Geschwindigkeits- und Beschleunigungslimits
   Vendor: Hersteller
   Vendor Name: Herstellername
+  Vendor already exists: 'Hersteller bereits vorhanden'
   'Vendor:': 'Hersteller:'
   Verifying timelapse plugin...: Zeitraffer-Plugin wird überprüft...
   Verifying...: Wird überprüft...
@@ -1022,6 +1043,7 @@ translations:
   View Timelapse: Zeitraffer ansehen
   View installed plugins and status: Installierte Plugins und Status anzeigen
   View print statistics and job history: Druckstatistiken und Auftragsverlauf anzeigen
+  Visit docs.helixscreen.org: ''
   Volume: Lautstärke
   Volume, themes, and UI sounds: Lautstärke, Themen und UI-Töne
   WLED: WLED

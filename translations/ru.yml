@@ -3,9 +3,11 @@ translations:
   ' elapsed · ': ' истёк · '
   ' frames captured': ' кадров захвачено'
   ' left': ' осталось'
+  + Add: '+ Добавить'
   + Add Preset: + Добавить пресет
   + Create New Filament: '+ Создать новый филамент'
   + Create New Vendor: '+ Создать нового производителя'
+  + New: '+ Новый'
   '- Check [resonance_tester] in printer.cfg': '- Проверьте блок [resonance_tester] в printer.cfg'
   '- Ensure ADXL345 is connected': '- Убедитесь, что ADXL345 подключен'
   '- Try Measure Noise first': '- Сначала попробуйте измерить шум акселерометра'
@@ -74,6 +76,7 @@ translations:
   Anonymous data to help improve HelixScreen: Анонимные данные для улучшения HelixScreen
   Anonymous stats — no personal data, ever.: Анонимная статистика — никаких личных данных.
   Any additional notes...: Любые дополнительные заметки...
+  Any notes...: Заметки...
   App Background: Фон приложения
   Apply: Применить
   Apply Changes: Применить изменения
@@ -124,7 +127,7 @@ translations:
   Both: Оба
   Brightness: Яркость
   Browse: Обзор
-  Bundle Uploaded: ''
+  Bundle Uploaded: Пакет отправлен
   Button taps and navigation sounds: Звуки нажатий и навигации
   Bypass: Обход
   Bypass Mode: Режим обхода
@@ -163,6 +166,7 @@ translations:
   Checking slots...: Проверка слотов...
   Checking timelapse plugin...: Проверка плагина таймлапса...
   Choose 12-hour or 24-hour time display: Выберите 12-часовой или 24-часовой формат времени
+  Choose an existing filament, or tap + New to create one.: 'Выберите существующий филамент или нажмите + Новый, чтобы создать.'
   Choose display language: Выберите язык интерфейса
   Choose how frames are captured during printing: Выберите способ захвата кадров во время печати
   Choose rendering mode for G-code visualization: Выберите режим рендеринга для визуализации G-code
@@ -177,8 +181,8 @@ translations:
   Close: Закрыть
   Closer: Ближе
   Closer = more squish | Farther = less squish: Ближе = больше сжатие | Дальше = меньше сжатие
-  Collect logs and system info for support: ''
-  Collecting data...: ''
+  Collect logs and system info for support: Собрать логи и информацию о системе для поддержки
+  Collecting data...: Сбор данных...
   Color: Цвет
   Color Mismatch: Несоответствие цвета
   Color Sensors: Датчики цвета
@@ -217,7 +221,9 @@ translations:
   Controlled by hardware sensor: Управляется аппаратным датчиком
   Cool Down: Охладить
   Cooling: Охлаждение
+  Copied to clipboard!: Скопировано в буфер обмена!
   Copy Command: Копировать команду
+  Copy failed - use SSH manually: Ошибка копирования - используйте SSH вручную
   Corner roundness (0 = sharp, 40 = very round): Скругление углов (0 = острые, 40 = очень круглые)
   Correction (Ki): Коррекция (Ki)
   Could not check webcam status.\nCheck printer connection.: Не удалось проверить статус веб-камеры.\nПроверьте подключение принтера.
@@ -259,14 +265,14 @@ translations:
   Disable Motors?: Отключить моторы?
   Discard: Отменить
   Discard Changes?: Отменить изменения?
-  Discord Community: ''
+  Discord Community: Сообщество Discord
   Discovered Printers: Обнаруженные принтеры
   Dismiss: Отклонить
   Display Settings: Настройки дисплея
   Display Sleep: Спящий режим экрана
   Do not power off your printer.: Не выключайте принтер.
   Do not touch the printer during calibration: Не трогайте принтер во время калибровки
-  Documentation: ''
+  Documentation: Документация
   Don't Save: Не сохранять
   Don't ask again: Больше не спрашивать
   Done: Готово
@@ -346,6 +352,7 @@ translations:
   Failed to open history: Не удалось открыть историю
   Failed to open history list: Не удалось открыть список истории
   Failed to open wizard: Не удалось открыть мастер
+  Failed to reset theme: Не удалось сбросить тему
   Failed to restart Moonraker.: Не удалось перезапустить Moonraker.
   Failed to save configuration: Не удалось сохранить конфигурацию
   Failed to save spool: Не удалось сохранить катушку
@@ -361,6 +368,7 @@ translations:
   Filament Sensor: Датчик филамента
   Filament Sensors: Датчики филамента
   Filament Used: Использовано филамента
+  Filament already exists: Такой филамент уже существует
   Filament by Type: Филамент по типу
   Filament diameter sensors for flow compensation: Датчики диаметра филамента для компенсации потока
   Filament runout and motion detection sensors: Датчики окончания и движения филамента
@@ -381,12 +389,12 @@ translations:
   G-code Console: Консоль G-code
   G-code Preview: Просмотр G-code
   G-code commands will appear here: Здесь будут отображаться G-code команды
-  Get help and share feedback: ''
+  Get help and share feedback: Получить помощь и поделиться отзывом
   'Ghost:': 'Тень:'
   Got it: Понятно
   Gray: Серый
-  Guides and reference: ''
-  HELP & SUPPORT: ''
+  Guides and reference: Руководства и справка
+  HELP & SUPPORT: ПОМОЩЬ И ПОДДЕРЖКА
   Happy Hare MMU: Happy Hare MMU
   Hardware: Оборудование
   Hardware Health: Состояние оборудования
@@ -428,7 +436,7 @@ translations:
   Ignore: Игнорировать
   In Progress: В процессе
   Inactive: Неактивно
-  Include Klipper/Moonraker logs: ''
+  Include Klipper/Moonraker logs: Включить логи Klipper/Moonraker
   Indexing G-code...: Индексация G-code...
   Initializing...: Инициализация...
   Input: Ввод
@@ -453,6 +461,7 @@ translations:
   Interactive probe calibration: Интерактивная калибровка зонда
   Interactive probe offset adjustment: Интерактивная настройка смещения датчика
   Issue description: Описание проблемы
+  Join us at discord.gg/helixscreen: ''
   Just now: Только что
   Keep Printing: Продолжить печать
   Keep Required: Оставить обязательным
@@ -490,11 +499,13 @@ translations:
   Loading Error: Ошибка загрузки
   Loading G-code...: Загрузка G-code...
   Loading filament...: Загрузка филамента...
+  Loading filaments...: Загрузка филаментов...
   Loading history...: Загрузка истории...
   Loading spools...: Загрузка катушек...
   Loading vendors...: Загрузка производителей...
   Loading...: Загрузка...
   Locked during print: Заблокировано во время печати
+  'Lot # (optional)': 'Партия # (необязательно)'
   Lot Number (optional): Номер партии (необязательно)
   Lot/Batch Nr: Nr. партии/серии
   M to toggle: M для переключения
@@ -569,6 +580,8 @@ translations:
   Network Settings: Сетевые настройки
   Network Test: Тест сети
   New Spool: Новая катушка
+  'New Spool: Step ': 'Новая катушка: Шаг '
+  'New Spool: Step 1 of 3': 'Новая катушка: Шаг 1 из 3'
   New Version Available: Доступна новая версия
   New profile name: Новое имя профиля
   Next: Далее
@@ -583,6 +596,7 @@ translations:
   No PRINT_START macro found: Макрос PRINT_START не найден
   No Power Devices: Нет устройств питания
   No Spools: Нет катушек
+  No changes to revert: Нет изменений для отката
   No effects available: Нет доступных эффектов
   No events queued: Нет событий в очереди
   No filaments found: Филаменты не найдены
@@ -615,6 +629,7 @@ translations:
   Notifications: Уведомления
   Notify when print finishes: Уведомить о завершении печати
   Nozzle: Сопло
+  'Nozzle ': 'Сопло '
   Nozzle Clean: Очистка сопла
   Nozzle Priming: Подготовка сопла
   Nozzle Temp: Темп. сопла
@@ -654,6 +669,7 @@ translations:
   Phase tracking disabled: Отслеживание фазы отключено
   Phase tracking enabled: Отслеживание фазы включено
   Phase tracking update failed: Не удалось обновить отслеживание фазы
+  Pick: Выбрать
   Pick Color: Выбрать цвет
   Place PNG or JPEG files in config/custom_images/ to add custom images: Поместите PNG или JPEG файлы в config/custom_images/ для добавления изображений
   Place plugins in the plugins directory to extend HelixScreen: Поместите плагины в директорию plugins для расширения HelixScreen
@@ -847,7 +863,7 @@ translations:
   Setup Timelapse: Настроить таймлапс
   Shadow Intensity: Интенсивность тени
   Share Usage Data: Делиться данными использования
-  'Share this code in Discord or support:': ''
+  'Share this code in Discord or support:': 'Поделитесь этим кодом в Discord или с поддержкой:'
   'Shininess:': 'Блеск:'
   Show detailed print preparation status: Показывать детальный статус подготовки к печати
   Side: Сбоку
@@ -855,6 +871,7 @@ translations:
   Size: Размер
   Skip: Пропустить
   Sleep While Printing: Спящий режим при печати
+  Sleep timeout adjusted: Таймаут сна изменён
   Slot 1: Слот 1
   Small labels help keep controls calm and focused.: Мелкие надписи помогают сохранять элементы управления аккуратными.
   Some settings will take effect after restart.: Некоторые настройки вступят в силу после перезапуска.
@@ -868,6 +885,7 @@ translations:
   Spool: Катушка
   Spool Visualization (Pseudo-3D Canvas): Визуализация катушки (псевдо-3D)
   Spool Weight (g): Вес катушки (г)
+  Spool created successfully: Катушка успешно создана
   Spool deleted: Катушка удалена
   Spool saved: Катушка сохранена
   Spool wt (g): Вес катушки (г)
@@ -932,6 +950,7 @@ translations:
   Theme Colors: Цвета темы
   Theme Preset: Пресет темы
   Theme changes apply after restart.: Изменения темы применяются после перезапуска.
+  Theme reset to defaults: Тема сброшена к настройкам по умолчанию
   Theme, brightness, and sleep settings: Тема, яркость и настройки сна
   This calibration uses the paper friction method to set your Z-offset.: Эта калибровка использует метод трения бумаги об сопло для установки Z-смещения.
   This cannot be undone.: Это действие нельзя отменить.
@@ -944,7 +963,7 @@ translations:
   'This will apply the Z-offset to your endstop and restart Klipper to save the ': 'Z-смещение будет применено к вашему концевику и Klipper перезапустится для сохранения '
   'This will apply the Z-offset to your probe and restart Klipper to save the ': 'Z-смещение будет применено к вашему зонду и Klipper перезапустится для сохранения '
   ? This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included.
-  : ''
+  : 'Будут собраны системная информация, логи, настройки и данные принтера для диагностики. Пароли и конфиденциальные данные включены не будут.'
   This will immediately halt all printer operations. The printer will require a restart to resume.: Это немедленно остановит все операции принтера. Для продолжения потребуется перезапуск.
   This will reset all settings to defaults. This action cannot be undone.: Это сбросит все настройки к значениям по умолчанию. Это действие нельзя отменить.
   This will restart Klipper.: Это перезапустит Klipper.
@@ -958,6 +977,7 @@ translations:
   Timelapse plugin installed!: Плагин таймлапса установлен!
   Timelapse plugin is already installed!: Плагин таймлапса уже установлен!
   Timelapse plugin is installed!: Плагин таймлапса установлен!
+  Timelapse rendered successfully: Таймлапс успешно отрендерен
   'Tip:': 'Совет:'
   Toggle: Переключить
   Toggle (fire-and-forget): Переключение (без отслеживания)
@@ -997,9 +1017,9 @@ translations:
   Update Channel: Канал обновлений
   Update Failed: Ошибка обновления
   Update Installed: Обновление установлено
-  Upload: ''
-  Upload Debug Bundle: ''
-  Upload Failed: ''
+  Upload: Отправить
+  Upload Debug Bundle: Отправить пакет диагностики
+  Upload Failed: Ошибка отправки
   Upload gcode files to get started: Загрузите gcode-файлы для начала
   Use G10/G11 firmware retraction: Использовать аппаратный ретракт G10/G11
   Use printer type to select image: Использовать тип принтера для выбора изображения
@@ -1007,6 +1027,7 @@ translations:
   Velocity and acceleration limits: Ограничения скорости и ускорения
   Vendor: Производитель
   Vendor Name: Название производителя
+  Vendor already exists: Такой производитель уже существует
   'Vendor:': 'Производитель:'
   Verifying timelapse plugin...: Проверка плагина таймлапса...
   Verifying...: Проверка...
@@ -1022,6 +1043,7 @@ translations:
   View Timelapse: Просмотр таймлапса
   View installed plugins and status: Просмотр установленных плагинов и статуса
   View print statistics and job history: Просмотр статистики печати и истории заданий
+  Visit docs.helixscreen.org: ''
   Volume: Громкость
   Volume, themes, and UI sounds: Громкость, темы и звуки интерфейса
   WLED: WLED

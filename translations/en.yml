@@ -3,9 +3,11 @@ translations:
   ' elapsed · ': ' elapsed · '
   ' frames captured': ' frames captured'
   ' left': ' left'
+  + Add: + Add
   + Add Preset: + Add Preset
   + Create New Filament: + Create New Filament
   + Create New Vendor: + Create New Vendor
+  + New: + New
   '- Check [resonance_tester] in printer.cfg': '- Check [resonance_tester] in printer.cfg'
   '- Ensure ADXL345 is connected': '- Ensure ADXL345 is connected'
   '- Try Measure Noise first': '- Try Measure Noise first'
@@ -74,6 +76,7 @@ translations:
   Anonymous data to help improve HelixScreen: Anonymous data to help improve HelixScreen
   Anonymous stats — no personal data, ever.: Anonymous stats — no personal data, ever.
   Any additional notes...: Any additional notes...
+  Any notes...: Any notes...
   App Background: App Background
   Apply: Apply
   Apply Changes: Apply Changes
@@ -163,6 +166,7 @@ translations:
   Checking slots...: Checking slots...
   Checking timelapse plugin...: Checking timelapse plugin...
   Choose 12-hour or 24-hour time display: Choose 12-hour or 24-hour time display
+  Choose an existing filament, or tap + New to create one.: Choose an existing filament, or tap + New to create one.
   Choose display language: Choose display language
   Choose how frames are captured during printing: Choose how frames are captured during printing
   Choose rendering mode for G-code visualization: Choose rendering mode for G-code visualization
@@ -217,7 +221,9 @@ translations:
   Controlled by hardware sensor: Controlled by hardware sensor
   Cool Down: Cool Down
   Cooling: Cooling
+  Copied to clipboard!: Copied to clipboard!
   Copy Command: Copy Command
+  Copy failed - use SSH manually: Copy failed - use SSH manually
   Corner roundness (0 = sharp, 40 = very round): Corner roundness (0 = sharp, 40 = very round)
   Correction (Ki): Correction (Ki)
   Could not check webcam status.\nCheck printer connection.: Could not check webcam status.\nCheck printer connection.
@@ -346,6 +352,7 @@ translations:
   Failed to open history: Failed to open history
   Failed to open history list: Failed to open history list
   Failed to open wizard: Failed to open wizard
+  Failed to reset theme: Failed to reset theme
   Failed to restart Moonraker.: Failed to restart Moonraker.
   Failed to save configuration: Failed to save configuration
   Failed to save spool: Failed to save spool
@@ -361,6 +368,7 @@ translations:
   Filament Sensor: Filament Sensor
   Filament Sensors: Filament Sensors
   Filament Used: Filament Used
+  Filament already exists: Filament already exists
   Filament by Type: Filament by Type
   Filament diameter sensors for flow compensation: Filament diameter sensors for flow compensation
   Filament runout and motion detection sensors: Filament runout and motion detection sensors
@@ -453,6 +461,7 @@ translations:
   Interactive probe calibration: Interactive probe calibration
   Interactive probe offset adjustment: Interactive probe offset adjustment
   Issue description: Issue description
+  Join us at discord.gg/helixscreen: Join us at discord.gg/helixscreen
   Just now: Just now
   Keep Printing: Keep Printing
   Keep Required: Keep Required
@@ -490,11 +499,13 @@ translations:
   Loading Error: Loading Error
   Loading G-code...: Loading G-code...
   Loading filament...: Loading filament...
+  Loading filaments...: Loading filaments...
   Loading history...: Loading history...
   Loading spools...: Loading spools...
   Loading vendors...: Loading vendors...
   Loading...: Loading...
   Locked during print: Locked during print
+  'Lot # (optional)': 'Lot # (optional)'
   Lot Number (optional): Lot Number (optional)
   Lot/Batch Nr: Lot/Batch Nr
   M to toggle: M to toggle
@@ -569,6 +580,8 @@ translations:
   Network Settings: Network Settings
   Network Test: Network Test
   New Spool: New Spool
+  'New Spool: Step ': 'New Spool: Step '
+  'New Spool: Step 1 of 3': 'New Spool: Step 1 of 3'
   New Version Available: New Version Available
   New profile name: New profile name
   Next: Next
@@ -583,6 +596,7 @@ translations:
   No PRINT_START macro found: No PRINT_START macro found
   No Power Devices: No Power Devices
   No Spools: No Spools
+  No changes to revert: No changes to revert
   No effects available: No effects available
   No events queued: No events queued
   No filaments found: No filaments found
@@ -615,6 +629,7 @@ translations:
   Notifications: Notifications
   Notify when print finishes: Notify when print finishes
   Nozzle: Nozzle
+  'Nozzle ': 'Nozzle '
   Nozzle Clean: Nozzle Clean
   Nozzle Priming: Nozzle Priming
   Nozzle Temp: Nozzle Temp
@@ -654,6 +669,7 @@ translations:
   Phase tracking disabled: Phase tracking disabled
   Phase tracking enabled: Phase tracking enabled
   Phase tracking update failed: Phase tracking update failed
+  Pick: Pick
   Pick Color: Pick Color
   Place PNG or JPEG files in config/custom_images/ to add custom images: Place PNG or JPEG files in config/custom_images/ to add custom images
   Place plugins in the plugins directory to extend HelixScreen: Place plugins in the plugins directory to extend HelixScreen
@@ -855,6 +871,7 @@ translations:
   Size: Size
   Skip: Skip
   Sleep While Printing: Sleep While Printing
+  Sleep timeout adjusted: Sleep timeout adjusted
   Slot 1: Slot 1
   Small labels help keep controls calm and focused.: Small labels help keep controls calm and focused.
   Some settings will take effect after restart.: Some settings will take effect after restart.
@@ -868,6 +885,7 @@ translations:
   Spool: Spool
   Spool Visualization (Pseudo-3D Canvas): Spool Visualization (Pseudo-3D Canvas)
   Spool Weight (g): Spool Weight (g)
+  Spool created successfully: Spool created successfully
   Spool deleted: Spool deleted
   Spool saved: Spool saved
   Spool wt (g): Spool wt (g)
@@ -932,6 +950,7 @@ translations:
   Theme Colors: Theme Colors
   Theme Preset: Theme Preset
   Theme changes apply after restart.: Theme changes apply after restart.
+  Theme reset to defaults: Theme reset to defaults
   Theme, brightness, and sleep settings: Theme, brightness, and sleep settings
   This calibration uses the paper friction method to set your Z-offset.: This calibration uses the paper friction method to set your Z-offset.
   This cannot be undone.: This cannot be undone.
@@ -958,6 +977,7 @@ translations:
   Timelapse plugin installed!: Timelapse plugin installed!
   Timelapse plugin is already installed!: Timelapse plugin is already installed!
   Timelapse plugin is installed!: Timelapse plugin is installed!
+  Timelapse rendered successfully: Timelapse rendered successfully
   'Tip:': 'Tip:'
   Toggle: Toggle
   Toggle (fire-and-forget): Toggle (fire-and-forget)
@@ -1007,6 +1027,7 @@ translations:
   Velocity and acceleration limits: Velocity and acceleration limits
   Vendor: Vendor
   Vendor Name: Vendor Name
+  Vendor already exists: Vendor already exists
   'Vendor:': 'Vendor:'
   Verifying timelapse plugin...: Verifying timelapse plugin...
   Verifying...: Verifying...
@@ -1022,6 +1043,7 @@ translations:
   View Timelapse: View Timelapse
   View installed plugins and status: View installed plugins and status
   View print statistics and job history: View print statistics and job history
+  Visit docs.helixscreen.org: Visit docs.helixscreen.org
   Volume: Volume
   Volume, themes, and UI sounds: Volume, themes, and UI sounds
   WLED: WLED
