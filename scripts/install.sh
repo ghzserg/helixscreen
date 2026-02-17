@@ -1808,10 +1808,15 @@ validate_binary_architecture() {
     # Determine expected values based on platform
     local expected_class expected_machine_lo expected_desc
     case "$platform" in
-        ad5m|k1|pi32)
+        ad5m|pi32)
             expected_class="01"
             expected_machine_lo="28"
             expected_desc="ARM 32-bit (armv7l)"
+            ;;
+        k1)
+            expected_class="01"
+            expected_machine_lo="08"
+            expected_desc="MIPS 32-bit (mipsel)"
             ;;
         pi)
             expected_class="02"
@@ -1827,6 +1832,8 @@ validate_binary_architecture() {
     local actual_desc
     if [ "$elf_class" = "01" ] && [ "$machine_lo" = "28" ]; then
         actual_desc="ARM 32-bit (armv7l)"
+    elif [ "$elf_class" = "01" ] && [ "$machine_lo" = "08" ]; then
+        actual_desc="MIPS 32-bit (mipsel)"
     elif [ "$elf_class" = "02" ] && [ "$machine_lo" = "b7" ]; then
         actual_desc="AARCH64 64-bit"
     else
