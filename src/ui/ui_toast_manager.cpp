@@ -320,8 +320,17 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
         active_toast_ = nullptr;
         animating_exit_ = false;
 
-        // Cancel any running animations on the old toast
+        // Cancel any running animations on the old toast AND its children.
+        // Child widgets (icons, buttons) may have independent animations whose
+        // callbacks would reference freed memory after deletion.
         lv_anim_delete(old_toast, nullptr);
+        uint32_t child_count = lv_obj_get_child_count(old_toast);
+        for (uint32_t i = 0; i < child_count; i++) {
+            lv_obj_t* child = lv_obj_get_child(old_toast, static_cast<int32_t>(i));
+            if (child) {
+                lv_anim_delete(child, nullptr);
+            }
+        }
 
         // Cancel dismiss timer if active
         if (dismiss_timer_) {
@@ -329,13 +338,9 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
             dismiss_timer_ = nullptr;
         }
 
-        // Remove from focus group before deleting
-        lv_group_t* group = lv_group_get_default();
-        if (group) {
-            lv_group_remove_obj(old_toast);
-        }
-
-        lv_obj_delete(old_toast);
+        // Use safe_delete for consistent cleanup (defocuses tree, guards against
+        // deletion during LVGL shutdown). See GitHub issue #98.
+        helix::ui::safe_delete(old_toast);
     }
 
     // Clear action state for basic toasts, keep for action toasts
