@@ -151,8 +151,8 @@ void LVGLUITestFixture::init_subjects() {
 
     // Core subjects (must be first)
     app_globals_init_subjects();
-    ui_nav_init();
-    helix::ui::status_bar_init_subjects();
+    NavigationManager::instance().init();
+    helix::ui::notification_init_subjects();
 
     // PrinterState subjects (panels depend on these)
     // Pass true to enable XML subject registration
@@ -179,8 +179,8 @@ void LVGLUITestFixture::register_event_callbacks() {
     ui_wizard_register_event_callbacks();
     ui_wizard_container_register_responsive_constants();
 
-    // Status bar callbacks (for status icons)
-    helix::ui::status_bar_register_callbacks();
+    // Notification callbacks (for status icons)
+    helix::ui::notification_register_callbacks();
 
     // Calibration panel callbacks
     ui_panel_screws_tilt_register_callbacks();
@@ -224,7 +224,7 @@ void LVGLUITestFixture::cleanup() {
         // Core singleton subjects - must be deinitialized to clear observers
         // before widgets are destroyed, otherwise style broadcasts will hit
         // stale observers pointing to deleted objects
-        helix::ui::status_bar_deinit_subjects();
+        helix::ui::notification_deinit_subjects();
         app_globals_deinit_subjects();
         NavigationManager::instance().deinit_subjects();
 

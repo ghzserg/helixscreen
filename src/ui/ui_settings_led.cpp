@@ -124,7 +124,7 @@ void LedSettingsOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack (on_activate will initialize widgets)
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================
@@ -428,7 +428,7 @@ void LedSettingsOverlay::rebuild_macro_edit_controls(lv_obj_t* container, int in
     auto* name_ta = lv_obj_find_by_name(name_row, "input");
     lv_obj_set_name(name_ta, "macro_name_input");
     lv_textarea_set_text(name_ta, macro.display_name.c_str());
-    ui_keyboard_register_textarea(name_ta);
+    KeyboardManager::instance().register_textarea(name_ta);
 
     // --- Type dropdown ---
     const char* type_attrs[] = {"label", "Type:", nullptr};
@@ -903,14 +903,15 @@ void LedSettingsOverlay::handle_save_macro_device(int index) {
     updated[index].display_name = display_name;
 
     if (display_name.empty()) {
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Device name is required"));
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Device name is required"));
         return;
     }
 
     // Check for duplicate on/off macros
     if (updated[index].type == helix::led::MacroLedType::ON_OFF &&
         updated[index].on_macro == updated[index].off_macro && !updated[index].on_macro.empty()) {
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("On and Off macros must be different"));
+        ToastManager::instance().show(ToastSeverity::ERROR,
+                                      lv_tr("On and Off macros must be different"));
         return;
     }
 

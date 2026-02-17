@@ -276,7 +276,7 @@ void AmsState::init_subjects(bool register_xml) {
     // In real mode with no printer connected, it returns nullptr.
     // This keeps mock/real decision entirely in the factory.
     if (backends_.empty()) {
-        auto backend = AmsBackend::create(AmsType::NONE);
+        auto backend = AmsBackend::create(AmsType::NONE, nullptr, nullptr);
         if (backend) {
             backend->start();
             set_backend(std::move(backend));

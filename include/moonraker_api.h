@@ -254,7 +254,7 @@ class MoonrakerAPI {
      * - Starts the print via the symlink
      * - Patches history to record the original filename
      *
-     * Use has_helix_plugin() to check availability.
+     * Use PrinterState::service_has_helix_plugin() to check availability.
      *
      * @param original_filename Path to the original G-code file (for history)
      * @param temp_file_path Path to already-uploaded modified file (e.g., ".helix_temp/foo.gcode")
@@ -277,24 +277,6 @@ class MoonrakerAPI {
      * @param on_error Error callback (also means plugin not available)
      */
     virtual void check_helix_plugin(BoolCallback on_result, ErrorCallback on_error);
-
-    /**
-     * @brief Check if helix_print plugin is available (cached)
-     *
-     * @deprecated Use PrinterState::service_has_helix_plugin() instead.
-     * Plugin detection now happens during discovery flow, and state is stored
-     * in PrinterState as the single source of truth. This cached value may be
-     * stale if check_helix_plugin() hasn't been called recently.
-     *
-     * Returns cached result from previous check_helix_plugin() call.
-     * Returns false if check hasn't been performed yet.
-     *
-     * @return true if plugin is available and detected
-     */
-    [[deprecated("Use PrinterState::service_has_helix_plugin() instead")]]
-    bool has_helix_plugin() const {
-        return helix_plugin_available_;
-    }
 
     /**
      * @brief Pause the current print
@@ -1650,11 +1632,6 @@ class MoonrakerAPI {
 
     SafetyLimits safety_limits_;
     bool limits_explicitly_set_ = false;
-
-    // HelixPrint plugin detection
-    std::atomic<bool> helix_plugin_available_{false};
-    std::atomic<bool> helix_plugin_checked_{false};
-    std::string helix_plugin_version_; ///< Plugin version (e.g., "2.0.0")
 
     // Bed mesh storage (migrated from MoonrakerClient)
     BedMeshProfile active_bed_mesh_;

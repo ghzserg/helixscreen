@@ -7,7 +7,6 @@
 #include "ui_fonts.h"
 #include "ui_icon_codepoints.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
@@ -567,5 +566,5 @@ static void on_timelapse_row_clicked(lv_event_t* e) {
     }
 
     // Show the overlay - NavigationManager will call on_activate()
-    ui_nav_push_overlay(g_timelapse_settings_panel);
+    NavigationManager::instance().push_overlay(g_timelapse_settings_panel);
 }

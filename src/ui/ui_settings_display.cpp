@@ -156,7 +156,7 @@ void DisplaySettingsOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack (on_activate will initialize dropdowns)
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================
@@ -498,7 +498,7 @@ void DisplaySettingsOverlay::handle_theme_settings_clicked() {
     // Initially disable Apply button (no changes yet) - reactive via subject
     lv_subject_set_int(&theme_apply_disabled_subject_, 1);
 
-    ui_nav_push_overlay(theme_explorer_overlay_);
+    NavigationManager::instance().push_overlay(theme_explorer_overlay_);
 }
 
 void DisplaySettingsOverlay::handle_apply_theme_clicked() {
@@ -536,7 +536,7 @@ void DisplaySettingsOverlay::handle_apply_theme_clicked() {
     ToastManager::instance().show(ToastSeverity::SUCCESS, toast_msg.c_str());
 
     // Close the theme explorer overlay
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void DisplaySettingsOverlay::handle_edit_colors_clicked() {
@@ -576,7 +576,7 @@ void DisplaySettingsOverlay::handle_edit_colors_clicked() {
         // Pass the preview mode so editor shows correct palette (dark or light)
         get_theme_editor_overlay().set_editing_dark_mode(preview_is_dark_);
         get_theme_editor_overlay().load_theme(theme_name);
-        ui_nav_push_overlay(theme_settings_overlay_);
+        NavigationManager::instance().push_overlay(theme_settings_overlay_);
     }
 }
 

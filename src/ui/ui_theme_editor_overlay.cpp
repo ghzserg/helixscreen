@@ -8,7 +8,7 @@
 #include "ui_global_panel_helper.h"
 #include "ui_keyboard_manager.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_toast_manager.h"
 
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -496,10 +496,10 @@ void ThemeEditorOverlay::on_discard_cancel(lv_event_t* e) {
 void ThemeEditorOverlay::handle_back_clicked() {
     if (dirty_) {
         // Show confirmation before closing
-        show_discard_confirmation([]() { ui_nav_go_back(); });
+        show_discard_confirmation([]() { NavigationManager::instance().go_back(); });
     } else {
         // Not dirty, close immediately
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
     }
 }
 
@@ -564,7 +564,7 @@ void ThemeEditorOverlay::handle_save_clicked() {
         spdlog::info("[{}] Theme '{}' saved and applied live", get_name(), editing_theme_.name);
 
         // Close the editor overlay
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
     } else {
         spdlog::error("[{}] Failed to save theme to '{}'", get_name(), filepath);
     }
@@ -863,7 +863,7 @@ void ThemeEditorOverlay::handle_save_as_confirm() {
     spdlog::info("[{}] Theme saved as '{}' and applied live", get_name(), editing_theme_.name);
 
     // Close the editor overlay
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 // ============================================================================

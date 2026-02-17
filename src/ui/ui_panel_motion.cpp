@@ -6,7 +6,6 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_jog_pad.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_panel_singleton_macros.h"

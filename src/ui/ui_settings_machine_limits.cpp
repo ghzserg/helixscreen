@@ -5,7 +5,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_nav_manager.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "format_utils.h"
@@ -143,7 +143,7 @@ void MachineLimitsOverlay::show(lv_obj_t* parent_screen) {
 
     if (!overlay_root_) {
         spdlog::error("[{}] Failed to create overlay", get_name());
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to load overlay"), 2000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Failed to load overlay"), 2000);
         return;
     }
 
@@ -151,7 +151,7 @@ void MachineLimitsOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push overlay onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================
@@ -235,11 +235,12 @@ void MachineLimitsOverlay::query_and_show(lv_obj_t* /*parent_screen*/) {
                 // Capture error by value and defer to main thread for LVGL calls
                 helix::ui::queue_update([this, err]() {
                     spdlog::error("[{}] Failed to get machine limits: {}", get_name(), err.message);
-                    ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to get limits"), 2000);
+                    ToastManager::instance().show(ToastSeverity::ERROR,
+                                                  lv_tr("Failed to get limits"), 2000);
                 });
             });
     } else {
-        // No API - overlay is already shown via ui_nav_push_overlay
+        // No API - overlay is already shown via push_overlay
         spdlog::warn("[{}] No API available, showing defaults", get_name());
     }
 }
@@ -385,7 +386,8 @@ void MachineLimitsOverlay::apply_limits() {
             // Capture error by value and defer to main thread for LVGL calls
             helix::ui::queue_update([this, err]() {
                 spdlog::error("[{}] Failed to apply machine limits: {}", get_name(), err.message);
-                ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to apply limits"), 2000);
+                ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Failed to apply limits"),
+                                              2000);
             });
         });
 }

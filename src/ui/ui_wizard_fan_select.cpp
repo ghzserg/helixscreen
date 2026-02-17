@@ -61,41 +61,6 @@ WizardFanSelectStep::~WizardFanSelectStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardFanSelectStep::WizardFanSelectStep(WizardFanSelectStep&& other) noexcept
-    : screen_root_(other.screen_root_), hotend_fan_selected_(other.hotend_fan_selected_),
-      part_fan_selected_(other.part_fan_selected_),
-      chamber_fan_selected_(other.chamber_fan_selected_),
-      exhaust_fan_selected_(other.exhaust_fan_selected_),
-      hotend_fan_items_(std::move(other.hotend_fan_items_)),
-      part_fan_items_(std::move(other.part_fan_items_)),
-      chamber_fan_items_(std::move(other.chamber_fan_items_)),
-      exhaust_fan_items_(std::move(other.exhaust_fan_items_)),
-      subjects_initialized_(other.subjects_initialized_) {
-    other.screen_root_ = nullptr;
-    other.subjects_initialized_ = false;
-}
-
-WizardFanSelectStep& WizardFanSelectStep::operator=(WizardFanSelectStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        hotend_fan_selected_ = other.hotend_fan_selected_;
-        part_fan_selected_ = other.part_fan_selected_;
-        chamber_fan_selected_ = other.chamber_fan_selected_;
-        exhaust_fan_selected_ = other.exhaust_fan_selected_;
-        hotend_fan_items_ = std::move(other.hotend_fan_items_);
-        part_fan_items_ = std::move(other.part_fan_items_);
-        chamber_fan_items_ = std::move(other.chamber_fan_items_);
-        exhaust_fan_items_ = std::move(other.exhaust_fan_items_);
-        subjects_initialized_ = other.subjects_initialized_;
-
-        other.screen_root_ = nullptr;
-        other.subjects_initialized_ = false;
-    }
-    return *this;
-}
 
 // ============================================================================
 // Subject Initialization

@@ -40,6 +40,10 @@ AmsDryerCard::AmsDryerCard(AmsDryerCard&& other) noexcept
     : dryer_card_(other.dryer_card_), dryer_modal_(other.dryer_modal_),
       progress_fill_(other.progress_fill_), progress_observer_(std::move(other.progress_observer_)),
       cached_presets_(std::move(other.cached_presets_)) {
+    // Update modal's user_data so the LV_EVENT_DELETE callback points to new owner
+    if (dryer_modal_) {
+        lv_obj_set_user_data(dryer_modal_, this);
+    }
     other.dryer_card_ = nullptr;
     other.dryer_modal_ = nullptr;
     other.progress_fill_ = nullptr;
@@ -54,6 +58,11 @@ AmsDryerCard& AmsDryerCard::operator=(AmsDryerCard&& other) noexcept {
         progress_fill_ = other.progress_fill_;
         progress_observer_ = std::move(other.progress_observer_);
         cached_presets_ = std::move(other.cached_presets_);
+
+        // Update modal's user_data so the LV_EVENT_DELETE callback points to new owner
+        if (dryer_modal_) {
+            lv_obj_set_user_data(dryer_modal_, this);
+        }
 
         other.dryer_card_ = nullptr;
         other.dryer_modal_ = nullptr;
@@ -115,11 +124,17 @@ void AmsDryerCard::cleanup() {
     // Remove observer first
     progress_observer_.reset();
 
-    // Hide modal if visible (Modal system handles deletion)
+    // Hide modal if visible (Modal system handles deletion via exit animation).
+    // Clear dryer_modal_ unconditionally — even if modal_hide() returns early because
+    // the modal is already exiting, we must not hold a pointer that will be freed
+    // when the exit animation completes.
     if (dryer_modal_ && lv_is_initialized()) {
+        // Clear user_data first so the LV_EVENT_DELETE callback won't try to write
+        // to our (possibly destroyed) member
+        lv_obj_set_user_data(dryer_modal_, nullptr);
         helix::ui::modal_hide(dryer_modal_);
-        dryer_modal_ = nullptr;
     }
+    dryer_modal_ = nullptr;
 
     // Clear widget references (dryer_card_ is owned by panel)
     dryer_card_ = nullptr;
@@ -253,6 +268,24 @@ void AmsDryerCard::on_open_modal_cb(lv_event_t* e) {
     if (self->dryer_modal_) {
         // Store 'this' in modal's user_data for callback traversal
         lv_obj_set_user_data(self->dryer_modal_, self);
+
+        // Auto-clear dryer_modal_ if the modal is destroyed externally (e.g., by the
+        // modal system's exit animation deleting the backdrop+dialog). Without this,
+        // dryer_modal_ becomes a dangling pointer and any subsequent access crashes
+        // with LV_ASSERT_OBJ (SIGABRT). See GitHub issue #97.
+        // Uses the modal's own user_data (set above) so move operations only need to
+        // update user_data, not re-register the callback.
+        lv_obj_add_event_cb(
+            self->dryer_modal_,
+            [](lv_event_t* e) {
+                auto* card =
+                    static_cast<AmsDryerCard*>(lv_obj_get_user_data(lv_event_get_target_obj(e)));
+                if (card) {
+                    spdlog::debug("[AmsDryerCard] Modal deleted externally, clearing pointer");
+                    card->dryer_modal_ = nullptr;
+                }
+            },
+            LV_EVENT_DELETE, nullptr);
 
         // Populate the preset dropdown with data from filament database
         self->populate_preset_dropdown();

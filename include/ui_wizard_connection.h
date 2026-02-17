@@ -72,13 +72,12 @@ class WizardConnectionStep {
     WizardConnectionStep();
     ~WizardConnectionStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardConnectionStep(const WizardConnectionStep&) = delete;
     WizardConnectionStep& operator=(const WizardConnectionStep&) = delete;
-
-    // Movable
-    WizardConnectionStep(WizardConnectionStep&& other) noexcept;
-    WizardConnectionStep& operator=(WizardConnectionStep&& other) noexcept;
+    WizardConnectionStep(WizardConnectionStep&&) = delete;
+    WizardConnectionStep& operator=(WizardConnectionStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects

@@ -9,7 +9,6 @@
 #include "ui_fonts.h"
 #include "ui_icon_codepoints.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_notification.h"
 #include "ui_panel_bed_mesh.h"
@@ -20,7 +19,7 @@
 #include "ui_position_utils.h"
 #include "ui_settings_sensors.h"
 #include "ui_subject_registry.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
@@ -764,7 +763,8 @@ void ControlsPanel::handle_save_z_offset() {
     auto strategy = printer_state_.get_z_offset_calibration_strategy();
     if (strategy == ZOffsetCalibrationStrategy::GCODE_OFFSET) {
         spdlog::debug("[{}] Z-offset auto-saved by firmware (gcode_offset strategy)", get_name());
-        ui_toast_show(ToastSeverity::INFO, lv_tr("Z-offset is auto-saved by firmware"), 3000);
+        ToastManager::instance().show(ToastSeverity::INFO,
+                                      lv_tr("Z-offset is auto-saved by firmware"), 3000);
         return;
     }
 
@@ -924,7 +924,7 @@ void ControlsPanel::handle_temperatures_clicked() {
     }
 
     if (nozzle_temp_panel_) {
-        ui_nav_push_overlay(nozzle_temp_panel_);
+        NavigationManager::instance().push_overlay(nozzle_temp_panel_);
     }
 }
 
@@ -950,7 +950,7 @@ void ControlsPanel::handle_nozzle_temp_clicked() {
     }
 
     if (nozzle_temp_panel_) {
-        ui_nav_push_overlay(nozzle_temp_panel_);
+        NavigationManager::instance().push_overlay(nozzle_temp_panel_);
     }
 }
 
@@ -976,7 +976,7 @@ void ControlsPanel::handle_bed_temp_clicked() {
     }
 
     if (bed_temp_panel_) {
-        ui_nav_push_overlay(bed_temp_panel_);
+        NavigationManager::instance().push_overlay(bed_temp_panel_);
     }
 }
 
@@ -1016,7 +1016,7 @@ void ControlsPanel::handle_secondary_fans_clicked() {
     if (fan_control_panel_) {
         // Update API reference in case it changed
         get_fan_control_overlay().set_api(api_);
-        ui_nav_push_overlay(fan_control_panel_);
+        NavigationManager::instance().push_overlay(fan_control_panel_);
     }
 }
 

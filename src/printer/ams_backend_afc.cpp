@@ -37,7 +37,6 @@ AmsBackendAfc::AmsBackendAfc(MoonrakerAPI* api, MoonrakerClient* client)
     // AFC capabilities from shared defaults
     auto caps = helix::printer::afc_default_capabilities();
     system_info_.supports_endless_spool = caps.supports_endless_spool;
-    system_info_.supports_spoolman = caps.supports_spoolman;
     system_info_.supports_tool_mapping = caps.supports_tool_mapping;
     system_info_.supports_bypass = caps.supports_bypass;
     system_info_.supports_purge = caps.supports_purge;

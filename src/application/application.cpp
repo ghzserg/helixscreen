@@ -51,8 +51,7 @@
 #include "ui_gradient_canvas.h"
 #include "ui_icon.h"
 #include "ui_icon_loader.h"
-#include "ui_keyboard.h"
-#include "ui_nav.h"
+#include "ui_keyboard_manager.h"
 #include "ui_nav_manager.h"
 #include "ui_notification_history.h"
 #include "ui_notification_manager.h"
@@ -90,7 +89,7 @@
 #include "ui_switch.h"
 #include "ui_temp_display.h"
 #include "ui_theme_editor_overlay.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_touch_calibration_overlay.h"
 #include "ui_utils.h"
 #include "ui_wizard.h"
@@ -832,8 +831,8 @@ bool Application::init_panel_subjects() {
     // Must happen after both API and AbortManager::init_subjects()
     helix::AbortManager::instance().init(m_moonraker->api(), &get_printer_state());
 
-    // Register status bar callbacks
-    helix::ui::status_bar_register_callbacks();
+    // Register notification callbacks
+    helix::ui::notification_register_callbacks();
     ui_panel_screws_tilt_register_callbacks();
     ui_panel_input_shaper_register_callbacks();
     ui_probe_overlay_register_callbacks();
@@ -864,20 +863,20 @@ bool Application::init_ui() {
     lv_obj_update_layout(m_screen);
 
     // Register app_layout with navigation
-    ui_nav_set_app_layout(m_app_layout);
+    NavigationManager::instance().set_app_layout(m_app_layout);
 
     // Initialize printer status icon (sets up observers on PrinterState)
-    ui_printer_status_icon_init();
+    PrinterStatusIcon::instance().init();
 
-    // Initialize notification system (status bar without printer icon)
-    helix::ui::status_bar_init();
+    // Initialize notification system
+    helix::ui::notification_manager_init();
 
     // Seed test notifications in --test mode for debugging
     if (get_runtime_config()->is_test_mode()) {
         auto& history = NotificationHistory::instance();
         history.seed_test_data();
-        // Update status bar to show unread count and severity
-        helix::ui::status_bar_update_notification_count(history.get_unread_count());
+        // Update notification badge to show unread count and severity
+        helix::ui::notification_update_count(history.get_unread_count());
         // Map ToastSeverity to NotificationStatus for bell color
         auto severity = history.get_highest_unread_severity();
         NotificationStatus status = NotificationStatus::NONE;
@@ -888,14 +887,14 @@ bool Application::init_ui() {
         } else if (severity == ToastSeverity::INFO || severity == ToastSeverity::SUCCESS) {
             status = NotificationStatus::INFO;
         }
-        helix::ui::status_bar_update_notification(status);
+        helix::ui::notification_update(status);
     }
 
     // Initialize toast system
-    ui_toast_init();
+    ToastManager::instance().init();
 
     // Initialize overlay backdrop
-    ui_nav_init_overlay_backdrop(m_screen);
+    NavigationManager::instance().init_overlay_backdrop(m_screen);
 
     // Find navbar and content area
     lv_obj_t* navbar = lv_obj_find_by_name(m_app_layout, "navbar");
@@ -907,7 +906,7 @@ bool Application::init_ui() {
     }
 
     // Wire navigation
-    ui_nav_wire_events(navbar);
+    NavigationManager::instance().wire_events(navbar);
 
     // Find panel container
     lv_obj_t* panel_container = lv_obj_find_by_name(content_area, "panel_container");
@@ -979,7 +978,7 @@ bool Application::init_moonraker() {
     }
 
     // Initialize global keyboard
-    ui_keyboard_init(m_screen);
+    KeyboardManager::instance().init(m_screen);
 
     // Initialize memory stats overlay
     MemoryStatsOverlay::instance().init(m_screen, m_args.show_memory);
@@ -1039,7 +1038,8 @@ bool Application::init_plugins() {
                 [](void* user_data) {
                     auto* ctx = static_cast<PluginDisableContext*>(user_data);
                     if (ctx->manager && ctx->manager->disable_plugin(ctx->plugin_id)) {
-                        ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Plugin disabled"), 3000);
+                        ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                                      lv_tr("Plugin disabled"), 3000);
                     }
                     delete ctx;
                 },
@@ -1052,7 +1052,7 @@ bool Application::init_plugins() {
             ToastManager::instance().show_with_action(
                 ToastSeverity::WARNING, toast_msg, "Manage",
                 [](void* /*user_data*/) {
-                    ui_nav_set_active(PanelId::Settings);
+                    NavigationManager::instance().set_active(PanelId::Settings);
                     get_global_settings_panel().handle_plugins_clicked();
                 },
                 nullptr, 8000);
@@ -1133,7 +1133,7 @@ bool Application::run_wizard() {
     ui_wizard_navigate_to_step(initial_step);
 
     // Move keyboard above wizard
-    lv_obj_t* keyboard = ui_keyboard_get_instance();
+    lv_obj_t* keyboard = KeyboardManager::instance().get_instance();
     if (keyboard) {
         lv_obj_move_foreground(keyboard);
     }
@@ -1144,7 +1144,7 @@ bool Application::run_wizard() {
 void Application::create_overlays() {
     // Navigate to initial panel
     if (m_args.initial_panel >= 0) {
-        ui_nav_set_active(static_cast<PanelId>(m_args.initial_panel));
+        NavigationManager::instance().set_active(static_cast<PanelId>(m_args.initial_panel));
     }
 
     // Create requested overlay panels
@@ -1162,7 +1162,7 @@ void Application::create_overlays() {
         if (p) {
             m_overlay_panels.motion = p;
             NavigationManager::instance().register_overlay_instance(p, &motion);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1170,7 +1170,7 @@ void Application::create_overlays() {
         if (auto* p = create_overlay_panel(m_screen, "nozzle_temp_panel", "nozzle temp")) {
             m_overlay_panels.nozzle_temp = p;
             m_subjects->temp_control_panel()->setup_nozzle_panel(p, m_screen);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1178,7 +1178,7 @@ void Application::create_overlays() {
         if (auto* p = create_overlay_panel(m_screen, "bed_temp_panel", "bed temp")) {
             m_overlay_panels.bed_temp = p;
             m_subjects->temp_control_panel()->setup_bed_panel(p, m_screen);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1198,7 +1198,7 @@ void Application::create_overlays() {
         auto* p = overlay.create(m_screen);
         if (p) {
             NavigationManager::instance().register_overlay_instance(p, &overlay);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1218,12 +1218,12 @@ void Application::create_overlays() {
         auto* p = overlay.create(m_screen);
         if (p) {
             NavigationManager::instance().register_overlay_instance(p, &overlay);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
     if (m_args.overlays.print_status && m_overlay_panels.print_status) {
-        ui_nav_push_overlay(m_overlay_panels.print_status);
+        NavigationManager::instance().push_overlay(m_overlay_panels.print_status);
     }
 
     if (m_args.overlays.bed_mesh) {
@@ -1240,7 +1240,7 @@ void Application::create_overlays() {
         if (p) {
             m_overlay_panels.bed_mesh = p;
             NavigationManager::instance().register_overlay_instance(p, &overlay);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1294,7 +1294,7 @@ void Application::create_overlays() {
         auto* p = overlay.create(m_screen);
         if (p) {
             NavigationManager::instance().register_overlay_instance(p, &overlay);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1337,7 +1337,7 @@ void Application::create_overlays() {
         lv_obj_t* panel_obj = spoolman.create(m_screen);
         if (panel_obj) {
             NavigationManager::instance().register_overlay_instance(panel_obj, &spoolman);
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
         }
     }
 
@@ -1346,7 +1346,7 @@ void Application::create_overlays() {
         step->init_subjects();
         lv_obj_t* panel_obj = step->create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
         }
     }
 
@@ -1375,7 +1375,7 @@ void Application::create_overlays() {
             std::string current_theme = SettingsManager::instance().get_theme_name();
             theme_editor.set_editing_dark_mode(SettingsManager::instance().get_dark_mode());
             theme_editor.load_theme(current_theme);
-            ui_nav_push_overlay(editor_panel);
+            NavigationManager::instance().push_overlay(editor_panel);
             spdlog::info("[Application] Opened theme editor overlay via CLI");
         }
     }
@@ -1398,7 +1398,7 @@ void Application::create_overlays() {
         overlay.init_subjects();
         lv_obj_t* panel_obj = overlay.create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
             spdlog::info("[Application] Opened touch calibration overlay via CLI");
         }
     }
@@ -1414,7 +1414,7 @@ void Application::create_overlays() {
         overlay.init_subjects();
         lv_obj_t* panel_obj = overlay.create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
             spdlog::info("[Application] Opened network settings overlay via CLI");
         }
     }
@@ -1425,7 +1425,7 @@ void Application::create_overlays() {
         overlay.init_subjects();
         lv_obj_t* panel_obj = overlay.create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
             spdlog::info("[Application] Opened macros overlay via CLI");
         }
     }
@@ -1435,7 +1435,7 @@ void Application::create_overlays() {
         overlay.init_subjects();
         lv_obj_t* panel_obj = overlay.create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
             spdlog::info("[Application] Opened print tune overlay via CLI");
         }
     }
@@ -1472,7 +1472,7 @@ void Application::create_overlays() {
     // Handle --select-file flag
     RuntimeConfig* runtime_config = get_runtime_config();
     if (runtime_config->select_file != nullptr) {
-        ui_nav_set_active(PanelId::PrintSelect);
+        NavigationManager::instance().set_active(PanelId::PrintSelect);
         auto* print_panel = get_print_select_panel(get_printer_state(), m_moonraker->api());
         if (print_panel) {
             print_panel->set_pending_file_selection(runtime_config->select_file);

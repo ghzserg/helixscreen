@@ -21,7 +21,7 @@
 #pragma once
 
 #include "ui_nav_manager.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -81,8 +81,9 @@ bool lazy_create_and_push_overlay(Getter getter, lv_obj_t*& cached_panel, lv_obj
         if (!cached_panel) {
             spdlog::error("[{}] Failed to create {} panel from XML", caller_name,
                           panel_display_name);
-            ui_toast_show(ToastSeverity::ERROR,
-                          (std::string("Failed to open ") + panel_display_name).c_str(), 2000);
+            ToastManager::instance().show(
+                ToastSeverity::ERROR, (std::string("Failed to open ") + panel_display_name).c_str(),
+                2000);
             return false;
         }
 
@@ -93,7 +94,7 @@ bool lazy_create_and_push_overlay(Getter getter, lv_obj_t*& cached_panel, lv_obj
 
     // Push panel onto navigation history and show it
     if (cached_panel) {
-        ui_nav_push_overlay(cached_panel);
+        NavigationManager::instance().push_overlay(cached_panel);
         return true;
     }
 
@@ -116,7 +117,7 @@ bool lazy_create_and_push_overlay(Getter getter, lv_obj_t*& cached_panel, lv_obj
  *         return;
  *     }
  * }
- * ui_nav_push_overlay(overlay_cache_);
+ * NavigationManager::instance().push_overlay(overlay_cache_);
  * @endcode
  *
  * @tparam CreateFunc Callable that takes (lv_obj_t* parent) and returns lv_obj_t*
@@ -146,13 +147,13 @@ bool lazy_push_overlay(lv_obj_t*& cache, CreateFunc create_func, lv_obj_t* paren
         cache = create_func(parent);
         if (!cache) {
             spdlog::error("{}", error_msg);
-            ui_toast_show(ToastSeverity::ERROR, error_msg, 2000);
+            ToastManager::instance().show(ToastSeverity::ERROR, error_msg, 2000);
             return false;
         }
     }
 
     if (cache) {
-        ui_nav_push_overlay(cache);
+        NavigationManager::instance().push_overlay(cache);
         return true;
     }
 

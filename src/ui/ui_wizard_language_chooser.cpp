@@ -96,45 +96,6 @@ WizardLanguageChooserStep::~WizardLanguageChooserStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardLanguageChooserStep::WizardLanguageChooserStep(WizardLanguageChooserStep&& other) noexcept
-    : screen_root_(other.screen_root_),
-      // NOTE: Do NOT copy lv_subject_t members - they contain internal pointers.
-      // Leave welcome_text_ default-initialized.
-      cycle_timer_(std::move(other.cycle_timer_)),
-      current_welcome_index_(other.current_welcome_index_),
-      subjects_initialized_(false), // Subjects stay with moved-from object
-      language_selected_(other.language_selected_) {
-    std::memcpy(welcome_buffer_, other.welcome_buffer_, sizeof(welcome_buffer_));
-    other.screen_root_ = nullptr;
-    other.current_welcome_index_ = 0;
-    other.language_selected_ = false;
-}
-
-WizardLanguageChooserStep&
-WizardLanguageChooserStep::operator=(WizardLanguageChooserStep&& other) noexcept {
-    if (this != &other) {
-        // Deinit our subjects if they were initialized
-        if (subjects_initialized_) {
-            lv_subject_deinit(&welcome_text_);
-            subjects_initialized_ = false;
-        }
-
-        screen_root_ = other.screen_root_;
-        std::memcpy(welcome_buffer_, other.welcome_buffer_, sizeof(welcome_buffer_));
-        cycle_timer_ = std::move(other.cycle_timer_);
-        current_welcome_index_ = other.current_welcome_index_;
-        language_selected_ = other.language_selected_;
-
-        other.screen_root_ = nullptr;
-        other.current_welcome_index_ = 0;
-        other.language_selected_ = false;
-    }
-    return *this;
-}
-
 // ============================================================================
 // Subject Initialization
 // ============================================================================

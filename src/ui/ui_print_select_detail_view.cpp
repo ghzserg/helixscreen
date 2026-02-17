@@ -6,7 +6,6 @@
 #include "ui_error_reporting.h"
 #include "ui_icon.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_print_preparation_manager.h"
 #include "ui_utils.h"
@@ -246,7 +245,7 @@ void PrintSelectDetailView::show(const std::string& filename, const std::string&
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     if (visible_subject_) {
         lv_subject_set_int(visible_subject_, 1);
@@ -262,7 +261,7 @@ void PrintSelectDetailView::hide() {
     }
 
     // Pop from navigation stack - on_deactivate() will be called by NavigationManager
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 
     if (visible_subject_) {
         lv_subject_set_int(visible_subject_, 0);

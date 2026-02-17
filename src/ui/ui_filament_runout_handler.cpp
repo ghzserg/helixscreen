@@ -99,7 +99,7 @@ void FilamentRunoutHandler::show_runout_guidance_modal() {
         }
         spdlog::info("[FilamentRunoutHandler] User chose to load filament after runout");
         // Navigate to filament panel for loading
-        ui_nav_set_active(PanelId::Filament);
+        NavigationManager::instance().set_active(PanelId::Filament);
     });
 
     runout_modal_.set_on_resume([this, alive]() {

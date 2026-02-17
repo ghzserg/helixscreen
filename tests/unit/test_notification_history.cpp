@@ -7,7 +7,7 @@
  */
 
 #include "ui_notification_history.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 
 #include <atomic>
 #include <cstring>

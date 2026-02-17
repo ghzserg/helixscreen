@@ -10,7 +10,7 @@
  * with a single structured result.
  */
 
-#include "ui_nav.h" // For ui_panel_id_t
+#include "ui_nav_manager.h" // For ui_panel_id_t
 
 #include <optional>
 #include <string>

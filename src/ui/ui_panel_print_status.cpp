@@ -10,13 +10,12 @@
 #include "ui_exclude_objects_list_overlay.h"
 #include "ui_gcode_viewer.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_panel_temp_control.h"
 #include "ui_subject_registry.h"
 #include "ui_temperature_utils.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -855,7 +854,7 @@ void PrintStatusPanel::handle_nozzle_card_click() {
     }
 
     if (nozzle_temp_panel_) {
-        ui_nav_push_overlay(nozzle_temp_panel_);
+        NavigationManager::instance().push_overlay(nozzle_temp_panel_);
     }
 }
 
@@ -888,7 +887,7 @@ void PrintStatusPanel::handle_bed_card_click() {
     }
 
     if (bed_temp_panel_) {
-        ui_nav_push_overlay(bed_temp_panel_);
+        NavigationManager::instance().push_overlay(bed_temp_panel_);
     }
 }
 

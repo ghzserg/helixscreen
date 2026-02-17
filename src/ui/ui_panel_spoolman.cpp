@@ -6,12 +6,11 @@
 #include "ui_global_panel_helper.h"
 #include "ui_keyboard_manager.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_spool_canvas.h"
 #include "ui_subject_registry.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "ams_state.h"
@@ -163,7 +162,7 @@ void SpoolmanPanel::on_activate() {
     lv_obj_t* search_box = lv_obj_find_by_name(overlay_root_, "search_box");
     if (search_box) {
         lv_textarea_set_text(search_box, "");
-        ui_keyboard_register_textarea(search_box);
+        KeyboardManager::instance().register_textarea(search_box);
     }
 
     // Refresh spool list when panel becomes visible
@@ -269,7 +268,8 @@ void SpoolmanPanel::refresh_spools() {
                     auto* self = static_cast<SpoolmanPanel*>(ud);
                     self->cached_spools_.clear();
                     self->show_empty_state();
-                    ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to load spools"), 3000);
+                    ToastManager::instance().show(ToastSeverity::ERROR,
+                                                  lv_tr("Failed to load spools"), 3000);
                 },
                 this);
         });
@@ -405,7 +405,8 @@ void SpoolmanPanel::handle_context_action(helix::ui::SpoolmanContextMenu::MenuAc
     case MenuAction::PRINT_LABEL:
         // TODO: Print label (Phase 4)
         spdlog::info("[{}] Print label for spool {} (not yet implemented)", get_name(), spool_id);
-        ui_toast_show(ToastSeverity::INFO, lv_tr("Label printing coming soon"), 2000);
+        ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Label printing coming soon"),
+                                      2000);
         break;
 
     case MenuAction::DELETE:
@@ -446,7 +447,7 @@ void SpoolmanPanel::set_active_spool(int spool_id) {
                     self->active_spool_id_ = id;
                     self->update_active_indicators();
                     std::string msg = std::string(lv_tr("Active")) + ": " + spool_name;
-                    ui_toast_show(ToastSeverity::SUCCESS, msg.c_str(), 2000);
+                    ToastManager::instance().show(ToastSeverity::SUCCESS, msg.c_str(), 2000);
                 },
                 new std::pair<SpoolmanPanel*, int>(this, spool_id));
         },
@@ -455,7 +456,8 @@ void SpoolmanPanel::set_active_spool(int spool_id) {
                           err.message);
             helix::ui::async_call(
                 [](void*) {
-                    ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to set active spool"), 3000);
+                    ToastManager::instance().show(ToastSeverity::ERROR,
+                                                  lv_tr("Failed to set active spool"), 3000);
                 },
                 nullptr);
         });
@@ -518,7 +520,8 @@ void SpoolmanPanel::delete_spool(int spool_id) {
 
             MoonrakerAPI* api = get_moonraker_api();
             if (!api) {
-                ui_toast_show(ToastSeverity::ERROR, lv_tr("API not available"), 3000);
+                ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("API not available"),
+                                              3000);
                 return;
             }
 
@@ -529,7 +532,8 @@ void SpoolmanPanel::delete_spool(int spool_id) {
                     // Schedule UI work on LVGL thread (API callbacks run on background thread)
                     helix::ui::async_call(
                         [](void*) {
-                            ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Spool deleted"), 2000);
+                            ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                                          lv_tr("Spool deleted"), 2000);
                             get_global_spoolman_panel().refresh_spools();
                         },
                         nullptr);
@@ -538,8 +542,8 @@ void SpoolmanPanel::delete_spool(int spool_id) {
                     spdlog::error("[Spoolman] Failed to delete spool {}: {}", id, err.message);
                     helix::ui::async_call(
                         [](void*) {
-                            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to delete spool"),
-                                          3000);
+                            ToastManager::instance().show(ToastSeverity::ERROR,
+                                                          lv_tr("Failed to delete spool"), 3000);
                         },
                         nullptr);
                 });

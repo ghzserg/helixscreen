@@ -163,7 +163,7 @@ class NetworkSettingsOverlay : public OverlayBase {
     /**
      * @brief Hide overlay panel
      *
-     * Pops overlay from navigation stack via ui_nav_go_back().
+     * Pops overlay from navigation stack via NavigationManager::go_back().
      * on_deactivate() will be called automatically before animation starts.
      */
     void hide();

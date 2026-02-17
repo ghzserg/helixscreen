@@ -5,7 +5,7 @@
 
 #include "ui_error_reporting.h"
 #include "ui_icon.h"
-#include "ui_keyboard.h"
+#include "ui_keyboard_manager.h"
 #include "ui_modal.h"
 #include "ui_subject_registry.h"
 #include "ui_update_queue.h"
@@ -139,72 +139,6 @@ WizardWifiStep::~WizardWifiStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardWifiStep::WizardWifiStep(WizardWifiStep&& other) noexcept
-    : screen_root_(other.screen_root_), password_modal_(other.password_modal_),
-      network_list_container_(other.network_list_container_), wifi_enabled_(other.wifi_enabled_),
-      wifi_status_(other.wifi_status_), ethernet_status_(other.ethernet_status_),
-      wifi_scanning_(other.wifi_scanning_),
-      wifi_password_modal_ssid_(other.wifi_password_modal_ssid_),
-      wifi_connecting_(other.wifi_connecting_),
-      wifi_hardware_available_(other.wifi_hardware_available_),
-      wifi_manager_(std::move(other.wifi_manager_)),
-      ethernet_manager_(std::move(other.ethernet_manager_)),
-      current_network_is_secured_(other.current_network_is_secured_),
-      subjects_initialized_(other.subjects_initialized_) {
-    std::memcpy(wifi_status_buffer_, other.wifi_status_buffer_, sizeof(wifi_status_buffer_));
-    std::memcpy(wifi_ip_buffer_, other.wifi_ip_buffer_, sizeof(wifi_ip_buffer_));
-    std::memcpy(wifi_mac_buffer_, other.wifi_mac_buffer_, sizeof(wifi_mac_buffer_));
-    std::memcpy(ethernet_status_buffer_, other.ethernet_status_buffer_,
-                sizeof(ethernet_status_buffer_));
-    std::memcpy(ethernet_mac_buffer_, other.ethernet_mac_buffer_, sizeof(ethernet_mac_buffer_));
-    std::memcpy(wifi_password_modal_ssid_buffer_, other.wifi_password_modal_ssid_buffer_,
-                sizeof(wifi_password_modal_ssid_buffer_));
-    std::memcpy(current_ssid_, other.current_ssid_, sizeof(current_ssid_));
-
-    other.screen_root_ = nullptr;
-    other.password_modal_ = nullptr;
-    other.network_list_container_ = nullptr;
-    other.subjects_initialized_ = false;
-}
-
-WizardWifiStep& WizardWifiStep::operator=(WizardWifiStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        password_modal_ = other.password_modal_;
-        network_list_container_ = other.network_list_container_;
-        wifi_enabled_ = other.wifi_enabled_;
-        wifi_status_ = other.wifi_status_;
-        ethernet_status_ = other.ethernet_status_;
-        wifi_scanning_ = other.wifi_scanning_;
-        wifi_password_modal_ssid_ = other.wifi_password_modal_ssid_;
-        wifi_connecting_ = other.wifi_connecting_;
-        wifi_hardware_available_ = other.wifi_hardware_available_;
-        wifi_manager_ = std::move(other.wifi_manager_);
-        ethernet_manager_ = std::move(other.ethernet_manager_);
-        current_network_is_secured_ = other.current_network_is_secured_;
-        subjects_initialized_ = other.subjects_initialized_;
-
-        std::memcpy(wifi_status_buffer_, other.wifi_status_buffer_, sizeof(wifi_status_buffer_));
-        std::memcpy(wifi_ip_buffer_, other.wifi_ip_buffer_, sizeof(wifi_ip_buffer_));
-        std::memcpy(wifi_mac_buffer_, other.wifi_mac_buffer_, sizeof(wifi_mac_buffer_));
-        std::memcpy(ethernet_status_buffer_, other.ethernet_status_buffer_,
-                    sizeof(ethernet_status_buffer_));
-        std::memcpy(ethernet_mac_buffer_, other.ethernet_mac_buffer_, sizeof(ethernet_mac_buffer_));
-        std::memcpy(wifi_password_modal_ssid_buffer_, other.wifi_password_modal_ssid_buffer_,
-                    sizeof(wifi_password_modal_ssid_buffer_));
-        std::memcpy(current_ssid_, other.current_ssid_, sizeof(current_ssid_));
-
-        other.screen_root_ = nullptr;
-        other.password_modal_ = nullptr;
-        other.network_list_container_ = nullptr;
-        other.subjects_initialized_ = false;
-    }
-    return *this;
-}
-
 // ============================================================================
 // Static Helper Functions
 // ============================================================================

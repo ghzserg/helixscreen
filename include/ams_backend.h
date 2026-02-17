@@ -635,6 +635,22 @@ class AmsBackend {
         return false;
     }
 
+    /**
+     * @brief Whether this backend persists spool assignments via firmware
+     *
+     * Backends like Happy Hare (MMU_GATE_MAP/SPOOLID) and AFC (SET_SPOOL_ID)
+     * store spool-to-slot mappings in firmware gcode. For these, ToolState
+     * mirrors firmware state but doesn't need to persist separately.
+     *
+     * Backends without firmware persistence (tool changers, ValgACE) rely on
+     * ToolState's own persistence (Moonraker DB + local JSON).
+     *
+     * @return true if firmware handles spool persistence, false if ToolState should
+     */
+    [[nodiscard]] virtual bool has_firmware_spool_persistence() const {
+        return false;
+    }
+
     // ========================================================================
     // Discovery Configuration (Optional - default implementations are no-ops)
     // ========================================================================

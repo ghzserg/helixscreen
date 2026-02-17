@@ -101,22 +101,3 @@ class PrinterStatusIcon {
     bool subjects_initialized_ = false;
     bool initialized_ = false;
 };
-
-// ============================================================================
-// LEGACY API (for backward compatibility)
-// ============================================================================
-
-/**
- * @brief Initialize printer status icon subjects
- */
-void ui_printer_status_icon_init_subjects();
-
-/**
- * @brief Initialize printer status icon system
- */
-void ui_printer_status_icon_init();
-
-/**
- * @brief Deinitialize printer status icon subjects
- */
-void ui_printer_status_icon_deinit_subjects();

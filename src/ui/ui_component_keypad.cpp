@@ -5,7 +5,7 @@
  * @file ui_component_keypad.cpp
  * @brief Numeric keypad overlay with reactive Subject-Observer pattern
  *
- * Uses standard overlay navigation (ui_nav_push_overlay/go_back) and reactive
+ * Uses standard overlay navigation (NavigationManager push_overlay/go_back) and reactive
  * bindings for the display. The XML binds to the keypad_display subject,
  * so updating the subject automatically updates the UI.
  */
@@ -14,7 +14,7 @@
 
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 
 #include "lvgl/lvgl.h"
 #include "lvgl/src/xml/lv_xml.h"
@@ -134,7 +134,7 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
     }
 
     // Show via overlay navigation, but keep previous panel visible (transparent overlay)
-    ui_nav_push_overlay(keypad_widget, false /* hide_previous */);
+    NavigationManager::instance().push_overlay(keypad_widget, false /* hide_previous */);
 
     spdlog::info("[Keypad] Showing (initial={:.1f}, range={:.0f}-{:.0f})", config->initial_value,
                  config->min_value, config->max_value);
@@ -142,7 +142,7 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
 
 void ui_keypad_hide() {
     if (keypad_widget && ui_keypad_is_visible()) {
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
     }
 }
 

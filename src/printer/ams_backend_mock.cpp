@@ -71,7 +71,6 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
     // Use shared AFC defaults for capabilities
     auto caps = helix::printer::afc_default_capabilities();
     system_info_.supports_endless_spool = caps.supports_endless_spool;
-    system_info_.supports_spoolman = caps.supports_spoolman;
     system_info_.supports_tool_mapping = caps.supports_tool_mapping;
     system_info_.supports_bypass = caps.supports_bypass;
     system_info_.supports_purge = caps.supports_purge;
@@ -1042,7 +1041,6 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
         // Use shared AFC defaults for capabilities
         auto afc_caps = helix::printer::afc_default_capabilities();
         system_info_.supports_endless_spool = afc_caps.supports_endless_spool;
-        system_info_.supports_spoolman = afc_caps.supports_spoolman;
         system_info_.supports_tool_mapping = afc_caps.supports_tool_mapping;
         system_info_.supports_bypass = afc_caps.supports_bypass;
         system_info_.supports_purge = afc_caps.supports_purge;
@@ -1238,7 +1236,6 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
         system_info_.version = "1.0.32-mock";
         system_info_.supports_bypass = true;
         system_info_.supports_endless_spool = true;
-        system_info_.supports_spoolman = true;
         system_info_.supports_tool_mapping = true;
         system_info_.has_hardware_bypass_sensor = false;
         system_info_.tip_method = TipMethod::CUT;

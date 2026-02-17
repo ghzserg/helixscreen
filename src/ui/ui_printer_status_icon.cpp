@@ -144,19 +144,3 @@ void PrinterStatusIcon::deinit_subjects() {
     initialized_ = false;
     spdlog::debug("[PrinterStatusIcon] Subjects deinitialized");
 }
-
-// ============================================================================
-// LEGACY API (forwards to PrinterStatusIcon)
-// ============================================================================
-
-void ui_printer_status_icon_init_subjects() {
-    PrinterStatusIcon::instance().init_subjects();
-}
-
-void ui_printer_status_icon_init() {
-    PrinterStatusIcon::instance().init();
-}
-
-void ui_printer_status_icon_deinit_subjects() {
-    PrinterStatusIcon::instance().deinit_subjects();
-}

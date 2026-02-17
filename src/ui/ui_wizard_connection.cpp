@@ -5,7 +5,7 @@
 
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
-#include "ui_keyboard.h"
+#include "ui_keyboard_manager.h"
 #include "ui_notification.h"
 #include "ui_subject_registry.h"
 #include "ui_update_queue.h"
@@ -84,64 +84,6 @@ void WizardConnectionStep::set_mdns_discovery(std::unique_ptr<IMdnsDiscovery> di
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardConnectionStep::WizardConnectionStep(WizardConnectionStep&& other) noexcept
-    : screen_root_(other.screen_root_), connection_ip_(other.connection_ip_),
-      connection_port_(other.connection_port_),
-      connection_status_icon_(other.connection_status_icon_),
-      connection_status_text_(other.connection_status_text_),
-      connection_testing_(other.connection_testing_),
-      connection_validated_(other.connection_validated_),
-      subjects_initialized_(other.subjects_initialized_), saved_ip_(std::move(other.saved_ip_)),
-      saved_port_(std::move(other.saved_port_)) {
-    // Move buffers
-    std::memcpy(connection_ip_buffer_, other.connection_ip_buffer_, sizeof(connection_ip_buffer_));
-    std::memcpy(connection_port_buffer_, other.connection_port_buffer_,
-                sizeof(connection_port_buffer_));
-    std::memcpy(connection_status_icon_buffer_, other.connection_status_icon_buffer_,
-                sizeof(connection_status_icon_buffer_));
-    std::memcpy(connection_status_text_buffer_, other.connection_status_text_buffer_,
-                sizeof(connection_status_text_buffer_));
-
-    // Null out other
-    other.screen_root_ = nullptr;
-    other.subjects_initialized_ = false;
-    other.connection_validated_ = false;
-}
-
-WizardConnectionStep& WizardConnectionStep::operator=(WizardConnectionStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        connection_ip_ = other.connection_ip_;
-        connection_port_ = other.connection_port_;
-        connection_status_icon_ = other.connection_status_icon_;
-        connection_status_text_ = other.connection_status_text_;
-        connection_testing_ = other.connection_testing_;
-        connection_validated_ = other.connection_validated_;
-        subjects_initialized_ = other.subjects_initialized_;
-        saved_ip_ = std::move(other.saved_ip_);
-        saved_port_ = std::move(other.saved_port_);
-
-        // Move buffers
-        std::memcpy(connection_ip_buffer_, other.connection_ip_buffer_,
-                    sizeof(connection_ip_buffer_));
-        std::memcpy(connection_port_buffer_, other.connection_port_buffer_,
-                    sizeof(connection_port_buffer_));
-        std::memcpy(connection_status_icon_buffer_, other.connection_status_icon_buffer_,
-                    sizeof(connection_status_icon_buffer_));
-        std::memcpy(connection_status_text_buffer_, other.connection_status_text_buffer_,
-                    sizeof(connection_status_text_buffer_));
-
-        // Null out other
-        other.screen_root_ = nullptr;
-        other.subjects_initialized_ = false;
-        other.connection_validated_ = false;
-    }
-    return *this;
-}
-
 // ============================================================================
 // Subject Initialization
 // ============================================================================
@@ -957,7 +899,7 @@ lv_obj_t* WizardConnectionStep::create(lv_obj_t* parent) {
             spdlog::debug("[{}] Pre-filled IP input: {}", get_name(), ip_text);
         }
         lv_obj_add_event_cb(ip_input, on_ip_input_changed_static, LV_EVENT_VALUE_CHANGED, this);
-        ui_keyboard_register_textarea(ip_input);
+        KeyboardManager::instance().register_textarea(ip_input);
         spdlog::debug("[{}] IP input configured with keyboard", get_name());
     }
 
@@ -973,7 +915,7 @@ lv_obj_t* WizardConnectionStep::create(lv_obj_t* parent) {
             spdlog::debug("[{}] Pre-filled port input: {}", get_name(), port_text);
         }
         lv_obj_add_event_cb(port_input, on_port_input_changed_static, LV_EVENT_VALUE_CHANGED, this);
-        ui_keyboard_register_textarea(port_input);
+        KeyboardManager::instance().register_textarea(port_input);
         spdlog::debug("[{}] Port input configured with keyboard", get_name());
     }
 

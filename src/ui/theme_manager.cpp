@@ -1370,10 +1370,6 @@ void theme_manager_preview(const helix::ThemeData& theme, bool is_dark) {
     theme_manager_apply_theme(theme, is_dark);
 }
 
-void theme_manager_revert_preview() {
-    theme_manager_apply_theme(active_theme, use_dark_mode);
-}
-
 // theme_manager_refresh_preview_elements() removed — was ~450 lines of
 // widget-by-name updates. Replaced by theme_manager_apply_theme() which
 // uses theme_apply_current_palette_to_tree() for generic palette application.

@@ -425,7 +425,6 @@ std::vector<DeviceAction> afc_default_actions() {
 AfcCapabilities afc_default_capabilities() {
     return {
         .supports_endless_spool = true,
-        .supports_spoolman = true,
         .supports_tool_mapping = true,
         .supports_bypass = true,
         .supports_purge = true,

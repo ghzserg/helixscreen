@@ -56,34 +56,6 @@ WizardHeaterSelectStep::~WizardHeaterSelectStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardHeaterSelectStep::WizardHeaterSelectStep(WizardHeaterSelectStep&& other) noexcept
-    : screen_root_(other.screen_root_), bed_heater_selected_(other.bed_heater_selected_),
-      hotend_heater_selected_(other.hotend_heater_selected_),
-      bed_heater_items_(std::move(other.bed_heater_items_)),
-      hotend_heater_items_(std::move(other.hotend_heater_items_)),
-      subjects_initialized_(other.subjects_initialized_) {
-    other.screen_root_ = nullptr;
-    other.subjects_initialized_ = false;
-}
-
-WizardHeaterSelectStep& WizardHeaterSelectStep::operator=(WizardHeaterSelectStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        bed_heater_selected_ = other.bed_heater_selected_;
-        hotend_heater_selected_ = other.hotend_heater_selected_;
-        bed_heater_items_ = std::move(other.bed_heater_items_);
-        hotend_heater_items_ = std::move(other.hotend_heater_items_);
-        subjects_initialized_ = other.subjects_initialized_;
-
-        other.screen_root_ = nullptr;
-        other.subjects_initialized_ = false;
-    }
-    return *this;
-}
-
 // ============================================================================
 // Subject Initialization
 // ============================================================================

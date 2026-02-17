@@ -4,7 +4,7 @@
 #include "ui_panel_history_list.h"
 
 #include "ui_fonts.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_notification.h"
 #include "ui_panel_common.h"
 #include "ui_panel_print_select.h"
@@ -1059,7 +1059,7 @@ void HistoryListPanel::show_detail_overlay(const PrintHistoryJob& job) {
     }
 
     // Push the overlay
-    ui_nav_push_overlay(detail_overlay_);
+    NavigationManager::instance().push_overlay(detail_overlay_);
     spdlog::info("[{}] Showing detail overlay for: {}", get_name(), job.filename);
 }
 
@@ -1187,12 +1187,12 @@ void HistoryListPanel::handle_reprint() {
 
     // Navigate to the Print Select file detail view (DRY - reuse existing UI)
     // Step 1: Close all history overlays (detail → list → dashboard)
-    ui_nav_go_back(); // Close history detail overlay
-    ui_nav_go_back(); // Close history list panel
-    ui_nav_go_back(); // Close history dashboard
+    NavigationManager::instance().go_back(); // Close history detail overlay
+    NavigationManager::instance().go_back(); // Close history list panel
+    NavigationManager::instance().go_back(); // Close history dashboard
 
     // Step 2: Switch to Print Select panel
-    ui_nav_set_active(PanelId::PrintSelect);
+    NavigationManager::instance().set_active(PanelId::PrintSelect);
 
     // Step 3: Get PrintSelectPanel and navigate to file details
     PrintSelectPanel* print_panel =
@@ -1252,7 +1252,7 @@ void HistoryListPanel::confirm_delete() {
                             jobs_.end());
 
                 // Close detail overlay and refresh list
-                ui_nav_go_back();
+                NavigationManager::instance().go_back();
                 apply_filters_and_sort();
 
                 ui_notification_success("Print job deleted");

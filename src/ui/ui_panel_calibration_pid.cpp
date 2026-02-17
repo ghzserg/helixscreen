@@ -5,7 +5,6 @@
 
 #include "ui_emergency_stop.h"
 #include "ui_event_safety.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_temp_control.h"
 #include "ui_update_queue.h"
@@ -222,7 +221,7 @@ void PIDCalibrationPanel::show() {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     spdlog::info("[PIDCal] Overlay shown");
 }
@@ -711,7 +710,7 @@ void PIDCalibrationPanel::handle_preset_clicked(int temp, const char* material_n
 void PIDCalibrationPanel::handle_done_clicked() {
     spdlog::debug("[PIDCal] Done clicked");
     set_state(State::IDLE);
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void PIDCalibrationPanel::handle_retry_clicked() {

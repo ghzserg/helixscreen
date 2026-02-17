@@ -17,7 +17,7 @@
 #include "ui_notification_history.h"
 #include "ui_notification_manager.h"
 #include "ui_observer_guard.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
@@ -79,7 +79,7 @@ static void async_message_callback(void* user_data) {
             strncpy(display_buf, data->message, sizeof(display_buf) - 1);
             display_buf[sizeof(display_buf) - 1] = '\0';
         }
-        ui_toast_show(data->severity, display_buf, data->duration_ms);
+        ToastManager::instance().show(data->severity, display_buf, data->duration_ms);
 
         // Add to history
         NotificationHistoryEntry entry = {};
@@ -98,8 +98,7 @@ static void async_message_callback(void* user_data) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        helix::ui::status_bar_update_notification_count(
-            NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     }
     delete data;
 }
@@ -127,10 +126,10 @@ static void async_error_callback(void* user_data) {
             // Show modal dialog for critical errors
             helix::ui::modal_show_alert(data->title, data->message, ModalSeverity::Error, "OK");
 
-            helix::ui::status_bar_update_notification(NotificationStatus::ERROR);
+            helix::ui::notification_update(NotificationStatus::ERROR);
         } else {
             // Show toast for non-critical errors
-            ui_toast_show(ToastSeverity::ERROR, data->message, 6000);
+            ToastManager::instance().show(ToastSeverity::ERROR, data->message, 6000);
         }
 
         // Add to history
@@ -151,8 +150,7 @@ static void async_error_callback(void* user_data) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        helix::ui::status_bar_update_notification_count(
-            NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     }
     delete data;
 }
@@ -182,7 +180,7 @@ void ui_notification_info(const char* message) {
 
     if (is_main_thread()) {
         // Main thread: call LVGL directly
-        ui_toast_show(ToastSeverity::INFO, message, 4000);
+        ToastManager::instance().show(ToastSeverity::INFO, message, 4000);
 
         NotificationHistoryEntry entry = {};
         entry.timestamp_ms = lv_tick_get();
@@ -194,8 +192,7 @@ void ui_notification_info(const char* message) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        helix::ui::status_bar_update_notification_count(
-            NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncMessageData{};
@@ -223,7 +220,7 @@ void ui_notification_success(const char* message) {
 
     if (is_main_thread()) {
         // Main thread: call LVGL directly
-        ui_toast_show(ToastSeverity::SUCCESS, message, 4000);
+        ToastManager::instance().show(ToastSeverity::SUCCESS, message, 4000);
 
         NotificationHistoryEntry entry = {};
         entry.timestamp_ms = lv_tick_get();
@@ -235,8 +232,7 @@ void ui_notification_success(const char* message) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        helix::ui::status_bar_update_notification_count(
-            NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncMessageData{};
@@ -264,7 +260,7 @@ void ui_notification_warning(const char* message) {
 
     if (is_main_thread()) {
         // Main thread: call LVGL directly
-        ui_toast_show(ToastSeverity::WARNING, message, 5000);
+        ToastManager::instance().show(ToastSeverity::WARNING, message, 5000);
 
         NotificationHistoryEntry entry = {};
         entry.timestamp_ms = lv_tick_get();
@@ -276,8 +272,7 @@ void ui_notification_warning(const char* message) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        helix::ui::status_bar_update_notification_count(
-            NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncMessageData{};
@@ -318,7 +313,7 @@ static void show_titled_notification(const char* title, const char* message, Toa
 
     if (is_main_thread()) {
         // Main thread: call LVGL directly
-        ui_toast_show(severity, display_msg.c_str(), duration_ms);
+        ToastManager::instance().show(severity, display_msg.c_str(), duration_ms);
 
         NotificationHistoryEntry entry = {};
         entry.timestamp_ms = lv_tick_get();
@@ -331,8 +326,7 @@ static void show_titled_notification(const char* title, const char* message, Toa
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        helix::ui::status_bar_update_notification_count(
-            NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncMessageData{};
@@ -381,8 +375,7 @@ void ui_notification_info_with_action(const char* title, const char* message, co
 
     if (is_main_thread()) {
         NotificationHistory::instance().add(entry);
-        helix::ui::status_bar_update_notification_count(
-            NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         auto* data = new (std::nothrow) NotificationHistoryEntry(entry);
         if (!data) {
@@ -393,7 +386,7 @@ void ui_notification_info_with_action(const char* title, const char* message, co
             [](void* user_data) {
                 auto* e = static_cast<NotificationHistoryEntry*>(user_data);
                 NotificationHistory::instance().add(*e);
-                helix::ui::status_bar_update_notification_count(
+                helix::ui::notification_update_count(
                     NotificationHistory::instance().get_unread_count());
                 delete e;
             },
@@ -438,10 +431,10 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
             // Show modal dialog for critical errors
             helix::ui::modal_show_alert(title, message, ModalSeverity::Error, "OK");
 
-            helix::ui::status_bar_update_notification(NotificationStatus::ERROR);
+            helix::ui::notification_update(NotificationStatus::ERROR);
         } else {
             // Show toast for non-critical errors
-            ui_toast_show(ToastSeverity::ERROR, message, 6000);
+            ToastManager::instance().show(ToastSeverity::ERROR, message, 6000);
         }
 
         // Add to history
@@ -462,8 +455,7 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        helix::ui::status_bar_update_notification_count(
-            NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncErrorData{};

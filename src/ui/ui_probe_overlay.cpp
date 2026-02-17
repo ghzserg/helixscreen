@@ -3,7 +3,6 @@
 
 #include "ui_probe_overlay.h"
 
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_bed_mesh.h"
 #include "ui_panel_calibration_zoffset.h"
@@ -186,7 +185,7 @@ lv_obj_t* ProbeOverlay::create(lv_obj_t* parent) {
         return nullptr;
     }
 
-    // Start hidden (ui_nav_push_overlay will show it)
+    // Start hidden (push_overlay will show it)
     lv_obj_add_flag(overlay_root_, LV_OBJ_FLAG_HIDDEN);
 
     // Cache type panel container for later swapping
@@ -208,7 +207,7 @@ void ProbeOverlay::show() {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     spdlog::info("[Probe] Overlay shown");
 }
@@ -406,6 +405,6 @@ void ProbeOverlay::handle_bed_mesh() {
     }
 
     if (panel.get_root()) {
-        ui_nav_push_overlay(panel.get_root());
+        NavigationManager::instance().push_overlay(panel.get_root());
     }
 }

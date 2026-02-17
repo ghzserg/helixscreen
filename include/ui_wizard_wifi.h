@@ -66,13 +66,12 @@ class WizardWifiStep {
     WizardWifiStep();
     ~WizardWifiStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardWifiStep(const WizardWifiStep&) = delete;
     WizardWifiStep& operator=(const WizardWifiStep&) = delete;
-
-    // Movable
-    WizardWifiStep(WizardWifiStep&& other) noexcept;
-    WizardWifiStep& operator=(WizardWifiStep&& other) noexcept;
+    WizardWifiStep(WizardWifiStep&&) = delete;
+    WizardWifiStep& operator=(WizardWifiStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects

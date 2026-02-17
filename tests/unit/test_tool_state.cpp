@@ -10,6 +10,10 @@
 #include "printer_discovery.h"
 #include "tool_state.h"
 
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+
 #include "../catch_amalgamated.hpp"
 
 using namespace helix;
@@ -703,6 +707,240 @@ TEST_CASE("ToolState: request_tool_change with no API calls error",
     });
 
     REQUIRE(error_called);
+
+    ts.deinit_subjects();
+}
+
+// ============================================================================
+// Spool assignment tests
+// ============================================================================
+
+namespace {
+struct TempDir {
+    std::filesystem::path path;
+    TempDir() {
+        path = std::filesystem::temp_directory_path() /
+               ("helix_tool_spool_test_" +
+                std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::create_directories(path);
+    }
+    ~TempDir() {
+        std::error_code ec;
+        std::filesystem::remove_all(path, ec);
+    }
+    std::string str() const {
+        return path.string();
+    }
+};
+} // namespace
+
+TEST_CASE("ToolInfo: default spool fields", "[tool][tool-state][spool]") {
+    ToolInfo info;
+    REQUIRE(info.spoolman_id == 0);
+    REQUIRE(info.spool_name.empty());
+    REQUIRE(info.remaining_weight_g == -1.0f);
+    REQUIRE(info.total_weight_g == -1.0f);
+}
+
+TEST_CASE("ToolState: assign_spool updates ToolInfo fields", "[tool][tool-state][spool]") {
+    lv_init_safe();
+    auto& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+
+    // Create some tools via mock discovery
+    PrinterDiscovery hw;
+    nlohmann::json objects = nlohmann::json::array({"extruder", "extruder1", "heater_bed"});
+    hw.parse_objects(objects);
+    ts.init_tools(hw);
+    REQUIRE(ts.tool_count() == 2);
+
+    // Assign a spool to T0
+    ts.assign_spool(0, 42, "Red PLA", 750.0f, 1000.0f);
+
+    const auto& tools = ts.tools();
+    REQUIRE(tools[0].spoolman_id == 42);
+    REQUIRE(tools[0].spool_name == "Red PLA");
+    REQUIRE(tools[0].remaining_weight_g == 750.0f);
+    REQUIRE(tools[0].total_weight_g == 1000.0f);
+
+    // T1 should be unaffected
+    REQUIRE(tools[1].spoolman_id == 0);
+    REQUIRE(tools[1].spool_name.empty());
+
+    ts.deinit_subjects();
+}
+
+TEST_CASE("ToolState: clear_spool resets ToolInfo fields", "[tool][tool-state][spool]") {
+    lv_init_safe();
+    auto& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+
+    PrinterDiscovery hw;
+    nlohmann::json objects = nlohmann::json::array({"extruder", "heater_bed"});
+    hw.parse_objects(objects);
+    ts.init_tools(hw);
+
+    ts.assign_spool(0, 42, "Red PLA", 750.0f, 1000.0f);
+    REQUIRE(ts.tools()[0].spoolman_id == 42);
+
+    ts.clear_spool(0);
+    REQUIRE(ts.tools()[0].spoolman_id == 0);
+    REQUIRE(ts.tools()[0].spool_name.empty());
+    REQUIRE(ts.tools()[0].remaining_weight_g == -1.0f);
+    REQUIRE(ts.tools()[0].total_weight_g == -1.0f);
+
+    ts.deinit_subjects();
+}
+
+TEST_CASE("ToolState: assign_spool ignores invalid index", "[tool][tool-state][spool]") {
+    lv_init_safe();
+    auto& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+
+    PrinterDiscovery hw;
+    nlohmann::json objects = nlohmann::json::array({"extruder", "heater_bed"});
+    hw.parse_objects(objects);
+    ts.init_tools(hw);
+
+    // Should not crash or corrupt state
+    ts.assign_spool(-1, 42, "Bad", 100, 200);
+    ts.assign_spool(99, 42, "Bad", 100, 200);
+    REQUIRE(ts.tools()[0].spoolman_id == 0);
+
+    ts.deinit_subjects();
+}
+
+TEST_CASE("ToolState: save/load JSON round-trip", "[tool][tool-state][spool]") {
+    lv_init_safe();
+    auto& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+
+    TempDir tmp;
+    ts.set_config_dir(tmp.str());
+
+    // Set up tools and assign spools
+    PrinterDiscovery hw;
+    nlohmann::json objects =
+        nlohmann::json::array({"extruder", "extruder1", "extruder2", "heater_bed"});
+    hw.parse_objects(objects);
+    ts.init_tools(hw);
+    REQUIRE(ts.tool_count() == 3);
+
+    ts.assign_spool(0, 42, "Red PLA", 750.0f, 1000.0f);
+    ts.assign_spool(2, 99, "Blue PETG", 200.0f, 500.0f);
+    // T1 left unassigned
+
+    // Save to local JSON
+    ts.save_spool_assignments(nullptr);
+
+    // Verify file exists
+    auto json_path = std::filesystem::path(tmp.str()) / "tool_spools.json";
+    REQUIRE(std::filesystem::exists(json_path));
+
+    // Read and verify JSON structure
+    std::ifstream ifs(json_path);
+    auto data = nlohmann::json::parse(ifs);
+    REQUIRE(data.is_object());
+    REQUIRE(data.contains("0"));
+    REQUIRE(data["0"]["spoolman_id"] == 42);
+    REQUIRE(data["0"]["spool_name"] == "Red PLA");
+    REQUIRE(data.contains("2"));
+    REQUIRE(data["2"]["spoolman_id"] == 99);
+    REQUIRE_FALSE(data.contains("1")); // T1 had no spool
+
+    // Now reinit tools (simulating restart) and load
+    ts.init_tools(hw);
+    REQUIRE(ts.tools()[0].spoolman_id == 0); // cleared by init
+
+    ts.load_spool_assignments(nullptr); // no API, falls back to JSON
+    REQUIRE(ts.tools()[0].spoolman_id == 42);
+    REQUIRE(ts.tools()[0].spool_name == "Red PLA");
+    REQUIRE(ts.tools()[0].remaining_weight_g == 750.0f);
+    REQUIRE(ts.tools()[0].total_weight_g == 1000.0f);
+    REQUIRE(ts.tools()[2].spoolman_id == 99);
+    REQUIRE(ts.tools()[2].spool_name == "Blue PETG");
+    REQUIRE(ts.tools()[1].spoolman_id == 0); // still unassigned
+
+    ts.deinit_subjects();
+}
+
+TEST_CASE("ToolState: load from missing JSON file is no-op", "[tool][tool-state][spool]") {
+    lv_init_safe();
+    auto& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+
+    TempDir tmp;
+    ts.set_config_dir(tmp.str());
+
+    PrinterDiscovery hw;
+    nlohmann::json objects = nlohmann::json::array({"extruder", "heater_bed"});
+    hw.parse_objects(objects);
+    ts.init_tools(hw);
+
+    // Should not crash, tools remain at defaults
+    ts.load_spool_assignments(nullptr);
+    REQUIRE(ts.tools()[0].spoolman_id == 0);
+
+    ts.deinit_subjects();
+}
+
+TEST_CASE("ToolState: save with no assigned spools writes empty object",
+          "[tool][tool-state][spool]") {
+    lv_init_safe();
+    auto& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+
+    TempDir tmp;
+    ts.set_config_dir(tmp.str());
+
+    PrinterDiscovery hw;
+    nlohmann::json objects = nlohmann::json::array({"extruder", "heater_bed"});
+    hw.parse_objects(objects);
+    ts.init_tools(hw);
+
+    ts.save_spool_assignments(nullptr);
+
+    auto json_path = std::filesystem::path(tmp.str()) / "tool_spools.json";
+    REQUIRE(std::filesystem::exists(json_path));
+
+    std::ifstream ifs(json_path);
+    auto data = nlohmann::json::parse(ifs);
+    REQUIRE(data.is_object());
+    REQUIRE(data.empty());
+
+    ts.deinit_subjects();
+}
+
+TEST_CASE("ToolState: weight fields omitted from JSON when unknown", "[tool][tool-state][spool]") {
+    lv_init_safe();
+    auto& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+
+    TempDir tmp;
+    ts.set_config_dir(tmp.str());
+
+    PrinterDiscovery hw;
+    nlohmann::json objects = nlohmann::json::array({"extruder", "heater_bed"});
+    hw.parse_objects(objects);
+    ts.init_tools(hw);
+
+    // Assign with unknown weights (defaults: -1)
+    ts.assign_spool(0, 42, "Mystery Spool");
+    ts.save_spool_assignments(nullptr);
+
+    auto json_path = std::filesystem::path(tmp.str()) / "tool_spools.json";
+    std::ifstream ifs(json_path);
+    auto data = nlohmann::json::parse(ifs);
+    REQUIRE(data["0"]["spoolman_id"] == 42);
+    REQUIRE_FALSE(data["0"].contains("remaining_weight_g"));
+    REQUIRE_FALSE(data["0"].contains("total_weight_g"));
 
     ts.deinit_subjects();
 }

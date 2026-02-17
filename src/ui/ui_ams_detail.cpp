@@ -113,6 +113,14 @@ void ams_detail_update_tray(AmsDetailWidgets& w) {
     if (!w.slot_tray || !w.slot_grid)
         return;
 
+    // Tool changers don't have a physical tray/housing
+    auto* backend = AmsState::instance().get_backend(0);
+    if (backend && backend->get_type() == AmsType::TOOL_CHANGER) {
+        lv_obj_add_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+    lv_obj_remove_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
+
     lv_obj_update_layout(w.slot_grid);
     int32_t grid_height = lv_obj_get_height(w.slot_grid);
     if (grid_height <= 0)

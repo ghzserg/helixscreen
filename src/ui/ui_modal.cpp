@@ -4,7 +4,7 @@
 #include "ui_modal.h"
 
 #include "ui_event_safety.h"
-#include "ui_keyboard.h"
+#include "ui_keyboard_manager.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -860,16 +860,16 @@ void helix::ui::modal_register_keyboard(lv_obj_t* modal, lv_obj_t* textarea) {
     }
 
     // Position keyboard at bottom-center (default for modals)
-    ui_keyboard_set_position(LV_ALIGN_BOTTOM_MID, 0, 0);
+    KeyboardManager::instance().set_position(LV_ALIGN_BOTTOM_MID, 0, 0);
 
     // Check if this is a password textarea
     bool is_password = lv_textarea_get_password_mode(textarea);
 
     if (is_password) {
-        ui_keyboard_register_textarea_ex(textarea, true);
+        KeyboardManager::instance().register_textarea_ex(textarea, true);
         spdlog::debug("[Modal] Registered PASSWORD textarea with keyboard");
     } else {
-        ui_keyboard_register_textarea(textarea);
+        KeyboardManager::instance().register_textarea(textarea);
         spdlog::debug("[Modal] Registered textarea with keyboard");
     }
 }

@@ -7,7 +7,6 @@
 #include "ui_emergency_stop.h"
 #include "ui_error_reporting.h"
 #include "ui_fan_control_overlay.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_notification.h"
 #include "ui_notification_manager.h"
@@ -67,22 +66,6 @@
 SubjectInitializer::SubjectInitializer() = default;
 SubjectInitializer::~SubjectInitializer() = default;
 
-bool SubjectInitializer::init_all(const RuntimeConfig& runtime_config) {
-    if (m_initialized) {
-        spdlog::warn("[SubjectInitializer] Already initialized");
-        return false;
-    }
-
-    // Legacy path: init with nullptr API (panels will need inject_api later)
-    spdlog::debug("[SubjectInitializer] Initializing reactive subjects (legacy path)...");
-
-    init_core_and_state();
-    init_panels(nullptr, runtime_config);
-    init_post(runtime_config);
-
-    return true;
-}
-
 void SubjectInitializer::init_core_and_state() {
     spdlog::debug("[SubjectInitializer] Initializing core and state subjects...");
 
@@ -98,7 +81,7 @@ void SubjectInitializer::init_core_and_state() {
     // Phase 4: Navigation subjects — MUST register AFTER PrinterState/AmsState
     // so that in reverse deinit order, NavigationManager cleans up its observers
     // on PrinterState subjects BEFORE PrinterState deinits those subjects.
-    ui_nav_init();
+    NavigationManager::instance().init();
 
     spdlog::debug("[SubjectInitializer] Core and state subjects initialized");
 }
@@ -129,9 +112,9 @@ void SubjectInitializer::init_post(const RuntimeConfig& runtime_config) {
 
 void SubjectInitializer::init_core_subjects() {
     spdlog::trace("[SubjectInitializer] Initializing core subjects");
-    app_globals_init_subjects();            // Global subjects (notification subject, etc.)
-    ui_printer_status_icon_init_subjects(); // Printer icon state
-    helix::ui::status_bar_init_subjects();  // Notification badge subjects
+    app_globals_init_subjects();                   // Global subjects (notification subject, etc.)
+    PrinterStatusIcon::instance().init_subjects(); // Printer icon state
+    helix::ui::notification_init_subjects();       // Notification badge subjects
 }
 
 void SubjectInitializer::init_printer_state_subjects() {

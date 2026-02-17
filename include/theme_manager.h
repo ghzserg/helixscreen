@@ -414,14 +414,6 @@ void theme_manager_preview(const helix::ThemeData& theme);
 void theme_manager_preview(const helix::ThemeData& theme, bool is_dark);
 
 /**
- * @brief Revert to active theme
- *
- * @deprecated Callers should store the original theme and call
- * theme_manager_apply_theme() with it directly.
- */
-void theme_manager_revert_preview();
-
-/**
  * @brief Parse hex color string to lv_color_t
  *
  * Supports both "#RRGGBB" and "RRGGBB" formats.

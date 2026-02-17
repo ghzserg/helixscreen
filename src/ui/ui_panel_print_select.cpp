@@ -17,7 +17,6 @@
 #include "ui_fonts.h"
 #include "ui_icon.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_print_status.h"
 #include "ui_print_select_file_sorter.h"
@@ -2000,7 +1999,7 @@ void PrintSelectPanel::create_detail_view() {
         if (print_status_panel_widget_) {
             NavigationManager::instance().register_overlay_instance(
                 print_status_panel_widget_, &get_global_print_status_panel());
-            ui_nav_push_overlay(print_status_panel_widget_);
+            NavigationManager::instance().push_overlay(print_status_panel_widget_);
         }
     });
 

@@ -443,37 +443,8 @@ void ui_notification_info_with_action(const char* title, const char* message, co
                   action ? action : "(null)");
 }
 
-// Stub implementations for toast functions (tests don't display UI)
+// Stub ToastManager class for tests
 #include "ui_toast_manager.h"
-
-void ui_toast_init() {
-    // No-op in tests
-}
-
-void ui_toast_show(ToastSeverity severity, const char* message, uint32_t duration_ms) {
-    (void)severity;
-    (void)duration_ms;
-    spdlog::debug("[Test Stub] ui_toast_show: {}", message ? message : "(null)");
-}
-
-void ui_toast_show_with_action(ToastSeverity severity, const char* message, const char* action_text,
-                               toast_action_callback_t action_callback, void* user_data,
-                               uint32_t duration_ms) {
-    (void)severity;
-    (void)action_text;
-    (void)action_callback;
-    (void)user_data;
-    (void)duration_ms;
-    spdlog::debug("[Test Stub] ui_toast_show_with_action: {}", message ? message : "(null)");
-}
-
-void ui_toast_hide() {
-    // No-op in tests
-}
-
-bool ui_toast_is_visible() {
-    return false;
-}
 
 // Stub ToastManager class for tests
 // The real ToastManager is excluded from test build, so we need a stub singleton
@@ -867,17 +838,4 @@ void helix::ui::notification_register_callbacks() {
 
 void helix::ui::notification_manager_init() {
     spdlog::debug("[Test Stub] ui_notification_manager_init: no-op in tests");
-}
-
-// Stub for PrinterStatusIcon functions
-void ui_printer_status_icon_init_subjects() {
-    spdlog::debug("[Test Stub] ui_printer_status_icon_init_subjects: no-op in tests");
-}
-
-void ui_printer_status_icon_init() {
-    spdlog::debug("[Test Stub] ui_printer_status_icon_init: no-op in tests");
-}
-
-void ui_printer_status_icon_deinit_subjects() {
-    spdlog::debug("[Test Stub] ui_printer_status_icon_deinit_subjects: no-op in tests");
 }

@@ -69,7 +69,7 @@ void ui_keypad_init(lv_obj_t* parent);
 /**
  * @brief Show keypad overlay
  *
- * Uses ui_nav_push_overlay() for standard overlay behavior.
+ * Uses NavigationManager::push_overlay() for standard overlay behavior.
  *
  * @param config Keypad configuration with initial value and callback
  */
@@ -78,7 +78,7 @@ void ui_keypad_show(const ui_keypad_config_t* config);
 /**
  * @brief Hide keypad overlay (cancel without callback)
  *
- * Uses ui_nav_go_back() for standard overlay dismissal.
+ * Uses NavigationManager::go_back() for standard overlay dismissal.
  */
 void ui_keypad_hide();
 

@@ -131,6 +131,10 @@ class AmsBackendAfc : public AmsBackend {
         return true;
     }
 
+    [[nodiscard]] bool has_firmware_spool_persistence() const override {
+        return true; // AFC uses SET_SPOOL_ID gcode for persistence
+    }
+
     // Endless Spool support
     /**
      * @brief Get endless spool capabilities for AFC

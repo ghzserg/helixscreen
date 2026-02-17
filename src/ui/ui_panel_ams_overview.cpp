@@ -11,7 +11,6 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_filament_path_canvas.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_ams.h"
 #include "ui_panel_common.h"

@@ -149,7 +149,7 @@ HardwareValidationResult HardwareValidator::validate(Config* config,
 // Static callback for toast action button - navigates to Settings and opens overlay
 static void on_hardware_toast_view_clicked(void* /*user_data*/) {
     spdlog::debug("[HardwareValidator] Toast 'View' clicked - opening Hardware Health overlay");
-    ui_nav_set_active(PanelId::Settings);
+    NavigationManager::instance().set_active(PanelId::Settings);
     get_global_settings_panel().handle_hardware_health_clicked();
 }
 
@@ -200,8 +200,8 @@ void HardwareValidator::notify_user(const HardwareValidationResult& result) {
     }
 
     // Show toast with action button to navigate to Hardware Health section
-    ui_toast_show_with_action(severity, message.c_str(), "View", on_hardware_toast_view_clicked,
-                              nullptr, 8000);
+    ToastManager::instance().show_with_action(severity, message.c_str(), "View",
+                                              on_hardware_toast_view_clicked, nullptr, 8000);
     spdlog::debug("[HardwareValidator] Notified user ({}): {}",
                   severity == ToastSeverity::ERROR     ? "error"
                   : severity == ToastSeverity::WARNING ? "warning"

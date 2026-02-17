@@ -35,8 +35,8 @@ namespace {
 // Simulates lv_obj_t* for testing
 using lv_obj_t = MockObj;
 
-// Mock ui_nav_push_overlay
-void ui_nav_push_overlay(lv_obj_t* overlay) {
+// Mock push_overlay (replaces former ui_nav_push_overlay)
+void mock_push_overlay(lv_obj_t* overlay) {
     g_push_call_count++;
     g_last_pushed = overlay;
 }
@@ -64,7 +64,7 @@ bool lazy_push_overlay(lv_obj_t*& cache, CreateFunc create_func, lv_obj_t* paren
     }
 
     if (cache) {
-        ui_nav_push_overlay(cache);
+        mock_push_overlay(cache);
         return true;
     }
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "../../include/theme_manager.h"
-#include "../../include/ui_nav.h"
+#include "../../include/ui_nav_manager.h"
 #include "../ui_test_utils.h"
 #include "lvgl/lvgl.h"
 
@@ -26,7 +26,7 @@ class NavigationTestFixture {
         lv_display_set_buffers(disp, buf1, NULL, sizeof(buf1), LV_DISPLAY_RENDER_MODE_PARTIAL);
 
         // Initialize navigation system
-        ui_nav_init();
+        NavigationManager::instance().init();
     }
 
     ~NavigationTestFixture() {
@@ -36,59 +36,59 @@ class NavigationTestFixture {
 
 TEST_CASE_METHOD(NavigationTestFixture, "Navigation initialization", "[core][navigation]") {
     SECTION("Default active panel is HOME") {
-        REQUIRE(ui_nav_get_active() == PanelId::Home);
+        REQUIRE(NavigationManager::instance().get_active() == PanelId::Home);
     }
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "Panel switching", "[core][navigation]") {
     SECTION("Switch to CONTROLS panel") {
-        ui_nav_set_active(PanelId::Controls);
-        REQUIRE(ui_nav_get_active() == PanelId::Controls);
+        NavigationManager::instance().set_active(PanelId::Controls);
+        REQUIRE(NavigationManager::instance().get_active() == PanelId::Controls);
     }
 
     SECTION("Switch to FILAMENT panel") {
-        ui_nav_set_active(PanelId::Filament);
-        REQUIRE(ui_nav_get_active() == PanelId::Filament);
+        NavigationManager::instance().set_active(PanelId::Filament);
+        REQUIRE(NavigationManager::instance().get_active() == PanelId::Filament);
     }
 
     SECTION("Switch to SETTINGS panel") {
-        ui_nav_set_active(PanelId::Settings);
-        REQUIRE(ui_nav_get_active() == PanelId::Settings);
+        NavigationManager::instance().set_active(PanelId::Settings);
+        REQUIRE(NavigationManager::instance().get_active() == PanelId::Settings);
     }
 
     SECTION("Switch to ADVANCED panel") {
-        ui_nav_set_active(PanelId::Advanced);
-        REQUIRE(ui_nav_get_active() == PanelId::Advanced);
+        NavigationManager::instance().set_active(PanelId::Advanced);
+        REQUIRE(NavigationManager::instance().get_active() == PanelId::Advanced);
     }
 
     SECTION("Switch back to HOME panel") {
-        ui_nav_set_active(PanelId::Controls);
-        ui_nav_set_active(PanelId::Home);
-        REQUIRE(ui_nav_get_active() == PanelId::Home);
+        NavigationManager::instance().set_active(PanelId::Controls);
+        NavigationManager::instance().set_active(PanelId::Home);
+        REQUIRE(NavigationManager::instance().get_active() == PanelId::Home);
     }
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "Invalid panel handling", "[core][navigation]") {
     SECTION("Setting invalid panel ID does not change active panel") {
-        PanelId original = ui_nav_get_active();
-        ui_nav_set_active((PanelId)99); // Invalid panel ID
-        REQUIRE(ui_nav_get_active() == original);
+        PanelId original = NavigationManager::instance().get_active();
+        NavigationManager::instance().set_active((PanelId)99); // Invalid panel ID
+        REQUIRE(NavigationManager::instance().get_active() == original);
     }
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "Repeated panel selection", "[core][navigation]") {
     SECTION("Setting same panel multiple times is safe") {
-        ui_nav_set_active(PanelId::Controls);
-        ui_nav_set_active(PanelId::Controls);
-        ui_nav_set_active(PanelId::Controls);
-        REQUIRE(ui_nav_get_active() == PanelId::Controls);
+        NavigationManager::instance().set_active(PanelId::Controls);
+        NavigationManager::instance().set_active(PanelId::Controls);
+        NavigationManager::instance().set_active(PanelId::Controls);
+        REQUIRE(NavigationManager::instance().get_active() == PanelId::Controls);
     }
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "All panels are accessible", "[core][navigation]") {
     for (int i = 0; i < UI_PANEL_COUNT; i++) {
-        ui_nav_set_active((PanelId)i);
-        REQUIRE(ui_nav_get_active() == (PanelId)i);
+        NavigationManager::instance().set_active((PanelId)i);
+        REQUIRE(NavigationManager::instance().get_active() == (PanelId)i);
     }
 }
 
@@ -178,7 +178,7 @@ class NavbarIconTestFixture : public LVGLUITestFixture {
      * @brief Set active panel
      */
     void set_active_panel(PanelId panel_id) {
-        ui_nav_set_active(panel_id);
+        NavigationManager::instance().set_active(panel_id);
     }
 
     lv_obj_t* navbar_ = nullptr;

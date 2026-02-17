@@ -39,13 +39,12 @@ class WizardFanSelectStep {
     WizardFanSelectStep();
     ~WizardFanSelectStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardFanSelectStep(const WizardFanSelectStep&) = delete;
     WizardFanSelectStep& operator=(const WizardFanSelectStep&) = delete;
-
-    // Movable
-    WizardFanSelectStep(WizardFanSelectStep&& other) noexcept;
-    WizardFanSelectStep& operator=(WizardFanSelectStep&& other) noexcept;
+    WizardFanSelectStep(WizardFanSelectStep&&) = delete;
+    WizardFanSelectStep& operator=(WizardFanSelectStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects

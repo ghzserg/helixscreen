@@ -315,9 +315,9 @@ TEST_CASE("CHAR: Overlay lazy creation pattern", "[characterization][settings][d
         REQUIRE(starts_hidden == true);
     }
 
-    SECTION("Uses ui_nav_push_overlay() to show") {
-        std::string nav_function = "ui_nav_push_overlay";
-        REQUIRE(nav_function == "ui_nav_push_overlay");
+    SECTION("Uses NavigationManager::instance().push_overlay() to show") {
+        std::string nav_function = "NavigationManager::instance().push_overlay";
+        REQUIRE(nav_function == "NavigationManager::instance().push_overlay");
     }
 }
 

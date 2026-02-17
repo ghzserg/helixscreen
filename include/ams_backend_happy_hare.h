@@ -125,6 +125,10 @@ class AmsBackendHappyHare : public AmsBackend {
      */
     AmsError reset_endless_spool() override;
 
+    [[nodiscard]] bool has_firmware_spool_persistence() const override {
+        return true; // Happy Hare persists via MMU_GATE_MAP SPOOLID
+    }
+
     // Tool Mapping support
     /**
      * @brief Get tool mapping capabilities for Happy Hare

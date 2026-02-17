@@ -3,11 +3,10 @@
 
 #include "ui_panel_history_dashboard.h"
 
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_panel_history_list.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -166,7 +165,8 @@ void HistoryDashboardPanel::register_callbacks() {
             overlay_root = overlay.create(screen);
             if (!overlay_root) {
                 spdlog::error("[History Dashboard] Failed to create dashboard panel");
-                ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to open history"), 2000);
+                ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Failed to open history"),
+                                              2000);
                 return;
             }
             // Register with NavigationManager for lifecycle callbacks
@@ -174,7 +174,7 @@ void HistoryDashboardPanel::register_callbacks() {
         }
 
         // Push as overlay (slides in from right)
-        ui_nav_push_overlay(overlay_root);
+        NavigationManager::instance().push_overlay(overlay_root);
 
         spdlog::debug("[History Dashboard] Dashboard panel opened");
     });
@@ -900,7 +900,8 @@ void HistoryDashboardPanel::on_view_history_clicked(lv_event_t* e) {
         overlay_root = list_panel.create(screen);
         if (!overlay_root) {
             spdlog::error("[History Dashboard] Failed to create history list panel");
-            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to open history list"), 2000);
+            ToastManager::instance().show(ToastSeverity::ERROR,
+                                          lv_tr("Failed to open history list"), 2000);
             return;
         }
         // Register with NavigationManager for lifecycle callbacks
@@ -908,7 +909,7 @@ void HistoryDashboardPanel::on_view_history_clicked(lv_event_t* e) {
     }
 
     // Push as overlay (slides in from right)
-    ui_nav_push_overlay(overlay_root);
+    NavigationManager::instance().push_overlay(overlay_root);
 
     spdlog::debug("[History Dashboard] History list panel opened");
 }

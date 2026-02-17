@@ -3,7 +3,6 @@
 #include "ui_exclude_objects_list_overlay.h"
 
 #include "ui_gcode_viewer.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_print_exclude_object_manager.h"
 
@@ -121,7 +120,7 @@ void ExcludeObjectsListOverlay::show(lv_obj_t* parent_screen, MoonrakerAPI* api,
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack (on_activate will populate the list)
-    ui_nav_push_overlay(overlay_root_, false /* hide_previous */);
+    NavigationManager::instance().push_overlay(overlay_root_, false /* hide_previous */);
 }
 
 // ============================================================================

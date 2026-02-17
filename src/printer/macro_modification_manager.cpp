@@ -180,7 +180,8 @@ void MacroModificationManager::check_and_notify() {
 void MacroModificationManager::analyze_and_launch_wizard() {
     if (!api_) {
         spdlog::warn("[MacroModificationManager] No API, cannot launch wizard");
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Not connected to printer"), 3000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Not connected to printer"),
+                                      3000);
         return;
     }
 
@@ -200,7 +201,8 @@ void MacroModificationManager::analyze_and_launch_wizard() {
             cached_analysis_ = analysis;
 
             if (!analysis.found) {
-                ui_toast_show(ToastSeverity::INFO, lv_tr("No PRINT_START macro found"), 3000);
+                ToastManager::instance().show(ToastSeverity::INFO,
+                                              lv_tr("No PRINT_START macro found"), 3000);
                 return;
             }
 
@@ -214,8 +216,9 @@ void MacroModificationManager::analyze_and_launch_wizard() {
             }
 
             if (uncontrollable == 0) {
-                ui_toast_show(ToastSeverity::SUCCESS,
-                              lv_tr("Your print start is already fully configured!"), 3000);
+                ToastManager::instance().show(
+                    ToastSeverity::SUCCESS, lv_tr("Your print start is already fully configured!"),
+                    3000);
 
                 // Mark as configured since it's already good
                 auto cfg = load_config();
@@ -235,7 +238,8 @@ void MacroModificationManager::analyze_and_launch_wizard() {
 
             analyzing_ = false;
             spdlog::warn("[MacroModificationManager] Analysis failed: {}", error.message);
-            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to analyze PRINT_START macro"), 3000);
+            ToastManager::instance().show(ToastSeverity::ERROR,
+                                          lv_tr("Failed to analyze PRINT_START macro"), 3000);
         });
 }
 
@@ -327,7 +331,7 @@ void MacroModificationManager::show_configure_toast() {
 
     // Show toast with Configure action
     // Using raw pointer for callback since toast lifetime is short [L012]
-    ui_toast_show_with_action(
+    ToastManager::instance().show_with_action(
         ToastSeverity::INFO, message, "Configure",
         [](void* user_data) {
             auto* manager = static_cast<MacroModificationManager*>(user_data);
@@ -374,7 +378,7 @@ void MacroModificationManager::launch_wizard() {
     if (!wizard_->show(lv_screen_active())) {
         spdlog::warn("[MacroModificationManager] Failed to show wizard");
         wizard_.reset();
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to open wizard"), 3000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Failed to open wizard"), 3000);
     }
 }
 
@@ -392,7 +396,7 @@ void MacroModificationManager::on_wizard_complete(bool applied, size_t operation
         char message[128];
         snprintf(message, sizeof(message), "Enhanced %zu operation%s in PRINT_START",
                  operations_enhanced, operations_enhanced == 1 ? "" : "s");
-        ui_toast_show(ToastSeverity::SUCCESS, message, 4000);
+        ToastManager::instance().show(ToastSeverity::SUCCESS, message, 4000);
     }
 
     // Clean up wizard

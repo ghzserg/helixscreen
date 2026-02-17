@@ -2,7 +2,7 @@
 
 #include "ui_notification_manager.h"
 
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_notification_history.h"
 #include "ui_utils.h"
 
@@ -74,7 +74,7 @@ void NotificationManager::notification_history_clicked([[maybe_unused]] lv_event
     // Setup panel (wires buttons, refreshes list)
     panel.setup(panel_obj, parent);
 
-    ui_nav_push_overlay(panel_obj);
+    NavigationManager::instance().push_overlay(panel_obj);
 }
 
 // ============================================================================

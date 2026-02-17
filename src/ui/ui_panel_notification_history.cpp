@@ -4,7 +4,7 @@
 #include "ui_panel_notification_history.h"
 
 #include "ui_event_safety.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_notification_manager.h"
 #include "ui_panel_common.h"
 #include "ui_severity_card.h"
@@ -168,8 +168,8 @@ void NotificationHistoryPanel::refresh() {
     history_.mark_all_read();
 
     // Update status bar - badge count is 0 and bell goes gray (no unread)
-    helix::ui::status_bar_update_notification_count(0);
-    helix::ui::status_bar_update_notification(NotificationStatus::NONE);
+    helix::ui::notification_update_count(0);
+    helix::ui::notification_update(NotificationStatus::NONE);
 
     spdlog::debug("[{}] Refreshed: {} entries displayed", get_name(), entries.size());
 }
@@ -248,7 +248,7 @@ void NotificationHistoryPanel::dispatch_action(const char* action) {
 
     if (strcmp(action, "show_update_modal") == 0) {
         // Close notification history overlay first, then show update modal
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
         UpdateChecker::instance().show_update_notification();
     } else {
         spdlog::warn("[{}] Unknown action: {}", get_name(), action);

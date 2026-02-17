@@ -5,10 +5,9 @@
 
 #include "ui_button.h"
 #include "ui_emergency_stop.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_step_progress.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
@@ -79,7 +78,7 @@ static void open_timelapse_install_overlay() {
         }
     }
 
-    ui_nav_push_overlay(g_timelapse_install_panel);
+    NavigationManager::instance().push_overlay(g_timelapse_install_panel);
 }
 
 // ============================================================================
@@ -221,7 +220,8 @@ void TimelapseInstallOverlay::step_check_webcam() {
                     return;
                 if (empty) {
                     set_status(lv_tr("No webcam detected.\nA webcam is required for timelapse."));
-                    show_action_button(lv_tr("Close"), []() { ui_nav_go_back(); });
+                    show_action_button(lv_tr("Close"),
+                                       []() { NavigationManager::instance().go_back(); });
                     return;
                 }
                 spdlog::info("[{}] Found {} webcam(s)", get_name(), count);
@@ -267,7 +267,8 @@ void TimelapseInstallOverlay::step_check_plugin() {
                         ui_step_progress_set_completed(step_progress_, i);
                     }
                 }
-                show_action_button(lv_tr("Close"), []() { ui_nav_go_back(); });
+                show_action_button(lv_tr("Close"),
+                                   []() { NavigationManager::instance().go_back(); });
             });
         },
         [this, alive](const MoonrakerError& /*err*/) {
@@ -327,7 +328,8 @@ void TimelapseInstallOverlay::recheck_after_install() {
                         ui_step_progress_set_completed(step_progress_, i);
                     }
                 }
-                show_action_button(lv_tr("Done"), []() { ui_nav_go_back(); });
+                show_action_button(lv_tr("Done"),
+                                   []() { NavigationManager::instance().go_back(); });
             });
         },
         [this, alive](const MoonrakerError& /*err*/) {
@@ -545,8 +547,10 @@ void TimelapseInstallOverlay::step_verify() {
                 }
                 // Update capability state so UI reflects timelapse availability
                 get_printer_state().set_timelapse_available(true);
-                show_action_button(lv_tr("Done"), []() { ui_nav_go_back(); });
-                ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Timelapse plugin installed!"), 3000);
+                show_action_button(lv_tr("Done"),
+                                   []() { NavigationManager::instance().go_back(); });
+                ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                              lv_tr("Timelapse plugin installed!"), 3000);
             });
         },
         [this, alive](const MoonrakerError& /*err*/) {

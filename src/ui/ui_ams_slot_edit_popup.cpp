@@ -2,7 +2,7 @@
 
 #include "ui_ams_slot_edit_popup.h"
 
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_utils.h"
 
 #include "ams_backend.h"
@@ -247,7 +247,7 @@ void AmsSlotEditPopup::handle_tool_changed() {
                              tool_number, slot_index_, i);
                 std::string msg =
                     "T" + std::to_string(tool_number) + " shares slot with T" + std::to_string(i);
-                ui_toast_show(ToastSeverity::WARNING, msg.c_str());
+                ToastManager::instance().show(ToastSeverity::WARNING, msg.c_str());
                 break;
             }
         }
@@ -255,7 +255,7 @@ void AmsSlotEditPopup::handle_tool_changed() {
         auto result = backend_->set_tool_mapping(tool_number, slot_index_);
         if (!result.success()) {
             spdlog::warn("[AmsSlotEditPopup] Failed to set tool mapping: {}", result.user_msg);
-            ui_toast_show(ToastSeverity::ERROR, result.user_msg.c_str());
+            ToastManager::instance().show(ToastSeverity::ERROR, result.user_msg.c_str());
         }
     }
 }
@@ -294,7 +294,7 @@ void AmsSlotEditPopup::handle_backup_changed() {
                          current_material, backup_material);
 
             std::string msg = "Incompatible: " + current_material + " / " + backup_material;
-            ui_toast_show(ToastSeverity::ERROR, msg.c_str());
+            ToastManager::instance().show(ToastSeverity::ERROR, msg.c_str());
 
             // Reset dropdown to "None"
             lv_dropdown_set_selected(backup_dropdown_, 0);
@@ -308,7 +308,7 @@ void AmsSlotEditPopup::handle_backup_changed() {
     auto result = backend_->set_endless_spool_backup(slot_index_, backup_slot);
     if (!result.success()) {
         spdlog::warn("[AmsSlotEditPopup] Failed to set endless spool backup: {}", result.user_msg);
-        ui_toast_show(ToastSeverity::ERROR, result.user_msg.c_str());
+        ToastManager::instance().show(ToastSeverity::ERROR, result.user_msg.c_str());
     }
 }
 

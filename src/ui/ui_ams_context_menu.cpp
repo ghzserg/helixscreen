@@ -3,7 +3,7 @@
 
 #include "ui_ams_context_menu.h"
 
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_utils.h"
 
 #include "ams_backend.h"
@@ -375,7 +375,7 @@ void AmsContextMenu::handle_backup_changed() {
             // Show toast error
             std::string msg = "Incompatible materials: " + current_material + " cannot use " +
                               backup_material + " as backup";
-            ui_toast_show(ToastSeverity::ERROR, msg.c_str());
+            ToastManager::instance().show(ToastSeverity::ERROR, msg.c_str());
 
             // Reset dropdown to "None" (index 0)
             lv_dropdown_set_selected(backup_dropdown_, 0);

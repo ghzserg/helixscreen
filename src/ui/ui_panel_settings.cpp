@@ -10,7 +10,6 @@
 #include "ui_emergency_stop.h"
 #include "ui_event_safety.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_overlay_network_settings.h"
 #include "ui_panel_history_dashboard.h"
@@ -26,7 +25,7 @@
 #include "ui_settings_sound.h"
 #include "ui_settings_telemetry_data.h"
 #include "ui_severity_card.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_touch_calibration_overlay.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
@@ -195,8 +194,8 @@ static void on_update_channel_changed(lv_event_t* e) {
             // Revert to previous value
             int current = SettingsManager::instance().get_update_channel();
             lv_dropdown_set_selected(dropdown, static_cast<uint32_t>(current));
-            ui_toast_show(ToastSeverity::WARNING, lv_tr("Dev channel requires dev_url in config"),
-                          3000);
+            ToastManager::instance().show(ToastSeverity::WARNING,
+                                          lv_tr("Dev channel requires dev_url in config"), 3000);
             rejected = true;
         }
     }
@@ -238,7 +237,7 @@ static void on_version_clicked(lv_event_t*) {
             remaining == 1
                 ? fmt::format(lv_tr("1 more tap to {} beta features"), action)
                 : fmt::format(lv_tr("{} more taps to {} beta features"), remaining, action);
-        ui_toast_show(ToastSeverity::INFO, msg.c_str(), 1000);
+        ToastManager::instance().show(ToastSeverity::INFO, msg.c_str(), 1000);
     } else if (remaining == 0) {
         // Toggle beta_features config flag and reactive subject
         Config* config = Config::get_instance();
@@ -254,9 +253,9 @@ static void on_version_clicked(lv_event_t*) {
                 lv_subject_set_int(subject, new_value ? 1 : 0);
             }
 
-            ui_toast_show(ToastSeverity::SUCCESS,
-                          new_value ? lv_tr("Beta features: ON") : lv_tr("Beta features: OFF"),
-                          1500);
+            ToastManager::instance().show(
+                ToastSeverity::SUCCESS,
+                new_value ? lv_tr("Beta features: ON") : lv_tr("Beta features: OFF"), 1500);
             spdlog::info("[SettingsPanel] Beta features toggled via 7-tap secret: {}",
                          new_value ? "ON" : "OFF");
         }
@@ -333,7 +332,7 @@ static void on_factory_reset_cancel(lv_event_t* e) {
     spdlog::info("[SettingsPanel] User cancelled factory reset");
     auto& panel = get_global_settings_panel();
     if (panel.factory_reset_dialog_) {
-        ui_nav_go_back(); // Animation + callback will handle cleanup
+        NavigationManager::instance().go_back(); // Animation + callback will handle cleanup
     }
 }
 
@@ -840,9 +839,9 @@ void SettingsPanel::handle_telemetry_changed(bool enabled) {
     spdlog::info("[{}] Telemetry toggled: {}", get_name(), enabled ? "ON" : "OFF");
     SettingsManager::instance().set_telemetry_enabled(enabled);
     if (enabled) {
-        ui_toast_show(ToastSeverity::SUCCESS,
-                      lv_tr("Thanks! TOTALLY anonymous usage data helps improve HelixScreen."),
-                      4000);
+        ToastManager::instance().show(
+            ToastSeverity::SUCCESS,
+            lv_tr("Thanks! TOTALLY anonymous usage data helps improve HelixScreen."), 4000);
     }
 }
 
@@ -883,12 +882,12 @@ void SettingsPanel::handle_debug_bundle_clicked() {
 
 void SettingsPanel::handle_discord_clicked() {
     spdlog::info("[SettingsPanel] Discord clicked");
-    ui_toast_show(ToastSeverity::INFO, "Join us at discord.gg/helixscreen", 5000);
+    ToastManager::instance().show(ToastSeverity::INFO, "Join us at discord.gg/helixscreen", 5000);
 }
 
 void SettingsPanel::handle_docs_clicked() {
     spdlog::info("[SettingsPanel] Documentation clicked");
-    ui_toast_show(ToastSeverity::INFO, "Visit docs.helixscreen.org", 5000);
+    ToastManager::instance().show(ToastSeverity::INFO, "Visit docs.helixscreen.org", 5000);
 }
 
 void SettingsPanel::handle_sound_settings_clicked() {
@@ -1054,7 +1053,7 @@ void SettingsPanel::handle_touch_calibration_clicked() {
 
 void SettingsPanel::handle_restart_helix_clicked() {
     spdlog::info("[SettingsPanel] Restart HelixScreen requested");
-    ui_toast_show(ToastSeverity::INFO, lv_tr("Restarting HelixScreen..."), 1500);
+    ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Restarting HelixScreen..."), 1500);
 
     // Schedule restart after brief delay to let toast display
     helix::ui::async_call(
@@ -1097,7 +1096,7 @@ void SettingsPanel::handle_factory_reset_clicked() {
 
     // Show the dialog via navigation stack
     if (factory_reset_dialog_) {
-        ui_nav_push_overlay(factory_reset_dialog_);
+        NavigationManager::instance().push_overlay(factory_reset_dialog_);
     }
 }
 
@@ -1115,7 +1114,7 @@ void SettingsPanel::handle_plugins_clicked() {
     // Show the overlay via navigation stack
     if (overlay.get_root()) {
         NavigationManager::instance().register_overlay_instance(overlay.get_root(), &overlay);
-        ui_nav_push_overlay(overlay.get_root());
+        NavigationManager::instance().push_overlay(overlay.get_root());
     }
 }
 
@@ -1154,11 +1153,12 @@ void SettingsPanel::perform_factory_reset() {
 
     // Hide the dialog - animation + callback will handle cleanup
     if (factory_reset_dialog_) {
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
     }
 
     // Show confirmation toast
-    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Settings reset to defaults"), 2000);
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Settings reset to defaults"),
+                                  2000);
 
     // TODO: In production, this would restart the application
     // or transition to the setup wizard. For now, just log.
@@ -1405,7 +1405,7 @@ void SettingsPanel::on_restart_now_clicked(lv_event_t* /*e*/) {
 
 void SettingsPanel::on_header_back_clicked(lv_event_t* /*e*/) {
     LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_header_back_clicked");
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
     LVGL_SAFE_EVENT_CB_END();
 }
 

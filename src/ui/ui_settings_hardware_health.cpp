@@ -12,7 +12,7 @@
 #include "ui_modal.h"
 #include "ui_nav_manager.h"
 #include "ui_severity_card.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "config.h"
@@ -110,7 +110,7 @@ void HardwareHealthOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack (on_activate will be called, which populates issues)
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================
@@ -311,7 +311,8 @@ void HardwareHealthOverlay::handle_hardware_action(const char* hardware_name, bo
     if (is_ignore) {
         // "Ignore" - Mark hardware as optional (no confirmation needed)
         HardwareValidator::set_hardware_optional(config, hw_name, true);
-        ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Hardware marked as optional"), 2000);
+        ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Hardware marked as optional"),
+                                      2000);
         spdlog::info("[{}] Marked hardware '{}' as optional", get_name(), hw_name);
 
         // Remove from cached validation result and refresh overlay
@@ -356,7 +357,7 @@ void HardwareHealthOverlay::handle_hardware_save_confirm() {
 
     // Add to expected hardware list
     HardwareValidator::add_expected_hardware(cfg, pending_hardware_save_);
-    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Hardware saved to config"), 2000);
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Hardware saved to config"), 2000);
     spdlog::info("[{}] Added hardware '{}' to expected list", get_name(), pending_hardware_save_);
 
     // Remove from cached validation result and refresh overlay

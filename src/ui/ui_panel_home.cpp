@@ -7,7 +7,6 @@
 #include "ui_event_safety.h"
 #include "ui_icon.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_overlay_network_settings.h"
 #include "ui_panel_ams.h"
@@ -583,7 +582,7 @@ void HomePanel::handle_light_long_press() {
     if (led_control_panel_) {
         light_long_pressed_ = true; // Suppress the click that follows long-press
         get_led_control_overlay().set_api(api_);
-        ui_nav_push_overlay(led_control_panel_);
+        NavigationManager::instance().push_overlay(led_control_panel_);
     }
 }
 
@@ -599,14 +598,14 @@ void HomePanel::handle_print_card_clicked() {
         if (status_panel) {
             NavigationManager::instance().register_overlay_instance(
                 status_panel, &get_global_print_status_panel());
-            ui_nav_push_overlay(status_panel);
+            NavigationManager::instance().push_overlay(status_panel);
         } else {
             spdlog::error("[{}] Print status panel not available", get_name());
         }
     } else {
         // No print in progress - navigate to print select panel
         spdlog::info("[{}] Print card clicked - navigating to print select panel", get_name());
-        ui_nav_set_active(PanelId::PrintSelect);
+        NavigationManager::instance().set_active(PanelId::PrintSelect);
     }
 }
 
@@ -666,7 +665,7 @@ void HomePanel::handle_temp_clicked() {
 
     // Push nozzle temp panel onto navigation history and show it
     if (nozzle_temp_panel_) {
-        ui_nav_push_overlay(nozzle_temp_panel_);
+        NavigationManager::instance().push_overlay(nozzle_temp_panel_);
     }
 }
 
@@ -674,7 +673,7 @@ void HomePanel::handle_printer_status_clicked() {
     spdlog::info("[{}] Printer status icon clicked - navigating to advanced settings", get_name());
 
     // Navigate to advanced settings panel
-    ui_nav_set_active(PanelId::Advanced);
+    NavigationManager::instance().set_active(PanelId::Advanced);
 }
 
 void HomePanel::handle_network_clicked() {
@@ -712,7 +711,7 @@ void HomePanel::handle_printer_manager_clicked() {
     }
 
     // Push overlay onto navigation stack
-    ui_nav_push_overlay(overlay.get_root());
+    NavigationManager::instance().push_overlay(overlay.get_root());
 }
 
 void HomePanel::handle_ams_clicked() {
@@ -725,7 +724,7 @@ void HomePanel::handle_ams_clicked() {
     }
     lv_obj_t* panel_obj = ams_panel.get_panel();
     if (panel_obj) {
-        ui_nav_push_overlay(panel_obj);
+        NavigationManager::instance().push_overlay(panel_obj);
     }
 }
 
@@ -1327,7 +1326,7 @@ void HomePanel::show_idle_runout_modal() {
     // Configure callbacks for the modal buttons
     runout_modal_.set_on_load_filament([this]() {
         spdlog::info("[{}] User chose to load filament (idle)", get_name());
-        ui_nav_set_active(PanelId::Filament);
+        NavigationManager::instance().set_active(PanelId::Filament);
     });
 
     runout_modal_.set_on_resume([]() {

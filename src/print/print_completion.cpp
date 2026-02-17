@@ -7,7 +7,7 @@
 #include "ui_modal.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_print_status.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -308,7 +308,7 @@ static void on_print_state_changed_for_notification(lv_observer_t* observer,
             snprintf(message, sizeof(message), "Print %s: %s",
                      (current == PrintJobState::COMPLETE) ? "complete" : "cancelled",
                      display_name.c_str());
-            ui_toast_show(severity, message, 5000);
+            ToastManager::instance().show(severity, message, 5000);
             break;
         }
 

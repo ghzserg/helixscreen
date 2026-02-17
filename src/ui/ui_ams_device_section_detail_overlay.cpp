@@ -146,7 +146,7 @@ void AmsDeviceSectionDetailOverlay::show(lv_obj_t* parent_screen, const std::str
     NavigationManager::instance().register_overlay_instance(overlay_, this);
 
     // Push onto navigation stack
-    ui_nav_push_overlay(overlay_);
+    NavigationManager::instance().push_overlay(overlay_);
 }
 
 void AmsDeviceSectionDetailOverlay::refresh() {

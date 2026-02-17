@@ -383,6 +383,13 @@ static void apply_tool_badge(AmsSlotData* data, int mapped_tool) {
         return;
     }
 
+    // Tool changers: badge is redundant with toolhead label below
+    auto* backend = AmsState::instance().get_backend(0);
+    if (backend && backend->get_type() == AmsType::TOOL_CHANGER) {
+        lv_obj_add_flag(data->tool_badge_bg, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
     if (mapped_tool >= 0) {
         // Tool is mapped - show badge with tool number
         char tool_text[8];

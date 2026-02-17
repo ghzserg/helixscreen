@@ -225,18 +225,6 @@ struct InputShaperConfig {
     bool is_configured = false;   ///< True if input shaper is actively configured
 };
 
-/**
- * @brief Alternative shaper recommendation
- * @deprecated Use ShaperOption instead for new code
- */
-struct ShaperAlternative {
-    std::string shaper_type;
-    float shaper_freq = 0.0f;
-    float max_accel = 0.0f;
-    float smoothing = 0.0f;
-    std::string description; ///< Human-readable description of trade-offs
-};
-
 // ============================================================================
 // Machine Limits Types
 // ============================================================================

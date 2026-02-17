@@ -35,13 +35,12 @@ class WizardAmsIdentifyStep {
     WizardAmsIdentifyStep();
     ~WizardAmsIdentifyStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardAmsIdentifyStep(const WizardAmsIdentifyStep&) = delete;
     WizardAmsIdentifyStep& operator=(const WizardAmsIdentifyStep&) = delete;
-
-    // Movable
-    WizardAmsIdentifyStep(WizardAmsIdentifyStep&& other) noexcept;
-    WizardAmsIdentifyStep& operator=(WizardAmsIdentifyStep&& other) noexcept;
+    WizardAmsIdentifyStep(WizardAmsIdentifyStep&&) = delete;
+    WizardAmsIdentifyStep& operator=(WizardAmsIdentifyStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects (no-op for this step)

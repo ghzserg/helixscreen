@@ -7,7 +7,7 @@
 #include "ui_event_safety.h"
 #include "ui_global_panel_helper.h"
 #include "ui_keyboard_manager.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_subject_registry.h"
 #include "ui_update_queue.h"
@@ -233,7 +233,7 @@ lv_obj_t* ConsolePanel::create(lv_obj_t* parent) {
             gcode_input_ = lv_obj_find_by_name(input_row, "gcode_input");
             if (gcode_input_) {
                 // Register textarea for keyboard integration
-                ui_keyboard_register_textarea(gcode_input_);
+                KeyboardManager::instance().register_textarea(gcode_input_);
                 spdlog::debug("[{}] Registered gcode_input for keyboard", get_name());
             }
         }

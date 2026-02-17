@@ -146,7 +146,7 @@ class TouchCalibrationOverlay : public OverlayBase {
     /**
      * @brief Hide overlay and return to previous screen
      *
-     * Pops overlay from navigation stack via ui_nav_go_back().
+     * Pops overlay from navigation stack via NavigationManager::go_back().
      */
     void hide();
 

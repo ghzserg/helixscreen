@@ -4,7 +4,6 @@
 #include "panel_factory.h"
 
 #include "ui_component_keypad.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_advanced.h"
 #include "ui_panel_controls.h"
@@ -41,7 +40,7 @@ bool PanelFactory::find_panels(lv_obj_t* panel_container) {
 
 void PanelFactory::setup_panels(lv_obj_t* screen) {
     // Register panels with navigation system
-    ui_nav_set_panels(m_panels.data());
+    NavigationManager::instance().set_panels(m_panels.data());
 
     // Setup home panel
     get_global_home_panel().setup(m_panels[static_cast<int>(PanelId::Home)], screen);

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ui_nav.h" // For UI_PANEL_COUNT
+#include "ui_nav_manager.h" // For UI_PANEL_COUNT
 
 #include <array>
 

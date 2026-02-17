@@ -10,7 +10,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_nav_manager.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "settings_manager.h"
@@ -130,7 +130,7 @@ void TelemetryDataOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack (on_activate will populate events)
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================
@@ -456,7 +456,7 @@ void TelemetryDataOverlay::handle_clear_queue() {
     auto& telemetry = TelemetryManager::instance();
     telemetry.clear_queue();
 
-    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Telemetry queue cleared"), 2000);
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Telemetry queue cleared"), 2000);
     spdlog::info("[{}] Queue cleared by user", get_name());
 
     // Refresh display

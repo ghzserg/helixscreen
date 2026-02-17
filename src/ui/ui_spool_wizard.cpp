@@ -7,7 +7,6 @@
 #include "ui_global_panel_helper.h"
 #include "ui_keyboard_manager.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_subject_registry.h"
@@ -412,7 +411,7 @@ void SpoolWizardOverlay::navigate_to_step(Step step) {
     if (step == Step::VENDOR && overlay_root_) {
         lv_obj_t* search = lv_obj_find_by_name(overlay_root_, "vendor_search");
         if (search) {
-            ui_keyboard_register_textarea(search);
+            KeyboardManager::instance().register_textarea(search);
         }
     }
 
@@ -421,7 +420,7 @@ void SpoolWizardOverlay::navigate_to_step(Step step) {
         for (const char* name : fields) {
             lv_obj_t* input = lv_obj_find_by_name(overlay_root_, name);
             if (input) {
-                ui_keyboard_register_textarea(input);
+                KeyboardManager::instance().register_textarea(input);
             }
         }
     }
@@ -604,7 +603,7 @@ void SpoolWizardOverlay::on_creation_success(const SpoolInfo& spool) {
     set_creating(false);
 
     // Show success toast
-    ui_toast_show(ToastSeverity::SUCCESS, "Spool created successfully");
+    ToastManager::instance().show(ToastSeverity::SUCCESS, "Spool created successfully");
 
     // Refresh the spool list in SpoolmanPanel
     if (completion_callback_) {
@@ -612,7 +611,7 @@ void SpoolWizardOverlay::on_creation_success(const SpoolInfo& spool) {
     }
 
     // Close the wizard overlay
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void SpoolWizardOverlay::on_creation_error(const std::string& message, int rollback_vendor_id,
@@ -620,7 +619,7 @@ void SpoolWizardOverlay::on_creation_error(const std::string& message, int rollb
     spdlog::error("[{}] Creation failed: {}", get_name(), message);
 
     // Show error toast so user knows what happened
-    ui_toast_show(ToastSeverity::ERROR, message.c_str());
+    ToastManager::instance().show(ToastSeverity::ERROR, message.c_str());
 
     // Best-effort rollback — delete filament first (references vendor), then vendor
     MoonrakerAPI* api = get_moonraker_api();
@@ -1041,7 +1040,7 @@ void SpoolWizardOverlay::on_wizard_confirm_create_vendor(lv_event_t* /*e*/) {
     for (const auto& v : wiz.all_vendors_) {
         if (to_lower(v.name) == name_lower) {
             spdlog::warn("[SpoolWizard] Duplicate vendor name: '{}'", name);
-            ui_toast_show(ToastSeverity::WARNING, "Vendor already exists");
+            ToastManager::instance().show(ToastSeverity::WARNING, "Vendor already exists");
             return;
         }
     }
@@ -1727,7 +1726,8 @@ void SpoolWizardOverlay::on_wizard_confirm_create_filament(lv_event_t* /*e*/) {
 
     if (has_error) {
         spdlog::warn("[SpoolWizard] Cannot create filament — missing required fields");
-        ui_toast_show(ToastSeverity::WARNING, "Please fill in the highlighted fields");
+        ToastManager::instance().show(ToastSeverity::WARNING,
+                                      "Please fill in the highlighted fields");
         return;
     }
 
@@ -1738,7 +1738,7 @@ void SpoolWizardOverlay::on_wizard_confirm_create_filament(lv_event_t* /*e*/) {
         if (to_lower(f.material) == mat_lower && to_lower(f.name) == name_lower) {
             spdlog::warn("[SpoolWizard] Duplicate filament: {} '{}'", wiz.new_filament_material_,
                          wiz.new_filament_name_);
-            ui_toast_show(ToastSeverity::WARNING, "Filament already exists");
+            ToastManager::instance().show(ToastSeverity::WARNING, "Filament already exists");
             return;
         }
     }

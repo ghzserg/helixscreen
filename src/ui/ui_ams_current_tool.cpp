@@ -61,7 +61,7 @@ static void on_clicked(lv_event_t* e) {
     }
     lv_obj_t* panel_obj = ams_panel.get_panel();
     if (panel_obj) {
-        ui_nav_push_overlay(panel_obj);
+        NavigationManager::instance().push_overlay(panel_obj);
     }
 }
 

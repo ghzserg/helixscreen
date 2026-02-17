@@ -3,7 +3,7 @@
 
 #include "ui_crash_report_modal.h"
 
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -181,7 +181,8 @@ void CrashReportModal::attempt_delivery() {
         cr.save_to_file(report_);
         cr.consume_crash_file();
         hide();
-        ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Crash report sent — thank you!"), 4000);
+        ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                      lv_tr("Crash report sent — thank you!"), 4000);
         return;
     } else {
         // Auto-send failed — try QR code

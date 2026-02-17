@@ -13,7 +13,7 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_print_status.h"
 #include "ui_print_select_detail_view.h"
 #include "ui_update_queue.h"
@@ -236,7 +236,7 @@ void PrintStartController::execute_print_start() {
                     // Navigate back to print detail overlay on failure
                     spdlog::info(
                         "[PrintStartController] Navigating back to print select after failure");
-                    ui_nav_go_back(); // Pop print status overlay
+                    NavigationManager::instance().go_back(); // Pop print status overlay
 
                     // Re-show the detail view so user can retry
                     if (show_detail) {

@@ -167,29 +167,4 @@ void notification_update(NotificationStatus status);
  */
 void notification_update_count(size_t count);
 
-// Backward compatibility aliases (status_bar -> notification)
-inline void status_bar_register_callbacks() {
-    notification_register_callbacks();
-}
-
-inline void status_bar_init_subjects() {
-    notification_init_subjects();
-}
-
-inline void status_bar_deinit_subjects() {
-    notification_deinit_subjects();
-}
-
-inline void status_bar_init() {
-    notification_manager_init();
-}
-
-inline void status_bar_update_notification(NotificationStatus status) {
-    notification_update(status);
-}
-
-inline void status_bar_update_notification_count(size_t count) {
-    notification_update_count(count);
-}
-
 } // namespace helix::ui

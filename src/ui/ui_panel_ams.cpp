@@ -16,7 +16,6 @@
 #include "ui_fonts.h"
 #include "ui_hsv_picker.h"
 #include "ui_icon.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_spool_canvas.h"

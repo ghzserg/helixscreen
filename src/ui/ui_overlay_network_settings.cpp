@@ -4,7 +4,6 @@
 #include "ui_overlay_network_settings.h"
 
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_step_progress.h"
 #include "ui_subject_registry.h"
@@ -309,7 +308,7 @@ void NetworkSettingsOverlay::show() {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     spdlog::info("[NetworkSettingsOverlay] Overlay shown");
 }
@@ -322,7 +321,7 @@ void NetworkSettingsOverlay::hide() {
     spdlog::debug("[NetworkSettingsOverlay] Hiding overlay");
 
     // Pop from navigation stack - on_deactivate() will be called by NavigationManager
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 
     spdlog::info("[NetworkSettingsOverlay] Overlay hidden");
 }

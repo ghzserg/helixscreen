@@ -165,7 +165,7 @@ void AmsDeviceOperationsOverlay::show(lv_obj_t* parent_screen) {
     refresh();
 
     NavigationManager::instance().register_overlay_instance(overlay_, this);
-    ui_nav_push_overlay(overlay_);
+    NavigationManager::instance().push_overlay(overlay_);
 }
 
 void AmsDeviceOperationsOverlay::refresh() {

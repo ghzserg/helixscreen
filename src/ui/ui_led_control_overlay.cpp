@@ -8,7 +8,6 @@
 #include "ui_event_safety.h"
 #include "ui_global_panel_helper.h"
 #include "ui_led_chip_factory.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_update_queue.h"
 

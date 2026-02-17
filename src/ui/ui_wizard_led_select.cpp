@@ -56,30 +56,6 @@ WizardLedSelectStep::~WizardLedSelectStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardLedSelectStep::WizardLedSelectStep(WizardLedSelectStep&& other) noexcept
-    : screen_root_(other.screen_root_), led_strip_selected_(other.led_strip_selected_),
-      led_strip_items_(std::move(other.led_strip_items_)),
-      subjects_initialized_(other.subjects_initialized_) {
-    other.screen_root_ = nullptr;
-    other.subjects_initialized_ = false;
-}
-
-WizardLedSelectStep& WizardLedSelectStep::operator=(WizardLedSelectStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        led_strip_selected_ = other.led_strip_selected_;
-        led_strip_items_ = std::move(other.led_strip_items_);
-        subjects_initialized_ = other.subjects_initialized_;
-
-        other.screen_root_ = nullptr;
-        other.subjects_initialized_ = false;
-    }
-    return *this;
-}
-
 // ============================================================================
 // Subject Initialization
 // ============================================================================

@@ -367,10 +367,6 @@ inline lv_obj_t* modal_get_top() {
     return Modal::get_top();
 }
 
-inline bool modal_is_visible() {
-    return Modal::any_visible();
-}
-
 /**
  * @brief Register a textarea for keyboard display within a modal
  *

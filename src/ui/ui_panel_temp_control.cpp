@@ -5,7 +5,7 @@
 
 #include "ui_component_keypad.h"
 #include "ui_error_reporting.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_subject_registry.h"
 #include "ui_temp_graph_scaling.h"
@@ -597,7 +597,7 @@ void TempControlPanel::on_nozzle_confirm_clicked(lv_event_t* e) {
             });
     }
 
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void TempControlPanel::on_bed_confirm_clicked(lv_event_t* e) {
@@ -634,7 +634,7 @@ void TempControlPanel::on_bed_confirm_clicked(lv_event_t* e) {
             });
     }
 
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 // Nozzle preset button callbacks - immediately send temperature to printer

@@ -117,7 +117,7 @@ void SensorSettingsOverlay::show(lv_obj_t* parent_screen) {
     update_all_sensor_counts();
 
     // Push onto navigation stack
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================

@@ -108,7 +108,7 @@ TouchCalibrationOverlay::TouchCalibrationOverlay() {
     // Set failure callback to notify user of degenerate points
     panel_->set_failure_callback([this](const char* reason) {
         spdlog::warn("[{}] Calibration failed: {}", get_name(), reason);
-        ui_toast_show(ToastSeverity::WARNING, reason, 3000);
+        ToastManager::instance().show(ToastSeverity::WARNING, reason, 3000);
         // State subject will be updated by capture_point flow
         update_state_subject();
         update_instruction_text();
@@ -312,7 +312,7 @@ void TouchCalibrationOverlay::show(CompletionCallback callback) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     spdlog::info("[{}] Overlay shown", get_name());
 }
@@ -329,7 +329,7 @@ void TouchCalibrationOverlay::hide() {
     spdlog::debug("[{}] Hiding overlay", get_name());
 
     // Pop from navigation stack - on_deactivate() will be called by NavigationManager
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 
     spdlog::info("[{}] Overlay hidden", get_name());
 }
@@ -449,8 +449,9 @@ void TouchCalibrationOverlay::handle_accept_clicked() {
     } else {
 #ifndef HELIX_DISPLAY_FBDEV
         // Show warning on SDL that calibration cannot be applied at runtime
-        ui_toast_show(ToastSeverity::WARNING,
-                      lv_tr("Calibration saved but cannot apply on SDL display"), 3000);
+        ToastManager::instance().show(ToastSeverity::WARNING,
+                                      lv_tr("Calibration saved but cannot apply on SDL display"),
+                                      3000);
 #endif
         spdlog::debug("[{}] Could not apply calibration immediately (may require restart)",
                       get_name());
