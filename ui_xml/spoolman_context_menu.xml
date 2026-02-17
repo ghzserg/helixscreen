@@ -16,18 +16,20 @@
             style_pad_all="#space_sm" style_pad_gap="#space_xs" flex_flow="column" style_flex_main_place="start"
             style_flex_cross_place="start" scrollable="false" clickable="true">
       <!-- Header: spool material name (e.g., "Polymaker PLA") -->
-      <text_body name="spool_header" text="Spool" width="100%" long_mode="dots" style_text_color="#text"/>
+      <text_body name="spool_header"
+                 width="100%" text="Spool" translation_tag="Spool" long_mode="dots" style_text_color="#text"/>
       <!-- Color name (e.g., "Jet Black") -->
-      <text_small name="spool_color_label" text="" width="100%" long_mode="dots" style_text_color="#text_muted"/>
+      <text_small name="spool_color_label" width="100%" text="" long_mode="dots" style_text_color="#text_muted"/>
       <!-- Vendor subtitle -->
-      <text_small name="spool_vendor_label" text="" width="100%" long_mode="dots" style_text_color="#text_muted"/>
+      <text_small name="spool_vendor_label" width="100%" text="" long_mode="dots" style_text_color="#text_muted"/>
       <!-- Header Divider -->
       <lv_obj width="100%"
               height="1" style_bg_color="#text_muted" style_bg_opa="38" style_pad_all="0" scrollable="false"/>
       <!-- Set Active Button -->
       <ui_button name="btn_set_active"
                  width="100%" height="#button_height_sm" icon="check_circle" text="Set Active"
-                 translation_tag="Set Active" variant="ghost" clickable="true" focusable="false" style_flex_main_place="start">
+                 translation_tag="Set Active" variant="ghost" clickable="true" focusable="false"
+                 style_flex_main_place="start">
         <event_cb trigger="clicked" callback="spoolman_context_set_active_cb"/>
       </ui_button>
       <!-- Edit Button -->
@@ -48,7 +50,8 @@
       <!-- Delete Button -->
       <ui_button name="btn_delete"
                  width="100%" height="#button_height_sm" icon="delete" text="Delete" translation_tag="Delete"
-                 variant="ghost" clickable="true" focusable="false" style_flex_main_place="start" style_text_color="#danger">
+                 variant="ghost" clickable="true" focusable="false" style_flex_main_place="start"
+                 style_text_color="#danger">
         <event_cb trigger="clicked" callback="spoolman_context_delete_cb"/>
       </ui_button>
     </lv_obj>

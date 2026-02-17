@@ -248,7 +248,7 @@
               <lv_obj name="legend_x_measured_dot" width="8" height="8"
                       style_radius="4" style_bg_opa="255" style_bg_color="0xB0B0B0"
                       style_pad_all="0" scrollable="false"/>
-              <text_small text="Measured" style_text_color="#text_muted"/>
+              <text_small text="Measured" translation_tag="Measured" style_text_color="#text_muted"/>
               <!-- Active shaper dot + label -->
               <lv_obj name="legend_x_shaper_dot" width="8" height="8"
                       style_radius="4" style_bg_opa="255" style_bg_color="0x66BB6A"
@@ -267,10 +267,10 @@
                     flex_flow="row" style_flex_cross_place="center"
                     style_border_width="1" style_border_color="#border" style_border_side="bottom"
                     scrollable="false">
-              <text_small width="28%" text="Type" style_text_color="#text_muted"/>
-              <text_small width="22%" text="Peak Freq" style_text_color="#text_muted"/>
-              <text_small width="25%" text="Vibration" style_text_color="#text_muted"/>
-              <text_small width="25%" text="Max Accel" style_text_color="#text_muted"/>
+              <text_small width="28%" text="Type" translation_tag="Type" style_text_color="#text_muted"/>
+              <text_small width="22%" text="Peak Freq" translation_tag="Peak Freq" style_text_color="#text_muted"/>
+              <text_small width="25%" text="Vibration" translation_tag="Vibration" style_text_color="#text_muted"/>
+              <text_small width="25%" text="Max Accel" translation_tag="Max Accel" style_text_color="#text_muted"/>
             </lv_obj>
             <!-- Row 0 -->
             <lv_obj width="100%" height="content" style_pad_all="0"
@@ -432,7 +432,7 @@
               <lv_obj name="legend_y_measured_dot" width="8" height="8"
                       style_radius="4" style_bg_opa="255" style_bg_color="0xB0B0B0"
                       style_pad_all="0" scrollable="false"/>
-              <text_small text="Measured" style_text_color="#text_muted"/>
+              <text_small text="Measured" translation_tag="Measured" style_text_color="#text_muted"/>
               <!-- Active shaper dot + label -->
               <lv_obj name="legend_y_shaper_dot" width="8" height="8"
                       style_radius="4" style_bg_opa="255" style_bg_color="0x66BB6A"
@@ -451,10 +451,10 @@
                     flex_flow="row" style_flex_cross_place="center"
                     style_border_width="1" style_border_color="#border" style_border_side="bottom"
                     scrollable="false">
-              <text_small width="28%" text="Type" style_text_color="#text_muted"/>
-              <text_small width="22%" text="Peak Freq" style_text_color="#text_muted"/>
-              <text_small width="25%" text="Vibration" style_text_color="#text_muted"/>
-              <text_small width="25%" text="Max Accel" style_text_color="#text_muted"/>
+              <text_small width="28%" text="Type" translation_tag="Type" style_text_color="#text_muted"/>
+              <text_small width="22%" text="Peak Freq" translation_tag="Peak Freq" style_text_color="#text_muted"/>
+              <text_small width="25%" text="Vibration" translation_tag="Vibration" style_text_color="#text_muted"/>
+              <text_small width="25%" text="Max Accel" translation_tag="Max Accel" style_text_color="#text_muted"/>
             </lv_obj>
             <!-- Row 0 -->
             <lv_obj width="100%" height="content" style_pad_all="0"

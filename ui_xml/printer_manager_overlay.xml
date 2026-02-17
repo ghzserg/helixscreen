@@ -98,7 +98,7 @@
                 scrollable="false" style_border_width="0">
           <bind_flag_if_eq subject="printer_has_probe" flag="hidden" ref_value="0"/>
           <icon src="target" size="xs" variant="success"/>
-          <text_small text="Probe"/>
+          <text_small text="Probe" translation_tag="Probe"/>
         </lv_obj>
 
         <!-- Bed Mesh -->
@@ -110,7 +110,7 @@
           <bind_flag_if_eq subject="printer_has_bed_mesh" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="pm_chip_bed_mesh_clicked"/>
           <icon src="grid_large" size="xs" variant="success"/>
-          <text_small text="Bed Mesh"/>
+          <text_small text="Bed Mesh" translation_tag="Bed Mesh"/>
         </lv_obj>
 
         <!-- Heated Bed -->
@@ -121,7 +121,7 @@
                 scrollable="false" style_border_width="0">
           <bind_flag_if_eq subject="printer_has_heater_bed" flag="hidden" ref_value="0"/>
           <icon src="radiator" size="xs" variant="success"/>
-          <text_small text="Heated Bed"/>
+          <text_small text="Heated Bed" translation_tag="Heated Bed"/>
         </lv_obj>
 
         <!-- LEDs -->
@@ -133,7 +133,7 @@
           <bind_flag_if_eq subject="printer_has_led" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="pm_chip_leds_clicked"/>
           <icon src="lightbulb_on" size="xs" variant="success"/>
-          <text_small text="LEDs"/>
+          <text_small text="LEDs" translation_tag="LEDs"/>
         </lv_obj>
 
         <!-- ADXL -->
@@ -179,7 +179,7 @@
           <bind_flag_if_eq subject="printer_has_firmware_retraction" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="pm_chip_retraction_clicked"/>
           <icon src="arrow_up_right" size="xs" variant="success"/>
-          <text_small text="Retraction"/>
+          <text_small text="Retraction" translation_tag="Retraction"/>
         </lv_obj>
 
         <!-- Spoolman -->
@@ -203,7 +203,7 @@
           <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="pm_chip_timelapse_clicked"/>
           <icon src="camera_timer" size="xs" variant="success"/>
-          <text_small text="Timelapse"/>
+          <text_small text="Timelapse" translation_tag="Timelapse"/>
         </lv_obj>
 
         <!-- Screws Tilt -->
@@ -215,7 +215,7 @@
           <bind_flag_if_eq subject="printer_has_screws_tilt" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="pm_chip_screws_tilt_clicked"/>
           <icon src="rotate_left" size="xs" variant="success"/>
-          <text_small text="Screws Tilt"/>
+          <text_small text="Screws Tilt" translation_tag="Screws Tilt"/>
         </lv_obj>
 
         <!-- Webcam -->
@@ -226,7 +226,7 @@
                 scrollable="false" style_border_width="0">
           <bind_flag_if_eq subject="printer_has_webcam" flag="hidden" ref_value="0"/>
           <icon src="video" size="xs" variant="success"/>
-          <text_small text="Webcam"/>
+          <text_small text="Webcam" translation_tag="Webcam"/>
         </lv_obj>
 
         <!-- AMS / Multi-Material -->
@@ -250,7 +250,7 @@
           <bind_flag_if_eq subject="printer_has_extra_fans" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="pm_chip_fans_clicked"/>
           <icon src="fan" size="xs" variant="success"/>
-          <text_small text="Fans"/>
+          <text_small text="Fans" translation_tag="Fans"/>
         </lv_obj>
 
         <!-- Chamber Sensor -->
@@ -261,7 +261,7 @@
                 scrollable="false" style_border_width="0">
           <bind_flag_if_eq subject="printer_has_chamber_sensor" flag="hidden" ref_value="0"/>
           <icon src="thermometer" size="xs" variant="success"/>
-          <text_small text="Chamber"/>
+          <text_small text="Chamber" translation_tag="Chamber"/>
         </lv_obj>
 
         <!-- Speaker -->
@@ -284,7 +284,7 @@
                 scrollable="false" style_border_width="0">
           <bind_flag_if_eq subject="printer_has_nozzle_clean" flag="hidden" ref_value="0"/>
           <icon src="filament" size="xs" variant="success"/>
-          <text_small text="Nozzle Clean"/>
+          <text_small text="Nozzle Clean" translation_tag="Nozzle Clean"/>
         </lv_obj>
 
       </lv_obj>
