@@ -301,8 +301,26 @@ use_local_tarball() {
     # The extract_release function looks for ${TMP_DIR}/helixscreen.tar.gz
     local dest="${TMP_DIR}/helixscreen.tar.gz"
     if [ "$src" != "$dest" ]; then
-        # Use symlink if possible, otherwise copy
-        ln -sf "$src" "$dest" 2>/dev/null || cp "$src" "$dest"
+        # Resolve to absolute path so a symlink created in $TMP_DIR doesn't
+        # become dangling if the user passed a relative path.
+        # (BusyBox readlink may not support -f, so try realpath first.)
+        local abs_src
+        abs_src=$(realpath "$src" 2>/dev/null)
+        [ -n "$abs_src" ] || abs_src=$(readlink -f "$src" 2>/dev/null)
+        [ -n "$abs_src" ] || abs_src="$src"
+
+        # Prefer a symlink to avoid copying large files on constrained devices,
+        # but *verify* the staged tarball is readable. Fall back to copying.
+        if ln -sf "$abs_src" "$dest" 2>/dev/null && [ -r "$dest" ]; then
+            : # symlink OK
+        elif cp "$abs_src" "$dest" 2>/dev/null && [ -r "$dest" ]; then
+            : # copy OK
+        else
+            log_error "Failed to stage tarball at $dest"
+            log_error "Source: $abs_src"
+            log_error "Check that the source file exists and the temp directory is writable."
+            exit 1
+        fi
     fi
 
     local size
