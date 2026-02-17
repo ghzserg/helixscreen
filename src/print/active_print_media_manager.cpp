@@ -135,7 +135,7 @@ void ActivePrintMediaManager::process_filename(const char* raw_filename) {
     // Thread-safe update to display filename subject (RAII via unique_ptr)
     // Capture printer_state_ reference to avoid using global in tests
     PrinterState* state = &printer_state_;
-    ui_queue_update<std::string>(
+    helix::ui::queue_update<std::string>(
         std::make_unique<std::string>(display_name),
         [state](std::string* name) { state->set_print_display_filename(*name); });
 
@@ -191,8 +191,9 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
             if (metadata.layer_count > 0) {
                 int layer_count = static_cast<int>(metadata.layer_count);
                 PrinterState* state = &printer_state_;
-                ui_queue_update<int>(std::make_unique<int>(layer_count),
-                                     [state](int* count) { state->set_print_layer_total(*count); });
+                helix::ui::queue_update<int>(
+                    std::make_unique<int>(layer_count),
+                    [state](int* count) { state->set_print_layer_total(*count); });
                 spdlog::debug("[ActivePrintMediaManager] Set total layers from metadata: {}",
                               metadata.layer_count);
             }
@@ -225,7 +226,7 @@ void ActivePrintMediaManager::load_thumbnail_for_file(const std::string& filenam
 
                     // Thread-safe update to thumbnail path subject (RAII via unique_ptr)
                     PrinterState* state = &printer_state_;
-                    ui_queue_update<std::string>(
+                    helix::ui::queue_update<std::string>(
                         std::make_unique<std::string>(lvgl_path), [state](std::string* path) {
                             state->set_print_thumbnail_path(*path);
                             spdlog::info("[ActivePrintMediaManager] Thumbnail path set: {}", *path);
@@ -250,7 +251,7 @@ void ActivePrintMediaManager::clear_print_info() {
 
     // Thread-safe clear of shared subjects (capture printer_state_ for testability)
     PrinterState* state = &printer_state_;
-    ui_queue_update([state]() {
+    helix::ui::queue_update([state]() {
         state->set_print_thumbnail_path("");
         state->set_print_display_filename("");
         spdlog::debug("[ActivePrintMediaManager] Cleared print info subjects");

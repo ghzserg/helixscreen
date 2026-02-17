@@ -30,6 +30,7 @@
 // These callbacks are used across multiple domains and don't belong
 // to any single feature area.
 
+namespace helix {
 /// Success callback (no data)
 using AdvancedSuccessCallback = std::function<void()>;
 
@@ -38,3 +39,4 @@ using AdvancedErrorCallback = std::function<void(const std::string& error)>;
 
 /// Progress callback (0-100 percent)
 using AdvancedProgressCallback = std::function<void(int percent)>;
+} // namespace helix

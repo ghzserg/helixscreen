@@ -510,3 +510,132 @@ TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: shutdown clears state
     // Re-init for fixture teardown
     cr.init(temp_dir_.string());
 }
+
+// ============================================================================
+// Phase 2: Fault Info & Register State in CrashReport [crash_reporter]
+// ============================================================================
+
+/// Helper to write a V2 crash file with fault/register fields
+void write_crash_file_v2(const fs::path& dir, int signal = 11, const std::string& name = "SIGSEGV",
+                         const std::string& version = "0.9.18",
+                         const std::string& fault_addr = "0x00000000", int fault_code = 1,
+                         const std::string& fault_code_name = "SEGV_MAPERR",
+                         const std::vector<std::string>& bt = {"0x920bac", "0xf7101290"}) {
+    std::string crash_path = (dir / "crash.txt").string();
+    std::ofstream ofs(crash_path);
+    ofs << "signal:" << signal << "\n";
+    ofs << "name:" << name << "\n";
+    ofs << "version:" << version << "\n";
+    ofs << "timestamp:1707350400\n";
+    ofs << "uptime:3174\n";
+    if (!fault_addr.empty())
+        ofs << "fault_addr:" << fault_addr << "\n";
+    if (fault_code >= 0)
+        ofs << "fault_code:" << fault_code << "\n";
+    if (!fault_code_name.empty())
+        ofs << "fault_code_name:" << fault_code_name << "\n";
+    ofs << "reg_pc:0x00920bac\n";
+    ofs << "reg_sp:0xbe8ff420\n";
+    ofs << "reg_lr:0x0091a3c0\n";
+    for (const auto& addr : bt) {
+        ofs << "bt:" << addr << "\n";
+    }
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: collect_report includes fault address",
+                 "[crash_reporter]") {
+    write_crash_file_v2(temp_dir_);
+    auto& cr = CrashReporter::instance();
+    auto report = cr.collect_report();
+    REQUIRE(report.fault_addr == "0x00000000");
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: collect_report includes fault code info",
+                 "[crash_reporter]") {
+    write_crash_file_v2(temp_dir_, 11, "SIGSEGV", "0.9.18", "0xdeadbeef", 2, "SEGV_ACCERR");
+    auto& cr = CrashReporter::instance();
+    auto report = cr.collect_report();
+    REQUIRE(report.fault_code == 2);
+    REQUIRE(report.fault_code_name == "SEGV_ACCERR");
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: collect_report includes register state",
+                 "[crash_reporter]") {
+    write_crash_file_v2(temp_dir_);
+    auto& cr = CrashReporter::instance();
+    auto report = cr.collect_report();
+    REQUIRE(report.reg_pc == "0x00920bac");
+    REQUIRE(report.reg_sp == "0xbe8ff420");
+    REQUIRE(report.reg_lr == "0x0091a3c0");
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture,
+                 "CrashReporter: collect_report handles old format without fault fields",
+                 "[crash_reporter]") {
+    write_crash_file(); // Old format without fault fields
+    auto& cr = CrashReporter::instance();
+    auto report = cr.collect_report();
+    REQUIRE(report.signal == 11);
+    REQUIRE(report.fault_addr.empty());
+    REQUIRE(report.fault_code == 0);
+    REQUIRE(report.fault_code_name.empty());
+    REQUIRE(report.reg_pc.empty());
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture,
+                 "CrashReporter: report_to_json includes fault and register fields",
+                 "[crash_reporter]") {
+    write_crash_file_v2(temp_dir_);
+    auto& cr = CrashReporter::instance();
+    auto report = cr.collect_report();
+    json j = cr.report_to_json(report);
+
+    REQUIRE(j.contains("fault_addr"));
+    REQUIRE(j["fault_addr"] == "0x00000000");
+    REQUIRE(j.contains("fault_code"));
+    REQUIRE(j["fault_code"] == 1);
+    REQUIRE(j.contains("fault_code_name"));
+    REQUIRE(j["fault_code_name"] == "SEGV_MAPERR");
+    REQUIRE(j.contains("registers"));
+    REQUIRE(j["registers"].contains("pc"));
+    REQUIRE(j["registers"]["pc"] == "0x00920bac");
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture,
+                 "CrashReporter: report_to_json omits fault fields when absent",
+                 "[crash_reporter]") {
+    write_crash_file(); // Old format
+    auto& cr = CrashReporter::instance();
+    auto report = cr.collect_report();
+    json j = cr.report_to_json(report);
+
+    REQUIRE_FALSE(j.contains("fault_addr"));
+    REQUIRE_FALSE(j.contains("fault_code"));
+    REQUIRE_FALSE(j.contains("registers"));
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture,
+                 "CrashReporter: report_to_text includes fault and register info",
+                 "[crash_reporter]") {
+    write_crash_file_v2(temp_dir_);
+    auto& cr = CrashReporter::instance();
+    auto report = cr.collect_report();
+    std::string text = cr.report_to_text(report);
+
+    REQUIRE(text.find("SEGV_MAPERR") != std::string::npos);
+    REQUIRE(text.find("0x00000000") != std::string::npos);
+    REQUIRE(text.find("0x00920bac") != std::string::npos);
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: generate_github_url includes fault info",
+                 "[crash_reporter]") {
+    write_crash_file_v2(temp_dir_);
+    auto& cr = CrashReporter::instance();
+    auto report = cr.collect_report();
+    std::string url = cr.generate_github_url(report);
+
+    // URL should mention the fault type
+    REQUIRE(url.find("SEGV_MAPERR") != std::string::npos);
+    // Still under 2000 chars
+    REQUIRE(url.size() <= 2000);
+}

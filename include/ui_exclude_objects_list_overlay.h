@@ -12,7 +12,9 @@
 
 // Forward declarations
 class MoonrakerAPI;
+namespace helix {
 class PrinterState;
+}
 
 namespace helix::gcode {
 class GCodeObjectThumbnailRenderer;

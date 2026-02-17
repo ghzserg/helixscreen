@@ -16,7 +16,7 @@
       <!-- Search box - fills remaining space -->
       <text_input name="search_box"
                   placeholder_text="Search filename..." placeholder_tag="Search filename..." translation_tag="Search filename..." flex_grow="1" style_min_width="120"
-                  style_max_height="#input_height">
+                  style_max_height="#input_height" show_clear_button="true" clear_callback="history_search_clear">
         <event_cb trigger="value_changed" callback="history_search_changed"/>
       </text_input>
       <!-- Status filter dropdown -->

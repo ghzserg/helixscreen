@@ -13,7 +13,7 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_print_status.h"
 #include "ui_print_select_detail_view.h"
 #include "ui_update_queue.h"
@@ -44,11 +44,11 @@ PrintStartController::~PrintStartController() {
     // (destructor may be called after lv_deinit() during shutdown)
     if (lv_is_initialized()) {
         if (filament_warning_modal_) {
-            ui_modal_hide(filament_warning_modal_);
+            helix::ui::modal_hide(filament_warning_modal_);
             filament_warning_modal_ = nullptr;
         }
         if (color_mismatch_modal_) {
-            ui_modal_hide(color_mismatch_modal_);
+            helix::ui::modal_hide(color_mismatch_modal_);
             color_mismatch_modal_ = nullptr;
         }
     }
@@ -198,7 +198,7 @@ void PrintStartController::execute_print_start() {
             // Construct full path for metadata lookup (e.g., usb/flowrate_0.gcode)
             std::string full_path =
                 path.empty() ? filename_to_print : path + "/" + filename_to_print;
-            ui_queue_update([full_path, thumbnail_path, on_started]() {
+            helix::ui::queue_update([full_path, thumbnail_path, on_started]() {
                 auto& status_panel = get_global_print_status_panel();
                 status_panel.set_thumbnail_source(full_path);
 
@@ -221,7 +221,7 @@ void PrintStartController::execute_print_start() {
         // Completion callback
         // NOTE: Called from background HTTP thread - must defer LVGL calls to main thread
         [update_button, show_detail](bool success, const std::string& error) {
-            ui_queue_update([success, error, update_button, show_detail]() {
+            helix::ui::queue_update([success, error, update_button, show_detail]() {
                 auto& status_panel = get_global_print_status_panel();
 
                 if (success) {
@@ -236,7 +236,7 @@ void PrintStartController::execute_print_start() {
                     // Navigate back to print detail overlay on failure
                     spdlog::info(
                         "[PrintStartController] Navigating back to print select after failure");
-                    ui_nav_go_back(); // Pop print status overlay
+                    NavigationManager::instance().go_back(); // Pop print status overlay
 
                     // Re-show the detail view so user can retry
                     if (show_detail) {
@@ -259,11 +259,11 @@ void PrintStartController::execute_print_start() {
 void PrintStartController::show_filament_warning() {
     // Close any existing dialog first
     if (filament_warning_modal_) {
-        ui_modal_hide(filament_warning_modal_);
+        helix::ui::modal_hide(filament_warning_modal_);
         filament_warning_modal_ = nullptr;
     }
 
-    filament_warning_modal_ = ui_modal_show_confirmation(
+    filament_warning_modal_ = helix::ui::modal_show_confirmation(
         lv_tr("No Filament Detected"),
         lv_tr("The runout sensor indicates no filament is loaded. "
               "Start print anyway?"),
@@ -288,7 +288,7 @@ void PrintStartController::on_filament_warning_proceed_static(lv_event_t* e) {
     if (self) {
         // Hide dialog first
         if (self->filament_warning_modal_) {
-            ui_modal_hide(self->filament_warning_modal_);
+            helix::ui::modal_hide(self->filament_warning_modal_);
             self->filament_warning_modal_ = nullptr;
         }
         // Execute print
@@ -302,7 +302,7 @@ void PrintStartController::on_filament_warning_cancel_static(lv_event_t* e) {
     auto* self = static_cast<PrintStartController*>(lv_event_get_user_data(e));
     if (self) {
         if (self->filament_warning_modal_) {
-            ui_modal_hide(self->filament_warning_modal_);
+            helix::ui::modal_hide(self->filament_warning_modal_);
             self->filament_warning_modal_ = nullptr;
         }
         // Re-enable print button since user cancelled
@@ -386,7 +386,7 @@ std::vector<int> PrintStartController::check_ams_color_match() {
 void PrintStartController::show_color_mismatch_warning(const std::vector<int>& missing_tools) {
     // Close any existing dialog first
     if (color_mismatch_modal_) {
-        ui_modal_hide(color_mismatch_modal_);
+        helix::ui::modal_hide(color_mismatch_modal_);
         color_mismatch_modal_ = nullptr;
     }
 
@@ -407,7 +407,7 @@ void PrintStartController::show_color_mismatch_warning(const std::vector<int>& m
     static char message_buffer[512];
     snprintf(message_buffer, sizeof(message_buffer), "%s", message.c_str());
 
-    color_mismatch_modal_ = ui_modal_show_confirmation(
+    color_mismatch_modal_ = helix::ui::modal_show_confirmation(
         lv_tr("Color Mismatch"), message_buffer, ModalSeverity::Warning, lv_tr("Start Anyway"),
         on_color_mismatch_proceed_static, on_color_mismatch_cancel_static, this);
 
@@ -430,7 +430,7 @@ void PrintStartController::on_color_mismatch_proceed_static(lv_event_t* e) {
     if (self) {
         // Hide dialog first
         if (self->color_mismatch_modal_) {
-            ui_modal_hide(self->color_mismatch_modal_);
+            helix::ui::modal_hide(self->color_mismatch_modal_);
             self->color_mismatch_modal_ = nullptr;
         }
         // Execute print despite mismatch
@@ -444,7 +444,7 @@ void PrintStartController::on_color_mismatch_cancel_static(lv_event_t* e) {
     auto* self = static_cast<PrintStartController*>(lv_event_get_user_data(e));
     if (self) {
         if (self->color_mismatch_modal_) {
-            ui_modal_hide(self->color_mismatch_modal_);
+            helix::ui::modal_hide(self->color_mismatch_modal_);
             self->color_mismatch_modal_ = nullptr;
         }
         // Re-enable print button since user cancelled

@@ -26,6 +26,8 @@
 
 #include <vector>
 
+using namespace helix;
+
 /**
  * @brief Mock mDNS discovery that finds nothing (by default)
  *

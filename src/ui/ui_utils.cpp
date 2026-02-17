@@ -14,6 +14,8 @@
 #include <ctime>
 #include <vector>
 
+using namespace helix;
+
 // ============================================================================
 // Filename Utilities
 // ============================================================================
@@ -98,7 +100,7 @@ std::string resolve_gcode_filename(const std::string& path) {
 // ============================================================================
 
 std::string format_print_time(int minutes) {
-    return helix::fmt::duration_from_minutes(minutes);
+    return helix::format::duration_from_minutes(minutes);
 }
 
 std::string format_filament_weight(float grams) {
@@ -115,7 +117,7 @@ std::string format_filament_weight(float grams) {
 
 std::string format_layer_count(uint32_t layer_count) {
     if (layer_count == 0) {
-        return helix::fmt::UNAVAILABLE;
+        return helix::format::UNAVAILABLE;
     }
     char buf[32];
     if (layer_count == 1) {
@@ -128,7 +130,7 @@ std::string format_layer_count(uint32_t layer_count) {
 
 std::string format_print_height(double height_mm) {
     if (height_mm <= 0.0) {
-        return helix::fmt::UNAVAILABLE;
+        return helix::format::UNAVAILABLE;
     }
     char buf[32];
     if (height_mm < 1.0) {
@@ -167,7 +169,7 @@ const char* get_time_format_string() {
 
 std::string format_time(const struct tm* tm_info) {
     if (!tm_info) {
-        return helix::fmt::UNAVAILABLE;
+        return helix::format::UNAVAILABLE;
     }
 
     char buf[16];
@@ -463,8 +465,11 @@ void ui_create_ripple(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, int start_si
     });
     lv_anim_set_completed_cb(&fade_anim, [](lv_anim_t* a) {
         // Delete ripple object when animation completes
+        // Validate first — parent deletion may have already freed this widget
         lv_obj_t* widget = static_cast<lv_obj_t*>(a->var);
-        lv_obj_safe_delete(widget);
+        if (widget && lv_obj_is_valid(widget)) {
+            lv_obj_delete(widget);
+        }
     });
     lv_anim_start(&fade_anim);
 }

@@ -39,6 +39,8 @@
 
 #include <memory>
 
+using namespace helix;
+
 // ============================================================================
 // MoonrakerTestFixture - For testing Moonraker API interactions
 // ============================================================================

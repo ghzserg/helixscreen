@@ -13,7 +13,9 @@
 #include <string>
 
 class MoonrakerAPI;
+namespace helix {
 class PrinterState;
+}
 
 /**
  * @file ui_panel_calibration_zoffset.h

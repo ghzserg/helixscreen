@@ -5,7 +5,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_nav_manager.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "format_utils.h"
@@ -143,7 +143,7 @@ void MachineLimitsOverlay::show(lv_obj_t* parent_screen) {
 
     if (!overlay_root_) {
         spdlog::error("[{}] Failed to create overlay", get_name());
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to load overlay"), 2000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Failed to load overlay"), 2000);
         return;
     }
 
@@ -151,7 +151,7 @@ void MachineLimitsOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push overlay onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================
@@ -191,7 +191,7 @@ void MachineLimitsOverlay::query_and_show(lv_obj_t* /*parent_screen*/) {
         api_->get_machine_limits(
             [this](const MachineLimits& limits) {
                 // Capture limits by value and defer to main thread for LVGL calls
-                ui_queue_update([this, limits]() {
+                helix::ui::queue_update([this, limits]() {
                     spdlog::info("[{}] Got machine limits: vel={}, accel={}, a2d={}, scv={}",
                                  get_name(), limits.max_velocity, limits.max_accel,
                                  limits.max_accel_to_decel, limits.square_corner_velocity);
@@ -212,8 +212,8 @@ void MachineLimitsOverlay::query_and_show(lv_obj_t* /*parent_screen*/) {
                             lv_obj_t* value = lv_obj_find_by_name(z_vel_row, "value");
                             if (value) {
                                 char buf[32];
-                                helix::fmt::format_speed_mm_s(limits.max_z_velocity, buf,
-                                                              sizeof(buf));
+                                helix::format::format_speed_mm_s(limits.max_z_velocity, buf,
+                                                                 sizeof(buf));
                                 lv_label_set_text(value, buf);
                             }
                         }
@@ -223,8 +223,8 @@ void MachineLimitsOverlay::query_and_show(lv_obj_t* /*parent_screen*/) {
                             lv_obj_t* value = lv_obj_find_by_name(z_accel_row, "value");
                             if (value) {
                                 char buf[32];
-                                helix::fmt::format_accel_mm_s2(limits.max_z_accel, buf,
-                                                               sizeof(buf));
+                                helix::format::format_accel_mm_s2(limits.max_z_accel, buf,
+                                                                  sizeof(buf));
                                 lv_label_set_text(value, buf);
                             }
                         }
@@ -233,13 +233,14 @@ void MachineLimitsOverlay::query_and_show(lv_obj_t* /*parent_screen*/) {
             },
             [this](const MoonrakerError& err) {
                 // Capture error by value and defer to main thread for LVGL calls
-                ui_queue_update([this, err]() {
+                helix::ui::queue_update([this, err]() {
                     spdlog::error("[{}] Failed to get machine limits: {}", get_name(), err.message);
-                    ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to get limits"), 2000);
+                    ToastManager::instance().show(ToastSeverity::ERROR,
+                                                  lv_tr("Failed to get limits"), 2000);
                 });
             });
     } else {
-        // No API - overlay is already shown via ui_nav_push_overlay
+        // No API - overlay is already shown via push_overlay
         spdlog::warn("[{}] No API available, showing defaults", get_name());
     }
 }
@@ -250,21 +251,22 @@ void MachineLimitsOverlay::query_and_show(lv_obj_t* /*parent_screen*/) {
 
 void MachineLimitsOverlay::update_display() {
     // Update max velocity display
-    helix::fmt::format_speed_mm_s(current_limits_.max_velocity, velocity_buf_,
-                                  sizeof(velocity_buf_));
+    helix::format::format_speed_mm_s(current_limits_.max_velocity, velocity_buf_,
+                                     sizeof(velocity_buf_));
     lv_subject_copy_string(&max_velocity_display_subject_, velocity_buf_);
 
     // Update max accel display
-    helix::fmt::format_accel_mm_s2(current_limits_.max_accel, accel_buf_, sizeof(accel_buf_));
+    helix::format::format_accel_mm_s2(current_limits_.max_accel, accel_buf_, sizeof(accel_buf_));
     lv_subject_copy_string(&max_accel_display_subject_, accel_buf_);
 
     // Update accel to decel display
-    helix::fmt::format_accel_mm_s2(current_limits_.max_accel_to_decel, a2d_buf_, sizeof(a2d_buf_));
+    helix::format::format_accel_mm_s2(current_limits_.max_accel_to_decel, a2d_buf_,
+                                      sizeof(a2d_buf_));
     lv_subject_copy_string(&accel_to_decel_display_subject_, a2d_buf_);
 
     // Update square corner velocity display
-    helix::fmt::format_speed_mm_s(current_limits_.square_corner_velocity, scv_buf_,
-                                  sizeof(scv_buf_));
+    helix::format::format_speed_mm_s(current_limits_.square_corner_velocity, scv_buf_,
+                                     sizeof(scv_buf_));
     lv_subject_copy_string(&square_corner_velocity_display_subject_, scv_buf_);
 }
 
@@ -307,28 +309,29 @@ void MachineLimitsOverlay::update_sliders() {
 
 void MachineLimitsOverlay::handle_velocity_changed(int value) {
     current_limits_.max_velocity = static_cast<double>(value);
-    helix::fmt::format_speed_mm_s(static_cast<double>(value), velocity_buf_, sizeof(velocity_buf_));
+    helix::format::format_speed_mm_s(static_cast<double>(value), velocity_buf_,
+                                     sizeof(velocity_buf_));
     lv_subject_copy_string(&max_velocity_display_subject_, velocity_buf_);
     schedule_apply_limits();
 }
 
 void MachineLimitsOverlay::handle_accel_changed(int value) {
     current_limits_.max_accel = static_cast<double>(value);
-    helix::fmt::format_accel_mm_s2(static_cast<double>(value), accel_buf_, sizeof(accel_buf_));
+    helix::format::format_accel_mm_s2(static_cast<double>(value), accel_buf_, sizeof(accel_buf_));
     lv_subject_copy_string(&max_accel_display_subject_, accel_buf_);
     schedule_apply_limits();
 }
 
 void MachineLimitsOverlay::handle_a2d_changed(int value) {
     current_limits_.max_accel_to_decel = static_cast<double>(value);
-    helix::fmt::format_accel_mm_s2(static_cast<double>(value), a2d_buf_, sizeof(a2d_buf_));
+    helix::format::format_accel_mm_s2(static_cast<double>(value), a2d_buf_, sizeof(a2d_buf_));
     lv_subject_copy_string(&accel_to_decel_display_subject_, a2d_buf_);
     schedule_apply_limits();
 }
 
 void MachineLimitsOverlay::handle_scv_changed(int value) {
     current_limits_.square_corner_velocity = static_cast<double>(value);
-    helix::fmt::format_speed_mm_s(static_cast<double>(value), scv_buf_, sizeof(scv_buf_));
+    helix::format::format_speed_mm_s(static_cast<double>(value), scv_buf_, sizeof(scv_buf_));
     lv_subject_copy_string(&square_corner_velocity_display_subject_, scv_buf_);
     schedule_apply_limits();
 }
@@ -375,15 +378,16 @@ void MachineLimitsOverlay::apply_limits() {
         current_limits_,
         [this]() {
             // Defer to main thread for LVGL calls
-            ui_queue_update([this]() {
+            helix::ui::queue_update([this]() {
                 spdlog::debug("[{}] Machine limits applied successfully", get_name());
             });
         },
         [this](const MoonrakerError& err) {
             // Capture error by value and defer to main thread for LVGL calls
-            ui_queue_update([this, err]() {
+            helix::ui::queue_update([this, err]() {
                 spdlog::error("[{}] Failed to apply machine limits: {}", get_name(), err.message);
-                ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to apply limits"), 2000);
+                ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Failed to apply limits"),
+                                              2000);
             });
         });
 }

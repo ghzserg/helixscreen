@@ -7,6 +7,13 @@ binding = "TELEMETRY_BUCKET"
 bucket_name = "helixscreen-telemetry"
 jurisdiction = "eu"
 
+[[analytics_engine_datasets]]
+binding = "TELEMETRY_ANALYTICS"
+dataset = "helixscreen_telemetry"
+
+[vars]
+CLOUDFLARE_ACCOUNT_ID = "4f3ea9194c32f9ce44bc77916411315e"
+
 [[routes]]
 pattern = "telemetry.helixscreen.org/*"
 zone_name = "helixscreen.org"

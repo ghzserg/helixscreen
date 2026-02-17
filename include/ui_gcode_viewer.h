@@ -6,6 +6,53 @@
 #include <lvgl/lvgl.h>
 
 #ifdef __cplusplus
+namespace helix {
+
+/**
+ * @brief Loading state for async file parsing
+ */
+enum class GcodeViewerState {
+    Empty,   ///< No file loaded
+    Loading, ///< File is being parsed
+    Loaded,  ///< File loaded and ready to render
+    Error    ///< Error during loading
+};
+
+/**
+ * @brief Render mode for G-code visualization
+ *
+ * Controls which renderer is used for displaying G-code:
+ * - Auto: Uses 2D layer view by default. Can be overridden via HELIX_GCODE_MODE env var.
+ * - Render3D: Forces 3D TinyGL renderer (isometric ribbon view with full camera control).
+ *       Only useful for development/testing - TinyGL is too slow for production use.
+ * - Layer2D: Forces 2D orthographic layer view (front/top view, single layer at a time)
+ *
+ * The 2D layer view is the default because TinyGL software rasterization is too slow
+ * for smooth interaction (~3-4 FPS) on ALL platforms, not just low-power hardware.
+ *
+ * Environment variable override (checked at widget creation):
+ * - HELIX_GCODE_MODE=3D  -> Use 3D TinyGL (for development/testing)
+ * - HELIX_GCODE_MODE=2D  -> Use 2D layer view (explicit)
+ * - Not set              -> Use 2D layer view (default)
+ */
+enum class GcodeViewerRenderMode {
+    Auto,     ///< Auto-select (2D default, env var override)
+    Render3D, ///< Force 3D TinyGL renderer (dev/testing only)
+    Layer2D   ///< Force 2D orthographic layer view (default)
+};
+
+/**
+ * @brief Camera preset views
+ */
+enum class GcodeViewerPresetView {
+    Isometric, ///< Default isometric view (45 deg, 30 deg)
+    Top,       ///< Top-down view
+    Front,     ///< Front view
+    Side       ///< Side view (right)
+};
+
+} // namespace helix
+
 extern "C" {
 #endif
 
@@ -35,55 +82,12 @@ extern "C" {
  */
 
 /**
- * @brief Loading state for async file parsing
- */
-typedef enum {
-    GCODE_VIEWER_STATE_EMPTY,   ///< No file loaded
-    GCODE_VIEWER_STATE_LOADING, ///< File is being parsed
-    GCODE_VIEWER_STATE_LOADED,  ///< File loaded and ready to render
-    GCODE_VIEWER_STATE_ERROR    ///< Error during loading
-} gcode_viewer_state_enum_t;
-
-/**
- * @brief Render mode for G-code visualization
- *
- * Controls which renderer is used for displaying G-code:
- * - AUTO: Uses 2D layer view by default. Can be overridden via HELIX_GCODE_MODE env var.
- * - 3D: Forces 3D TinyGL renderer (isometric ribbon view with full camera control).
- *       Only useful for development/testing - TinyGL is too slow for production use.
- * - 2D_LAYER: Forces 2D orthographic layer view (front/top view, single layer at a time)
- *
- * The 2D layer view is the default because TinyGL software rasterization is too slow
- * for smooth interaction (~3-4 FPS) on ALL platforms, not just low-power hardware.
- *
- * Environment variable override (checked at widget creation):
- * - HELIX_GCODE_MODE=3D  → Use 3D TinyGL (for development/testing)
- * - HELIX_GCODE_MODE=2D  → Use 2D layer view (explicit)
- * - Not set              → Use 2D layer view (default)
- */
-typedef enum {
-    GCODE_VIEWER_RENDER_AUTO,    ///< Auto-select (2D default, env var override)
-    GCODE_VIEWER_RENDER_3D,      ///< Force 3D TinyGL renderer (dev/testing only)
-    GCODE_VIEWER_RENDER_2D_LAYER ///< Force 2D orthographic layer view (default)
-} gcode_viewer_render_mode_t;
-
-/**
  * @brief Callback invoked when async file loading completes
  * @param viewer The viewer widget that finished loading
  * @param user_data User data pointer passed during callback registration
  * @param success true if loading succeeded, false on error
  */
 typedef void (*gcode_viewer_load_callback_t)(lv_obj_t* viewer, void* user_data, bool success);
-
-/**
- * @brief Camera preset views
- */
-typedef enum {
-    GCODE_VIEWER_VIEW_ISOMETRIC, ///< Default isometric view (45°, 30°)
-    GCODE_VIEWER_VIEW_TOP,       ///< Top-down view
-    GCODE_VIEWER_VIEW_FRONT,     ///< Front view
-    GCODE_VIEWER_VIEW_SIDE       ///< Side view (right)
-} gcode_viewer_preset_view_t;
 
 /**
  * @brief Create G-code viewer widget
@@ -143,7 +147,7 @@ void ui_gcode_viewer_clear(lv_obj_t* obj);
  * @param obj Viewer widget
  * @return Current state
  */
-gcode_viewer_state_enum_t ui_gcode_viewer_get_state(lv_obj_t* obj);
+helix::GcodeViewerState ui_gcode_viewer_get_state(lv_obj_t* obj);
 
 // ==============================================
 // Rendering Pause Control
@@ -184,14 +188,14 @@ bool ui_gcode_viewer_is_paused(lv_obj_t* obj);
  *
  * Default is AUTO. Settings are persisted in SettingsManager.
  */
-void ui_gcode_viewer_set_render_mode(lv_obj_t* obj, gcode_viewer_render_mode_t mode);
+void ui_gcode_viewer_set_render_mode(lv_obj_t* obj, helix::GcodeViewerRenderMode mode);
 
 /**
  * @brief Get current render mode setting
  * @param obj Viewer widget
  * @return Current render mode
  */
-gcode_viewer_render_mode_t ui_gcode_viewer_get_render_mode(lv_obj_t* obj);
+helix::GcodeViewerRenderMode ui_gcode_viewer_get_render_mode(lv_obj_t* obj);
 
 /**
  * @brief Evaluate FPS history and potentially switch render mode (for AUTO mode)
@@ -258,7 +262,7 @@ void ui_gcode_viewer_reset_camera(lv_obj_t* obj);
  * @param obj Viewer widget
  * @param preset Preset view type
  */
-void ui_gcode_viewer_set_view(lv_obj_t* obj, gcode_viewer_preset_view_t preset);
+void ui_gcode_viewer_set_view(lv_obj_t* obj, helix::GcodeViewerPresetView preset);
 
 /**
  * @brief Set camera azimuth angle directly

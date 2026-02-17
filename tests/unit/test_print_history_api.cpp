@@ -31,6 +31,7 @@ using moonraker_internal::json_number_or;
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Global LVGL Initialization
 // ============================================================================

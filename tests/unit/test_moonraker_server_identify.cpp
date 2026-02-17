@@ -17,6 +17,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // server.connection.identify Mock Handler Tests
 // ============================================================================

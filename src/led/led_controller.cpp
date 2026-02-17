@@ -2,6 +2,7 @@
 
 #include "led/led_controller.h"
 
+#include "color_utils.h"
 #include "config.h"
 #include "moonraker_api.h"
 #include "moonraker_error.h"
@@ -12,6 +13,25 @@
 #include <algorithm>
 #include <cctype>
 #include <sstream>
+
+namespace {
+
+/// Parse a JSON color value that may be an integer (legacy) or "#RRGGBB" string.
+/// Returns default_val if the JSON is neither a valid integer nor hex string.
+uint32_t parse_json_color(const nlohmann::json& j, uint32_t default_val) {
+    if (j.is_number()) {
+        return static_cast<uint32_t>(j.get<int>());
+    }
+    if (j.is_string()) {
+        uint32_t rgb = 0;
+        if (helix::parse_hex_color(j.get<std::string>().c_str(), rgb)) {
+            return rgb;
+        }
+    }
+    return default_val;
+}
+
+} // anonymous namespace
 
 namespace helix::led {
 
@@ -1270,7 +1290,7 @@ void LedController::load_config() {
 
     // Last color & brightness
     auto& color_json = cfg->get_json("/printer/leds/last_color");
-    last_color_ = color_json.is_number() ? static_cast<uint32_t>(color_json.get<int>()) : 0xFFFFFF;
+    last_color_ = parse_json_color(color_json, 0xFFFFFF);
     auto& brightness_json = cfg->get_json("/printer/leds/last_brightness");
     last_brightness_ = brightness_json.is_number() ? brightness_json.get<int>() : 100;
 
@@ -1279,8 +1299,9 @@ void LedController::load_config() {
     auto& presets_json = cfg->get_json("/printer/leds/color_presets");
     if (presets_json.is_array()) {
         for (const auto& p : presets_json) {
-            if (p.is_number()) {
-                color_presets_.push_back(static_cast<uint32_t>(p.get<int>()));
+            uint32_t c = parse_json_color(p, UINT32_MAX);
+            if (c != UINT32_MAX) {
+                color_presets_.push_back(c);
             }
         }
     }
@@ -1322,11 +1343,18 @@ void LedController::load_config() {
                 }
             }
 
-            // Parse presets (new format) or custom_actions (legacy)
+            // Parse presets (new format: macro-only) or legacy (name+macro pairs / custom_actions)
             if (m.contains("presets") && m["presets"].is_array()) {
                 for (const auto& p : m["presets"]) {
                     if (p.is_object()) {
-                        info.presets.emplace_back(p.value("name", ""), p.value("macro", ""));
+                        // Handle both old {name, macro} and new {macro} formats
+                        auto macro_val = p.value("macro", "");
+                        if (!macro_val.empty()) {
+                            info.presets.emplace_back(macro_val);
+                        }
+                    } else if (p.is_string()) {
+                        // Future-proof: bare string array
+                        info.presets.emplace_back(p.get<std::string>());
                     }
                 }
                 if (!info.presets.empty() && type_str.empty()) {
@@ -1336,7 +1364,10 @@ void LedController::load_config() {
                 // Legacy format: custom_actions -> presets
                 for (const auto& a : m["custom_actions"]) {
                     if (a.is_object()) {
-                        info.presets.emplace_back(a.value("label", ""), a.value("macro", ""));
+                        auto macro_val = a.value("macro", "");
+                        if (!macro_val.empty()) {
+                            info.presets.emplace_back(macro_val);
+                        }
                     }
                 }
                 if (!info.presets.empty() && type_str.empty()) {
@@ -1400,14 +1431,14 @@ void LedController::save_config() {
     }
     cfg->set("/printer/leds/selected_strips", strips_arr);
 
-    // Last color & brightness
-    cfg->set("/printer/leds/last_color", static_cast<int>(last_color_));
+    // Last color & brightness (saved as #RRGGBB hex strings)
+    cfg->set("/printer/leds/last_color", helix::color_to_hex_string(last_color_));
     cfg->set("/printer/leds/last_brightness", last_brightness_);
 
-    // Color presets
+    // Color presets (saved as #RRGGBB hex strings)
     nlohmann::json presets_arr = nlohmann::json::array();
     for (const auto& p : color_presets_) {
-        presets_arr.push_back(static_cast<int>(p));
+        presets_arr.push_back(helix::color_to_hex_string(p));
     }
     cfg->set("/printer/leds/color_presets", presets_arr);
 
@@ -1435,8 +1466,8 @@ void LedController::save_config() {
         obj["toggle_macro"] = m.toggle_macro;
 
         nlohmann::json presets_arr_macro = nlohmann::json::array();
-        for (const auto& [name, macro_gcode] : m.presets) {
-            presets_arr_macro.push_back({{"name", name}, {"macro", macro_gcode}});
+        for (const auto& preset_macro : m.presets) {
+            presets_arr_macro.push_back({{"macro", preset_macro}});
         }
         obj["presets"] = presets_arr_macro;
         macros_arr.push_back(obj);
@@ -1664,6 +1695,13 @@ void LedController::set_color_presets(const std::vector<uint32_t>& presets) {
 
 void LedController::set_configured_macros(const std::vector<LedMacroInfo>& macros) {
     configured_macros_ = macros;
+}
+
+void LedController::rebuild_macro_backend() {
+    macro_.clear();
+    for (const auto& m : configured_macros_) {
+        macro_.add_macro(m);
+    }
 }
 
 } // namespace helix::led

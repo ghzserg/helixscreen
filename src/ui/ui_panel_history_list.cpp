@@ -4,7 +4,7 @@
 #include "ui_panel_history_list.h"
 
 #include "ui_fonts.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_notification.h"
 #include "ui_panel_common.h"
 #include "ui_panel_print_select.h"
@@ -28,6 +28,8 @@
 #include <cctype>
 #include <lvgl.h>
 #include <map>
+
+using namespace helix;
 
 // MDI chevron-down symbol for dropdown arrows (replaces FontAwesome LV_SYMBOL_DOWN)
 static const char* MDI_CHEVRON_DOWN = "\xF3\xB0\x85\x80"; // F0140
@@ -122,6 +124,9 @@ void HistoryListPanel::register_callbacks() {
     // Register XML event callbacks for search, filter, and sort
     lv_xml_register_event_cb(nullptr, "history_search_changed", [](lv_event_t* /*e*/) {
         get_global_history_list_panel().on_search_changed();
+    });
+    lv_xml_register_event_cb(nullptr, "history_search_clear", [](lv_event_t* /*e*/) {
+        get_global_history_list_panel().on_search_clear();
     });
     lv_xml_register_event_cb(nullptr, "history_filter_status_changed", [](lv_event_t* e) {
         lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_target(e));
@@ -336,6 +341,7 @@ void HistoryListPanel::on_deactivate() {
     sort_direction_ = HistorySortDirection::DESC;
 
     // Reset filter control widgets if available
+    // (text_input handles clear button visibility internally via lv_textarea_set_text)
     if (search_box_) {
         lv_textarea_set_text(search_box_, "");
     }
@@ -620,7 +626,7 @@ void HistoryListPanel::clear_list() {
     uint32_t child_count = lv_obj_get_child_count(list_rows_);
     for (int32_t i = child_count - 1; i >= 0; --i) {
         lv_obj_t* child = lv_obj_get_child(list_rows_, i);
-        lv_obj_safe_delete(child);
+        helix::ui::safe_delete(child);
     }
 }
 
@@ -852,6 +858,14 @@ void HistoryListPanel::on_search_changed() {
     lv_timer_set_repeat_count(search_timer_, 1); // Fire once
 }
 
+void HistoryListPanel::on_search_clear() {
+    // Text is already cleared by text_input's internal clear button handler.
+    // We just need to update the search state and apply immediately.
+    search_query_.clear();
+    helix::ui::safe_delete_timer(search_timer_);
+    apply_filters_and_sort();
+}
+
 void HistoryListPanel::on_search_timer_static(lv_timer_t* timer) {
     auto* panel = static_cast<HistoryListPanel*>(lv_timer_get_user_data(timer));
     if (panel) {
@@ -1004,7 +1018,7 @@ void HistoryListPanel::show_detail_overlay(const PrintHistoryJob& job) {
                         uint64_t generation;
                         std::string path;
                     };
-                    ui_queue_update<ThumbUpdate>(
+                    helix::ui::queue_update<ThumbUpdate>(
                         std::make_unique<ThumbUpdate>(
                             ThumbUpdate{self, this_generation, lvgl_path}),
                         [](ThumbUpdate* t) {
@@ -1045,7 +1059,7 @@ void HistoryListPanel::show_detail_overlay(const PrintHistoryJob& job) {
     }
 
     // Push the overlay
-    ui_nav_push_overlay(detail_overlay_);
+    NavigationManager::instance().push_overlay(detail_overlay_);
     spdlog::info("[{}] Showing detail overlay for: {}", get_name(), job.filename);
 }
 
@@ -1097,8 +1111,8 @@ void HistoryListPanel::update_detail_subjects(const PrintHistoryJob& job) {
     // Format layer height
     char layer_height_buf[32];
     if (job.layer_height > 0) {
-        helix::fmt::format_distance_mm(job.layer_height, 2, layer_height_buf,
-                                       sizeof(layer_height_buf));
+        helix::format::format_distance_mm(job.layer_height, 2, layer_height_buf,
+                                          sizeof(layer_height_buf));
     } else {
         snprintf(layer_height_buf, sizeof(layer_height_buf), "-");
     }
@@ -1173,12 +1187,12 @@ void HistoryListPanel::handle_reprint() {
 
     // Navigate to the Print Select file detail view (DRY - reuse existing UI)
     // Step 1: Close all history overlays (detail → list → dashboard)
-    ui_nav_go_back(); // Close history detail overlay
-    ui_nav_go_back(); // Close history list panel
-    ui_nav_go_back(); // Close history dashboard
+    NavigationManager::instance().go_back(); // Close history detail overlay
+    NavigationManager::instance().go_back(); // Close history list panel
+    NavigationManager::instance().go_back(); // Close history dashboard
 
     // Step 2: Switch to Print Select panel
-    ui_nav_set_active(UI_PANEL_PRINT_SELECT);
+    NavigationManager::instance().set_active(PanelId::PrintSelect);
 
     // Step 3: Get PrintSelectPanel and navigate to file details
     PrintSelectPanel* print_panel =
@@ -1238,7 +1252,7 @@ void HistoryListPanel::confirm_delete() {
                             jobs_.end());
 
                 // Close detail overlay and refresh list
-                ui_nav_go_back();
+                NavigationManager::instance().go_back();
                 apply_filters_and_sort();
 
                 ui_notification_success("Print job deleted");

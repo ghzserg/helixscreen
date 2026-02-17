@@ -6,23 +6,16 @@
 #include "ui_update_queue.h"
 
 #include "spdlog/spdlog.h"
+#include "static_subject_registry.h"
 
 #include <algorithm>
+#include <set>
 
 // CRITICAL: Subject updates trigger lv_obj_invalidate() which asserts if called
 // during LVGL rendering. WebSocket callbacks run on libhv's event loop thread,
 // not the main LVGL thread. We must defer subject updates to the main thread
 // via ui_async_call to avoid the "Invalidate area not allowed during rendering"
 // assertion.
-
-namespace {
-
-/// @brief Async callback to update subjects on the main LVGL thread
-void async_update_probe_subjects_callback(void* /*user_data*/) {
-    helix::sensors::ProbeSensorManager::instance().update_subjects_on_main_thread();
-}
-
-} // namespace
 
 namespace helix::sensors {
 
@@ -78,6 +71,66 @@ void ProbeSensorManager::discover(const std::vector<std::string>& klipper_object
 
         spdlog::debug("[ProbeSensorManager] Discovered sensor: {} (type: {})", sensor_name,
                       probe_type_to_string(type));
+    }
+
+    // Post-discovery refinement: upgrade EDDY_CURRENT sensors when a companion
+    // Cartographer or Beacon object is also present. These probes register both
+    // their own named object ("cartographer"/"beacon") AND a probe_eddy_current entry.
+    bool has_cartographer = std::any_of(sensors_.begin(), sensors_.end(), [](const auto& s) {
+        return s.type == ProbeSensorType::CARTOGRAPHER;
+    });
+    bool has_beacon = std::any_of(sensors_.begin(), sensors_.end(),
+                                  [](const auto& s) { return s.type == ProbeSensorType::BEACON; });
+
+    if (has_cartographer || has_beacon) {
+        for (auto& sensor : sensors_) {
+            if (sensor.type == ProbeSensorType::EDDY_CURRENT) {
+                if (has_cartographer) {
+                    spdlog::debug("[ProbeSensorManager] Upgrading eddy current sensor '{}' to "
+                                  "CARTOGRAPHER (companion object present)",
+                                  sensor.sensor_name);
+                    sensor.type = ProbeSensorType::CARTOGRAPHER;
+                } else if (has_beacon) {
+                    spdlog::debug("[ProbeSensorManager] Upgrading eddy current sensor '{}' to "
+                                  "BEACON (companion object present)",
+                                  sensor.sensor_name);
+                    sensor.type = ProbeSensorType::BEACON;
+                }
+            }
+        }
+    }
+
+    // Post-discovery refinement: upgrade STANDARD probes to KLICKY when
+    // characteristic Klicky macros are present in the objects list.
+    // Klicky probes register as a plain [probe] but include deploy/dock macros.
+    bool has_standard_probe = std::any_of(sensors_.begin(), sensors_.end(), [](const auto& s) {
+        return s.type == ProbeSensorType::STANDARD;
+    });
+
+    if (has_standard_probe) {
+        // Build a set of macro names from gcode_macro entries
+        const std::string macro_prefix = "gcode_macro ";
+        std::set<std::string> macros;
+        for (const auto& obj : klipper_objects) {
+            if (obj.rfind(macro_prefix, 0) == 0 && obj.size() > macro_prefix.size()) {
+                macros.insert(obj.substr(macro_prefix.size()));
+            }
+        }
+
+        // Check for Klicky macro pairs
+        bool is_klicky = (macros.count("ATTACH_PROBE") && macros.count("DOCK_PROBE")) ||
+                         (macros.count("_Probe_Deploy") && macros.count("_Probe_Stow"));
+
+        if (is_klicky) {
+            for (auto& sensor : sensors_) {
+                if (sensor.type == ProbeSensorType::STANDARD) {
+                    spdlog::debug("[ProbeSensorManager] Upgrading standard probe '{}' to "
+                                  "KLICKY (deploy/dock macros present)",
+                                  sensor.sensor_name);
+                    sensor.type = ProbeSensorType::KLICKY;
+                }
+            }
+        }
     }
 
     // Mark sensors that disappeared as unavailable
@@ -156,24 +209,64 @@ void ProbeSensorManager::update_from_status(const nlohmann::json& status) {
                 spdlog::debug("[ProbeSensorManager] sync_mode: updating subjects synchronously");
                 update_subjects();
             } else {
-                spdlog::debug("[ProbeSensorManager] async_mode: deferring via ui_async_call");
-                ui_async_call(async_update_probe_subjects_callback, nullptr);
+                spdlog::debug("[ProbeSensorManager] async_mode: deferring via ui_queue_update");
+                helix::ui::queue_update(
+                    [] { ProbeSensorManager::instance().update_subjects_on_main_thread(); });
             }
         }
     }
 }
 
+/// Get the mock probe type from HELIX_MOCK_PROBE_TYPE env var.
+/// Valid values: cartographer, tap, bltouch, beacon, klicky, standard (default)
+static std::string get_mock_probe_type() {
+    const char* env = std::getenv("HELIX_MOCK_PROBE_TYPE");
+    if (env && env[0] != '\0') {
+        return env;
+    }
+    return "cartographer"; // Default mock type
+}
+
 void ProbeSensorManager::inject_mock_sensors(std::vector<std::string>& objects,
                                              nlohmann::json& /*config_keys*/,
                                              nlohmann::json& /*moonraker_info*/) {
-    // Probe sensors are discovered from Klipper objects
-    objects.emplace_back("probe");
-    spdlog::debug("[ProbeSensorManager] Injected mock sensors: probe");
+    std::string type = get_mock_probe_type();
+    spdlog::info("[ProbeSensorManager] Mock probe type: {} (set HELIX_MOCK_PROBE_TYPE to change)",
+                 type);
+
+    if (type == "cartographer") {
+        objects.emplace_back("cartographer");
+        objects.emplace_back("probe_eddy_current carto");
+    } else if (type == "beacon") {
+        objects.emplace_back("beacon");
+        objects.emplace_back("probe_eddy_current beacon");
+    } else if (type == "tap") {
+        objects.emplace_back("probe");
+        // Tap is detected as STANDARD (no macro heuristic differentiates it in mock)
+    } else if (type == "bltouch") {
+        objects.emplace_back("bltouch");
+    } else if (type == "klicky") {
+        objects.emplace_back("probe");
+        objects.emplace_back("gcode_macro ATTACH_PROBE");
+        objects.emplace_back("gcode_macro DOCK_PROBE");
+    } else {
+        // "standard" or any other value
+        objects.emplace_back("probe");
+    }
 }
 
 void ProbeSensorManager::inject_mock_status(nlohmann::json& status) {
-    // Probe reports last_z_result (and optionally z_offset)
-    status["probe"] = {{"last_z_result", 0.0f}};
+    std::string type = get_mock_probe_type();
+
+    if (type == "cartographer") {
+        status["cartographer"] = {{"last_z_result", -0.425f}};
+    } else if (type == "beacon") {
+        status["beacon"] = {{"last_z_result", -0.312f}};
+    } else if (type == "bltouch") {
+        status["bltouch"] = {{"last_z_result", 0.130f}};
+    } else {
+        status["probe"] = {{"last_z_result", 0.0f}};
+    }
 }
 
 void ProbeSensorManager::load_config(const nlohmann::json& config) {
@@ -252,6 +345,11 @@ void ProbeSensorManager::init_subjects() {
     UI_MANAGED_SUBJECT_INT(sensor_count_, 0, "probe_count", subjects_);
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticSubjectRegistry::instance().register_deinit(
+        "ProbeSensorManager", []() { ProbeSensorManager::instance().deinit_subjects(); });
+
     spdlog::trace("[ProbeSensorManager] Subjects initialized");
 }
 
@@ -434,6 +532,20 @@ void ProbeSensorManager::update_subjects_on_main_thread() {
 
 bool ProbeSensorManager::parse_klipper_name(const std::string& klipper_name,
                                             std::string& sensor_name, ProbeSensorType& type) const {
+    // Cartographer 3D scanning/contact probe
+    if (klipper_name == "cartographer") {
+        sensor_name = "cartographer";
+        type = ProbeSensorType::CARTOGRAPHER;
+        return true;
+    }
+
+    // Beacon eddy current probe
+    if (klipper_name == "beacon") {
+        sensor_name = "beacon";
+        type = ProbeSensorType::BEACON;
+        return true;
+    }
+
     // Standard probe
     if (klipper_name == "probe") {
         sensor_name = "probe";

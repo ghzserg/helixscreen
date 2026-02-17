@@ -61,10 +61,10 @@ class EmergencyStopOverlay {
      * Must be called before create(). Sets up references to printer state
      * and API for operation.
      *
-     * @param printer_state Reference to PrinterState for print job state
+     * @param printer_state Reference to helix::PrinterState for print job state
      * @param api Pointer to MoonrakerAPI for emergency_stop() calls
      */
-    void init(PrinterState& printer_state, MoonrakerAPI* api);
+    void init(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     /**
      * @brief Initialize subjects for XML binding
@@ -149,7 +149,7 @@ class EmergencyStopOverlay {
     EmergencyStopOverlay& operator=(const EmergencyStopOverlay&) = delete;
 
     // Dependencies (set via init())
-    PrinterState* printer_state_ = nullptr;
+    helix::PrinterState* printer_state_ = nullptr;
     MoonrakerAPI* api_ = nullptr;
 
     // Confirmation requirement (set via set_require_confirmation())

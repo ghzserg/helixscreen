@@ -14,6 +14,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 /**
  * MoonrakerClient Robustness Tests
  *

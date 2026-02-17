@@ -59,7 +59,7 @@ class PrinterCapabilitiesState {
     /**
      * @brief Set spoolman availability (async update from Moonraker query)
      *
-     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     * Thread-safe: Uses helix::ui::queue_update() for main-thread execution.
      *
      * @param available True if spoolman is available
      */
@@ -78,7 +78,7 @@ class PrinterCapabilitiesState {
     /**
      * @brief Set webcam availability (async update from Moonraker query)
      *
-     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     * Thread-safe: Uses helix::ui::queue_update() for main-thread execution.
      *
      * @param available True if at least one enabled webcam is configured
      */
@@ -87,7 +87,7 @@ class PrinterCapabilitiesState {
     /**
      * @brief Set timelapse plugin availability (async update)
      *
-     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     * Thread-safe: Uses helix::ui::queue_update() for main-thread execution.
      *
      * @param available True if moonraker-timelapse plugin is installed and responding
      */

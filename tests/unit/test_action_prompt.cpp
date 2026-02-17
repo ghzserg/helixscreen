@@ -1247,3 +1247,74 @@ TEST_CASE("ActionPromptModal: Integration with ActionPromptManager",
         REQUIRE(modal_would_show);
     }
 }
+
+// ============================================================================
+// Static Accessor Tests (is_showing / current_prompt_name)
+// ============================================================================
+
+TEST_CASE("ActionPromptManager: Static is_showing() accessor", "[action_prompt][static]") {
+    SECTION("is_showing returns false when idle") {
+        ActionPromptManager manager;
+        ActionPromptManager::set_instance(&manager);
+        REQUIRE_FALSE(ActionPromptManager::is_showing());
+        ActionPromptManager::set_instance(nullptr);
+    }
+
+    SECTION("is_showing returns true after prompt_show") {
+        ActionPromptManager manager;
+        ActionPromptManager::set_instance(&manager);
+        manager.process_line("// action:prompt_begin AFC Error");
+        manager.process_line("// action:prompt_show");
+        REQUIRE(ActionPromptManager::is_showing());
+        ActionPromptManager::set_instance(nullptr);
+    }
+
+    SECTION("is_showing returns false after prompt_end") {
+        ActionPromptManager manager;
+        ActionPromptManager::set_instance(&manager);
+        manager.process_line("// action:prompt_begin AFC Error");
+        manager.process_line("// action:prompt_show");
+        REQUIRE(ActionPromptManager::is_showing());
+        manager.process_line("// action:prompt_end");
+        REQUIRE_FALSE(ActionPromptManager::is_showing());
+        ActionPromptManager::set_instance(nullptr);
+    }
+
+    SECTION("is_showing returns false when no instance is set") {
+        ActionPromptManager::set_instance(nullptr);
+        REQUIRE_FALSE(ActionPromptManager::is_showing());
+    }
+}
+
+TEST_CASE("ActionPromptManager: Static current_prompt_name() accessor", "[action_prompt][static]") {
+    SECTION("current_prompt_name returns empty when not showing") {
+        ActionPromptManager manager;
+        ActionPromptManager::set_instance(&manager);
+        REQUIRE(ActionPromptManager::current_prompt_name().empty());
+        ActionPromptManager::set_instance(nullptr);
+    }
+
+    SECTION("current_prompt_name returns title from prompt_begin") {
+        ActionPromptManager manager;
+        ActionPromptManager::set_instance(&manager);
+        manager.process_line("// action:prompt_begin AFC Lane Error");
+        manager.process_line("// action:prompt_show");
+        REQUIRE(ActionPromptManager::current_prompt_name() == "AFC Lane Error");
+        ActionPromptManager::set_instance(nullptr);
+    }
+
+    SECTION("current_prompt_name returns empty after prompt_end") {
+        ActionPromptManager manager;
+        ActionPromptManager::set_instance(&manager);
+        manager.process_line("// action:prompt_begin AFC Error");
+        manager.process_line("// action:prompt_show");
+        manager.process_line("// action:prompt_end");
+        REQUIRE(ActionPromptManager::current_prompt_name().empty());
+        ActionPromptManager::set_instance(nullptr);
+    }
+
+    SECTION("current_prompt_name returns empty when no instance is set") {
+        ActionPromptManager::set_instance(nullptr);
+        REQUIRE(ActionPromptManager::current_prompt_name().empty());
+    }
+}

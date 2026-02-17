@@ -17,6 +17,8 @@
 
 #include <cstring>
 
+using namespace helix;
+
 // Macro for keyboard button control flags
 #define LV_KB_BTN(width) static_cast<lv_buttonmatrix_ctrl_t>(LV_BUTTONMATRIX_CTRL_POPOVER | (width))
 
@@ -143,7 +145,7 @@ bool KeyboardManager::point_in_area(const lv_area_t* area, const lv_point_t* poi
 }
 
 void KeyboardManager::overlay_cleanup() {
-    lv_obj_safe_delete(overlay_);
+    helix::ui::safe_delete(overlay_);
     alternatives_ = nullptr;
     pressed_char_ = nullptr;
     pressed_btn_id_ = 0;
@@ -551,10 +553,26 @@ void KeyboardManager::keyboard_event_cb(lv_event_t* e) {
 
             } else if (btn_text && strcmp(btn_text, ICON_KEYBOARD_RETURN) == 0) {
                 if (mgr.context_textarea_) {
+                    // Multiline textareas: keep the newline, keep keyboard open
+                    if (!lv_textarea_get_one_line(mgr.context_textarea_)) {
+                        spdlog::debug("[KeyboardManager] Enter: newline inserted (multiline)");
+                        return;
+                    }
+                    // Single-line: remove the inserted newline
                     const char* current_text = lv_textarea_get_text(mgr.context_textarea_);
                     if (str_ends_with(current_text, "\n")) {
                         lv_textarea_delete_char(mgr.context_textarea_);
                         spdlog::debug("[KeyboardManager] Removed inserted newline");
+                    }
+                    // Fire READY on the textarea so forms can handle Enter-to-next-field.
+                    // Save current textarea — if a handler switches to another field via
+                    // show(), context_textarea_ will change and we should NOT hide.
+                    lv_obj_t* ta_before = mgr.context_textarea_;
+                    lv_obj_send_event(ta_before, LV_EVENT_READY, nullptr);
+                    if (mgr.context_textarea_ != ta_before) {
+                        // Handler switched to a new textarea — keyboard already reassigned
+                        spdlog::debug("[KeyboardManager] Enter: advanced to next field");
+                        return;
                     }
                 }
                 mgr.hide();
@@ -1010,44 +1028,4 @@ void KeyboardManager::set_position(lv_align_t align, int32_t x_ofs, int32_t y_of
     spdlog::debug("[KeyboardManager] Setting position: align={}, x={}, y={}", (int)align, x_ofs,
                   y_ofs);
     lv_obj_align(keyboard_, align, x_ofs, y_ofs);
-}
-
-// ============================================================================
-// LEGACY API (forwards to KeyboardManager)
-// ============================================================================
-
-void ui_keyboard_init(lv_obj_t* parent) {
-    KeyboardManager::instance().init(parent);
-}
-
-void ui_keyboard_register_textarea(lv_obj_t* textarea) {
-    KeyboardManager::instance().register_textarea(textarea);
-}
-
-void ui_keyboard_register_textarea_ex(lv_obj_t* textarea, bool is_password) {
-    KeyboardManager::instance().register_textarea_ex(textarea, is_password);
-}
-
-void ui_keyboard_show(lv_obj_t* textarea) {
-    KeyboardManager::instance().show(textarea);
-}
-
-void ui_keyboard_hide() {
-    KeyboardManager::instance().hide();
-}
-
-bool ui_keyboard_is_visible() {
-    return KeyboardManager::instance().is_visible();
-}
-
-lv_obj_t* ui_keyboard_get_instance() {
-    return KeyboardManager::instance().get_instance();
-}
-
-void ui_keyboard_set_mode(lv_keyboard_mode_t mode) {
-    KeyboardManager::instance().set_mode(mode);
-}
-
-void ui_keyboard_set_position(lv_align_t align, int32_t x_ofs, int32_t y_ofs) {
-    KeyboardManager::instance().set_position(align, x_ofs, y_ofs);
 }

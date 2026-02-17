@@ -15,20 +15,31 @@ HelixScreen uses a backend abstraction layer to support multiple multi-filament 
                          │  AmsState   │  Singleton LVGL subject bridge
                          │ (ams_state) │  Thread-safe subject updates
                          └──────┬──────┘
-                                │ owns
-                    ┌───────────▼───────────┐
-                    │     AmsBackend        │  Abstract interface
-                    │  (ams_backend.h)      │  Factory: create() / create_mock()
-                    └───────────┬───────────┘
-           ┌──────────┬────────┼─────────┬───────────┐
-           ▼          ▼        ▼         ▼           ▼
-    ┌──────────┐ ┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐
-    │Happy Hare│ │  AFC   │ │ValgACE │ │  Tool    │ │  Mock    │
-    │ Backend  │ │Backend │ │Backend │ │ Changer  │ │ Backend  │
-    └──────────┘ └────────┘ └────────┘ └──────────┘ └──────────┘
-         │            │          │           │            │
-    Moonraker    Moonraker    REST API   Moonraker    In-memory
-    WebSocket    WebSocket    Polling    WebSocket    simulation
+                                │ owns backends_[] vector
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                  ▼
+       Backend 0 (primary)   Backend 1        Backend N
+       flat slot subjects    BackendSlot-      BackendSlot-
+       (backward compat)     Subjects          Subjects
+              │                 │                  │
+    ┌─────────▼─────────┐      │                  │
+    │     AmsBackend     │  Abstract interface     │
+    │  (ams_backend.h)   │  Factory: create() / create_mock()
+    └─────────┬──────────┘                         │
+     ┌────────┼─────────┬───────────┬──────────────┘
+     ▼        ▼         ▼           ▼           ▼
+  ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐
+  │Happy   │ │  AFC   │ │ValgACE │ │  Tool    │ │  Mock    │
+  │Hare    │ │Backend │ │Backend │ │ Changer  │ │ Backend  │
+  └────────┘ └────────┘ └────────┘ └──────────┘ └──────────┘
+       │          │          │           │            │
+  Moonraker  Moonraker   REST API   Moonraker    In-memory
+  WebSocket  WebSocket   Polling    WebSocket    simulation
+
+                         ┌─────────────┐
+                         │  ToolState  │  Singleton: tool abstraction
+                         │(tool_state) │  Maps tools ↔ AMS backends
+                         └─────────────┘
 ```
 
 ### Key Files
@@ -46,6 +57,8 @@ HelixScreen uses a backend abstraction layer to support multiple multi-filament 
 | `include/ams_backend_mock.h` | Mock backend for development and testing |
 | `src/printer/ams_backend.cpp` | Factory method implementations |
 | `include/printer_discovery.h` | Hardware detection from Klipper object list |
+| `include/tool_state.h` | Tool abstraction: `ToolInfo`, `ToolState` singleton, tool-backend mapping |
+| `include/printer_temperature_state.h` | `ExtruderInfo` struct, multi-extruder dynamic subjects |
 | `include/ui_ams_context_menu.h` | Slot context menu (load, unload, edit, spoolman) |
 | `include/ui_ams_device_operations_overlay.h` | Device operations overlay (home, recover, bypass, etc.) |
 
@@ -59,6 +72,154 @@ HelixScreen uses a backend abstraction layer to support multiple multi-filament 
 ### Threading Model
 
 All Moonraker/libhv callbacks arrive on a background thread. Backends update internal state under mutex, then `AmsState` posts subject updates to the LVGL thread via `lv_async_call()`. The UI never directly accesses backend state.
+
+---
+
+## Multi-Backend Architecture
+
+Some printers have multiple filament management systems simultaneously (e.g., a tool changer where each toolhead has its own AFC unit). AmsState supports multiple concurrent backends via a `backends_` vector that replaces the former single `backend_` pointer.
+
+### Backend Storage
+
+```cpp
+// AmsState private members
+std::vector<std::unique_ptr<AmsBackend>> backends_;       // All backends
+std::vector<BackendSlotSubjects> secondary_slot_subjects_; // Per-backend subjects (index 1+)
+```
+
+- **Primary backend (index 0)** uses the existing flat `slot_colors_[MAX_SLOTS]` and `slot_statuses_[MAX_SLOTS]` subject arrays. This preserves backward compatibility with all existing XML bindings and single-backend printers.
+- **Secondary backends (index 1+)** each get a `BackendSlotSubjects` struct with dynamically allocated `lv_subject_t` vectors:
+
+```cpp
+struct BackendSlotSubjects {
+    std::vector<lv_subject_t> colors;
+    std::vector<lv_subject_t> statuses;
+    int slot_count = 0;
+    void init(int count);   // Allocate and init subjects
+    void deinit();          // Deinit subjects
+};
+```
+
+### Discovery of Multiple Systems
+
+`PrinterDiscovery::parse_objects()` collects all detected AMS/filament systems into a `detected_ams_systems_` vector of `DetectedAmsSystem` structs:
+
+```cpp
+struct DetectedAmsSystem {
+    AmsType type = AmsType::NONE;
+    std::string name;  // "Happy Hare", "AFC", "Tool Changer"
+};
+```
+
+A printer with both a tool changer and an AFC unit will have two entries. The `init_backends_from_hardware()` method iterates this list and creates a backend for each detected system.
+
+### Backend Selection
+
+Two new subjects track backend selection:
+
+| Subject | Type | Description |
+|---------|------|-------------|
+| `backend_count_` | int | Number of registered backends |
+| `active_backend_` | int | Index of the currently selected backend |
+
+The AMS panel UI shows a backend selector when `backend_count > 1`, allowing users to switch between systems. API:
+
+- `active_backend_index()` -- returns the currently selected backend index
+- `set_active_backend(int)` -- switches the active backend (bounds-checked)
+
+### Per-Backend Event Routing
+
+When backends are added via `add_backend()`, each backend's event callback captures its backend index at registration time:
+
+```
+Backend 0 emits STATE_CHANGED  -->  on_backend_event(0, "STATE_CHANGED", ...)
+Backend 1 emits SLOT_CHANGED   -->  on_backend_event(1, "SLOT_CHANGED", ...)
+```
+
+The `on_backend_event()` handler routes to `sync_backend(int)` or `update_slot_for_backend(int, int)` which update the correct set of subjects. All subject updates are posted via `ui_async_call()` for thread safety.
+
+### Per-Backend Subject Access
+
+Two-argument overloads of `get_slot_color_subject()` and `get_slot_status_subject()` route to the correct subject storage:
+
+```cpp
+// Backend 0: flat arrays (backward compat)
+lv_subject_t* get_slot_color_subject(0, slot_index);  // -> slot_colors_[slot_index]
+
+// Backend 1+: per-backend storage
+lv_subject_t* get_slot_color_subject(1, slot_index);  // -> secondary_slot_subjects_[0].colors[slot_index]
+```
+
+### Tool-Backend Integration
+
+The `ToolState` singleton (see `tool_state.h`) maps tools to specific AMS backends via two fields on `ToolInfo`:
+
+```cpp
+struct ToolInfo {
+    int backend_index = -1;  // Which AMS backend feeds this tool (-1 = direct drive)
+    int backend_slot = -1;   // Fixed slot in that backend (-1 = any/dynamic)
+    // ... other fields
+};
+```
+
+- `backend_index = -1` means the tool uses direct-drive filament (no AMS).
+- `backend_index >= 0` maps the tool to a specific AMS backend. For example, on a dual-toolhead printer where each head has its own AFC unit, T0 might map to backend 0 and T1 to backend 1.
+- `backend_slot` pins the tool to a specific slot within that backend, or `-1` for dynamic slot selection (e.g., Happy Hare tool-to-gate mapping).
+
+`ToolState` and `AmsState` coordinate through `PrinterDiscovery`: tools are discovered from `tool T*` Klipper objects, and the mapping between tools and AMS backends is established during `init_backends_from_hardware()`.
+
+---
+
+## UI Panels
+
+### AMS Panel (`ui_panel_ams`)
+
+The detail panel showing slots, path visualization, hub sensors, and the currently loaded filament for a single backend. Opened as an overlay from the Filament nav panel or from the AMS Overview Panel.
+
+Key features:
+- Slot grid with overlap layout for >4 slots (shared via `ui_ams_slot_layout.h`)
+- Path canvas showing filament routing from slots through hub to toolhead
+- Backend selector (shown when `backend_count > 1`)
+- Unit scoping: can display a subset of slots for a single unit within a multi-unit backend
+
+### AMS Overview Panel (`ui_panel_ams_overview`)
+
+Grid of unit cards showing all units across the system. Each card is a miniature visualization of the unit's slots. Clicking a card transitions inline to a detail view of that unit's slots.
+
+Key files:
+| File | Purpose |
+|------|---------|
+| `include/ui_panel_ams_overview.h` | Class with detail view state |
+| `src/ui/ui_panel_ams_overview.cpp` | Card creation, inline detail view, slot layout |
+| `ui_xml/ams_overview_panel.xml` | Two-column layout: cards/detail left, loaded info right |
+| `ui_xml/ams_unit_card.xml` | Mini unit card with slot bars and hub sensor dot |
+
+**Current scope**: The overview panel queries `get_backend(0)` and displays all units from that single backend's `AmsSystemInfo`. This covers the common case of a single multi-unit AMS system (e.g., AFC with multiple Box Turtle units).
+
+**Future: multi-backend aggregation**: When multiple backends are active simultaneously (e.g., an AFC system on one toolhead + a Happy Hare on another), the overview panel should iterate all backends via `AmsState::get_backend(i)` for `i` in `0..backend_count` and aggregate their units into the card grid. The per-backend slot subject storage (`secondary_slot_subjects_`) and event routing already support this — the UI aggregation is the remaining integration point.
+
+### Error State Visualization
+
+Per-slot error indicators and per-unit error badges, driven by `SlotInfo.error` and `SlotInfo.buffer_health` from the backend layer. See `docs/devel/plans/2026-02-15-error-state-visualization-design.md` for full design.
+
+**Data model** (`ams_types.h`):
+- `SlotError` — message + severity (INFO/WARNING/ERROR), `std::optional` on `SlotInfo`
+- `BufferHealth` — AFC buffer fault proximity data, `std::optional` on `SlotInfo`
+- `AmsUnit::has_any_error()` — rolls up per-slot errors for overview badge
+
+**Detail view** (`ui_ams_slot.cpp`):
+- 14px error badge at top-right of spool (red for ERROR, yellow for WARNING)
+- 8px buffer health dot at bottom-center (green/yellow/red based on fault proximity)
+- Both pulled from `SlotInfo` during refresh (same pattern as material/tool badge)
+
+**Overview view** (`ui_panel_ams_overview.cpp`):
+- 12px error badge at top-right of unit card (worst severity across slots)
+- Mini-bar status lines colored by error severity
+
+**Backend integration**:
+- AFC: per-lane error from `status` field + buffer health from `AFC_buffer` objects
+- Happy Hare: system-level error mapped to `current_slot` via `reason_for_pause`
+- Mock: `set_slot_error()` / `set_slot_buffer_health()` + pre-populated errors in AFC mode
 
 ---
 
@@ -637,6 +798,47 @@ Write tests for:
 - Path segment computation
 
 See `tests/unit/test_ams_backend_happy_hare.cpp`, `test_ams_tool_mapping.cpp`, `test_ams_endless_spool.cpp`, and `test_ams_device_actions.cpp` for patterns.
+
+---
+
+## Spoolman Management & Spool Wizard
+
+Beyond slot assignment, HelixScreen provides full Spoolman spool management:
+
+- **SpoolmanPanel overlay** — Browse, search, edit, and delete spools with virtualized list (20-row pool)
+- **New Spool Wizard** — 3-step guided creation: Vendor → Filament → Spool Details
+- **Context menu** — Per-spool actions: Set Active, Edit, Delete
+- **Edit modal** — Update weight, price, lot number, notes via PATCH
+
+### Spool Wizard Architecture
+
+The wizard (`SpoolWizardOverlay`) is a 3-step overlay:
+
+1. **Step 0 — Select Vendor**: Search/filter vendors from Spoolman server, or create a new one via modal (`create_vendor_modal.xml`)
+2. **Step 1 — Select Filament**: Filter filaments by selected vendor (`vendor.id` API param), or create a new one via modal (`create_filament_modal.xml`) with material from `filament::MATERIALS[]` database, color picker, temp ranges, weight
+3. **Step 2 — Spool Details**: Remaining weight, price, lot number, notes — compact 2-column layout
+
+Key patterns:
+- **Modal forms** for vendor/filament creation (not inline) — keeps list scroll area maximized
+- **Vendor filtering**: Filament API uses `vendor.id=X` (Spoolman's dot-notation filter syntax)
+- **Color picker**: HSV picker + preset swatches, launched from filament creation modal
+- **Atomic creation**: Creates vendor → filament → spool in sequence with best-effort rollback on failure
+- **Row selection**: `LV_STATE_CHECKED` with `selected_style` (primary left border + elevated bg)
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `include/ui_spool_wizard.h` | Wizard overlay class declaration |
+| `src/ui/ui_spool_wizard.cpp` | Wizard logic, API calls, callbacks |
+| `ui_xml/spool_wizard.xml` | 3-step wizard layout |
+| `ui_xml/create_vendor_modal.xml` | New vendor modal form |
+| `ui_xml/create_filament_modal.xml` | New filament modal form |
+| `ui_xml/wizard_vendor_row.xml` | Selectable vendor row (lv_button with checked style) |
+| `ui_xml/wizard_filament_row.xml` | Selectable filament row (lv_button with checked style) |
+| `src/ui/ui_color_picker.cpp` | Color picker modal (used by filament creation) |
+
+See `docs/devel/plans/2026-02-15-spool-wizard-status.md` for visual test plan.
 
 ---
 

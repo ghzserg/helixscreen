@@ -3,11 +3,10 @@
 
 #pragma once
 
-#include <json.hpp> // nlohmann/json from libhv
+#include "json_fwd.h"
+
 #include <string>
 #include <vector>
-
-using json = nlohmann::json;
 
 /**
  * @file moonraker_types.h
@@ -210,6 +209,14 @@ struct TimelapseSettings {
 
     // Hyperlapse-specific
     int hyperlapse_cycle = 30; ///< Seconds between frames in hyperlapse mode
+};
+
+/**
+ * @brief Information about the last captured timelapse frame
+ */
+struct LastFrameInfo {
+    int frame_count = 0;         ///< Total frames captured
+    std::string last_frame_file; ///< Filename of the last captured frame
 };
 
 // ============================================================================

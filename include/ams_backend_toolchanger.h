@@ -57,12 +57,12 @@ class AmsBackendToolChanger : public AmsBackend {
      * @brief Construct tool changer backend
      *
      * @param api Pointer to MoonrakerAPI (for sending G-code commands)
-     * @param client Pointer to MoonrakerClient (for subscribing to updates)
+     * @param client Pointer to helix::MoonrakerClient (for subscribing to updates)
      *
      * @note Pointers must remain valid for the lifetime of this backend.
      * @note Call set_discovered_tools() before start() to set tool names.
      */
-    AmsBackendToolChanger(MoonrakerAPI* api, MoonrakerClient* client);
+    AmsBackendToolChanger(MoonrakerAPI* api, helix::MoonrakerClient* client);
 
     ~AmsBackendToolChanger() override;
 
@@ -79,6 +79,7 @@ class AmsBackendToolChanger : public AmsBackend {
     // Lifecycle
     AmsError start() override;
     void stop() override;
+    void release_subscriptions() override;
     [[nodiscard]] bool is_running() const override;
 
     // Events
@@ -219,7 +220,7 @@ class AmsBackendToolChanger : public AmsBackend {
 
     // Dependencies
     MoonrakerAPI* api_;                   ///< For sending G-code commands
-    MoonrakerClient* client_;             ///< For subscribing to updates
+    helix::MoonrakerClient* client_;      ///< For subscribing to updates
     std::vector<std::string> tool_names_; ///< Tool names from discovery
 
     // State

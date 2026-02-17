@@ -44,7 +44,7 @@ namespace helix {
  *
  * Thread Safety:
  * - State is stored as std::atomic<State> for safe reads from any thread
- * - All UI updates use ui_async_call() for thread safety
+ * - All UI updates use helix::ui::async_call() for thread safety
  * - Callbacks from Moonraker WebSocket run on background thread
  *
  * Usage:

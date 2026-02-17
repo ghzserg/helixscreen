@@ -15,11 +15,12 @@
 #include "ui_panel_screws_tilt.h"
 #include "ui_panel_spoolman.h"
 #include "ui_settings_sound.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 
 #include "app_globals.h"
 #include "config.h"
 #include "helix_version.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "printer_detector.h"
 #include "printer_image_manager.h"
 #include "printer_images.h"
@@ -31,6 +32,8 @@
 #include <spdlog/spdlog.h>
 
 #include <cstring>
+
+using namespace helix;
 
 // =============================================================================
 // Global Instance
@@ -150,7 +153,7 @@ void PrinterManagerOverlay::on_chip_leds_clicked(lv_event_t* e) {
     (void)e;
     spdlog::debug("[Printer Manager] LEDs chip clicked");
     // TODO: Navigate to LED settings when available
-    ui_toast_show(ToastSeverity::INFO, "LED settings coming soon", 2000);
+    ToastManager::instance().show(ToastSeverity::INFO, lv_tr("LED settings coming soon"), 2000);
 }
 
 void PrinterManagerOverlay::on_chip_adxl_clicked(lv_event_t* e) {
@@ -208,7 +211,7 @@ void PrinterManagerOverlay::on_chip_ams_clicked(lv_event_t* e) {
     }
     lv_obj_t* panel_obj = ams_panel.get_panel();
     if (panel_obj) {
-        ui_nav_push_overlay(panel_obj);
+        NavigationManager::instance().push_overlay(panel_obj);
     }
 }
 
@@ -236,7 +239,7 @@ void PrinterManagerOverlay::on_chip_fans_clicked(lv_event_t* e) {
 
     if (pm.fan_control_panel_) {
         get_fan_control_overlay().set_api(get_moonraker_api());
-        ui_nav_push_overlay(pm.fan_control_panel_);
+        NavigationManager::instance().push_overlay(pm.fan_control_panel_);
     }
 }
 
@@ -303,7 +306,7 @@ void PrinterManagerOverlay::start_name_edit() {
     lv_obj_remove_flag(name_input_, LV_OBJ_FLAG_HIDDEN);
 
     // Focus the input and show keyboard
-    ui_keyboard_show(name_input_);
+    KeyboardManager::instance().show(name_input_);
 
     spdlog::debug("[{}] Started name edit, current: '{}'", get_name(), name_buf_);
 }

@@ -10,7 +10,7 @@
  * with a single structured result.
  */
 
-#include "ui_nav.h" // For ui_panel_id_t
+#include "ui_nav_manager.h" // For ui_panel_id_t
 
 #include <optional>
 #include <string>
@@ -152,7 +152,7 @@ bool parse_cli_args(int argc, char** argv, CliArgs& args, int& screen_width, int
  * @param name Panel name (e.g., "home", "controls", "bed-mesh")
  * @return Panel ID if valid, std::nullopt if unknown
  */
-std::optional<ui_panel_id_t> panel_name_to_id(const char* name);
+std::optional<PanelId> panel_name_to_id(const char* name);
 
 /**
  * @brief Print test mode configuration banner

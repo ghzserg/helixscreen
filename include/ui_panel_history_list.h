@@ -220,7 +220,7 @@ class HistoryListPanel : public OverlayBase {
     PrintHistoryManager* history_manager_ = nullptr; ///< Shared history cache (DRY)
 
     /// Observer callback for history manager changes
-    HistoryChangedCallback history_observer_;
+    helix::HistoryChangedCallback history_observer_;
 
     // Parent screen reference
     lv_obj_t* parent_screen_ = nullptr;
@@ -454,6 +454,7 @@ class HistoryListPanel : public OverlayBase {
      * @brief Handle search text change (debounced)
      */
     void on_search_changed();
+    void on_search_clear();
 
     /**
      * @brief Debounced search callback (called after 300ms)

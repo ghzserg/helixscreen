@@ -1,8 +1,9 @@
 # Spoolman Management & Label Printing
 
 **Date**: 2026-02-09
-**Status**: Design
-**Branch**: TBD (worktree)
+**Status**: Mostly Complete (wizard built and merged; visual tests and Step 9 filamentcolors.xyz pending)
+**Branch**: `feature/multi-unit-ams`
+**Status doc**: `2026-02-15-spool-wizard-status.md`
 
 ## Overview
 
@@ -411,17 +412,18 @@ implementation; main session orchestrates.
    - Tests: confirm/cancel flow, API call
    - Review checkpoint
 
-### Phase 3: New Spool Wizard
+### Phase 3: New Spool Wizard ✅ (merged into `feature/multi-unit-ams`)
 
-7. **Wizard framework** — reuse wizard navigation pattern for new context
+7. **Wizard framework** — reuse wizard navigation pattern for new context ✅
    - Tests: step navigation, back/forward, skip logic
-8. **Step 1: Vendor selection/creation**
+8. **Step 1: Vendor selection/creation** ✅
    - Tests: search, new vendor validation
-9. **Step 2: Filament selection/creation**
+9. **Step 2: Filament selection/creation** ✅
    - Tests: filtering by vendor, new filament validation, color picker
-10. **Step 3: Spool details + atomic creation**
+   - Pending: filamentcolors.xyz color enhancement (Step 9)
+10. **Step 3: Spool details + atomic creation** ✅
     - Tests: batch API calls, rollback on failure, set-active option
-    - Review checkpoint
+    - Visual tests pending (see status doc)
 
 ### Phase 4: Label Printing
 

@@ -6,11 +6,15 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
+
 // ============================================================================
 // Change Host Modal - Config Read/Write Tests
 // ============================================================================
 
 // Test fixture that sets up Config singleton with test data
+// Must be in namespace helix to match friend declaration in Config
+namespace helix {
 class ChangeHostConfigFixture : public Config {
   public:
     ChangeHostConfigFixture() {
@@ -26,6 +30,7 @@ class ChangeHostConfigFixture : public Config {
   private:
     Config* saved_instance_ = nullptr;
 };
+} // namespace helix
 
 TEST_CASE("Change host: Config read returns current values", "[change_host][config]") {
     ChangeHostConfigFixture config;

@@ -1,0 +1,43 @@
+{
+  "input": {
+    "calibration": {
+      "a": 1.0,
+      "b": 0.0,
+      "c": 0.0,
+      "d": 0.0,
+      "e": 1.0,
+      "f": 0.0,
+      "valid": false
+    }
+  },
+  "printer": {
+    "moonraker_host": "127.0.0.1",
+    "moonraker_port": 7125,
+    "heaters": {
+      "bed": "heater_bed",
+      "hotend": "extruder"
+    },
+    "temp_sensors": {
+      "bed": "heater_bed",
+      "hotend": "extruder"
+    },
+    "fans": {},
+    "leds": {},
+    "filament_sensors": {
+      "master_enabled": true,
+      "sensors": []
+    },
+    "hardware": {
+      "expected": [
+        "heater_bed",
+        "extruder"
+      ],
+      "last_snapshot": {},
+      "optional": []
+    },
+    "default_macros": {
+      "cooldown": "SET_HEATER_TEMPERATURE HEATER=extruder TARGET=0\nSET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=0"
+    }
+  },
+  "wizard_completed": false
+}

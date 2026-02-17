@@ -45,8 +45,8 @@ setup() {
     grep -q 'ProtectSystem=strict' "$SERVICE_TEMPLATE"
 }
 
-@test "service template HAS SupplementaryGroups=video input render" {
-    grep -q 'SupplementaryGroups=video input render' "$SERVICE_TEMPLATE"
+@test "service template HAS SupplementaryGroups=video input render tty" {
+    grep -q 'SupplementaryGroups=video input render tty' "$SERVICE_TEMPLATE"
 }
 
 # --- Substitution tests (copy to tmpdir, run sed, verify) ---

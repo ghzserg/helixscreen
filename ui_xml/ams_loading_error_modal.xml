@@ -20,7 +20,7 @@
         <text_heading text="Loading Error" translation_tag="Loading Error"/>
       </lv_obj>
       <!-- Close button -->
-      <ui_button name="btn_close" width="40" height="40" icon="close" variant="ghost">
+      <ui_button name="btn_close" width="40" height="40" icon="close" variant="ghost" focusable="false">
         <event_cb trigger="clicked" callback="ams_loading_error_close_cb"/>
       </ui_button>
     </lv_obj>

@@ -719,15 +719,15 @@ TEST_CASE("CHAR: Overlay lazy creation", "[characterization][settings][hardware_
     }
 
     SECTION("Populates issues before showing") {
-        // populate_hardware_issues() called before ui_nav_push_overlay()
+        // populate_hardware_issues() called before push_overlay()
         bool populates_first = true;
         REQUIRE(populates_first == true);
     }
 
-    SECTION("Uses ui_nav_push_overlay() to show") {
+    SECTION("Uses NavigationManager::instance().push_overlay() to show") {
         // Pushes onto navigation stack
-        std::string nav_function = "ui_nav_push_overlay";
-        REQUIRE(nav_function == "ui_nav_push_overlay");
+        std::string nav_function = "NavigationManager::instance().push_overlay";
+        REQUIRE(nav_function == "NavigationManager::instance().push_overlay");
     }
 }
 
@@ -784,7 +784,7 @@ TEST_CASE("CHAR: Overlay lazy creation", "[characterization][settings][hardware_
  *    - PrinterState::get_hardware_validation_result()
  *    - PrinterState::remove_hardware_issue()
  *    - HardwareValidator static methods
- *    - ui_modal_show_confirmation()
+ *    - helix::ui::modal_show_confirmation()
  *    - ui_severity_card_finalize()
  *    - Config (for optional/expected persistence)
  */

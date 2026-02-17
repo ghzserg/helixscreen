@@ -30,6 +30,12 @@ build_ad5m() {
     echo -e "${GREEN}✓ helixscreen/toolchain-ad5m built successfully${RESET}"
 }
 
+build_cc1() {
+    echo -e "${CYAN}${BOLD}Building Centauri Carbon 1 (armv7-a) toolchain...${RESET}"
+    docker build -t helixscreen/toolchain-cc1 -f Dockerfile.cc1 .
+    echo -e "${GREEN}✓ helixscreen/toolchain-cc1 built successfully${RESET}"
+}
+
 usage() {
     echo -e "${BOLD}HelixScreen Cross-Compilation Toolchain Builder${RESET}"
     echo ""
@@ -38,11 +44,13 @@ usage() {
     echo "Targets:"
     echo "  pi      Build Raspberry Pi toolchain only"
     echo "  ad5m    Build Adventurer 5M toolchain only"
+    echo "  cc1     Build Centauri Carbon 1 toolchain only"
     echo "  all     Build all toolchains (default)"
     echo ""
     echo "After building, use:"
     echo "  make pi-docker      Cross-compile for Raspberry Pi"
     echo "  make ad5m-docker    Cross-compile for Adventurer 5M"
+    echo "  make cc1-docker     Cross-compile for Centauri Carbon 1"
 }
 
 case "${1:-all}" in
@@ -52,6 +60,9 @@ case "${1:-all}" in
     ad5m)
         build_ad5m
         ;;
+    cc1)
+        build_cc1
+        ;;
     all)
         echo -e "${BOLD}========================================${RESET}"
         echo -e "${BOLD}Building HelixScreen Cross-Compilation Toolchains${RESET}"
@@ -60,6 +71,8 @@ case "${1:-all}" in
         build_pi
         echo ""
         build_ad5m
+        echo ""
+        build_cc1
         echo ""
         echo -e "${BOLD}========================================${RESET}"
         echo -e "${GREEN}${BOLD}All toolchains built successfully!${RESET}"
@@ -71,6 +84,7 @@ case "${1:-all}" in
         echo -e "Usage:"
         echo -e "  ${YELLOW}make pi-docker${RESET}      Cross-compile for Raspberry Pi"
         echo -e "  ${YELLOW}make ad5m-docker${RESET}    Cross-compile for Adventurer 5M"
+        echo -e "  ${YELLOW}make cc1-docker${RESET}     Cross-compile for Centauri Carbon 1"
         ;;
     -h|--help|help)
         usage

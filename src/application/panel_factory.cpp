@@ -4,7 +4,6 @@
 #include "panel_factory.h"
 
 #include "ui_component_keypad.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_advanced.h"
 #include "ui_panel_controls.h"
@@ -21,6 +20,8 @@
 #include "printer_state.h"
 
 #include <spdlog/spdlog.h>
+
+using namespace helix;
 
 // Note: PanelOverlayAdapter was removed - PrintStatusPanel now inherits directly
 // from OverlayBase, eliminating the need for an adapter.
@@ -39,36 +40,36 @@ bool PanelFactory::find_panels(lv_obj_t* panel_container) {
 
 void PanelFactory::setup_panels(lv_obj_t* screen) {
     // Register panels with navigation system
-    ui_nav_set_panels(m_panels.data());
+    NavigationManager::instance().set_panels(m_panels.data());
 
     // Setup home panel
-    get_global_home_panel().setup(m_panels[UI_PANEL_HOME], screen);
+    get_global_home_panel().setup(m_panels[static_cast<int>(PanelId::Home)], screen);
 
     // Setup controls panel
-    get_global_controls_panel().setup(m_panels[UI_PANEL_CONTROLS], screen);
+    get_global_controls_panel().setup(m_panels[static_cast<int>(PanelId::Controls)], screen);
 
     // Setup print select panel
     get_print_select_panel(get_printer_state(), nullptr)
-        ->setup(m_panels[UI_PANEL_PRINT_SELECT], screen);
+        ->setup(m_panels[static_cast<int>(PanelId::PrintSelect)], screen);
 
     // Setup filament panel
-    get_global_filament_panel().setup(m_panels[UI_PANEL_FILAMENT], screen);
+    get_global_filament_panel().setup(m_panels[static_cast<int>(PanelId::Filament)], screen);
 
     // Setup settings panel
-    get_global_settings_panel().setup(m_panels[UI_PANEL_SETTINGS], screen);
+    get_global_settings_panel().setup(m_panels[static_cast<int>(PanelId::Settings)], screen);
 
     // Setup advanced panel
-    get_global_advanced_panel().setup(m_panels[UI_PANEL_ADVANCED], screen);
+    get_global_advanced_panel().setup(m_panels[static_cast<int>(PanelId::Advanced)], screen);
 
     // Register C++ panel instances for lifecycle dispatch (on_activate/on_deactivate)
     auto& nav = NavigationManager::instance();
-    nav.register_panel_instance(UI_PANEL_HOME, &get_global_home_panel());
-    nav.register_panel_instance(UI_PANEL_PRINT_SELECT,
+    nav.register_panel_instance(PanelId::Home, &get_global_home_panel());
+    nav.register_panel_instance(PanelId::PrintSelect,
                                 get_print_select_panel(get_printer_state(), nullptr));
-    nav.register_panel_instance(UI_PANEL_CONTROLS, &get_global_controls_panel());
-    nav.register_panel_instance(UI_PANEL_FILAMENT, &get_global_filament_panel());
-    nav.register_panel_instance(UI_PANEL_SETTINGS, &get_global_settings_panel());
-    nav.register_panel_instance(UI_PANEL_ADVANCED, &get_global_advanced_panel());
+    nav.register_panel_instance(PanelId::Controls, &get_global_controls_panel());
+    nav.register_panel_instance(PanelId::Filament, &get_global_filament_panel());
+    nav.register_panel_instance(PanelId::Settings, &get_global_settings_panel());
+    nav.register_panel_instance(PanelId::Advanced, &get_global_advanced_panel());
 
     // Activate initial panel now that all instances are registered
     // (set_panels() couldn't do this because instances weren't registered yet)

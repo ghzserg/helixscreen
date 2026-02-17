@@ -152,39 +152,3 @@ class ToastManager {
     bool initialized_ = false;
     bool animating_exit_ = false; // Prevents double-hide during exit animation
 };
-
-// ============================================================================
-// LEGACY API (forwards to ToastManager for backward compatibility)
-// ============================================================================
-
-/**
- * @brief Initialize the toast notification system
- * @deprecated Use ToastManager::instance().init() instead
- */
-void ui_toast_init();
-
-/**
- * @brief Show a toast notification
- * @deprecated Use ToastManager::instance().show() instead
- */
-void ui_toast_show(ToastSeverity severity, const char* message, uint32_t duration_ms = 4000);
-
-/**
- * @brief Show a toast notification with an action button
- * @deprecated Use ToastManager::instance().show_with_action() instead
- */
-void ui_toast_show_with_action(ToastSeverity severity, const char* message, const char* action_text,
-                               toast_action_callback_t action_callback, void* user_data,
-                               uint32_t duration_ms = 5000);
-
-/**
- * @brief Hide the currently visible toast
- * @deprecated Use ToastManager::instance().hide() instead
- */
-void ui_toast_hide();
-
-/**
- * @brief Check if a toast is currently visible
- * @deprecated Use ToastManager::instance().is_visible() instead
- */
-bool ui_toast_is_visible();

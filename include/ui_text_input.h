@@ -24,6 +24,7 @@ enum class KeyboardHint : uint8_t {
  * This is a semantic widget that provides:
  * - Reactive data binding via bind_text attribute
  * - Keyboard hint for initial keyboard mode (keyboard_hint attribute)
+ * - Optional clear button (Android-style, shown when text is present)
  * - Responsive sizing with automatic vertical padding
  * - One-line mode by default for form inputs
  *
@@ -31,6 +32,8 @@ enum class KeyboardHint : uint8_t {
  * @code{.xml}
  * <text_input name="ip_input" bind_text="connection_ip" placeholder_text="127.0.0.1" width="100%"/>
  * <text_input name="port_input" bind_text="connection_port" keyboard_hint="numeric" width="100%"/>
+ * <text_input name="search" show_clear_button="true" clear_callback="on_my_clear"
+ * placeholder_text="Search..."/>
  * @endcode
  *
  * The bind_text attribute creates a reactive observer - when the subject
@@ -39,6 +42,11 @@ enum class KeyboardHint : uint8_t {
  * The keyboard_hint attribute specifies which keyboard mode to show initially:
  * - "text" (default): Standard lowercase letter keyboard
  * - "numeric": Numeric/symbol keyboard (?123 mode)
+ *
+ * The show_clear_button attribute adds an Android-style clear (X) icon inside
+ * the right side of the input. It auto-shows when text is present and auto-hides
+ * when empty. The optional clear_callback fires a registered XML event callback
+ * after clearing the text.
  *
  * @note All standard lv_textarea attributes are supported (placeholder_text, password_mode, etc.)
  */

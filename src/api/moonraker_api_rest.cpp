@@ -159,7 +159,12 @@ void MoonrakerAPI::call_rest_get(const std::string& endpoint, RestCallback on_co
                 }
             }
 
-            spdlog::warn("[Moonraker API] REST GET {} failed: {}", endpoint, result.error);
+            // 404 = feature not configured/available, not an error worth warning about
+            if (result.status_code == 404) {
+                spdlog::debug("[Moonraker API] REST GET {} failed: {}", endpoint, result.error);
+            } else {
+                spdlog::warn("[Moonraker API] REST GET {} failed: {}", endpoint, result.error);
+            }
         }
 
         if (on_complete) {
@@ -270,7 +275,11 @@ void MoonrakerAPI::call_rest_post(const std::string& endpoint, const json& param
                 }
             }
 
-            spdlog::warn("[Moonraker API] REST POST {} failed: {}", endpoint, result.error);
+            if (result.status_code == 404) {
+                spdlog::debug("[Moonraker API] REST POST {} failed: {}", endpoint, result.error);
+            } else {
+                spdlog::warn("[Moonraker API] REST POST {} failed: {}", endpoint, result.error);
+            }
         }
 
         if (on_complete) {

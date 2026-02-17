@@ -84,7 +84,7 @@ using ThumbnailCompleteCallback = std::function<void(std::unique_ptr<ObjectThumb
  *
  * Thread safety: Background thread only reads ParsedGCodeFile (immutable during print).
  * Raw pixel buffers use std::make_unique - no LVGL calls from background thread.
- * Results are marshaled to UI thread via ui_queue_update().
+ * Results are marshaled to UI thread via helix::ui::queue_update().
  */
 class GCodeObjectThumbnailRenderer {
   public:

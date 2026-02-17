@@ -211,8 +211,8 @@ void show_splash_screen(int screen_width, int screen_height) {
     }
 
     // Clean up splash screen (guard against early shutdown)
-    lv_obj_safe_delete(version_label);
-    lv_obj_safe_delete(splash_widget);
+    helix::ui::safe_delete(version_label);
+    helix::ui::safe_delete(splash_widget);
 
     spdlog::debug("[Splash Screen] complete");
 }

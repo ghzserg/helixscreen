@@ -28,22 +28,22 @@
  * ## Usage
  * The collector is started when a print begins and stopped when the print
  * transitions to actual printing (or is cancelled). Progress is reported
- * through PrinterState subjects which XML can bind to directly.
+ * through helix::PrinterState subjects which XML can bind to directly.
  *
  * ## Pattern Detection
  * Uses best-effort regex matching on G-code responses. Not all macros will
  * output all phases - the progress calculation handles missing phases gracefully.
  *
- * @see PrintStartPhase enum in printer_state.h
+ * @see helix::PrintStartPhase enum in printer_state.h
  */
 class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollector> {
   public:
     /**
      * @brief Construct a PrintStartCollector
-     * @param client MoonrakerClient for registering callbacks
-     * @param state PrinterState to update with phase progress
+     * @param client helix::MoonrakerClient for registering callbacks
+     * @param state helix::PrinterState to update with phase progress
      */
-    PrintStartCollector(MoonrakerClient& client, PrinterState& state);
+    PrintStartCollector(helix::MoonrakerClient& client, helix::PrinterState& state);
 
     ~PrintStartCollector();
 
@@ -157,12 +157,12 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /**
      * @brief Update phase and recalculate progress (weighted mode)
      */
-    void update_phase(PrintStartPhase phase, const char* message);
+    void update_phase(helix::PrintStartPhase phase, const char* message);
 
     /**
      * @brief Update phase with explicit progress value (sequential mode)
      */
-    void update_phase(PrintStartPhase phase, const std::string& message, int progress);
+    void update_phase(helix::PrintStartPhase phase, const std::string& message, int progress);
 
     /**
      * @brief Calculate overall progress based on detected phases
@@ -185,8 +185,8 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     bool is_completion_marker(const std::string& line) const;
 
     // Dependencies
-    MoonrakerClient& client_;
-    PrinterState& state_;
+    helix::MoonrakerClient& client_;
+    helix::PrinterState& state_;
 
     // Registration state
     std::string handler_name_;
@@ -198,8 +198,8 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     mutable std::mutex state_mutex_;
 
     // Phase tracking (protected by state_mutex_)
-    std::set<PrintStartPhase> detected_phases_;
-    PrintStartPhase current_phase_ = PrintStartPhase::IDLE;
+    std::set<helix::PrintStartPhase> detected_phases_;
+    helix::PrintStartPhase current_phase_ = helix::PrintStartPhase::IDLE;
     bool print_start_detected_ = false;
     int max_sequential_progress_ = 0; // Monotonic progress guard for sequential mode
     std::chrono::steady_clock::time_point printing_state_start_;
@@ -217,7 +217,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
 
     // Fallback detection state (for printers without G-code layer markers)
     std::atomic<bool> fallbacks_enabled_{false};
-    std::atomic<SubscriptionId> macro_subscription_id_{0};
+    std::atomic<helix::SubscriptionId> macro_subscription_id_{0};
 
     // Phase timing for duration prediction (protected by state_mutex_)
     std::map<int, std::chrono::steady_clock::time_point> phase_enter_times_;
@@ -233,7 +233,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     void update_eta_display();
 
     /**
-     * @brief Load prediction entries from Config on start()
+     * @brief Load prediction entries from helix::Config on start()
      */
     void load_prediction_history();
 

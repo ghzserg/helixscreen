@@ -5,7 +5,6 @@
 
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_update_queue.h"
 #include "ui_z_offset_indicator.h"
@@ -24,6 +23,7 @@
 #include <cstdlib>
 #include <memory>
 
+using namespace helix;
 using helix::ui::observe_int_sync;
 
 // ============================================================================
@@ -231,7 +231,7 @@ void ZOffsetCalibrationPanel::show() {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     spdlog::info("[ZOffsetCal] Overlay shown");
 }
@@ -398,7 +398,7 @@ void ZOffsetCalibrationPanel::start_calibration() {
             cmd, []() { spdlog::debug("[ZOffsetCal] M140 sent, bed heating"); },
             [this](const MoonrakerError& err) {
                 spdlog::error("[ZOffsetCal] Failed to start bed heating: {}", err.message);
-                ui_async_call(
+                helix::ui::async_call(
                     [](void* ud) {
                         static_cast<ZOffsetCalibrationPanel*>(ud)->on_calibration_result(
                             false, "Failed to start bed heating");
@@ -472,7 +472,7 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
             gcode,
             [this]() {
                 spdlog::info("[ZOffsetCal] Moved to center at Z0.1, ready for adjustment");
-                ui_async_call(
+                helix::ui::async_call(
                     [](void* ud) {
                         auto* self = static_cast<ZOffsetCalibrationPanel*>(ud);
                         self->set_state(State::ADJUSTING);
@@ -482,7 +482,7 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
             },
             [this](const MoonrakerError& err) {
                 spdlog::error("[ZOffsetCal] Failed to move to position: {}", err.message);
-                ui_async_call(
+                helix::ui::async_call(
                     [](void* ud) {
                         static_cast<ZOffsetCalibrationPanel*>(ud)->on_calibration_result(
                             false, "Failed to move to calibration position");
@@ -522,7 +522,7 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
             },
             [this](const MoonrakerError& err) {
                 spdlog::error("[ZOffsetCal] Failed to start calibration: {}", err.message);
-                ui_async_call(
+                helix::ui::async_call(
                     [](void* ud) {
                         static_cast<ZOffsetCalibrationPanel*>(ud)->on_calibration_result(
                             false, "Failed to start calibration");
@@ -551,7 +551,7 @@ void ZOffsetCalibrationPanel::adjust_z(float delta) {
                     float delta;
                 };
                 auto ctx = std::make_unique<Ctx>(Ctx{this, delta});
-                ui_queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
+                helix::ui::queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
                     c->panel->cumulative_z_delta_ += c->delta;
                     c->panel->update_z_position(0.1f + c->panel->cumulative_z_delta_);
                     spdlog::debug("[ZOffsetCal] G1 Z adjust: delta={:.3f}, cumulative={:.3f}",
@@ -595,7 +595,7 @@ void ZOffsetCalibrationPanel::send_accept() {
             cmd,
             [this]() {
                 spdlog::info("[ZOffsetCal] SET_GCODE_OFFSET applied successfully");
-                ui_async_call(
+                helix::ui::async_call(
                     [](void* ud) {
                         static_cast<ZOffsetCalibrationPanel*>(ud)->on_calibration_result(true, "");
                     },
@@ -603,7 +603,7 @@ void ZOffsetCalibrationPanel::send_accept() {
             },
             [this](const MoonrakerError& err) {
                 spdlog::error("[ZOffsetCal] SET_GCODE_OFFSET failed: {}", err.message);
-                ui_async_call(
+                helix::ui::async_call(
                     [](void* ud) {
                         static_cast<ZOffsetCalibrationPanel*>(ud)->on_calibration_result(
                             false, "Failed to set Z-offset");
@@ -628,7 +628,7 @@ void ZOffsetCalibrationPanel::send_accept() {
                             api_->execute_gcode(
                                 "SAVE_CONFIG",
                                 [this]() {
-                                    ui_async_call(
+                                    helix::ui::async_call(
                                         [](void* ud) {
                                             static_cast<ZOffsetCalibrationPanel*>(ud)
                                                 ->on_calibration_result(true, "");
@@ -642,7 +642,7 @@ void ZOffsetCalibrationPanel::send_accept() {
                                     };
                                     auto ctx = std::make_unique<Ctx>(
                                         Ctx{this, "SAVE_CONFIG failed: " + err.user_message()});
-                                    ui_queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
+                                    helix::ui::queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
                                         c->panel->on_calibration_result(false, c->msg);
                                     });
                                 });
@@ -654,7 +654,7 @@ void ZOffsetCalibrationPanel::send_accept() {
                             };
                             auto ctx = std::make_unique<Ctx>(
                                 Ctx{this, "Z_OFFSET_APPLY_ENDSTOP failed: " + err.user_message()});
-                            ui_queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
+                            helix::ui::queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
                                 c->panel->on_calibration_result(false, c->msg);
                             });
                         });
@@ -664,7 +664,7 @@ void ZOffsetCalibrationPanel::send_accept() {
                     api_->execute_gcode(
                         "SAVE_CONFIG",
                         [this]() {
-                            ui_async_call(
+                            helix::ui::async_call(
                                 [](void* ud) {
                                     static_cast<ZOffsetCalibrationPanel*>(ud)
                                         ->on_calibration_result(true, "");
@@ -678,7 +678,7 @@ void ZOffsetCalibrationPanel::send_accept() {
                             };
                             auto ctx = std::make_unique<Ctx>(
                                 Ctx{this, "SAVE_CONFIG failed: " + err.user_message()});
-                            ui_queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
+                            helix::ui::queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
                                 c->panel->on_calibration_result(false, c->msg);
                             });
                         });
@@ -690,7 +690,7 @@ void ZOffsetCalibrationPanel::send_accept() {
                     std::string msg;
                 };
                 auto ctx = std::make_unique<Ctx>(Ctx{this, "ACCEPT failed: " + err.user_message()});
-                ui_queue_update<Ctx>(
+                helix::ui::queue_update<Ctx>(
                     std::move(ctx), [](Ctx* c) { c->panel->on_calibration_result(false, c->msg); });
             });
     }
@@ -767,7 +767,7 @@ void ZOffsetCalibrationPanel::handle_abort_clicked() {
 void ZOffsetCalibrationPanel::handle_done_clicked() {
     spdlog::debug("[ZOffsetCal] Done clicked");
     set_state(State::IDLE);
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void ZOffsetCalibrationPanel::handle_retry_clicked() {

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ui_context_menu.h"
+
 #include <functional>
 #include <lvgl.h>
 #include <string>
@@ -20,6 +22,11 @@ namespace helix::ui {
  * edit, or assign a Spoolman spool. Automatically positions itself
  * relative to the target slot widget.
  *
+ * Extends the generic ContextMenu with AMS-specific features:
+ * - Slot loaded/can-load subjects for button states
+ * - Tool mapping dropdown
+ * - Endless spool backup dropdown
+ *
  * ## Usage:
  * @code
  * helix::ui::AmsContextMenu menu;
@@ -34,7 +41,7 @@ namespace helix::ui {
  * menu.show_near_widget(parent, slot_index, slot_widget);
  * @endcode
  */
-class AmsContextMenu {
+class AmsContextMenu : public ContextMenu {
   public:
     enum class MenuAction {
         CANCELLED, ///< User dismissed menu without action
@@ -47,7 +54,7 @@ class AmsContextMenu {
     using ActionCallback = std::function<void(MenuAction action, int slot_index)>;
 
     AmsContextMenu();
-    ~AmsContextMenu();
+    ~AmsContextMenu() override;
 
     // Non-copyable
     AmsContextMenu(const AmsContextMenu&) = delete;
@@ -70,22 +77,10 @@ class AmsContextMenu {
                           bool is_loaded = false, AmsBackend* backend = nullptr);
 
     /**
-     * @brief Hide the context menu
-     */
-    void hide();
-
-    /**
-     * @brief Check if menu is currently visible
-     */
-    [[nodiscard]] bool is_visible() const {
-        return menu_ != nullptr;
-    }
-
-    /**
      * @brief Get slot index the menu is currently shown for
      */
     [[nodiscard]] int get_slot_index() const {
-        return slot_index_;
+        return get_item_index();
     }
 
     /**
@@ -93,12 +88,20 @@ class AmsContextMenu {
      */
     void set_action_callback(ActionCallback callback);
 
+  protected:
+    const char* xml_component_name() const override {
+        return "ams_context_menu";
+    }
+    void on_created(lv_obj_t* menu_obj) override;
+
   private:
-    // === State ===
-    lv_obj_t* menu_ = nullptr;
-    lv_obj_t* parent_ = nullptr;
-    int slot_index_ = -1;
+    // === AMS-specific state ===
     ActionCallback action_callback_;
+
+    /**
+     * @brief Common pattern: clear static instance, hide, invoke callback
+     */
+    void dispatch_ams_action(MenuAction action);
 
     // === Subjects for button enable/disable states ===
     lv_subject_t slot_is_loaded_subject_; ///< 1 = loaded (Unload enabled), 0 = not loaded
@@ -113,12 +116,14 @@ class AmsContextMenu {
     lv_obj_t* tool_dropdown_ = nullptr;
     lv_obj_t* backup_dropdown_ = nullptr;
 
+    // === Pending state for on_created ===
+    bool pending_is_loaded_ = false;
+
     // === Event Handlers ===
     void handle_backdrop_clicked();
     void handle_load();
     void handle_unload();
     void handle_edit();
-    void handle_spoolman();
     void handle_tool_changed();
     void handle_backup_changed();
 
@@ -136,18 +141,14 @@ class AmsContextMenu {
     static bool callbacks_registered_;
 
     // === Static Callbacks ===
+    static AmsContextMenu* s_active_instance_;
+    static AmsContextMenu* get_active_instance();
     static void on_backdrop_cb(lv_event_t* e);
     static void on_load_cb(lv_event_t* e);
     static void on_unload_cb(lv_event_t* e);
     static void on_edit_cb(lv_event_t* e);
-    static void on_spoolman_cb(lv_event_t* e);
     static void on_tool_changed_cb(lv_event_t* e);
     static void on_backup_changed_cb(lv_event_t* e);
-
-    /**
-     * @brief Find menu instance from event target
-     */
-    static AmsContextMenu* get_instance_from_event(lv_event_t* e);
 };
 
 } // namespace helix::ui

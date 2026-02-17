@@ -5,111 +5,36 @@
 
 #include "ui_update_queue.h"
 
-#include "spdlog/spdlog.h"
-
 #include <functional>
 #include <memory>
 #include <type_traits>
 
 /**
  * @file async_helpers.h
- * @brief Thread-safe async callback helpers for LVGL main-thread execution
+ * @brief Convenience wrappers for helix::ui::queue_update()
  *
- * This header provides utilities to safely defer function calls to the LVGL
- * main thread from background threads (e.g., WebSocket callbacks).
+ * Provides type-safe shortcuts for common patterns when deferring work
+ * to the LVGL main thread via helix::ui::queue_update(). All helpers ultimately
+ * call helix::ui::queue_update() — use that directly for simple lambdas.
  *
- * @section problem Problem Solved
- * WebSocket callbacks run on libhv's event loop thread. Calling lv_subject_set_*()
- * directly from a background thread triggers lv_obj_invalidate() which asserts
- * if called during LVGL rendering. The traditional solution requires:
- *   1. Defining a context struct with instance pointer and values
- *   2. Defining a static callback function that casts, invokes, and deletes
- *   3. Calling ui_async_call with heap-allocated context
- *
- * This pattern is repeated 7+ times in printer_state.cpp alone, totaling ~150
- * lines of boilerplate. These utilities reduce it to single function calls.
- *
- * @section usage Usage
- * @code
- * // OLD: 15 lines of boilerplate
- * struct AsyncBoolContext {
- *     PrinterState* state;
- *     bool value;
- * };
- * void async_bool_callback(void* user_data) {
- *     auto* ctx = static_cast<AsyncBoolContext*>(user_data);
- *     if (ctx && ctx->state) {
- *         ctx->state->set_value_internal(ctx->value);
- *     }
- *     delete ctx;
- * }
- * void PrinterState::set_value(bool v) {
- *     ui_async_call(async_bool_callback, new AsyncBoolContext{this, v});
- * }
- *
- * // NEW: Single call
- * void PrinterState::set_value(bool v) {
- *     helix::async::invoke([this, v]() {
- *         set_value_internal(v);
- *     });
- * }
- * @endcode
+ * Exception safety is provided by UpdateQueue::process_pending().
  *
  * @section safety Thread Safety
- * WARNING: Like the existing pattern, these helpers capture `this` pointers
- * by value. If the object is destroyed before the async callback runs,
- * use-after-free occurs. Callers must ensure object lifetime exceeds callback
- * execution. For long-lived singletons like PrinterState, this is typically safe.
+ * WARNING: These helpers capture `this` pointers by value. If the object
+ * is destroyed before the callback runs, use-after-free occurs. Callers
+ * must ensure object lifetime exceeds callback execution. For long-lived
+ * singletons like PrinterState, this is typically safe.
  *
- * For short-lived objects, consider:
- *   - Using std::weak_ptr with async::invoke_weak()
- *   - Checking a destruction flag in the callback
- *   - Cancelling pending callbacks in the destructor
+ * For short-lived objects, use invoke_weak() with std::weak_ptr.
  */
 
 namespace helix::async {
 
 /**
- * @brief Invoke a callable on the LVGL main thread
+ * @brief Queue a member function call with one parameter
  *
- * Type-erases any callable (lambda, std::function, function pointer) into
- * a heap-allocated std::function<void()> and schedules it via ui_async_call.
- *
- * @tparam Callable Any invocable type with signature void()
- * @param callable The function/lambda to invoke on the main thread
- *
- * @code
- * helix::async::invoke([this, value]() {
- *     lv_subject_set_int(&my_subject_, value);
- * });
- * @endcode
- */
-template <typename Callable> void invoke(Callable&& callable) {
-    // Type-erase into std::function on the heap
-    auto* fn = new std::function<void()>(std::forward<Callable>(callable));
-
-    ui_async_call(
-        [](void* data) {
-            auto* func = static_cast<std::function<void()>*>(data);
-            if (func) {
-                try {
-                    (*func)();
-                } catch (const std::exception& e) {
-                    spdlog::error("[async::invoke] Exception in callback: {}", e.what());
-                } catch (...) {
-                    spdlog::error("[async::invoke] Unknown exception in callback");
-                }
-            }
-            delete func;
-        },
-        fn);
-}
-
-/**
- * @brief Invoke a member function with one parameter on the LVGL main thread
- *
- * Convenience overload for the common pattern of calling an internal setter.
- * Copies the value to ensure it survives across threads.
+ * Convenience wrapper for the common pattern of calling an internal setter
+ * on the main thread. Copies the value to ensure it survives across threads.
  *
  * @tparam T Instance type (e.g., PrinterState)
  * @tparam V Value type (copied, not referenced)
@@ -126,11 +51,12 @@ template <typename T, typename V> void call_method(T* instance, void (T::*method
         return;
     }
 
-    invoke([instance, method, val = std::move(value)]() mutable { (instance->*method)(val); });
+    helix::ui::queue_update(
+        [instance, method, val = std::move(value)]() mutable { (instance->*method)(val); });
 }
 
 /**
- * @brief Invoke a member function with const reference parameter
+ * @brief Queue a member function call with const reference parameter
  *
  * @tparam T Instance type
  * @tparam V Value type (copied into context)
@@ -148,13 +74,11 @@ void call_method_ref(T* instance, void (T::*method)(const V&), const V& value) {
         return;
     }
 
-    invoke([instance, method, val = value]() { (instance->*method)(val); });
+    helix::ui::queue_update([instance, method, val = value]() { (instance->*method)(val); });
 }
 
 /**
- * @brief Invoke a member function with two parameters
- *
- * Handles cases like set_connection_state_internal(int, const char*).
+ * @brief Queue a member function call with two parameters
  *
  * @tparam T Instance type
  * @tparam V1 First parameter type
@@ -174,16 +98,14 @@ void call_method2(T* instance, void (T::*method)(V1, V2), V1 v1, V2 v2) {
         return;
     }
 
-    invoke([instance, method, val1 = std::move(v1), val2 = std::move(v2)]() mutable {
-        (instance->*method)(val1, val2);
-    });
+    helix::ui::queue_update([instance, method, val1 = std::move(v1),
+                             val2 = std::move(v2)]() mutable { (instance->*method)(val1, val2); });
 }
 
 /**
- * @brief Safely invoke a callable if a weak_ptr is still valid
+ * @brief Queue a callable that only runs if a weak_ptr is still valid
  *
- * This is the recommended pattern for objects with uncertain lifetime.
- * The callback is only invoked if the weak_ptr can be locked.
+ * Recommended for objects with uncertain lifetime.
  *
  * @tparam T Object type
  * @tparam Callable Function taking T& as parameter
@@ -199,7 +121,7 @@ void call_method2(T* instance, void (T::*method)(V1, V2), V1 v1, V2 v2) {
  */
 template <typename T, typename Callable>
 void invoke_weak(std::weak_ptr<T> weak, Callable&& callable) {
-    invoke([w = std::move(weak), fn = std::forward<Callable>(callable)]() {
+    helix::ui::queue_update([w = std::move(weak), fn = std::forward<Callable>(callable)]() {
         if (auto shared = w.lock()) {
             fn(*shared);
         }

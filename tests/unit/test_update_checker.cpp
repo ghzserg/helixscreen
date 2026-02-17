@@ -24,6 +24,9 @@
 #include "version.h"
 
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
 #include <optional>
 #include <string>
 #include <thread>
@@ -407,6 +410,7 @@ TEST_CASE("Update checker error scenarios", "[update_checker][error]") {
 
 #include "system/update_checker.h"
 
+using namespace helix;
 TEST_CASE("UpdateChecker status enum values", "[update_checker][status]") {
     // Verify enum values exist and are distinct
     REQUIRE(static_cast<int>(UpdateChecker::Status::Idle) == 0);
@@ -952,4 +956,354 @@ TEST_CASE("UpdateChecker notification subjects exist after init", "[update_check
     }
 
     checker.shutdown();
+}
+
+// ============================================================================
+// Installer Resolution Tests (tarball extraction preference)
+// ============================================================================
+
+namespace {
+
+// Helper to create a temp directory
+std::string make_temp_dir(const std::string& prefix) {
+    std::string tmpl = "/tmp/" + prefix + "_XXXXXX";
+    std::vector<char> buf(tmpl.begin(), tmpl.end());
+    buf.push_back('\0');
+    char* result = mkdtemp(buf.data());
+    return result ? std::string(result) : "";
+}
+
+// Helper to create a file with content and optional +x permission
+void create_file(const std::string& path, const std::string& content, bool executable = false) {
+    std::ofstream f(path);
+    f << content;
+    f.close();
+    if (executable) {
+        chmod(path.c_str(), 0755);
+    }
+}
+
+// Helper to recursively remove a directory
+void remove_dir(const std::string& path) {
+    std::string cmd = "rm -rf " + path;
+    std::system(cmd.c_str());
+}
+
+} // anonymous namespace
+
+TEST_CASE("find_local_installer with custom search paths", "[update_checker][installer]") {
+    auto tmp = make_temp_dir("helix_test_installer");
+    REQUIRE(!tmp.empty());
+
+    SECTION("finds installer in extra search path") {
+        std::string installer_path = tmp + "/install.sh";
+        create_file(installer_path, "#!/bin/sh\necho test\n", true);
+
+        auto found = UpdateChecker::find_local_installer({installer_path});
+        REQUIRE(found == installer_path);
+    }
+
+    SECTION("extra search paths take priority over well-known paths") {
+        std::string installer_path = tmp + "/install.sh";
+        create_file(installer_path, "#!/bin/sh\necho custom\n", true);
+
+        auto found = UpdateChecker::find_local_installer({installer_path});
+        // Should find our custom path, not a well-known one
+        REQUIRE(found == installer_path);
+    }
+
+    SECTION("returns empty when no installer exists") {
+        // Search only in our empty temp dir — nothing executable there
+        std::string nonexistent = tmp + "/nonexistent/install.sh";
+        auto found = UpdateChecker::find_local_installer({nonexistent});
+        // The key test: nonexistent path is NOT returned
+        REQUIRE(found != nonexistent);
+    }
+
+    SECTION("skips non-executable files") {
+        std::string installer_path = tmp + "/install.sh";
+        create_file(installer_path, "#!/bin/sh\necho test\n", false); // NOT executable
+
+        auto found = UpdateChecker::find_local_installer({installer_path});
+        // Should not find the non-executable file
+        REQUIRE(found != installer_path);
+    }
+
+    SECTION("finds first executable in multiple extra paths") {
+        std::string first = tmp + "/first_install.sh";
+        std::string second = tmp + "/second_install.sh";
+        create_file(first, "#!/bin/sh\necho first\n", true);
+        create_file(second, "#!/bin/sh\necho second\n", true);
+
+        auto found = UpdateChecker::find_local_installer({first, second});
+        REQUIRE(found == first);
+    }
+
+    SECTION("skips missing first path, finds second") {
+        std::string missing = tmp + "/missing_install.sh";
+        std::string present = tmp + "/present_install.sh";
+        create_file(present, "#!/bin/sh\necho here\n", true);
+
+        auto found = UpdateChecker::find_local_installer({missing, present});
+        REQUIRE(found == present);
+    }
+
+    remove_dir(tmp);
+}
+
+TEST_CASE("Tarball installer extraction creates correct structure", "[update_checker][installer]") {
+    // Test that a tarball containing helixscreen/install.sh can be extracted
+    // and the extracted installer is usable
+    auto tmp = make_temp_dir("helix_test_tarball");
+    REQUIRE(!tmp.empty());
+
+    SECTION("tarball with install.sh can be extracted") {
+        // Create the directory structure: helixscreen/install.sh
+        std::string inner_dir = tmp + "/helixscreen";
+        mkdir(inner_dir.c_str(), 0755);
+        create_file(inner_dir + "/install.sh", "#!/bin/sh\nexit 0\n", true);
+
+        // Create tarball
+        std::string tarball_path = tmp + "/test.tar.gz";
+        std::string cmd = "tar czf " + tarball_path + " -C " + tmp + " helixscreen/install.sh";
+        REQUIRE(std::system(cmd.c_str()) == 0);
+
+        // Extract to a new location (simulating what do_install does)
+        std::string extract_dir = tmp + "/extracted";
+        mkdir(extract_dir.c_str(), 0750);
+
+        std::string extract_cmd =
+            "tar xzf " + tarball_path + " -C " + extract_dir + " helixscreen/install.sh";
+        REQUIRE(std::system(extract_cmd.c_str()) == 0);
+
+        // Verify the extracted installer exists and is readable
+        std::string extracted_installer = extract_dir + "/helixscreen/install.sh";
+        REQUIRE(access(extracted_installer.c_str(), R_OK) == 0);
+
+        // Make it executable (as do_install does)
+        chmod(extracted_installer.c_str(), 0755);
+        REQUIRE(access(extracted_installer.c_str(), X_OK) == 0);
+
+        // Verify content matches
+        std::ifstream f(extracted_installer);
+        std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        REQUIRE(content.find("#!/bin/sh") != std::string::npos);
+        REQUIRE(content.find("exit 0") != std::string::npos);
+    }
+
+    SECTION("tarball without install.sh triggers fallback") {
+        // Create a tarball with only the binary, no install.sh
+        std::string inner_dir = tmp + "/helixscreen/bin";
+        std::string mkdir_cmd = "mkdir -p " + inner_dir;
+        std::system(mkdir_cmd.c_str());
+        create_file(inner_dir + "/helix-screen", "fake-binary", false);
+
+        std::string tarball_path = tmp + "/no-installer.tar.gz";
+        std::string cmd =
+            "tar czf " + tarball_path + " -C " + tmp + " helixscreen/bin/helix-screen";
+        REQUIRE(std::system(cmd.c_str()) == 0);
+
+        // Try to extract install.sh — should fail
+        std::string extract_dir = tmp + "/extracted2";
+        mkdir(extract_dir.c_str(), 0750);
+
+        std::string extract_cmd = "tar xzf " + tarball_path + " -C " + extract_dir +
+                                  " helixscreen/install.sh 2>/dev/null";
+        int ret = std::system(extract_cmd.c_str());
+        // tar returns non-zero when the specified member doesn't exist
+        REQUIRE(ret != 0);
+
+        // Extracted installer should not exist
+        std::string extracted_installer = extract_dir + "/helixscreen/install.sh";
+        REQUIRE(access(extracted_installer.c_str(), R_OK) != 0);
+    }
+
+    remove_dir(tmp);
+}
+
+// ============================================================================
+// extract_installer_from_tarball tests
+//
+// These tests exercise the actual production code path that was silently broken
+// by the gunzip -k incompatibility on older BusyBox. They call
+// UpdateChecker::extract_installer_from_tarball() directly to verify the logic
+// that do_install() depends on.
+// ============================================================================
+
+namespace {
+
+// Resolve path to tests/fixtures/update/ using __FILE__.
+// __FILE__ may be absolute or relative depending on build system.
+std::string get_update_fixture_dir() {
+    std::string src = __FILE__;
+
+    // Handle both absolute (".../tests/unit/...") and relative ("tests/unit/...") paths
+    auto pos = src.rfind("/tests/unit/");
+    if (pos != std::string::npos) {
+        return src.substr(0, pos) + "/tests/fixtures/update/";
+    }
+
+    // Relative path starting with "tests/unit/"
+    if (src.find("tests/unit/") == 0) {
+        return "tests/fixtures/update/";
+    }
+
+    return "";
+}
+
+} // namespace
+
+TEST_CASE("extract_installer_from_tarball: tarball with install.sh",
+          "[update_checker][installer][do_install]") {
+    auto tmp = make_temp_dir("helix_extract_test");
+    REQUIRE(!tmp.empty());
+
+    SECTION("extracts installer from a well-formed release tarball") {
+        // Build a minimal release tarball: helixscreen/install.sh
+        std::string inner = tmp + "/helixscreen";
+        mkdir(inner.c_str(), 0755);
+        create_file(inner + "/install.sh", "#!/bin/sh\nexit 0\n", true);
+
+        std::string tarball = tmp + "/release.tar.gz";
+        std::string cmd =
+            "cd " + tmp + " && COPYFILE_DISABLE=1 tar czf release.tar.gz helixscreen/install.sh";
+        REQUIRE(std::system(cmd.c_str()) == 0);
+
+        std::string extract_dir = tmp + "/extracted";
+        mkdir(extract_dir.c_str(), 0750);
+
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, extract_dir);
+
+        REQUIRE(!result.empty());
+        REQUIRE(result.find("install.sh") != std::string::npos);
+        REQUIRE(access(result.c_str(), X_OK) == 0); // must be executable after extraction
+    }
+
+    SECTION("returns empty when install.sh is absent from tarball") {
+        // Tarball with only the binary — no install.sh (replicates the CC1 packaging bug)
+        std::string inner = tmp + "/helixscreen/bin";
+        std::string mkdircmd = "mkdir -p " + inner;
+        std::system(mkdircmd.c_str());
+        create_file(inner + "/helix-screen", "fake-binary", false);
+
+        std::string tarball = tmp + "/no-installer.tar.gz";
+        std::string cmd = "cd " + tmp +
+                          " && COPYFILE_DISABLE=1 tar czf no-installer.tar.gz"
+                          " helixscreen/bin/helix-screen";
+        REQUIRE(std::system(cmd.c_str()) == 0);
+
+        std::string extract_dir = tmp + "/extracted2";
+        mkdir(extract_dir.c_str(), 0750);
+
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, extract_dir);
+        REQUIRE(result.empty()); // no installer → empty, triggers find_local_installer fallback
+    }
+
+    SECTION("returns empty when tarball does not exist") {
+        std::string extract_dir = tmp + "/extracted3";
+        mkdir(extract_dir.c_str(), 0750);
+
+        auto result =
+            UpdateChecker::extract_installer_from_tarball(tmp + "/nonexistent.tar.gz", extract_dir);
+        REQUIRE(result.empty());
+    }
+
+    SECTION("extracted installer is chmod +x regardless of permissions in archive") {
+        std::string inner = tmp + "/helixscreen";
+        mkdir(inner.c_str(), 0755);
+        // Create install.sh without +x — extract_installer_from_tarball must chmod it
+        create_file(inner + "/install.sh", "#!/bin/sh\nexit 0\n", false);
+
+        std::string tarball = tmp + "/no-exec.tar.gz";
+        std::string cmd =
+            "cd " + tmp + " && COPYFILE_DISABLE=1 tar czf no-exec.tar.gz helixscreen/install.sh";
+        REQUIRE(std::system(cmd.c_str()) == 0);
+
+        std::string extract_dir = tmp + "/extracted4";
+        mkdir(extract_dir.c_str(), 0750);
+
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, extract_dir);
+        REQUIRE(!result.empty());
+        REQUIRE(access(result.c_str(), X_OK) == 0); // function must have chmod +x'd it
+    }
+
+    remove_dir(tmp);
+}
+
+TEST_CASE("extract_installer_from_tarball: committed fixture tarballs",
+          "[update_checker][installer][do_install]") {
+    std::string fixture_dir = get_update_fixture_dir();
+    REQUIRE(!fixture_dir.empty());
+
+    SECTION("fixture WITH install.sh extracts successfully") {
+        std::string tarball = fixture_dir + "helixscreen-pi-v99.0.0-test.tar.gz";
+        if (access(tarball.c_str(), R_OK) != 0) {
+            FAIL("Fixture file missing: " + tarball);
+        }
+
+        auto tmp = make_temp_dir("helix_fixture_ok");
+        REQUIRE(!tmp.empty());
+
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, tmp);
+        REQUIRE(!result.empty());
+        REQUIRE(access(result.c_str(), X_OK) == 0);
+
+        remove_dir(tmp);
+    }
+
+    SECTION("fixture WITHOUT install.sh returns empty (replicates CC1 packaging bug)") {
+        std::string tarball = fixture_dir + "helixscreen-pi-v99.0.0-no-installer.tar.gz";
+        if (access(tarball.c_str(), R_OK) != 0) {
+            FAIL("Fixture file missing: " + tarball);
+        }
+
+        auto tmp = make_temp_dir("helix_fixture_noinst");
+        REQUIRE(!tmp.empty());
+
+        // This is the exact failure mode CC1 users hit before the packaging fix:
+        // tarball exists, install.sh is missing, do_install falls back to
+        // find_local_installer() which returns "" on a fresh device → "Installer not found"
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, tmp);
+        REQUIRE(result.empty());
+
+        remove_dir(tmp);
+    }
+}
+
+TEST_CASE("extract_installer_from_tarball: works with empty PATH (systemd regression)",
+          "[update_checker][installer][do_install][path]") {
+    // Regression test for the Pi "Installer not found" bug:
+    // systemd services run with a minimal PATH that may not include /usr/bin or /bin.
+    // extract_installer_from_tarball must use absolute tool paths (via resolve_tool),
+    // not bare names that depend on $PATH. If it uses bare names, execvp("tar", ...)
+    // exits 127 → extraction fails → "Installer not found".
+
+    std::string fixture_dir = get_update_fixture_dir();
+    REQUIRE(!fixture_dir.empty());
+
+    std::string tarball = fixture_dir + "helixscreen-pi-v99.0.0-test.tar.gz";
+    if (access(tarball.c_str(), R_OK) != 0) {
+        FAIL("Fixture file missing: " + tarball);
+    }
+
+    auto tmp = make_temp_dir("helix_path_test");
+    REQUIRE(!tmp.empty());
+
+    // Save and clear PATH to simulate a minimal systemd environment
+    const char* original_path = std::getenv("PATH");
+    setenv("PATH", "", 1); // empty PATH — bare execvp("tar",...) would fail
+
+    auto result = UpdateChecker::extract_installer_from_tarball(tarball, tmp);
+
+    // Restore PATH before assertions (even if they fail)
+    if (original_path) {
+        setenv("PATH", original_path, 1);
+    } else {
+        unsetenv("PATH");
+    }
+
+    remove_dir(tmp);
+
+    // Must succeed: resolve_tool() finds tar/cp/gunzip via absolute paths
+    REQUIRE(!result.empty());
 }

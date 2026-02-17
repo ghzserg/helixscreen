@@ -6,7 +6,7 @@
  * @brief Bundle for managing common temperature subject observers (nozzle + bed)
  *
  * Encapsulates the repetitive pattern of subscribing to 4 temperature subjects
- * (extruder temp/target, bed temp/target) that appears in 5+ panels.
+ * (active extruder temp/target, bed temp/target) that appears in 5+ panels.
  *
  * Reduces ~12-15 lines of boilerplate per panel to a single setup call.
  *
@@ -80,11 +80,11 @@ template <typename Panel> class TemperatureObserverBundle {
         clear();
 
         nozzle_temp_observer_ =
-            observe_int_sync<Panel>(state.get_extruder_temp_subject(), panel,
+            observe_int_sync<Panel>(state.get_active_extruder_temp_subject(), panel,
                                     std::forward<NozzleTempHandler>(on_nozzle_temp));
 
         nozzle_target_observer_ =
-            observe_int_sync<Panel>(state.get_extruder_target_subject(), panel,
+            observe_int_sync<Panel>(state.get_active_extruder_target_subject(), panel,
                                     std::forward<NozzleTargetHandler>(on_nozzle_target));
 
         bed_temp_observer_ = observe_int_sync<Panel>(state.get_bed_temp_subject(), panel,
@@ -121,11 +121,11 @@ template <typename Panel> class TemperatureObserverBundle {
         auto update_copy = update_handler;
 
         nozzle_temp_observer_ =
-            observe_int_async<Panel>(state.get_extruder_temp_subject(), panel,
+            observe_int_async<Panel>(state.get_active_extruder_temp_subject(), panel,
                                      std::forward<CacheNozzleTemp>(cache_nozzle_temp), update_copy);
 
         nozzle_target_observer_ = observe_int_async<Panel>(
-            state.get_extruder_target_subject(), panel,
+            state.get_active_extruder_target_subject(), panel,
             std::forward<CacheNozzleTarget>(cache_nozzle_target), update_copy);
 
         bed_temp_observer_ =
@@ -135,6 +135,37 @@ template <typename Panel> class TemperatureObserverBundle {
         bed_target_observer_ = observe_int_async<Panel>(
             state.get_bed_target_subject(), panel, std::forward<CacheBedTarget>(cache_bed_target),
             std::move(update_copy));
+    }
+
+    /**
+     * @brief Setup observers for a specific extruder (by Klipper name)
+     *
+     * Binds only nozzle temp/target observers to named extruder subjects.
+     * Does not touch bed observers. Returns silently if subjects not found.
+     *
+     * @param panel Panel instance (must outlive observers)
+     * @param state PrinterState reference for temperature subjects
+     * @param extruder_name Klipper heater name (e.g. "extruder", "extruder1")
+     * @param on_nozzle_temp Called when nozzle current temperature changes
+     * @param on_nozzle_target Called when nozzle target temperature changes
+     */
+    template <typename NozzleTempHandler, typename NozzleTargetHandler>
+    void setup_for_extruder(Panel* panel, PrinterState& state, const std::string& extruder_name,
+                            NozzleTempHandler&& on_nozzle_temp,
+                            NozzleTargetHandler&& on_nozzle_target) {
+        clear(); // Release any existing observers before rebinding
+
+        auto* temp_subj = state.get_extruder_temp_subject(extruder_name);
+        auto* target_subj = state.get_extruder_target_subject(extruder_name);
+
+        if (temp_subj) {
+            nozzle_temp_observer_ = observe_int_sync<Panel>(
+                temp_subj, panel, std::forward<NozzleTempHandler>(on_nozzle_temp));
+        }
+        if (target_subj) {
+            nozzle_target_observer_ = observe_int_sync<Panel>(
+                target_subj, panel, std::forward<NozzleTargetHandler>(on_nozzle_target));
+        }
     }
 
     /**

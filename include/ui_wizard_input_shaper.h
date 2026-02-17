@@ -50,13 +50,12 @@ class WizardInputShaperStep {
     WizardInputShaperStep();
     ~WizardInputShaperStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardInputShaperStep(const WizardInputShaperStep&) = delete;
     WizardInputShaperStep& operator=(const WizardInputShaperStep&) = delete;
-
-    // Movable
-    WizardInputShaperStep(WizardInputShaperStep&& other) noexcept;
-    WizardInputShaperStep& operator=(WizardInputShaperStep&& other) noexcept;
+    WizardInputShaperStep(WizardInputShaperStep&&) = delete;
+    WizardInputShaperStep& operator=(WizardInputShaperStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects

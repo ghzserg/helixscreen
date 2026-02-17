@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <api>
+    <prop name="size" type="string" default="#icon_size"/>
+  </api>
+  <!--
+    Nozzle Icon with Tool Badge
+
+    Shows a heater icon with an automatic tool badge (T0, T1, etc.)
+    overlaid in the top-right corner when a multi-tool printer is detected.
+
+    Binds to ToolState subjects:
+    - show_tool_badge: 1 = show badge, 0 = hide (single-tool)
+    - tool_badge_text: Active tool name (e.g., "T0")
+
+    The icon name is "nozzle_icon" for C++ lookup (e.g., HeatingIconAnimator).
+  -->
+  <view name="nozzle_icon" width="content" height="content"
+        style_pad_all="0" scrollable="false"
+        clickable="false" event_bubble="true">
+    <icon name="nozzle_icon_glyph" src="heater" size="$size" variant="secondary"
+          clickable="false" event_bubble="true"/>
+    <lv_obj name="tool_badge" align="top_right" x="-#space_xxs" y="#space_xxs"
+            width="#badge_size" height="#badge_size" style_radius="1000"
+            style_bg_color="#info" style_bg_opa="255" style_border_width="0"
+            style_pad_all="0" scrollable="false"
+            clickable="false" event_bubble="true">
+      <bind_flag_if_eq subject="show_tool_badge" flag="hidden" ref_value="0"/>
+      <text_tiny bind_text="tool_badge_text" style_text_color="#text" style_text_align="center"
+                 align="center" clickable="false" event_bubble="true"/>
+    </lv_obj>
+  </view>
+</component>

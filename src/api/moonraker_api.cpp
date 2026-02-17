@@ -11,6 +11,8 @@
 #include <sstream>
 #include <thread>
 
+using namespace helix;
+
 using namespace moonraker_internal;
 
 // ============================================================================
@@ -44,6 +46,10 @@ MoonrakerAPI::MoonrakerAPI(MoonrakerClient& client, PrinterState& state) : clien
 }
 
 MoonrakerAPI::~MoonrakerAPI() {
+    // Deinit LVGL subject before destruction to prevent dangling observer crashes
+    // (same pattern as StaticSubjectRegistry — observers must be disconnected before lv_deinit)
+    lv_subject_deinit(&build_volume_version_);
+
     // Signal shutdown and wait for HTTP threads with timeout
     // File downloads/uploads can have long timeouts (up to 1 hour in libhv),
     // so we use a timed join to avoid blocking shutdown indefinitely.
@@ -232,6 +238,10 @@ SubscriptionId MoonrakerAPI::subscribe_notifications(std::function<void(json)> c
 
 bool MoonrakerAPI::unsubscribe_notifications(SubscriptionId id) {
     return client_.unsubscribe_notify_update(id);
+}
+
+std::weak_ptr<bool> MoonrakerAPI::client_lifetime_weak() const {
+    return client_.lifetime_weak();
 }
 
 void MoonrakerAPI::register_method_callback(const std::string& method, const std::string& name,

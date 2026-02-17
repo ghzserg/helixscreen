@@ -146,6 +146,22 @@ bool is_valid_ip_or_hostname(const std::string& host_raw) {
     return true;
 }
 
+std::string sanitize_port(const char* str) {
+    std::string result;
+    if (str) {
+        for (const char* p = str; *p; ++p) {
+            if (std::isdigit(static_cast<unsigned char>(*p))) {
+                result += *p;
+            }
+        }
+    }
+    return result;
+}
+
+std::string sanitize_port(const std::string& str) {
+    return sanitize_port(str.c_str());
+}
+
 bool is_valid_port(const std::string& port_str_raw) {
     std::string port_str = trim(port_str_raw);
 

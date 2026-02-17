@@ -3,10 +3,16 @@
 
 #pragma once
 
+#include "ui_spool_wizard.h"
+#include "ui_spoolman_context_menu.h"
+#include "ui_spoolman_edit_modal.h"
+#include "ui_spoolman_list_view.h"
+
 #include "overlay_base.h"
 #include "spoolman_types.h" // For SpoolInfo
 #include "subject_managed_panel.h"
 
+#include <string>
 #include <vector>
 
 /**
@@ -67,35 +73,63 @@ class SpoolmanPanel : public OverlayBase {
 
   private:
     // ========== UI Widget Pointers ==========
-    lv_obj_t* spool_list_ = nullptr; // Still needed for populate_spool_list()
+    lv_obj_t* spool_list_ = nullptr;
 
     // ========== Flags ==========
     bool callbacks_registered_ = false;
 
     // ========== State ==========
     std::vector<SpoolInfo> cached_spools_;
+    std::vector<SpoolInfo> filtered_spools_; ///< Filtered view of cached_spools_
     int active_spool_id_ = -1;
+
+    // ========== Search ==========
+    std::string search_query_;
+    lv_timer_t* search_debounce_timer_ = nullptr;
+    static constexpr uint32_t SEARCH_DEBOUNCE_MS = 300;
+
+    // ========== Virtualized List View ==========
+    helix::ui::SpoolmanListView list_view_;
 
     // ========== Subjects ==========
     SubjectManager subjects_;          ///< RAII subject manager
     lv_subject_t panel_state_subject_; ///< Panel display state (loading/empty/spools)
-    lv_subject_t spool_count_subject_;
-    char spool_count_buf_[32];
+    lv_subject_t header_title_subject_;
+    char header_title_buf_[64];
 
     // ========== Private Methods ==========
+    [[nodiscard]] const SpoolInfo* find_cached_spool(int spool_id) const;
+
     void populate_spool_list();
-    void update_row_visuals(lv_obj_t* row, const SpoolInfo& spool);
+    void apply_filter();
+    void update_active_indicators();
     void show_loading_state();
     void show_empty_state();
     void show_spool_list();
     void update_spool_count();
 
-    void handle_spool_clicked(lv_obj_t* row);
+    void handle_spool_clicked(lv_obj_t* row, lv_point_t click_pt);
+    void handle_context_action(helix::ui::SpoolmanContextMenu::MenuAction action, int spool_id);
     void set_active_spool(int spool_id);
+    void delete_spool(int spool_id);
+
+    void show_edit_modal(int spool_id);
+
+    // === Context Menu ===
+    helix::ui::SpoolmanContextMenu context_menu_;
+    helix::ui::SpoolEditModal edit_modal_;
+
+    // === Spool Wizard ===
+    lv_obj_t* wizard_panel_ = nullptr;
 
     // ========== Static Event Callbacks ==========
     static void on_spool_row_clicked(lv_event_t* e);
     static void on_refresh_clicked(lv_event_t* e);
+    static void on_add_spool_clicked(lv_event_t* e);
+    static void on_scroll(lv_event_t* e);
+    static void on_search_changed(lv_event_t* e);
+    static void on_search_clear(lv_event_t* e);
+    static void on_search_timer(lv_timer_t* timer);
 };
 
 // ============================================================================

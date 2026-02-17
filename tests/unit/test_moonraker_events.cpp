@@ -34,6 +34,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Test Access: AbortManager friend class for test-only state manipulation
 // ============================================================================

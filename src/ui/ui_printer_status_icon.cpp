@@ -6,9 +6,11 @@
 #include "moonraker_client.h"
 #include "observer_factory.h"
 #include "printer_state.h"
+#include "static_panel_registry.h"
 
 #include <spdlog/spdlog.h>
 
+using namespace helix;
 using helix::ui::observe_int_sync;
 
 // ============================================================================
@@ -38,6 +40,11 @@ void PrinterStatusIcon::init_subjects() {
                            subjects_);
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticPanelRegistry::instance().register_destroy(
+        "PrinterStatusIconSubjects", []() { PrinterStatusIcon::instance().deinit_subjects(); });
+
     spdlog::trace("[PrinterStatusIcon] Subjects initialized and registered");
 }
 
@@ -136,20 +143,4 @@ void PrinterStatusIcon::deinit_subjects() {
     subjects_initialized_ = false;
     initialized_ = false;
     spdlog::debug("[PrinterStatusIcon] Subjects deinitialized");
-}
-
-// ============================================================================
-// LEGACY API (forwards to PrinterStatusIcon)
-// ============================================================================
-
-void ui_printer_status_icon_init_subjects() {
-    PrinterStatusIcon::instance().init_subjects();
-}
-
-void ui_printer_status_icon_init() {
-    PrinterStatusIcon::instance().init();
-}
-
-void ui_printer_status_icon_deinit_subjects() {
-    PrinterStatusIcon::instance().deinit_subjects();
 }

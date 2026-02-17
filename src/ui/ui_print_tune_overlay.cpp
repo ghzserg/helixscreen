@@ -6,7 +6,7 @@
 #include "ui_error_reporting.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_z_offset_indicator.h"
 
 #include "format_utils.h"
@@ -21,6 +21,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+
+using namespace helix;
 
 // ============================================================================
 // SINGLETON ACCESSOR
@@ -171,7 +173,7 @@ void PrintTuneOverlay::show(lv_obj_t* parent_screen, MoonrakerAPI* api,
     NavigationManager::instance().register_overlay_instance(tune_panel_, this);
 
     // Push onto navigation stack (on_activate will be called after animation)
-    ui_nav_push_overlay(tune_panel_);
+    NavigationManager::instance().push_overlay(tune_panel_);
 }
 
 // ============================================================================
@@ -323,10 +325,10 @@ void PrintTuneOverlay::update_z_offset_icons(lv_obj_t* /*panel*/) {
 // ============================================================================
 
 void PrintTuneOverlay::update_display() {
-    helix::fmt::format_percent(speed_percent_, tune_speed_buf_, sizeof(tune_speed_buf_));
+    helix::format::format_percent(speed_percent_, tune_speed_buf_, sizeof(tune_speed_buf_));
     lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
 
-    helix::fmt::format_percent(flow_percent_, tune_flow_buf_, sizeof(tune_flow_buf_));
+    helix::format::format_percent(flow_percent_, tune_flow_buf_, sizeof(tune_flow_buf_));
     lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
 }
 
@@ -344,8 +346,8 @@ void PrintTuneOverlay::update_z_offset_display(int microns) {
     current_z_offset_ = microns / 1000.0;
 
     if (subjects_initialized_) {
-        helix::fmt::format_distance_mm(current_z_offset_, 3, tune_z_offset_buf_,
-                                       sizeof(tune_z_offset_buf_));
+        helix::format::format_distance_mm(current_z_offset_, 3, tune_z_offset_buf_,
+                                          sizeof(tune_z_offset_buf_));
         lv_subject_copy_string(&tune_z_offset_subject_, tune_z_offset_buf_);
     }
 
@@ -361,7 +363,7 @@ void PrintTuneOverlay::handle_speed_display(int value) {
     speed_percent_ = value;
 
     // Update display while dragging (no G-code)
-    helix::fmt::format_percent(value, tune_speed_buf_, sizeof(tune_speed_buf_));
+    helix::format::format_percent(value, tune_speed_buf_, sizeof(tune_speed_buf_));
     lv_subject_copy_string(&tune_speed_subject_, tune_speed_buf_);
 }
 
@@ -382,7 +384,7 @@ void PrintTuneOverlay::handle_flow_display(int value) {
     flow_percent_ = value;
 
     // Update display while dragging (no G-code)
-    helix::fmt::format_percent(value, tune_flow_buf_, sizeof(tune_flow_buf_));
+    helix::format::format_percent(value, tune_flow_buf_, sizeof(tune_flow_buf_));
     lv_subject_copy_string(&tune_flow_subject_, tune_flow_buf_);
 }
 
@@ -446,8 +448,8 @@ void PrintTuneOverlay::handle_reset() {
 void PrintTuneOverlay::handle_z_offset_changed(double delta) {
     // Update local display immediately for responsive feel
     current_z_offset_ += delta;
-    helix::fmt::format_distance_mm(current_z_offset_, 3, tune_z_offset_buf_,
-                                   sizeof(tune_z_offset_buf_));
+    helix::format::format_distance_mm(current_z_offset_, 3, tune_z_offset_buf_,
+                                      sizeof(tune_z_offset_buf_));
     lv_subject_copy_string(&tune_z_offset_subject_, tune_z_offset_buf_);
 
     // Track pending delta for "unsaved adjustment" notification in Controls panel
@@ -509,7 +511,8 @@ void PrintTuneOverlay::handle_save_z_offset() {
         if (strategy == ZOffsetCalibrationStrategy::GCODE_OFFSET) {
             spdlog::debug(
                 "[PrintTuneOverlay] Z-offset auto-saved by firmware (gcode_offset strategy)");
-            ui_toast_show(ToastSeverity::INFO, lv_tr("Z-offset is auto-saved by firmware"), 3000);
+            ToastManager::instance().show(ToastSeverity::INFO,
+                                          lv_tr("Z-offset is auto-saved by firmware"), 3000);
             return;
         }
     }
@@ -521,8 +524,9 @@ void PrintTuneOverlay::handle_save_z_offset() {
                 "SAVE_CONFIG",
                 []() {
                     spdlog::info("[PrintTuneOverlay] Z-offset saved - Klipper restarting");
-                    ui_toast_show(ToastSeverity::WARNING,
-                                  lv_tr("Z-offset saved - Klipper restarting..."), 5000);
+                    ToastManager::instance().show(ToastSeverity::WARNING,
+                                                  lv_tr("Z-offset saved - Klipper restarting..."),
+                                                  5000);
                 },
                 [](const MoonrakerError& err) {
                     spdlog::error("[PrintTuneOverlay] SAVE_CONFIG failed: {}", err.message);

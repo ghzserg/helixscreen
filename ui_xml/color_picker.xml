@@ -35,7 +35,7 @@
               style_flex_cross_place="start" style_pad_gap="#space_md" scrollable="false">
         <!-- Selected color preview swatch -->
         <lv_obj name="selected_color_preview"
-                width="#color_preview_size" height="#color_preview_size" style_radius="#border_radius"
+                width="#color_preview_size" height="#color_preview_size_small" style_radius="#border_radius"
                 style_bg_color="0x808080" style_bg_opa="255" style_border_width="2" style_border_color="#text_muted"
                 style_border_opa="80" scrollable="false"/>
         <!-- HSV picker: SV square + horizontal hue bar below -->
@@ -43,24 +43,25 @@
       </lv_obj>
       <!-- RIGHT COLUMN: Hex input + name + Presets (height matches left column) -->
       <!-- Left column: 48 (preview) + 12 (gap) + 208 (hsv) = 268px -->
-      <lv_obj height="268"
+      <lv_obj height="268" flex_grow="1"
               style_pad_all="0" flex_flow="column" style_flex_main_place="space_between" style_flex_cross_place="start"
               style_pad_gap="0" scrollable="false">
         <!-- TOP: Hex input + color name + presets label -->
-        <lv_obj height="content"
+        <lv_obj width="100%" height="content"
                 style_pad_all="0" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start"
                 style_pad_gap="#space_sm" scrollable="false">
           <!-- Hex input + color name row -->
-          <lv_obj height="content"
+          <lv_obj width="100%" height="content"
                   style_pad_all="0" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
                   style_pad_gap="#space_sm" scrollable="false">
             <text_input name="hex_input"
-                        width="90" height="content" max_length="9" text="#808080" placeholder_text="#RRGGBB"
-                        style_border_width="0" style_outline_width="0">
+                        width="100" height="content" max_length="9" text="#808080" placeholder_text="#RRGGBB"
+                        style_border_width="0" style_outline_width="0" scrollable="false">
               <event_cb trigger="value_changed" callback="hex_input_changed_cb"/>
               <event_cb trigger="defocused" callback="hex_input_defocused_cb"/>
             </text_input>
-            <lv_label name="selected_name_label" width="content" text="Gray" translation_tag="Gray"/>
+            <lv_label name="selected_name_label" flex_grow="1" text="Gray" translation_tag="Gray"
+                      long_mode="wrap"/>
           </lv_obj>
           <!-- Presets label -->
           <text_small text="Presets" translation_tag="Presets"/>

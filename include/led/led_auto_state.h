@@ -10,7 +10,9 @@
 
 #include "hv/json.hpp"
 
+namespace helix {
 class PrinterState;
+}
 
 namespace helix::led {
 

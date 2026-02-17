@@ -20,7 +20,7 @@
         <icon src="download" size="md" variant="primary"/>
         <text_heading text="New Version Available" translation_tag="New Version Available"/>
       </lv_obj>
-      <ui_button name="btn_close" width="40" height="40" icon="close" variant="ghost">
+      <ui_button name="btn_close" width="40" height="40" icon="close" variant="ghost" focusable="false">
         <event_cb trigger="clicked" callback="on_update_notify_close"/>
       </ui_button>
     </lv_obj>

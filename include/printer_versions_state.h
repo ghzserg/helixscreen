@@ -46,7 +46,7 @@ class PrinterVersionsState {
      * @brief Set Klipper version string (synchronous, must be on UI thread)
      *
      * This is a synchronous setter intended to be called from within
-     * helix::async::invoke() by PrinterState, which handles the async
+     * helix::ui::queue_update() by PrinterState, which handles the async
      * dispatch.
      *
      * @param version Version string (e.g., "v0.12.0-108-g2c7a9d58")
@@ -57,7 +57,7 @@ class PrinterVersionsState {
      * @brief Set Moonraker version string (synchronous, must be on UI thread)
      *
      * This is a synchronous setter intended to be called from within
-     * helix::async::invoke() by PrinterState, which handles the async
+     * helix::ui::queue_update() by PrinterState, which handles the async
      * dispatch.
      *
      * @param version Version string (e.g., "v0.8.0-143-g2c7a9d58")

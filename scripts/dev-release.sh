@@ -23,7 +23,7 @@ Usage: dev-release.sh [--version VERSION] [--platform PLATFORM] [--channel CHANN
 
 Options:
   --version VERSION   Version string (default: VERSION.txt + -dev.TIMESTAMP)
-  --platform PLATFORM Platform to upload (pi, ad5m, k1, or "all") (default: all available)
+  --platform PLATFORM Platform to upload (pi, ad5m, cc1, k1, or "all") (default: all available)
   --channel CHANNEL   Channel prefix in bucket (default: dev)
   --dry-run           Show what would be uploaded without actually uploading
   --help              Show this help message
@@ -142,8 +142,8 @@ if [[ "$PLATFORM" == "all" ]]; then
     echo -e "${GREEN}Found platforms: ${PLATFORMS[*]}${NC}"
 else
     # Validate platform
-    if [[ ! "$PLATFORM" =~ ^(pi|pi32|ad5m|k1)$ ]]; then
-        echo -e "${RED}Error: Invalid platform '$PLATFORM'. Must be pi, pi32, ad5m, k1, or all${NC}" >&2
+    if [[ ! "$PLATFORM" =~ ^(pi|pi32|ad5m|cc1|k1)$ ]]; then
+        echo -e "${RED}Error: Invalid platform '$PLATFORM'. Must be pi, pi32, ad5m, cc1, k1, or all${NC}" >&2
         exit 1
     fi
     PLATFORMS=("$PLATFORM")

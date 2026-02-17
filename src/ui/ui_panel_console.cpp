@@ -7,7 +7,7 @@
 #include "ui_event_safety.h"
 #include "ui_global_panel_helper.h"
 #include "ui_keyboard_manager.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_subject_registry.h"
 #include "ui_update_queue.h"
@@ -233,7 +233,7 @@ lv_obj_t* ConsolePanel::create(lv_obj_t* parent) {
             gcode_input_ = lv_obj_find_by_name(input_row, "gcode_input");
             if (gcode_input_) {
                 // Register textarea for keyboard integration
-                ui_keyboard_register_textarea(gcode_input_);
+                KeyboardManager::instance().register_textarea(gcode_input_);
                 spdlog::debug("[{}] Registered gcode_input for keyboard", get_name());
             }
         }
@@ -478,7 +478,7 @@ void ConsolePanel::update_visibility() {
     bool has_entries = !entries_.empty();
 
     // Toggle visibility: show console OR empty state
-    ui_toggle_list_empty_state(console_container_, empty_state_, has_entries);
+    helix::ui::toggle_list_empty_state(console_container_, empty_state_, has_entries);
 
     // Update status message
     if (has_entries) {
@@ -565,7 +565,7 @@ void ConsolePanel::on_gcode_response(const nlohmann::json& msg) {
         GcodeEntry entry;
     };
     auto ctx = std::make_unique<Ctx>(Ctx{this, std::move(entry)});
-    ui_queue_update<Ctx>(std::move(ctx), [](Ctx* c) { c->panel->add_entry(c->entry); });
+    helix::ui::queue_update<Ctx>(std::move(ctx), [](Ctx* c) { c->panel->add_entry(c->entry); });
 }
 
 void ConsolePanel::add_entry(const GcodeEntry& entry) {
@@ -577,7 +577,7 @@ void ConsolePanel::add_entry(const GcodeEntry& entry) {
         entries_.pop_front();
         // Remove oldest widget (first child)
         lv_obj_t* first_child = lv_obj_get_child(console_container_, 0);
-        lv_obj_safe_delete(first_child);
+        helix::ui::safe_delete(first_child);
     }
 
     // Create widget for new entry

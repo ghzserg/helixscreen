@@ -12,7 +12,9 @@
 #include "hv/json.hpp"
 
 class MoonrakerAPI;
+namespace helix {
 class MoonrakerClient;
+}
 
 namespace helix {
 class PrinterDiscovery;
@@ -369,6 +371,10 @@ class LedController {
         return configured_macros_;
     }
     void set_configured_macros(const std::vector<LedMacroInfo>& macros);
+
+    /// Rebuild the macro backend from the current configured_macros list.
+    /// Call after modifying macros via set_configured_macros() so the overlay sees the changes.
+    void rebuild_macro_backend();
 
     [[nodiscard]] const std::vector<std::string>& discovered_macros() const {
         return discovered_led_macros_;

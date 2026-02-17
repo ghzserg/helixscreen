@@ -35,13 +35,13 @@ class GcodeTestPanel : public PanelBase {
     /**
      * @brief Construct GcodeTestPanel with injected dependencies
      *
-     * @param printer_state Reference to PrinterState (not actively used)
+     * @param printer_state Reference to helix::PrinterState (not actively used)
      * @param api Pointer to MoonrakerAPI (not actively used)
      *
      * @note Dependencies are passed for interface consistency with PanelBase,
      *       but this panel doesn't require printer connectivity.
      */
-    GcodeTestPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    GcodeTestPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     /**
      * @brief Destructor - cleans up file picker overlay if open
@@ -257,11 +257,11 @@ class GcodeTestPanel : public PanelBase {
 /**
  * @brief Get or create the global GcodeTestPanel instance
  *
- * @param printer_state Reference to PrinterState
+ * @param printer_state Reference to helix::PrinterState
  * @param api Pointer to MoonrakerAPI (may be nullptr)
  * @return Pointer to the global instance
  */
-GcodeTestPanel* get_gcode_test_panel(PrinterState& printer_state, MoonrakerAPI* api);
+GcodeTestPanel* get_gcode_test_panel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
 // Global instance accessor (needed by main.cpp)
 GcodeTestPanel& get_global_gcode_test_panel();

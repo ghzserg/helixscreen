@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 
+namespace helix {
 class MoonrakerClient;
 
 /** @brief Print completion notification mode (Off=0, Notification=1, Alert=2) */
@@ -473,6 +474,35 @@ class SettingsManager {
      */
     void set_estop_require_confirmation(bool require);
 
+    /**
+     * @brief Get cancel escalation enabled state
+     * @return true if cancel should escalate to e-stop on timeout
+     */
+    bool get_cancel_escalation_enabled() const;
+
+    /**
+     * @brief Set cancel escalation enabled state
+     *
+     * When enabled, a cancel that doesn't complete within the configured
+     * timeout will escalate to M112 emergency stop. When disabled (default),
+     * cancel waits indefinitely for the printer to respond.
+     *
+     * @param enabled true to enable escalation
+     */
+    void set_cancel_escalation_enabled(bool enabled);
+
+    /**
+     * @brief Get cancel escalation timeout in seconds
+     * @return Timeout in seconds (15, 30, 60, or 120)
+     */
+    int get_cancel_escalation_timeout_seconds() const;
+
+    /**
+     * @brief Set cancel escalation timeout in seconds
+     * @param seconds Timeout value (clamped to 15-120)
+     */
+    void set_cancel_escalation_timeout_seconds(int seconds);
+
     // =========================================================================
     // NOTIFICATION SETTINGS
     // =========================================================================
@@ -663,6 +693,16 @@ class SettingsManager {
         return &estop_require_confirmation_subject_;
     }
 
+    /** @brief Cancel escalation enabled subject (integer: 0=disabled, 1=enabled) */
+    lv_subject_t* subject_cancel_escalation_enabled() {
+        return &cancel_escalation_enabled_subject_;
+    }
+
+    /** @brief Cancel escalation timeout subject (integer: dropdown index 0-3) */
+    lv_subject_t* subject_cancel_escalation_timeout() {
+        return &cancel_escalation_timeout_subject_;
+    }
+
     /** @brief Update channel subject (integer: 0=Stable, 1=Beta, 2=Dev) */
     lv_subject_t* subject_update_channel() {
         return &update_channel_subject_;
@@ -772,6 +812,8 @@ class SettingsManager {
     lv_subject_t volume_subject_;
     lv_subject_t completion_alert_subject_;
     lv_subject_t estop_require_confirmation_subject_;
+    lv_subject_t cancel_escalation_enabled_subject_;
+    lv_subject_t cancel_escalation_timeout_subject_;
     lv_subject_t scroll_throw_subject_;
     lv_subject_t scroll_limit_subject_;
     lv_subject_t update_channel_subject_;
@@ -785,3 +827,5 @@ class SettingsManager {
     bool subjects_initialized_ = false;
     bool restart_pending_ = false;
 };
+
+} // namespace helix

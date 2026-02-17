@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- BLTouch type-specific control panel for probe overlay -->
+<component>
+  <view name="probe_bltouch_panel"
+        extends="lv_obj" width="100%" height="content" style_bg_color="#screen_bg" style_bg_opa="255"
+        style_radius="#border_radius" style_pad_all="#space_lg" flex_flow="column" style_pad_gap="#space_md"
+        scrollable="false">
+
+    <text_small text="BLTouch Controls" translation_tag="BLTouch Controls" style_text_color="#text_muted"/>
+
+    <!-- Control buttons grid -->
+    <lv_obj width="100%"
+            height="content" style_pad_all="0" flex_flow="row" flex_wrap="wrap" style_pad_gap="#space_sm"
+            scrollable="false">
+
+      <!-- Deploy -->
+      <ui_button name="btn_bltouch_deploy"
+                 width="48%" height="#button_height_sm" variant="outline" text="Deploy" translation_tag="Deploy"
+                 icon="arrow_down">
+        <event_cb trigger="clicked" callback="on_bltouch_deploy"/>
+      </ui_button>
+
+      <!-- Stow -->
+      <ui_button name="btn_bltouch_stow"
+                 width="48%" height="#button_height_sm" variant="outline" text="Stow" translation_tag="Stow"
+                 icon="arrow_up">
+        <event_cb trigger="clicked" callback="on_bltouch_stow"/>
+      </ui_button>
+
+      <!-- Self-Test -->
+      <ui_button name="btn_bltouch_selftest"
+                 width="48%" height="#button_height_sm" variant="outline" text="Self-Test" translation_tag="Self-Test"
+                 icon="check_circle">
+        <event_cb trigger="clicked" callback="on_bltouch_selftest"/>
+      </ui_button>
+
+      <!-- Reset -->
+      <ui_button name="btn_bltouch_reset"
+                 width="48%" height="#button_height_sm" variant="outline" text="Reset" translation_tag="Reset"
+                 icon="refresh">
+        <event_cb trigger="clicked" callback="on_bltouch_reset"/>
+      </ui_button>
+    </lv_obj>
+
+    <!-- Output mode selector -->
+    <lv_obj width="100%"
+            height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_md"
+            scrollable="false">
+      <text_body text="Output Mode" translation_tag="Output Mode" flex_grow="1"/>
+      <ui_button name="btn_bltouch_mode_5v" width="content" height="#button_height_sm" variant="outline" text="5V">
+        <event_cb trigger="clicked" callback="on_bltouch_output_5v"/>
+      </ui_button>
+      <ui_button name="btn_bltouch_mode_od" width="content" height="#button_height_sm" variant="outline" text="OD">
+        <event_cb trigger="clicked" callback="on_bltouch_output_od"/>
+      </ui_button>
+    </lv_obj>
+  </view>
+</component>

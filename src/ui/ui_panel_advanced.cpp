@@ -3,7 +3,6 @@
 
 #include "ui_panel_advanced.h"
 
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_overlay_timelapse_install.h"
 #include "ui_overlay_timelapse_settings.h"
@@ -11,7 +10,7 @@
 #include "ui_panel_console.h"
 #include "ui_panel_macros.h"
 #include "ui_panel_spoolman.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 
 #include "app_globals.h"
 #include "config.h"
@@ -25,6 +24,8 @@
 #include "ui/ui_lazy_panel_helper.h"
 
 #include <spdlog/spdlog.h>
+
+using namespace helix;
 
 // Global instance (singleton pattern matching SettingsPanel)
 static std::unique_ptr<AdvancedPanel> g_advanced_panel;
@@ -145,14 +146,16 @@ void AdvancedPanel::handle_configure_print_start_clicked() {
     MoonrakerManager* mgr = get_moonraker_manager();
     if (!mgr) {
         spdlog::error("[{}] No MoonrakerManager available", get_name());
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Not connected to printer"), 2000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Not connected to printer"),
+                                      2000);
         return;
     }
 
     helix::MacroModificationManager* macro_mgr = mgr->macro_analysis();
     if (!macro_mgr) {
         spdlog::error("[{}] No MacroModificationManager available", get_name());
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Macro analysis not initialized"), 2000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Macro analysis not initialized"),
+                                      2000);
         return;
     }
 
@@ -247,7 +250,7 @@ void AdvancedPanel::handle_helix_plugin_install_clicked() {
     // Double-check plugin isn't already installed (defensive)
     if (printer_state_.service_has_helix_plugin()) {
         spdlog::info("[{}] Plugin already installed", get_name());
-        ui_toast_show(ToastSeverity::INFO, lv_tr("Plugin already installed"), 2000);
+        ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Plugin already installed"), 2000);
         return;
     }
 
@@ -261,7 +264,8 @@ void AdvancedPanel::handle_helix_plugin_install_clicked() {
     plugin_install_modal_.set_on_install_complete([this](bool success) {
         if (success) {
             printer_state_.set_helix_plugin_installed(true);
-            ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Plugin installed successfully"), 2000);
+            ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                          lv_tr("Plugin installed successfully"), 2000);
         }
     });
     plugin_install_modal_.show(lv_screen_active());
@@ -270,14 +274,15 @@ void AdvancedPanel::handle_helix_plugin_install_clicked() {
 void AdvancedPanel::handle_helix_plugin_uninstall_clicked() {
     spdlog::debug("[{}] HelixPrint Plugin Uninstall clicked", get_name());
     // TODO: Implement uninstall functionality
-    ui_toast_show(ToastSeverity::INFO, lv_tr("Uninstall: Coming soon"), 2000);
+    ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Uninstall: Coming soon"), 2000);
 }
 
 void AdvancedPanel::handle_phase_tracking_changed(bool enabled) {
     spdlog::info("[{}] Phase tracking toggle: {}", get_name(), enabled);
 
     if (!api_) {
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Not connected to printer"), 2000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Not connected to printer"),
+                                      2000);
         return;
     }
 
@@ -287,20 +292,22 @@ void AdvancedPanel::handle_phase_tracking_changed(bool enabled) {
         [this, enabled](bool success) {
             if (success) {
                 printer_state_.set_phase_tracking_enabled(enabled);
-                ui_toast_show(ToastSeverity::SUCCESS,
-                              enabled ? lv_tr("Phase tracking enabled")
-                                      : lv_tr("Phase tracking disabled"),
-                              2000);
+                ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                              enabled ? lv_tr("Phase tracking enabled")
+                                                      : lv_tr("Phase tracking disabled"),
+                                              2000);
             } else {
                 spdlog::warn("[{}] Phase tracking API returned success=false", get_name());
-                ui_toast_show(ToastSeverity::WARNING, lv_tr("Phase tracking update failed"), 3000);
+                ToastManager::instance().show(ToastSeverity::WARNING,
+                                              lv_tr("Phase tracking update failed"), 3000);
                 // Revert the toggle state
                 printer_state_.set_phase_tracking_enabled(!enabled);
             }
         },
         [this, enabled](const MoonrakerError& err) {
             spdlog::error("[{}] Phase tracking API call failed: {}", get_name(), err.message);
-            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to update phase tracking"), 2000);
+            ToastManager::instance().show(ToastSeverity::ERROR,
+                                          lv_tr("Failed to update phase tracking"), 2000);
             // Revert the toggle state
             printer_state_.set_phase_tracking_enabled(!enabled);
         });

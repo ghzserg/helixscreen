@@ -52,13 +52,12 @@ class WizardSummaryStep {
     WizardSummaryStep();
     ~WizardSummaryStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardSummaryStep(const WizardSummaryStep&) = delete;
     WizardSummaryStep& operator=(const WizardSummaryStep&) = delete;
-
-    // Movable
-    WizardSummaryStep(WizardSummaryStep&& other) noexcept;
-    WizardSummaryStep& operator=(WizardSummaryStep&& other) noexcept;
+    WizardSummaryStep(WizardSummaryStep&&) = delete;
+    WizardSummaryStep& operator=(WizardSummaryStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects with current config values

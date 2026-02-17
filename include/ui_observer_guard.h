@@ -45,11 +45,13 @@ class ObserverGuard {
     ObserverGuard& operator=(const ObserverGuard&) = delete;
 
     void reset() {
-        if (observer_ && lv_is_initialized()) {
-            lv_observer_remove(observer_);
+        if (observer_) {
+            if (lv_is_initialized()) {
+                lv_observer_remove(observer_);
+            }
+            // If LVGL is already torn down, just release — don't log,
+            // as spdlog may also be destroyed during static cleanup
             observer_ = nullptr;
-        } else {
-            observer_ = nullptr; // Just clear the pointer if LVGL is gone
         }
     }
 

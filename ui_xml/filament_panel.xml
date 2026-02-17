@@ -33,7 +33,7 @@
                   height="content" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" clickable="true">
             <event_cb trigger="clicked" callback="on_filament_nozzle_target_tap"/>
-            <text_small text="Nozzle" translation_tag="Nozzle" clickable="false" event_bubble="true"/>
+            <text_small bind_text="filament_nozzle_label" clickable="false" event_bubble="true"/>
             <lv_obj
                     height="content" flex_flow="row" style_pad_all="0"
                     scrollable="false" style_flex_cross_place="center" style_pad_gap="#space_xs" clickable="false"
@@ -89,11 +89,11 @@
                   width="100%" height="100%" style_pad_all="0"/>
         </lv_obj>
       </lv_obj>
-      <!-- BOTTOM: AMS Multi-Filament Card (hidden if no AMS) -->
+      <!-- BOTTOM: Multi-Filament Card (visible when AMS or multi-tool, managed by C++) -->
       <ui_card name="ams_status_card"
                width="100%" flex_grow="1" style_radius="#border_radius" style_pad_all="#space_md" flex_flow="column"
-               style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
-        <bind_flag_if_eq subject="ams_type" flag="hidden" ref_value="0"/>
+               style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm"
+               flags="hidden">
         <!-- Header row with icon -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" scrollable="false"
@@ -101,19 +101,33 @@
           <icon src="filament" size="sm" variant="secondary"/>
           <text_body text="Multi-Filament" translation_tag="Multi-Filament" style_translate_y="2"/>
         </lv_obj>
-        <!-- AMS mini status + Manage button row -->
-        <lv_obj width="100%"
+
+        <!-- AMS mini status + action widget row -->
+        <lv_obj name="ams_manage_row" width="100%" height="100%" style_max_height="100"
                 flex_grow="1" style_pad_all="0" scrollable="false"
                 flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
-                style_pad_gap="#space_sm">
-          <!-- AMS mini status (auto-binds to AmsState, fills parent) -->
+                style_pad_gap="#space_sm"
+                flags="hidden">
+          <!-- AMS mini status (auto-binds to AmsState, fills width) -->
           <ams_mini_status flex_grow="1"/>
-          <!-- Manage Button -->
+          <!-- Manage Button (shown when single-tool AMS, hidden when multi-tool) -->
           <ui_button name="btn_manage_slots"
                      width="content" text="Manage" translation_tag="Manage"
                      style_pad_left="#space_md" style_pad_right="#space_md">
             <event_cb trigger="clicked" callback="filament_manage_slots_cb"/>
           </ui_button>
+          <!-- Extruder Dropdown (shown when multi-tool, replaces Manage button) -->
+          <lv_obj name="extruder_selector_group"
+                  width="content" height="content" style_pad_all="0" scrollable="false"
+                  flex_flow="column" style_flex_cross_place="start" style_pad_gap="2"
+                  flags="hidden">
+          <text_small text="Tool" translation_tag="Tool"/>
+          <lv_dropdown name="extruder_dropdown"
+                       width="content" height="content" style_min_width="80"
+                       style_radius="#border_radius_sm" style_pad_all="#space_sm">
+            <event_cb trigger="value_changed" callback="on_extruder_dropdown_changed"/>
+          </lv_dropdown>
+          </lv_obj>
         </lv_obj>
       </ui_card>
     </lv_obj>

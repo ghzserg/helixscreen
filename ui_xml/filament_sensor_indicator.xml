@@ -4,6 +4,9 @@
 <!-- Filament sensor indicator - nozzle icon showing sensor state -->
 <!-- Green nozzle=detected(1), Red nozzle-alert=empty(0), Hidden=no sensor(-1) or disabled -->
 <component>
+  <api>
+    <prop name="size" type="string" default="sm"/>
+  </api>
   <view name="filament_sensor_indicator"
         extends="lv_obj" width="content" height="content" style_pad_all="0" scrollable="false">
     <!-- Hidden when no sensor (value=-1) -->
@@ -11,11 +14,11 @@
     <!-- Hidden when master disabled -->
     <bind_flag_if_eq subject="filament_master_enabled" flag="hidden" ref_value="0"/>
     <!-- Loaded: green nozzle -->
-    <icon src="filament" size="sm" variant="success">
+    <icon src="filament" size="$size" variant="success">
       <bind_flag_if_not_eq subject="filament_runout_detected" flag="hidden" ref_value="1"/>
     </icon>
     <!-- Empty: red nozzle-alert -->
-    <icon src="filament_alert" size="sm" variant="danger">
+    <icon src="filament_alert" size="$size" variant="danger">
       <bind_flag_if_not_eq subject="filament_runout_detected" flag="hidden" ref_value="0"/>
     </icon>
   </view>

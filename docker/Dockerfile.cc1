@@ -1,0 +1,156 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# HelixScreen - Centauri Carbon 1 (armv7-a) Cross-Compilation Toolchain
+#
+# Build: docker build -t helixscreen/toolchain-cc1 -f Dockerfile.cc1 .
+# Usage: docker run --rm -v $(pwd):/src -w /src helixscreen/toolchain-cc1 make PLATFORM_TARGET=cc1 -j$(nproc)
+#
+# Target: Elegoo Centauri Carbon 1
+#   - SoC: Allwinner R528 (sun8iw20) — Cortex-A7 dual-core (armv7-a hard-float)
+#   - Display: 480x272 framebuffer, 32bpp ARGB8888
+#   - RAM: 112MB total
+#   - C Library: glibc 2.23
+#   - OS: BusyBox/OpenWrt-style overlayfs, Linux 5.4.61
+#   - Touch: Goodix gt9xxnew_ts (evdev)
+#
+# Strategy: Use ARM's pre-built GCC 10.3 toolchain with FULLY STATIC linking.
+# This avoids glibc version conflicts — the binary has no runtime glibc dependency.
+# CC1's glibc 2.23 is even older than AD5M's 2.25, making static linking essential.
+#
+# Trade-off: Larger binary (~5-8MB vs ~2MB dynamic) but guaranteed compatibility
+# on any armv7-a Linux system regardless of glibc version.
+#
+# Multi-arch support: Automatically uses native toolchain on both x86_64 and aarch64 hosts
+
+FROM debian:bookworm-slim
+
+LABEL maintainer="HelixScreen <dev@helixscreen.io>"
+LABEL description="Cross-compilation toolchain for Centauri Carbon 1 (armv7-a Cortex-A7, Allwinner R528)"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Docker buildx provides TARGETARCH (amd64, arm64, etc.)
+ARG TARGETARCH
+
+# Install build dependencies
+# Note: autotools required for building libnl submodule
+# NOTE: nlohmann-json is bundled with libhv (lib/libhv/cpputil/json.hpp)
+# DO NOT install nlohmann-json3-dev - it causes ABI mismatches
+# Always use: #include "hv/json.hpp" (NOT <nlohmann/json.hpp>)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    pkg-config \
+    ca-certificates \
+    make \
+    cmake \
+    python3 \
+    file \
+    wget \
+    xz-utils \
+    autoconf \
+    automake \
+    libtool \
+    flex \
+    bison \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download ARM's pre-built GCC 10.3-2021.07 toolchain
+# ARM provides both x86_64-hosted and aarch64-hosted variants - we select based on TARGETARCH
+# Both produce identical armv7-a output binaries, just the compiler itself differs
+#
+# Toolchain variants:
+#   - x86_64:  gcc-arm-10.3-2021.07-x86_64-arm-none-linux-gnueabihf
+#   - aarch64: gcc-arm-10.3-2021.07-aarch64-arm-none-linux-gnueabihf
+WORKDIR /opt
+RUN HOSTARCH=$(case "$TARGETARCH" in \
+        amd64) echo "x86_64" ;; \
+        arm64) echo "aarch64" ;; \
+        *) echo "x86_64" ;; \
+    esac) && \
+    TOOLCHAIN_NAME="gcc-arm-10.3-2021.07-${HOSTARCH}-arm-none-linux-gnueabihf" && \
+    echo "Downloading ${TOOLCHAIN_NAME} for ${TARGETARCH} host..." && \
+    wget -q "https://developer.arm.com/-/media/Files/downloads/gnu-a/10.3-2021.07/binrel/${TOOLCHAIN_NAME}.tar.xz" && \
+    tar xf "${TOOLCHAIN_NAME}.tar.xz" && \
+    rm "${TOOLCHAIN_NAME}.tar.xz" && \
+    mv "${TOOLCHAIN_NAME}" arm-toolchain
+
+# ==============================================================================
+# OpenSSL 1.1.1w - Static Cross-Compiled Libraries
+# ==============================================================================
+# Build OpenSSL for ARM with static linking. The libraries install directly into
+# the toolchain's sysroot so cross-compilation finds them automatically.
+#
+# Note: linux-armv4 is OpenSSL's generic ARM target (covers armv7-a and above)
+# Must set PATH here since ENV PATH comes later in the Dockerfile
+WORKDIR /tmp
+RUN export PATH="/opt/arm-toolchain/bin:$PATH" && \
+    wget -q https://www.openssl.org/source/openssl-1.1.1w.tar.gz && \
+    tar xzf openssl-1.1.1w.tar.gz && \
+    cd openssl-1.1.1w && \
+    ./Configure linux-armv4 no-shared \
+        --cross-compile-prefix=arm-none-linux-gnueabihf- \
+        --prefix=/opt/arm-toolchain/arm-none-linux-gnueabihf && \
+    make -j$(nproc) && \
+    make install_sw && \
+    cd .. && \
+    rm -rf openssl-1.1.1w openssl-1.1.1w.tar.gz
+
+# ==============================================================================
+# zlib 1.3.2 - Static Cross-Compiled Library
+# ==============================================================================
+# Required for debug bundle gzip compression (debug_bundle_collector.cpp).
+# The ARM GCC toolchain doesn't include zlib, so we build it from source.
+WORKDIR /tmp
+RUN export PATH="/opt/arm-toolchain/bin:$PATH" && \
+    wget -q https://zlib.net/zlib-1.3.2.tar.gz && \
+    tar xzf zlib-1.3.2.tar.gz && \
+    cd zlib-1.3.2 && \
+    CHOST=arm-none-linux-gnueabihf ./configure --static \
+        --prefix=/opt/arm-toolchain/arm-none-linux-gnueabihf && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rf zlib-1.3.2 zlib-1.3.2.tar.gz
+
+# ==============================================================================
+# Cross-Compilation Environment
+# ==============================================================================
+
+ENV PATH="/opt/arm-toolchain/bin:$PATH"
+ENV CROSS_COMPILE=arm-none-linux-gnueabihf-
+ENV CC=arm-none-linux-gnueabihf-gcc
+ENV CXX=arm-none-linux-gnueabihf-g++
+# Use gcc-ar and gcc-ranlib for LTO compatibility (they load the LTO plugin)
+ENV AR=arm-none-linux-gnueabihf-gcc-ar
+ENV STRIP=arm-none-linux-gnueabihf-strip
+ENV RANLIB=arm-none-linux-gnueabihf-gcc-ranlib
+ENV LD=arm-none-linux-gnueabihf-ld
+
+# Target-specific flags for Cortex-A7 (Allwinner R528)
+# Note: -static is added in cross.mk, not here (so libs can be built dynamically)
+ENV TARGET_CFLAGS="-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -mtune=cortex-a7"
+ENV TARGET_LDFLAGS=""
+
+# Working directory
+WORKDIR /src
+
+# Configure git to trust the mounted source directory
+# Required because the container runs as root but files are owned by the host user
+RUN git config --global --add safe.directory '*'
+
+# Verify the toolchain works (including LTO-aware tools)
+RUN arm-none-linux-gnueabihf-gcc --version && \
+    arm-none-linux-gnueabihf-g++ --version && \
+    arm-none-linux-gnueabihf-gcc-ar --version && \
+    arm-none-linux-gnueabihf-gcc-ranlib --version && \
+    echo "✓ Toolchain verification passed (including LTO support)" && \
+    echo "" && \
+    echo "NOTE: This toolchain uses STATIC linking (-static flag in cross.mk)" && \
+    echo "to avoid glibc version conflicts. Binary will be self-contained." && \
+    echo "" && \
+    echo "Target: Elegoo Centauri Carbon 1 (Allwinner R528, Cortex-A7, glibc 2.23)"
+
+# Default command: build for CC1
+# SKIP_OPTIONAL_DEPS=1 runs minimal dependency check (skips npm, clang-format, etc.)
+CMD ["make", "PLATFORM_TARGET=cc1", "SKIP_OPTIONAL_DEPS=1", "-j"]

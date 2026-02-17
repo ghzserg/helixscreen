@@ -22,7 +22,9 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class PrinterState;
+}
 class MoonrakerAPI;
 
 // Include for SubjectManager (needed for deinit_subjects_base)
@@ -80,7 +82,7 @@ class PanelBase : public IPanelLifecycle {
      * @param printer_state Reference to PrinterState singleton
      * @param api Pointer to MoonrakerAPI (may be nullptr if not connected)
      */
-    PanelBase(PrinterState& printer_state, MoonrakerAPI* api);
+    PanelBase(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     /**
      * @brief Virtual destructor - cleans up registered observers
@@ -197,7 +199,7 @@ class PanelBase : public IPanelLifecycle {
     // === Injected Dependencies ===
     //
 
-    PrinterState& printer_state_;
+    helix::PrinterState& printer_state_;
     MoonrakerAPI* api_;
 
     //

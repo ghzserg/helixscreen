@@ -47,7 +47,7 @@ struct PluginError;
  * overlay.init_subjects();
  * overlay.register_callbacks();
  * overlay.create(parent_screen);
- * ui_nav_push_overlay(overlay.get_root());
+ * NavigationManager::instance().push_overlay(overlay.get_root());
  * @endcode
  */
 class SettingsPluginsOverlay : public OverlayBase {

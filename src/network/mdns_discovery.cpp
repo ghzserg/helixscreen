@@ -4,7 +4,7 @@
  * @brief mDNS discovery implementation for finding Moonraker printers
  *
  * @pattern PIMPL with background thread for network I/O
- * @threading Discovery runs on background thread; callbacks dispatched via ui_async_call()
+ * @threading Discovery runs on background thread; callbacks dispatched via helix::ui::async_call()
  * @gotchas Socket may fail on systems without network; handle gracefully
  *
  * @see wifi_manager.cpp for similar threading patterns
@@ -26,6 +26,8 @@
 #include <cstring>
 #include <map>
 #include <thread>
+
+using namespace helix;
 
 namespace {
 
@@ -391,7 +393,7 @@ class MdnsDiscovery::Impl {
         auto printers_copy = std::make_shared<std::vector<DiscoveredPrinter>>(printers_);
         auto callback_copy = callback_;
 
-        ui_queue_update([printers_copy, callback_copy]() {
+        helix::ui::queue_update([printers_copy, callback_copy]() {
             if (callback_copy) {
                 callback_copy(*printers_copy);
             }

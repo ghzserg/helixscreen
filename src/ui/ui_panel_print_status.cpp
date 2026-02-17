@@ -10,13 +10,12 @@
 #include "ui_exclude_objects_list_overlay.h"
 #include "ui_gcode_viewer.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_panel_temp_control.h"
 #include "ui_subject_registry.h"
 #include "ui_temperature_utils.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -41,9 +40,12 @@
 #include "theme_manager.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_processor.h"
+#include "tool_state.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
+
+using namespace helix;
 
 #include <cstdio>
 #include <cstdlib>
@@ -83,6 +85,11 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, MoonrakerAPI* ap
         this, printer_state_, [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
+        [](PrintStatusPanel* self, int) { self->on_temperature_changed(); });
+
+    // Subscribe to active tool changes (refreshes nozzle temp with tool name prefix)
+    active_tool_observer_ = observe_int_sync<PrintStatusPanel>(
+        helix::ToolState::instance().get_active_tool_subject(), this,
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); });
 
     // Subscribe to print progress and state
@@ -312,6 +319,10 @@ void PrintStatusPanel::init_subjects() {
                       initial_phase, prog);
     }
 
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticPanelRegistry::instance().register_destroy(
+        "PrintStatusPanelSubjects", []() { get_global_print_status_panel().deinit_subjects(); });
+
     spdlog::debug("[{}] Subjects initialized (20 subjects)", get_name());
 }
 
@@ -384,7 +395,7 @@ lv_obj_t* PrintStatusPanel::create(lv_obj_t* parent) {
 
         if (config->gcode_render_mode >= 0) {
             // Command line takes highest priority
-            auto render_mode = static_cast<gcode_viewer_render_mode_t>(config->gcode_render_mode);
+            auto render_mode = static_cast<GcodeViewerRenderMode>(config->gcode_render_mode);
             ui_gcode_viewer_set_render_mode(gcode_viewer_, render_mode);
             spdlog::debug("[{}]   ✓ Set G-code render mode: {} (cmdline)", get_name(),
                           config->gcode_render_mode);
@@ -395,7 +406,7 @@ lv_obj_t* PrintStatusPanel::create(lv_obj_t* parent) {
         } else {
             // No cmdline or env var - apply saved settings
             int render_mode_val = SettingsManager::instance().get_gcode_render_mode();
-            auto render_mode = static_cast<gcode_viewer_render_mode_t>(render_mode_val);
+            auto render_mode = static_cast<GcodeViewerRenderMode>(render_mode_val);
             ui_gcode_viewer_set_render_mode(gcode_viewer_, render_mode);
             spdlog::debug("[{}]   ✓ Set G-code render mode: {} (settings)", get_name(),
                           render_mode_val);
@@ -572,7 +583,7 @@ void PrintStatusPanel::cleanup() {
 // ============================================================================
 
 void PrintStatusPanel::format_time(int seconds, char* buf, size_t buf_size) {
-    std::string formatted = helix::fmt::duration_padded(seconds);
+    std::string formatted = helix::format::duration_padded(seconds);
     std::snprintf(buf, buf_size, "%s", formatted.c_str());
 }
 
@@ -706,7 +717,7 @@ void PrintStatusPanel::load_gcode_file(const char* file_path) {
                 int layer;
             };
             auto ctx = std::make_unique<ViewerProgressCtx>(ViewerProgressCtx{viewer, viewer_layer});
-            ui_queue_update<ViewerProgressCtx>(std::move(ctx), [](ViewerProgressCtx* c) {
+            helix::ui::queue_update<ViewerProgressCtx>(std::move(ctx), [](ViewerProgressCtx* c) {
                 if (c->viewer && lv_obj_is_valid(c->viewer)) {
                     ui_gcode_viewer_set_print_progress(c->viewer, c->layer);
                 }
@@ -736,7 +747,8 @@ void PrintStatusPanel::update_all_displays() {
     }
 
     // Progress text
-    helix::fmt::format_percent(current_progress_, progress_text_buf_, sizeof(progress_text_buf_));
+    helix::format::format_percent(current_progress_, progress_text_buf_,
+                                  sizeof(progress_text_buf_));
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 
     // Layer text (prefix with ~ when estimated from progress)
@@ -749,8 +761,9 @@ void PrintStatusPanel::update_all_displays() {
     // Filament used text
     int filament_mm = lv_subject_get_int(get_printer_state().get_print_filament_used_subject());
     if (filament_mm > 0) {
-        std::string fil_str = helix::fmt::format_filament_length(static_cast<double>(filament_mm)) +
-                              " " + lv_tr("used");
+        std::string fil_str =
+            helix::format::format_filament_length(static_cast<double>(filament_mm)) + " " +
+            lv_tr("used");
         std::strncpy(filament_used_text_buf_, fil_str.c_str(), sizeof(filament_used_text_buf_) - 1);
         filament_used_text_buf_[sizeof(filament_used_text_buf_) - 1] = '\0';
     } else {
@@ -779,20 +792,20 @@ void PrintStatusPanel::update_all_displays() {
     lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
 
     // Heater status text (Off / Heating... / Ready)
-    auto nozzle_heater = helix::fmt::heater_display(nozzle_current_, nozzle_target_);
+    auto nozzle_heater = helix::format::heater_display(nozzle_current_, nozzle_target_);
     std::snprintf(nozzle_status_buf_, sizeof(nozzle_status_buf_), "%s",
                   nozzle_heater.status.c_str());
     lv_subject_copy_string(&nozzle_status_subject_, nozzle_status_buf_);
 
-    auto bed_heater = helix::fmt::heater_display(bed_current_, bed_target_);
+    auto bed_heater = helix::format::heater_display(bed_current_, bed_target_);
     std::snprintf(bed_status_buf_, sizeof(bed_status_buf_), "%s", bed_heater.status.c_str());
     lv_subject_copy_string(&bed_status_subject_, bed_status_buf_);
 
     // Speeds
-    helix::fmt::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
+    helix::format::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
     lv_subject_copy_string(&speed_subject_, speed_buf_);
 
-    helix::fmt::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
+    helix::format::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
     lv_subject_copy_string(&flow_subject_, flow_buf_);
 
     // Update pause button icon and label based on state
@@ -841,7 +854,7 @@ void PrintStatusPanel::handle_nozzle_card_click() {
     }
 
     if (nozzle_temp_panel_) {
-        ui_nav_push_overlay(nozzle_temp_panel_);
+        NavigationManager::instance().push_overlay(nozzle_temp_panel_);
     }
 }
 
@@ -874,7 +887,7 @@ void PrintStatusPanel::handle_bed_card_click() {
     }
 
     if (bed_temp_panel_) {
-        ui_nav_push_overlay(bed_temp_panel_);
+        NavigationManager::instance().push_overlay(bed_temp_panel_);
     }
 }
 
@@ -1099,8 +1112,8 @@ void PrintStatusPanel::on_resize_static() {
 
 void PrintStatusPanel::on_temperature_changed() {
     // Read all temperature values from PrinterState subjects
-    nozzle_current_ = lv_subject_get_int(printer_state_.get_extruder_temp_subject());
-    nozzle_target_ = lv_subject_get_int(printer_state_.get_extruder_target_subject());
+    nozzle_current_ = lv_subject_get_int(printer_state_.get_active_extruder_temp_subject());
+    nozzle_target_ = lv_subject_get_int(printer_state_.get_active_extruder_target_subject());
     bed_current_ = lv_subject_get_int(printer_state_.get_bed_temp_subject());
     bed_target_ = lv_subject_get_int(printer_state_.get_bed_target_subject());
 
@@ -1110,20 +1123,29 @@ void PrintStatusPanel::on_temperature_changed() {
     // Update only temperature-related subjects (not the full display refresh).
     // Temperature observers fire frequently during heating (4 subjects × ~1Hz each),
     // and update_all_displays() re-renders ALL subjects causing visible flickering.
-    format_temperature_pair(centi_to_degrees(nozzle_current_), centi_to_degrees(nozzle_target_),
-                            nozzle_temp_buf_, sizeof(nozzle_temp_buf_));
+    auto& ts = helix::ToolState::instance();
+    if (ts.is_multi_tool() && ts.active_tool()) {
+        size_t prefix_len = std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_),
+                                          "%s: ", ts.active_tool()->name.c_str());
+        format_temperature_pair(centi_to_degrees(nozzle_current_), centi_to_degrees(nozzle_target_),
+                                nozzle_temp_buf_ + prefix_len,
+                                sizeof(nozzle_temp_buf_) - prefix_len);
+    } else {
+        format_temperature_pair(centi_to_degrees(nozzle_current_), centi_to_degrees(nozzle_target_),
+                                nozzle_temp_buf_, sizeof(nozzle_temp_buf_));
+    }
     lv_subject_copy_string(&nozzle_temp_subject_, nozzle_temp_buf_);
 
     format_temperature_pair(centi_to_degrees(bed_current_), centi_to_degrees(bed_target_),
                             bed_temp_buf_, sizeof(bed_temp_buf_));
     lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
 
-    auto nozzle_heater = helix::fmt::heater_display(nozzle_current_, nozzle_target_);
+    auto nozzle_heater = helix::format::heater_display(nozzle_current_, nozzle_target_);
     std::snprintf(nozzle_status_buf_, sizeof(nozzle_status_buf_), "%s",
                   nozzle_heater.status.c_str());
     lv_subject_copy_string(&nozzle_status_subject_, nozzle_status_buf_);
 
-    auto bed_heater = helix::fmt::heater_display(bed_current_, bed_target_);
+    auto bed_heater = helix::format::heater_display(bed_current_, bed_target_);
     std::snprintf(bed_status_buf_, sizeof(bed_status_buf_), "%s", bed_heater.status.c_str());
     lv_subject_copy_string(&bed_status_subject_, bed_status_buf_);
 
@@ -1153,7 +1175,8 @@ void PrintStatusPanel::on_print_progress_changed(int progress) {
     }
 
     // Update progress text
-    helix::fmt::format_percent(current_progress_, progress_text_buf_, sizeof(progress_text_buf_));
+    helix::format::format_percent(current_progress_, progress_text_buf_,
+                                  sizeof(progress_text_buf_));
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 
     // Update progress bar with smooth animation (300ms ease-out) if animations enabled
@@ -1167,8 +1190,9 @@ void PrintStatusPanel::on_print_progress_changed(int progress) {
     // Update filament used text (evolves during active printing)
     int filament_mm = lv_subject_get_int(get_printer_state().get_print_filament_used_subject());
     if (filament_mm > 0) {
-        std::string fil_str = helix::fmt::format_filament_length(static_cast<double>(filament_mm)) +
-                              " " + lv_tr("used");
+        std::string fil_str =
+            helix::format::format_filament_length(static_cast<double>(filament_mm)) + " " +
+            lv_tr("used");
         std::strncpy(filament_used_text_buf_, fil_str.c_str(), sizeof(filament_used_text_buf_) - 1);
         filament_used_text_buf_[sizeof(filament_used_text_buf_) - 1] = '\0';
     } else {
@@ -1377,7 +1401,7 @@ void PrintStatusPanel::on_print_filename_changed(const char* filename) {
 void PrintStatusPanel::on_speed_factor_changed(int speed) {
     speed_percent_ = speed;
     if (subjects_initialized_) {
-        helix::fmt::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
+        helix::format::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
         lv_subject_copy_string(&speed_subject_, speed_buf_);
     }
     spdlog::trace("[{}] Speed factor updated: {}%", get_name(), speed);
@@ -1386,7 +1410,7 @@ void PrintStatusPanel::on_speed_factor_changed(int speed) {
 void PrintStatusPanel::on_flow_factor_changed(int flow) {
     flow_percent_ = flow;
     if (subjects_initialized_) {
-        helix::fmt::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
+        helix::format::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
         lv_subject_copy_string(&flow_subject_, flow_buf_);
     }
     spdlog::trace("[{}] Flow factor updated: {}%", get_name(), flow);
@@ -1446,7 +1470,7 @@ void PrintStatusPanel::on_print_layer_changed(int current_layer) {
         };
         auto ctx =
             std::make_unique<ViewerProgressCtx>(ViewerProgressCtx{gcode_viewer_, viewer_layer});
-        ui_queue_update<ViewerProgressCtx>(std::move(ctx), [](ViewerProgressCtx* c) {
+        helix::ui::queue_update<ViewerProgressCtx>(std::move(ctx), [](ViewerProgressCtx* c) {
             if (c->viewer && lv_obj_is_valid(c->viewer)) {
                 ui_gcode_viewer_set_print_progress(c->viewer, c->layer);
             }
@@ -2189,7 +2213,8 @@ void PrintStatusPanel::set_progress(int percent) {
         current_progress_ = 100;
     if (!subjects_initialized_)
         return;
-    helix::fmt::format_percent(current_progress_, progress_text_buf_, sizeof(progress_text_buf_));
+    helix::format::format_percent(current_progress_, progress_text_buf_,
+                                  sizeof(progress_text_buf_));
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 }
 
@@ -2223,9 +2248,9 @@ void PrintStatusPanel::set_speeds(int speed_pct, int flow_pct) {
     flow_percent_ = flow_pct;
     if (!subjects_initialized_)
         return;
-    helix::fmt::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
+    helix::format::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
     lv_subject_copy_string(&speed_subject_, speed_buf_);
-    helix::fmt::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
+    helix::format::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
     lv_subject_copy_string(&flow_subject_, flow_buf_);
 }
 

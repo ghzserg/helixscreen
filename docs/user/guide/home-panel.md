@@ -40,12 +40,66 @@ If you have a multi-material system (Happy Hare, AFC-Klipper, Bambu AMS):
 
 ---
 
+## Active Tool Badge
+
+On printers with a toolchanger, the Home Panel displays an active tool badge:
+
+- Shows the current active tool (e.g. "T0", "T1")
+- Updates automatically when tools are switched during a print or via macros
+- Only visible on multi-tool printers — single-extruder printers will not see this badge
+
+---
+
 ## Quick Actions
 
 Buttons for common operations:
 
-- **LED Toggle**: Turn chamber/printer lights on/off
+- **LED Button** (lightbulb icon):
+  - **Tap** to toggle your LEDs on/off
+  - **Long-press** to open the **LED Control Overlay** with full color, brightness, effects, and preset controls (see [LED Controls](#led-controls) below)
 - **Emergency Stop**: Halt all motion immediately (confirmation required unless disabled in Safety Settings)
+
+---
+
+## LED Controls
+
+Long-pressing the LED button opens the LED Control Overlay — a full control panel for all your printer's lighting. What you see depends on your hardware.
+
+### Strip Selector
+
+If you have more than one LED strip configured, a row of chips lets you pick which strip to control. The overlay heading updates to show the selected strip name.
+
+### Color & Brightness (Klipper Native LEDs)
+
+For neopixel, dotstar, and other Klipper-native strips:
+
+- **Color presets**: Tap one of the 8 preset swatches (White, Warm, Orange, Blue, Red, Green, Purple, Cyan)
+- **Custom color**: Tap the custom color button to open an HSV color picker — pick any color and it automatically separates into a base color and brightness level
+- **Brightness slider**: Adjust from 0–100%, independent of color
+- **Color swatch**: Shows the actual output color (base color adjusted by brightness)
+- **Turn Off**: Stops any active effects and turns off the selected strip
+
+> **Note:** Strips that don't support color (like single-channel PWM LEDs) show brightness controls only.
+
+### LED Effects
+
+If you have the [klipper-led_effect](https://github.com/julianschill/klipper-led_effect) plugin installed, an effects section appears with cards for each available effect. Effects are filtered to show only those that target the currently selected strip. The active effect is highlighted, and a **Stop All Effects** button lets you kill all running effects at once.
+
+### WLED Controls
+
+For WLED network strips:
+
+- **On/Off toggle**: Turn the WLED strip on or off
+- **Brightness slider**: 0–100%
+- **Presets**: Buttons for each WLED preset — fetched directly from your WLED device, with the active preset highlighted
+
+### Macro Device Controls
+
+Custom macro devices you've configured in [LED Settings](settings.md#led-settings) appear here with controls matching their type:
+
+- **On/Off devices**: Separate "Turn On" and "Turn Off" buttons
+- **Toggle devices**: A single "Toggle" button
+- **Preset devices**: Named buttons for each preset action
 
 ---
 

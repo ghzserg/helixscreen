@@ -1182,6 +1182,7 @@ cat /proc/bus/input/devices
 1. **This troubleshooting guide** - search for your symptoms
 2. **[FAQ](FAQ.md)** - common questions
 3. **[GitHub Issues](https://github.com/prestonbrown/helixscreen/issues)** - known problems
+4. **[HelixScreen Discord](https://discord.gg/rZ9dB74V)** - ask the community for help
 
 ### Opening a New Issue
 

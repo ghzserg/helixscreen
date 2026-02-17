@@ -19,6 +19,8 @@ namespace fs = std::filesystem;
 namespace fs = std::experimental::filesystem;
 #endif
 
+using namespace helix;
+
 Config* Config::instance{NULL};
 
 namespace {

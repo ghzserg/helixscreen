@@ -42,6 +42,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Global LVGL Initialization (called once per test session)
 // ============================================================================

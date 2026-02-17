@@ -31,6 +31,7 @@ namespace fs = std::experimental::filesystem;
 #include "hv/json.hpp"
 
 using json = nlohmann::json;
+using namespace helix;
 
 // ============================================================================
 // JSON Database Loader with User Extensions Support
@@ -1275,4 +1276,24 @@ bool PrinterDetector::auto_detect_and_save(const helix::PrinterDiscovery& discov
 
     spdlog::info("[PrinterDetector] No printer type detected from hardware fingerprints");
     return false;
+}
+
+bool PrinterDetector::is_voron_printer() {
+    Config* config = Config::get_instance();
+    if (!config) {
+        return false;
+    }
+
+    std::string printer_type = config->get<std::string>(helix::wizard::PRINTER_TYPE, "");
+    if (printer_type.empty()) {
+        return false;
+    }
+
+    // Case-insensitive search for "voron"
+    std::string lower_type = printer_type;
+    for (auto& c : lower_type) {
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+
+    return lower_type.find("voron") != std::string::npos;
 }

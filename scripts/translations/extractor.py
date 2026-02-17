@@ -32,6 +32,8 @@ TEXT_ATTRIBUTES = {"text", "label", "description", "title", "subtitle"}
 VARIABLE_PATTERN = re.compile(r"\$\w+")  # $variable
 ICON_PATTERN = re.compile(r"^#icon_")  # #icon_xxx
 NUMERIC_PATTERN = re.compile(r"^[\d.]+%?$")  # 123 or 100%
+# XML numeric character references: &#xF0026; or &#983078;
+XML_NUMERIC_ENTITY_PATTERN = re.compile(r"&#x([0-9A-Fa-f]+);|&#(\d+);")
 FONT_NAME_PATTERN = re.compile(r"^(mdi_icons_|noto_sans_)\w+$")  # Font names
 HEX_COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")  # #RRGGBB hex colors
 SIZE_ATTR_PATTERN = re.compile(r'^size=')  # XML size attribute values
@@ -42,6 +44,12 @@ CARET_DIRECTION_PATTERN = re.compile(r'^\^')  # Direction labels like ^ FRONT
 SNAKE_CASE_PATTERN = re.compile(r'^[a-z][a-z0-9]*(_[a-z0-9]+)+$')  # snake_case identifiers
 URL_PATTERN = re.compile(r'https?://')  # URLs
 MATERIAL_TEMP_PATTERN = re.compile(r'^[A-Z]+ \d+$')  # Material presets like "PLA 205", "ABS 100"
+# Temperature values: "60°C", "200°C", "210°C / 60°C", "200-230°C"
+TEMP_VALUE_PATTERN = re.compile(r'^\d[\d\-–]*°C(\s*/\s*\d+°C)?$')
+# Pure measurement values: "10mm", "5mm", "850g" (units handled by formatters)
+MEASUREMENT_PATTERN = re.compile(r'^\d+(\.\d+)?\s*(mm|cm|g|kg|ml|l|s|ms)$')
+# Numeric data placeholders: " 0 / 0", "0 / 0"
+NUMERIC_PLACEHOLDER_PATTERN = re.compile(r'^\s*\d+\s*/\s*\d+\s*$')
 
 # Short tokens and non-translatable exact strings
 NON_TRANSLATABLE = {"true", "false", "xl", "lg", "md", "sm", "xs", "#RRGGBB"}
@@ -56,8 +64,10 @@ LANGUAGE_NAMES = {
 
 # C++ patterns that indicate translatable text
 CPP_TRANSLATABLE_PATTERNS = [
+    # lv_tr("text") - explicitly marked for translation (handles escaped quotes)
+    r'lv_tr\s*\(\s*"((?:[^"\\]|\\.)+)"',
     # lv_label_set_text(label, "text")
-    r'lv_label_set_text\s*\([^,]+,\s*"([^"]+)"',
+    r'lv_label_set_text\s*\([^,]+,\s*"((?:[^"\\]|\\.)+)"',
     # return "Status Text"  (for status strings)
     r'return\s+"([A-Z][a-z][^"]{2,30})"',
 ]
@@ -80,6 +90,30 @@ CPP_SKIP_PATTERNS = [
 ]
 
 
+def _decode_xml_entities(text: str) -> str:
+    """Decode XML entities including numeric character references.
+
+    Handles named entities (&amp; etc.) and numeric references
+    (&#xF0026; hex, &#983078; decimal) used for icon codepoints.
+    """
+    # Decode named entities
+    text = text.replace("&amp;", "&")
+    text = text.replace("&lt;", "<")
+    text = text.replace("&gt;", ">")
+    text = text.replace("&quot;", '"')
+    text = text.replace("&apos;", "'")
+
+    # Decode numeric character references (&#xHEX; and &#DECIMAL;)
+    def _replace_numeric_entity(m):
+        if m.group(1):  # hex: &#xNNNN;
+            return chr(int(m.group(1), 16))
+        else:  # decimal: &#NNNN;
+            return chr(int(m.group(2)))
+
+    text = XML_NUMERIC_ENTITY_PATTERN.sub(_replace_numeric_entity, text)
+    return text
+
+
 def should_skip_text(text: str) -> bool:
     """Determine if text should be skipped (not translatable)."""
     if not text or not text.strip():
@@ -87,6 +121,10 @@ def should_skip_text(text: str) -> bool:
 
     # Skip variable references
     if "$" in text:
+        return True
+
+    # Skip subject references (e.g., @spoolman_edit_save_text)
+    if text.startswith("@"):
         return True
 
     # Skip icon font references
@@ -97,8 +135,15 @@ def should_skip_text(text: str) -> bool:
     if NUMERIC_PATTERN.match(text.strip()):
         return True
 
-    # Skip icon codepoints (Private Use Area Unicode)
-    if all(ord(c) >= 0xE000 for c in text):
+    # Skip icon codepoints (Unicode Private Use Area ranges)
+    # BMP PUA: U+E000–U+F8FF, Supplementary PUA-A: U+F0000–U+FFFFD,
+    # Supplementary PUA-B: U+100000–U+10FFFD
+    if text and all(
+        (0xE000 <= ord(c) <= 0xF8FF)
+        or (0xF0000 <= ord(c) <= 0xFFFFD)
+        or (0x100000 <= ord(c) <= 0x10FFFD)
+        for c in text
+    ):
         return True
 
     # Skip font names, hex colors, size attributes
@@ -158,6 +203,19 @@ def should_skip_text(text: str) -> bool:
     if MATERIAL_TEMP_PATTERN.match(stripped):
         return True
 
+    # Skip temperature values like "60°C", "200-230°C", "210°C / 60°C"
+    if TEMP_VALUE_PATTERN.match(stripped):
+        return True
+
+    # Skip pure measurement values like "10mm", "850g" (unit formatting is locale-specific
+    # but should be handled by formatter utilities, not in translation strings)
+    if MEASUREMENT_PATTERN.match(stripped):
+        return True
+
+    # Skip numeric data placeholders like " 0 / 0"
+    if NUMERIC_PLACEHOLDER_PATTERN.match(stripped):
+        return True
+
     return False
 
 
@@ -204,8 +262,15 @@ def extract_strings_from_cpp(cpp_path: Path) -> Set[str]:
         return result
 
     for pattern in CPP_TRANSLATABLE_PATTERNS:
+        is_lv_tr = "lv_tr" in pattern
         for match in re.finditer(pattern, content):
             text = match.group(1)
+
+            # lv_tr() strings are explicitly marked - always include them
+            if is_lv_tr:
+                if text and text.strip():
+                    result.add(text)
+                continue
 
             # Get surrounding context to check for skip patterns
             start = max(0, match.start() - 50)
@@ -314,12 +379,8 @@ def extract_strings_from_xml(xml_path: Path) -> Set[str]:
             if "bind_text=" in line:
                 continue
 
-            # Decode XML entities
-            text = text.replace("&amp;", "&")
-            text = text.replace("&lt;", "<")
-            text = text.replace("&gt;", ">")
-            text = text.replace("&quot;", '"')
-            text = text.replace("&apos;", "'")
+            # Decode XML entities (named + numeric character references)
+            text = _decode_xml_entities(text)
 
             if not should_skip_text(text):
                 result.add(text)
@@ -364,12 +425,8 @@ def extract_strings_with_locations(xml_path: Path) -> Dict[str, List[Tuple[str, 
 
             text = match.group(1)
 
-            # Decode XML entities
-            text = text.replace("&amp;", "&")
-            text = text.replace("&lt;", "<")
-            text = text.replace("&gt;", ">")
-            text = text.replace("&quot;", '"')
-            text = text.replace("&apos;", "'")
+            # Decode XML entities (named + numeric character references)
+            text = _decode_xml_entities(text)
 
             if should_skip_text(text):
                 continue

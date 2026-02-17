@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <chrono>
 
+using namespace helix;
+
 // ============================================================================
 // Construction / Destruction
 // ============================================================================
@@ -280,7 +282,7 @@ void TemperatureHistoryManager::target_observer_callback(lv_observer_t* observer
 
 void TemperatureHistoryManager::subscribe_to_subjects() {
     // Subscribe to extruder temperature subject
-    lv_subject_t* extruder_temp = printer_state_.get_extruder_temp_subject();
+    lv_subject_t* extruder_temp = printer_state_.get_active_extruder_temp_subject();
     if (extruder_temp != nullptr) {
         extruder_temp_ctx_ = std::make_unique<ObserverContext>();
         extruder_temp_ctx_->manager = this;
@@ -290,7 +292,7 @@ void TemperatureHistoryManager::subscribe_to_subjects() {
     }
 
     // Subscribe to extruder target subject
-    lv_subject_t* extruder_target = printer_state_.get_extruder_target_subject();
+    lv_subject_t* extruder_target = printer_state_.get_active_extruder_target_subject();
     if (extruder_target != nullptr) {
         extruder_target_ctx_ = std::make_unique<ObserverContext>();
         extruder_target_ctx_->manager = this;

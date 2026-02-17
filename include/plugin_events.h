@@ -18,16 +18,14 @@
 
 #pragma once
 
+#include "json_fwd.h"
+
 #include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "hv/json.hpp"
-
 namespace helix::plugin {
-
-using json = nlohmann::json;
 
 // ============================================================================
 // Event Name Constants

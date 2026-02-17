@@ -40,6 +40,8 @@
 #include <time.h>
 #endif
 
+using namespace helix;
+
 // Static instance pointer for global access (e.g., from print_completion)
 static DisplayManager* s_instance = nullptr;
 
@@ -163,7 +165,7 @@ bool DisplayManager::init(const Config& config) {
 
         // Fall back to config file if not set via Config struct or env
         if (rotation_degrees == 0) {
-            rotation_degrees = ::Config::get_instance()->get<int>("/display/rotate", 0);
+            rotation_degrees = helix::Config::get_instance()->get<int>("/display/rotate", 0);
         }
 
         if (rotation_degrees != 0) {
@@ -192,7 +194,7 @@ bool DisplayManager::init(const Config& config) {
 
     // Initialize UI update queue for thread-safe async updates
     // Must be done AFTER display is created - registers LV_EVENT_REFR_START handler
-    ui_update_queue_init();
+    helix::ui::update_queue_init();
 
 #ifdef HELIX_DISPLAY_SDL
     // Install event filter to intercept window close before LVGL sees it.
@@ -262,7 +264,8 @@ bool DisplayManager::init(const Config& config) {
     // Resolve hardware vs software blank strategy.
     // Config override: /display/hardware_blank (0 or 1). Missing (-1) = auto-detect.
     {
-        int hw_blank_override = ::Config::get_instance()->get<int>("/display/hardware_blank", -1);
+        int hw_blank_override =
+            helix::Config::get_instance()->get<int>("/display/hardware_blank", -1);
         if (hw_blank_override >= 0) {
             m_use_hardware_blank = (hw_blank_override != 0);
             spdlog::info("[DisplayManager] Hardware blank: {} (config override)",
@@ -303,7 +306,7 @@ bool DisplayManager::init(const Config& config) {
     }
 
     // Load dim settings from config
-    ::Config* cfg = ::Config::get_instance();
+    helix::Config* cfg = helix::Config::get_instance();
     m_dim_timeout_sec = cfg->get<int>("/display/dim_sec", 300);
     m_dim_brightness_percent = std::clamp(cfg->get<int>("/display/dim_brightness", 30), 1, 100);
     spdlog::debug("[DisplayManager] Display dim: {}s timeout, {}% brightness", m_dim_timeout_sec,
@@ -353,7 +356,7 @@ void DisplayManager::shutdown() {
     m_backend.reset();
 
     // Shutdown UI update queue before LVGL
-    ui_update_queue_shutdown();
+    helix::ui::update_queue_shutdown();
 
     // Quit SDL before LVGL deinit - must be called outside the SDL event handler.
 #ifdef HELIX_DISPLAY_SDL
@@ -640,7 +643,7 @@ bool DisplayManager::has_backlight_control() const {
 
 bool DisplayManager::apply_touch_calibration(const helix::TouchCalibration& cal) {
     if (!cal.valid) {
-        spdlog::warn("[DisplayManager] Invalid calibration");
+        spdlog::debug("[DisplayManager] Invalid calibration");
         return false;
     }
 

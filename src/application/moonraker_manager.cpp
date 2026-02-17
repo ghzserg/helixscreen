@@ -33,11 +33,14 @@
 #include "printer_detector.h"
 #include "printer_state.h"
 #include "sound_manager.h"
+#include "tool_state.h"
 
 #include <spdlog/spdlog.h>
 
 #include <cstdlib>
 #include <vector>
+
+using namespace helix;
 
 MoonrakerManager::MoonrakerManager() : m_startup_time(std::chrono::steady_clock::now()) {}
 
@@ -93,11 +96,13 @@ void MoonrakerManager::shutdown() {
     // Clean up macro analysis manager
     m_macro_analysis.reset();
 
-    // Release observer guards
-    m_print_start_observer.reset();
-    m_print_start_phase_observer.reset();
-    m_print_layer_fallback_observer.reset();
-    m_print_progress_fallback_observer.reset();
+    // Release observer guards without calling lv_observer_remove().
+    // During shutdown, subjects may already be deinitialized (which frees observers).
+    // Using release() avoids double-free of already-removed observers.
+    m_print_start_observer.release();
+    m_print_start_phase_observer.release();
+    m_print_layer_fallback_observer.release();
+    m_print_progress_fallback_observer.release();
 
     // Clear API before client (API uses client)
     m_api.reset();
@@ -187,7 +192,7 @@ void MoonrakerManager::process_notifications() {
             // Auto-close Connection Failed modal when connection is restored
             // (Disconnect modal is now handled by unified recovery dialog in EmergencyStopOverlay)
             if (new_state == static_cast<int>(ConnectionState::CONNECTED)) {
-                lv_obj_t* modal = ui_modal_get_top();
+                lv_obj_t* modal = helix::ui::modal_get_top();
                 if (modal) {
                     lv_obj_t* title_label = lv_obj_find_by_name(modal, "dialog_title");
                     if (title_label) {
@@ -195,7 +200,7 @@ void MoonrakerManager::process_notifications() {
                         if (title && strcmp(title, "Connection Failed") == 0) {
                             spdlog::info("[MoonrakerManager] Auto-closing '{}' modal on reconnect",
                                          title);
-                            ui_modal_hide(modal);
+                            helix::ui::modal_hide(modal);
                         }
                     }
                 }
@@ -203,6 +208,17 @@ void MoonrakerManager::process_notifications() {
         } else {
             // Regular Moonraker notification
             get_printer_state().update_from_notification(notification);
+
+            // Forward status updates to ToolState for tool changer tracking
+            if (notification.contains("method") && notification.contains("params")) {
+                const auto& method = notification["method"];
+                if (method.is_string() && method.get<std::string>() == "notify_status_update") {
+                    const auto& params = notification["params"];
+                    if (params.is_array() && !params.empty()) {
+                        helix::ToolState::instance().update_from_status(params[0]);
+                    }
+                }
+            }
         }
     }
 }

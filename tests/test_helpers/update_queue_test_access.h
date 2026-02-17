@@ -15,4 +15,3 @@ class UpdateQueueTestAccess {
 } // namespace helix::ui
 
 // Convenience alias for use with 'using namespace helix'
-using helix::ui::UpdateQueueTestAccess;

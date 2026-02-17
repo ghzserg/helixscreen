@@ -221,6 +221,18 @@ lv_subject_init_string(&subject, buffer, ...);
 
 ### 3. Data Binding
 
+#### Sigil Conventions
+
+LVGL XML uses prefix sigils to distinguish different value types:
+
+| Sigil | Meaning | Example | Context |
+|-------|---------|---------|---------|
+| `#` | Design token / const | `style_pad_all="#space_md"` | Spacing, colors, sizes |
+| `$` | Component prop | `text="$primary_text"` | Inside component templates |
+| `@` | Subject binding | `text="@my_subject"` | Reactive data on `ui_button` |
+
+The `@` prefix on `ui_button`'s `text` attribute marks a value as a subject reference (reactive) vs. a literal string (static). Alternatively, `bind_text` always treats its value as a subject name (no `@` needed). See [ui_button](#ui_button) for details.
+
 #### Simple Attribute Bindings
 
 ```xml
@@ -236,6 +248,8 @@ lv_subject_init_string(&subject, buffer, ...);
 <!-- Bind color to subject -->
 <lv_label bind_style_text_color="icon_color" text="#icon_home"/>
 ```
+
+> **Note:** Standard LVGL widgets (`lv_label`, `lv_slider`) resolve `bind_text` directly as a subject name. The `@` prefix convention is specific to `ui_button`, which needs to disambiguate between literal button labels and subject references.
 
 #### Conditional Flag Bindings (Show/Hide)
 
@@ -593,6 +607,25 @@ Semantic button with variant-based styling and auto-contrast text.
 
 **Built-in defaults:** Responsive `button_height` (48/52/72px), `border_radius`, auto-contrast text color
 
+**Reactive text with subject binding:**
+
+`ui_button` supports two ways to bind text to a subject:
+
+```xml
+<!-- Literal text (static) -->
+<ui_button text="Save"/>
+
+<!-- Subject binding via text= with '@' prefix -->
+<ui_button text="@my_button_text_subject"/>
+
+<!-- Subject binding via bind_text (LVGL standard — always a subject, no '@' needed) -->
+<ui_button bind_text="my_button_text_subject"/>
+```
+
+Both `text="@subject"` and `bind_text="subject"` produce identical reactive bindings. Use whichever reads better in context. `bind_text` is the LVGL-standard attribute and always expects a subject name. `text` with `@` prefix is syntactic sugar for the same thing.
+
+When bound to a subject, the button label updates automatically, and a deferred invalidation ensures the button background repaints correctly (avoids partial-redraw artifacts).
+
 #### divider_vertical / divider_horizontal
 
 Visual separators with theme-aware colors.
@@ -717,74 +750,13 @@ The widget is registered via `ui_markdown_init()` in `xml_registration.cpp`. Thi
 
 ## Responsive Design
 
-### Design Token System
+HelixScreen has a comprehensive responsive design token system with 5 breakpoints, semantic spacing, responsive fonts, and more. See the **[UI Contributor Guide](UI_CONTRIBUTOR_GUIDE.md)** for the complete reference — it covers breakpoints, spacing tokens, font tokens, component tokens, color system, and how to add new tokens.
 
-HelixScreen uses a responsive spacing system with tokens registered at runtime.
-
-#### Screen Breakpoints
-
-| Breakpoint | Size | Typical Device |
-|------------|------|----------------|
-| SMALL | ≤480px max dimension | 480x320 |
-| MEDIUM | 481-800px | 800x480 |
-| LARGE | >800px | 1024x600+ |
-
-#### Spacing Tokens
-
-Defined in `globals.xml` with `_small`, `_medium`, `_large` variants:
-
-```xml
-<!-- In globals.xml -->
-<px name="space_md_small" value="8"/>
-<px name="space_md_medium" value="10"/>
-<px name="space_md_large" value="12"/>
-```
-
-At runtime, `ui_theme_register_responsive_spacing()` registers the base token:
-
-```cpp
-// Registers #space_md = 8, 10, or 12 depending on screen size
-lv_xml_register_const(scope, "space_md", appropriate_value);
-```
-
-#### Using Tokens in XML
-
-```xml
-<!-- ✅ CORRECT - Use design tokens -->
-<lv_obj style_pad_all="#space_md" style_pad_gap="#space_sm"/>
-
-<!-- ❌ WRONG - Hardcoded pixels -->
-<lv_obj style_pad_all="12" style_pad_gap="8"/>
-```
-
-#### Available Tokens
-
-| Token | Purpose | Small/Med/Large |
-|-------|---------|-----------------|
-| `#space_xxs` | Tiny gaps | 2/3/4 |
-| `#space_xs` | Extra small | 4/5/6 |
-| `#space_sm` | Small | 6/7/8 |
-| `#space_md` | Standard gaps | 8/10/12 |
-| `#space_lg` | Container padding | 12/16/20 |
-| `#space_xl` | Major sections | 16/20/24 |
-| `#space_2xl` | Toast offsets | 24/32/40 |
-
-#### Runtime Constant Registration
-
-Constants are resolved at parse time. Modify BEFORE creating widgets:
-
-```cpp
-// Get component scope
-lv_xml_component_scope_t* scope = lv_xml_component_get_scope("wizard_container");
-
-// Register responsive value based on screen size
-lv_xml_register_const(scope, "wizard_button_width", "140");
-
-// NOW create widget - picks up the constant
-lv_obj_t* wizard = lv_xml_create(parent, "wizard_container", NULL);
-```
-
-**Limitation:** Cannot modify constants after widget creation.
+Quick summary for reference:
+- **Breakpoints** are height-based: TINY (≤390), SMALL (391-460), MEDIUM (461-550), LARGE (551-700), XLARGE (>700)
+- **Spacing:** `#space_xxs` through `#space_2xl` — always use tokens, never hardcoded pixels
+- **Fonts:** Use `<text_heading>`, `<text_body>`, `<text_small>`, `<text_xs>` components
+- **Colors:** Use `#token_name` in XML (e.g., `style_bg_color="#card_bg"`)
 
 ---
 

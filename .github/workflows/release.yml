@@ -45,11 +45,28 @@ jobs:
   # ============================================================================
   # Build embedded platform binaries using Docker cross-compilation
   # ============================================================================
-  build-pi:
-    name: Build (Raspberry Pi)
+  build-platforms:
+    name: Build (${{ matrix.display_name }})
     needs: [validate-shell]
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [pi, pi32, ad5m, cc1, k1, k2]
+        include:
+          - platform: pi
+            display_name: "Raspberry Pi"
+          - platform: pi32
+            display_name: "Raspberry Pi 32-bit"
+          - platform: ad5m
+            display_name: "Adventurer 5M"
+          - platform: cc1
+            display_name: "Elegoo Centauri Carbon 1"
+          - platform: k1
+            display_name: "Creality K1 Series"
+          - platform: k2
+            display_name: "Creality K2 Series"
 
     steps:
     - name: Checkout repository
@@ -64,27 +81,27 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /tmp/.buildx-cache
-        key: buildx-pi-${{ hashFiles('docker/Dockerfile.pi') }}
+        key: buildx-${{ matrix.platform }}-${{ hashFiles(format('docker/Dockerfile.{0}', matrix.platform)) }}
         restore-keys: |
-          buildx-pi-
+          buildx-${{ matrix.platform }}-
 
-    - name: Build Pi toolchain image
+    - name: Build ${{ matrix.platform }} toolchain image
       run: |
         docker buildx build \
           --cache-from type=local,src=/tmp/.buildx-cache \
           --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
           --load \
-          -t helixscreen/toolchain-pi \
-          -f docker/Dockerfile.pi \
+          -t helixscreen/toolchain-${{ matrix.platform }} \
+          -f docker/Dockerfile.${{ matrix.platform }} \
           docker/
 
-    - name: Cross-compile for Raspberry Pi
+    - name: Cross-compile for ${{ matrix.display_name }}
       run: |
         docker run --rm \
           -v "${{ github.workspace }}":/src \
           -w /src \
-          helixscreen/toolchain-pi \
-          make PLATFORM_TARGET=pi SKIP_OPTIONAL_DEPS=1 -j$(nproc)
+          helixscreen/toolchain-${{ matrix.platform }} \
+          make PLATFORM_TARGET=${{ matrix.platform }} SKIP_OPTIONAL_DEPS=1 -j$(nproc)
 
     # Symbol extraction and stripping are handled by the 'all' target
     # (all → strip → symbols → nm, then strip). No separate steps needed.
@@ -95,314 +112,25 @@ jobs:
     - name: Generate pre-rendered images
       run: make venv-setup && make gen-all-images
 
-    - name: Package Pi release
-      run: make release-pi
+    - name: Package ${{ matrix.platform }} release
+      run: make release-${{ matrix.platform }}
 
-    - name: Upload Pi artifact
+    - name: Upload ${{ matrix.platform }} artifact
       uses: actions/upload-artifact@v4
       with:
-        name: release-pi
+        name: release-${{ matrix.platform }}
         path: |
-          releases/helixscreen-pi-*.tar.gz
-          releases/helixscreen-pi.zip
+          releases/helixscreen-${{ matrix.platform }}-*.tar.gz
+          releases/helixscreen-${{ matrix.platform }}.zip
         retention-days: 7
 
     - name: Upload symbol map artifact
       uses: actions/upload-artifact@v4
       with:
-        name: symbols-pi
-        path: build/pi/bin/helix-screen.sym
+        name: symbols-${{ matrix.platform }}
+        path: build/${{ matrix.platform }}/bin/helix-screen.sym
         retention-days: 30
 
-    # Move cache (prevents cache from growing indefinitely)
-    - name: Move cache
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
-
-  build-pi32:
-    name: Build (Raspberry Pi 32-bit)
-    needs: [validate-shell]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v4
-      with:
-        path: /tmp/.buildx-cache
-        key: buildx-pi32-${{ hashFiles('docker/Dockerfile.pi32') }}
-        restore-keys: |
-          buildx-pi32-
-
-    - name: Build Pi 32-bit toolchain image
-      run: |
-        docker buildx build \
-          --cache-from type=local,src=/tmp/.buildx-cache \
-          --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
-          --load \
-          -t helixscreen/toolchain-pi32 \
-          -f docker/Dockerfile.pi32 \
-          docker/
-
-    - name: Cross-compile for Raspberry Pi (32-bit)
-      run: |
-        docker run --rm \
-          -v "${{ github.workspace }}":/src \
-          -w /src \
-          helixscreen/toolchain-pi32 \
-          make PLATFORM_TARGET=pi32 SKIP_OPTIONAL_DEPS=1 -j$(nproc)
-
-    - name: Fix build directory ownership
-      run: sudo chown -R $(id -u):$(id -g) build/
-
-    - name: Generate pre-rendered images
-      run: make venv-setup && make gen-all-images
-
-    - name: Package Pi 32-bit release
-      run: make release-pi32
-
-    - name: Upload Pi 32-bit artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-pi32
-        path: |
-          releases/helixscreen-pi32-*.tar.gz
-          releases/helixscreen-pi32.zip
-        retention-days: 7
-
-    - name: Upload symbol map artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: symbols-pi32
-        path: build/pi32/bin/helix-screen.sym
-        retention-days: 30
-
-    # Move cache (prevents cache from growing indefinitely)
-    - name: Move cache
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
-
-  build-ad5m:
-    name: Build (Adventurer 5M)
-    needs: [validate-shell]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v4
-      with:
-        path: /tmp/.buildx-cache
-        key: buildx-ad5m-${{ hashFiles('docker/Dockerfile.ad5m') }}
-        restore-keys: |
-          buildx-ad5m-
-
-    - name: Build AD5M toolchain image
-      run: |
-        docker buildx build \
-          --cache-from type=local,src=/tmp/.buildx-cache \
-          --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
-          --load \
-          -t helixscreen/toolchain-ad5m \
-          -f docker/Dockerfile.ad5m \
-          docker/
-
-    - name: Cross-compile for Adventurer 5M
-      run: |
-        docker run --rm \
-          -v "${{ github.workspace }}":/src \
-          -w /src \
-          helixscreen/toolchain-ad5m \
-          make PLATFORM_TARGET=ad5m SKIP_OPTIONAL_DEPS=1 -j$(nproc)
-
-    - name: Fix build directory ownership
-      run: sudo chown -R $(id -u):$(id -g) build/
-
-    - name: Generate pre-rendered images
-      run: make venv-setup && make gen-all-images
-
-    - name: Package AD5M release
-      run: make release-ad5m
-
-    - name: Upload AD5M artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-ad5m
-        path: |
-          releases/helixscreen-ad5m-*.tar.gz
-          releases/helixscreen-ad5m.zip
-        retention-days: 7
-
-    - name: Upload symbol map artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: symbols-ad5m
-        path: build/ad5m/bin/helix-screen.sym
-        retention-days: 30
-
-    # Move cache
-    - name: Move cache
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
-
-  build-k1:
-    name: Build (Creality K1 Series)
-    needs: [validate-shell]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v4
-      with:
-        path: /tmp/.buildx-cache
-        key: buildx-k1-${{ hashFiles('docker/Dockerfile.k1') }}
-        restore-keys: |
-          buildx-k1-
-
-    - name: Build K1 toolchain image
-      run: |
-        docker buildx build \
-          --cache-from type=local,src=/tmp/.buildx-cache \
-          --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
-          --load \
-          -t helixscreen/toolchain-k1 \
-          -f docker/Dockerfile.k1 \
-          docker/
-
-    - name: Cross-compile for Creality K1
-      run: |
-        docker run --rm \
-          -v "${{ github.workspace }}":/src \
-          -w /src \
-          helixscreen/toolchain-k1 \
-          make PLATFORM_TARGET=k1 SKIP_OPTIONAL_DEPS=1 -j$(nproc)
-
-    - name: Fix build directory ownership
-      run: sudo chown -R $(id -u):$(id -g) build/
-
-    - name: Generate pre-rendered images
-      run: make venv-setup && make gen-all-images
-
-    - name: Package K1 release
-      run: make release-k1
-
-    - name: Upload K1 artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-k1
-        path: |
-          releases/helixscreen-k1-*.tar.gz
-          releases/helixscreen-k1.zip
-        retention-days: 7
-
-    - name: Upload symbol map artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: symbols-k1
-        path: build/k1/bin/helix-screen.sym
-        retention-days: 30
-
-    # Move cache
-    - name: Move cache
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
-
-  build-k2:
-    name: Build (Creality K2 Series)
-    needs: [validate-shell]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v4
-      with:
-        path: /tmp/.buildx-cache
-        key: buildx-k2-${{ hashFiles('docker/Dockerfile.k2') }}
-        restore-keys: |
-          buildx-k2-
-
-    - name: Build K2 toolchain image
-      run: |
-        docker buildx build \
-          --cache-from type=local,src=/tmp/.buildx-cache \
-          --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
-          --load \
-          -t helixscreen/toolchain-k2 \
-          -f docker/Dockerfile.k2 \
-          docker/
-
-    - name: Cross-compile for Creality K2
-      run: |
-        docker run --rm \
-          -v "${{ github.workspace }}":/src \
-          -w /src \
-          helixscreen/toolchain-k2 \
-          make PLATFORM_TARGET=k2 SKIP_OPTIONAL_DEPS=1 -j$(nproc)
-
-    - name: Fix build directory ownership
-      run: sudo chown -R $(id -u):$(id -g) build/
-
-    - name: Generate pre-rendered images
-      run: make venv-setup && make gen-all-images
-
-    - name: Package K2 release
-      run: make release-k2
-
-    - name: Upload K2 artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-k2
-        path: |
-          releases/helixscreen-k2-*.tar.gz
-          releases/helixscreen-k2.zip
-        retention-days: 7
-
-    - name: Upload symbol map artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: symbols-k2
-        path: build/k2/bin/helix-screen.sym
-        retention-days: 30
-
-    # Move cache
     - name: Move cache
       run: |
         rm -rf /tmp/.buildx-cache
@@ -414,7 +142,7 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [build-pi, build-pi32, build-ad5m, build-k1, build-k2]
+    needs: [build-platforms]
     permissions:
       contents: write  # Required to create releases
 
@@ -541,6 +269,65 @@ jobs:
         fail_on_unmatched_files: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Notify Discord
+      if: success()
+      continue-on-error: true
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        [ -z "$DISCORD_WEBHOOK_URL" ] && { echo "No webhook configured, skipping"; exit 0; }
+
+        VERSION="${GITHUB_REF_NAME}"
+        RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
+
+        # Extract changelog entry from CHANGELOG.md
+        PLAIN_VERSION="${VERSION#v}"
+        CHANGELOG=""
+        if [ -f CHANGELOG.md ]; then
+          CHANGELOG=$(awk -v ver="$PLAIN_VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "[" ver "]")) found=1
+              next
+            }
+            found { print }
+          ' CHANGELOG.md)
+        fi
+
+        # Truncate to fit Discord embed limit (4096 chars) with room for wrapper
+        if [ ${#CHANGELOG} -gt 3800 ]; then
+          CHANGELOG="${CHANGELOG:0:3800}..."
+        fi
+
+        # Escape for JSON: backslashes, double quotes, newlines
+        CHANGELOG_JSON=$(printf '%s' "$CHANGELOG" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+
+        # Determine embed color: green for stable, yellow for prerelease
+        if [[ "$VERSION" == *-* ]]; then
+          COLOR=16761095  # #FFD700 gold
+          TITLE="HelixScreen ${VERSION} (Pre-release)"
+        else
+          COLOR=3066993   # #2ECC71 green
+          TITLE="HelixScreen ${VERSION} Released"
+        fi
+
+        # Build and send Discord webhook payload
+        curl -s -o /dev/null -w "%{http_code}" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"embeds\": [{
+              \"title\": \"${TITLE}\",
+              \"url\": \"${RELEASE_URL}\",
+              \"description\": ${CHANGELOG_JSON},
+              \"color\": ${COLOR},
+              \"footer\": {
+                \"text\": \"GitHub Actions\"
+              },
+              \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+            }]
+          }" \
+          "$DISCORD_WEBHOOK_URL"
 
   # ============================================================================
   # Upload release artifacts to R2 for auto-update
@@ -706,3 +493,83 @@ jobs:
         for CHANNEL in $UPLOAD_CHANNELS; do
           echo "  ${CHANNEL}: ${R2_PUBLIC_URL}/${CHANNEL}/manifest.json"
         done
+
+    - name: Clean up old releases (retain 10 most recent)
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        R2_BUCKET: ${{ vars.R2_BUCKET_NAME || 'helixscreen-releases' }}
+        UPLOAD_CHANNELS: ${{ steps.channels.outputs.channels }}
+        RETAIN_COUNT: 10
+      run: |
+        # Sort versions using semver-aware sort (numeric on each dotted component)
+        semver_sort() {
+          sort -t. -k1,1n -k2,2n -k3,3n
+        }
+
+        for CHANNEL in $UPLOAD_CHANNELS; do
+          echo "=== Pruning old releases from ${CHANNEL} ==="
+
+          # List all .tar.gz files in channel, extract unique versions
+          VERSIONS=$(aws s3 ls "s3://${R2_BUCKET}/${CHANNEL}/" \
+            --endpoint-url "$R2_ENDPOINT" \
+            | grep -oP 'helixscreen-\w+-v\K[0-9]+\.[0-9]+\.[0-9]+(?:[-.][a-zA-Z0-9.]+)?' \
+            | sort -u \
+            | semver_sort)
+
+          VERSION_COUNT=$(echo "$VERSIONS" | grep -c . || true)
+          echo "Found ${VERSION_COUNT} versions in ${CHANNEL}"
+
+          if [ "$VERSION_COUNT" -le "$RETAIN_COUNT" ]; then
+            echo "Within retention limit, nothing to prune"
+            continue
+          fi
+
+          # Get versions to delete (all but the most recent N)
+          DELETE_VERSIONS=$(echo "$VERSIONS" | head -n -${RETAIN_COUNT})
+          DELETE_COUNT=$(echo "$DELETE_VERSIONS" | grep -c . || true)
+          echo "Pruning ${DELETE_COUNT} old versions: $(echo $DELETE_VERSIONS | tr '\n' ' ')"
+
+          for VERSION in $DELETE_VERSIONS; do
+            # Delete all files matching this version in the channel
+            aws s3 ls "s3://${R2_BUCKET}/${CHANNEL}/" \
+              --endpoint-url "$R2_ENDPOINT" \
+              | awk '{print $4}' \
+              | grep -- "-v${VERSION}\." \
+              | while read -r filename; do
+                echo "  Deleting ${CHANNEL}/${filename}"
+                aws s3 rm "s3://${R2_BUCKET}/${CHANNEL}/${filename}" \
+                  --endpoint-url "$R2_ENDPOINT"
+              done
+          done
+
+          echo "=== ${CHANNEL} pruning complete ==="
+        done
+
+        # Prune old symbol maps
+        echo "=== Pruning old symbol maps ==="
+        SYM_VERSIONS=$(aws s3 ls "s3://${R2_BUCKET}/symbols/" \
+          --endpoint-url "$R2_ENDPOINT" \
+          | grep -oP 'PRE v\K[0-9]+\.[0-9]+\.[0-9]+(?:[-.][a-zA-Z0-9.]+)?' \
+          | sort -u \
+          | semver_sort)
+
+        SYM_COUNT=$(echo "$SYM_VERSIONS" | grep -c . || true)
+        echo "Found ${SYM_COUNT} symbol versions"
+
+        if [ "$SYM_COUNT" -gt "$RETAIN_COUNT" ]; then
+          DELETE_SYM_VERSIONS=$(echo "$SYM_VERSIONS" | head -n -${RETAIN_COUNT})
+          DELETE_SYM_COUNT=$(echo "$DELETE_SYM_VERSIONS" | grep -c . || true)
+          echo "Pruning ${DELETE_SYM_COUNT} old symbol versions"
+
+          for VERSION in $DELETE_SYM_VERSIONS; do
+            echo "  Deleting symbols/v${VERSION}/"
+            aws s3 rm "s3://${R2_BUCKET}/symbols/v${VERSION}/" \
+              --endpoint-url "$R2_ENDPOINT" \
+              --recursive
+          done
+        else
+          echo "Within retention limit, nothing to prune"
+        fi
+        echo "=== Symbol pruning complete ==="

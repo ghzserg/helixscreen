@@ -40,13 +40,12 @@ class WizardLanguageChooserStep {
     WizardLanguageChooserStep();
     ~WizardLanguageChooserStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardLanguageChooserStep(const WizardLanguageChooserStep&) = delete;
     WizardLanguageChooserStep& operator=(const WizardLanguageChooserStep&) = delete;
-
-    // Movable
-    WizardLanguageChooserStep(WizardLanguageChooserStep&& other) noexcept;
-    WizardLanguageChooserStep& operator=(WizardLanguageChooserStep&& other) noexcept;
+    WizardLanguageChooserStep(WizardLanguageChooserStep&&) = delete;
+    WizardLanguageChooserStep& operator=(WizardLanguageChooserStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects

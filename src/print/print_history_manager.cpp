@@ -12,6 +12,8 @@
 
 #include <algorithm>
 
+using namespace helix;
+
 // ============================================================================
 // Construction / Destruction
 // ============================================================================
@@ -57,7 +59,7 @@ void PrintHistoryManager::fetch(int limit) {
             std::vector<PrintHistoryJob> jobs_copy = jobs;
 
             // Dispatch to main thread with guard check
-            ui_queue_update([this, weak_guard, jobs = std::move(jobs_copy)]() mutable {
+            helix::ui::queue_update([this, weak_guard, jobs = std::move(jobs_copy)]() mutable {
                 if (!weak_guard.lock()) {
                     return; // Object destroyed, abort
                 }
@@ -67,7 +69,7 @@ void PrintHistoryManager::fetch(int limit) {
         [this, weak_guard](const MoonrakerError& error) {
             spdlog::warn("[HistoryManager] Failed to fetch history: {}", error.message);
             // Dispatch to main thread with guard check
-            ui_queue_update([this, weak_guard]() {
+            helix::ui::queue_update([this, weak_guard]() {
                 if (!weak_guard.lock()) {
                     return; // Object destroyed, abort
                 }
@@ -191,7 +193,7 @@ void PrintHistoryManager::subscribe_to_notifications() {
                                               "[HistoryManager] Received notify_history_changed");
 
                                           // Dispatch to main thread with guard check
-                                          ui_queue_update([this, weak_guard]() {
+                                          helix::ui::queue_update([this, weak_guard]() {
                                               if (!weak_guard.lock()) {
                                                   return; // Object destroyed, abort
                                               }

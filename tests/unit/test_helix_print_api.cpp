@@ -13,6 +13,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Global LVGL Initialization
 // ============================================================================
@@ -72,7 +73,7 @@ class HelixPrintAPITestFixture {
 TEST_CASE_METHOD(HelixPrintAPITestFixture, "HelixPrint API - has_helix_plugin initial state",
                  "[print][api]") {
     // Initially, plugin should not be detected (no check performed yet)
-    REQUIRE(api->has_helix_plugin() == false);
+    REQUIRE(state.service_has_helix_plugin() == false);
 }
 
 TEST_CASE_METHOD(HelixPrintAPITestFixture,
@@ -95,8 +96,8 @@ TEST_CASE_METHOD(HelixPrintAPITestFixture,
 
     // Should complete (either success with false, or trigger error->false path)
     // The implementation treats errors as "plugin not available"
-    // So either way, has_helix_plugin should be false
-    REQUIRE(api->has_helix_plugin() == false);
+    // So either way, service_has_helix_plugin should be false
+    REQUIRE(state.service_has_helix_plugin() == false);
 }
 
 // ============================================================================

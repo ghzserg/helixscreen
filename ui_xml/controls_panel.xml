@@ -130,7 +130,7 @@
                     width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                     style_margin_top="#space_xs" clickable="true" scrollable="false">
               <event_cb trigger="clicked" callback="on_nozzle_temp_clicked"/>
-              <text_small text="Nozzle:" translation_tag="Nozzle:"/>
+              <text_small bind_text="controls_nozzle_label"/>
               <lv_obj width="content" height="content" flex_flow="row" style_pad_all="0"
                       scrollable="false" style_flex_cross_place="center" style_pad_gap="#space_xs"
                       clickable="false" event_bubble="true">
@@ -148,7 +148,7 @@
                     width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                     clickable="true" scrollable="false">
               <event_cb trigger="clicked" callback="on_bed_temp_clicked"/>
-              <text_small text="Bed:" translation_tag="Bed:"/>
+              <text_small text="Bed" translation_tag="Bed"/>
               <lv_obj width="content" height="content" flex_flow="row" style_pad_all="0"
                       scrollable="false" style_flex_cross_place="center" style_pad_gap="#space_xs"
                       clickable="false" event_bubble="true">

@@ -221,8 +221,8 @@ make compile_commands  # Generates compile_commands.json (requires bear)
 ## Daily Workflow
 
 1. **Edit code** in `src/` or `include/`
-2. **Edit XML** in `ui_xml/` (no rebuild needed for layout/styling)
-3. **Build** with `make -j`
+2. **Edit XML** in `ui_xml/` — **no rebuild needed**, just relaunch the app
+3. **Build** with `make -j` (only when C++ changes)
 4. **Test** with `./build/bin/helix-screen --test -vv [panel]`
 5. **Screenshot** with S key or `./scripts/screenshot.sh`
 6. **Commit** working incremental changes
@@ -231,8 +231,55 @@ make compile_commands  # Generates compile_commands.json (requires bear)
 
 | Change Type | Location | Rebuild? |
 |-------------|----------|----------|
-| Layout, styling, colors | `ui_xml/*.xml` | No (restart only) |
+| Layout, styling, colors | `ui_xml/*.xml` | **No** — just restart the app |
 | Logic, bindings, handlers | `src/*.cpp`, `include/*.h` | Yes (`make -j`) |
+| Theme colors | `config/themes/*.json` | No — just restart |
+| Translations | `config/strings/*.yaml` | Yes (code generation step) |
+
+This makes UI iteration very fast — edit XML, relaunch, see changes immediately.
+
+---
+
+## UI Development
+
+For layout work, styling fixes, and alternate screen layouts, the **[UI Contributor Guide](UI_CONTRIBUTOR_GUIDE.md)** is the primary reference. It covers breakpoints, design tokens, pre-themed widgets, layout overrides, and what needs work.
+
+Key points for UI contributors:
+
+- **XML layouts load at runtime** — no rebuild needed for layout/styling changes
+- **Design tokens are mandatory** — use `#space_md`, `#card_bg`, `<text_body>` instead of hardcoded values
+- **5 breakpoint tiers** based on screen height: tiny (≤390px), small (391–460px), medium (461–550px), large (551–700px), xlarge (>700px)
+- **Layout overrides** let you provide alternate XML for ultrawide, portrait, or tiny screens without touching the standard layouts
+- **Test at multiple sizes** with `-s WIDTHxHEIGHT`:
+  ```bash
+  ./build/bin/helix-screen --test -vv -s 480x320   # Tiny
+  ./build/bin/helix-screen --test -vv -s 800x480   # Standard
+  ./build/bin/helix-screen --test -vv -s 1920x480 --layout ultrawide
+  ```
+
+### Where UI files live
+
+| Path | Contents |
+|------|----------|
+| `ui_xml/` | All XML layouts (~170 files) |
+| `ui_xml/components/` | Reusable XML components |
+| `ui_xml/ultrawide/` | Ultrawide layout overrides |
+| `ui_xml/globals.xml` | Design tokens and global variables (shared, never override) |
+| `config/themes/` | Theme JSON files (color palettes) |
+
+---
+
+## Worktrees
+
+For major feature work, use git worktrees to isolate your changes:
+
+```bash
+scripts/setup-worktree.sh feature/my-branch   # Creates in .worktrees/
+```
+
+This creates a worktree with symlinked dependencies and a ready-to-build environment. Worktrees keep `main` clean while you experiment.
+
+---
 
 ## macOS WiFi Permission
 
@@ -401,9 +448,11 @@ sh -n scripts/install.sh              # Check POSIX syntax
 
 ## Related Documentation
 
-- **[README.md](../README.md)** - Project overview
+- **[README.md](../README.md)** - Documentation index
+- **[UI Contributor Guide](UI_CONTRIBUTOR_GUIDE.md)** - Start here for UI/layout work
 - **[BUILD_SYSTEM.md](BUILD_SYSTEM.md)** - Complete build reference
-- **[ARCHITECTURE.md](../ARCHITECTURE.md)** - System design
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design
 - **[LVGL9_XML_GUIDE.md](LVGL9_XML_GUIDE.md)** - XML syntax reference
 - **[DEVELOPER_QUICK_REFERENCE.md](DEVELOPER_QUICK_REFERENCE.md)** - Common patterns
-- **[MEMORY_ANALYSIS.md](MEMORY_ANALYSIS.md)** - Performance analysis
+- **[TESTING.md](TESTING.md)** - Test infrastructure and Catch2 usage
+- **[LOGGING.md](LOGGING.md)** - Log levels and when to use each

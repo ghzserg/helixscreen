@@ -7,6 +7,7 @@
 
 #include "device_display_name.h"
 #include "spdlog/spdlog.h"
+#include "static_subject_registry.h"
 
 #include <algorithm>
 
@@ -15,15 +16,6 @@
 // not the main LVGL thread. We must defer subject updates to the main thread
 // via ui_async_call to avoid the "Invalidate area not allowed during rendering"
 // assertion.
-
-namespace {
-
-/// @brief Async callback to update subjects on the main LVGL thread
-void async_update_temp_subjects_callback(void* /*user_data*/) {
-    helix::sensors::TemperatureSensorManager::instance().update_subjects_on_main_thread();
-}
-
-} // namespace
 
 namespace helix::sensors {
 
@@ -213,8 +205,10 @@ void TemperatureSensorManager::update_from_status(const nlohmann::json& status) 
                     "[TemperatureSensorManager] sync_mode: updating subjects synchronously");
                 update_subjects();
             } else {
-                spdlog::trace("[TemperatureSensorManager] async_mode: deferring via ui_async_call");
-                ui_async_call(async_update_temp_subjects_callback, nullptr);
+                spdlog::trace(
+                    "[TemperatureSensorManager] async_mode: deferring via ui_queue_update");
+                helix::ui::queue_update(
+                    [] { TemperatureSensorManager::instance().update_subjects_on_main_thread(); });
             }
         }
     }
@@ -310,6 +304,12 @@ void TemperatureSensorManager::init_subjects() {
     UI_MANAGED_SUBJECT_INT(sensor_count_, 0, "temp_sensor_count", subjects_);
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticSubjectRegistry::instance().register_deinit("TemperatureSensorManager", []() {
+        TemperatureSensorManager::instance().deinit_subjects();
+    });
+
     spdlog::trace("[TemperatureSensorManager] Subjects initialized");
 }
 

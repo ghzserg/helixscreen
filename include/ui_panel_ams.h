@@ -4,11 +4,11 @@
 #pragma once
 
 #include "ui_ams_context_menu.h"
+#include "ui_ams_detail.h"
 #include "ui_ams_dryer_card.h"
 #include "ui_ams_edit_modal.h"
 #include "ui_ams_loading_error_modal.h"
 #include "ui_ams_slot_edit_popup.h"
-#include "ui_ams_spoolman_picker.h"
 #include "ui_color_picker.h"
 #include "ui_observer_guard.h"
 #include "ui_panel_base.h"
@@ -55,10 +55,10 @@ class AmsPanel : public PanelBase {
   public:
     /**
      * @brief Construct AMS panel with dependencies
-     * @param printer_state Reference to global PrinterState
+     * @param printer_state Reference to global helix::PrinterState
      * @param api Pointer to MoonrakerAPI (may be nullptr)
      */
-    AmsPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    AmsPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
     ~AmsPanel() override = default;
 
     // === PanelBase Interface ===
@@ -103,6 +103,17 @@ class AmsPanel : public PanelBase {
      */
     void clear_panel_reference();
 
+    /**
+     * @brief Scope detail view to show only one unit's slots
+     * @param unit_index Unit index to show (-1 = all units, default)
+     */
+    void set_unit_scope(int unit_index);
+
+    /**
+     * @brief Clear unit scope, showing all slots
+     */
+    void clear_unit_scope();
+
   private:
     // === Slot Management ===
 
@@ -110,16 +121,15 @@ class AmsPanel : public PanelBase {
         16; ///< Max slots displayed (increased for 8+ gate systems)
     lv_obj_t* slot_widgets_[MAX_VISIBLE_SLOTS] = {nullptr};
     lv_obj_t* label_widgets_[MAX_VISIBLE_SLOTS] = {nullptr}; ///< Separate label layer for z-order
-    lv_obj_t* labels_layer_ = nullptr; ///< Container for labels (drawn on top of all spools)
+    AmsDetailWidgets detail_widgets_;                        ///< Shared component widget pointers
 
     // === Extracted UI Modules ===
 
-    std::unique_ptr<helix::ui::AmsContextMenu> context_menu_;       ///< Slot context menu
-    std::unique_ptr<helix::ui::AmsSlotEditPopup> slot_edit_popup_;  ///< Slot edit popup
-    std::unique_ptr<helix::ui::AmsSpoolmanPicker> spoolman_picker_; ///< Spoolman spool picker
-    std::unique_ptr<helix::ui::AmsEditModal> edit_modal_;           ///< Edit filament modal
-    std::unique_ptr<helix::ui::AmsDryerCard> dryer_card_;           ///< Dryer card and modal
-    std::unique_ptr<helix::ui::AmsLoadingErrorModal> error_modal_;  ///< Loading error modal
+    std::unique_ptr<helix::ui::AmsContextMenu> context_menu_;      ///< Slot context menu
+    std::unique_ptr<helix::ui::AmsSlotEditPopup> slot_edit_popup_; ///< Slot edit popup
+    std::unique_ptr<helix::ui::AmsEditModal> edit_modal_;          ///< Edit filament modal
+    std::unique_ptr<helix::ui::AmsDryerCard> dryer_card_;          ///< Dryer card and modal
+    std::unique_ptr<helix::ui::AmsLoadingErrorModal> error_modal_; ///< Loading error modal
 
     // === Observers (RAII cleanup via ObserverGuard) ===
 
@@ -130,9 +140,11 @@ class AmsPanel : public PanelBase {
     ObserverGuard path_segment_observer_;
     ObserverGuard path_topology_observer_;
     ObserverGuard extruder_temp_observer_; ///< For preheat completion detection
+    ObserverGuard backend_count_observer_; ///< For backend selector visibility
 
     // === Dynamic Slot State ===
 
+    int scoped_unit_index_ = -1;     ///< Unit scope: -1 = all units, >=0 = specific unit
     int current_slot_count_ = 0;     ///< Number of slots currently created
     lv_obj_t* slot_grid_ = nullptr;  ///< Container for dynamically created slots
     int last_highlighted_slot_ = -1; ///< Previously highlighted slot (for pulse animation)
@@ -170,6 +182,15 @@ class AmsPanel : public PanelBase {
     // === Endless Spool Arrows Canvas ===
 
     lv_obj_t* endless_arrows_ = nullptr; ///< Endless spool backup chain visualization
+
+    // === Backend Selector State ===
+
+    int active_backend_idx_ = 0; ///< Currently selected backend index
+
+    // === Backend Selector Helpers ===
+
+    void rebuild_backend_selector();
+    void on_backend_segment_selected(int index);
 
     // === Setup Helpers ===
 
@@ -217,7 +238,6 @@ class AmsPanel : public PanelBase {
     void update_action_display(AmsAction action);
     void update_current_slot_highlight(int slot_index);
     void update_current_loaded_display(int slot_index);
-    void update_tray_size();
 
     /**
      * @brief Start or stop continuous border pulse animation on a slot
@@ -305,15 +325,14 @@ class AmsPanel : public PanelBase {
 
     // === UI Module Helpers (internal, show modals with callbacks) ===
 
-    void show_context_menu(int slot_index, lv_obj_t* near_widget);
+    void show_context_menu(int slot_index, lv_obj_t* near_widget, lv_point_t click_pt);
     void show_slot_edit_popup(int slot_index, lv_obj_t* near_widget);
-    void show_spoolman_picker(int slot_index);
     void show_edit_modal(int slot_index);
     void show_loading_error_modal();
 
     // === Action Handlers (public for XML event callbacks) ===
   public:
-    void handle_slot_tap(int slot_index);
+    void handle_slot_tap(int slot_index, lv_point_t click_pt);
     void handle_unload();
     void handle_reset();
     void handle_bypass_toggle();

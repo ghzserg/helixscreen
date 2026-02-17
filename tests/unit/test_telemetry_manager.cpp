@@ -352,9 +352,6 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Session event: does NOT contain PII fiel
     tm.record_session();
     auto event = tm.get_queue_snapshot()[0];
 
-    // Serialize entire event to string for thorough PII check
-    std::string event_str = event.dump();
-
     // Must NOT contain any PII-identifying fields
     REQUIRE_FALSE(event.contains("ip"));
     REQUIRE_FALSE(event.contains("ip_address"));
@@ -1083,4 +1080,59 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Session event v2: host section has hardw
     // Verify no PII leakage in host section
     REQUIRE_FALSE(host.contains("hostname"));
     REQUIRE_FALSE(host.contains("ip"));
+}
+
+// ============================================================================
+// Print Outcome - Filament Metadata [telemetry][print_outcome]
+// ============================================================================
+
+TEST_CASE_METHOD(TelemetryTestFixture, "Print outcome event includes filament_type when set",
+                 "[telemetry][print_outcome]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    tm.record_print_outcome("success", 3600, 10, 1234.5f, "PLA", 210, 60);
+
+    auto batch = tm.build_batch();
+    REQUIRE(batch.size() == 1);
+    REQUIRE(batch[0]["filament_type"] == "PLA");
+    REQUIRE(batch[0]["filament_used_mm"].get<float>() == Catch::Approx(1234.5f));
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture, "Print outcome event has empty filament_type by default",
+                 "[telemetry][print_outcome]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    tm.record_print_outcome("success", 3600, 10, 0.0f, "", 210, 60);
+
+    auto batch = tm.build_batch();
+    REQUIRE(batch.size() == 1);
+    REQUIRE(batch[0]["filament_type"] == "");
+    REQUIRE(batch[0]["filament_used_mm"].get<float>() == Catch::Approx(0.0f));
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture,
+                 "Print outcome event: preserves filament type across material types",
+                 "[telemetry][print_outcome]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    // Test various filament types including multi-tool separator
+    std::vector<std::pair<std::string, float>> cases = {
+        {"PLA", 1500.0f},
+        {"PETG", 2200.5f},
+        {"ABS;PLA", 3100.0f},
+    };
+
+    for (const auto& [ftype, fmm] : cases) {
+        tm.clear_queue();
+        tm.record_print_outcome("success", 600, 5, fmm, ftype, 200, 60);
+
+        auto batch = tm.build_batch();
+        REQUIRE(batch.size() == 1);
+        INFO("Testing filament_type: " << ftype);
+        REQUIRE(batch[0]["filament_type"] == ftype);
+        REQUIRE(batch[0]["filament_used_mm"].get<float>() == Catch::Approx(fmm));
+    }
 }

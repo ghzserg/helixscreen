@@ -10,15 +10,15 @@
     <px name="nav_width_large" value="120"/>
   </consts>
   <view extends="lv_obj"
-        width="#nav_width" height="100%" style_pad_all="#space_xl" flex_flow="column"
-        style_flex_main_place="space_between" style_flex_track_place="center" style_flex_cross_place="center"
+        width="#nav_width" height="100%" style_pad_top="#space_xl" style_pad_bottom="#space_xl" style_pad_left="0" style_pad_right="0" flex_flow="column"
+        style_flex_main_place="start" style_flex_track_place="center" style_flex_cross_place="center"
         style_border_width="0" style_radius="0" scrollable="false" style_bg_color="#card_bg" style_bg_opa="255">
     <!-- ================================================================== -->
     <!-- Navigation Buttons - Dual icon pattern (accent/secondary variants) -->
     <!-- ================================================================== -->
     <!-- Home Button (Panel 0) -->
     <ui_button name="nav_btn_home"
-               width="100%" height="content" variant="ghost" flex_flow="column" style_flex_main_place="center"
+               width="100%" flex_grow="1" variant="ghost" flex_flow="column" style_flex_main_place="center"
                style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0">
       <!-- Active icon (accent color) - shown when active_panel == 0 -->
       <icon name="nav_icon_home_active" src="home" size="#icon_size" variant="primary" hidden="true">
@@ -32,7 +32,7 @@
     <!-- Controls Button (Panel 2) - CONNECTION + KLIPPY READY REQUIRED -->
     <!-- Uses combined nav_buttons_enabled subject (1=enabled when connected AND klippy ready) -->
     <ui_button name="nav_btn_controls"
-               width="100%" height="content" variant="ghost" flex_flow="column" style_flex_main_place="center"
+               width="100%" flex_grow="1" variant="ghost" flex_flow="column" style_flex_main_place="center"
                style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0">
       <!-- Disabled clickability when not enabled (disconnected OR klippy not ready) -->
       <bind_state_if_not_eq subject="nav_buttons_enabled" state="disabled" ref_value="1"/>
@@ -56,7 +56,7 @@
     <!-- Filament Button (Panel 3) - CONNECTION + KLIPPY READY REQUIRED -->
     <!-- Uses combined nav_buttons_enabled subject (1=enabled when connected AND klippy ready) -->
     <ui_button name="nav_btn_filament"
-               width="100%" height="content" variant="ghost" flex_flow="column" style_flex_main_place="center"
+               width="100%" flex_grow="1" variant="ghost" flex_flow="column" style_flex_main_place="center"
                style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0">
       <!-- Disabled clickability when not enabled (disconnected OR klippy not ready) -->
       <bind_state_if_not_eq subject="nav_buttons_enabled" state="disabled" ref_value="1"/>
@@ -79,7 +79,7 @@
     </ui_button>
     <!-- Settings Button (Panel 4) -->
     <ui_button name="nav_btn_settings"
-               width="100%" height="content" variant="ghost" flex_flow="column" style_flex_main_place="center"
+               width="100%" flex_grow="1" variant="ghost" flex_flow="column" style_flex_main_place="center"
                style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0">
       <icon name="nav_icon_settings_active" src="settings" size="#icon_size" variant="primary" hidden="true">
         <bind_flag_if_not_eq subject="active_panel" flag="hidden" ref_value="4"/>
@@ -90,7 +90,7 @@
     </ui_button>
     <!-- Advanced Button (Panel 5) -->
     <ui_button name="nav_btn_advanced"
-               width="100%" height="content" variant="ghost" flex_flow="column" style_flex_main_place="center"
+               width="100%" flex_grow="1" variant="ghost" flex_flow="column" style_flex_main_place="center"
                style_flex_cross_place="center" style_flex_track_place="center" style_border_width="0">
       <icon name="nav_icon_advanced_active" src="dots_vertical" size="#icon_size" variant="primary" hidden="true">
         <bind_flag_if_not_eq subject="active_panel" flag="hidden" ref_value="5"/>

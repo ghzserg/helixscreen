@@ -16,10 +16,14 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class WiFiManager;
+}
 class EthernetManager;
 class TempControlPanel;
-enum class PrintJobState : int;
+namespace helix {
+enum class PrintJobState;
+}
 
 /**
  * @brief Home panel - Main dashboard showing printer status and quick actions
@@ -31,16 +35,18 @@ enum class PrintJobState : int;
  */
 
 // Network connection types
-typedef enum { NETWORK_WIFI, NETWORK_ETHERNET, NETWORK_DISCONNECTED } network_type_t;
+namespace helix {
+enum class NetworkType { Wifi, Ethernet, Disconnected };
+} // namespace helix
 
 class HomePanel : public PanelBase {
   public:
     /**
      * @brief Construct HomePanel with injected dependencies
-     * @param printer_state Reference to PrinterState
+     * @param printer_state Reference to helix::PrinterState
      * @param api Pointer to MoonrakerAPI (for light control)
      */
-    HomePanel(PrinterState& printer_state, MoonrakerAPI* api);
+    HomePanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
     ~HomePanel() override;
 
     void init_subjects() override;
@@ -63,7 +69,7 @@ class HomePanel : public PanelBase {
     void update(const char* status_text, int temp);
 
     /** @brief Set network status display */
-    void set_network(network_type_t type);
+    void set_network(helix::NetworkType type);
 
     /** @brief Set light state (on=gold, off=grey) */
     void set_light(bool is_on);
@@ -117,15 +123,16 @@ class HomePanel : public PanelBase {
     char printer_host_buffer_[64];
 
     bool light_on_ = false;
-    network_type_t current_network_ = NETWORK_WIFI;
-    PrintingTip current_tip_;
-    PrintingTip pending_tip_; // Tip waiting to be displayed after fade-out
+    bool light_long_pressed_ = false; // Suppress click after long-press
+    helix::NetworkType current_network_ = helix::NetworkType::Wifi;
+    helix::PrintingTip current_tip_;
+    helix::PrintingTip pending_tip_; // Tip waiting to be displayed after fade-out
     // configured_leds_ removed - read LedController::selected_strips() lazily
     lv_timer_t* tip_rotation_timer_ = nullptr;
     lv_obj_t* tip_label_ = nullptr;                     // Cached for fade animation
     bool tip_animating_ = false;                        // Prevents overlapping animations
     lv_timer_t* signal_poll_timer_ = nullptr;           // Polls WiFi signal strength every 5s
-    std::shared_ptr<WiFiManager> wifi_manager_;         // For signal strength queries
+    std::shared_ptr<helix::WiFiManager> wifi_manager_;  // For signal strength queries
     std::unique_ptr<EthernetManager> ethernet_manager_; // For Ethernet status queries
 
     // Light icon for dynamic brightness/color updates
@@ -136,7 +143,7 @@ class HomePanel : public PanelBase {
     lv_obj_t* led_control_panel_ = nullptr;
 
     void update_tip_of_day();
-    void start_tip_fade_transition(const PrintingTip& new_tip);
+    void start_tip_fade_transition(const helix::PrintingTip& new_tip);
     void apply_pending_tip();         // Called when fade-out completes
     void detect_network_type();       // Detects WiFi vs Ethernet vs disconnected
     int compute_network_icon_state(); // Maps network type + signal → 0-5
@@ -208,7 +215,7 @@ class HomePanel : public PanelBase {
     void update_filament_status_visibility();
 
     // Print card update methods
-    void on_print_state_changed(PrintJobState state);
+    void on_print_state_changed(helix::PrintJobState state);
     void on_print_progress_or_time_changed();
     void on_print_thumbnail_path_changed(const char* path);
     void update_print_card_from_state();

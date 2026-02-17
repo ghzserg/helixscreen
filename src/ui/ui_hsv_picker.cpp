@@ -19,6 +19,8 @@
 #include <cstring>
 #include <memory>
 
+using namespace helix;
+
 namespace {
 
 // Default sizes
@@ -300,7 +302,7 @@ static void hue_touch_handler(lv_event_t* e) {
     render_sv_square(data);
     // Defer invalidation to avoid calling during render phase
     // Check lv_obj_is_valid() in case widget is deleted before callback executes
-    ui_async_call(
+    helix::ui::async_call(
         [](void* obj_ptr) {
             auto* obj = static_cast<lv_obj_t*>(obj_ptr);
             if (lv_obj_is_valid(obj)) {
@@ -491,7 +493,7 @@ void ui_hsv_picker_set_color_rgb(lv_obj_t* obj, uint32_t rgb) {
     if (data->sv_image) {
         // Defer invalidation to avoid calling during render phase
         // Check lv_obj_is_valid() in case widget is deleted before callback executes
-        ui_async_call(
+        helix::ui::async_call(
             [](void* obj_ptr) {
                 auto* obj = static_cast<lv_obj_t*>(obj_ptr);
                 if (lv_obj_is_valid(obj)) {
@@ -540,7 +542,7 @@ void ui_hsv_picker_set_hsv(lv_obj_t* obj, float hue, float sat, float val) {
     if (data->sv_image) {
         // Defer invalidation to avoid calling during render phase
         // Check lv_obj_is_valid() in case widget is deleted before callback executes
-        ui_async_call(
+        helix::ui::async_call(
             [](void* obj_ptr) {
                 auto* obj = static_cast<lv_obj_t*>(obj_ptr);
                 if (lv_obj_is_valid(obj)) {

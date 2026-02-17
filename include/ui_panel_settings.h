@@ -43,7 +43,7 @@ class SettingsPanel : public PanelBase {
      * @param printer_state Reference to PrinterState
      * @param api Pointer to MoonrakerAPI
      */
-    SettingsPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    SettingsPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     ~SettingsPanel() override;
 
@@ -117,6 +117,9 @@ class SettingsPanel : public PanelBase {
 
     // Change host modal (lazy-created)
     std::unique_ptr<ChangeHostModal> change_host_modal_;
+
+    // History dashboard overlay (lazy-created)
+    lv_obj_t* history_dashboard_panel_ = nullptr;
 
     // Info rows (for dynamic updates)
     lv_obj_t* printer_value_ = nullptr;
@@ -217,10 +220,14 @@ class SettingsPanel : public PanelBase {
     void handle_led_settings_clicked();
     void handle_sound_settings_clicked();
     void handle_estop_confirm_changed(bool enabled);
+    void handle_cancel_escalation_changed(bool enabled);
     void handle_telemetry_changed(bool enabled);
     void handle_telemetry_view_data_clicked();
 
     void handle_about_clicked();
+    void handle_debug_bundle_clicked();
+    void handle_discord_clicked();
+    void handle_docs_clicked();
     void handle_display_settings_clicked();
     void handle_filament_sensors_clicked();
     void handle_ams_settings_clicked();
@@ -232,6 +239,7 @@ class SettingsPanel : public PanelBase {
     void handle_touch_calibration_clicked();
     void handle_restart_helix_clicked();
     void handle_factory_reset_clicked();
+    void handle_print_hours_clicked();
     // Note: populate_sensor_list() moved to SensorSettingsOverlay
     // Note: populate_macro_dropdowns() moved to MacroButtonsOverlay
     // Note: populate_hardware_issues() moved to HardwareHealthOverlay
@@ -267,7 +275,11 @@ class SettingsPanel : public PanelBase {
     static void on_led_settings_clicked(lv_event_t* e);
     static void on_sound_settings_clicked(lv_event_t* e);
     static void on_estop_confirm_changed(lv_event_t* e);
+    static void on_cancel_escalation_changed(lv_event_t* e);
     static void on_about_clicked(lv_event_t* e);
+    static void on_debug_bundle_clicked(lv_event_t* e);
+    static void on_discord_clicked(lv_event_t* e);
+    static void on_docs_clicked(lv_event_t* e);
     static void on_telemetry_changed(lv_event_t* e);
     static void on_display_settings_clicked(lv_event_t* e);
     static void on_filament_sensors_clicked(lv_event_t* e);
@@ -283,6 +295,7 @@ class SettingsPanel : public PanelBase {
     static void on_plugins_clicked(lv_event_t* e);
     static void on_telemetry_view_data(lv_event_t* e);
     static void on_restart_helix_settings_clicked(lv_event_t* e);
+    static void on_print_hours_clicked(lv_event_t* e);
 
   private:
     //

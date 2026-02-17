@@ -15,7 +15,7 @@ Welcome to the HelixScreen documentation. Choose your path:
 | [**Configuration**](user/CONFIGURATION.md) | All settings explained |
 | [**Troubleshooting**](user/TROUBLESHOOTING.md) | Solutions to common problems |
 | [**FAQ**](user/FAQ.md) | Quick answers to common questions |
-| [**Plugin Development**](user/PLUGIN_DEVELOPMENT.md) | Create custom plugins |
+| [**Plugin Development**](devel/PLUGIN_DEVELOPMENT.md) | Create custom plugins |
 
 ---
 
@@ -26,6 +26,7 @@ Welcome to the HelixScreen documentation. Choose your path:
 | Document | Description |
 |----------|-------------|
 | [**Development Guide**](devel/DEVELOPMENT.md) | Build system, workflow, and contributing |
+| [**UI Contributor Guide**](devel/UI_CONTRIBUTOR_GUIDE.md) | **Start here for UI/layout work** — breakpoints, tokens, widgets, overrides |
 | [**Architecture**](devel/ARCHITECTURE.md) | System design and patterns |
 | [**Build System**](devel/BUILD_SYSTEM.md) | Makefile, cross-compilation, patches |
 | [**Testing**](devel/TESTING.md) | Test infrastructure and Catch2 usage |
@@ -56,6 +57,7 @@ Welcome to the HelixScreen documentation. Choose your path:
 | Document | Description |
 |----------|-------------|
 | [**Filament Management**](devel/FILAMENT_MANAGEMENT.md) | AMS, AFC, Happy Hare, ValgACE, Tool Changer |
+| [**Spoolman Spool Wizard**](devel/plans/2026-02-15-spool-wizard-status.md) | 3-step spool creation wizard, API methods, visual test plan |
 | [**Input Shaper & PID**](devel/INPUT_SHAPER.md) | Calibration, frequency response charts, CSV parser |
 | [**Preprint Prediction**](devel/PREPRINT_PREDICTION.md) | ETA prediction engine, phase timing, history |
 | [**Exclude Objects**](devel/EXCLUDE_OBJECTS.md) | Object exclusion, thumbnails, slicer setup |
@@ -75,9 +77,9 @@ Welcome to the HelixScreen documentation. Choose your path:
 | Document | Description |
 |----------|-------------|
 | [**Installer**](devel/INSTALLER.md) | Installation system, KIAUH, platforms, shell tests |
-| [**QIDI Support**](devel/QIDI_SUPPORT.md) | QIDI Q1 Pro / Plus platform guide |
-| [**Snapmaker U1 Support**](devel/SNAPMAKER_U1_SUPPORT.md) | Snapmaker U1 toolchanger platform guide |
-| [**Creality K2 Support**](devel/CREALITY_K2_SUPPORT.md) | Creality K2 series platform guide |
+| [**QIDI Support**](devel/printers/QIDI_SUPPORT.md) | QIDI Q1 Pro / Plus platform guide |
+| [**Snapmaker U1 Support**](devel/printers/SNAPMAKER_U1_SUPPORT.md) | Snapmaker U1 toolchanger platform guide |
+| [**Creality K2 Support**](devel/printers/CREALITY_K2_SUPPORT.md) | Creality K2 series platform guide |
 
 ---
 
@@ -119,7 +121,7 @@ docs/
 │   ├── CONFIGURATION.md      # Settings reference
 │   ├── TROUBLESHOOTING.md    # Common problems
 │   ├── FAQ.md                # Frequently asked questions
-│   └── PLUGIN_DEVELOPMENT.md # Plugin creation guide
+│   └── (see devel/PLUGIN_DEVELOPMENT.md)
 │
 ├── devel/                    # DEVELOPER DOCUMENTATION
 │   ├── CLAUDE.md             # Full developer doc index
@@ -157,9 +159,18 @@ moonraker-plugin/
 | Use HelixScreen | [User Guide](user/USER_GUIDE.md) |
 | Build from source | [Development Guide](devel/DEVELOPMENT.md) |
 | Contribute code | [Development Guide - Contributing](devel/DEVELOPMENT.md#contributing) |
+| Fix layouts / contribute UI | [UI Contributor Guide](devel/UI_CONTRIBUTOR_GUIDE.md) |
 | Create XML layouts | [LVGL 9 XML Guide](devel/LVGL9_XML_GUIDE.md) |
 | Understand the architecture | [Architecture Guide](devel/ARCHITECTURE.md) |
 | Cross-compile for Pi | [Build System - Cross-Compilation](devel/BUILD_SYSTEM.md#cross-compilation-embedded-targets) |
+
+---
+
+## Community
+
+**[Join the HelixScreen Discord](https://discord.gg/rZ9dB74V)** — Get help, share your setup, and follow development.
+
+**Bug Reports & Feature Requests:** [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues)
 
 ---
 

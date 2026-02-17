@@ -7,8 +7,9 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_icon.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_ams.h"
+#include "ui_panel_ams_overview.h"
 #include "ui_panel_temp_control.h"
 #include "ui_subject_registry.h"
 #include "ui_temperature_utils.h"
@@ -27,12 +28,15 @@
 #include "standard_macros.h"
 #include "static_panel_registry.h"
 #include "theme_manager.h"
+#include "tool_state.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <cstring>
 #include <memory>
+
+using namespace helix;
 
 // Preset material names (indexed by material ID: 0=PLA, 1=PETG, 2=ABS, 3=TPU)
 // Temperatures are now looked up from filament_database.h
@@ -43,6 +47,7 @@ static constexpr int PRESET_COUNT = 4;
 static constexpr const char* SAFETY_WARNING_FMT = "Heat to at least %d°C to load/unload";
 
 using helix::ui::observe_int_async;
+using helix::ui::observe_int_sync;
 using helix::ui::temperature::centi_to_degrees;
 using helix::ui::temperature::format_target_or_off;
 using helix::ui::temperature::get_heating_state_color;
@@ -95,6 +100,9 @@ FilamentPanel::FilamentPanel(PrinterState& printer_state, MoonrakerAPI* api)
     // Cooldown button
     lv_xml_register_event_cb(nullptr, "on_filament_cooldown", on_cooldown_clicked);
 
+    // Extruder selector dropdown
+    lv_xml_register_event_cb(nullptr, "on_extruder_dropdown_changed", on_extruder_dropdown_changed);
+
     // Subscribe to PrinterState temperatures using bundle pattern
     // NOTE: Observers must defer UI updates via ui_async_call to avoid render-phase assertions
     // [L029]
@@ -105,6 +113,17 @@ FilamentPanel::FilamentPanel(PrinterState& printer_state, MoonrakerAPI* api)
         [](FilamentPanel* self, int raw) { self->bed_current_ = centi_to_degrees(raw); },
         [](FilamentPanel* self, int raw) { self->bed_target_ = centi_to_degrees(raw); },
         [](FilamentPanel* self) { self->update_all_temps(); });
+
+    // Subscribe to active tool changes for dynamic nozzle label + dropdown sync
+    active_tool_observer_ = observe_int_sync<FilamentPanel>(
+        helix::ToolState::instance().get_active_tool_subject(), this,
+        [](FilamentPanel* self, int tool_idx) {
+            self->update_nozzle_label();
+            if (self->extruder_dropdown_ && tool_idx >= 0) {
+                lv_dropdown_set_selected(self->extruder_dropdown_, static_cast<uint32_t>(tool_idx));
+            }
+        });
+    update_nozzle_label();
 }
 
 FilamentPanel::~FilamentPanel() {
@@ -115,11 +134,11 @@ FilamentPanel::~FilamentPanel() {
     // Clean up warning dialogs if open (prevents memory leak and use-after-free)
     if (lv_is_initialized()) {
         if (load_warning_dialog_) {
-            ui_modal_hide(load_warning_dialog_);
+            helix::ui::modal_hide(load_warning_dialog_);
             load_warning_dialog_ = nullptr;
         }
         if (unload_warning_dialog_) {
-            ui_modal_hide(unload_warning_dialog_);
+            helix::ui::modal_hide(unload_warning_dialog_);
             unload_warning_dialog_ = nullptr;
         }
     }
@@ -154,6 +173,10 @@ void FilamentPanel::init_subjects() {
                                   material_nozzle_buf_, "filament_material_nozzle_temp", subjects_);
         UI_MANAGED_SUBJECT_STRING(material_bed_temp_subject_, material_bed_buf_, material_bed_buf_,
                                   "filament_material_bed_temp", subjects_);
+
+        // Nozzle label (dynamic for multi-tool)
+        UI_MANAGED_SUBJECT_STRING(nozzle_label_subject_, nozzle_label_buf_, "Nozzle",
+                                  "filament_nozzle_label", subjects_);
 
         // Left card temperature subjects (current and target for nozzle/bed)
         UI_MANAGED_SUBJECT_STRING(nozzle_current_subject_, nozzle_current_buf_, nozzle_current_buf_,
@@ -223,6 +246,25 @@ void FilamentPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     temp_group_ = lv_obj_find_by_name(panel_, "temp_group");
     temp_graph_card_ = lv_obj_find_by_name(panel_, "temp_graph_card");
 
+    // Find multi-filament card widgets
+    ams_status_card_ = lv_obj_find_by_name(panel_, "ams_status_card");
+    extruder_selector_group_ = lv_obj_find_by_name(panel_, "extruder_selector_group");
+    extruder_dropdown_ = lv_obj_find_by_name(panel_, "extruder_dropdown");
+    btn_manage_slots_ = lv_obj_find_by_name(panel_, "btn_manage_slots");
+    ams_manage_row_ = lv_obj_find_by_name(panel_, "ams_manage_row");
+
+    // Populate extruder dropdown and set card visibility
+    populate_extruder_dropdown();
+    update_multi_filament_card_visibility();
+
+    // Rebuild dropdown if tool list changes
+    tools_version_observer_ =
+        observe_int_sync<FilamentPanel>(helix::ToolState::instance().get_tools_version_subject(),
+                                        this, [](FilamentPanel* self, int) {
+                                            self->populate_extruder_dropdown();
+                                            self->update_multi_filament_card_visibility();
+                                        });
+
     // Subscribe to AMS type to expand temp graph when no AMS present [L020] [L029]
     ams_type_observer_ = ObserverGuard(
         AmsState::instance().get_ams_type_subject(),
@@ -231,7 +273,7 @@ void FilamentPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
             if (!self || !self->temp_group_ || !self->temp_graph_card_)
                 return;
 
-            ui_async_call(
+            helix::ui::async_call(
                 [](void* ctx) {
                     auto* panel = static_cast<FilamentPanel*>(ctx);
                     bool has_ams =
@@ -247,6 +289,9 @@ void FilamentPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                         lv_obj_set_flex_grow(panel->temp_group_, 1);
                         lv_obj_set_flex_grow(panel->temp_graph_card_, 1);
                     }
+
+                    // Update multi-filament card visibility (AMS state changed)
+                    panel->update_multi_filament_card_visibility();
                 },
                 self);
         },
@@ -381,6 +426,14 @@ void FilamentPanel::check_and_auto_select_preset() {
     }
 }
 
+void FilamentPanel::update_nozzle_label() {
+    auto label = helix::ToolState::instance().nozzle_label();
+    std::snprintf(nozzle_label_buf_, sizeof(nozzle_label_buf_), "%s", label.c_str());
+    if (subjects_initialized_) {
+        lv_subject_copy_string(&nozzle_label_subject_, nozzle_label_buf_);
+    }
+}
+
 void FilamentPanel::update_all_temps() {
     // Unified update handler for temperature observer bundle.
     // Called on UI thread after any temperature value changes.
@@ -442,7 +495,7 @@ void FilamentPanel::handle_preset_button(int material_id) {
     // Send temperature commands to printer (both nozzle and bed)
     if (api_) {
         api_->set_temperature(
-            "extruder", static_cast<double>(nozzle_target_),
+            printer_state_.active_extruder_name(), static_cast<double>(nozzle_target_),
             [target = nozzle_target_]() { NOTIFY_SUCCESS("Nozzle target set to {}°C", target); },
             [](const MoonrakerError& error) {
                 NOTIFY_ERROR("Failed to set nozzle temp: {}", error.user_message());
@@ -506,7 +559,7 @@ void FilamentPanel::handle_custom_nozzle_confirmed(float value) {
     // Send temperature command to printer
     if (api_) {
         api_->set_temperature(
-            "extruder", static_cast<double>(nozzle_target_),
+            printer_state_.active_extruder_name(), static_cast<double>(nozzle_target_),
             [target = nozzle_target_]() { NOTIFY_SUCCESS("Nozzle target set to {}°C", target); },
             [](const MoonrakerError& error) {
                 NOTIFY_ERROR("Failed to set nozzle temp: {}", error.user_message());
@@ -698,15 +751,123 @@ void FilamentPanel::handle_purge_button() {
     api_->execute_gcode(
         gcode,
         [this, amount = purge_amount_]() {
-            ui_async_call([](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); },
-                          this);
+            helix::ui::async_call(
+                [](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); }, this);
             NOTIFY_SUCCESS("Purge complete ({}mm)", amount);
         },
         [this](const MoonrakerError& error) {
-            ui_async_call([](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); },
-                          this);
+            helix::ui::async_call(
+                [](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); }, this);
             NOTIFY_ERROR("Purge failed: {}", error.user_message());
         });
+}
+
+// ============================================================================
+// EXTRUDER DROPDOWN
+// ============================================================================
+
+void FilamentPanel::update_multi_filament_card_visibility() {
+    if (!ams_status_card_)
+        return;
+
+    bool has_ams = (lv_subject_get_int(AmsState::instance().get_ams_type_subject()) != 0);
+    bool multi_tool = helix::ToolState::instance().is_multi_tool();
+
+    // Card visible when AMS present or multi-tool
+    if (has_ams || multi_tool) {
+        lv_obj_remove_flag(ams_status_card_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(ams_status_card_, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // AMS row visible only when AMS backend is present
+    if (ams_manage_row_) {
+        if (has_ams) {
+            lv_obj_remove_flag(ams_manage_row_, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(ams_manage_row_, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    spdlog::debug("[{}] Multi-filament card: ams={}, multi_tool={}", get_name(), has_ams,
+                  multi_tool);
+}
+
+void FilamentPanel::populate_extruder_dropdown() {
+    if (!extruder_dropdown_)
+        return;
+
+    auto& ts = helix::ToolState::instance();
+    if (!ts.is_multi_tool()) {
+        if (extruder_selector_group_)
+            lv_obj_add_flag(extruder_selector_group_, LV_OBJ_FLAG_HIDDEN);
+        if (btn_manage_slots_)
+            lv_obj_remove_flag(btn_manage_slots_, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    // Multi-tool: show dropdown group, hide Manage button
+    if (extruder_selector_group_)
+        lv_obj_remove_flag(extruder_selector_group_, LV_OBJ_FLAG_HIDDEN);
+    if (btn_manage_slots_)
+        lv_obj_add_flag(btn_manage_slots_, LV_OBJ_FLAG_HIDDEN);
+
+    // Build options string ("T0\nT1\nT2")
+    std::string options;
+    for (const auto& tool : ts.tools()) {
+        if (!options.empty())
+            options += '\n';
+        options += tool.name;
+    }
+    lv_dropdown_set_options(extruder_dropdown_, options.c_str());
+
+    // Sync selection to active tool
+    int active = ts.active_tool_index();
+    if (active >= 0 && active < ts.tool_count()) {
+        lv_dropdown_set_selected(extruder_dropdown_, static_cast<uint32_t>(active));
+    }
+
+    spdlog::debug("[{}] Extruder dropdown populated: {} tools, active=T{}", get_name(),
+                  ts.tool_count(), active);
+}
+
+void FilamentPanel::handle_extruder_changed() {
+    if (!extruder_dropdown_)
+        return;
+
+    int selected = static_cast<int>(lv_dropdown_get_selected(extruder_dropdown_));
+    auto& ts = helix::ToolState::instance();
+
+    if (selected == ts.active_tool_index())
+        return;
+
+    spdlog::info("[{}] User selected extruder T{}", get_name(), selected);
+
+    ts.request_tool_change(
+        selected, api_, [selected]() { NOTIFY_SUCCESS("Switched to T{}", selected); },
+        [this](const std::string& err) {
+            NOTIFY_ERROR("Tool change failed: {}", err);
+            // Revert dropdown to actual active tool on UI thread
+            helix::ui::async_call(
+                [](void* ctx) {
+                    auto* panel = static_cast<FilamentPanel*>(ctx);
+                    if (panel->extruder_dropdown_) {
+                        int active = helix::ToolState::instance().active_tool_index();
+                        if (active >= 0) {
+                            lv_dropdown_set_selected(panel->extruder_dropdown_,
+                                                     static_cast<uint32_t>(active));
+                        }
+                    }
+                },
+                this);
+        });
+}
+
+void FilamentPanel::on_extruder_dropdown_changed(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_extruder_dropdown_changed");
+    LV_UNUSED(e);
+    get_global_filament_panel().handle_extruder_changed();
+    LVGL_SAFE_EVENT_CB_END();
 }
 
 // ============================================================================
@@ -718,15 +879,7 @@ void FilamentPanel::on_manage_slots_clicked(lv_event_t* e) {
     LV_UNUSED(e);
 
     spdlog::info("[FilamentPanel] Opening AMS panel overlay");
-
-    auto& ams_panel = get_global_ams_panel();
-    if (!ams_panel.are_subjects_initialized()) {
-        ams_panel.init_subjects();
-    }
-    lv_obj_t* panel_obj = ams_panel.get_panel();
-    if (panel_obj) {
-        ui_nav_push_overlay(panel_obj);
-    }
+    navigate_to_ams_panel();
 
     LVGL_SAFE_EVENT_CB_END();
 }
@@ -966,13 +1119,13 @@ void FilamentPanel::execute_load() {
     StandardMacros::instance().execute(
         StandardMacroSlot::LoadFilament, api_,
         [this]() {
-            ui_async_call([](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); },
-                          this);
+            helix::ui::async_call(
+                [](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); }, this);
             NOTIFY_SUCCESS("Filament loaded");
         },
         [this](const MoonrakerError& error) {
-            ui_async_call([](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); },
-                          this);
+            helix::ui::async_call(
+                [](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); }, this);
             NOTIFY_ERROR("Filament load failed: {}", error.user_message());
         });
 }
@@ -993,13 +1146,13 @@ void FilamentPanel::execute_unload() {
     StandardMacros::instance().execute(
         StandardMacroSlot::UnloadFilament, api_,
         [this]() {
-            ui_async_call([](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); },
-                          this);
+            helix::ui::async_call(
+                [](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); }, this);
             NOTIFY_SUCCESS("Filament unloaded");
         },
         [this](const MoonrakerError& error) {
-            ui_async_call([](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); },
-                          this);
+            helix::ui::async_call(
+                [](void* ud) { static_cast<FilamentPanel*>(ud)->operation_guard_.end(); }, this);
             NOTIFY_ERROR("Filament unload failed: {}", error.user_message());
         });
 }
@@ -1007,11 +1160,11 @@ void FilamentPanel::execute_unload() {
 void FilamentPanel::show_load_warning() {
     // Close any existing dialog first
     if (load_warning_dialog_) {
-        ui_modal_hide(load_warning_dialog_);
+        helix::ui::modal_hide(load_warning_dialog_);
         load_warning_dialog_ = nullptr;
     }
 
-    load_warning_dialog_ = ui_modal_show_confirmation(
+    load_warning_dialog_ = helix::ui::modal_show_confirmation(
         lv_tr("Filament Detected"),
         lv_tr("The toolhead sensor indicates filament is already loaded. "
               "Proceed with load anyway?"),
@@ -1029,16 +1182,16 @@ void FilamentPanel::show_load_warning() {
 void FilamentPanel::show_unload_warning() {
     // Close any existing dialog first
     if (unload_warning_dialog_) {
-        ui_modal_hide(unload_warning_dialog_);
+        helix::ui::modal_hide(unload_warning_dialog_);
         unload_warning_dialog_ = nullptr;
     }
 
-    unload_warning_dialog_ =
-        ui_modal_show_confirmation(lv_tr("No Filament Detected"),
-                                   lv_tr("The toolhead sensor indicates no filament is present. "
-                                         "Proceed with unload anyway?"),
-                                   ModalSeverity::Warning, lv_tr("Proceed"),
-                                   on_unload_warning_proceed, on_unload_warning_cancel, this);
+    unload_warning_dialog_ = helix::ui::modal_show_confirmation(
+        lv_tr("No Filament Detected"),
+        lv_tr("The toolhead sensor indicates no filament is present. "
+              "Proceed with unload anyway?"),
+        ModalSeverity::Warning, lv_tr("Proceed"), on_unload_warning_proceed,
+        on_unload_warning_cancel, this);
 
     if (!unload_warning_dialog_) {
         spdlog::error("[{}] Failed to create unload warning dialog", get_name());
@@ -1054,7 +1207,7 @@ void FilamentPanel::on_load_warning_proceed(lv_event_t* e) {
     if (self) {
         // Hide dialog first
         if (self->load_warning_dialog_) {
-            ui_modal_hide(self->load_warning_dialog_);
+            helix::ui::modal_hide(self->load_warning_dialog_);
             self->load_warning_dialog_ = nullptr;
         }
         // Execute load
@@ -1067,7 +1220,7 @@ void FilamentPanel::on_load_warning_cancel(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_load_warning_cancel");
     auto* self = static_cast<FilamentPanel*>(lv_event_get_user_data(e));
     if (self && self->load_warning_dialog_) {
-        ui_modal_hide(self->load_warning_dialog_);
+        helix::ui::modal_hide(self->load_warning_dialog_);
         self->load_warning_dialog_ = nullptr;
         spdlog::debug("[FilamentPanel] Load cancelled by user");
     }
@@ -1080,7 +1233,7 @@ void FilamentPanel::on_unload_warning_proceed(lv_event_t* e) {
     if (self) {
         // Hide dialog first
         if (self->unload_warning_dialog_) {
-            ui_modal_hide(self->unload_warning_dialog_);
+            helix::ui::modal_hide(self->unload_warning_dialog_);
             self->unload_warning_dialog_ = nullptr;
         }
         // Execute unload
@@ -1093,7 +1246,7 @@ void FilamentPanel::on_unload_warning_cancel(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[FilamentPanel] on_unload_warning_cancel");
     auto* self = static_cast<FilamentPanel*>(lv_event_get_user_data(e));
     if (self && self->unload_warning_dialog_) {
-        ui_modal_hide(self->unload_warning_dialog_);
+        helix::ui::modal_hide(self->unload_warning_dialog_);
         self->unload_warning_dialog_ = nullptr;
         spdlog::debug("[FilamentPanel] Unload cancelled by user");
     }

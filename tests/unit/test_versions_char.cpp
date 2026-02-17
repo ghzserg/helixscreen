@@ -27,6 +27,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Initialization Tests - Document default initialization behavior
 // ============================================================================

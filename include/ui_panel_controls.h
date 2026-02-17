@@ -50,10 +50,10 @@ class ControlsPanel : public PanelBase {
     /**
      * @brief Construct ControlsPanel with injected dependencies
      *
-     * @param printer_state Reference to PrinterState
+     * @param printer_state Reference to helix::PrinterState
      * @param api Pointer to MoonrakerAPI (may be nullptr)
      */
-    ControlsPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    ControlsPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     ~ControlsPanel() override;
 
@@ -142,6 +142,12 @@ class ControlsPanel : public PanelBase {
     //
     // === V2 Dashboard Subjects (for XML bind_text/bind_value) ===
     //
+
+    // Nozzle label (dynamic: "Nozzle:" or "Nozzle N:" for multi-tool)
+    lv_subject_t nozzle_label_subject_{};
+    char nozzle_label_buf_[32] = {};
+    ObserverGuard active_tool_observer_;
+    void update_nozzle_label();
 
     // Nozzle temperature display
     lv_subject_t nozzle_temp_subject_{};
@@ -283,7 +289,7 @@ class ControlsPanel : public PanelBase {
     char speed_override_buf_[16] = {};
     char flow_override_buf_[16] = {};
     ObserverGuard speed_factor_observer_;
-    // Note: Flow factor observer uses extrude_factor from PrinterState
+    // Note: Flow factor observer uses extrude_factor from helix::PrinterState
 
     //
     // === Macro Slots 3 & 4 ===
@@ -309,7 +315,7 @@ class ControlsPanel : public PanelBase {
     void update_nozzle_temp_display();
     void update_bed_temp_display();
     void update_fan_display();
-    void populate_secondary_fans();  // Build fan list from PrinterState
+    void populate_secondary_fans();  // Build fan list from helix::PrinterState
     void populate_secondary_temps(); // Build temp sensor list from TemperatureSensorManager
     void update_z_offset_delta_display(int delta_microns); // Format delta for banner
 

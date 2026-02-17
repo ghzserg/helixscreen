@@ -54,13 +54,12 @@ class WizardPrinterIdentifyStep {
     WizardPrinterIdentifyStep();
     ~WizardPrinterIdentifyStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardPrinterIdentifyStep(const WizardPrinterIdentifyStep&) = delete;
     WizardPrinterIdentifyStep& operator=(const WizardPrinterIdentifyStep&) = delete;
-
-    // Movable
-    WizardPrinterIdentifyStep(WizardPrinterIdentifyStep&& other) noexcept;
-    WizardPrinterIdentifyStep& operator=(WizardPrinterIdentifyStep&& other) noexcept;
+    WizardPrinterIdentifyStep(WizardPrinterIdentifyStep&&) = delete;
+    WizardPrinterIdentifyStep& operator=(WizardPrinterIdentifyStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects

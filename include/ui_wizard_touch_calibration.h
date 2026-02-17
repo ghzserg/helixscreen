@@ -47,9 +47,12 @@ class WizardTouchCalibrationStep {
     WizardTouchCalibrationStep();
     ~WizardTouchCalibrationStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardTouchCalibrationStep(const WizardTouchCalibrationStep&) = delete;
     WizardTouchCalibrationStep& operator=(const WizardTouchCalibrationStep&) = delete;
+    WizardTouchCalibrationStep(WizardTouchCalibrationStep&&) = delete;
+    WizardTouchCalibrationStep& operator=(WizardTouchCalibrationStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects

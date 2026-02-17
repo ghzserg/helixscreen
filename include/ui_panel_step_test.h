@@ -32,13 +32,13 @@ class StepTestPanel : public PanelBase {
     /**
      * @brief Construct StepTestPanel with injected dependencies
      *
-     * @param printer_state Reference to PrinterState (not actively used)
+     * @param printer_state Reference to helix::PrinterState (not actively used)
      * @param api Pointer to MoonrakerAPI (not actively used)
      *
      * @note Dependencies are passed for interface consistency with PanelBase,
      *       but this panel doesn't require printer connectivity.
      */
-    StepTestPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    StepTestPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     ~StepTestPanel() override = default;
 

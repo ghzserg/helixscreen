@@ -13,7 +13,9 @@
 
 // Forward declarations
 class MoonrakerAPI;
+namespace helix {
 class MoonrakerClient;
+}
 
 /**
  * @file ams_backend_valgace.h
@@ -45,11 +47,11 @@ class AmsBackendValgACE : public AmsBackend {
      * @brief Construct ValgACE backend
      *
      * @param api Pointer to MoonrakerAPI (for REST calls and G-code)
-     * @param client Pointer to MoonrakerClient (for connection state)
+     * @param client Pointer to helix::MoonrakerClient (for connection state)
      *
      * @note Both pointers must remain valid for the lifetime of this backend.
      */
-    AmsBackendValgACE(MoonrakerAPI* api, MoonrakerClient* client);
+    AmsBackendValgACE(MoonrakerAPI* api, helix::MoonrakerClient* client);
 
     ~AmsBackendValgACE() override;
 
@@ -240,8 +242,8 @@ class AmsBackendValgACE : public AmsBackend {
     // ========================================================================
 
     // Dependencies
-    MoonrakerAPI* api_;       ///< For REST calls and G-code
-    MoonrakerClient* client_; ///< For connection state checks
+    MoonrakerAPI* api_;              ///< For REST calls and G-code
+    helix::MoonrakerClient* client_; ///< For connection state checks
 
     // Threading
     std::thread polling_thread_;              ///< Background polling thread

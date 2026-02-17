@@ -49,7 +49,7 @@ void EventDispatcher::emit(const std::string& event_name, const json& payload) {
     // NOTE: Events should be emitted from the main thread only.
     // LVGL is not thread-safe, and plugin callbacks may interact with LVGL widgets.
     // If you need to emit events from a background thread (e.g., network callbacks),
-    // use ui_async_call() to defer to the main thread first.
+    // use helix::ui::async_call() to defer to the main thread first.
 
     // Create event data with timestamp
     EventData event = make_event(event_name, payload);

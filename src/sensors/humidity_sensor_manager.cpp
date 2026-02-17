@@ -7,6 +7,7 @@
 
 #include "format_utils.h"
 #include "spdlog/spdlog.h"
+#include "static_subject_registry.h"
 
 #include <algorithm>
 
@@ -15,15 +16,6 @@
 // not the main LVGL thread. We must defer subject updates to the main thread
 // via ui_async_call to avoid the "Invalidate area not allowed during rendering"
 // assertion.
-
-namespace {
-
-/// @brief Async callback to update subjects on the main LVGL thread
-void async_update_humidity_subjects_callback(void* /*user_data*/) {
-    helix::sensors::HumiditySensorManager::instance().update_subjects_on_main_thread();
-}
-
-} // namespace
 
 namespace helix::sensors {
 
@@ -164,8 +156,9 @@ void HumiditySensorManager::update_from_status(const nlohmann::json& status) {
                 spdlog::debug("[HumiditySensorManager] sync_mode: updating subjects synchronously");
                 update_subjects();
             } else {
-                spdlog::debug("[HumiditySensorManager] async_mode: deferring via ui_async_call");
-                ui_async_call(async_update_humidity_subjects_callback, nullptr);
+                spdlog::debug("[HumiditySensorManager] async_mode: deferring via ui_queue_update");
+                helix::ui::queue_update(
+                    [] { HumiditySensorManager::instance().update_subjects_on_main_thread(); });
             }
         }
     }
@@ -269,6 +262,11 @@ void HumiditySensorManager::init_subjects() {
                               "chamber_humidity_text", subjects_);
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticSubjectRegistry::instance().register_deinit(
+        "HumiditySensorManager", []() { HumiditySensorManager::instance().deinit_subjects(); });
+
     spdlog::trace("[HumiditySensorManager] Subjects initialized");
 }
 
@@ -536,11 +534,11 @@ void HumiditySensorManager::update_subjects() {
 
     // Update text subject: format as "45%" or "—" if unavailable
     if (chamber_humidity >= 0) {
-        helix::fmt::format_humidity(chamber_humidity, chamber_humidity_text_buf_,
-                                    sizeof(chamber_humidity_text_buf_));
+        helix::format::format_humidity(chamber_humidity, chamber_humidity_text_buf_,
+                                       sizeof(chamber_humidity_text_buf_));
     } else {
         snprintf(chamber_humidity_text_buf_, sizeof(chamber_humidity_text_buf_), "%s",
-                 helix::fmt::UNAVAILABLE);
+                 helix::format::UNAVAILABLE);
     }
     lv_subject_copy_string(&chamber_humidity_text_, chamber_humidity_text_buf_);
 

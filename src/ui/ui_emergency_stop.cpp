@@ -5,7 +5,7 @@
 
 #include "ui_modal.h"
 #include "ui_notification.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -13,8 +13,11 @@
 #include "app_globals.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
+#include "static_panel_registry.h"
 
 #include <spdlog/spdlog.h>
+
+using namespace helix;
 
 namespace {
 // Recovery dialog content per reason
@@ -26,15 +29,15 @@ struct RecoveryContent {
 RecoveryContent get_recovery_content(RecoveryReason reason) {
     switch (reason) {
     case RecoveryReason::SHUTDOWN:
-        return {"Printer Shutdown",
-                "Klipper has entered shutdown state. This may be due to an emergency stop, "
-                "thermal runaway, or configuration error."};
+        return {lv_tr("Printer Shutdown"),
+                lv_tr("Klipper has entered shutdown state. This may be due to an emergency stop, "
+                      "thermal runaway, or configuration error.")};
     case RecoveryReason::DISCONNECTED:
-        return {"Printer Firmware Disconnected",
-                "Klipper firmware has disconnected from the host. "
-                "Try restarting Klipper or performing a firmware restart."};
+        return {lv_tr("Printer Firmware Disconnected"),
+                lv_tr("Klipper firmware has disconnected from the host. "
+                      "Try restarting Klipper or performing a firmware restart.")};
     default:
-        return {"Printer Error", "An unexpected printer error occurred."};
+        return {lv_tr("Printer Error"), lv_tr("An unexpected printer error occurred.")};
     }
 }
 } // namespace
@@ -93,6 +96,11 @@ void EmergencyStopOverlay::init_subjects() {
     lv_xml_register_event_cb(nullptr, "firmware_restart_clicked", home_firmware_restart_clicked);
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticPanelRegistry::instance().register_destroy(
+        "EmergencyStopSubjects", []() { EmergencyStopOverlay::instance().deinit_subjects(); });
+
     spdlog::debug("[EmergencyStop] Subjects initialized");
 }
 
@@ -138,7 +146,7 @@ void EmergencyStopOverlay::create() {
 
                 // Auto-dismiss recovery dialog when Klipper is back to READY
                 // NOTE: Must defer to main thread - observer may fire from WebSocket thread
-                ui_async_call(
+                helix::ui::async_call(
                     [](void*) {
                         auto& inst = EmergencyStopOverlay::instance();
                         // Guard against async callback firing after display destruction
@@ -146,7 +154,8 @@ void EmergencyStopOverlay::create() {
                             spdlog::info(
                                 "[KlipperRecovery] Klipper is READY, dismissing recovery dialog");
                             inst.dismiss_recovery_dialog();
-                            ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Printer ready"), 3000);
+                            ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                                          lv_tr("Printer ready"), 3000);
                         }
                     },
                     nullptr);
@@ -192,7 +201,8 @@ void EmergencyStopOverlay::handle_click() {
 void EmergencyStopOverlay::execute_emergency_stop() {
     if (!api_) {
         spdlog::error("[EmergencyStop] Cannot execute: API not available");
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Emergency stop failed: not connected"), 4000);
+        ToastManager::instance().show(ToastSeverity::ERROR,
+                                      lv_tr("Emergency stop failed: not connected"), 4000);
         return;
     }
 
@@ -201,7 +211,8 @@ void EmergencyStopOverlay::execute_emergency_stop() {
     api_->emergency_stop(
         []() {
             spdlog::info("[EmergencyStop] Emergency stop command sent successfully");
-            ui_toast_show(ToastSeverity::WARNING, lv_tr("Emergency stop activated"), 5000);
+            ToastManager::instance().show(ToastSeverity::WARNING, lv_tr("Emergency stop activated"),
+                                          5000);
 
             // Proactively show recovery dialog after E-stop
             // We know Klipper will be in SHUTDOWN state - don't wait for notification
@@ -210,8 +221,9 @@ void EmergencyStopOverlay::execute_emergency_stop() {
         },
         [](const MoonrakerError& err) {
             spdlog::error("[EmergencyStop] Emergency stop failed: {}", err.message);
-            ui_toast_show(ToastSeverity::ERROR,
-                          ("Emergency stop failed: " + err.user_message()).c_str(), 5000);
+            ToastManager::instance().show(ToastSeverity::ERROR,
+                                          ("Emergency stop failed: " + err.user_message()).c_str(),
+                                          5000);
         });
 }
 
@@ -225,7 +237,7 @@ void EmergencyStopOverlay::show_confirmation_dialog() {
     spdlog::debug("[EmergencyStop] Showing confirmation dialog");
 
     // Create dialog via Modal system (handles backdrop, z-order, animations)
-    confirmation_dialog_ = ui_modal_show("estop_confirmation_dialog");
+    confirmation_dialog_ = helix::ui::modal_show("estop_confirmation_dialog");
 
     if (!confirmation_dialog_) {
         spdlog::error("[EmergencyStop] Failed to create confirmation dialog, executing directly");
@@ -238,7 +250,7 @@ void EmergencyStopOverlay::show_confirmation_dialog() {
 
 void EmergencyStopOverlay::dismiss_confirmation_dialog() {
     if (confirmation_dialog_) {
-        ui_modal_hide(confirmation_dialog_);
+        helix::ui::modal_hide(confirmation_dialog_);
         confirmation_dialog_ = nullptr;
         spdlog::debug("[EmergencyStop] Confirmation dialog dismissed");
     }
@@ -256,7 +268,7 @@ void EmergencyStopOverlay::show_recovery_dialog() {
     spdlog::info("[KlipperRecovery] Creating recovery dialog (Klipper in SHUTDOWN state)");
 
     // Use Modal system — backdrop is created programmatically
-    recovery_dialog_ = ui_modal_show("klipper_recovery_dialog");
+    recovery_dialog_ = helix::ui::modal_show("klipper_recovery_dialog");
     spdlog::debug("[KlipperRecovery] Dialog created, recovery_dialog_={}",
                   static_cast<void*>(recovery_dialog_));
 
@@ -271,7 +283,7 @@ void EmergencyStopOverlay::show_recovery_dialog() {
 
 void EmergencyStopOverlay::dismiss_recovery_dialog() {
     if (recovery_dialog_) {
-        ui_modal_hide(recovery_dialog_);
+        helix::ui::modal_hide(recovery_dialog_);
         recovery_dialog_ = nullptr;
         recovery_reason_ = RecoveryReason::NONE;
         spdlog::debug("[KlipperRecovery] Recovery dialog dismissed");
@@ -314,7 +326,7 @@ void EmergencyStopOverlay::show_recovery_for(RecoveryReason reason) {
             spdlog::info("[KlipperRecovery] Connection dropped while SHUTDOWN dialog showing, "
                          "updating buttons");
             recovery_reason_ = RecoveryReason::DISCONNECTED;
-            ui_async_call(
+            helix::ui::async_call(
                 [](void*) { EmergencyStopOverlay::instance().update_recovery_dialog_content(); },
                 nullptr);
         } else {
@@ -327,7 +339,7 @@ void EmergencyStopOverlay::show_recovery_for(RecoveryReason reason) {
     recovery_reason_ = reason;
 
     // Defer to main thread - may be called from WebSocket thread
-    ui_async_call(
+    helix::ui::async_call(
         [](void*) {
             auto& inst = EmergencyStopOverlay::instance();
             // Guard: dialog may have been shown by another async call in the meantime
@@ -372,7 +384,8 @@ void EmergencyStopOverlay::update_recovery_dialog_content() {
 void EmergencyStopOverlay::restart_klipper() {
     if (!api_) {
         spdlog::error("[KlipperRecovery] Cannot restart: API not available");
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Restart failed: not connected"), 4000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Restart failed: not connected"),
+                                      4000);
         return;
     }
 
@@ -380,7 +393,7 @@ void EmergencyStopOverlay::restart_klipper() {
     restart_in_progress_ = true;
 
     spdlog::info("[KlipperRecovery] Restarting Klipper...");
-    ui_toast_show(ToastSeverity::INFO, lv_tr("Restarting Klipper..."), 3000);
+    ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Restarting Klipper..."), 3000);
 
     api_->restart_klipper(
         []() {
@@ -389,15 +402,16 @@ void EmergencyStopOverlay::restart_klipper() {
         },
         [](const MoonrakerError& err) {
             spdlog::error("[KlipperRecovery] Klipper restart failed: {}", err.message);
-            ui_toast_show(ToastSeverity::ERROR, ("Restart failed: " + err.user_message()).c_str(),
-                          5000);
+            ToastManager::instance().show(ToastSeverity::ERROR,
+                                          ("Restart failed: " + err.user_message()).c_str(), 5000);
         });
 }
 
 void EmergencyStopOverlay::firmware_restart() {
     if (!api_) {
         spdlog::error("[KlipperRecovery] Cannot firmware restart: API not available");
-        ui_toast_show(ToastSeverity::ERROR, lv_tr("Restart failed: not connected"), 4000);
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Restart failed: not connected"),
+                                      4000);
         return;
     }
 
@@ -405,7 +419,7 @@ void EmergencyStopOverlay::firmware_restart() {
     restart_in_progress_ = true;
 
     spdlog::info("[KlipperRecovery] Firmware restarting...");
-    ui_toast_show(ToastSeverity::INFO, lv_tr("Firmware restarting..."), 3000);
+    ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Firmware restarting..."), 3000);
 
     api_->restart_firmware(
         []() {
@@ -414,8 +428,9 @@ void EmergencyStopOverlay::firmware_restart() {
         },
         [](const MoonrakerError& err) {
             spdlog::error("[KlipperRecovery] Firmware restart failed: {}", err.message);
-            ui_toast_show(ToastSeverity::ERROR,
-                          ("Firmware restart failed: " + err.user_message()).c_str(), 5000);
+            ToastManager::instance().show(
+                ToastSeverity::ERROR, ("Firmware restart failed: " + err.user_message()).c_str(),
+                5000);
         });
 }
 

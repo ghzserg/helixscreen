@@ -17,7 +17,6 @@
 #include "ui_fonts.h"
 #include "ui_icon.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_print_status.h"
 #include "ui_print_select_file_sorter.h"
@@ -57,6 +56,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+using namespace helix;
 
 // Forward declaration for class-based API
 PrintStatusPanel& get_global_print_status_panel();
@@ -424,7 +425,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         };
         auto ctx = std::make_unique<FilesReadyContext>(FilesReadyContext{self, std::move(files)});
 
-        ui_queue_update<FilesReadyContext>(std::move(ctx), [](FilesReadyContext* c) {
+        helix::ui::queue_update<FilesReadyContext>(std::move(ctx), [](FilesReadyContext* c) {
             auto* panel = c->panel;
 
             // Move data into panel (now safe - on main thread)
@@ -488,56 +489,60 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         };
         auto ctx =
             std::make_unique<MetadataUpdateContext>(MetadataUpdateContext{self, index, updated});
-        ui_queue_update<MetadataUpdateContext>(std::move(ctx), [](MetadataUpdateContext* c) {
-            auto* panel = c->panel;
-            size_t idx = c->index;
-            const auto& upd = c->updated;
+        helix::ui::queue_update<MetadataUpdateContext>(
+            std::move(ctx), [](MetadataUpdateContext* c) {
+                auto* panel = c->panel;
+                size_t idx = c->index;
+                const auto& upd = c->updated;
 
-            // Update file in list
-            if (idx < panel->file_list_.size() && panel->file_list_[idx].filename == upd.filename) {
-                // Merge updated fields
-                if (upd.print_time_minutes > 0) {
-                    panel->file_list_[idx].print_time_minutes = upd.print_time_minutes;
-                    panel->file_list_[idx].print_time_str = upd.print_time_str;
-                }
-                if (upd.filament_grams > 0) {
-                    panel->file_list_[idx].filament_grams = upd.filament_grams;
-                    panel->file_list_[idx].filament_str = upd.filament_str;
-                }
-                if (!upd.filament_type.empty()) {
-                    panel->file_list_[idx].filament_type = upd.filament_type;
-                }
-                if (upd.layer_count > 0) {
-                    panel->file_list_[idx].layer_count = upd.layer_count;
-                    panel->file_list_[idx].layer_count_str = upd.layer_count_str;
-                }
-                if (!upd.thumbnail_path.empty() &&
-                    !helix::ui::PrintSelectCardView::is_placeholder_thumbnail(upd.thumbnail_path)) {
-                    panel->file_list_[idx].thumbnail_path = upd.thumbnail_path;
-                }
+                // Update file in list
+                if (idx < panel->file_list_.size() &&
+                    panel->file_list_[idx].filename == upd.filename) {
+                    // Merge updated fields
+                    if (upd.print_time_minutes > 0) {
+                        panel->file_list_[idx].print_time_minutes = upd.print_time_minutes;
+                        panel->file_list_[idx].print_time_str = upd.print_time_str;
+                    }
+                    if (upd.filament_grams > 0) {
+                        panel->file_list_[idx].filament_grams = upd.filament_grams;
+                        panel->file_list_[idx].filament_str = upd.filament_str;
+                    }
+                    if (!upd.filament_type.empty()) {
+                        panel->file_list_[idx].filament_type = upd.filament_type;
+                    }
+                    if (upd.layer_count > 0) {
+                        panel->file_list_[idx].layer_count = upd.layer_count;
+                        panel->file_list_[idx].layer_count_str = upd.layer_count_str;
+                    }
+                    if (!upd.thumbnail_path.empty() &&
+                        !helix::ui::PrintSelectCardView::is_placeholder_thumbnail(
+                            upd.thumbnail_path)) {
+                        panel->file_list_[idx].thumbnail_path = upd.thumbnail_path;
+                    }
 
-                // Schedule debounced view refresh
-                panel->schedule_view_refresh();
+                    // Schedule debounced view refresh
+                    panel->schedule_view_refresh();
 
-                // Update detail view if this file is selected
-                if (strcmp(panel->selected_filename_buffer_, upd.filename.c_str()) == 0) {
-                    // Use filament_name if available, otherwise filament_type
-                    const std::string& filament_display =
-                        !panel->file_list_[idx].filament_name.empty()
-                            ? panel->file_list_[idx].filament_name
-                            : panel->file_list_[idx].filament_type;
-                    panel->set_selected_file(
-                        upd.filename.c_str(), panel->file_list_[idx].thumbnail_path.c_str(),
-                        panel->file_list_[idx].original_thumbnail_url.c_str(),
-                        panel->file_list_[idx].print_time_str.c_str(),
-                        panel->file_list_[idx].filament_str.c_str(),
-                        panel->file_list_[idx].layer_count_str.c_str(),
-                        panel->file_list_[idx].print_height_str.c_str(),
-                        panel->file_list_[idx].modified_timestamp,
-                        panel->file_list_[idx].layer_height_str.c_str(), filament_display.c_str());
+                    // Update detail view if this file is selected
+                    if (strcmp(panel->selected_filename_buffer_, upd.filename.c_str()) == 0) {
+                        // Use filament_name if available, otherwise filament_type
+                        const std::string& filament_display =
+                            !panel->file_list_[idx].filament_name.empty()
+                                ? panel->file_list_[idx].filament_name
+                                : panel->file_list_[idx].filament_type;
+                        panel->set_selected_file(
+                            upd.filename.c_str(), panel->file_list_[idx].thumbnail_path.c_str(),
+                            panel->file_list_[idx].original_thumbnail_url.c_str(),
+                            panel->file_list_[idx].print_time_str.c_str(),
+                            panel->file_list_[idx].filament_str.c_str(),
+                            panel->file_list_[idx].layer_count_str.c_str(),
+                            panel->file_list_[idx].print_height_str.c_str(),
+                            panel->file_list_[idx].modified_timestamp,
+                            panel->file_list_[idx].layer_height_str.c_str(),
+                            filament_display.c_str());
+                    }
                 }
-            }
-        });
+            });
     });
     file_provider_->set_on_error([self](const std::string& error) {
         NOTIFY_ERROR("Failed to refresh file list");
@@ -966,7 +971,8 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     // Format layer height (e.g., "0.24 mm")
     char layer_height_buf[32];
     if (layer_height > 0.0) {
-        helix::fmt::format_distance_mm(layer_height, 2, layer_height_buf, sizeof(layer_height_buf));
+        helix::format::format_distance_mm(layer_height, 2, layer_height_buf,
+                                          sizeof(layer_height_buf));
     } else {
         snprintf(layer_height_buf, sizeof(layer_height_buf), "-");
     }
@@ -999,7 +1005,7 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
         helix::ThumbnailTarget thumb_target;
     };
 
-    ui_queue_update<MetadataUpdate>(
+    helix::ui::queue_update<MetadataUpdate>(
         std::make_unique<MetadataUpdate>(
             MetadataUpdate{this, i, filename, print_time_minutes, filament_grams, filament_type,
                            filament_name, print_time_str, filament_str, layer_count,
@@ -1069,7 +1075,7 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
                                 std::string filename;
                                 std::string lvgl_path;
                             };
-                            ui_queue_update<ThumbUpdate>(
+                            helix::ui::queue_update<ThumbUpdate>(
                                 std::make_unique<ThumbUpdate>(
                                     ThumbUpdate{self, file_idx, filename_copy, lvgl_path}),
                                 [](ThumbUpdate* t) {
@@ -1152,7 +1158,7 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
                             std::string filename;
                             std::string lvgl_path;
                         };
-                        ui_queue_update<ExtractedThumbUpdate>(
+                        helix::ui::queue_update<ExtractedThumbUpdate>(
                             std::make_unique<ExtractedThumbUpdate>(
                                 ExtractedThumbUpdate{self, file_idx, filename_copy, lvgl_path}),
                             [](ExtractedThumbUpdate* t) {
@@ -1243,7 +1249,7 @@ void PrintSelectPanel::set_api(MoonrakerAPI* api) {
                     }
 
                     // Use async call to refresh on main thread
-                    ui_async_call(
+                    helix::ui::async_call(
                         [](void* user_data) {
                             auto* panel = static_cast<PrintSelectPanel*>(user_data);
                             // Guard against async callback firing after display destruction
@@ -1611,7 +1617,7 @@ CardDimensions PrintSelectPanel::calculate_card_dimensions() {
 
 void PrintSelectPanel::schedule_view_refresh() {
     // Use lv_async_call to ensure thread-safety (this may be called from WebSocket thread)
-    ui_async_call(
+    helix::ui::async_call(
         [](void* user_data) {
             auto* self = static_cast<PrintSelectPanel*>(user_data);
 
@@ -1993,7 +1999,7 @@ void PrintSelectPanel::create_detail_view() {
         if (print_status_panel_widget_) {
             NavigationManager::instance().register_overlay_instance(
                 print_status_panel_widget_, &get_global_print_status_panel());
-            ui_nav_push_overlay(print_status_panel_widget_);
+            NavigationManager::instance().push_overlay(print_status_panel_widget_);
         }
     });
 
@@ -2129,7 +2135,7 @@ void PrintSelectPanel::delete_file() {
                     std::weak_ptr<std::atomic<bool>> alive;
                 };
                 auto ctx = std::make_unique<SuccessContext>(SuccessContext{self, alive});
-                ui_queue_update<SuccessContext>(std::move(ctx), [](SuccessContext* c) {
+                helix::ui::queue_update<SuccessContext>(std::move(ctx), [](SuccessContext* c) {
                     auto alive_weak = c->alive.lock();
                     if (!alive_weak || !alive_weak->load()) {
                         return;
@@ -2153,7 +2159,7 @@ void PrintSelectPanel::delete_file() {
                     std::weak_ptr<std::atomic<bool>> alive;
                 };
                 auto ctx = std::make_unique<ErrorContext>(ErrorContext{self, alive});
-                ui_queue_update<ErrorContext>(std::move(ctx), [](ErrorContext* c) {
+                helix::ui::queue_update<ErrorContext>(std::move(ctx), [](ErrorContext* c) {
                     auto alive_weak = c->alive.lock();
                     if (!alive_weak || !alive_weak->load()) {
                         return;

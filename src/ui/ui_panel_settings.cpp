@@ -6,12 +6,13 @@
 #include "ui_ams_device_operations_overlay.h"
 #include "ui_ams_spoolman_overlay.h"
 #include "ui_change_host_modal.h"
+#include "ui_debug_bundle_modal.h"
 #include "ui_emergency_stop.h"
 #include "ui_event_safety.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_overlay_network_settings.h"
+#include "ui_panel_history_dashboard.h"
 #include "ui_panel_memory_stats.h"
 #include "ui_settings_about.h"
 #include "ui_settings_display.h"
@@ -24,7 +25,7 @@
 #include "ui_settings_sound.h"
 #include "ui_settings_telemetry_data.h"
 #include "ui_severity_card.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_touch_calibration_overlay.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
@@ -33,6 +34,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "device_display_name.h"
+#include "display_manager.h"
 #include "filament_sensor_manager.h"
 #include "format_utils.h"
 #include "hardware_validator.h"
@@ -53,12 +55,15 @@
 #include "system/telemetry_manager.h"
 #include "system/update_checker.h"
 #include "theme_manager.h"
+#include "ui/ui_lazy_panel_helper.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <memory>
+
+using namespace helix;
 
 // ============================================================================
 // CONSTRUCTOR
@@ -96,6 +101,17 @@ static void on_completion_alert_dropdown_changed(lv_event_t* e) {
     spdlog::info("[SettingsPanel] Completion alert changed: {} ({})", index,
                  index == 0 ? "Off" : (index == 1 ? "Notification" : "Alert"));
     SettingsManager::instance().set_completion_alert_mode(mode);
+}
+
+// Static callback for cancel escalation timeout dropdown
+static void on_cancel_escalation_timeout_changed(lv_event_t* e) {
+    lv_obj_t* dropdown = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    int index = static_cast<int>(lv_dropdown_get_selected(dropdown));
+    static constexpr int TIMEOUT_VALUES[] = {15, 30, 60, 120};
+    int seconds = TIMEOUT_VALUES[std::max(0, std::min(3, index))];
+    spdlog::info("[SettingsPanel] Cancel escalation timeout changed: {}s (index {})", seconds,
+                 index);
+    SettingsManager::instance().set_cancel_escalation_timeout_seconds(seconds);
 }
 
 // Static callback for display dim dropdown
@@ -179,7 +195,8 @@ static void on_update_channel_changed(lv_event_t* e) {
             // Revert to previous value
             int current = SettingsManager::instance().get_update_channel();
             lv_dropdown_set_selected(dropdown, static_cast<uint32_t>(current));
-            ui_toast_show(ToastSeverity::WARNING, "Dev channel requires dev_url in config", 3000);
+            ToastManager::instance().show(ToastSeverity::WARNING,
+                                          lv_tr("Dev channel requires dev_url in config"), 3000);
             rejected = true;
         }
     }
@@ -216,12 +233,12 @@ static void on_version_clicked(lv_event_t*) {
         // Show countdown - say "enable" or "disable" based on current state
         Config* config = Config::get_instance();
         bool currently_on = config && config->is_beta_features_enabled();
-        const char* action = currently_on ? "disable" : "enable";
-        ui_toast_show(ToastSeverity::INFO,
-                      fmt::format("{} more tap{} to {} beta features", remaining,
-                                  remaining == 1 ? "" : "s", action)
-                          .c_str(),
-                      1000);
+        const char* action = currently_on ? lv_tr("disable") : lv_tr("enable");
+        std::string msg =
+            remaining == 1
+                ? fmt::format(lv_tr("1 more tap to {} beta features"), action)
+                : fmt::format(lv_tr("{} more taps to {} beta features"), remaining, action);
+        ToastManager::instance().show(ToastSeverity::INFO, msg.c_str(), 1000);
     } else if (remaining == 0) {
         // Toggle beta_features config flag and reactive subject
         Config* config = Config::get_instance();
@@ -237,9 +254,9 @@ static void on_version_clicked(lv_event_t*) {
                 lv_subject_set_int(subject, new_value ? 1 : 0);
             }
 
-            ui_toast_show(ToastSeverity::SUCCESS,
-                          new_value ? lv_tr("Beta features: ON") : lv_tr("Beta features: OFF"),
-                          1500);
+            ToastManager::instance().show(
+                ToastSeverity::SUCCESS,
+                new_value ? lv_tr("Beta features: ON") : lv_tr("Beta features: OFF"), 1500);
             spdlog::info("[SettingsPanel] Beta features toggled via 7-tap secret: {}",
                          new_value ? "ON" : "OFF");
         }
@@ -316,7 +333,7 @@ static void on_factory_reset_cancel(lv_event_t* e) {
     spdlog::info("[SettingsPanel] User cancelled factory reset");
     auto& panel = get_global_settings_panel();
     if (panel.factory_reset_dialog_) {
-        ui_nav_go_back(); // Animation + callback will handle cleanup
+        NavigationManager::instance().go_back(); // Animation + callback will handle cleanup
     }
 }
 
@@ -361,7 +378,8 @@ void SettingsPanel::init_subjects() {
 #ifdef HELIX_DISPLAY_SDL
     bool show_touch_cal = get_runtime_config()->is_test_mode();
 #else
-    bool show_touch_cal = true;
+    DisplayManager* dm = DisplayManager::instance();
+    bool show_touch_cal = dm && dm->needs_touch_calibration();
 #endif
     lv_subject_init_int(&show_touch_calibration_subject_, show_touch_cal ? 1 : 0);
     subjects_.register_subject(&show_touch_calibration_subject_);
@@ -387,7 +405,7 @@ void SettingsPanel::init_subjects() {
     // Touch calibration status - show "Calibrated" or "Not calibrated" in row description
     Config* config = Config::get_instance();
     bool is_calibrated = config && config->get<bool>("/input/calibration/valid", false);
-    const char* status_text = is_calibrated ? "Calibrated" : "Not calibrated";
+    const char* status_text = is_calibrated ? lv_tr("Calibrated") : lv_tr("Not calibrated");
     UI_MANAGED_SUBJECT_STRING(touch_cal_status_subject_, touch_cal_status_buf_, status_text,
                               "touch_cal_status", subjects_);
 
@@ -414,6 +432,9 @@ void SettingsPanel::init_subjects() {
     // Note: on_retraction_row_clicked is registered by RetractionSettingsOverlay
     lv_xml_register_event_cb(nullptr, "on_sound_settings_clicked", on_sound_settings_clicked);
     lv_xml_register_event_cb(nullptr, "on_estop_confirm_changed", on_estop_confirm_changed);
+    lv_xml_register_event_cb(nullptr, "on_cancel_escalation_changed", on_cancel_escalation_changed);
+    lv_xml_register_event_cb(nullptr, "on_cancel_escalation_timeout_changed",
+                             on_cancel_escalation_timeout_changed);
     lv_xml_register_event_cb(nullptr, "on_telemetry_changed", SettingsPanel::on_telemetry_changed);
     lv_xml_register_event_cb(nullptr, "on_telemetry_view_data",
                              SettingsPanel::on_telemetry_view_data);
@@ -709,7 +730,7 @@ void SettingsPanel::setup_action_handlers() {
 void SettingsPanel::populate_info_rows() {
     // === Version (subject used by About overlay and About row description) ===
     lv_subject_copy_string(&version_value_subject_, helix_version());
-    std::string about_desc = std::string("Current Version: ") + helix_version();
+    std::string about_desc = std::string(lv_tr("Current Version")) + ": " + helix_version();
     lv_subject_copy_string(&about_version_description_subject_, about_desc.c_str());
     spdlog::trace("[{}]   Version subject: {}", get_name(), helix_version());
 
@@ -764,8 +785,8 @@ void SettingsPanel::fetch_print_hours() {
 
     api_->get_history_totals(
         [this](const PrintHistoryTotals& totals) {
-            std::string formatted = helix::fmt::duration(static_cast<int>(totals.total_time));
-            ui_queue_update([this, formatted]() {
+            std::string formatted = helix::format::duration(static_cast<int>(totals.total_time));
+            helix::ui::queue_update([this, formatted]() {
                 if (subjects_initialized_) {
                     lv_subject_copy_string(&print_hours_value_subject_, formatted.c_str());
                     spdlog::trace("[{}] Print hours updated: {}", get_name(), formatted);
@@ -825,13 +846,18 @@ void SettingsPanel::handle_estop_confirm_changed(bool enabled) {
     EmergencyStopOverlay::instance().set_require_confirmation(enabled);
 }
 
+void SettingsPanel::handle_cancel_escalation_changed(bool enabled) {
+    spdlog::info("[{}] Cancel escalation toggled: {}", get_name(), enabled ? "ON" : "OFF");
+    SettingsManager::instance().set_cancel_escalation_enabled(enabled);
+}
+
 void SettingsPanel::handle_telemetry_changed(bool enabled) {
     spdlog::info("[{}] Telemetry toggled: {}", get_name(), enabled ? "ON" : "OFF");
     SettingsManager::instance().set_telemetry_enabled(enabled);
     if (enabled) {
-        ui_toast_show(ToastSeverity::SUCCESS,
-                      lv_tr("Thanks! TOTALLY anonymous usage data helps improve HelixScreen."),
-                      4000);
+        ToastManager::instance().show(
+            ToastSeverity::SUCCESS,
+            lv_tr("Thanks! TOTALLY anonymous usage data helps improve HelixScreen."), 4000);
     }
 }
 
@@ -849,7 +875,7 @@ void SettingsPanel::show_restart_prompt() {
         return;
     }
 
-    restart_prompt_dialog_ = ui_modal_show("restart_prompt_dialog");
+    restart_prompt_dialog_ = helix::ui::modal_show("restart_prompt_dialog");
     if (restart_prompt_dialog_) {
         spdlog::debug("[{}] Restart prompt dialog shown via Modal system", get_name());
         // Clear pending flag so we don't show again until next change
@@ -862,6 +888,24 @@ void SettingsPanel::handle_about_clicked() {
 
     auto& overlay = helix::settings::get_about_overlay();
     overlay.show(parent_screen_);
+}
+
+void SettingsPanel::handle_debug_bundle_clicked() {
+    spdlog::info("[SettingsPanel] Upload Debug Bundle clicked");
+    auto* modal = new DebugBundleModal();
+    modal->show_modal(lv_screen_active());
+}
+
+void SettingsPanel::handle_discord_clicked() {
+    spdlog::info("[SettingsPanel] Discord clicked");
+    // i18n: URL, do not translate
+    ToastManager::instance().show(ToastSeverity::INFO, "Join us at discord.gg/helixscreen", 5000);
+}
+
+void SettingsPanel::handle_docs_clicked() {
+    spdlog::info("[SettingsPanel] Documentation clicked");
+    // i18n: URL, do not translate
+    ToastManager::instance().show(ToastSeverity::INFO, "Visit docs.helixscreen.org", 5000);
 }
 
 void SettingsPanel::handle_sound_settings_clicked() {
@@ -998,6 +1042,12 @@ void SettingsPanel::handle_network_clicked() {
 }
 
 void SettingsPanel::handle_touch_calibration_clicked() {
+    DisplayManager* dm = DisplayManager::instance();
+    if (dm && !dm->needs_touch_calibration()) {
+        spdlog::debug("[{}] Touch calibration not needed for this device", get_name());
+        return;
+    }
+
     spdlog::debug("[{}] Touch Calibration clicked", get_name());
 
     auto& overlay = helix::ui::get_touch_calibration_overlay();
@@ -1012,8 +1062,8 @@ void SettingsPanel::handle_touch_calibration_clicked() {
     overlay.set_auto_start(true);
     overlay.show([this](bool success) {
         if (success) {
-            // Update status to "Calibrated" when calibration completes successfully
-            lv_subject_copy_string(&touch_cal_status_subject_, "Calibrated");
+            // Update status when calibration completes successfully
+            lv_subject_copy_string(&touch_cal_status_subject_, lv_tr("Calibrated"));
             spdlog::info("[{}] Touch calibration completed - updated status", get_name());
         }
     });
@@ -1021,10 +1071,10 @@ void SettingsPanel::handle_touch_calibration_clicked() {
 
 void SettingsPanel::handle_restart_helix_clicked() {
     spdlog::info("[SettingsPanel] Restart HelixScreen requested");
-    ui_toast_show(ToastSeverity::INFO, "Restarting HelixScreen...", 1500);
+    ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Restarting HelixScreen..."), 1500);
 
     // Schedule restart after brief delay to let toast display
-    ui_async_call(
+    helix::ui::async_call(
         [](void*) {
             spdlog::info("[SettingsPanel] Initiating restart...");
             app_request_restart_service();
@@ -1051,7 +1101,7 @@ void SettingsPanel::handle_factory_reset_clicked() {
             // Register close callback to delete dialog when animation completes
             NavigationManager::instance().register_overlay_close_callback(
                 factory_reset_dialog_, [this]() {
-                    lv_obj_safe_delete(factory_reset_dialog_);
+                    helix::ui::safe_delete(factory_reset_dialog_);
                     factory_reset_dialog_ = nullptr;
                 });
 
@@ -1064,7 +1114,7 @@ void SettingsPanel::handle_factory_reset_clicked() {
 
     // Show the dialog via navigation stack
     if (factory_reset_dialog_) {
-        ui_nav_push_overlay(factory_reset_dialog_);
+        NavigationManager::instance().push_overlay(factory_reset_dialog_);
     }
 }
 
@@ -1082,25 +1132,26 @@ void SettingsPanel::handle_plugins_clicked() {
     // Show the overlay via navigation stack
     if (overlay.get_root()) {
         NavigationManager::instance().register_overlay_instance(overlay.get_root(), &overlay);
-        ui_nav_push_overlay(overlay.get_root());
+        NavigationManager::instance().push_overlay(overlay.get_root());
     }
 }
 
 void SettingsPanel::show_update_download_modal() {
     if (!update_download_modal_) {
-        update_download_modal_ = ui_modal_show("update_download_modal");
+        update_download_modal_ = helix::ui::modal_show("update_download_modal");
     }
 
     // Set to Confirming state with version info
     auto info = UpdateChecker::instance().get_cached_update();
-    std::string text = info ? ("Download v" + info->version + "?") : "Download update?";
+    std::string text = info ? fmt::format(lv_tr("Download v{}?"), info->version)
+                            : std::string(lv_tr("Download update?"));
     UpdateChecker::instance().report_download_status(UpdateChecker::DownloadStatus::Confirming, 0,
                                                      text);
 }
 
 void SettingsPanel::hide_update_download_modal() {
     if (update_download_modal_) {
-        ui_modal_hide(update_download_modal_);
+        helix::ui::modal_hide(update_download_modal_);
         update_download_modal_ = nullptr;
     }
     // Reset download state
@@ -1120,11 +1171,12 @@ void SettingsPanel::perform_factory_reset() {
 
     // Hide the dialog - animation + callback will handle cleanup
     if (factory_reset_dialog_) {
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
     }
 
     // Show confirmation toast
-    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Settings reset to defaults"), 2000);
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Settings reset to defaults"),
+                                  2000);
 
     // TODO: In production, this would restart the application
     // or transition to the setup wizard. For now, just log.
@@ -1197,9 +1249,35 @@ void SettingsPanel::on_estop_confirm_changed(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
+void SettingsPanel::on_cancel_escalation_changed(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_cancel_escalation_changed");
+    auto* toggle = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    bool enabled = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+    get_global_settings_panel().handle_cancel_escalation_changed(enabled);
+    LVGL_SAFE_EVENT_CB_END();
+}
+
 void SettingsPanel::on_about_clicked(lv_event_t* /*e*/) {
     LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_about_clicked");
     get_global_settings_panel().handle_about_clicked();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void SettingsPanel::on_debug_bundle_clicked(lv_event_t* /*e*/) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_debug_bundle_clicked");
+    get_global_settings_panel().handle_debug_bundle_clicked();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void SettingsPanel::on_discord_clicked(lv_event_t* /*e*/) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_discord_clicked");
+    get_global_settings_panel().handle_discord_clicked();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void SettingsPanel::on_docs_clicked(lv_event_t* /*e*/) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_docs_clicked");
+    get_global_settings_panel().handle_docs_clicked();
     LVGL_SAFE_EVENT_CB_END();
 }
 
@@ -1307,6 +1385,18 @@ void SettingsPanel::on_restart_helix_settings_clicked(lv_event_t* /*e*/) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
+void SettingsPanel::on_print_hours_clicked(lv_event_t* /*e*/) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_print_hours_clicked");
+    get_global_settings_panel().handle_print_hours_clicked();
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void SettingsPanel::handle_print_hours_clicked() {
+    helix::ui::lazy_create_and_push_overlay<HistoryDashboardPanel>(
+        get_global_history_dashboard_panel, history_dashboard_panel_, parent_screen_,
+        "Print History", get_name());
+}
+
 // ============================================================================
 // STATIC TRAMPOLINES - OVERLAYS
 // ============================================================================
@@ -1318,7 +1408,7 @@ void SettingsPanel::on_restart_later_clicked(lv_event_t* /* e */) {
     LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_restart_later_clicked");
     auto& panel = get_global_settings_panel();
     if (panel.restart_prompt_dialog_) {
-        ui_modal_hide(panel.restart_prompt_dialog_);
+        helix::ui::modal_hide(panel.restart_prompt_dialog_);
         panel.restart_prompt_dialog_ = nullptr;
     }
     LVGL_SAFE_EVENT_CB_END();
@@ -1333,7 +1423,7 @@ void SettingsPanel::on_restart_now_clicked(lv_event_t* /*e*/) {
 
 void SettingsPanel::on_header_back_clicked(lv_event_t* /*e*/) {
     LVGL_SAFE_EVENT_CB_BEGIN("[SettingsPanel] on_header_back_clicked");
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
     LVGL_SAFE_EVENT_CB_END();
 }
 
@@ -1370,6 +1460,10 @@ void register_settings_panel_callbacks() {
                              SettingsPanel::on_sound_settings_clicked);
     lv_xml_register_event_cb(nullptr, "on_estop_confirm_changed",
                              SettingsPanel::on_estop_confirm_changed);
+    lv_xml_register_event_cb(nullptr, "on_cancel_escalation_changed",
+                             SettingsPanel::on_cancel_escalation_changed);
+    lv_xml_register_event_cb(nullptr, "on_cancel_escalation_timeout_changed",
+                             on_cancel_escalation_timeout_changed);
     lv_xml_register_event_cb(nullptr, "on_telemetry_changed", SettingsPanel::on_telemetry_changed);
     lv_xml_register_event_cb(nullptr, "on_telemetry_view_data",
                              SettingsPanel::on_telemetry_view_data);
@@ -1392,9 +1486,18 @@ void register_settings_panel_callbacks() {
                              SettingsPanel::on_hardware_health_clicked);
     lv_xml_register_event_cb(nullptr, "on_restart_helix_settings_clicked",
                              SettingsPanel::on_restart_helix_settings_clicked);
+    lv_xml_register_event_cb(nullptr, "on_print_hours_clicked",
+                             SettingsPanel::on_print_hours_clicked);
     lv_xml_register_event_cb(nullptr, "on_change_host_clicked",
                              SettingsPanel::on_change_host_clicked);
     lv_xml_register_event_cb(nullptr, "on_about_clicked", SettingsPanel::on_about_clicked);
+
+    // Help & Support callbacks
+    lv_xml_register_event_cb(nullptr, "on_debug_bundle_clicked",
+                             SettingsPanel::on_debug_bundle_clicked);
+    lv_xml_register_event_cb(nullptr, "on_discord_clicked", SettingsPanel::on_discord_clicked);
+    lv_xml_register_event_cb(nullptr, "on_docs_clicked", SettingsPanel::on_docs_clicked);
+
     lv_xml_register_event_cb(nullptr, "on_check_updates_clicked", on_check_updates_clicked);
     lv_xml_register_event_cb(nullptr, "on_install_update_clicked", on_install_update_clicked);
 }

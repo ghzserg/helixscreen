@@ -21,7 +21,7 @@
  *
  *   void setup() {
  *       animated_temp_.bind(
- *           printer_state_.get_extruder_temp_subject(),
+ *           printer_state_.get_active_extruder_temp_subject(),
  *           [this](int centi) {
  *               int deg = centi / 10;
  *               snprintf(buf_, sizeof(buf_), "%d°", deg);
@@ -271,8 +271,10 @@ template <typename T> class AnimatedValue {
 
     void stop_animation() {
         if (anim_running_) {
-            lv_anim_delete(this, anim_exec_cb);
+            // Clear flag BEFORE lv_anim_delete — if the completion callback fires
+            // synchronously during deletion, it will see anim_running_ == false and bail
             anim_running_ = false;
+            lv_anim_delete(this, anim_exec_cb);
         }
     }
 
@@ -306,24 +308,25 @@ template <typename T> class AnimatedValue {
      */
     static void anim_completed_cb(lv_anim_t* anim) {
         auto* self = static_cast<AnimatedValue*>(anim->var);
-        if (self) {
-            self->anim_running_ = false;
+        if (!self || !self->anim_running_) {
+            return; // Already stopped (e.g., stop_animation() triggered this callback)
+        }
+        self->anim_running_ = false;
 
-            // Get current animation end value (what we animated TO)
-            T anim_end = static_cast<T>(anim->end_value);
+        // Get current animation end value (what we animated TO)
+        T anim_end = static_cast<T>(anim->end_value);
 
-            // If target changed during animation, start new animation toward it
-            if (self->target_value_ != anim_end) {
-                self->display_value_ = anim_end; // Current position
-                spdlog::trace("[AnimatedValue] Chaining animation: {} -> {}", self->display_value_,
-                              self->target_value_);
-                self->start_animation();
-            } else {
-                // Animation reached target
-                self->display_value_ = self->target_value_;
-                if (self->display_callback_) {
-                    self->display_callback_(self->display_value_);
-                }
+        // If target changed during animation, start new animation toward it
+        if (self->target_value_ != anim_end) {
+            self->display_value_ = anim_end; // Current position
+            spdlog::trace("[AnimatedValue] Chaining animation: {} -> {}", self->display_value_,
+                          self->target_value_);
+            self->start_animation();
+        } else {
+            // Animation reached target
+            self->display_value_ = self->target_value_;
+            if (self->display_callback_) {
+                self->display_callback_(self->display_value_);
             }
         }
     }

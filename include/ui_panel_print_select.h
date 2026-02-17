@@ -105,10 +105,10 @@ class PrintSelectPanel : public PanelBase {
     /**
      * @brief Construct PrintSelectPanel with injected dependencies
      *
-     * @param printer_state Reference to PrinterState for mock detection
+     * @param printer_state Reference to helix::PrinterState for mock detection
      * @param api Pointer to MoonrakerAPI for file operations
      */
-    PrintSelectPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    PrintSelectPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     /**
      * @brief Destructor - cleanup observers
@@ -505,7 +505,7 @@ class PrintSelectPanel : public PanelBase {
     ObserverGuard helix_plugin_observer_; ///< Observes plugin status for install prompt
 
     /// Observer for PrintHistoryManager - updates file status when history changes
-    HistoryChangedCallback history_observer_;
+    helix::HistoryChangedCallback history_observer_;
 
     /// Destruction flag for async callback safety [L012]
     /// Shared pointer allows callbacks to check if panel is still alive
@@ -672,11 +672,11 @@ class PrintSelectPanel : public PanelBase {
 /**
  * @brief Get or create the global PrintSelectPanel instance
  *
- * @param printer_state Reference to PrinterState
+ * @param printer_state Reference to helix::PrinterState
  * @param api Pointer to MoonrakerAPI (may be nullptr)
  * @return Pointer to the global instance
  */
-PrintSelectPanel* get_print_select_panel(PrinterState& printer_state, MoonrakerAPI* api);
+PrintSelectPanel* get_print_select_panel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
 /**
  * @brief Get reference to the global PrintSelectPanel instance

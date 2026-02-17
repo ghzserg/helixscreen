@@ -7,6 +7,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 using namespace helix::config;
 
 // Helper to set/unset environment variables for testing

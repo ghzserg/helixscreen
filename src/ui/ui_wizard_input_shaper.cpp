@@ -72,52 +72,6 @@ WizardInputShaperStep::~WizardInputShaperStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardInputShaperStep::WizardInputShaperStep(WizardInputShaperStep&& other) noexcept
-    : screen_root_(other.screen_root_),
-      // NOTE: Do NOT copy lv_subject_t members - they contain internal pointers.
-      // Leave calibration_status_ and calibration_progress_ default-initialized.
-      // The moved-to object should call init_subjects() if needed.
-      calibrator_(std::move(other.calibrator_)),
-      subjects_initialized_(false), // Subjects stay with moved-from object
-      calibration_complete_(other.calibration_complete_), user_skipped_(other.user_skipped_),
-      alive_(std::move(other.alive_)) {
-    std::memcpy(status_buffer_, other.status_buffer_, sizeof(status_buffer_));
-    other.screen_root_ = nullptr;
-    other.calibration_complete_ = false;
-    other.user_skipped_ = false;
-    other.alive_ = std::make_shared<std::atomic<bool>>(false); // Moved-from has dead flag
-}
-
-WizardInputShaperStep& WizardInputShaperStep::operator=(WizardInputShaperStep&& other) noexcept {
-    if (this != &other) {
-        // Deinit our subjects if they were initialized
-        if (subjects_initialized_) {
-            lv_subject_deinit(&calibration_status_);
-            lv_subject_deinit(&calibration_progress_);
-            subjects_initialized_ = false;
-        }
-
-        screen_root_ = other.screen_root_;
-        // NOTE: Do NOT copy lv_subject_t members - they contain internal pointers.
-        // Our subjects are already deinitialized above; moved-to should call init_subjects()
-        std::memcpy(status_buffer_, other.status_buffer_, sizeof(status_buffer_));
-        calibrator_ = std::move(other.calibrator_);
-        // subjects_initialized_ stays false - subjects need to be re-initialized
-        calibration_complete_ = other.calibration_complete_;
-        user_skipped_ = other.user_skipped_;
-        alive_ = std::move(other.alive_);
-
-        other.screen_root_ = nullptr;
-        other.calibration_complete_ = false;
-        other.user_skipped_ = false;
-        other.alive_ = std::make_shared<std::atomic<bool>>(false); // Moved-from has dead flag
-    }
-    return *this;
-}
-
 // ============================================================================
 // Subject Initialization
 // ============================================================================
@@ -155,7 +109,7 @@ void WizardInputShaperStep::init_subjects() {
 // Captures alive flag and queues update to UI thread
 static void safe_update_status(std::weak_ptr<std::atomic<bool>> alive_weak,
                                const std::string& msg) {
-    ui_queue_update([alive_weak, msg]() {
+    helix::ui::queue_update([alive_weak, msg]() {
         if (auto alive = alive_weak.lock()) {
             if (!alive->load(std::memory_order_acquire)) {
                 return; // Step was cleaned up
@@ -171,7 +125,7 @@ static void safe_update_status(std::weak_ptr<std::atomic<bool>> alive_weak,
 }
 
 static void safe_update_progress(std::weak_ptr<std::atomic<bool>> alive_weak, int progress) {
-    ui_queue_update([alive_weak, progress]() {
+    helix::ui::queue_update([alive_weak, progress]() {
         if (auto alive = alive_weak.lock()) {
             if (!alive->load(std::memory_order_acquire)) {
                 return; // Step was cleaned up
@@ -187,7 +141,7 @@ static void safe_update_progress(std::weak_ptr<std::atomic<bool>> alive_weak, in
 }
 
 static void safe_set_complete(std::weak_ptr<std::atomic<bool>> alive_weak) {
-    ui_queue_update([alive_weak]() {
+    helix::ui::queue_update([alive_weak]() {
         if (auto alive = alive_weak.lock()) {
             if (!alive->load(std::memory_order_acquire)) {
                 return; // Step was cleaned up
@@ -208,7 +162,7 @@ static void safe_set_complete(std::weak_ptr<std::atomic<bool>> alive_weak) {
 }
 
 static void safe_handle_error(std::weak_ptr<std::atomic<bool>> alive_weak) {
-    ui_queue_update([alive_weak]() {
+    helix::ui::queue_update([alive_weak]() {
         if (auto alive = alive_weak.lock()) {
             if (!alive->load(std::memory_order_acquire)) {
                 return;

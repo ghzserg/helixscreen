@@ -14,7 +14,7 @@
 #include "ui_error_reporting.h"
 #include "ui_notification.h"
 #include "ui_notification_history.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 
 #include <cstring>
 #include <string>

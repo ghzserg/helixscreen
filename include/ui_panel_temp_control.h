@@ -11,7 +11,6 @@
 #include "lvgl/lvgl.h"
 #include "panel_lifecycle.h"
 #include "subject_managed_panel.h"
-#include "ui/temperature_observer_bundle.h"
 
 #include <array>
 #include <functional>
@@ -19,7 +18,9 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class PrinterState;
+}
 class MoonrakerAPI;
 class TempControlPanel;
 
@@ -66,7 +67,7 @@ class BedTempPanelLifecycle : public IPanelLifecycle {
  */
 class TempControlPanel {
   public:
-    TempControlPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    TempControlPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
     ~TempControlPanel();
 
     // Non-copyable, non-movable (has reference member and LVGL subject state)
@@ -217,12 +218,25 @@ class TempControlPanel {
     // Keypad callback
     static void keypad_value_cb(float value, void* user_data);
 
-    PrinterState& printer_state_;
+    helix::PrinterState& printer_state_;
     MoonrakerAPI* api_;
 
     // Observer handles (RAII cleanup via ObserverGuard)
-    /// @brief Temperature observer bundle (nozzle + bed temps)
-    helix::ui::TemperatureObserverBundle<TempControlPanel> temp_observers_;
+    // Individual observers instead of bundle, so nozzle observers can be
+    // rebound independently when switching extruders in multi-extruder setups
+    ObserverGuard nozzle_temp_observer_;
+    ObserverGuard nozzle_target_observer_;
+    ObserverGuard bed_temp_observer_;
+    ObserverGuard bed_target_observer_;
+
+    // Multi-extruder support
+    std::string active_extruder_name_ = "extruder"; ///< Current extruder klipper name
+    ObserverGuard extruder_version_observer_;       ///< Rebuild selector on extruder discovery
+    ObserverGuard active_tool_observer_;            ///< Sync extruder with active tool changes
+
+    void select_extruder(const std::string& name);
+    void rebuild_extruder_segments();
+    void rebuild_extruder_segments_impl();
 
     // Temperature state
     int nozzle_current_ = 25;

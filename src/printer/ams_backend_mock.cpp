@@ -3,7 +3,9 @@
 
 #include "ams_backend_mock.h"
 
+#include "afc_defaults.h"
 #include "filament_database.h"
+#include "hh_defaults.h"
 #include "runtime_config.h"
 
 #include <spdlog/spdlog.h>
@@ -21,17 +23,17 @@ struct MockFilament {
     const char* brand;
 };
 
-// Predefined sample filaments for visual testing
-// Covers common material types: PLA, PETG, ABS, ASA, PA, TPU, and CF/GF variants
+// Predefined sample filaments matching Spoolman mock spools 1-8 (moonraker_api_mock.cpp)
+// IMPORTANT: Keep in sync with MoonrakerAPIMock::init_mock_spools()
 constexpr MockFilament SAMPLE_FILAMENTS[] = {
-    {0xE53935, "Red", "PLA", "Polymaker"},      // Slot 0: Red PLA
-    {0x1E88E5, "Blue", "PETG", "eSUN"},         // Slot 1: Blue PETG
-    {0x43A047, "Green", "ABS", "Bambu"},        // Slot 2: Green ABS
-    {0xFDD835, "Yellow", "ASA", "Polymaker"},   // Slot 3: Yellow ASA
-    {0x424242, "Carbon", "PLA-CF", "Overture"}, // Slot 4: Carbon PLA-CF
-    {0x8E24AA, "Purple", "PA-CF", "Bambu"},     // Slot 5: Purple PA-CF (Nylon)
-    {0xFF6F00, "Orange", "TPU", "eSUN"},        // Slot 6: Orange TPU (Flexible)
-    {0x90CAF9, "Sky Blue", "PETG-GF", "Prusa"}, // Slot 7: PETG-GF (Glass Filled)
+    {0x1A1A2E, "Jet Black", "PLA", "Polymaker"},        // Spool #1
+    {0x26DCD9, "Silk Blue", "Silk PLA", "eSUN"},        // Spool #2
+    {0x00AEFF, "Pop Blue", "ASA", "Elegoo"},            // Spool #3
+    {0xD20000, "Fire Engine Red", "ABS", "Flashforge"}, // Spool #4
+    {0xF4E111, "Signal Yellow", "PETG", "Kingroon"},    // Spool #5
+    {0xE8E8E8, "Clear", "TPU", "Overture"},             // Spool #6
+    {0x8A949E, "Gray", "ASA", "Bambu Lab"},             // Spool #7
+    {0xA2AAAD, "Grey", "PC", "Polymaker"},              // Spool #8
 };
 constexpr int NUM_SAMPLE_FILAMENTS = sizeof(SAMPLE_FILAMENTS) / sizeof(SAMPLE_FILAMENTS[0]);
 
@@ -66,13 +68,14 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
     system_info_.filament_loaded = false;
     system_info_.action = AmsAction::IDLE;
     system_info_.total_slots = slot_count;
-    system_info_.supports_endless_spool = true;
-    system_info_.supports_spoolman = true;
-    system_info_.supports_tool_mapping = true;
-    system_info_.supports_bypass = true;
-    system_info_.has_hardware_bypass_sensor = false; // Default: virtual (manual toggle)
-    system_info_.tip_method = TipMethod::CUT;        // Happy Hare typically has cutter
-    system_info_.supports_purge = true;              // Happy Hare supports purging
+    // Use shared AFC defaults for capabilities
+    auto caps = helix::printer::afc_default_capabilities();
+    system_info_.supports_endless_spool = caps.supports_endless_spool;
+    system_info_.supports_tool_mapping = caps.supports_tool_mapping;
+    system_info_.supports_bypass = caps.supports_bypass;
+    system_info_.supports_purge = caps.supports_purge;
+    system_info_.tip_method = caps.tip_method;
+    system_info_.has_hardware_bypass_sensor = false; // Mock default: virtual toggle
 
     // Create single unit with all slots
     AmsUnit unit;
@@ -171,74 +174,9 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
         }
     }
 
-    // Initialize default device sections (AFC-like)
-    mock_device_sections_ = {
-        {"calibration", "Calibration", "wrench", 0},
-        {"speed", "Speed Settings", "speedometer", 1},
-    };
-
-    // Initialize default device actions
-    using helix::printer::ActionType;
-    mock_device_actions_ = {
-        // Calibration section
-        {"calibration_wizard",
-         "Run Calibration Wizard",
-         "play",
-         "calibration",
-         "Interactive calibration for all lanes",
-         ActionType::BUTTON,
-         {},
-         {},
-         0,
-         100,
-         "",
-         -1,
-         true,
-         ""},
-        {"bowden_length",
-         "Bowden Length",
-         "ruler",
-         "calibration",
-         "Distance from hub to toolhead",
-         ActionType::SLIDER,
-         450.0f,
-         {},
-         100.0f,
-         1000.0f,
-         "mm",
-         -1,
-         true,
-         ""},
-        // Speed section
-        {"speed_fwd",
-         "Forward Multiplier",
-         "fast-forward",
-         "speed",
-         "Speed multiplier for forward moves",
-         ActionType::SLIDER,
-         1.0f,
-         {},
-         0.5f,
-         2.0f,
-         "x",
-         -1,
-         true,
-         ""},
-        {"speed_rev",
-         "Reverse Multiplier",
-         "rewind",
-         "speed",
-         "Speed multiplier for reverse moves",
-         ActionType::SLIDER,
-         1.0f,
-         {},
-         0.5f,
-         2.0f,
-         "x",
-         -1,
-         true,
-         ""},
-    };
+    // Initialize default device sections/actions for Happy Hare mode (constructor default)
+    mock_device_sections_ = helix::printer::hh_default_sections();
+    mock_device_actions_ = helix::printer::hh_default_actions();
 
     spdlog::debug("[AmsBackendMock] Created with {} slots", slot_count);
 }
@@ -800,6 +738,54 @@ void AmsBackendMock::force_slot_status(int slot_index, SlotStatus status) {
     }
 }
 
+void AmsBackendMock::set_slot_error(int slot_index, std::optional<SlotError> error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    auto* slot = system_info_.get_slot_global(slot_index);
+    if (slot) {
+        slot->error = std::move(error);
+        spdlog::debug("[AmsBackendMock] Slot {} error {}", slot_index,
+                      slot->error.has_value() ? slot->error->message : "cleared");
+    }
+}
+
+void AmsBackendMock::set_unit_buffer_health(int unit_index, std::optional<BufferHealth> health) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    if (unit_index >= 0 && unit_index < static_cast<int>(system_info_.units.size())) {
+        system_info_.units[unit_index].buffer_health = std::move(health);
+        spdlog::debug("[AmsBackendMock] Unit {} buffer health {}", unit_index,
+                      system_info_.units[unit_index].buffer_health.has_value() ? "set" : "cleared");
+    }
+}
+
+void AmsBackendMock::inject_mock_errors() {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    for (auto& unit : system_info_.units) {
+        // Add a lane ERROR on the last slot of each unit
+        if (!unit.slots.empty()) {
+            auto& last_slot = unit.slots.back();
+            SlotError err;
+            err.message = fmt::format("Lane {} load failed", last_slot.slot_index + 1);
+            err.severity = SlotError::ERROR;
+            last_slot.error = err;
+        }
+
+        // Add buffer health approaching fault on unit 0 (AFC only — TurtleNeck buffer)
+        if (afc_mode_ && unit.unit_index == 0) {
+            BufferHealth health;
+            health.fault_detection_enabled = true;
+            health.state = "Trailing";
+            health.distance_to_fault = 12.5f;
+            unit.buffer_health = health;
+        }
+    }
+
+    spdlog::info("[AmsBackendMock] Injected mock error states on {} units",
+                 system_info_.units.size());
+}
+
 void AmsBackendMock::set_has_hardware_bypass_sensor(bool has_sensor) {
     std::lock_guard<std::mutex> lock(mutex_);
     system_info_.has_hardware_bypass_sensor = has_sensor;
@@ -1034,6 +1020,10 @@ void AmsBackendMock::set_tool_changer_mode(bool enabled) {
             // Slots retain their filament data - represents what's loaded in each toolhead
         }
 
+        // Tool changers have no AMS-style device settings
+        mock_device_sections_.clear();
+        mock_device_actions_.clear();
+
         spdlog::info("[AmsBackendMock] Tool changer mode enabled ({} tools)",
                      system_info_.total_slots);
     } else {
@@ -1046,6 +1036,10 @@ void AmsBackendMock::set_tool_changer_mode(bool enabled) {
         if (!system_info_.units.empty()) {
             system_info_.units[0].name = "Mock MMU";
         }
+
+        // Restore Happy Hare device sections and actions
+        mock_device_sections_ = helix::printer::hh_default_sections();
+        mock_device_actions_ = helix::printer::hh_default_actions();
 
         spdlog::info("[AmsBackendMock] Tool changer mode disabled, reverting to filament system");
     }
@@ -1069,13 +1063,15 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
         system_info_.type_name = "AFC (Mock)";
         system_info_.version = "1.0.32-mock";
         system_info_.total_slots = 4;
-        system_info_.supports_bypass = true;
-        system_info_.supports_endless_spool = true;
-        system_info_.supports_spoolman = true;
-        system_info_.supports_tool_mapping = true;
+
+        // Use shared AFC defaults for capabilities
+        auto afc_caps = helix::printer::afc_default_capabilities();
+        system_info_.supports_endless_spool = afc_caps.supports_endless_spool;
+        system_info_.supports_tool_mapping = afc_caps.supports_tool_mapping;
+        system_info_.supports_bypass = afc_caps.supports_bypass;
+        system_info_.supports_purge = afc_caps.supports_purge;
+        system_info_.tip_method = afc_caps.tip_method;
         system_info_.has_hardware_bypass_sensor = false;
-        system_info_.tip_method = TipMethod::CUT;
-        system_info_.supports_purge = true;
 
         // HUB topology, single unit
         topology_ = PathTopology::HUB;
@@ -1099,10 +1095,13 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             slot.slot_index = 0;
             slot.global_index = 0;
             slot.material = "ASA";
+            slot.brand = "Bambu Lab";
             slot.color_rgb = 0x000000;
             slot.color_name = "Black";
             slot.status = SlotStatus::LOADED;
             slot.mapped_tool = 0;
+            slot.spoolman_id = 1;
+            slot.spool_name = "Black ASA";
             slot.total_weight_g = 1000.0f;
             slot.remaining_weight_g = 750.0f;
             auto mat_info = filament::find_material("ASA");
@@ -1114,16 +1113,19 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             unit.slots.push_back(slot);
         }
 
-        // Lane 2: PLA, loaded
+        // Lane 2: PLA, available
         {
             SlotInfo slot;
             slot.slot_index = 1;
             slot.global_index = 1;
             slot.material = "PLA";
+            slot.brand = "Polymaker";
             slot.color_rgb = 0xFF0000;
             slot.color_name = "Red";
             slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = 1;
+            slot.spoolman_id = 2;
+            slot.spool_name = "Red PLA";
             slot.total_weight_g = 1000.0f;
             slot.remaining_weight_g = 900.0f;
             auto mat_info = filament::find_material("PLA");
@@ -1135,16 +1137,19 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             unit.slots.push_back(slot);
         }
 
-        // Lane 3: PETG, loaded
+        // Lane 3: PETG, available
         {
             SlotInfo slot;
             slot.slot_index = 2;
             slot.global_index = 2;
             slot.material = "PETG";
+            slot.brand = "eSUN";
             slot.color_rgb = 0x00FF00;
             slot.color_name = "Green";
             slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = 2;
+            slot.spoolman_id = 3;
+            slot.spool_name = "Green PETG";
             slot.total_weight_g = 1000.0f;
             slot.remaining_weight_g = 500.0f;
             auto mat_info = filament::find_material("PETG");
@@ -1156,17 +1161,19 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             unit.slots.push_back(slot);
         }
 
-        // Lane 4: empty
+        // Lane 4: error state (for testing error visualization)
         {
             SlotInfo slot;
             slot.slot_index = 3;
             slot.global_index = 3;
-            slot.material = "";
-            slot.color_name = "";
-            slot.status = SlotStatus::EMPTY;
+            slot.material = "TPU";
+            slot.brand = "eSUN";
+            slot.color_rgb = 0xFF6600;
+            slot.color_name = "Orange";
+            slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = 3;
-            slot.total_weight_g = 0.0f;
-            slot.remaining_weight_g = 0.0f;
+            slot.total_weight_g = 1000.0f;
+            slot.remaining_weight_g = 200.0f;
             unit.slots.push_back(slot);
         }
 
@@ -1191,176 +1198,17 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             endless_spool_configs_.push_back(config);
         }
 
-        // AFC-specific device sections
-        using helix::printer::ActionType;
-        mock_device_sections_ = {
-            {"calibration", "Calibration", "wrench", 0},
-            {"maintenance", "Maintenance", "tools", 1},
-            {"speed", "Speed Settings", "speedometer", 2},
-            {"led", "LEDs & Modes", "lightbulb", 3},
-        };
+        // AFC device sections and actions — use all defaults
+        mock_device_sections_ = helix::printer::afc_default_sections();
+        mock_device_actions_ = helix::printer::afc_default_actions();
 
-        // AFC-specific device actions
-        mock_device_actions_ = {
-            // Calibration section
-            {"calibration_wizard",
-             "Run Calibration Wizard",
-             "play",
-             "calibration",
-             "Interactive calibration for all lanes",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"bowden_length",
-             "Bowden Length",
-             "ruler",
-             "calibration",
-             "Distance from hub to toolhead",
-             ActionType::SLIDER,
-             450.0f,
-             {},
-             100.0f,
-             1000.0f,
-             "mm",
-             -1,
-             true,
-             ""},
-            {"test_lanes",
-             "Test All Lanes",
-             "refresh",
-             "calibration",
-             "Load and unload each lane to verify operation",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            // Maintenance section
-            {"change_blade",
-             "Change Blade",
-             "scissors",
-             "maintenance",
-             "Prepare cutter for blade replacement",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"park",
-             "Park Filament",
-             "download",
-             "maintenance",
-             "Retract filament to parking position",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"brush",
-             "Clean Brush",
-             "paint-roller",
-             "maintenance",
-             "Run nozzle cleaning brush cycle",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"reset_motor",
-             "Reset Motor",
-             "rotate-ccw",
-             "maintenance",
-             "Reset stepper motor to default state",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            // Speed section
-            {"speed_fwd",
-             "Forward Multiplier",
-             "fast-forward",
-             "speed",
-             "Speed multiplier for forward moves",
-             ActionType::SLIDER,
-             1.0f,
-             {},
-             0.5f,
-             2.0f,
-             "x",
-             -1,
-             true,
-             ""},
-            {"speed_rev",
-             "Reverse Multiplier",
-             "rewind",
-             "speed",
-             "Speed multiplier for reverse moves",
-             ActionType::SLIDER,
-             1.0f,
-             {},
-             0.5f,
-             2.0f,
-             "x",
-             -1,
-             true,
-             ""},
-            // LED section
-            {"led_toggle",
-             "Status LEDs",
-             "lightbulb",
-             "led",
-             "Toggle lane status indicator LEDs",
-             ActionType::TOGGLE,
-             true,
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"quiet_mode",
-             "Quiet Mode",
-             "volume-x",
-             "led",
-             "Reduce motor noise at the cost of speed",
-             ActionType::TOGGLE,
-             false,
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-        };
+        // Disable save_restart in mock mode (no real Klipper to restart)
+        for (auto& action : mock_device_actions_) {
+            if (action.id == "save_restart") {
+                action.enabled = false;
+                action.disable_reason = "Not available in mock mode";
+            }
+        }
 
         spdlog::info("[AmsBackendMock] AFC mode enabled (4-lane Box Turtle)");
     } else {
@@ -1376,71 +1224,9 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             system_info_.units[0].name = "Mock MMU";
         }
 
-        // Restore default device sections and actions (from constructor pattern)
-        mock_device_sections_ = {
-            {"calibration", "Calibration", "wrench", 0},
-            {"speed", "Speed Settings", "speedometer", 1},
-        };
-
-        using helix::printer::ActionType;
-        mock_device_actions_ = {
-            {"calibration_wizard",
-             "Run Calibration Wizard",
-             "play",
-             "calibration",
-             "Interactive calibration for all lanes",
-             ActionType::BUTTON,
-             {},
-             {},
-             0,
-             100,
-             "",
-             -1,
-             true,
-             ""},
-            {"bowden_length",
-             "Bowden Length",
-             "ruler",
-             "calibration",
-             "Distance from hub to toolhead",
-             ActionType::SLIDER,
-             450.0f,
-             {},
-             100.0f,
-             1000.0f,
-             "mm",
-             -1,
-             true,
-             ""},
-            {"speed_fwd",
-             "Forward Multiplier",
-             "fast-forward",
-             "speed",
-             "Speed multiplier for forward moves",
-             ActionType::SLIDER,
-             1.0f,
-             {},
-             0.5f,
-             2.0f,
-             "x",
-             -1,
-             true,
-             ""},
-            {"speed_rev",
-             "Reverse Multiplier",
-             "rewind",
-             "speed",
-             "Speed multiplier for reverse moves",
-             ActionType::SLIDER,
-             1.0f,
-             {},
-             0.5f,
-             2.0f,
-             "x",
-             -1,
-             true,
-             ""},
-        };
+        // Restore Happy Hare device sections and actions
+        mock_device_sections_ = helix::printer::hh_default_sections();
+        mock_device_actions_ = helix::printer::hh_default_actions();
 
         spdlog::info("[AmsBackendMock] AFC mode disabled, reverting to Happy Hare");
     }
@@ -1449,6 +1235,451 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
 bool AmsBackendMock::is_afc_mode() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return afc_mode_;
+}
+
+void AmsBackendMock::set_multi_unit_mode(bool enabled) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    multi_unit_mode_ = enabled;
+
+    if (enabled) {
+        // Disable conflicting modes
+        tool_changer_mode_ = false;
+
+        // Configure as AFC with 2 Box Turtle units
+        system_info_.type = AmsType::AFC;
+        system_info_.type_name = "AFC (Mock Multi-Unit)";
+        system_info_.version = "1.0.32-mock";
+        system_info_.supports_bypass = true;
+        system_info_.supports_endless_spool = true;
+        system_info_.supports_tool_mapping = true;
+        system_info_.has_hardware_bypass_sensor = false;
+        system_info_.tip_method = TipMethod::CUT;
+        system_info_.supports_purge = true;
+        topology_ = PathTopology::HUB;
+
+        system_info_.units.clear();
+        system_info_.total_slots = 6; // 4 (Box Turtle) + 2 (Night Owl)
+
+        // Unit 0: "Box Turtle 1" - 4 slots
+        {
+            AmsUnit unit;
+            unit.unit_index = 0;
+            unit.name = "Box Turtle 1";
+            unit.slot_count = 4;
+            unit.first_slot_global_index = 0;
+            unit.connected = true;
+            unit.firmware_version = "1.0.32-mock";
+            unit.has_encoder = false;
+            unit.has_toolhead_sensor = true;
+            unit.has_slot_sensors = true;
+            unit.has_hub_sensor = true;
+            unit.hub_sensor_triggered = true; // Active unit has filament at hub
+
+            const struct {
+                uint32_t color;
+                const char* name;
+                const char* material;
+                const char* brand;
+                SlotStatus status;
+            } slots[] = {
+                {0x000000, "Black", "ASA", "Bambu Lab", SlotStatus::LOADED},
+                {0xFF0000, "Red", "PLA", "Polymaker", SlotStatus::AVAILABLE},
+                {0x00FF00, "Green", "PETG", "eSUN", SlotStatus::AVAILABLE},
+                {0xFFFFFF, "White", "PLA", "Overture", SlotStatus::EMPTY},
+            };
+
+            for (int i = 0; i < 4; i++) {
+                SlotInfo slot;
+                slot.slot_index = i;
+                slot.global_index = i;
+                slot.material = slots[i].material;
+                slot.brand = slots[i].brand;
+                slot.color_rgb = slots[i].color;
+                slot.color_name = slots[i].name;
+                slot.status = slots[i].status;
+                slot.mapped_tool = i;
+                slot.spoolman_id = 100 + i;
+                slot.total_weight_g = 1000.0f;
+                slot.remaining_weight_g = (i == 3) ? 0.0f : (1000.0f - i * 250.0f);
+                auto mat_info = filament::find_material(slots[i].material);
+                if (mat_info) {
+                    slot.nozzle_temp_min = mat_info->nozzle_min;
+                    slot.nozzle_temp_max = mat_info->nozzle_max;
+                    slot.bed_temp = mat_info->bed_temp;
+                }
+                unit.slots.push_back(slot);
+            }
+
+            system_info_.units.push_back(unit);
+        }
+
+        // Unit 1: "Night Owl" - 2 slots (Night Owls are 2-lane units)
+        {
+            AmsUnit unit;
+            unit.unit_index = 1;
+            unit.name = "Night Owl";
+            unit.slot_count = 2;
+            unit.first_slot_global_index = 4;
+            unit.connected = true;
+            unit.firmware_version = "2.1.0-mock";
+            unit.has_encoder = true;
+            unit.has_toolhead_sensor = true;
+            unit.has_slot_sensors = true;
+            unit.has_hub_sensor = true;
+            unit.hub_sensor_triggered = false; // Inactive unit, no filament at hub
+
+            const struct {
+                uint32_t color;
+                const char* name;
+                const char* material;
+                const char* brand;
+                SlotStatus status;
+            } slots[] = {
+                {0x1E88E5, "Blue", "PETG", "Prusa", SlotStatus::AVAILABLE},
+                {0xFDD835, "Yellow", "ABS", "Bambu Lab", SlotStatus::AVAILABLE},
+            };
+
+            for (int i = 0; i < 2; i++) {
+                SlotInfo slot;
+                slot.slot_index = i;
+                slot.global_index = 4 + i;
+                slot.material = slots[i].material;
+                slot.brand = slots[i].brand;
+                slot.color_rgb = slots[i].color;
+                slot.color_name = slots[i].name;
+                slot.status = slots[i].status;
+                slot.mapped_tool = 4 + i;
+                slot.spoolman_id = 200 + i;
+                slot.total_weight_g = 1000.0f;
+                slot.remaining_weight_g = 1000.0f - i * 200.0f;
+                auto mat_info = filament::find_material(slots[i].material);
+                if (mat_info) {
+                    slot.nozzle_temp_min = mat_info->nozzle_min;
+                    slot.nozzle_temp_max = mat_info->nozzle_max;
+                    slot.bed_temp = mat_info->bed_temp;
+                }
+                unit.slots.push_back(slot);
+            }
+            system_info_.units.push_back(unit);
+        }
+
+        // Tool-to-slot mapping: T0-T5 (6 tools for 6 slots)
+        system_info_.tool_to_slot_map = {0, 1, 2, 3, 4, 5};
+
+        // Start with slot 0 loaded
+        system_info_.current_slot = 0;
+        system_info_.current_tool = 0;
+        system_info_.filament_loaded = true;
+        filament_segment_ = PathSegment::NOZZLE;
+
+        // Reinitialize endless spool configs for 6 slots
+        endless_spool_configs_.clear();
+        endless_spool_configs_.reserve(6);
+        for (int i = 0; i < 6; ++i) {
+            helix::printer::EndlessSpoolConfig config;
+            config.slot_index = i;
+            config.backup_slot = -1;
+            endless_spool_configs_.push_back(config);
+        }
+
+        spdlog::info("[AmsBackendMock] Multi-unit mode: Box Turtle (4) + Night Owl (2) = 6 slots");
+    } else {
+        multi_unit_mode_ = false;
+        // Revert to Happy Hare defaults
+        system_info_.type = AmsType::HAPPY_HARE;
+        system_info_.type_name = "Happy Hare (Mock)";
+        system_info_.version = "2.7.0-mock";
+        system_info_.supports_bypass = true;
+        topology_ = PathTopology::HUB;
+
+        if (!system_info_.units.empty()) {
+            system_info_.units[0].name = "Mock MMU";
+        }
+
+        spdlog::info("[AmsBackendMock] Multi-unit mode disabled");
+    }
+}
+
+bool AmsBackendMock::is_multi_unit_mode() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return multi_unit_mode_;
+}
+
+void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    mixed_topology_mode_ = enabled;
+
+    if (enabled) {
+        // Disable conflicting modes
+        tool_changer_mode_ = false;
+        multi_unit_mode_ = false;
+
+        // Configure as AFC system
+        system_info_.type = AmsType::AFC;
+        system_info_.type_name = "AFC (Mock Mixed)";
+        system_info_.version = "1.0.32-mock";
+        system_info_.total_slots = 12;
+
+        // Use shared AFC defaults for capabilities
+        auto afc_caps = helix::printer::afc_default_capabilities();
+        system_info_.supports_endless_spool = afc_caps.supports_endless_spool;
+        system_info_.supports_tool_mapping = afc_caps.supports_tool_mapping;
+        system_info_.supports_bypass = afc_caps.supports_bypass;
+        system_info_.supports_purge = afc_caps.supports_purge;
+        system_info_.tip_method = afc_caps.tip_method;
+        system_info_.has_hardware_bypass_sensor = false;
+
+        // System-wide topology: HUB for backward compat
+        topology_ = PathTopology::HUB;
+
+        // Per-unit topologies
+        unit_topologies_.clear();
+        unit_topologies_.push_back(PathTopology::PARALLEL); // Unit 0: Box Turtle
+        unit_topologies_.push_back(PathTopology::HUB);      // Unit 1: OpenAMS
+        unit_topologies_.push_back(PathTopology::HUB);      // Unit 2: OpenAMS
+
+        system_info_.units.clear();
+
+        // ================================================================
+        // Unit 0: "Turtle_1" (Box Turtle) — 4 lanes, PARALLEL, buffers
+        // ================================================================
+        {
+            AmsUnit unit;
+            unit.unit_index = 0;
+            unit.name = "Turtle_1";
+            unit.slot_count = 4;
+            unit.first_slot_global_index = 0;
+            unit.connected = true;
+            unit.firmware_version = "1.0.32-mock";
+            unit.has_encoder = false;
+            unit.has_toolhead_sensor = true;
+            unit.has_slot_sensors = true;
+            unit.has_hub_sensor = false; // No hub hardware — direct_load per lane
+            unit.topology = PathTopology::PARALLEL;
+
+            // Buffer health (TurtleNeck buffers)
+            BufferHealth health;
+            health.fault_detection_enabled = true;
+            health.state = "Trailing";
+            health.distance_to_fault = 50.0f;
+            unit.buffer_health = health;
+
+            // 4 lanes, each with own extruder (T0-T3)
+            const struct {
+                uint32_t color;
+                const char* name;
+                const char* material;
+                SlotStatus status;
+            } bt_slots[] = {
+                {0x000000, "Black", "ASA", SlotStatus::LOADED},
+                {0xFF0000, "Red", "PLA", SlotStatus::AVAILABLE},
+                {0x00FF00, "Green", "PETG", SlotStatus::AVAILABLE},
+                {0xFFFFFF, "White", "PLA", SlotStatus::AVAILABLE},
+            };
+
+            for (int i = 0; i < 4; ++i) {
+                SlotInfo slot;
+                slot.slot_index = i;
+                slot.global_index = i;
+                slot.material = bt_slots[i].material;
+                slot.color_rgb = bt_slots[i].color;
+                slot.color_name = bt_slots[i].name;
+                slot.status = bt_slots[i].status;
+                slot.mapped_tool = i; // 1:1 lane->tool
+                slot.spoolman_id = 300 + i;
+                slot.total_weight_g = 1000.0f;
+                slot.remaining_weight_g = 1000.0f - i * 200.0f;
+                auto mat_info = filament::find_material(bt_slots[i].material);
+                if (mat_info) {
+                    slot.nozzle_temp_min = mat_info->nozzle_min;
+                    slot.nozzle_temp_max = mat_info->nozzle_max;
+                    slot.bed_temp = mat_info->bed_temp;
+                }
+                unit.slots.push_back(slot);
+            }
+
+            system_info_.units.push_back(unit);
+        }
+
+        // ================================================================
+        // Unit 1: "AMS_1" (OpenAMS) — 4 lanes, HUB, all share T4
+        // ================================================================
+        {
+            AmsUnit unit;
+            unit.unit_index = 1;
+            unit.name = "AMS_1";
+            unit.slot_count = 4;
+            unit.first_slot_global_index = 4;
+            unit.connected = true;
+            unit.firmware_version = "1.0.0-mock";
+            unit.has_encoder = false;
+            unit.has_toolhead_sensor = true;
+            unit.has_slot_sensors = true;
+            unit.has_hub_sensor = true;
+            unit.hub_sensor_triggered = false;
+            unit.topology = PathTopology::HUB;
+            // No buffer_health — OpenAMS has no buffers
+
+            const struct {
+                uint32_t color;
+                const char* name;
+                const char* material;
+                SlotStatus status;
+            } ams1_slots[] = {
+                {0x1E88E5, "Blue", "PETG", SlotStatus::AVAILABLE},
+                {0xFDD835, "Yellow", "PLA", SlotStatus::AVAILABLE},
+                {0x8E24AA, "Purple", "ABS", SlotStatus::AVAILABLE},
+                {0xFF6F00, "Orange", "TPU", SlotStatus::AVAILABLE},
+            };
+
+            for (int i = 0; i < 4; ++i) {
+                SlotInfo slot;
+                slot.slot_index = i;
+                slot.global_index = 4 + i;
+                slot.material = ams1_slots[i].material;
+                slot.color_rgb = ams1_slots[i].color;
+                slot.color_name = ams1_slots[i].name;
+                slot.status = ams1_slots[i].status;
+                slot.mapped_tool = 4; // All lanes share T4
+                slot.spoolman_id = 310 + i;
+                slot.total_weight_g = 1000.0f;
+                slot.remaining_weight_g = 1000.0f - i * 150.0f;
+                auto mat_info = filament::find_material(ams1_slots[i].material);
+                if (mat_info) {
+                    slot.nozzle_temp_min = mat_info->nozzle_min;
+                    slot.nozzle_temp_max = mat_info->nozzle_max;
+                    slot.bed_temp = mat_info->bed_temp;
+                }
+                unit.slots.push_back(slot);
+            }
+
+            system_info_.units.push_back(unit);
+        }
+
+        // ================================================================
+        // Unit 2: "AMS_2" (OpenAMS) — 4 lanes, HUB, all share T5
+        // ================================================================
+        {
+            AmsUnit unit;
+            unit.unit_index = 2;
+            unit.name = "AMS_2";
+            unit.slot_count = 4;
+            unit.first_slot_global_index = 8;
+            unit.connected = true;
+            unit.firmware_version = "1.0.0-mock";
+            unit.has_encoder = false;
+            unit.has_toolhead_sensor = true;
+            unit.has_slot_sensors = true;
+            unit.has_hub_sensor = true;
+            unit.hub_sensor_triggered = false;
+            unit.topology = PathTopology::HUB;
+            // No buffer_health — OpenAMS has no buffers
+
+            const struct {
+                uint32_t color;
+                const char* name;
+                const char* material;
+                SlotStatus status;
+            } ams2_slots[] = {
+                {0xE53935, "Red", "PLA", SlotStatus::AVAILABLE},
+                {0x43A047, "Green", "ASA", SlotStatus::AVAILABLE},
+                {0x90CAF9, "Sky Blue", "PETG", SlotStatus::AVAILABLE},
+                {0x424242, "Carbon", "PLA-CF", SlotStatus::AVAILABLE},
+            };
+
+            for (int i = 0; i < 4; ++i) {
+                SlotInfo slot;
+                slot.slot_index = i;
+                slot.global_index = 8 + i;
+                slot.material = ams2_slots[i].material;
+                slot.color_rgb = ams2_slots[i].color;
+                slot.color_name = ams2_slots[i].name;
+                slot.status = ams2_slots[i].status;
+                slot.mapped_tool = 5; // All lanes share T5
+                slot.spoolman_id = 320 + i;
+                slot.total_weight_g = 1000.0f;
+                slot.remaining_weight_g = 1000.0f - i * 100.0f;
+                auto mat_info = filament::find_material(ams2_slots[i].material);
+                if (mat_info) {
+                    slot.nozzle_temp_min = mat_info->nozzle_min;
+                    slot.nozzle_temp_max = mat_info->nozzle_max;
+                    slot.bed_temp = mat_info->bed_temp;
+                }
+                unit.slots.push_back(slot);
+            }
+
+            system_info_.units.push_back(unit);
+        }
+
+        // Tool-to-slot mapping: 6 tools
+        // T0->slot0, T1->slot1, T2->slot2, T3->slot3 (BT, 1:1)
+        // T4->slot4 (first slot of OpenAMS 1), T5->slot8 (first slot of OpenAMS 2)
+        system_info_.tool_to_slot_map = {0, 1, 2, 3, 4, 8};
+
+        // Start with slot 0 loaded
+        system_info_.current_slot = 0;
+        system_info_.current_tool = 0;
+        system_info_.filament_loaded = true;
+        filament_segment_ = PathSegment::NOZZLE;
+
+        // Reinitialize endless spool configs for 12 slots
+        endless_spool_configs_.clear();
+        endless_spool_configs_.reserve(12);
+        for (int i = 0; i < 12; ++i) {
+            helix::printer::EndlessSpoolConfig config;
+            config.slot_index = i;
+            config.backup_slot = -1;
+            endless_spool_configs_.push_back(config);
+        }
+
+        // AFC device sections and actions
+        mock_device_sections_ = helix::printer::afc_default_sections();
+        mock_device_actions_ = helix::printer::afc_default_actions();
+
+        // Disable save_restart in mock mode
+        for (auto& action : mock_device_actions_) {
+            if (action.id == "save_restart") {
+                action.enabled = false;
+                action.disable_reason = "Not available in mock mode";
+            }
+        }
+
+        spdlog::info("[AmsBackendMock] Mixed topology mode: Turtle_1 (4) + AMS_1 (4) + AMS_2 (4) = "
+                     "12 slots, 6 tools");
+    } else {
+        mixed_topology_mode_ = false;
+        unit_topologies_.clear();
+
+        // Revert to Happy Hare defaults
+        system_info_.type = AmsType::HAPPY_HARE;
+        system_info_.type_name = "Happy Hare (Mock)";
+        system_info_.version = "2.7.0-mock";
+        system_info_.supports_bypass = true;
+        topology_ = PathTopology::HUB;
+
+        if (!system_info_.units.empty()) {
+            system_info_.units[0].name = "Mock MMU";
+        }
+
+        // Restore Happy Hare device sections and actions
+        mock_device_sections_ = helix::printer::hh_default_sections();
+        mock_device_actions_ = helix::printer::hh_default_actions();
+
+        spdlog::info("[AmsBackendMock] Mixed topology mode disabled");
+    }
+}
+
+bool AmsBackendMock::is_mixed_topology_mode() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return mixed_topology_mode_;
+}
+
+PathTopology AmsBackendMock::get_unit_topology(int unit_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (unit_index >= 0 && unit_index < static_cast<int>(unit_topologies_.size())) {
+        return unit_topologies_[unit_index];
+    }
+    return topology_; // Fallback to system-wide topology
 }
 
 int AmsBackendMock::get_effective_delay_ms(int base_ms, float variance) const {
@@ -1881,11 +2112,43 @@ std::vector<helix::printer::DeviceAction> AmsBackendMock::get_device_actions() c
 
 AmsError AmsBackendMock::execute_device_action(const std::string& action_id,
                                                const std::any& value) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
 
     // Store for test verification
     last_action_id_ = action_id;
     last_action_value_ = value;
+
+    // Mock calibration wizard: simulate AFC_CALIBRATION action_prompt sequence
+    if (action_id == "calibration_wizard") {
+        // Copy callback before releasing lock — callback may chain into
+        // UI code that queries backend state (would deadlock if lock held)
+        auto cb = gcode_response_callback_;
+        if (!cb) {
+            spdlog::warn("[AMS Mock] Calibration wizard: no gcode response callback, skipping");
+            return AmsErrorHelper::success();
+        }
+
+        spdlog::info("[AMS Mock] Simulating AFC calibration wizard action_prompt");
+        lock.unlock();
+
+        // Simulate a multi-step calibration prompt (matches real AFC behavior)
+        cb("// action:prompt_begin AFC Calibration");
+        cb("// action:prompt_text Lane calibration measures bowden tube length");
+        cb("// action:prompt_text for accurate filament loading distances.");
+        cb("// action:prompt_text ");
+        cb("// action:prompt_text Select a lane to calibrate, or calibrate all lanes.");
+        cb("// action:prompt_button_group_start");
+        cb("// action:prompt_button Lane 1|RESPOND msg=\"AFC_CALIBRATION LANE=lane1\"|primary");
+        cb("// action:prompt_button Lane 2|RESPOND msg=\"AFC_CALIBRATION LANE=lane2\"|primary");
+        cb("// action:prompt_button Lane 3|RESPOND msg=\"AFC_CALIBRATION LANE=lane3\"|primary");
+        cb("// action:prompt_button Lane 4|RESPOND msg=\"AFC_CALIBRATION LANE=lane4\"|primary");
+        cb("// action:prompt_button_group_end");
+        cb("// action:prompt_button Calibrate All|RESPOND msg=\"AFC_CALIBRATION ALL=1\"|secondary");
+        cb("// action:prompt_footer_button Cancel|RESPOND msg=\"AFC_CALIBRATION CANCEL=1\"|error");
+        cb("// action:prompt_show");
+
+        return AmsErrorHelper::success();
+    }
 
     // Find the action to verify it exists
     for (const auto& action : mock_device_actions_) {
@@ -1921,6 +2184,13 @@ void AmsBackendMock::clear_last_executed_action() {
     std::lock_guard<std::mutex> lock(mutex_);
     last_action_id_.clear();
     last_action_value_.reset();
+}
+
+void AmsBackendMock::set_gcode_response_callback(std::function<void(const std::string&)> callback) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    gcode_response_callback_ = std::move(callback);
+    spdlog::debug("[AMS Mock] Gcode response callback {}",
+                  gcode_response_callback_ ? "set" : "cleared");
 }
 
 // ============================================================================

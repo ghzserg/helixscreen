@@ -32,7 +32,9 @@
 #include <string>
 
 // Forward declarations
+namespace helix {
 class Config;
+}
 class MoonrakerAPI;
 namespace helix::ui {
 class MacroEnhanceWizard;

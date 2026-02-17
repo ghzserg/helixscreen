@@ -14,6 +14,8 @@
 
 #include <spdlog/spdlog.h>
 
+using namespace helix;
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -266,11 +268,11 @@ void WizardTouchCalibrationStep::cleanup() {
     }
 
     // Delete crosshair (it was reparented to screen, not part of screen_root_)
-    lv_obj_safe_delete(crosshair_);
+    helix::ui::safe_delete(crosshair_);
 
     // Delete touch overlay (it was also reparented to screen)
     lv_obj_t* touch_overlay = lv_obj_find_by_name(lv_screen_active(), "touch_capture_overlay");
-    lv_obj_safe_delete(touch_overlay);
+    helix::ui::safe_delete(touch_overlay);
 
     // Clear widget pointers FIRST to prevent UI updates during cleanup
     // (test area widgets are children of screen_root_, so they're deleted with it)

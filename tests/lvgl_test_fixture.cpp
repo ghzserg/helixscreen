@@ -10,6 +10,9 @@
 #include <chrono>
 #include <thread>
 
+using namespace helix;
+using namespace helix::ui;
+
 // Static member definitions
 std::once_flag LVGLTestFixture::s_init_flag;
 bool LVGLTestFixture::s_initialized = false;
@@ -34,10 +37,10 @@ static void test_display_flush_cb(lv_display_t* disp, const lv_area_t* /*area*/,
 LVGLTestFixture::LVGLTestFixture() : m_test_screen(nullptr) {
     ensure_lvgl_initialized();
 
-    // Initialize update queue once (static guard) - CRITICAL for ui_queue_update()
+    // Initialize update queue once (static guard) - CRITICAL for helix::ui::queue_update()
     // Per L053/L054: Tests using UpdateQueue need proper lifecycle
     if (!s_queue_initialized) {
-        ui_update_queue_init();
+        helix::ui::update_queue_init();
         s_queue_initialized = true;
     }
 
@@ -62,7 +65,7 @@ LVGLTestFixture::~LVGLTestFixture() {
     UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
     // Shutdown queue
-    ui_update_queue_shutdown();
+    helix::ui::update_queue_shutdown();
 
     // Reset static flag for next test
     s_queue_initialized = false;

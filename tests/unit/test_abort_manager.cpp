@@ -22,12 +22,14 @@
 #include "../ui_test_utils.h"
 #include "abort_manager.h"
 #include "app_globals.h"
+#include "settings_manager.h"
 
 #include <spdlog/spdlog.h>
 
 #include "../catch_amalgamated.hpp"
 
 using namespace helix;
+using namespace helix::ui;
 
 // ============================================================================
 // Test Access Helper (friend class)
@@ -1215,4 +1217,64 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
                                                          PrintJobState::STANDBY);
     REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
+}
+
+// ============================================================================
+// Cancel Escalation Settings Tests
+// ============================================================================
+
+TEST_CASE_METHOD(AbortManagerTestFixture,
+                 "AbortManager: Escalation disabled - cancel timeout never fires",
+                 "[abort][cancel][escalation][settings]") {
+    // Disable escalation (this is the new default)
+    SettingsManager::instance().set_cancel_escalation_enabled(false);
+
+    AbortManager::instance().start_abort();
+    simulate_kalico_not_present();
+    simulate_queue_responsive();
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
+
+    // Print transitions to terminal state naturally
+    AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
+                                                         PrintJobState::STANDBY);
+
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
+    REQUIRE(AbortManager::instance().escalation_level() == 0);
+}
+
+TEST_CASE_METHOD(AbortManagerTestFixture,
+                 "AbortManager: Escalation enabled - cancel timeout fires with configured value",
+                 "[abort][cancel][escalation][settings]") {
+    // Enable escalation with 60s timeout
+    SettingsManager::instance().set_cancel_escalation_enabled(true);
+    SettingsManager::instance().set_cancel_escalation_timeout_seconds(60);
+
+    AbortManager::instance().start_abort();
+    simulate_kalico_not_present();
+    simulate_queue_responsive();
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
+
+    // Simulate cancel timeout (would happen at 60s)
+    simulate_cancel_timeout();
+
+    // Should escalate since escalation is enabled
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
+}
+
+TEST_CASE_METHOD(AbortManagerTestFixture, "AbortManager: Default settings do not escalate",
+                 "[abort][cancel][escalation][settings][default]") {
+    // Don't set anything — use defaults
+    // Default: cancel_escalation_enabled = false
+
+    AbortManager::instance().start_abort();
+    simulate_kalico_not_present();
+    simulate_queue_responsive();
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
+
+    // Complete via print state observer (natural completion)
+    AbortManagerTestAccess::on_print_state_during_cancel(AbortManager::instance(),
+                                                         PrintJobState::CANCELLED);
+
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
+    REQUIRE(AbortManager::instance().escalation_level() == 0);
 }

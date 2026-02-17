@@ -8,18 +8,16 @@
 /**
  * Step states for progress indicator
  */
-typedef enum {
-    UI_STEP_STATE_PENDING = 0,  // Not yet started (muted color)
-    UI_STEP_STATE_ACTIVE = 1,   // Currently in progress (primary color, bold text)
-    UI_STEP_STATE_COMPLETED = 2 // Finished (success color, checkmark)
-} ui_step_state_t;
+namespace helix {
+enum class StepState { Pending = 0, Active = 1, Completed = 2 };
+} // namespace helix
 
 /**
  * Step definition structure
  */
 typedef struct {
-    const char* label;     // Step text (e.g., "Nozzle heating")
-    ui_step_state_t state; // Current state
+    const char* label;      // Step text (e.g., "Nozzle heating")
+    helix::StepState state; // Current state
 } ui_step_t;
 
 /**

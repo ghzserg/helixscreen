@@ -131,6 +131,9 @@ void configure_button(lv_style_t* s, const ThemePalette& p) {
     apply_border(s, p);
     lv_style_set_radius(s, p.border_radius);
     apply_shadow(s, p);
+    // Pivot must be in base style so it doesn't animate during pressed→released transition
+    lv_style_set_transform_pivot_x(s, LV_PCT(50));
+    lv_style_set_transform_pivot_y(s, LV_PCT(50));
 }
 
 void configure_button_primary(lv_style_t* s, const ThemePalette& p) {
@@ -156,6 +159,8 @@ void configure_button_danger(lv_style_t* s, const ThemePalette& p) {
 void configure_button_ghost(lv_style_t* s, const ThemePalette& p) {
     (void)p;
     lv_style_set_bg_opa(s, LV_OPA_0);
+    lv_style_set_border_width(s, 0);
+    lv_style_set_shadow_opa(s, LV_OPA_0);
 }
 
 void configure_button_outline(lv_style_t* s, const ThemePalette& p) {

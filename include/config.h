@@ -13,11 +13,11 @@
 
 #pragma once
 
+#include "json_fwd.h"
+
 #include <string>
 
-#include "hv/json.hpp"
-
-using json = nlohmann::json;
+namespace helix {
 
 /**
  * @brief Configuration for a user-customizable macro button
@@ -263,3 +263,5 @@ class Config {
      */
     static Config* get_instance();
 };
+
+} // namespace helix

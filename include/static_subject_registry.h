@@ -24,14 +24,28 @@
  * 2. StaticSubjectRegistry::deinit_all() - deinit core singleton subjects
  * 3. lv_deinit() - LVGL cleanup (now safe - all observers disconnected)
  *
- * Usage:
+ * ## Self-Registration Pattern (MANDATORY)
+ *
+ * Every class that creates LVGL subjects MUST self-register its cleanup inside its own
+ * init_subjects() method. This co-locates init and cleanup registration so they can't
+ * get out of sync — forgetting to register is impossible because the registration lives
+ * right next to the initialization.
+ *
  * ```cpp
- * // In SubjectInitializer::init_printer_state_subjects():
- * get_printer_state().init_subjects();
- * StaticSubjectRegistry::instance().register_deinit("PrinterState", []() {
- *     get_printer_state().deinit_subjects();
- * });
+ * void MyState::init_subjects() {
+ *     if (subjects_initialized_) return;
+ *     // ... init subjects ...
+ *     subjects_initialized_ = true;
+ *
+ *     // Self-register cleanup — ensures deinit runs before lv_deinit()
+ *     StaticSubjectRegistry::instance().register_deinit(
+ *         "MyState", []() { MyState::instance().deinit_subjects(); });
+ * }
  * ```
+ *
+ * DO NOT register cleanup externally (e.g., in SubjectInitializer). That pattern is
+ * fragile — adding init_subjects() without a matching register_deinit() causes
+ * shutdown crashes that are hard to diagnose.
  */
 class StaticSubjectRegistry {
   public:

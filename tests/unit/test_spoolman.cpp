@@ -4,10 +4,13 @@
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
-#include "spoolman_types.h" // For SpoolInfo
+#include "spoolman_types.h" // For SpoolInfo, VendorInfo, FilamentInfo
+
+#include <set>
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // SpoolInfo Struct Tests
 // ============================================================================
@@ -192,6 +195,97 @@ TEST_CASE("FilamentUsageRecord - default initialization", "[filament]") {
 }
 
 // ============================================================================
+// VendorInfo Tests
+// ============================================================================
+
+TEST_CASE("VendorInfo - default initialization", "[filament]") {
+    VendorInfo vendor;
+
+    SECTION("All fields default correctly") {
+        REQUIRE(vendor.id == 0);
+        REQUIRE(vendor.name.empty());
+        REQUIRE(vendor.url.empty());
+    }
+}
+
+TEST_CASE("VendorInfo - display_name formatting", "[filament]") {
+    VendorInfo vendor;
+
+    SECTION("Name returns name") {
+        vendor.name = "Hatchbox";
+        REQUIRE(vendor.display_name() == "Hatchbox");
+    }
+
+    SECTION("Empty name returns Unknown Vendor") {
+        REQUIRE(vendor.display_name() == "Unknown Vendor");
+    }
+}
+
+// ============================================================================
+// FilamentInfo Tests
+// ============================================================================
+
+TEST_CASE("FilamentInfo - default initialization", "[filament]") {
+    FilamentInfo filament;
+
+    SECTION("All numeric fields default correctly") {
+        REQUIRE(filament.id == 0);
+        REQUIRE(filament.vendor_id == 0);
+        REQUIRE(filament.density == 0.0f);
+        REQUIRE(filament.diameter == Catch::Approx(1.75f));
+        REQUIRE(filament.weight == 0.0f);
+        REQUIRE(filament.spool_weight == 0.0f);
+        REQUIRE(filament.nozzle_temp_min == 0);
+        REQUIRE(filament.nozzle_temp_max == 0);
+        REQUIRE(filament.bed_temp_min == 0);
+        REQUIRE(filament.bed_temp_max == 0);
+    }
+
+    SECTION("Strings default to empty") {
+        REQUIRE(filament.vendor_name.empty());
+        REQUIRE(filament.material.empty());
+        REQUIRE(filament.color_name.empty());
+        REQUIRE(filament.color_hex.empty());
+    }
+
+    SECTION("Diameter defaults to 1.75mm") {
+        REQUIRE(filament.diameter == Catch::Approx(1.75f));
+    }
+}
+
+TEST_CASE("FilamentInfo - display_name formatting", "[filament]") {
+    FilamentInfo filament;
+
+    SECTION("Full info formats correctly") {
+        filament.vendor_name = "Polymaker";
+        filament.material = "PLA";
+        filament.color_name = "Jet Black";
+        REQUIRE(filament.display_name() == "Polymaker PLA - Jet Black");
+    }
+
+    SECTION("No color omits dash") {
+        filament.vendor_name = "eSUN";
+        filament.material = "PETG";
+        REQUIRE(filament.display_name() == "eSUN PETG");
+    }
+
+    SECTION("No vendor omits vendor") {
+        filament.material = "ABS";
+        filament.color_name = "Red";
+        REQUIRE(filament.display_name() == "ABS - Red");
+    }
+
+    SECTION("Only material") {
+        filament.material = "TPU";
+        REQUIRE(filament.display_name() == "TPU");
+    }
+
+    SECTION("Empty returns Unknown Filament") {
+        REQUIRE(filament.display_name() == "Unknown Filament");
+    }
+}
+
+// ============================================================================
 // MoonrakerAPIMock Spoolman Tests
 // ============================================================================
 
@@ -339,8 +433,250 @@ TEST_CASE("MoonrakerAPIMock - set_active_spool", "[filament][mock]") {
 }
 
 // ============================================================================
-// Integration-style Tests
+// MoonrakerAPIMock - Spoolman CRUD Tests
 // ============================================================================
+
+TEST_CASE("MoonrakerAPIMock - get_spoolman_vendors", "[filament][mock]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SECTION("Returns vendor list derived from spools") {
+        bool callback_called = false;
+        api.get_spoolman_vendors(
+            [&](const std::vector<VendorInfo>& vendors) {
+                callback_called = true;
+                // Should have multiple unique vendors from mock spools
+                REQUIRE(vendors.size() > 0);
+                // Each vendor should have a valid name
+                for (const auto& v : vendors) {
+                    REQUIRE(v.id > 0);
+                    REQUIRE(!v.name.empty());
+                }
+            },
+            [](const MoonrakerError&) { FAIL("Error callback should not be called"); });
+
+        REQUIRE(callback_called);
+    }
+
+    SECTION("Vendors are deduplicated") {
+        std::set<std::string> vendor_names;
+        api.get_spoolman_vendors(
+            [&](const std::vector<VendorInfo>& vendors) {
+                for (const auto& v : vendors) {
+                    REQUIRE(vendor_names.find(v.name) == vendor_names.end());
+                    vendor_names.insert(v.name);
+                }
+            },
+            [](const MoonrakerError&) {});
+    }
+}
+
+TEST_CASE("MoonrakerAPIMock - get_spoolman_filaments", "[filament][mock]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SECTION("Returns filament list") {
+        bool callback_called = false;
+        api.get_spoolman_filaments(
+            [&](const std::vector<FilamentInfo>& filaments) {
+                callback_called = true;
+                REQUIRE(filaments.size() > 0);
+                for (const auto& f : filaments) {
+                    REQUIRE(f.id > 0);
+                    REQUIRE(!f.material.empty());
+                }
+            },
+            [](const MoonrakerError&) { FAIL("Error callback should not be called"); });
+
+        REQUIRE(callback_called);
+    }
+}
+
+TEST_CASE("MoonrakerAPIMock - create_spoolman_vendor", "[filament][mock]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SECTION("Creates vendor and returns it") {
+        nlohmann::json data;
+        data["name"] = "Test Vendor";
+        data["url"] = "https://example.com";
+
+        bool callback_called = false;
+        api.create_spoolman_vendor(
+            data,
+            [&](const VendorInfo& vendor) {
+                callback_called = true;
+                REQUIRE(vendor.id > 0);
+                REQUIRE(vendor.name == "Test Vendor");
+                REQUIRE(vendor.url == "https://example.com");
+            },
+            [](const MoonrakerError&) { FAIL("Error callback should not be called"); });
+
+        REQUIRE(callback_called);
+    }
+}
+
+TEST_CASE("MoonrakerAPIMock - create_spoolman_filament", "[filament][mock]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SECTION("Creates filament and returns it") {
+        nlohmann::json data;
+        data["material"] = "PETG";
+        data["name"] = "Ocean Blue";
+        data["color_hex"] = "#0077B6";
+        data["diameter"] = 1.75f;
+        data["weight"] = 1000.0f;
+
+        bool callback_called = false;
+        api.create_spoolman_filament(
+            data,
+            [&](const FilamentInfo& filament) {
+                callback_called = true;
+                REQUIRE(filament.id > 0);
+                REQUIRE(filament.material == "PETG");
+                REQUIRE(filament.color_name == "Ocean Blue");
+                REQUIRE(filament.color_hex == "#0077B6");
+            },
+            [](const MoonrakerError&) { FAIL("Error callback should not be called"); });
+
+        REQUIRE(callback_called);
+    }
+}
+
+TEST_CASE("MoonrakerAPIMock - create_spoolman_spool", "[filament][mock]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SECTION("Creates spool and adds to list") {
+        size_t initial_count = 0;
+        api.get_spoolman_spools(
+            [&](const std::vector<SpoolInfo>& spools) { initial_count = spools.size(); },
+            [](const MoonrakerError&) {});
+
+        nlohmann::json data;
+        data["filament_id"] = 1;
+        data["initial_weight"] = 800.0;
+        data["spool_weight"] = 200.0;
+
+        bool callback_called = false;
+        api.create_spoolman_spool(
+            data,
+            [&](const SpoolInfo& spool) {
+                callback_called = true;
+                REQUIRE(spool.id > 0);
+                REQUIRE(spool.initial_weight_g == Catch::Approx(800.0));
+                REQUIRE(spool.spool_weight_g == Catch::Approx(200.0));
+            },
+            [](const MoonrakerError&) { FAIL("Error callback should not be called"); });
+
+        REQUIRE(callback_called);
+
+        // Verify spool count increased
+        api.get_spoolman_spools(
+            [&](const std::vector<SpoolInfo>& spools) {
+                REQUIRE(spools.size() == initial_count + 1);
+            },
+            [](const MoonrakerError&) {});
+    }
+}
+
+TEST_CASE("MoonrakerAPIMock - delete_spoolman_spool", "[filament][mock]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SECTION("Deletes spool from list") {
+        size_t initial_count = 0;
+        api.get_spoolman_spools(
+            [&](const std::vector<SpoolInfo>& spools) { initial_count = spools.size(); },
+            [](const MoonrakerError&) {});
+
+        REQUIRE(initial_count > 0);
+
+        // Delete spool with ID 1
+        bool callback_called = false;
+        api.delete_spoolman_spool(
+            1, [&]() { callback_called = true; },
+            [](const MoonrakerError&) { FAIL("Error callback should not be called"); });
+
+        REQUIRE(callback_called);
+
+        // Verify spool count decreased
+        api.get_spoolman_spools(
+            [&](const std::vector<SpoolInfo>& spools) {
+                REQUIRE(spools.size() == initial_count - 1);
+                // Verify spool 1 is gone
+                for (const auto& s : spools) {
+                    REQUIRE(s.id != 1);
+                }
+            },
+            [](const MoonrakerError&) {});
+    }
+
+    SECTION("Deleting non-existent spool still succeeds") {
+        bool callback_called = false;
+        api.delete_spoolman_spool(
+            9999, [&]() { callback_called = true; }, [](const MoonrakerError&) {});
+
+        REQUIRE(callback_called);
+    }
+}
+
+TEST_CASE("MoonrakerAPIMock - update_spoolman_spool", "[filament][mock]") {
+    MoonrakerClientMock client;
+    PrinterState state;
+    MoonrakerAPIMock api(client, state);
+
+    SECTION("Updates remaining_weight field") {
+        // Get initial weight of first spool
+        double initial_weight = 0;
+        api.get_spoolman_spools(
+            [&initial_weight](const std::vector<SpoolInfo>& spools) {
+                REQUIRE(!spools.empty());
+                initial_weight = spools[0].remaining_weight_g;
+            },
+            [](const MoonrakerError&) { FAIL("Failed to get spools"); });
+
+        // Update the spool
+        nlohmann::json patch;
+        patch["remaining_weight"] = 42.0;
+
+        bool callback_called = false;
+        int spool_id = 1; // First mock spool
+        api.update_spoolman_spool(
+            spool_id, patch, [&callback_called]() { callback_called = true; },
+            [](const MoonrakerError&) { FAIL("Update should not fail"); });
+
+        REQUIRE(callback_called);
+
+        // Verify the weight was updated
+        api.get_spoolman_spools(
+            [spool_id](const std::vector<SpoolInfo>& spools) {
+                for (const auto& s : spools) {
+                    if (s.id == spool_id) {
+                        REQUIRE(s.remaining_weight_g == Catch::Approx(42.0));
+                        return;
+                    }
+                }
+                FAIL("Spool not found after update");
+            },
+            [](const MoonrakerError&) { FAIL("Failed to get spools after update"); });
+    }
+}
+
+TEST_CASE("SpoolInfo - new fields have defaults", "[filament]") {
+    SpoolInfo spool;
+
+    REQUIRE(spool.price == 0.0);
+    REQUIRE(spool.lot_nr.empty());
+    REQUIRE(spool.comment.empty());
+}
 
 // ============================================================================
 // JSON Null Handling Tests (server.spoolman.status parsing)
@@ -400,6 +736,177 @@ TEST_CASE("Spoolman status - spool_id null handling", "[filament][parsing]") {
 
         REQUIRE(active_spool_id == 0);
     }
+}
+
+// ============================================================================
+// filter_spools Tests
+// ============================================================================
+
+static std::vector<SpoolInfo> make_filter_test_spools() {
+    std::vector<SpoolInfo> spools;
+
+    SpoolInfo s1;
+    s1.id = 1;
+    s1.vendor = "Polymaker";
+    s1.material = "PLA";
+    s1.color_name = "Jet Black";
+    spools.push_back(s1);
+
+    SpoolInfo s2;
+    s2.id = 2;
+    s2.vendor = "eSUN";
+    s2.material = "PETG";
+    s2.color_name = "Blue";
+    spools.push_back(s2);
+
+    SpoolInfo s3;
+    s3.id = 3;
+    s3.vendor = "Polymaker";
+    s3.material = "ASA";
+    s3.color_name = "Red";
+    spools.push_back(s3);
+
+    SpoolInfo s4;
+    s4.id = 42;
+    s4.vendor = "Hatchbox";
+    s4.material = "PLA";
+    s4.color_name = "White";
+    spools.push_back(s4);
+
+    return spools;
+}
+
+TEST_CASE("filter_spools - empty query returns all", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "");
+    REQUIRE(result.size() == spools.size());
+}
+
+TEST_CASE("filter_spools - whitespace-only query returns all", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "   ");
+    REQUIRE(result.size() == spools.size());
+}
+
+TEST_CASE("filter_spools - single term matches material", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "PLA");
+    REQUIRE(result.size() == 2);
+    REQUIRE(result[0].id == 1);
+    REQUIRE(result[1].id == 42);
+}
+
+TEST_CASE("filter_spools - single term matches vendor", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "polymaker");
+    REQUIRE(result.size() == 2);
+    REQUIRE(result[0].id == 1);
+    REQUIRE(result[1].id == 3);
+}
+
+TEST_CASE("filter_spools - multi-term AND matching", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "polymaker pla");
+    REQUIRE(result.size() == 1);
+    REQUIRE(result[0].id == 1);
+}
+
+TEST_CASE("filter_spools - case insensitive", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "ESUN petg");
+    REQUIRE(result.size() == 1);
+    REQUIRE(result[0].id == 2);
+}
+
+TEST_CASE("filter_spools - spool ID search with #", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "#42");
+    REQUIRE(result.size() == 1);
+    REQUIRE(result[0].id == 42);
+}
+
+TEST_CASE("filter_spools - spool ID search without #", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    // "42" matches spool #42's searchable text which contains "#42"
+    auto result = filter_spools(spools, "42");
+    REQUIRE(result.size() == 1);
+    REQUIRE(result[0].id == 42);
+}
+
+TEST_CASE("filter_spools - color name search", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "blue");
+    REQUIRE(result.size() == 1);
+    REQUIRE(result[0].id == 2);
+}
+
+TEST_CASE("filter_spools - no matches returns empty", "[filament][filter]") {
+    auto spools = make_filter_test_spools();
+    auto result = filter_spools(spools, "nonexistent");
+    REQUIRE(result.empty());
+}
+
+TEST_CASE("filter_spools - empty spool list returns empty", "[filament][filter]") {
+    std::vector<SpoolInfo> empty;
+    auto result = filter_spools(empty, "PLA");
+    REQUIRE(result.empty());
+}
+
+// ============================================================================
+// MoonrakerAPIMock - Filament Persistence & Patching Tests
+// ============================================================================
+
+TEST_CASE("Mock persists created filaments", "[spoolman][mock]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    // Create a filament
+    nlohmann::json filament_data;
+    filament_data["material"] = "PETG";
+    filament_data["name"] = "Blue";
+    filament_data["color_hex"] = "#0000FF";
+    filament_data["vendor_id"] = 1;
+
+    FilamentInfo created;
+    api.create_spoolman_filament(
+        filament_data, [&](const FilamentInfo& f) { created = f; }, nullptr);
+    REQUIRE(created.id > 0);
+
+    // Verify it appears in subsequent filament list
+    std::vector<FilamentInfo> filaments;
+    api.get_spoolman_filaments([&](const std::vector<FilamentInfo>& list) { filaments = list; },
+                               nullptr);
+
+    bool found = false;
+    for (const auto& f : filaments) {
+        if (f.id == created.id) {
+            found = true;
+            REQUIRE(f.material == "PETG");
+            REQUIRE(f.color_name == "Blue");
+        }
+    }
+    REQUIRE(found);
+}
+
+TEST_CASE("Mock update_spoolman_spool supports filament_id patch", "[spoolman][mock]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    auto& spools = api.get_mock_spools();
+    int spool_id = spools[0].id;
+    int original_filament_id = spools[0].filament_id;
+
+    nlohmann::json patch;
+    patch["filament_id"] = 999;
+
+    bool success = false;
+    api.update_spoolman_spool(spool_id, patch, [&]() { success = true; }, nullptr);
+
+    REQUIRE(success);
+    REQUIRE(spools[0].filament_id == 999);
+    REQUIRE(spools[0].filament_id != original_filament_id);
 }
 
 TEST_CASE("SpoolInfo - realistic spool scenarios", "[filament][integration]") {

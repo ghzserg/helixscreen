@@ -74,7 +74,7 @@ enum class PluginInstallState {
  *
  * Usage:
  *   1. Create installer and set API
- *   2. Check if plugin is missing: !api->has_helix_plugin()
+ *   2. Check if plugin is missing: !PrinterState::service_has_helix_plugin()
  *   3. Check if should prompt: installer.should_prompt_install()
  *   4. For local: installer.install_local(callback)
  *   5. For remote: show dialog with installer.get_remote_install_command()

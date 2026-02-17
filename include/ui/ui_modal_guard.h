@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ui_modal.h" // For ui_modal_hide
+#include "ui_modal.h" // For helix::ui::modal_hide
 
 #include "lvgl.h"
 
@@ -61,7 +61,7 @@ class ModalGuard {
 
     void hide() {
         if (modal_) {
-            ui_modal_hide(modal_);
+            modal_hide(modal_);
             modal_ = nullptr;
         }
     }

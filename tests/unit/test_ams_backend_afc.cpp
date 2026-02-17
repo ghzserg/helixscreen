@@ -10,6 +10,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 /**
  * @brief Test helper class providing access to AmsBackendAfc internals
  *
@@ -36,8 +37,18 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
     void set_tool_start_sensor(bool state) {
         tool_start_sensor_ = state;
     }
+    void set_hub_sensor(const std::string& hub_name, bool state) {
+        hub_sensors_[hub_name] = state;
+    }
+
+    // Convenience overload for single-hub backward compat in tests
     void set_hub_sensor(bool state) {
-        hub_sensor_ = state;
+        // Set/clear on a default hub name for single-hub tests
+        if (state) {
+            hub_sensors_["default"] = true;
+        } else {
+            hub_sensors_.clear();
+        }
     }
 
     void set_current_lane(const std::string& lane_name) {
@@ -59,6 +70,20 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
             lane_name_to_index_[name] = i;
         }
         // Reset lane sensors
+        for (int i = 0; i < 16; ++i) {
+            lane_sensors_[i] = LaneSensors{};
+        }
+    }
+
+    // 0-based lane naming: lane0, lane1, ... lane{N-1} (matches real AFC hardware)
+    void initialize_test_lanes_zero_based(int count) {
+        lane_names_.clear();
+        lane_name_to_index_.clear();
+        for (int i = 0; i < count; ++i) {
+            std::string name = "lane" + std::to_string(i);
+            lane_names_.push_back(name);
+            lane_name_to_index_[name] = i;
+        }
         for (int i = 0; i < 16; ++i) {
             lane_sensors_[i] = LaneSensors{};
         }
@@ -167,11 +192,25 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
         }
     }
 
+    // Set up multi-unit configuration and trigger reorganize
+    void
+    setup_multi_unit(const std::unordered_map<std::string, std::vector<std::string>>& unit_map) {
+        unit_lane_map_ = unit_map;
+        reorganize_units_from_map();
+    }
+
     // For persistence tests: capture G-code commands
     std::vector<std::string> captured_gcodes;
 
     // Override execute_gcode to capture commands for testing
     AmsError execute_gcode(const std::string& gcode) override {
+        captured_gcodes.push_back(gcode);
+        return AmsErrorHelper::success();
+    }
+
+    // Override execute_gcode_notify to capture commands (avoids real API call)
+    AmsError execute_gcode_notify(const std::string& gcode, const std::string& /*success_msg*/,
+                                  const std::string& /*error_prefix*/) override {
         captured_gcodes.push_back(gcode);
         return AmsErrorHelper::success();
     }
@@ -266,7 +305,21 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
         return lane_sensors_[index];
     }
     bool get_hub_sensor() const {
-        return hub_sensor_;
+        // Returns true if any hub sensor is triggered (backward compat)
+        for (const auto& [name, triggered] : hub_sensors_) {
+            if (triggered)
+                return true;
+        }
+        return false;
+    }
+
+    bool get_hub_sensor(const std::string& hub_name) const {
+        auto it = hub_sensors_.find(hub_name);
+        return it != hub_sensors_.end() && it->second;
+    }
+
+    const std::unordered_map<std::string, bool>& get_hub_sensors() const {
+        return hub_sensors_;
     }
     bool get_tool_start_sensor() const {
         return tool_start_sensor_;
@@ -303,6 +356,19 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
         nlohmann::json params;
         params["AFC_buffer " + buf_name] = data;
         feed_status_update(params);
+    }
+
+    // Phase 2 mixed topology accessors
+    const std::vector<AfcUnitInfo>& get_unit_infos() const {
+        return unit_infos_;
+    }
+
+    const std::vector<std::string>& get_extruder_names() const {
+        return extruder_names_;
+    }
+
+    AmsSystemInfo& get_system_info_mutable() {
+        return system_info_;
     }
 };
 
@@ -1392,15 +1458,15 @@ TEST_CASE("AFC device sections include maintenance and led",
     auto sections = helper.get_device_sections();
 
     bool has_maintenance = false;
-    bool has_led = false;
+    bool has_setup = false;
     for (const auto& section : sections) {
         if (section.id == "maintenance")
             has_maintenance = true;
-        if (section.id == "led")
-            has_led = true;
+        if (section.id == "setup")
+            has_setup = true;
     }
     REQUIRE(has_maintenance);
-    REQUIRE(has_led);
+    REQUIRE(has_setup);
 }
 
 TEST_CASE("AFC device action test_lanes dispatches gcode", "[ams][afc][device_actions][phase3]") {
@@ -1591,4 +1657,463 @@ TEST_CASE("AFC error message surfaces in EVENT_ERROR data", "[ams][afc][recovery
     REQUIRE(helper.has_event(AmsBackend::EVENT_ERROR));
     std::string error_data = helper.get_event_data(AmsBackend::EVENT_ERROR);
     REQUIRE(error_data.find("filament jam detected") != std::string::npos);
+}
+
+// ============================================================================
+// Phase 2: Mixed Topology — Flat String Units, AFC_lane, Unit Objects, Multi-Extruder
+// ============================================================================
+
+// --- 2a: Flat string units array ---
+
+TEST_CASE("AFC backend handles flat string units array", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(12);
+    helper.initialize_lanes_from_discovery();
+
+    // Feed AFC state with flat string units (real hardware format)
+    nlohmann::json afc_state;
+    afc_state["units"] =
+        nlohmann::json::array({"OpenAMS AMS_1", "Box_Turtle Turtle_1", "OpenAMS AMS_2"});
+    afc_state["lanes"] =
+        nlohmann::json::array({"lane4", "lane5", "lane6", "lane7", "lane8", "lane9", "lane10",
+                               "lane11", "lane0", "lane1", "lane2", "lane3"});
+    afc_state["extruders"] = nlohmann::json::array(
+        {"extruder", "extruder1", "extruder2", "extruder3", "extruder4", "extruder5"});
+    helper.feed_afc_state(afc_state);
+
+    // Verify unit_infos_ populated from string parsing
+    const auto& unit_infos = helper.get_unit_infos();
+    REQUIRE(unit_infos.size() == 3);
+
+    // Check that type/name were parsed from "Type Name" format
+    bool found_openams_1 = false;
+    bool found_bt_1 = false;
+    bool found_openams_2 = false;
+    for (const auto& ui : unit_infos) {
+        if (ui.name == "AMS_1" && ui.type == "OpenAMS") {
+            found_openams_1 = true;
+            REQUIRE(ui.klipper_key == "AFC_OpenAMS AMS_1");
+        }
+        if (ui.name == "Turtle_1" && ui.type == "Box_Turtle") {
+            found_bt_1 = true;
+            REQUIRE(ui.klipper_key == "AFC_BoxTurtle Turtle_1");
+        }
+        if (ui.name == "AMS_2" && ui.type == "OpenAMS") {
+            found_openams_2 = true;
+            REQUIRE(ui.klipper_key == "AFC_OpenAMS AMS_2");
+        }
+    }
+    REQUIRE(found_openams_1);
+    REQUIRE(found_bt_1);
+    REQUIRE(found_openams_2);
+
+    // System type is still AFC
+    auto info = helper.get_system_info();
+    REQUIRE(info.type == AmsType::AFC);
+}
+
+TEST_CASE("AFC backend flat string units: single word name still parses", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(4);
+    helper.initialize_lanes_from_discovery();
+
+    // Edge case: unit string with no space should not crash
+    nlohmann::json afc_state;
+    afc_state["units"] = nlohmann::json::array({"NoSpaceUnit"});
+    helper.feed_afc_state(afc_state);
+
+    // Should not crash; unit_infos_ may be empty (no space = can't parse)
+    const auto& unit_infos = helper.get_unit_infos();
+    // Single word without space has no valid type/name split
+    REQUIRE(unit_infos.empty());
+}
+
+// --- 2b: Unit-level object data ---
+
+TEST_CASE("AFC backend unit-level object populates AfcUnitInfo", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(12);
+    helper.initialize_lanes_from_discovery();
+
+    // First, feed flat string units to populate unit_infos_
+    nlohmann::json afc_state;
+    afc_state["units"] =
+        nlohmann::json::array({"Box_Turtle Turtle_1", "OpenAMS AMS_1", "OpenAMS AMS_2"});
+    helper.feed_afc_state(afc_state);
+
+    // Then feed unit-level object data via status update
+    nlohmann::json bt_data;
+    bt_data["lanes"] = nlohmann::json::array({"lane0", "lane1", "lane2", "lane3"});
+    bt_data["extruders"] =
+        nlohmann::json::array({"extruder", "extruder1", "extruder2", "extruder3"});
+    bt_data["hubs"] = nlohmann::json::array();
+    bt_data["buffers"] = nlohmann::json::array({"TN", "TN1", "TN2", "TN3"});
+
+    nlohmann::json ams1_data;
+    ams1_data["lanes"] = nlohmann::json::array({"lane4", "lane5", "lane6", "lane7"});
+    ams1_data["extruders"] = nlohmann::json::array({"extruder4"});
+    ams1_data["hubs"] = nlohmann::json::array({"Hub_1", "Hub_2", "Hub_3", "Hub_4"});
+    ams1_data["buffers"] = nlohmann::json::array();
+
+    nlohmann::json params;
+    params["AFC_BoxTurtle Turtle_1"] = bt_data;
+    params["AFC_OpenAMS AMS_1"] = ams1_data;
+    helper.feed_status_update(params);
+
+    // Verify unit_infos_ got populated with lane/extruder/hub/buffer data
+    const auto& unit_infos = helper.get_unit_infos();
+    REQUIRE(unit_infos.size() == 3);
+
+    // Find Turtle_1 and verify
+    for (const auto& ui : unit_infos) {
+        if (ui.name == "Turtle_1") {
+            REQUIRE(ui.lanes.size() == 4);
+            REQUIRE(ui.extruders.size() == 4);
+            REQUIRE(ui.hubs.empty());
+            REQUIRE(ui.buffers.size() == 4);
+            // Box Turtle: empty hubs + multiple extruders → PARALLEL
+            REQUIRE(ui.topology == PathTopology::PARALLEL);
+        }
+        if (ui.name == "AMS_1") {
+            REQUIRE(ui.lanes.size() == 4);
+            REQUIRE(ui.extruders.size() == 1);
+            REQUIRE(ui.hubs.size() == 4);
+            REQUIRE(ui.buffers.empty());
+            // OpenAMS: hubs present + 1 extruder → HUB
+            REQUIRE(ui.topology == PathTopology::HUB);
+        }
+    }
+}
+
+TEST_CASE("AFC backend unit object triggers lane reorganization", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(8);
+    helper.initialize_lanes_from_discovery();
+
+    // Feed flat string units
+    nlohmann::json afc_state;
+    afc_state["units"] = nlohmann::json::array({"Box_Turtle Turtle_1", "OpenAMS AMS_1"});
+    helper.feed_afc_state(afc_state);
+
+    // Feed unit-level data for both units
+    nlohmann::json bt_data;
+    bt_data["lanes"] = nlohmann::json::array({"lane0", "lane1", "lane2", "lane3"});
+    bt_data["extruders"] =
+        nlohmann::json::array({"extruder", "extruder1", "extruder2", "extruder3"});
+    bt_data["hubs"] = nlohmann::json::array();
+    bt_data["buffers"] = nlohmann::json::array();
+
+    nlohmann::json ams1_data;
+    ams1_data["lanes"] = nlohmann::json::array({"lane4", "lane5", "lane6", "lane7"});
+    ams1_data["extruders"] = nlohmann::json::array({"extruder4"});
+    ams1_data["hubs"] = nlohmann::json::array({"Hub_1"});
+    ams1_data["buffers"] = nlohmann::json::array();
+
+    nlohmann::json params;
+    params["AFC_BoxTurtle Turtle_1"] = bt_data;
+    params["AFC_OpenAMS AMS_1"] = ams1_data;
+    helper.feed_status_update(params);
+
+    // After both units are parsed, units should be reorganized
+    auto info = helper.get_system_info();
+    REQUIRE(info.units.size() == 2);
+    // Units sorted alphabetically: AMS_1 before Turtle_1
+    // (reorganize_units_from_map sorts unit names)
+    REQUIRE(info.units[0].slot_count == 4);
+    REQUIRE(info.units[1].slot_count == 4);
+    REQUIRE(info.total_slots == 8);
+}
+
+// --- 2c: AFC_lane status updates ---
+
+TEST_CASE("AFC backend handles AFC_lane status updates", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(8);
+    helper.initialize_lanes_from_discovery();
+
+    // Feed an AFC_lane update (same schema as AFC_stepper)
+    nlohmann::json lane_data;
+    lane_data["name"] = "lane4";
+    lane_data["unit"] = "AMS_1";
+    lane_data["hub"] = "Hub_1";
+    lane_data["extruder"] = "extruder4";
+    lane_data["buffer"] = nullptr;
+    lane_data["prep"] = true;
+    lane_data["load"] = true;
+    lane_data["tool_loaded"] = false;
+    lane_data["loaded_to_hub"] = false;
+    lane_data["material"] = "PLA";
+    lane_data["spool_id"] = 13;
+    lane_data["color"] = "#000000";
+    lane_data["weight"] = 295.25;
+    lane_data["map"] = "T4";
+    lane_data["status"] = "Loaded";
+    lane_data["filament_status"] = "Ready";
+    lane_data["dist_hub"] = 60;
+
+    // Feed as AFC_lane (not AFC_stepper)
+    nlohmann::json params;
+    params["AFC_lane lane4"] = lane_data;
+    helper.feed_status_update(params);
+
+    // Verify the lane was parsed using parse_afc_stepper (same JSON schema)
+    auto info = helper.get_system_info();
+    auto* slot = info.get_slot_global(4);
+    REQUIRE(slot != nullptr);
+    REQUIRE(slot->material == "PLA");
+    REQUIRE(slot->mapped_tool == 4);
+    REQUIRE(slot->color_rgb == 0x000000);
+    REQUIRE(slot->status == SlotStatus::LOADED);
+}
+
+TEST_CASE("AFC backend handles mix of AFC_stepper and AFC_lane in same update",
+          "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(8);
+    helper.initialize_lanes_from_discovery();
+
+    // Feed both AFC_stepper and AFC_lane in same notification
+    nlohmann::json stepper_data;
+    stepper_data["prep"] = true;
+    stepper_data["load"] = true;
+    stepper_data["material"] = "PETG";
+    stepper_data["color"] = "#FF0000";
+    stepper_data["map"] = "T0";
+    stepper_data["status"] = "Loaded";
+
+    nlohmann::json lane_data;
+    lane_data["prep"] = true;
+    lane_data["load"] = true;
+    lane_data["material"] = "ABS";
+    lane_data["color"] = "#00FF00";
+    lane_data["map"] = "T4";
+    lane_data["status"] = "Loaded";
+
+    nlohmann::json params;
+    params["AFC_stepper lane0"] = stepper_data;
+    params["AFC_lane lane4"] = lane_data;
+    helper.feed_status_update(params);
+
+    // Both should be parsed
+    auto info = helper.get_system_info();
+    auto* slot0 = info.get_slot_global(0);
+    REQUIRE(slot0 != nullptr);
+    REQUIRE(slot0->material == "PETG");
+
+    auto* slot4 = info.get_slot_global(4);
+    REQUIRE(slot4 != nullptr);
+    REQUIRE(slot4->material == "ABS");
+}
+
+// --- 2d: Multiple AFC_extruder objects ---
+
+TEST_CASE("AFC backend handles multiple AFC_extruder objects", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(12);
+    helper.initialize_lanes_from_discovery();
+
+    // Set extruder names from AFC state
+    nlohmann::json afc_state;
+    afc_state["extruders"] = nlohmann::json::array(
+        {"extruder", "extruder1", "extruder2", "extruder3", "extruder4", "extruder5"});
+    helper.feed_afc_state(afc_state);
+
+    // Verify extruder_names_ populated
+    const auto& ext_names = helper.get_extruder_names();
+    REQUIRE(ext_names.size() == 6);
+
+    // Feed multiple extruder updates
+    nlohmann::json params;
+    params["AFC_extruder extruder4"] = {
+        {"tool_start_status", true}, {"tool_end_status", false}, {"lane_loaded", "lane4"}};
+    params["AFC_extruder extruder5"] = {
+        {"tool_start_status", false}, {"tool_end_status", false}, {"lane_loaded", nullptr}};
+    helper.feed_status_update(params);
+
+    // Verify current slot updated from extruder4's lane_loaded
+    auto info = helper.get_system_info();
+    REQUIRE(info.current_slot == 4);
+}
+
+TEST_CASE("AFC backend multi-extruder backward compat: single extruder still works",
+          "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(4);
+    helper.initialize_lanes_from_discovery();
+
+    // Do NOT set extruder_names_ (empty = backward compat)
+    // Feed single AFC_extruder extruder (old format)
+    nlohmann::json params;
+    params["AFC_extruder extruder"] = {
+        {"tool_start_status", true}, {"tool_end_status", true}, {"lane_loaded", "lane0"}};
+    helper.feed_status_update(params);
+
+    // Should still work via backward-compat fallback
+    auto info = helper.get_system_info();
+    REQUIRE(info.current_slot == 0);
+    REQUIRE(helper.get_tool_start_sensor() == true);
+    REQUIRE(helper.get_tool_end_sensor() == true);
+}
+
+TEST_CASE("AFC backend stores extruder names from AFC state extruders array", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(4);
+
+    nlohmann::json afc_state;
+    afc_state["extruders"] = nlohmann::json::array({"extruder", "extruder1"});
+    helper.feed_afc_state(afc_state);
+
+    const auto& names = helper.get_extruder_names();
+    REQUIRE(names.size() == 2);
+    REQUIRE(names[0] == "extruder");
+    REQUIRE(names[1] == "extruder1");
+}
+
+// --- Backward compatibility ---
+
+TEST_CASE("AFC backend backward compat: object-format units still works", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes(4);
+    helper.initialize_lanes_from_discovery();
+
+    // Old format: units as objects with name and lanes
+    nlohmann::json afc_state;
+    nlohmann::json unit_obj;
+    unit_obj["name"] = "Box Turtle 1";
+    unit_obj["lanes"] = nlohmann::json::array({"lane1", "lane2", "lane3", "lane4"});
+    unit_obj["connected"] = true;
+    afc_state["units"] = nlohmann::json::array({unit_obj});
+    helper.feed_afc_state(afc_state);
+
+    auto info = helper.get_system_info();
+    REQUIRE(info.units.size() == 1);
+    REQUIRE(info.units[0].name == "Box Turtle 1");
+    // unit_infos_ should be empty (object format doesn't populate it)
+    REQUIRE(helper.get_unit_infos().empty());
+}
+
+TEST_CASE("AFC backend backward compat: mixed string and object units", "[ams][afc][mixed]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_zero_based(8);
+    helper.initialize_lanes_from_discovery();
+
+    // Mix of string and object units (shouldn't happen in practice, but be robust)
+    nlohmann::json afc_state;
+    nlohmann::json unit_obj;
+    unit_obj["name"] = "Old Turtle";
+    unit_obj["lanes"] = nlohmann::json::array({"lane0", "lane1", "lane2", "lane3"});
+    afc_state["units"] = nlohmann::json::array({"OpenAMS AMS_1", unit_obj});
+    helper.feed_afc_state(afc_state);
+
+    // String unit creates unit_info, object unit goes through old path
+    const auto& unit_infos = helper.get_unit_infos();
+    REQUIRE(unit_infos.size() == 1);
+    REQUIRE(unit_infos[0].name == "AMS_1");
+}
+
+// ============================================================================
+// Phase 6: Backward Compatibility Tests
+// ============================================================================
+
+TEST_CASE("AFC get_unit_topology falls back to get_topology when unit_infos empty",
+          "[ams][afc][backward_compat]") {
+    // Standard non-mixed AFC: unit_infos_ is empty, so get_unit_topology()
+    // should fall back to get_topology() which returns HUB.
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+
+    // No flat string units fed — unit_infos_ is empty
+    REQUIRE(helper.get_unit_infos().empty());
+
+    // get_unit_topology() for any index should fall back to get_topology() = HUB
+    REQUIRE(helper.get_unit_topology(0) == PathTopology::HUB);
+    REQUIRE(helper.get_unit_topology(1) == PathTopology::HUB);
+    REQUIRE(helper.get_unit_topology(-1) == PathTopology::HUB);
+    REQUIRE(helper.get_unit_topology(99) == PathTopology::HUB);
+}
+
+TEST_CASE("AFC get_topology still returns HUB for standard AFC", "[ams][afc][backward_compat]") {
+    // Regression guard: get_topology() must always return HUB for AFC backend
+    AmsBackendAfcTestHelper helper;
+    REQUIRE(helper.get_topology() == PathTopology::HUB);
+}
+
+TEST_CASE("AFC backend with only AFC_stepper lanes works correctly (no AFC_lane)",
+          "[ams][afc][backward_compat]") {
+    // Standard Box Turtle setup: only AFC_stepper objects, no AFC_lane objects.
+    // The AFC_lane loop should simply skip when no AFC_lane objects exist.
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+
+    // Feed only AFC_stepper updates (standard non-mixed Box Turtle)
+    helper.feed_afc_stepper("lane1", {{"prep", true},
+                                      {"load", true},
+                                      {"loaded_to_hub", false},
+                                      {"material", "PLA"},
+                                      {"color", "#FF0000"},
+                                      {"map", "T0"},
+                                      {"status", "Loaded"},
+                                      {"weight", 850}});
+    helper.feed_afc_stepper("lane2", {{"prep", true},
+                                      {"load", false},
+                                      {"material", "PETG"},
+                                      {"color", "#00FF00"},
+                                      {"map", "T1"},
+                                      {"status", "Ready"}});
+
+    // Verify stepper data parsed correctly
+    auto info = helper.get_system_info();
+    auto* slot0 = info.get_slot_global(0);
+    REQUIRE(slot0 != nullptr);
+    REQUIRE(slot0->material == "PLA");
+    REQUIRE(slot0->color_rgb == 0xFF0000);
+    REQUIRE(slot0->mapped_tool == 0);
+    REQUIRE(slot0->status == SlotStatus::LOADED);
+
+    auto* slot1 = info.get_slot_global(1);
+    REQUIRE(slot1 != nullptr);
+    REQUIRE(slot1->material == "PETG");
+    REQUIRE(slot1->color_rgb == 0x00FF00);
+    REQUIRE(slot1->mapped_tool == 1);
+
+    // Sensors should work via AFC_stepper path
+    auto sensors = helper.get_lane_sensors(0);
+    REQUIRE(sensors.prep == true);
+    REQUIRE(sensors.load == true);
+    REQUIRE(sensors.loaded_to_hub == false);
+
+    // Topology should still be HUB (standard AFC)
+    REQUIRE(helper.get_topology() == PathTopology::HUB);
+    REQUIRE(helper.get_unit_topology(0) == PathTopology::HUB);
+}
+
+TEST_CASE("AFC standard single-unit system unchanged by mixed topology code",
+          "[ams][afc][backward_compat]") {
+    // Verify that feeding a standard single-unit AFC state (object format)
+    // does not populate unit_infos_ and preserves the old unit structure
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+
+    // Feed old-format AFC state with object-style unit
+    nlohmann::json afc_state;
+    nlohmann::json unit_obj;
+    unit_obj["name"] = "Box Turtle 1";
+    unit_obj["lanes"] = nlohmann::json::array({"lane1", "lane2", "lane3", "lane4"});
+    unit_obj["connected"] = true;
+    afc_state["units"] = nlohmann::json::array({unit_obj});
+    afc_state["current_state"] = "Idle";
+    helper.feed_afc_state(afc_state);
+
+    // unit_infos_ should remain empty (object format does not populate it)
+    REQUIRE(helper.get_unit_infos().empty());
+
+    // Standard unit structure should still be correct
+    auto info = helper.get_system_info();
+    REQUIRE(info.units.size() == 1);
+    REQUIRE(info.units[0].name == "Box Turtle 1");
+    REQUIRE(info.units[0].slot_count == 4);
+
+    // Topology falls back to HUB
+    REQUIRE(helper.get_unit_topology(0) == PathTopology::HUB);
+    REQUIRE(helper.get_action() == AmsAction::IDLE);
 }

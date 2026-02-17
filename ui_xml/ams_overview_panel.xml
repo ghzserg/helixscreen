@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <consts>
+    <!-- Sidebar width for status/controls column (matches ams_panel right_col_width) -->
+    <percentage name="sidebar_width" value="28%"/>
+  </consts>
+  <!-- Overlay panel - right-aligned, uses standard large width -->
+  <view name="ams_overview_panel"
+        extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_pad_all="0"
+        style_border_width="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
+    <!-- Header Bar -->
+    <header_bar name="overlay_header" title="Multi Filament System Overview" title_tag="Multi Filament System Overview"/>
+    <!-- Content Area: Two-column layout -->
+    <lv_obj name="overview_content"
+            width="100%" flex_grow="1" style_pad_all="#space_sm" style_pad_gap="#space_sm" scrollable="false"
+            flex_flow="row" style_flex_main_place="start" style_flex_cross_place="start">
+      <!-- Left column (cards + canvas OR detail slot view) -->
+      <lv_obj name="left_column"
+              height="100%" flex_grow="3" style_pad_all="0" style_pad_gap="#space_sm" flex_flow="column"
+              style_flex_main_place="start" style_flex_cross_place="center" scrollable="false">
+        <!-- === Overview Mode (visible by default) === -->
+        <!-- Unit Cards Row - horizontal layout for unit summary cards -->
+        <lv_obj name="unit_cards_row"
+                width="100%" height="content" style_pad_all="0" style_pad_gap="#space_md" flex_flow="row"
+                style_flex_main_place="center" style_flex_cross_place="start" scrollable="false">
+          <!-- Unit cards created dynamically by AmsOverviewPanel::create_unit_cards() -->
+        </lv_obj>
+        <!-- System Path Area - shows unit outputs → hub → toolhead + bypass path -->
+        <lv_obj name="system_path_area" width="100%" flex_grow="1" style_pad_all="0" scrollable="false">
+          <!-- Path canvas created programmatically with status text drawn to left of nozzle -->
+        </lv_obj>
+        <!-- === Detail Mode (hidden by default, shown when unit card clicked) === -->
+        <lv_obj name="unit_detail_container" hidden="true"
+                width="100%" flex_grow="1" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="column"
+                style_flex_main_place="start" style_flex_cross_place="center" scrollable="false">
+          <!-- Detail header: back arrow + unit logo + unit name -->
+          <lv_obj name="detail_header"
+                  width="100%" height="content" scrollable="false" clickable="false" flex_flow="row"
+                  style_flex_main_place="start" style_flex_cross_place="center"
+                  style_pad_all="0" style_pad_gap="#space_xs">
+            <icon name="detail_back_btn" src="back" size="md" variant="text" clickable="true">
+              <event_cb trigger="clicked" callback="on_ams_overview_back_clicked"/>
+            </icon>
+            <lv_image name="detail_logo" width="#ams_logo_size" height="#ams_logo_size" inner_align="contain"/>
+            <text_body name="detail_unit_name" text=""/>
+          </lv_obj>
+          <!-- Slot grid card (populated dynamically with ams_slot widgets) -->
+          <ui_card name="detail_unit_card"
+                   width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_sm"
+                   style_border_width="0" scrollable="false">
+            <lv_obj name="detail_slot_area"
+                    width="100%" height="content" style_pad_all="0" scrollable="false">
+              <!-- Shared spool grid + tray + labels component -->
+              <ams_unit_detail name="detail_unit_detail"/>
+            </lv_obj>
+          </ui_card>
+          <!-- Path Canvas - shows filament routing from slots through hub to nozzle -->
+          <lv_obj name="detail_path_container" width="100%" flex_grow="1" style_pad_all="0"
+                  flex_flow="column" style_flex_main_place="start" scrollable="false">
+            <filament_path_canvas name="detail_path_canvas" width="100%" flex_grow="1"/>
+          </lv_obj>
+        </lv_obj>
+      </lv_obj>
+      <!-- Right column (loaded info + action buttons) -->
+      <lv_obj name="right_column"
+              height="100%" width="240" style_pad_all="#space_sm" style_pad_gap="#space_sm" flex_flow="column"
+              style_flex_main_place="start" style_flex_cross_place="start" scrollable="false">
+        <!-- Currently Loaded Section Header (e.g., "Current: Slot 1") -->
+        <text_small width="100%" bind_text="ams_current_slot_text"/>
+        <!-- Shared loaded card component -->
+        <ams_loaded_card name="current_loaded_card"/>
+        <!-- Spacer to push buttons to bottom -->
+        <lv_obj width="1" flex_grow="1" style_bg_opa="0" style_border_width="0" scrollable="false"/>
+        <!-- Bypass Toggle Row (only shown if bypass supported) -->
+        <lv_obj name="bypass_row"
+                width="100%" height="#button_height" style_pad_all="0" flex_flow="row"
+                style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false">
+          <bind_flag_if_eq subject="ams_supports_bypass" flag="hidden" ref_value="0"/>
+          <!-- Left side: icon + label -->
+          <lv_obj height="content"
+                  style_pad_all="0" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_xs"
+                  scrollable="false">
+            <icon src="source_branch" size="sm"/>
+            <text_body text="Bypass" translation_tag="Bypass"/>
+          </lv_obj>
+          <!-- Right side: toggle switch -->
+          <ui_switch name="bypass_switch" size="small" style_margin_bottom="#space_md">
+            <bind_state_if_eq subject="ams_bypass_active" state="checked" ref_value="1"/>
+            <event_cb trigger="value_changed" callback="ams_bypass_toggled_cb"/>
+          </ui_switch>
+        </lv_obj>
+        <!-- Action Buttons -->
+        <!-- Unload/Reset hidden for tool changers (ams_type=4) -->
+        <ui_button name="btn_unload"
+                   width="100%" variant="secondary" icon="tray_arrow_up" text="Unload" translation_tag="Unload">
+          <bind_flag_if_eq subject="ams_type" flag="hidden" ref_value="4"/>
+          <bind_state_if_eq subject="ams_filament_loaded" state="disabled" ref_value="0"/>
+          <event_cb trigger="clicked" callback="on_ams_overview_unload_clicked"/>
+        </ui_button>
+        <ui_button name="btn_reset" width="100%" variant="secondary" icon="refresh" text="Reset" translation_tag="Reset">
+          <bind_flag_if_eq subject="ams_type" flag="hidden" ref_value="4"/>
+          <event_cb trigger="clicked" callback="on_ams_overview_reset_clicked"/>
+        </ui_button>
+        <ui_button name="btn_settings" width="100%" icon="settings" text="Settings" translation_tag="Settings">
+          <event_cb trigger="clicked" callback="on_ams_overview_settings_clicked"/>
+        </ui_button>
+      </lv_obj>
+    </lv_obj>
+  </view>
+</component>

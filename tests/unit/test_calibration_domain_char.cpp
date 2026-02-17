@@ -42,6 +42,7 @@
 #include "../catch_amalgamated.hpp"
 
 using json = nlohmann::json;
+using namespace helix;
 
 // Helper to get subject by XML name (requires init_subjects(true))
 static lv_subject_t* get_subject_by_name(const char* name) {

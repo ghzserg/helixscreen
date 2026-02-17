@@ -4,12 +4,14 @@
 #include "ui_panel_spoolman.h"
 
 #include "ui_global_panel_helper.h"
-#include "ui_nav.h"
+#include "ui_keyboard_manager.h"
+#include "ui_modal.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_spool_canvas.h"
 #include "ui_subject_registry.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
+#include "ui_update_queue.h"
 
 #include "ams_state.h"
 #include "app_globals.h"
@@ -18,9 +20,11 @@
 #include "moonraker_api.h"
 #include "printer_state.h"
 #include "theme_manager.h"
+#include "ui/ui_lazy_panel_helper.h"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
@@ -36,12 +40,14 @@ DEFINE_GLOBAL_PANEL(SpoolmanPanel, g_spoolman_panel, get_global_spoolman_panel)
 
 SpoolmanPanel::SpoolmanPanel() {
     spdlog::trace("[{}] Constructor", get_name());
-
-    // Initialize buffer
-    std::memset(spool_count_buf_, 0, sizeof(spool_count_buf_));
+    std::memset(header_title_buf_, 0, sizeof(header_title_buf_));
 }
 
 SpoolmanPanel::~SpoolmanPanel() {
+    if (search_debounce_timer_) {
+        lv_timer_delete(search_debounce_timer_);
+        search_debounce_timer_ = nullptr;
+    }
     deinit_subjects();
 }
 
@@ -56,9 +62,8 @@ void SpoolmanPanel::init_subjects() {
                                static_cast<int32_t>(SpoolmanPanelState::LOADING),
                                "spoolman_panel_state", subjects_);
 
-        // Initialize spool count subject
-        UI_MANAGED_SUBJECT_STRING(spool_count_subject_, spool_count_buf_, "",
-                                  "spoolman_spool_count", subjects_);
+        UI_MANAGED_SUBJECT_STRING(header_title_subject_, header_title_buf_, "Spoolman",
+                                  "spoolman_header_title", subjects_);
     });
 }
 
@@ -86,6 +91,9 @@ void SpoolmanPanel::register_callbacks() {
     // Register XML event callbacks
     lv_xml_register_event_cb(nullptr, "on_spoolman_spool_row_clicked", on_spool_row_clicked);
     lv_xml_register_event_cb(nullptr, "on_spoolman_refresh_clicked", on_refresh_clicked);
+    lv_xml_register_event_cb(nullptr, "on_spoolman_add_spool_clicked", on_add_spool_clicked);
+    lv_xml_register_event_cb(nullptr, "on_spoolman_search_changed", on_search_changed);
+    lv_xml_register_event_cb(nullptr, "on_spoolman_search_clear", on_search_clear);
 
     callbacks_registered_ = true;
     spdlog::debug("[{}] Event callbacks registered", get_name());
@@ -96,6 +104,8 @@ void SpoolmanPanel::register_callbacks() {
 // ============================================================================
 
 lv_obj_t* SpoolmanPanel::create(lv_obj_t* parent) {
+    register_callbacks();
+
     if (!create_overlay_from_xml(parent, "spoolman_panel")) {
         return nullptr;
     }
@@ -109,6 +119,28 @@ lv_obj_t* SpoolmanPanel::create(lv_obj_t* parent) {
     if (!spool_list_) {
         spdlog::error("[{}] spool_list not found!", get_name());
         return nullptr;
+    }
+
+    // Setup virtualized list view
+    list_view_.setup(spool_list_);
+
+    // Add scroll handler for virtualization
+    lv_obj_add_event_cb(spool_list_, on_scroll, LV_EVENT_SCROLL, this);
+
+    // Bind header title to subject for dynamic "Spoolman: XX Spools" text
+    lv_obj_t* header = lv_obj_find_by_name(overlay_root_, "overlay_header");
+    if (header) {
+        lv_obj_t* title = lv_obj_find_by_name(header, "header_title");
+        if (title) {
+            lv_label_bind_text(title, &header_title_subject_, nullptr);
+        }
+
+        // Gate "+" (add spool) button behind beta features
+        lv_obj_t* add_btn = lv_obj_find_by_name(header, "action_button_2");
+        lv_subject_t* beta_subject = lv_xml_get_subject(nullptr, "show_beta_features");
+        if (add_btn && beta_subject) {
+            lv_obj_bind_flag_if_eq(add_btn, beta_subject, LV_OBJ_FLAG_HIDDEN, 0);
+        }
     }
 
     spdlog::info("[{}] Overlay created successfully", get_name());
@@ -125,6 +157,14 @@ void SpoolmanPanel::on_activate() {
 
     spdlog::debug("[{}] on_activate()", get_name());
 
+    // Clear search on activation (text_input handles clear button visibility internally)
+    search_query_.clear();
+    lv_obj_t* search_box = lv_obj_find_by_name(overlay_root_, "search_box");
+    if (search_box) {
+        lv_textarea_set_text(search_box, "");
+        KeyboardManager::instance().register_textarea(search_box);
+    }
+
     // Refresh spool list when panel becomes visible
     refresh_spools();
 
@@ -134,6 +174,15 @@ void SpoolmanPanel::on_activate() {
 
 void SpoolmanPanel::on_deactivate() {
     AmsState::instance().stop_spoolman_polling();
+
+    // Clean up debounce timer
+    if (search_debounce_timer_) {
+        lv_timer_delete(search_debounce_timer_);
+        search_debounce_timer_ = nullptr;
+    }
+
+    // Clean up list view (pool widgets are children of spool_list_, cleaned by LVGL)
+    list_view_.cleanup();
 
     spdlog::debug("[{}] on_deactivate()", get_name());
 
@@ -158,34 +207,71 @@ void SpoolmanPanel::refresh_spools() {
     api->get_spoolman_spools(
         [this](const std::vector<SpoolInfo>& spools) {
             spdlog::info("[{}] Received {} spools from Spoolman", get_name(), spools.size());
-            cached_spools_ = spools;
 
-            // Also get active spool ID
+            // Also get active spool ID before updating UI
             MoonrakerAPI* api_inner = get_moonraker_api();
             if (!api_inner) {
                 spdlog::warn("[{}] API unavailable for status check", get_name());
-                active_spool_id_ = -1;
-                populate_spool_list();
+                // Schedule UI update on main thread
+                auto* data = new std::pair<SpoolmanPanel*, std::vector<SpoolInfo>>(this, spools);
+                helix::ui::async_call(
+                    [](void* ud) {
+                        auto* ctx =
+                            static_cast<std::pair<SpoolmanPanel*, std::vector<SpoolInfo>>*>(ud);
+                        ctx->first->cached_spools_ = std::move(ctx->second);
+                        ctx->first->active_spool_id_ = -1;
+                        ctx->first->populate_spool_list();
+                        delete ctx;
+                    },
+                    data);
                 return;
             }
 
             api_inner->get_spoolman_status(
-                [this](bool /*connected*/, int active_id) {
-                    active_spool_id_ = active_id;
-                    spdlog::debug("[{}] Active spool ID: {}", get_name(), active_spool_id_);
-                    populate_spool_list();
+                [this, spools](bool /*connected*/, int active_id) {
+                    spdlog::debug("[{}] Active spool ID: {}", get_name(), active_id);
+                    // Schedule UI update on main thread
+                    auto* data = new std::tuple<SpoolmanPanel*, std::vector<SpoolInfo>, int>(
+                        this, spools, active_id);
+                    helix::ui::async_call(
+                        [](void* ud) {
+                            auto* ctx = static_cast<
+                                std::tuple<SpoolmanPanel*, std::vector<SpoolInfo>, int>*>(ud);
+                            auto* self = std::get<0>(*ctx);
+                            self->cached_spools_ = std::move(std::get<1>(*ctx));
+                            self->active_spool_id_ = std::get<2>(*ctx);
+                            self->populate_spool_list();
+                            delete ctx;
+                        },
+                        data);
                 },
-                [this](const MoonrakerError& err) {
+                [this, spools](const MoonrakerError& err) {
                     spdlog::warn("[{}] Failed to get active spool: {}", get_name(), err.message);
-                    active_spool_id_ = -1;
-                    populate_spool_list();
+                    auto* data =
+                        new std::pair<SpoolmanPanel*, std::vector<SpoolInfo>>(this, spools);
+                    helix::ui::async_call(
+                        [](void* ud) {
+                            auto* ctx =
+                                static_cast<std::pair<SpoolmanPanel*, std::vector<SpoolInfo>>*>(ud);
+                            ctx->first->cached_spools_ = std::move(ctx->second);
+                            ctx->first->active_spool_id_ = -1;
+                            ctx->first->populate_spool_list();
+                            delete ctx;
+                        },
+                        data);
                 });
         },
         [this](const MoonrakerError& err) {
             spdlog::error("[{}] Failed to fetch spools: {}", get_name(), err.message);
-            cached_spools_.clear();
-            show_empty_state();
-            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to load spools"), 3000);
+            helix::ui::async_call(
+                [](void* ud) {
+                    auto* self = static_cast<SpoolmanPanel*>(ud);
+                    self->cached_spools_.clear();
+                    self->show_empty_state();
+                    ToastManager::instance().show(ToastSeverity::ERROR,
+                                                  lv_tr("Failed to load spools"), 3000);
+                },
+                this);
         });
 }
 
@@ -209,13 +295,29 @@ void SpoolmanPanel::show_spool_list() {
 
 void SpoolmanPanel::update_spool_count() {
     if (cached_spools_.empty()) {
-        lv_subject_copy_string(&spool_count_subject_, "");
+        lv_subject_copy_string(&header_title_subject_, "Spoolman");
+    } else if (!search_query_.empty() && filtered_spools_.size() != cached_spools_.size()) {
+        // Show filtered count: "Spoolman: 5/19 Spools"
+        char buf[64];
+        snprintf(buf, sizeof(buf), "Spoolman: %zu/%zu Spool%s", filtered_spools_.size(),
+                 cached_spools_.size(), cached_spools_.size() == 1 ? "" : "s");
+        lv_subject_copy_string(&header_title_subject_, buf);
     } else {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%zu spool%s", cached_spools_.size(),
+        char buf[64];
+        snprintf(buf, sizeof(buf), "Spoolman: %zu Spool%s", cached_spools_.size(),
                  cached_spools_.size() == 1 ? "" : "s");
-        lv_subject_copy_string(&spool_count_subject_, buf);
+        lv_subject_copy_string(&header_title_subject_, buf);
     }
+}
+
+// ============================================================================
+// Cache Lookup
+// ============================================================================
+
+const SpoolInfo* SpoolmanPanel::find_cached_spool(int spool_id) const {
+    auto it = std::find_if(cached_spools_.begin(), cached_spools_.end(),
+                           [spool_id](const SpoolInfo& s) { return s.id == spool_id; });
+    return it != cached_spools_.end() ? &(*it) : nullptr;
 }
 
 // ============================================================================
@@ -228,118 +330,41 @@ void SpoolmanPanel::populate_spool_list() {
         return;
     }
 
-    // Clear existing rows
-    lv_obj_clean(spool_list_);
-
     if (cached_spools_.empty()) {
         show_empty_state();
         return;
     }
 
-    // Create a row for each spool
-    for (const auto& spool : cached_spools_) {
-        // Create row from XML component
-        lv_obj_t* row =
-            static_cast<lv_obj_t*>(lv_xml_create(spool_list_, "spoolman_spool_row", nullptr));
+    // Apply current search filter
+    apply_filter();
 
-        if (!row) {
-            spdlog::error("[{}] Failed to create row for spool {}", get_name(), spool.id);
-            continue;
-        }
-
-        // Store spool ID in user_data for click handling
-        lv_obj_set_user_data(row, reinterpret_cast<void*>(static_cast<intptr_t>(spool.id)));
-
-        // Update row visuals
-        update_row_visuals(row, spool);
+    if (filtered_spools_.empty()) {
+        show_empty_state();
+        return;
     }
 
+    // Delegate to virtualized list view
+    list_view_.populate(filtered_spools_, active_spool_id_);
     show_spool_list();
-    spdlog::debug("[{}] Populated {} spool rows", get_name(), cached_spools_.size());
+
+    spdlog::debug("[{}] Populated {} spool rows (filtered from {})", get_name(),
+                  filtered_spools_.size(), cached_spools_.size());
 }
 
-void SpoolmanPanel::update_row_visuals(lv_obj_t* row, const SpoolInfo& spool) {
-    if (!row)
-        return;
+void SpoolmanPanel::apply_filter() {
+    filtered_spools_ = filter_spools(cached_spools_, search_query_);
+    update_spool_count();
+}
 
-    // Update 3D spool canvas
-    lv_obj_t* canvas = lv_obj_find_by_name(row, "spool_canvas");
-    if (canvas) {
-        // Parse color from hex string (e.g., "FF5722" or "#FF5722")
-        lv_color_t color = theme_manager_get_color("text_muted"); // Default gray
-        if (!spool.color_hex.empty()) {
-            std::string hex = spool.color_hex;
-            if (!hex.empty() && hex[0] == '#') {
-                hex = hex.substr(1);
-            }
-            unsigned int color_val = 0;
-            if (sscanf(hex.c_str(), "%x", &color_val) == 1) {
-                color = lv_color_hex(color_val);
-            }
-        }
-        ui_spool_canvas_set_color(canvas, color);
-
-        // Fill level: remaining_percent / 100
-        float fill_level = static_cast<float>(spool.remaining_percent()) / 100.0f;
-        ui_spool_canvas_set_fill_level(canvas, fill_level);
-        ui_spool_canvas_redraw(canvas);
-    }
-
-    // Update spool name (Material - Color)
-    lv_obj_t* name_label = lv_obj_find_by_name(row, "spool_name");
-    if (name_label) {
-        lv_label_set_text(name_label, spool.display_name().c_str());
-    }
-
-    // Update vendor
-    lv_obj_t* vendor_label = lv_obj_find_by_name(row, "spool_vendor");
-    if (vendor_label) {
-        lv_label_set_text(vendor_label, spool.vendor.empty() ? "Unknown" : spool.vendor.c_str());
-    }
-
-    // Update weight
-    lv_obj_t* weight_label = lv_obj_find_by_name(row, "weight_text");
-    if (weight_label) {
-        char weight_buf[32];
-        snprintf(weight_buf, sizeof(weight_buf), "%.0fg", spool.remaining_weight_g);
-        lv_label_set_text(weight_label, weight_buf);
-    }
-
-    // Update percentage
-    lv_obj_t* percent_label = lv_obj_find_by_name(row, "percent_text");
-    if (percent_label) {
-        char percent_buf[16];
-        helix::fmt::format_percent(static_cast<int>(spool.remaining_percent()), percent_buf,
-                                   sizeof(percent_buf));
-        lv_label_set_text(percent_label, percent_buf);
-    }
-
-    // Low stock warning (< 100g)
-    lv_obj_t* low_stock_icon = lv_obj_find_by_name(row, "low_stock_indicator");
-    if (low_stock_icon) {
-        if (spool.remaining_weight_g < 100.0) {
-            lv_obj_remove_flag(low_stock_icon, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(low_stock_icon, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-
-    // Active indicator
-    lv_obj_t* active_icon = lv_obj_find_by_name(row, "active_indicator");
-    if (active_icon) {
-        if (spool.id == active_spool_id_) {
-            lv_obj_remove_flag(active_icon, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(active_icon, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
+void SpoolmanPanel::update_active_indicators() {
+    list_view_.update_active_indicators(filtered_spools_, active_spool_id_);
 }
 
 // ============================================================================
 // Spool Selection
 // ============================================================================
 
-void SpoolmanPanel::handle_spool_clicked(lv_obj_t* row) {
+void SpoolmanPanel::handle_spool_clicked(lv_obj_t* row, lv_point_t click_pt) {
     if (!row)
         return;
 
@@ -349,8 +374,49 @@ void SpoolmanPanel::handle_spool_clicked(lv_obj_t* row) {
 
     spdlog::info("[{}] Spool {} clicked", get_name(), spool_id);
 
-    // Set as active spool
-    set_active_spool(spool_id);
+    const SpoolInfo* spool = find_cached_spool(spool_id);
+    if (!spool) {
+        spdlog::warn("[{}] Spool {} not found in cache", get_name(), spool_id);
+        return;
+    }
+
+    // Set up context menu action handler
+    context_menu_.set_action_callback([this](helix::ui::SpoolmanContextMenu::MenuAction action,
+                                             int id) { handle_context_action(action, id); });
+
+    // Show context menu near the click point
+    context_menu_.set_click_point(click_pt);
+    context_menu_.show_for_spool(lv_screen_active(), *spool, row);
+}
+
+void SpoolmanPanel::handle_context_action(helix::ui::SpoolmanContextMenu::MenuAction action,
+                                          int spool_id) {
+    using MenuAction = helix::ui::SpoolmanContextMenu::MenuAction;
+
+    switch (action) {
+    case MenuAction::SET_ACTIVE:
+        set_active_spool(spool_id);
+        break;
+
+    case MenuAction::EDIT:
+        show_edit_modal(spool_id);
+        break;
+
+    case MenuAction::PRINT_LABEL:
+        // TODO: Print label (Phase 4)
+        spdlog::info("[{}] Print label for spool {} (not yet implemented)", get_name(), spool_id);
+        ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Label printing coming soon"),
+                                      2000);
+        break;
+
+    case MenuAction::DELETE:
+        delete_spool(spool_id);
+        break;
+
+    case MenuAction::CANCELLED:
+        spdlog::debug("[{}] Context menu cancelled", get_name());
+        break;
+    }
 }
 
 void SpoolmanPanel::set_active_spool(int spool_id) {
@@ -364,27 +430,126 @@ void SpoolmanPanel::set_active_spool(int spool_id) {
         spool_id,
         [this, spool_id]() {
             spdlog::info("[{}] Set active spool to {}", get_name(), spool_id);
-            active_spool_id_ = spool_id;
 
-            // Find the spool name for toast
-            std::string spool_name = "Spool " + std::to_string(spool_id);
-            for (const auto& s : cached_spools_) {
-                if (s.id == spool_id) {
-                    spool_name = s.display_name();
-                    break;
-                }
-            }
+            // Schedule all UI work on main thread (cached_spools_ is not thread-safe)
+            helix::ui::async_call(
+                [](void* ud) {
+                    auto* ctx = static_cast<std::pair<SpoolmanPanel*, int>*>(ud);
+                    auto* self = ctx->first;
+                    int id = ctx->second;
+                    delete ctx;
 
-            ui_toast_show(ToastSeverity::SUCCESS, ("Active: " + spool_name).c_str(), 2000);
+                    // Lookup spool name on UI thread where cached_spools_ is safe
+                    const SpoolInfo* found = self->find_cached_spool(id);
+                    std::string spool_name =
+                        found ? found->display_name() : "Spool " + std::to_string(id);
 
-            // Refresh to update active indicators
-            populate_spool_list();
+                    self->active_spool_id_ = id;
+                    self->update_active_indicators();
+                    std::string msg = std::string(lv_tr("Active")) + ": " + spool_name;
+                    ToastManager::instance().show(ToastSeverity::SUCCESS, msg.c_str(), 2000);
+                },
+                new std::pair<SpoolmanPanel*, int>(this, spool_id));
         },
         [this, spool_id](const MoonrakerError& err) {
             spdlog::error("[{}] Failed to set active spool {}: {}", get_name(), spool_id,
                           err.message);
-            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to set active spool"), 3000);
+            helix::ui::async_call(
+                [](void*) {
+                    ToastManager::instance().show(ToastSeverity::ERROR,
+                                                  lv_tr("Failed to set active spool"), 3000);
+                },
+                nullptr);
         });
+}
+
+// ============================================================================
+// Edit Spool Modal
+// ============================================================================
+
+void SpoolmanPanel::show_edit_modal(int spool_id) {
+    const SpoolInfo* spool = find_cached_spool(spool_id);
+    if (!spool) {
+        spdlog::warn("[{}] Cannot edit - spool {} not in cache", get_name(), spool_id);
+        return;
+    }
+
+    MoonrakerAPI* api = get_moonraker_api();
+
+    edit_modal_.set_completion_callback([this](bool saved) {
+        if (saved) {
+            // Refresh the spool list to show updated values
+            refresh_spools();
+        }
+    });
+
+    edit_modal_.show_for_spool(lv_screen_active(), *spool, api);
+}
+
+// ============================================================================
+// Delete Spool
+// ============================================================================
+
+void SpoolmanPanel::delete_spool(int spool_id) {
+    // Build confirmation message with spool info
+    const SpoolInfo* spool = find_cached_spool(spool_id);
+    std::string spool_desc;
+    if (spool) {
+        spool_desc = spool->display_name() + " (#" + std::to_string(spool_id) + ")";
+    } else {
+        spool_desc = "Spool #" + std::to_string(spool_id);
+    }
+
+    std::string message = spool_desc + "\n" + lv_tr("This cannot be undone.");
+
+    // Store spool_id for the confirmation callback via a static (only one delete at a time)
+    static int s_pending_delete_id = 0;
+    s_pending_delete_id = spool_id;
+
+    helix::ui::modal_show_confirmation(
+        lv_tr("Delete Spool?"), message.c_str(), ModalSeverity::Warning, lv_tr("Delete"),
+        [](lv_event_t* /*e*/) {
+            // Close the confirmation dialog immediately
+            lv_obj_t* top = Modal::get_top();
+            if (top) {
+                Modal::hide(top);
+            }
+
+            int id = s_pending_delete_id;
+            spdlog::info("[Spoolman] Confirmed delete of spool {}", id);
+
+            MoonrakerAPI* api = get_moonraker_api();
+            if (!api) {
+                ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("API not available"),
+                                              3000);
+                return;
+            }
+
+            api->delete_spoolman_spool(
+                id,
+                [id]() {
+                    spdlog::info("[Spoolman] Spool {} deleted successfully", id);
+                    // Schedule UI work on LVGL thread (API callbacks run on background thread)
+                    helix::ui::async_call(
+                        [](void*) {
+                            ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                                          lv_tr("Spool deleted"), 2000);
+                            get_global_spoolman_panel().refresh_spools();
+                        },
+                        nullptr);
+                },
+                [id](const MoonrakerError& err) {
+                    spdlog::error("[Spoolman] Failed to delete spool {}: {}", id, err.message);
+                    helix::ui::async_call(
+                        [](void*) {
+                            ToastManager::instance().show(ToastSeverity::ERROR,
+                                                          lv_tr("Failed to delete spool"), 3000);
+                        },
+                        nullptr);
+                });
+        },
+        nullptr, // No cancel callback needed
+        nullptr);
 }
 
 // ============================================================================
@@ -394,6 +559,13 @@ void SpoolmanPanel::set_active_spool(int spool_id) {
 void SpoolmanPanel::on_spool_row_clicked(lv_event_t* e) {
     lv_obj_t* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
 
+    // Capture click point from the input device while event is still active
+    lv_point_t click_pt = {0, 0};
+    lv_indev_t* indev = lv_indev_active();
+    if (indev) {
+        lv_indev_get_point(indev, &click_pt);
+    }
+
     // The target might be a child of the row, walk up to find the row
     lv_obj_t* row = target;
     while (row && lv_obj_get_user_data(row) == nullptr) {
@@ -401,11 +573,79 @@ void SpoolmanPanel::on_spool_row_clicked(lv_event_t* e) {
     }
 
     if (row) {
-        get_global_spoolman_panel().handle_spool_clicked(row);
+        get_global_spoolman_panel().handle_spool_clicked(row, click_pt);
     }
 }
 
 void SpoolmanPanel::on_refresh_clicked(lv_event_t* /*e*/) {
     spdlog::debug("[Spoolman] Refresh clicked");
     get_global_spoolman_panel().refresh_spools();
+}
+
+void SpoolmanPanel::on_add_spool_clicked(lv_event_t* /*e*/) {
+    spdlog::info("[SpoolmanPanel] Add spool clicked — launching wizard");
+    auto& panel = get_global_spoolman_panel();
+
+    // Set completion callback on the wizard to refresh spool list after creation
+    auto& wizard = get_global_spool_wizard();
+    wizard.set_completion_callback([]() { get_global_spoolman_panel().refresh_spools(); });
+
+    helix::ui::lazy_create_and_push_overlay<SpoolWizardOverlay>(
+        get_global_spool_wizard, panel.wizard_panel_, lv_display_get_screen_active(nullptr),
+        "Spool Wizard", "SpoolmanPanel");
+}
+
+void SpoolmanPanel::on_scroll(lv_event_t* e) {
+    auto* self = static_cast<SpoolmanPanel*>(lv_event_get_user_data(e));
+    if (self) {
+        self->list_view_.update_visible(self->filtered_spools_, self->active_spool_id_);
+    }
+}
+
+void SpoolmanPanel::on_search_changed(lv_event_t* e) {
+    lv_obj_t* textarea = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    if (!textarea) {
+        return;
+    }
+
+    auto& panel = get_global_spoolman_panel();
+
+    // Store the new query text
+    const char* text = lv_textarea_get_text(textarea);
+    panel.search_query_ = text ? text : "";
+
+    // Debounce: cancel existing timer, start new one
+    if (panel.search_debounce_timer_) {
+        lv_timer_delete(panel.search_debounce_timer_);
+        panel.search_debounce_timer_ = nullptr;
+    }
+
+    panel.search_debounce_timer_ = lv_timer_create(on_search_timer, SEARCH_DEBOUNCE_MS, &panel);
+    lv_timer_set_repeat_count(panel.search_debounce_timer_, 1);
+}
+
+void SpoolmanPanel::on_search_clear(lv_event_t* /*e*/) {
+    // Text is already cleared by text_input's internal clear button handler.
+    // We just need to update the search state and repopulate immediately.
+    auto& panel = get_global_spoolman_panel();
+    panel.search_query_.clear();
+    if (panel.search_debounce_timer_) {
+        lv_timer_delete(panel.search_debounce_timer_);
+        panel.search_debounce_timer_ = nullptr;
+    }
+    panel.populate_spool_list();
+}
+
+void SpoolmanPanel::on_search_timer(lv_timer_t* timer) {
+    auto* self = static_cast<SpoolmanPanel*>(lv_timer_get_user_data(timer));
+    if (!self) {
+        return;
+    }
+
+    self->search_debounce_timer_ = nullptr;
+
+    spdlog::debug("[Spoolman] Search query: '{}'", self->search_query_);
+
+    // Re-filter and repopulate (populate_spool_list handles empty/non-empty states)
+    self->populate_spool_list();
 }

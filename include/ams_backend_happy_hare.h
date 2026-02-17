@@ -46,17 +46,18 @@ class AmsBackendHappyHare : public AmsBackend {
      * @brief Construct Happy Hare backend
      *
      * @param api Pointer to MoonrakerAPI (for sending G-code commands)
-     * @param client Pointer to MoonrakerClient (for subscribing to updates)
+     * @param client Pointer to helix::MoonrakerClient (for subscribing to updates)
      *
      * @note Both pointers must remain valid for the lifetime of this backend.
      */
-    AmsBackendHappyHare(MoonrakerAPI* api, MoonrakerClient* client);
+    AmsBackendHappyHare(MoonrakerAPI* api, helix::MoonrakerClient* client);
 
     ~AmsBackendHappyHare() override;
 
     // Lifecycle
     AmsError start() override;
     void stop() override;
+    void release_subscriptions() override;
     [[nodiscard]] bool is_running() const override;
 
     // Events
@@ -124,6 +125,10 @@ class AmsBackendHappyHare : public AmsBackend {
      */
     AmsError reset_endless_spool() override;
 
+    [[nodiscard]] bool has_firmware_spool_persistence() const override {
+        return true; // Happy Hare persists via MMU_GATE_MAP SPOOLID
+    }
+
     // Tool Mapping support
     /**
      * @brief Get tool mapping capabilities for Happy Hare
@@ -144,10 +149,18 @@ class AmsBackendHappyHare : public AmsBackend {
      */
     [[nodiscard]] std::vector<int> get_tool_mapping() const override;
 
+    // Device Management
+    [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;
+    [[nodiscard]] std::vector<helix::printer::DeviceAction> get_device_actions() const override;
+    AmsError execute_device_action(const std::string& action_id,
+                                   const std::any& value = {}) override;
+
   protected:
     // Allow test helper access to private members
     friend class AmsBackendHappyHareTestHelper;
     friend class AmsBackendHappyHareEndlessSpoolHelper;
+    friend class AmsBackendHHMultiUnitHelper;
+    friend class HappyHareErrorStateHelper;
 
   private:
     /**
@@ -216,8 +229,8 @@ class AmsBackendHappyHare : public AmsBackend {
     AmsError validate_slot_index(int gate_index) const;
 
     // Dependencies
-    MoonrakerAPI* api_;       ///< For sending G-code commands
-    MoonrakerClient* client_; ///< For subscribing to updates
+    MoonrakerAPI* api_;              ///< For sending G-code commands
+    helix::MoonrakerClient* client_; ///< For subscribing to updates
 
     // State
     mutable std::mutex mutex_;         ///< Protects state access
@@ -228,8 +241,13 @@ class AmsBackendHappyHare : public AmsBackend {
     // Cached MMU state
     AmsSystemInfo system_info_;     ///< Current system state
     bool gates_initialized_{false}; ///< Have we seen gate_status yet?
+    int num_units_{1};              ///< Number of physical units (default 1)
 
     // Path visualization state
     int filament_pos_{0};                          ///< Happy Hare filament_pos value
     PathSegment error_segment_{PathSegment::NONE}; ///< Inferred error location
+
+    // Error state tracking
+    std::string reason_for_pause_; ///< Last reason_for_pause from MMU (descriptive error text)
+    int errored_slot_{-1};         ///< Slot that was in error state (-1 = none)
 };

@@ -326,8 +326,10 @@ class ModalStack {
 };
 
 // ============================================================================
-// MODAL DIALOG SUBJECTS (for modal_dialog.xml)
+// MODAL FREE FUNCTIONS (in helix::ui namespace)
 // ============================================================================
+
+namespace helix::ui {
 
 /**
  * @brief Initialize subjects for modal_dialog.xml bindings
@@ -337,65 +339,32 @@ class ModalStack {
 void modal_init_subjects();
 
 /**
+ * @brief Deinitialize modal dialog subjects for clean shutdown
+ */
+void modal_deinit_subjects();
+
+/**
  * @brief Configure modal_dialog before showing
  */
 void modal_configure(ModalSeverity severity, bool show_cancel, const char* primary_text,
                      const char* cancel_text);
 
 // Subject accessors
-lv_subject_t* modal_severity_subject();
-lv_subject_t* modal_show_cancel_subject();
-lv_subject_t* modal_primary_text_subject();
-lv_subject_t* modal_cancel_text_subject();
+lv_subject_t* modal_get_severity_subject();
+lv_subject_t* modal_get_show_cancel_subject();
+lv_subject_t* modal_get_primary_text_subject();
+lv_subject_t* modal_get_cancel_text_subject();
 
-// ============================================================================
-// LEGACY API WRAPPERS
-// ============================================================================
-
-// Note: These wrappers provide the old ui_modal_*() function names
-// for backward compatibility with existing code.
-
-inline lv_obj_t* ui_modal_show(const char* name, const char** attrs = nullptr) {
+inline lv_obj_t* modal_show(const char* name, const char** attrs = nullptr) {
     return Modal::show(name, attrs);
 }
 
-inline void ui_modal_hide(lv_obj_t* dialog) {
+inline void modal_hide(lv_obj_t* dialog) {
     Modal::hide(dialog);
 }
 
-inline lv_obj_t* ui_modal_get_top() {
+inline lv_obj_t* modal_get_top() {
     return Modal::get_top();
-}
-
-inline bool ui_modal_is_visible() {
-    return Modal::any_visible();
-}
-
-inline void ui_modal_init_subjects() {
-    modal_init_subjects();
-}
-
-void ui_modal_deinit_subjects();
-
-inline void ui_modal_configure(ModalSeverity severity, bool show_cancel, const char* primary_text,
-                               const char* cancel_text) {
-    modal_configure(severity, show_cancel, primary_text, cancel_text);
-}
-
-inline lv_subject_t* ui_modal_get_severity_subject() {
-    return modal_severity_subject();
-}
-
-inline lv_subject_t* ui_modal_get_show_cancel_subject() {
-    return modal_show_cancel_subject();
-}
-
-inline lv_subject_t* ui_modal_get_primary_text_subject() {
-    return modal_primary_text_subject();
-}
-
-inline lv_subject_t* ui_modal_get_cancel_text_subject() {
-    return modal_cancel_text_subject();
 }
 
 /**
@@ -407,11 +376,7 @@ inline lv_subject_t* ui_modal_get_cancel_text_subject() {
  * @param modal The modal dialog (used for logging only)
  * @param textarea The textarea widget to register
  */
-void ui_modal_register_keyboard(lv_obj_t* modal, lv_obj_t* textarea);
-
-// ============================================================================
-// CONFIRMATION DIALOG HELPER
-// ============================================================================
+void modal_register_keyboard(lv_obj_t* modal, lv_obj_t* textarea);
 
 /**
  * @brief Show a confirmation dialog with callbacks
@@ -428,30 +393,11 @@ void ui_modal_register_keyboard(lv_obj_t* modal, lv_obj_t* textarea);
  * @param on_confirm Callback for confirm button (receives user_data)
  * @param on_cancel Callback for cancel button (receives user_data), or nullptr for no callback
  * @param user_data User data passed to callbacks
- * @param out_dialog Optional output pointer to store dialog handle for cleanup
  * @return The created dialog widget, or nullptr on failure
- *
- * @code
- * // Before (18+ lines):
- * const char* attrs[] = {"title", "Delete?", "message", "This cannot be undone.", nullptr};
- * ui_modal_configure(ModalSeverity::Warning, true, "Delete", "Cancel");
- * dialog_ = ui_modal_show("modal_dialog", attrs);
- * if (!dialog_) { handle_error(); return; }
- * lv_obj_t* cancel = lv_obj_find_by_name(dialog_, "btn_secondary");
- * if (cancel) lv_obj_add_event_cb(cancel, on_cancel, LV_EVENT_CLICKED, this);
- * lv_obj_t* confirm = lv_obj_find_by_name(dialog_, "btn_primary");
- * if (confirm) lv_obj_add_event_cb(confirm, on_confirm, LV_EVENT_CLICKED, this);
- *
- * // After (single call):
- * dialog_ = ui_modal_show_confirmation(
- *     "Delete?", "This cannot be undone.",
- *     ModalSeverity::Warning, "Delete",
- *     on_confirm, on_cancel, this);
- * @endcode
  */
-lv_obj_t* ui_modal_show_confirmation(const char* title, const char* message, ModalSeverity severity,
-                                     const char* confirm_text, lv_event_cb_t on_confirm,
-                                     lv_event_cb_t on_cancel, void* user_data);
+lv_obj_t* modal_show_confirmation(const char* title, const char* message, ModalSeverity severity,
+                                  const char* confirm_text, lv_event_cb_t on_confirm,
+                                  lv_event_cb_t on_cancel, void* user_data);
 
 /**
  * @brief Show an info/alert dialog with single "OK" button
@@ -466,7 +412,8 @@ lv_obj_t* ui_modal_show_confirmation(const char* title, const char* message, Mod
  * @param user_data User data passed to callback
  * @return The created dialog widget, or nullptr on failure
  */
-lv_obj_t* ui_modal_show_alert(const char* title, const char* message,
-                              ModalSeverity severity = ModalSeverity::Info,
-                              const char* ok_text = "OK", lv_event_cb_t on_ok = nullptr,
-                              void* user_data = nullptr);
+lv_obj_t* modal_show_alert(const char* title, const char* message,
+                           ModalSeverity severity = ModalSeverity::Info, const char* ok_text = "OK",
+                           lv_event_cb_t on_ok = nullptr, void* user_data = nullptr);
+
+} // namespace helix::ui

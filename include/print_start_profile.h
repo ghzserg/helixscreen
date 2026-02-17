@@ -28,7 +28,7 @@ class PrintStartProfile {
      * @brief Result of a signal or pattern match
      */
     struct MatchResult {
-        PrintStartPhase phase;
+        helix::PrintStartPhase phase;
         std::string message;
         int progress; // 0-100, only meaningful in sequential mode
     };
@@ -46,7 +46,7 @@ class PrintStartProfile {
      */
     struct ResponsePattern {
         std::regex pattern;
-        PrintStartPhase phase;
+        helix::PrintStartPhase phase;
         std::string message_template; // supports $1, $2 capture group substitution
         int weight;                   // only used in weighted mode
     };
@@ -128,7 +128,7 @@ class PrintStartProfile {
      *
      * Returns the weight assigned to a phase, or 0 if not defined.
      */
-    int get_phase_weight(PrintStartPhase phase) const;
+    int get_phase_weight(helix::PrintStartPhase phase) const;
 
     // =========================================================================
     // Accessors
@@ -150,7 +150,7 @@ class PrintStartProfile {
     ProgressMode progress_mode_ = ProgressMode::WEIGHTED;
     std::vector<SignalFormat> signal_formats_;
     std::vector<ResponsePattern> response_patterns_;
-    std::unordered_map<PrintStartPhase, int> phase_weights_;
+    std::unordered_map<helix::PrintStartPhase, int> phase_weights_;
 
     /**
      * @brief Parse a JSON object into this profile
@@ -159,9 +159,9 @@ class PrintStartProfile {
     bool parse_json(const nlohmann::json& j, const std::string& source_path);
 
     /**
-     * @brief Convert phase name string to PrintStartPhase enum
+     * @brief Convert phase name string to helix::PrintStartPhase enum
      */
-    static PrintStartPhase parse_phase_name(const std::string& name);
+    static helix::PrintStartPhase parse_phase_name(const std::string& name);
 
     /**
      * @brief Substitute regex capture groups ($1, $2, ...) in a template

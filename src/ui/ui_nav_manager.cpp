@@ -16,10 +16,12 @@
 #include "printer_state.h" // For KlippyState enum
 #include "settings_manager.h"
 #include "sound_manager.h"
+#include "static_subject_registry.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
 
+using namespace helix;
 using helix::ui::observe_int_sync;
 
 #include <algorithm>
@@ -56,17 +58,17 @@ bool NavigationManager::is_destroyed() {
 // HELPER METHODS
 // ============================================================================
 
-const char* NavigationManager::panel_id_to_name(ui_panel_id_t id) {
+const char* NavigationManager::panel_id_to_name(PanelId id) {
     static const char* names[] = {"home_panel",     "print_select_panel", "controls_panel",
                                   "filament_panel", "settings_panel",     "advanced_panel"};
-    if (id < UI_PANEL_COUNT) {
-        return names[id];
+    if (static_cast<int>(id) < UI_PANEL_COUNT) {
+        return names[static_cast<int>(id)];
     }
     return "unknown_panel";
 }
 
-bool NavigationManager::panel_requires_connection(ui_panel_id_t panel) {
-    return panel == UI_PANEL_CONTROLS || panel == UI_PANEL_FILAMENT;
+bool NavigationManager::panel_requires_connection(PanelId panel) {
+    return panel == PanelId::Controls || panel == PanelId::Filament;
 }
 
 bool NavigationManager::is_printer_connected() const {
@@ -99,6 +101,9 @@ void NavigationManager::clear_overlay_stack() {
         spdlog::trace("[NavigationManager] Cleared overlay {} from stack", (void*)overlay);
     }
 
+    // Clear zoom source rects for any cleared overlays
+    zoom_source_rects_.clear();
+
     // Hide primary backdrop
     if (overlay_backdrop_) {
         set_backdrop_visible(false);
@@ -114,30 +119,43 @@ void NavigationManager::clear_overlay_stack() {
 void NavigationManager::overlay_slide_out_complete_cb(lv_anim_t* anim) {
     lv_obj_t* panel = static_cast<lv_obj_t*>(anim->var);
     lv_obj_add_flag(panel, LV_OBJ_FLAG_HIDDEN);
-    // Reset transform and opacity for potential reuse
+    // Reset all transform and opacity properties for potential reuse
+    // (covers both slide and zoom animation properties)
     lv_obj_set_style_translate_x(panel, 0, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(panel, 0, LV_PART_MAIN);
+    lv_obj_set_style_transform_scale(panel, 256, LV_PART_MAIN);
     lv_obj_set_style_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
     spdlog::trace("[NavigationManager] Overlay slide+fade-out complete, panel {} hidden",
                   (void*)panel);
 
-    // Invoke close callback if registered (AFTER animation completes, before any deletion)
+    // Defer close callback via lv_async_call so any object deletion happens AFTER the
+    // current render cycle completes. Animation callbacks fire from inside
+    // lv_timer_handler() → lv_display_refr_timer(), and deleting objects mid-layout
+    // causes use-after-free in layout_update_core → lv_obj_scrollbar_invalidate.
     auto& mgr = NavigationManager::instance();
     auto it = mgr.overlay_close_callbacks_.find(panel);
     if (it != mgr.overlay_close_callbacks_.end()) {
-        spdlog::trace("[NavigationManager] Invoking close callback for overlay {}", (void*)panel);
-        auto callback = std::move(it->second);
+        spdlog::trace("[NavigationManager] Deferring close callback for overlay {}", (void*)panel);
+        // Move callback to heap — lv_async_call will invoke it on the next LVGL tick
+        auto* deferred = new OverlayCloseCallback(std::move(it->second));
         mgr.overlay_close_callbacks_.erase(it);
-        callback(); // Call after erasing to allow re-registration
+        lv_async_call(
+            [](void* data) {
+                auto* cb = static_cast<OverlayCloseCallback*>(data);
+                (*cb)();
+                delete cb;
+            },
+            deferred);
     }
 
     // Lifecycle: Activate what's now visible after animation completes
     // Stack was already modified in go_back(), so check what's now at top
     if (mgr.panel_stack_.size() == 1) {
         // Back to main panel - activate it
-        if (mgr.panel_instances_[mgr.active_panel_]) {
+        if (mgr.panel_instances_[static_cast<int>(mgr.active_panel_)]) {
             spdlog::trace("[NavigationManager] Activating main panel {} after overlay closed",
                           static_cast<int>(mgr.active_panel_));
-            mgr.panel_instances_[mgr.active_panel_]->on_activate();
+            mgr.panel_instances_[static_cast<int>(mgr.active_panel_)]->on_activate();
         }
     } else if (mgr.panel_stack_.size() > 1) {
         // Back to previous overlay - activate it
@@ -205,8 +223,10 @@ void NavigationManager::overlay_animate_slide_out(lv_obj_t* panel) {
     // Skip animation if disabled - hide panel immediately and invoke callback
     if (!SettingsManager::instance().get_animations_enabled()) {
         lv_obj_add_flag(panel, LV_OBJ_FLAG_HIDDEN);
-        // Reset transform and opacity for potential reuse
+        // Reset all transform and opacity properties for potential reuse
         lv_obj_set_style_translate_x(panel, 0, LV_PART_MAIN);
+        lv_obj_set_style_translate_y(panel, 0, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(panel, 256, LV_PART_MAIN);
         lv_obj_set_style_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
         spdlog::trace("[NavigationManager] Animations disabled - hiding overlay instantly");
 
@@ -223,10 +243,10 @@ void NavigationManager::overlay_animate_slide_out(lv_obj_t* panel) {
 
         // Lifecycle: Activate what's now visible (same logic as animation callback)
         if (mgr.panel_stack_.size() == 1) {
-            if (mgr.panel_instances_[mgr.active_panel_]) {
+            if (mgr.panel_instances_[static_cast<int>(mgr.active_panel_)]) {
                 spdlog::trace("[NavigationManager] Activating main panel {} after overlay closed",
                               static_cast<int>(mgr.active_panel_));
-                mgr.panel_instances_[mgr.active_panel_]->on_activate();
+                mgr.panel_instances_[static_cast<int>(mgr.active_panel_)]->on_activate();
             }
         } else if (mgr.panel_stack_.size() > 1) {
             lv_obj_t* now_visible = mgr.panel_stack_.back();
@@ -274,6 +294,240 @@ void NavigationManager::overlay_animate_slide_out(lv_obj_t* panel) {
                   (void*)panel, panel_width);
 }
 
+void NavigationManager::overlay_animate_zoom_in(lv_obj_t* panel, lv_area_t source_rect) {
+    // Skip animation if disabled
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        lv_obj_set_style_translate_x(panel, 0, LV_PART_MAIN);
+        lv_obj_set_style_translate_y(panel, 0, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(panel, 256, LV_PART_MAIN);
+        lv_obj_set_style_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
+        spdlog::trace("[NavigationManager] Animations disabled - showing zoom overlay instantly");
+        return;
+    }
+
+    // Calculate panel dimensions
+    lv_obj_update_layout(panel);
+    int32_t panel_w = lv_obj_get_width(panel);
+    int32_t panel_h = lv_obj_get_height(panel);
+    if (panel_w <= 0)
+        panel_w = 480;
+    if (panel_h <= 0)
+        panel_h = 800;
+
+    // Get panel screen position
+    lv_area_t panel_coords;
+    lv_obj_get_coords(panel, &panel_coords);
+
+    // Calculate source rect center and panel center
+    int32_t src_cx = (source_rect.x1 + source_rect.x2) / 2;
+    int32_t src_cy = (source_rect.y1 + source_rect.y2) / 2;
+    int32_t panel_cx = (panel_coords.x1 + panel_coords.x2) / 2;
+    int32_t panel_cy = (panel_coords.y1 + panel_coords.y2) / 2;
+
+    // Calculate starting translation (offset from panel center to source center)
+    int32_t start_tx = src_cx - panel_cx;
+    int32_t start_ty = src_cy - panel_cy;
+
+    // Calculate starting scale based on card/panel size ratio
+    // LVGL scale: 256 = 100%
+    int32_t src_w = source_rect.x2 - source_rect.x1;
+    int32_t start_scale = (src_w * 256) / panel_w;
+    if (start_scale < 64)
+        start_scale = 64; // Min 25% scale
+    if (start_scale > 200)
+        start_scale = 200; // Max ~78% scale
+
+    spdlog::debug("[NavigationManager] zoom-in: panel={}x{} src=({},{}-{},{}) "
+                  "start_tx={} start_ty={} start_scale={}",
+                  panel_w, panel_h, source_rect.x1, source_rect.y1, source_rect.x2, source_rect.y2,
+                  start_tx, start_ty, start_scale);
+
+    // Set pivot to center for symmetric scaling
+    lv_obj_set_style_transform_pivot_x(panel, panel_w / 2, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(panel, panel_h / 2, LV_PART_MAIN);
+
+    // Set initial state
+    lv_obj_set_style_translate_x(panel, start_tx, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(panel, start_ty, LV_PART_MAIN);
+    lv_obj_set_style_transform_scale(panel, static_cast<int16_t>(start_scale), LV_PART_MAIN);
+    lv_obj_set_style_opa(panel, LV_OPA_TRANSP, LV_PART_MAIN);
+
+    // Translate X animation
+    lv_anim_t tx_anim;
+    lv_anim_init(&tx_anim);
+    lv_anim_set_var(&tx_anim, panel);
+    lv_anim_set_values(&tx_anim, start_tx, 0);
+    lv_anim_set_duration(&tx_anim, ZOOM_ANIM_DURATION_MS);
+    lv_anim_set_path_cb(&tx_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&tx_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_translate_x(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&tx_anim);
+
+    // Translate Y animation
+    lv_anim_t ty_anim;
+    lv_anim_init(&ty_anim);
+    lv_anim_set_var(&ty_anim, panel);
+    lv_anim_set_values(&ty_anim, start_ty, 0);
+    lv_anim_set_duration(&ty_anim, ZOOM_ANIM_DURATION_MS);
+    lv_anim_set_path_cb(&ty_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&ty_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_translate_y(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&ty_anim);
+
+    // Scale animation
+    lv_anim_t scale_anim;
+    lv_anim_init(&scale_anim);
+    lv_anim_set_var(&scale_anim, panel);
+    lv_anim_set_values(&scale_anim, start_scale, 256);
+    lv_anim_set_duration(&scale_anim, ZOOM_ANIM_DURATION_MS);
+    lv_anim_set_path_cb(&scale_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), static_cast<int16_t>(value),
+                                         LV_PART_MAIN);
+    });
+    lv_anim_start(&scale_anim);
+
+    // Opacity animation
+    lv_anim_t opa_anim;
+    lv_anim_init(&opa_anim);
+    lv_anim_set_var(&opa_anim, panel);
+    lv_anim_set_values(&opa_anim, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_duration(&opa_anim, ZOOM_ANIM_DURATION_MS);
+    lv_anim_set_path_cb(&opa_anim, lv_anim_path_ease_out);
+    lv_anim_set_exec_cb(&opa_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&opa_anim);
+
+    spdlog::trace("[NavigationManager] Started zoom-in animation for panel {} (scale {}->256, "
+                  "tx {}->0, ty {}->0)",
+                  (void*)panel, start_scale, start_tx, start_ty);
+}
+
+void NavigationManager::overlay_animate_zoom_out(lv_obj_t* panel, lv_area_t source_rect) {
+    // Disable clicks during animation
+    lv_obj_remove_flag(panel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(panel, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    // Skip animation if disabled
+    if (!SettingsManager::instance().get_animations_enabled()) {
+        lv_obj_add_flag(panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_translate_x(panel, 0, LV_PART_MAIN);
+        lv_obj_set_style_translate_y(panel, 0, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(panel, 256, LV_PART_MAIN);
+        lv_obj_set_style_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
+
+        // Invoke close callback
+        auto it = overlay_close_callbacks_.find(panel);
+        if (it != overlay_close_callbacks_.end()) {
+            auto callback = std::move(it->second);
+            overlay_close_callbacks_.erase(it);
+            callback();
+        }
+
+        // Lifecycle: Activate what's now visible
+        if (panel_stack_.size() == 1) {
+            if (panel_instances_[static_cast<int>(active_panel_)]) {
+                panel_instances_[static_cast<int>(active_panel_)]->on_activate();
+            }
+        } else if (panel_stack_.size() > 1) {
+            lv_obj_t* now_visible = panel_stack_.back();
+            auto overlay_it = overlay_instances_.find(now_visible);
+            if (overlay_it != overlay_instances_.end() && overlay_it->second) {
+                overlay_it->second->on_activate();
+            }
+        }
+        return;
+    }
+
+    // Calculate animation targets (reverse of zoom-in)
+    lv_obj_update_layout(panel);
+    int32_t panel_w = lv_obj_get_width(panel);
+    int32_t panel_h = lv_obj_get_height(panel);
+    if (panel_w <= 0)
+        panel_w = 480;
+    if (panel_h <= 0)
+        panel_h = 800;
+
+    lv_area_t panel_coords;
+    lv_obj_get_coords(panel, &panel_coords);
+
+    int32_t src_cx = (source_rect.x1 + source_rect.x2) / 2;
+    int32_t src_cy = (source_rect.y1 + source_rect.y2) / 2;
+    int32_t panel_cx = (panel_coords.x1 + panel_coords.x2) / 2;
+    int32_t panel_cy = (panel_coords.y1 + panel_coords.y2) / 2;
+
+    int32_t end_tx = src_cx - panel_cx;
+    int32_t end_ty = src_cy - panel_cy;
+
+    int32_t src_w = source_rect.x2 - source_rect.x1;
+    int32_t end_scale = (src_w * 256) / panel_w;
+    if (end_scale < 64)
+        end_scale = 64;
+    if (end_scale > 200)
+        end_scale = 200;
+
+    lv_obj_set_style_transform_pivot_x(panel, panel_w / 2, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(panel, panel_h / 2, LV_PART_MAIN);
+
+    // Translate X
+    lv_anim_t tx_anim;
+    lv_anim_init(&tx_anim);
+    lv_anim_set_var(&tx_anim, panel);
+    lv_anim_set_values(&tx_anim, 0, end_tx);
+    lv_anim_set_duration(&tx_anim, ZOOM_ANIM_DURATION_MS);
+    lv_anim_set_path_cb(&tx_anim, lv_anim_path_ease_in);
+    lv_anim_set_exec_cb(&tx_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_translate_x(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&tx_anim);
+
+    // Translate Y
+    lv_anim_t ty_anim;
+    lv_anim_init(&ty_anim);
+    lv_anim_set_var(&ty_anim, panel);
+    lv_anim_set_values(&ty_anim, 0, end_ty);
+    lv_anim_set_duration(&ty_anim, ZOOM_ANIM_DURATION_MS);
+    lv_anim_set_path_cb(&ty_anim, lv_anim_path_ease_in);
+    lv_anim_set_exec_cb(&ty_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_translate_y(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    lv_anim_start(&ty_anim);
+
+    // Scale
+    lv_anim_t scale_anim;
+    lv_anim_init(&scale_anim);
+    lv_anim_set_var(&scale_anim, panel);
+    lv_anim_set_values(&scale_anim, 256, end_scale);
+    lv_anim_set_duration(&scale_anim, ZOOM_ANIM_DURATION_MS);
+    lv_anim_set_path_cb(&scale_anim, lv_anim_path_ease_in);
+    lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), static_cast<int16_t>(value),
+                                         LV_PART_MAIN);
+    });
+    lv_anim_start(&scale_anim);
+
+    // Opacity — use the completed callback to handle post-animation cleanup
+    lv_anim_t opa_anim;
+    lv_anim_init(&opa_anim);
+    lv_anim_set_var(&opa_anim, panel);
+    lv_anim_set_values(&opa_anim, LV_OPA_COVER, LV_OPA_TRANSP);
+    lv_anim_set_duration(&opa_anim, ZOOM_ANIM_DURATION_MS);
+    lv_anim_set_path_cb(&opa_anim, lv_anim_path_ease_in);
+    lv_anim_set_exec_cb(&opa_anim, [](void* obj, int32_t value) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
+    });
+    // Reuse the existing slide-out completion callback for post-animation cleanup
+    lv_anim_set_completed_cb(&opa_anim, overlay_slide_out_complete_cb);
+    lv_anim_start(&opa_anim);
+
+    spdlog::trace("[NavigationManager] Started zoom-out animation for panel {} (scale 256->{}, "
+                  "tx 0->{}, ty 0->{})",
+                  (void*)panel, end_scale, end_tx, end_ty);
+}
+
 // ============================================================================
 // OBSERVER HANDLERS (used by factory-created observers)
 // ============================================================================
@@ -302,7 +556,7 @@ void NavigationManager::handle_connection_state_change(int state) {
                      static_cast<int>(active_panel_));
 
         clear_overlay_stack();
-        set_active(UI_PANEL_HOME);
+        set_active(PanelId::Home);
     }
 
     previous_connection_state_ = state;
@@ -321,7 +575,7 @@ void NavigationManager::handle_klippy_state_change(int state) {
                      static_cast<int>(active_panel_));
 
         clear_overlay_stack();
-        set_active(UI_PANEL_HOME);
+        set_active(PanelId::Home);
     }
 
     previous_klippy_state_ = state;
@@ -411,7 +665,7 @@ void NavigationManager::nav_button_clicked_cb(lv_event_t* event) {
         }
 
         // Block navigation to connection-required panels when disconnected or klippy not ready
-        if (panel_requires_connection(static_cast<ui_panel_id_t>(panel_id))) {
+        if (panel_requires_connection(static_cast<PanelId>(panel_id))) {
             if (!mgr.is_printer_connected()) {
                 spdlog::info("[NavigationManager] Navigation to panel {} blocked - not connected",
                              panel_id);
@@ -427,7 +681,7 @@ void NavigationManager::nav_button_clicked_cb(lv_event_t* event) {
 
         // Queue for REFR_START - guarantees we never modify widgets during render phase
         spdlog::trace("[NavigationManager] Queuing switch to panel {}", panel_id);
-        ui_queue_update(
+        helix::ui::queue_update(
             [panel_id]() { NavigationManager::instance().switch_to_panel_impl(panel_id); });
     }
 
@@ -507,7 +761,7 @@ void NavigationManager::switch_to_panel_impl(int panel_id) {
     }
 
     // Show the clicked panel
-    lv_obj_t* new_panel = panel_widgets_[panel_id];
+    lv_obj_t* new_panel = panel_widgets_[static_cast<int>(panel_id)];
     if (new_panel) {
         lv_obj_remove_flag(new_panel, LV_OBJ_FLAG_HIDDEN);
         panel_stack_.push_back(new_panel);
@@ -516,7 +770,7 @@ void NavigationManager::switch_to_panel_impl(int panel_id) {
     }
 
     spdlog::trace("[NavigationManager] Switched to panel {}", panel_id);
-    set_active((ui_panel_id_t)panel_id);
+    set_active((PanelId)panel_id);
     SoundManager::instance().play("nav_forward");
 }
 
@@ -532,7 +786,8 @@ void NavigationManager::init() {
 
     spdlog::trace("[NavigationManager] Initializing navigation reactive subjects...");
 
-    UI_MANAGED_SUBJECT_INT(active_panel_subject_, UI_PANEL_HOME, "active_panel", subjects_);
+    UI_MANAGED_SUBJECT_INT(active_panel_subject_, static_cast<int>(PanelId::Home), "active_panel",
+                           subjects_);
 
     // Overlay backdrop starts hidden
     UI_MANAGED_SUBJECT_INT(overlay_backdrop_visible_subject_, 0, "overlay_backdrop_visible",
@@ -543,6 +798,11 @@ void NavigationManager::init() {
         [](NavigationManager* mgr, int value) { mgr->handle_active_panel_change(value); });
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticSubjectRegistry::instance().register_deinit(
+        "NavigationManager", []() { NavigationManager::instance().deinit_subjects(); });
+
     spdlog::trace("[NavigationManager] Navigation subjects initialized successfully");
 }
 
@@ -602,6 +862,10 @@ void NavigationManager::wire_events(lv_obj_t* navbar) {
         }
 
         lv_obj_add_event_cb(btn, nav_button_clicked_cb, LV_EVENT_CLICKED, (void*)(uintptr_t)i);
+
+        // Remove focus ring — nav buttons use icon color swap for active state
+        lv_obj_remove_flag(btn, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+        lv_group_remove_obj(btn);
     }
 
     // Register connection state observer for redirect on disconnect
@@ -648,9 +912,9 @@ void NavigationManager::wire_status_icons(lv_obj_t* navbar) {
     }
 }
 
-void NavigationManager::set_active(ui_panel_id_t panel_id) {
-    if (panel_id >= UI_PANEL_COUNT) {
-        spdlog::error("[NavigationManager] Invalid panel ID: {}", (int)panel_id);
+void NavigationManager::set_active(PanelId panel_id) {
+    if (static_cast<int>(panel_id) >= UI_PANEL_COUNT) {
+        spdlog::error("[NavigationManager] Invalid panel ID: {}", static_cast<int>(panel_id));
         return;
     }
 
@@ -658,27 +922,27 @@ void NavigationManager::set_active(ui_panel_id_t panel_id) {
         return;
     }
 
-    ui_panel_id_t old_panel = active_panel_;
+    PanelId old_panel = active_panel_;
 
     // Update panel stack
     // IMPORTANT: Only update the base panel in the stack, preserving any overlays.
     // This fixes the bug where closing an overlay from Controls would return to Home
     // because set_active() was clearing the entire stack unconditionally.
-    if (panel_widgets_[panel_id]) {
+    if (panel_widgets_[static_cast<int>(panel_id)]) {
         if (panel_stack_.empty()) {
             // Stack is empty - just push the new panel
-            panel_stack_.push_back(panel_widgets_[panel_id]);
+            panel_stack_.push_back(panel_widgets_[static_cast<int>(panel_id)]);
             spdlog::trace("[NavigationManager] Panel stack initialized with panel {}",
                           static_cast<int>(panel_id));
         } else if (panel_stack_.size() == 1) {
             // Only base panel in stack - replace it
-            panel_stack_[0] = panel_widgets_[panel_id];
+            panel_stack_[0] = panel_widgets_[static_cast<int>(panel_id)];
             spdlog::trace("[NavigationManager] Panel stack base updated to panel {}",
                           static_cast<int>(panel_id));
         } else {
             // Overlays are present - update base panel but preserve overlays
             // This handles the case where connection changes while an overlay is open
-            panel_stack_[0] = panel_widgets_[panel_id];
+            panel_stack_[0] = panel_widgets_[static_cast<int>(panel_id)];
             spdlog::trace("[NavigationManager] Panel stack base updated to panel {}, "
                           "preserving {} overlays",
                           static_cast<int>(panel_id), panel_stack_.size() - 1);
@@ -686,25 +950,25 @@ void NavigationManager::set_active(ui_panel_id_t panel_id) {
     }
 
     // Call on_deactivate() BEFORE state update
-    if (panel_instances_[old_panel]) {
+    if (panel_instances_[static_cast<int>(old_panel)]) {
         spdlog::trace("[NavigationManager] Calling on_deactivate() for panel {}",
                       static_cast<int>(old_panel));
-        panel_instances_[old_panel]->on_deactivate();
+        panel_instances_[static_cast<int>(old_panel)]->on_deactivate();
     }
 
     // Update state
-    lv_subject_set_int(&active_panel_subject_, panel_id);
+    lv_subject_set_int(&active_panel_subject_, static_cast<int>(panel_id));
     active_panel_ = panel_id;
 
     // Call on_activate() AFTER state update
-    if (panel_instances_[panel_id]) {
+    if (panel_instances_[static_cast<int>(panel_id)]) {
         spdlog::trace("[NavigationManager] Calling on_activate() for panel {}",
                       static_cast<int>(panel_id));
-        panel_instances_[panel_id]->on_activate();
+        panel_instances_[static_cast<int>(panel_id)]->on_activate();
     }
 }
 
-ui_panel_id_t NavigationManager::get_active() const {
+PanelId NavigationManager::get_active() const {
     return active_panel_;
 }
 
@@ -721,7 +985,7 @@ void NavigationManager::set_panels(lv_obj_t** panels) {
     // Hide all panels except active one
     for (int i = 0; i < UI_PANEL_COUNT; i++) {
         if (panel_widgets_[i]) {
-            if (i == active_panel_) {
+            if (i == static_cast<int>(active_panel_)) {
                 lv_obj_remove_flag(panel_widgets_[i], LV_OBJ_FLAG_HIDDEN);
             } else {
                 lv_obj_add_flag(panel_widgets_[i], LV_OBJ_FLAG_HIDDEN);
@@ -731,30 +995,30 @@ void NavigationManager::set_panels(lv_obj_t** panels) {
 
     // Initialize panel stack
     panel_stack_.clear();
-    if (panel_widgets_[active_panel_]) {
-        panel_stack_.push_back(panel_widgets_[active_panel_]);
+    if (panel_widgets_[static_cast<int>(active_panel_)]) {
+        panel_stack_.push_back(panel_widgets_[static_cast<int>(active_panel_)]);
         spdlog::trace("[NavigationManager] Panel stack initialized with active panel {}",
-                      (void*)panel_widgets_[active_panel_]);
+                      (void*)panel_widgets_[static_cast<int>(active_panel_)]);
     }
 
     spdlog::trace("[NavigationManager] Panel widgets registered for show/hide management");
 }
 
-void NavigationManager::register_panel_instance(ui_panel_id_t id, PanelBase* panel) {
-    if (id >= UI_PANEL_COUNT) {
+void NavigationManager::register_panel_instance(PanelId id, PanelBase* panel) {
+    if (static_cast<int>(id) >= UI_PANEL_COUNT) {
         spdlog::error("[NavigationManager] Invalid panel ID for registration: {}",
                       static_cast<int>(id));
         return;
     }
-    panel_instances_[id] = panel;
+    panel_instances_[static_cast<int>(id)] = panel;
     spdlog::trace("[NavigationManager] Registered panel instance for ID {}", static_cast<int>(id));
 }
 
 void NavigationManager::activate_initial_panel() {
-    if (panel_instances_[active_panel_]) {
+    if (panel_instances_[static_cast<int>(active_panel_)]) {
         spdlog::trace("[NavigationManager] Activating initial panel {}",
                       static_cast<int>(active_panel_));
-        panel_instances_[active_panel_]->on_activate();
+        panel_instances_[static_cast<int>(active_panel_)]->on_activate();
     }
 }
 
@@ -790,7 +1054,7 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
 
     // Always queue - this is the safest pattern for overlay operations
     // which can be triggered from various contexts (events, observers, etc.)
-    ui_queue_update([overlay_panel, hide_previous]() {
+    helix::ui::queue_update([overlay_panel, hide_previous]() {
         auto& mgr = NavigationManager::instance();
 
         // Check for duplicate push
@@ -806,10 +1070,10 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
         // Lifecycle: Deactivate what's currently visible before showing new overlay
         if (is_first_overlay) {
             // Deactivate main panel when first overlay covers it
-            if (mgr.panel_instances_[mgr.active_panel_]) {
+            if (mgr.panel_instances_[static_cast<int>(mgr.active_panel_)]) {
                 spdlog::trace("[NavigationManager] Deactivating main panel {} for overlay",
                               static_cast<int>(mgr.active_panel_));
-                mgr.panel_instances_[mgr.active_panel_]->on_deactivate();
+                mgr.panel_instances_[static_cast<int>(mgr.active_panel_)]->on_deactivate();
             }
         } else {
             // Deactivate previous overlay if stacking
@@ -834,17 +1098,11 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
             if (is_first_overlay && mgr.overlay_backdrop_) {
                 mgr.set_backdrop_visible(true);
                 lv_obj_move_foreground(mgr.overlay_backdrop_);
-            } else if (!is_first_overlay) {
-                lv_obj_t* backdrop =
-                    static_cast<lv_obj_t*>(lv_xml_create(screen, "overlay_backdrop", nullptr));
-                if (backdrop) {
-                    mgr.overlay_backdrops_[overlay_panel] = backdrop;
-                    lv_obj_remove_flag(backdrop, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_move_foreground(backdrop);
-                    lv_obj_add_event_cb(backdrop, backdrop_click_event_cb, LV_EVENT_CLICKED,
-                                        nullptr);
-                }
             }
+            // Nested overlays do NOT get their own backdrop — the primary
+            // backdrop already provides dimming for the entire overlay stack.
+            // Secondary/deeper settings panels (e.g. theme editor inside
+            // display settings) should not add additional darkening layers.
         }
 
         // Show overlay
@@ -869,6 +1127,88 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
     });
 }
 
+void NavigationManager::push_overlay_zoom_from(lv_obj_t* overlay_panel, lv_area_t source_rect) {
+    if (!overlay_panel) {
+        spdlog::error("[NavigationManager] Cannot push NULL overlay panel");
+        return;
+    }
+
+    // Queue the push operation (same pattern as push_overlay)
+    helix::ui::queue_update([overlay_panel, source_rect]() {
+        auto& mgr = NavigationManager::instance();
+
+        // Store source rect for reverse animation on go_back (must be on UI thread)
+        mgr.zoom_source_rects_[overlay_panel] = source_rect;
+
+        // Check for duplicate push
+        if (std::find(mgr.panel_stack_.begin(), mgr.panel_stack_.end(), overlay_panel) !=
+            mgr.panel_stack_.end()) {
+            spdlog::warn("[NavigationManager] Overlay {} already in stack, ignoring duplicate push",
+                         (void*)overlay_panel);
+            return;
+        }
+
+        bool is_first_overlay = (mgr.panel_stack_.size() == 1);
+
+        // Lifecycle: Deactivate what's currently visible
+        if (is_first_overlay) {
+            if (mgr.panel_instances_[static_cast<int>(mgr.active_panel_)]) {
+                mgr.panel_instances_[static_cast<int>(mgr.active_panel_)]->on_deactivate();
+            }
+        } else {
+            lv_obj_t* prev_overlay = mgr.panel_stack_.back();
+            auto it = mgr.overlay_instances_.find(prev_overlay);
+            if (it != mgr.overlay_instances_.end() && it->second) {
+                it->second->on_deactivate();
+            }
+        }
+
+        // Hide current top panel
+        if (!mgr.panel_stack_.empty()) {
+            lv_obj_t* current_top = mgr.panel_stack_.back();
+            lv_obj_add_flag(current_top, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        // Create backdrop
+        lv_obj_t* screen = lv_obj_get_screen(overlay_panel);
+        if (screen) {
+            if (is_first_overlay && mgr.overlay_backdrop_) {
+                mgr.set_backdrop_visible(true);
+                lv_obj_move_foreground(mgr.overlay_backdrop_);
+            } else if (!is_first_overlay) {
+                lv_obj_t* backdrop =
+                    static_cast<lv_obj_t*>(lv_xml_create(screen, "overlay_backdrop", nullptr));
+                if (backdrop) {
+                    mgr.overlay_backdrops_[overlay_panel] = backdrop;
+                    lv_obj_remove_flag(backdrop, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_move_foreground(backdrop);
+                    lv_obj_add_event_cb(backdrop, backdrop_click_event_cb, LV_EVENT_CLICKED,
+                                        nullptr);
+                }
+            }
+        }
+
+        // Show overlay with zoom animation instead of slide
+        lv_obj_remove_flag(overlay_panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(overlay_panel);
+        mgr.panel_stack_.push_back(overlay_panel);
+        mgr.overlay_animate_zoom_in(overlay_panel, source_rect);
+
+        // Lifecycle: Activate new overlay
+        auto it = mgr.overlay_instances_.find(overlay_panel);
+        if (it == mgr.overlay_instances_.end()) {
+            spdlog::warn("[NavigationManager] Overlay {} pushed without lifecycle registration",
+                         (void*)overlay_panel);
+        } else if (it->second) {
+            it->second->on_activate();
+        }
+
+        SoundManager::instance().play("nav_forward");
+        spdlog::trace("[NavigationManager] Pushed overlay {} with zoom (stack: {})",
+                      (void*)overlay_panel, mgr.panel_stack_.size());
+    });
+}
+
 void NavigationManager::register_overlay_close_callback(lv_obj_t* overlay_panel,
                                                         OverlayCloseCallback callback) {
     if (!overlay_panel || !callback) {
@@ -889,7 +1229,7 @@ void NavigationManager::unregister_overlay_close_callback(lv_obj_t* overlay_pane
 }
 
 bool NavigationManager::go_back() {
-    ui_queue_update([]() {
+    helix::ui::queue_update([]() {
         auto& mgr = NavigationManager::instance();
         spdlog::trace("[NavigationManager] go_back executing, stack depth: {}",
                       mgr.panel_stack_.size());
@@ -925,9 +1265,16 @@ bool NavigationManager::go_back() {
             }
         }
 
-        // Animate slide-out if overlay
+        // Animate out if overlay (zoom-out for zoomed overlays, slide-out otherwise)
         if (is_overlay && current_top) {
-            mgr.overlay_animate_slide_out(current_top);
+            auto zoom_it = mgr.zoom_source_rects_.find(current_top);
+            if (zoom_it != mgr.zoom_source_rects_.end()) {
+                lv_area_t source_rect = zoom_it->second;
+                mgr.zoom_source_rects_.erase(zoom_it);
+                mgr.overlay_animate_zoom_out(current_top, source_rect);
+            } else {
+                mgr.overlay_animate_slide_out(current_top);
+            }
             SoundManager::instance().play("nav_back");
         }
 
@@ -956,6 +1303,8 @@ bool NavigationManager::go_back() {
                 if (!is_main && !lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN)) {
                     lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
                     lv_obj_set_style_translate_x(child, 0, LV_PART_MAIN);
+                    lv_obj_set_style_translate_y(child, 0, LV_PART_MAIN);
+                    lv_obj_set_style_transform_scale(child, 256, LV_PART_MAIN);
                     lv_obj_set_style_opa(child, LV_OPA_COVER, LV_PART_MAIN);
                 }
             }
@@ -984,11 +1333,12 @@ bool NavigationManager::go_back() {
                 if (mgr.panel_widgets_[i])
                     lv_obj_add_flag(mgr.panel_widgets_[i], LV_OBJ_FLAG_HIDDEN);
             }
-            if (mgr.panel_widgets_[UI_PANEL_HOME]) {
-                lv_obj_remove_flag(mgr.panel_widgets_[UI_PANEL_HOME], LV_OBJ_FLAG_HIDDEN);
-                mgr.panel_stack_.push_back(mgr.panel_widgets_[UI_PANEL_HOME]);
-                mgr.active_panel_ = UI_PANEL_HOME;
-                lv_subject_set_int(&mgr.active_panel_subject_, UI_PANEL_HOME);
+            if (mgr.panel_widgets_[static_cast<int>(PanelId::Home)]) {
+                lv_obj_remove_flag(mgr.panel_widgets_[static_cast<int>(PanelId::Home)],
+                                   LV_OBJ_FLAG_HIDDEN);
+                mgr.panel_stack_.push_back(mgr.panel_widgets_[static_cast<int>(PanelId::Home)]);
+                mgr.active_panel_ = PanelId::Home;
+                lv_subject_set_int(&mgr.active_panel_subject_, static_cast<int>(PanelId::Home));
             }
             return;
         }
@@ -1001,7 +1351,7 @@ bool NavigationManager::go_back() {
                     if (j != i && mgr.panel_widgets_[j])
                         lv_obj_add_flag(mgr.panel_widgets_[j], LV_OBJ_FLAG_HIDDEN);
                 }
-                mgr.active_panel_ = static_cast<ui_panel_id_t>(i);
+                mgr.active_panel_ = static_cast<PanelId>(i);
                 lv_subject_set_int(&mgr.active_panel_subject_, i);
                 break;
             }
@@ -1041,8 +1391,9 @@ void NavigationManager::shutdown() {
         panel = nullptr;
     }
 
-    // Clear panel stack
+    // Clear panel stack and zoom state
     panel_stack_.clear();
+    zoom_source_rects_.clear();
 
     spdlog::trace("[NavigationManager] Shutdown complete");
 }
@@ -1080,58 +1431,15 @@ void NavigationManager::deinit_subjects() {
     overlay_instances_.clear();
     overlay_close_callbacks_.clear();
     overlay_backdrops_.clear();
+    zoom_source_rects_.clear();
     panel_stack_.clear();
     app_layout_widget_ = nullptr;
     overlay_backdrop_ = nullptr;
     navbar_widget_ = nullptr;
-    active_panel_ = UI_PANEL_HOME;
+    active_panel_ = PanelId::Home;
     previous_connection_state_ = -1;
     previous_klippy_state_ = -1;
 
     subjects_initialized_ = false;
     spdlog::trace("[NavigationManager] Subjects deinitialized");
-}
-
-// ============================================================================
-// LEGACY API (forwards to NavigationManager)
-// ============================================================================
-
-void ui_nav_init() {
-    NavigationManager::instance().init();
-}
-
-void ui_nav_init_overlay_backdrop(lv_obj_t* screen) {
-    NavigationManager::instance().init_overlay_backdrop(screen);
-}
-
-void ui_nav_set_app_layout(lv_obj_t* app_layout) {
-    NavigationManager::instance().set_app_layout(app_layout);
-}
-
-void ui_nav_wire_events(lv_obj_t* navbar) {
-    NavigationManager::instance().wire_events(navbar);
-}
-
-void ui_nav_wire_status_icons(lv_obj_t* navbar) {
-    NavigationManager::instance().wire_status_icons(navbar);
-}
-
-void ui_nav_set_active(ui_panel_id_t panel_id) {
-    NavigationManager::instance().set_active(panel_id);
-}
-
-ui_panel_id_t ui_nav_get_active() {
-    return NavigationManager::instance().get_active();
-}
-
-void ui_nav_set_panels(lv_obj_t** panels) {
-    NavigationManager::instance().set_panels(panels);
-}
-
-void ui_nav_push_overlay(lv_obj_t* overlay_panel, bool hide_previous) {
-    NavigationManager::instance().push_overlay(overlay_panel, hide_previous);
-}
-
-bool ui_nav_go_back() {
-    return NavigationManager::instance().go_back();
 }

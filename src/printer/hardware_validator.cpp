@@ -19,6 +19,8 @@
 #include <iomanip>
 #include <sstream>
 
+using namespace helix;
+
 // =============================================================================
 // HardwareSnapshot Implementation
 // =============================================================================
@@ -147,7 +149,7 @@ HardwareValidationResult HardwareValidator::validate(Config* config,
 // Static callback for toast action button - navigates to Settings and opens overlay
 static void on_hardware_toast_view_clicked(void* /*user_data*/) {
     spdlog::debug("[HardwareValidator] Toast 'View' clicked - opening Hardware Health overlay");
-    ui_nav_set_active(UI_PANEL_SETTINGS);
+    NavigationManager::instance().set_active(PanelId::Settings);
     get_global_settings_panel().handle_hardware_health_clicked();
 }
 
@@ -198,8 +200,8 @@ void HardwareValidator::notify_user(const HardwareValidationResult& result) {
     }
 
     // Show toast with action button to navigate to Hardware Health section
-    ui_toast_show_with_action(severity, message.c_str(), "View", on_hardware_toast_view_clicked,
-                              nullptr, 8000);
+    ToastManager::instance().show_with_action(severity, message.c_str(), "View",
+                                              on_hardware_toast_view_clicked, nullptr, 8000);
     spdlog::debug("[HardwareValidator] Notified user ({}): {}",
                   severity == ToastSeverity::ERROR     ? "error"
                   : severity == ToastSeverity::WARNING ? "warning"
@@ -559,6 +561,22 @@ void HardwareValidator::validate_configured_hardware(Config* config,
 void HardwareValidator::validate_new_hardware(Config* config,
                                               const helix::PrinterDiscovery& hardware,
                                               HardwareValidationResult& result) {
+    // Load hardware/expected list — items the user has already acknowledged via Save
+    std::vector<std::string> expected_hardware;
+    if (config) {
+        try {
+            json& expected_list = config->get_json(config->df() + "hardware/expected");
+            if (expected_list.is_array()) {
+                for (const auto& item : expected_list) {
+                    if (item.is_string()) {
+                        expected_hardware.push_back(item.get<std::string>());
+                    }
+                }
+            }
+        } catch (...) {
+        }
+    }
+
     const auto& leds = hardware.leds();
 
     // Check for LEDs not in config
@@ -600,7 +618,7 @@ void HardwareValidator::validate_new_hardware(Config* config,
             suggested = leds[0];
         }
 
-        if (!suggested.empty()) {
+        if (!suggested.empty() && !contains_name(expected_hardware, suggested)) {
             result.newly_discovered.push_back(
                 HardwareIssue::info(suggested, HardwareType::LED,
                                     "LED strip available. Add to config for lighting control?"));
@@ -633,7 +651,7 @@ void HardwareValidator::validate_new_hardware(Config* config,
             spdlog::debug("[HardwareValidator] Skipping AMS sensor: {}", sensor);
             continue;
         }
-        if (!contains_name(configured_names, sensor)) {
+        if (!contains_name(configured_names, sensor) && !contains_name(expected_hardware, sensor)) {
             result.newly_discovered.push_back(HardwareIssue::info(
                 sensor, HardwareType::FILAMENT_SENSOR,
                 "Filament sensor available. Add to config for runout detection?"));

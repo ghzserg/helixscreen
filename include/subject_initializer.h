@@ -38,9 +38,6 @@ class UsbManager;
  *   subjects.init_panels(api, runtime_config);
  *   subjects.init_post(runtime_config);
  *
- * Usage (legacy - deferred injection):
- *   SubjectInitializer subjects;
- *   subjects.init_all(runtime_config);
  */
 class SubjectInitializer {
   public:
@@ -52,16 +49,6 @@ class SubjectInitializer {
     SubjectInitializer& operator=(const SubjectInitializer&) = delete;
     SubjectInitializer(SubjectInitializer&&) = delete;
     SubjectInitializer& operator=(SubjectInitializer&&) = delete;
-
-    /**
-     * @brief Initialize all subjects in dependency order (legacy pattern)
-     * @param runtime_config Runtime configuration for mock modes
-     * @return true if initialization succeeded
-     *
-     * @deprecated Use init_core_and_state() + init_panels() + init_post() instead
-     *             for proper dependency injection.
-     */
-    bool init_all(const RuntimeConfig& runtime_config);
 
     /**
      * @brief Initialize core subjects and state (phases 1-3)

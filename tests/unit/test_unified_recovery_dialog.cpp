@@ -9,6 +9,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Suppression logic tests (lightweight, just need LVGL tick)
 // ============================================================================

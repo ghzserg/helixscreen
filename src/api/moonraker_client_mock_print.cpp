@@ -11,6 +11,8 @@
 
 #include <lvgl.h>
 
+using namespace helix;
+
 namespace mock_internal {
 
 void register_print_handlers(std::unordered_map<std::string, MethodHandler>& registry) {
@@ -135,7 +137,7 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
         spdlog::warn("[MoonrakerClientMock] Emergency stop executed!");
 
         // Set klippy state to SHUTDOWN (must defer to main thread)
-        ui_async_call(
+        helix::ui::async_call(
             [](void*) { get_printer_state().set_klippy_state_sync(KlippyState::SHUTDOWN); },
             nullptr);
 
@@ -153,7 +155,7 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
         spdlog::info("[MoonrakerClientMock] Firmware restart initiated");
 
         // Simulate restart: briefly go SHUTDOWN, then READY after 1 second
-        ui_async_call(
+        helix::ui::async_call(
             [](void*) {
                 get_printer_state().set_klippy_state_sync(KlippyState::SHUTDOWN);
 
@@ -188,7 +190,7 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
         spdlog::info("[MoonrakerClientMock] Klipper restart initiated");
 
         // Simulate restart: briefly go SHUTDOWN, then READY after 500ms
-        ui_async_call(
+        helix::ui::async_call(
             [](void*) {
                 get_printer_state().set_klippy_state_sync(KlippyState::SHUTDOWN);
 

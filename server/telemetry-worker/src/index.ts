@@ -1,9 +1,31 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // HelixScreen telemetry ingestion worker — stores batched events in R2.
 
+import { mapEventToDataPoint } from "./analytics";
+import {
+  executeQuery,
+  parseRange,
+  overviewQueries,
+  adoptionQueries,
+  printsQueries,
+  crashesQueries,
+  crashListQuery,
+  releasesQueries,
+  type QueryConfig,
+} from "./queries";
+
 // Rate limiting binding type (added in @cloudflare/workers-types after our pinned version)
 interface RateLimiter {
   limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
+// Analytics Engine dataset binding type
+interface AnalyticsEngineDataset {
+  writeDataPoint(point: {
+    blobs?: string[];
+    doubles?: number[];
+    indexes?: string[];
+  }): void;
 }
 
 interface Env {
@@ -11,6 +33,9 @@ interface Env {
   INGEST_API_KEY: string; // Cloudflare secret: wrangler secret put INGEST_API_KEY
   ADMIN_API_KEY: string; // Cloudflare secret: wrangler secret put ADMIN_API_KEY (for analytics)
   INGEST_LIMITER: RateLimiter; // Rate limiting binding (see wrangler.toml)
+  TELEMETRY_ANALYTICS?: AnalyticsEngineDataset; // Analytics Engine (see wrangler.toml)
+  CLOUDFLARE_ACCOUNT_ID: string; // Set in wrangler.toml [vars]
+  HELIX_ANALYTICS_READ_TOKEN?: string; // Cloudflare secret: wrangler secret put HELIX_ANALYTICS_READ_TOKEN
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -124,6 +149,19 @@ export default {
         return json({ error: "Failed to store events" }, 500);
       }
 
+      // Dual-write to Analytics Engine (fire-and-forget, never blocks response)
+      if (env.TELEMETRY_ANALYTICS) {
+        for (const evt of body) {
+          try {
+            env.TELEMETRY_ANALYTICS.writeDataPoint(
+              mapEventToDataPoint(evt as Record<string, unknown>),
+            );
+          } catch {
+            // Analytics Engine failure must not affect ingestion
+          }
+        }
+      }
+
       return json({ status: "ok", stored: body.length });
     }
 
@@ -183,6 +221,270 @@ export default {
           ...CORS_HEADERS,
         },
       });
+    }
+
+    // ---------- Dashboard endpoints (all require ADMIN_API_KEY) ----------
+
+    if (url.pathname.startsWith("/v1/dashboard/")) {
+      if (request.method !== "GET") {
+        return json({ error: "Method not allowed" }, 405);
+      }
+
+      const apiKey = request.headers.get("x-api-key") ?? "";
+      if (!env.ADMIN_API_KEY || apiKey !== env.ADMIN_API_KEY) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+
+      if (!env.CLOUDFLARE_ACCOUNT_ID || !env.HELIX_ANALYTICS_READ_TOKEN) {
+        return json({ error: "Analytics Engine not configured" }, 503);
+      }
+
+      const queryConfig: QueryConfig = {
+        accountId: env.CLOUDFLARE_ACCOUNT_ID,
+        apiToken: env.HELIX_ANALYTICS_READ_TOKEN,
+      };
+
+      const range = url.searchParams.get("range");
+      const days = parseRange(range);
+
+      try {
+        // GET /v1/dashboard/overview
+        if (url.pathname === "/v1/dashboard/overview") {
+          const queries = overviewQueries(days);
+          const [devicesRes, totalRes, rateRes, printRes, timeRes] =
+            await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
+
+          const devicesData = devicesRes as { data: Array<{ active_devices: number }> };
+          const totalData = totalRes as { data: Array<{ total_events: number }> };
+          const rateData = rateRes as { data: Array<{ crash_count: number; session_count: number }> };
+          const printData = printRes as { data: Array<{ successes: number; total: number }> };
+          const timeData = timeRes as { data: Array<{ date: string; count: number }> };
+
+          const crashRow = rateData.data?.[0] ?? { crash_count: 0, session_count: 0 };
+          const printRow = printData.data?.[0] ?? { successes: 0, total: 0 };
+
+          return json({
+            active_devices: devicesData.data?.[0]?.active_devices ?? 0,
+            total_events: totalData.data?.[0]?.total_events ?? 0,
+            crash_rate: crashRow.session_count > 0 ? crashRow.crash_count / crashRow.session_count : 0,
+            print_success_rate: printRow.total > 0 ? printRow.successes / printRow.total : 0,
+            events_over_time: (timeData.data ?? []).map((r) => ({
+              date: r.date,
+              count: r.count,
+            })),
+          });
+        }
+
+        // GET /v1/dashboard/adoption
+        if (url.pathname === "/v1/dashboard/adoption") {
+          const queries = adoptionQueries(days);
+          const [platformsRes, versionsRes, modelsRes, kinematicsRes] =
+            await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
+
+          const toList = (res: unknown) => {
+            const d = res as { data: Array<{ name: string; count: number }> };
+            return (d.data ?? []).map((r) => ({ name: r.name, count: r.count }));
+          };
+
+          return json({
+            platforms: toList(platformsRes),
+            versions: toList(versionsRes),
+            printer_models: toList(modelsRes),
+            kinematics: toList(kinematicsRes),
+          });
+        }
+
+        // GET /v1/dashboard/prints
+        if (url.pathname === "/v1/dashboard/prints") {
+          const queries = printsQueries(days);
+          const [rateTimeRes, filamentRes, avgDurRes] =
+            await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
+
+          const rateTimeData = rateTimeRes as { data: Array<{ date: string; rate: number; total: number }> };
+          const filamentData = filamentRes as { data: Array<{ type: string; success_rate: number; count: number }> };
+          const avgDurData = avgDurRes as { data: Array<{ avg_duration_sec: number }> };
+
+          return json({
+            success_rate_over_time: (rateTimeData.data ?? []).map((r) => ({
+              date: r.date,
+              rate: r.rate,
+              total: r.total,
+            })),
+            by_filament: (filamentData.data ?? []).map((r) => ({
+              type: r.type,
+              success_rate: r.success_rate,
+              count: r.count,
+            })),
+            avg_duration_sec: avgDurData.data?.[0]?.avg_duration_sec ?? 0,
+          });
+        }
+
+        // GET /v1/dashboard/crashes
+        if (url.pathname === "/v1/dashboard/crashes") {
+          const queries = crashesQueries(days);
+          const [crashByVerRes, sessionByVerRes, signalRes, uptimeRes] =
+            await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
+
+          const crashByVer = crashByVerRes as { data: Array<{ ver: string; crash_count: number }> };
+          const sessionByVer = sessionByVerRes as { data: Array<{ ver: string; session_count: number }> };
+          const signalData = signalRes as { data: Array<{ signal: string; count: number }> };
+          const uptimeData = uptimeRes as { data: Array<{ avg_uptime_sec: number }> };
+
+          // Build session count lookup
+          const sessionMap = new Map<string, number>();
+          for (const row of sessionByVer.data ?? []) {
+            sessionMap.set(row.ver, row.session_count);
+          }
+
+          return json({
+            by_version: (crashByVer.data ?? []).map((r) => {
+              const sessionCount = sessionMap.get(r.ver) ?? 0;
+              return {
+                version: r.ver,
+                crash_count: r.crash_count,
+                session_count: sessionCount,
+                rate: sessionCount > 0 ? r.crash_count / sessionCount : 0,
+              };
+            }),
+            by_signal: (signalData.data ?? []).map((r) => ({
+              signal: r.signal,
+              count: r.count,
+            })),
+            avg_uptime_sec: uptimeData.data?.[0]?.avg_uptime_sec ?? 0,
+          });
+        }
+
+        // GET /v1/dashboard/crash-list?range=30d&limit=50
+        if (url.pathname === "/v1/dashboard/crash-list") {
+          const limit = Math.max(1, Math.min(
+            parseInt(url.searchParams.get("limit") ?? "50", 10) || 50,
+            200,
+          ));
+          const sql = crashListQuery(days, limit);
+          const result = await executeQuery(queryConfig, sql);
+          const data = result as {
+            data: Array<{
+              timestamp: string;
+              device_id: string;
+              ver: string;
+              sig: string;
+              platform: string;
+              uptime_sec: number;
+            }>;
+          };
+
+          return json({
+            crashes: (data.data ?? []).map((r) => ({
+              timestamp: r.timestamp,
+              device_id: r.device_id,
+              version: r.ver,
+              signal: r.sig,
+              platform: r.platform,
+              uptime_sec: r.uptime_sec,
+            })),
+          });
+        }
+
+        // GET /v1/dashboard/releases?versions=v0.9.18,v0.9.19
+        if (url.pathname === "/v1/dashboard/releases") {
+          const versionsParam = url.searchParams.get("versions");
+          if (!versionsParam) {
+            return json({ error: "versions parameter required" }, 400);
+          }
+          const versions = versionsParam.split(",").map((v) => v.trim()).filter(Boolean);
+          if (versions.length === 0 || versions.length > 20) {
+            return json({ error: "Provide 1-20 comma-separated versions" }, 400);
+          }
+
+          const queries = releasesQueries(versions);
+          const [statsRes, printStatsRes] =
+            await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
+
+          const statsData = statsRes as {
+            data: Array<{ ver: string; total_sessions: number; total_crashes: number; active_devices: number }>;
+          };
+          const printStatsData = printStatsRes as {
+            data: Array<{ ver: string; print_successes: number; print_total: number }>;
+          };
+
+          // Build print stats lookup
+          const printMap = new Map<string, { successes: number; total: number }>();
+          for (const row of printStatsData.data ?? []) {
+            printMap.set(row.ver, { successes: row.print_successes, total: row.print_total });
+          }
+
+          return json({
+            versions: (statsData.data ?? []).map((r) => {
+              const prints = printMap.get(r.ver) ?? { successes: 0, total: 0 };
+              return {
+                version: r.ver,
+                active_devices: r.active_devices,
+                crash_rate: r.total_sessions > 0 ? r.total_crashes / r.total_sessions : 0,
+                print_success_rate: prints.total > 0 ? prints.successes / prints.total : 0,
+                total_sessions: r.total_sessions,
+                total_crashes: r.total_crashes,
+              };
+            }),
+          });
+        }
+
+        return json({ error: "Not found" }, 404);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return json({ error: `Analytics query failed: ${message}` }, 502);
+      }
+    }
+
+    // ---------- Backfill endpoint (admin only) ----------
+    // POST /v1/admin/backfill — writes historical events to Analytics Engine
+    if (url.pathname === "/v1/admin/backfill" && request.method === "POST") {
+      const apiKey = request.headers.get("x-api-key") ?? "";
+      if (!env.ADMIN_API_KEY || apiKey !== env.ADMIN_API_KEY) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+
+      if (!env.TELEMETRY_ANALYTICS) {
+        return json({ error: "Analytics Engine not configured" }, 503);
+      }
+
+      const contentType = request.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        return json({ error: "Content-Type must be application/json" }, 400);
+      }
+
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+
+      if (typeof body !== "object" || body === null || Array.isArray(body)) {
+        return json({ error: "Body must be an object with events array" }, 400);
+      }
+
+      const events = (body as Record<string, unknown>).events;
+      if (!Array.isArray(events)) {
+        return json({ error: "events must be an array" }, 400);
+      }
+
+      if (events.length === 0) {
+        return json({ error: "events array must not be empty" }, 400);
+      }
+
+      let written = 0;
+      for (const evt of events) {
+        try {
+          env.TELEMETRY_ANALYTICS.writeDataPoint(
+            mapEventToDataPoint(evt as Record<string, unknown>),
+          );
+          written++;
+        } catch {
+          // Skip individual failures, continue backfilling
+        }
+      }
+
+      return json({ status: "ok", written });
     }
 
     // Symbol map listing — returns available platforms for a version

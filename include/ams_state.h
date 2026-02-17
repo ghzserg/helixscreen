@@ -12,10 +12,13 @@
 
 #include <memory>
 #include <mutex>
+#include <vector>
 
 // Forward declarations
 class MoonrakerAPI;
+namespace helix {
 class MoonrakerClient;
+}
 
 namespace helix {
 class PrinterDiscovery;
@@ -109,10 +112,24 @@ class AmsState {
      *
      * @param hardware Discovered printer hardware
      * @param api MoonrakerAPI instance for making API calls
-     * @param client MoonrakerClient instance for WebSocket communication
+     * @param client helix::MoonrakerClient instance for WebSocket communication
      */
     void init_backend_from_hardware(const helix::PrinterDiscovery& hardware, MoonrakerAPI* api,
-                                    MoonrakerClient* client);
+                                    helix::MoonrakerClient* client);
+
+    /**
+     * @brief Initialize backends from all detected AMS/filament systems
+     *
+     * Called after Moonraker discovery completes. Creates a backend for each
+     * detected system (MMU, tool changer, AFC, etc.). Supports multiple
+     * concurrent backends for printers with multiple filament systems.
+     *
+     * @param hardware Discovered printer hardware
+     * @param api MoonrakerAPI instance for making API calls
+     * @param client helix::MoonrakerClient instance for WebSocket communication
+     */
+    void init_backends_from_hardware(const helix::PrinterDiscovery& hardware, MoonrakerAPI* api,
+                                     helix::MoonrakerClient* client);
 
     /**
      * @brief Set the AMS backend
@@ -125,10 +142,35 @@ class AmsState {
     void set_backend(std::unique_ptr<AmsBackend> backend);
 
     /**
-     * @brief Get the current backend
+     * @brief Get the primary backend (index 0)
      * @return Pointer to backend (may be nullptr)
      */
     [[nodiscard]] AmsBackend* get_backend() const;
+
+    /**
+     * @brief Add a backend to the multi-backend list
+     * @param backend Backend instance (ownership transferred)
+     * @return Index of the added backend
+     */
+    int add_backend(std::unique_ptr<AmsBackend> backend);
+
+    /**
+     * @brief Get backend by index
+     * @param index Backend index (0 = primary)
+     * @return Pointer to backend or nullptr if out of range
+     */
+    [[nodiscard]] AmsBackend* get_backend(int index) const;
+
+    /**
+     * @brief Get the number of registered backends
+     * @return Number of backends
+     */
+    [[nodiscard]] int backend_count() const;
+
+    /**
+     * @brief Remove and stop all backends
+     */
+    void clear_backends();
 
     /**
      * @brief Check if AMS is available
@@ -146,9 +188,49 @@ class AmsState {
      */
     void set_moonraker_api(MoonrakerAPI* api);
 
+    /**
+     * @brief Set callback for mock backend gcode response injection
+     *
+     * Stored and applied to any mock backends when they are added.
+     * In production, real backends don't use this (gcode responses come
+     * through the WebSocket). Used to let mock backends simulate
+     * action:prompt dialogs.
+     *
+     * @param callback Function that processes "// action:..." lines
+     */
+    void set_gcode_response_callback(std::function<void(const std::string&)> callback);
+
     // ========================================================================
     // System-level Subject Accessors
     // ========================================================================
+
+    /**
+     * @brief Get backend count subject
+     * @return Subject holding the number of registered backends
+     */
+    lv_subject_t* get_backend_count_subject() {
+        return &backend_count_;
+    }
+
+    /**
+     * @brief Get active backend subject
+     * @return Subject holding index of the currently selected backend
+     */
+    lv_subject_t* get_active_backend_subject() {
+        return &active_backend_;
+    }
+
+    /**
+     * @brief Get the active backend index
+     * @return Currently selected backend index
+     */
+    [[nodiscard]] int active_backend_index() const;
+
+    /**
+     * @brief Set the active backend index
+     * @param index Backend index to make active (bounds-checked)
+     */
+    void set_active_backend(int index);
 
     /**
      * @brief Get AMS type subject
@@ -507,6 +589,30 @@ class AmsState {
      */
     [[nodiscard]] lv_subject_t* get_slot_status_subject(int slot_index);
 
+    /**
+     * @brief Get slot color subject for a specific backend and slot
+     *
+     * For backend_index 0, delegates to existing flat slot subjects.
+     * For secondary backends, returns from per-backend subject storage.
+     *
+     * @param backend_index Backend index (0 = primary)
+     * @param slot_index Slot index within that backend
+     * @return Subject pointer or nullptr if out of range
+     */
+    [[nodiscard]] lv_subject_t* get_slot_color_subject(int backend_index, int slot_index);
+
+    /**
+     * @brief Get slot status subject for a specific backend and slot
+     *
+     * For backend_index 0, delegates to existing flat slot subjects.
+     * For secondary backends, returns from per-backend subject storage.
+     *
+     * @param backend_index Backend index (0 = primary)
+     * @param slot_index Slot index within that backend
+     * @return Subject pointer or nullptr if out of range
+     */
+    [[nodiscard]] lv_subject_t* get_slot_status_subject(int backend_index, int slot_index);
+
     // ========================================================================
     // Direct State Update (called by backend event handler)
     // ========================================================================
@@ -518,6 +624,27 @@ class AmsState {
      * Updates all subjects from the current backend state.
      */
     void sync_from_backend();
+
+    /**
+     * @brief Sync state from a specific backend by index
+     *
+     * For backend_index 0, delegates to sync_from_backend().
+     * For secondary backends, updates per-backend slot subjects only.
+     *
+     * @param backend_index Backend index to sync
+     */
+    void sync_backend(int backend_index);
+
+    /**
+     * @brief Update a single slot's subjects for a specific backend
+     *
+     * For backend_index 0, delegates to update_slot().
+     * For secondary backends, updates per-backend slot subjects only.
+     *
+     * @param backend_index Backend index
+     * @param slot_index Slot that changed
+     */
+    void update_slot_for_backend(int backend_index, int slot_index);
 
     /**
      * @brief Update a single slot's subjects
@@ -602,10 +729,11 @@ class AmsState {
 
     /**
      * @brief Handle backend event callback
+     * @param backend_index Index of the backend that emitted the event
      * @param event Event name
      * @param data Event data
      */
-    void on_backend_event(const std::string& event, const std::string& data);
+    void on_backend_event(int backend_index, const std::string& event, const std::string& data);
 
     /**
      * @brief Bump the slots version counter
@@ -619,9 +747,9 @@ class AmsState {
      * creates ValgACE backend via lv_async_call to maintain thread safety.
      *
      * @param api MoonrakerAPI instance for REST calls
-     * @param client MoonrakerClient instance for the backend
+     * @param client helix::MoonrakerClient instance for the backend
      */
-    void probe_valgace(MoonrakerAPI* api, MoonrakerClient* client);
+    void probe_valgace(MoonrakerAPI* api, helix::MoonrakerClient* client);
 
     /**
      * @brief Create and start ValgACE backend
@@ -630,12 +758,22 @@ class AmsState {
      * Must be called from LVGL thread context.
      *
      * @param api MoonrakerAPI instance
-     * @param client MoonrakerClient instance
+     * @param client helix::MoonrakerClient instance
      */
-    void create_valgace_backend(MoonrakerAPI* api, MoonrakerClient* client);
+    void create_valgace_backend(MoonrakerAPI* api, helix::MoonrakerClient* client);
+
+    /// Per-backend slot subject storage for secondary backends (index > 0)
+    struct BackendSlotSubjects {
+        std::vector<lv_subject_t> colors;
+        std::vector<lv_subject_t> statuses;
+        int slot_count = 0;
+        void init(int count);
+        void deinit();
+    };
 
     mutable std::recursive_mutex mutex_;
-    std::unique_ptr<AmsBackend> backend_;
+    std::vector<std::unique_ptr<AmsBackend>> backends_;
+    std::vector<BackendSlotSubjects> secondary_slot_subjects_;
     bool initialized_ = false;
 
     // Moonraker API for Spoolman integration
@@ -648,6 +786,10 @@ class AmsState {
 
     // Subject manager for automatic cleanup
     SubjectManager subjects_;
+
+    // Backend selector subjects
+    lv_subject_t backend_count_;
+    lv_subject_t active_backend_;
 
     // System-level subjects
     lv_subject_t ams_type_;
@@ -703,7 +845,7 @@ class AmsState {
     lv_subject_t current_material_text_;
     char current_material_text_buf_[48];
     lv_subject_t current_slot_text_;
-    char current_slot_text_buf_[24];
+    char current_slot_text_buf_[64];
     lv_subject_t current_weight_text_;
     char current_weight_text_buf_[16];
     lv_subject_t current_has_weight_;
@@ -715,4 +857,7 @@ class AmsState {
 
     // Observer for print state changes to auto-refresh Spoolman weights
     ObserverGuard print_state_observer_;
+
+    // Stored callback for mock gcode response injection
+    std::function<void(const std::string&)> gcode_response_callback_;
 };

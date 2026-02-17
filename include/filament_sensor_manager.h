@@ -4,6 +4,7 @@
 #pragma once
 
 #include "filament_sensor_types.h"
+#include "json_fwd.h"
 #include "lvgl.h"
 #include "sensor_registry.h"
 #include "subject_managed_panel.h"
@@ -16,10 +17,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-
-#include "hv/json.hpp"
-
-using json = nlohmann::json;
 
 namespace helix {
 

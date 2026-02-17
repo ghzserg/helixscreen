@@ -3,7 +3,6 @@
 #include "ui_exclude_objects_list_overlay.h"
 
 #include "ui_gcode_viewer.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_print_exclude_object_manager.h"
 
@@ -121,7 +120,7 @@ void ExcludeObjectsListOverlay::show(lv_obj_t* parent_screen, MoonrakerAPI* api,
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack (on_activate will populate the list)
-    ui_nav_push_overlay(overlay_root_, false /* hide_previous */);
+    NavigationManager::instance().push_overlay(overlay_root_, false /* hide_previous */);
 }
 
 // ============================================================================
@@ -377,11 +376,11 @@ lv_obj_t* ExcludeObjectsListOverlay::create_object_row(lv_obj_t* parent, const s
     lv_obj_add_flag(status_label, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     if (is_excluded) {
-        lv_label_set_text(status_label, "Excluded");
+        lv_label_set_text(status_label, lv_tr("Excluded"));
         lv_obj_set_style_text_color(label, theme_manager_get_color("text_muted"), 0);
         lv_obj_set_style_opa(row, 150, 0); // Reduced opacity for excluded
     } else if (is_current) {
-        lv_label_set_text(status_label, "Printing");
+        lv_label_set_text(status_label, lv_tr("Printing"));
         lv_obj_set_style_text_color(status_label, theme_manager_get_color("success"), 0);
     } else {
         lv_label_set_text(status_label, "");
@@ -392,6 +391,10 @@ lv_obj_t* ExcludeObjectsListOverlay::create_object_row(lv_obj_t* parent, const s
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
         // Allocate name string for callback
+        // TODO: lv_obj user_data is safe here ONLY because row is created via
+        // lv_obj_create() (not XML). If row is ever changed to lv_xml_create(),
+        // user_data may already be claimed by the XML widget — move to event
+        // callback user_data or a C++ side container instead. See L069.
         char* name_copy = static_cast<char*>(lv_malloc(name.size() + 1));
         if (name_copy) {
             memcpy(name_copy, name.c_str(), name.size() + 1);

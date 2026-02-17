@@ -463,6 +463,8 @@ TEST_CASE("PrintStart: typical noise lines should not match phases", "[print][ne
 #include "print_start_collector.h"
 #include "print_start_profile.h"
 
+using namespace helix;
+using namespace helix::ui;
 /**
  * @brief HELIX:PHASE signal parser for direct testing
  *
@@ -579,8 +581,8 @@ class PrintStartCollectorHeaterFixture : public LVGLTestFixture {
      * @brief Set extruder temperature and target in PrinterState subjects
      */
     void set_extruder_temps(int temp_decideg, int target_decideg) {
-        lv_subject_set_int(state_.get_extruder_temp_subject(), temp_decideg);
-        lv_subject_set_int(state_.get_extruder_target_subject(), target_decideg);
+        lv_subject_set_int(state_.get_active_extruder_temp_subject(), temp_decideg);
+        lv_subject_set_int(state_.get_active_extruder_target_subject(), target_decideg);
     }
 
     /**
@@ -602,7 +604,7 @@ class PrintStartCollectorHeaterFixture : public LVGLTestFixture {
     /**
      * @brief Process pending async UI updates
      *
-     * Since set_print_start_state() uses ui_async_call() to defer subject updates,
+     * Since set_print_start_state() uses helix::ui::async_call() to defer subject updates,
      * we need to drain the queue to see the updates in tests.
      */
     void drain_async_updates() {

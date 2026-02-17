@@ -8,7 +8,9 @@
 #include "overlay_base.h"
 #include "subject_managed_panel.h"
 
+namespace helix {
 class PrinterState;
+}
 class MoonrakerAPI;
 
 namespace helix::led {
@@ -31,7 +33,7 @@ namespace helix::led {
  */
 class LedControlOverlay : public OverlayBase {
   public:
-    explicit LedControlOverlay(PrinterState& printer_state);
+    explicit LedControlOverlay(helix::PrinterState& printer_state);
     ~LedControlOverlay() override;
 
     void init_subjects() override;
@@ -103,7 +105,7 @@ class LedControlOverlay : public OverlayBase {
     static void on_brightness_changed_cb(lv_event_t* e);
 
     // Dependencies
-    PrinterState& printer_state_;
+    helix::PrinterState& printer_state_;
     MoonrakerAPI* api_ = nullptr;
 
     // Widget references (owned by LVGL, not us)
@@ -156,6 +158,6 @@ helix::led::LedControlOverlay& get_led_control_overlay();
 
 /**
  * @brief Initialize global LedControlOverlay instance
- * @param printer_state Reference to global PrinterState
+ * @param printer_state Reference to global helix::PrinterState
  */
-void init_led_control_overlay(PrinterState& printer_state);
+void init_led_control_overlay(helix::PrinterState& printer_state);

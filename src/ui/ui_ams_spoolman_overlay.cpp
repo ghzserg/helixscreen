@@ -149,7 +149,7 @@ void AmsSpoolmanOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_, this);
 
     // Push onto navigation stack
-    ui_nav_push_overlay(overlay_);
+    NavigationManager::instance().push_overlay(overlay_);
 }
 
 void AmsSpoolmanOverlay::refresh() {

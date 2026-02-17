@@ -190,7 +190,7 @@ void NetworkTester::report_state(TestState state) {
     };
 
     // Use RAII-safe async callback wrapper
-    ui_queue_update<CallbackData>(
+    helix::ui::queue_update<CallbackData>(
         std::make_unique<CallbackData>(CallbackData{self_, state, result_}),
         [](CallbackData* data) {
             spdlog::debug("[NetworkTester] Async callback executing in LVGL thread");

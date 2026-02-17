@@ -10,7 +10,11 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
+
 // Test fixture for Config class testing
+// Must be in namespace helix to match friend declaration in Config
+namespace helix {
 class ConfigTestFixture {
   protected:
     Config config;
@@ -162,6 +166,7 @@ class ConfigTestFixture {
         config.data = {{"printer", {{"moonraker_host", "192.168.1.50"}, {"moonraker_port", 7125}}}};
     }
 };
+} // namespace helix
 
 // ============================================================================
 // get() without default parameter - Existing behavior

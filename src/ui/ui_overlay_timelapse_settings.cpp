@@ -3,14 +3,23 @@
 
 #include "ui_overlay_timelapse_settings.h"
 
-#include "ui_nav.h"
+#include "ui_error_reporting.h"
+#include "ui_fonts.h"
+#include "ui_icon_codepoints.h"
+#include "ui_modal.h"
 #include "ui_nav_manager.h"
+#include "ui_update_queue.h"
+#include "ui_utils.h"
 
 #include "lvgl/src/xml/lv_xml.h"
 #include "runtime_config.h"
 #include "static_panel_registry.h"
+#include "theme_manager.h"
+#include "timelapse_state.h"
 
 #include <spdlog/spdlog.h>
+
+#include <cstring>
 
 // Global instance and panel
 static std::unique_ptr<TimelapseSettingsOverlay> g_timelapse_settings;
@@ -109,11 +118,23 @@ lv_obj_t* TimelapseSettingsOverlay::create(lv_obj_t* parent) {
                   mode_info_text_ != nullptr, framerate_dropdown_ != nullptr,
                   autorender_switch_ != nullptr);
 
+    // Video management widgets
+    video_list_container_ = lv_obj_find_by_name(overlay_root_, "video_list_container");
+    video_list_empty_ = lv_obj_find_by_name(overlay_root_, "video_list_empty");
+    render_progress_container_ = lv_obj_find_by_name(overlay_root_, "render_progress_container");
+    btn_render_now_ = lv_obj_find_by_name(overlay_root_, "btn_render_now");
+
+    spdlog::debug("[{}] Video widgets found: list_container={} list_empty={} render_progress={} "
+                  "btn_render={}",
+                  get_name(), video_list_container_ != nullptr, video_list_empty_ != nullptr,
+                  render_progress_container_ != nullptr, btn_render_now_ != nullptr);
+
     // Register event callbacks via XML system
     lv_xml_register_event_cb(nullptr, "on_timelapse_enabled_changed", on_enabled_changed);
     lv_xml_register_event_cb(nullptr, "on_timelapse_mode_changed", on_mode_changed);
     lv_xml_register_event_cb(nullptr, "on_timelapse_framerate_changed", on_framerate_changed);
     lv_xml_register_event_cb(nullptr, "on_timelapse_autorender_changed", on_autorender_changed);
+    lv_xml_register_event_cb(nullptr, "on_timelapse_render_now", on_render_now);
 
     return overlay_root_;
 }
@@ -122,6 +143,7 @@ void TimelapseSettingsOverlay::on_activate() {
     OverlayBase::on_activate();
     spdlog::debug("[{}] on_activate() - fetching current settings", get_name());
     fetch_settings();
+    fetch_video_list();
 }
 
 void TimelapseSettingsOverlay::on_deactivate() {
@@ -131,6 +153,7 @@ void TimelapseSettingsOverlay::on_deactivate() {
 
 void TimelapseSettingsOverlay::cleanup() {
     spdlog::debug("[{}] cleanup()", get_name());
+    clear_video_list();
     OverlayBase::cleanup();
 }
 
@@ -294,6 +317,225 @@ void TimelapseSettingsOverlay::on_autorender_changed(lv_event_t* e) {
 }
 
 // ============================================================================
+// Video Management
+// ============================================================================
+
+void TimelapseSettingsOverlay::fetch_video_list() {
+    if (!api_) {
+        spdlog::debug("[{}] No API available, skipping video list", get_name());
+        // Show empty state in test mode
+        if (video_list_empty_) {
+            lv_obj_remove_flag(video_list_empty_, LV_OBJ_FLAG_HIDDEN);
+        }
+        return;
+    }
+
+    api_->list_files(
+        "timelapse", "", false,
+        [this](const std::vector<FileInfo>& files) {
+            helix::ui::queue_update([this, files]() { populate_video_list(files); });
+        },
+        [this](const MoonrakerError& error) {
+            spdlog::error("[{}] Failed to fetch video list: {}", get_name(), error.message);
+            helix::ui::queue_update([this]() {
+                if (video_list_empty_) {
+                    lv_obj_remove_flag(video_list_empty_, LV_OBJ_FLAG_HIDDEN);
+                }
+            });
+        });
+}
+
+void TimelapseSettingsOverlay::populate_video_list(const std::vector<FileInfo>& files) {
+    clear_video_list();
+
+    // Filter for video files only
+    std::vector<const FileInfo*> videos;
+    for (const auto& f : files) {
+        if (!f.is_dir) {
+            const auto& name = f.filename;
+            if (name.size() > 4) {
+                auto ext = name.substr(name.size() - 4);
+                if (ext == ".mp4" || ext == ".mkv" || ext == ".avi") {
+                    videos.push_back(&f);
+                }
+            }
+        }
+    }
+
+    if (videos.empty()) {
+        if (video_list_empty_) {
+            lv_obj_remove_flag(video_list_empty_, LV_OBJ_FLAG_HIDDEN);
+        }
+        return;
+    }
+
+    // Hide empty state
+    if (video_list_empty_) {
+        lv_obj_add_flag(video_list_empty_, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (!video_list_container_) {
+        return;
+    }
+
+    // Get delete icon codepoint for buttons
+    const char* delete_icon = ui_icon::lookup_codepoint("delete");
+
+    for (const auto* file : videos) {
+        // Create a row for each video (dynamic widget - exception to XML-only rule)
+        lv_obj_t* row = lv_obj_create(video_list_container_);
+        lv_obj_set_width(row, lv_pct(100));
+        lv_obj_set_height(row, LV_SIZE_CONTENT);
+        lv_obj_set_style_pad_all(row, 8, 0);
+        lv_obj_set_style_bg_color(row, theme_manager_get_color("card_bg"), 0);
+        lv_obj_set_style_radius(row, 8, 0);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+        lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, 0);
+        lv_obj_set_scroll_dir(row, LV_DIR_NONE);
+
+        // Filename + size column
+        lv_obj_t* info_col = lv_obj_create(row);
+        lv_obj_set_flex_grow(info_col, 1);
+        lv_obj_set_height(info_col, LV_SIZE_CONTENT);
+        lv_obj_set_flex_flow(info_col, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_style_pad_all(info_col, 0, 0);
+        lv_obj_set_scroll_dir(info_col, LV_DIR_NONE);
+
+        // Filename label
+        lv_obj_t* name_label = lv_label_create(info_col);
+        lv_label_set_text(name_label, file->filename.c_str());
+        lv_label_set_long_mode(name_label, LV_LABEL_LONG_DOT);
+        lv_obj_set_width(name_label, lv_pct(100));
+
+        // Size label
+        lv_obj_t* size_label = lv_label_create(info_col);
+        std::string size_str = format_file_size(file->size);
+        lv_label_set_text(size_label, size_str.c_str());
+        lv_obj_set_style_text_color(size_label, theme_manager_get_color("text_muted"), 0);
+
+        // Delete button
+        lv_obj_t* del_btn = lv_button_create(row);
+        lv_obj_set_size(del_btn, 40, 40);
+        lv_obj_set_style_bg_color(del_btn, theme_manager_get_color("error"), 0);
+        lv_obj_set_style_bg_opa(del_btn, LV_OPA_20, 0);
+        lv_obj_set_style_bg_opa(del_btn, LV_OPA_40, LV_STATE_PRESSED);
+        lv_obj_set_style_radius(del_btn, 20, 0);
+
+        // Store filename as user data for delete callback
+        char* filename_copy = static_cast<char*>(lv_malloc(file->filename.size() + 1));
+        std::strcpy(filename_copy, file->filename.c_str());
+        lv_obj_set_user_data(del_btn, filename_copy);
+
+        // Free the heap-allocated filename when the button is destroyed.
+        // Using LV_EVENT_DELETE ensures cleanup happens automatically via
+        // lv_obj_clean(), avoiding the need to iterate children and blindly
+        // free user_data (which risks freeing unrelated user_data on
+        // non-button children like labels or containers).
+        lv_obj_add_event_cb(
+            del_btn,
+            [](lv_event_t* e) {
+                lv_obj_t* btn = static_cast<lv_obj_t*>(lv_event_get_target(e));
+                void* ud = lv_obj_get_user_data(btn);
+                if (ud) {
+                    lv_free(ud);
+                    lv_obj_set_user_data(btn, nullptr);
+                }
+            },
+            LV_EVENT_DELETE, nullptr);
+
+        // Delete icon
+        lv_obj_t* del_icon = lv_label_create(del_btn);
+        if (delete_icon) {
+            lv_label_set_text(del_icon, delete_icon);
+            lv_obj_set_style_text_font(del_icon, &mdi_icons_24, 0);
+        } else {
+            lv_label_set_text(del_icon, "X");
+        }
+        lv_obj_set_style_text_color(del_icon, theme_manager_get_color("error"), 0);
+        lv_obj_center(del_icon);
+
+        // Delete click handler (dynamic widget - exception to XML-only rule)
+        lv_obj_add_event_cb(
+            del_btn,
+            [](lv_event_t* e) {
+                lv_obj_t* btn = static_cast<lv_obj_t*>(lv_event_get_target(e));
+                const char* filename = static_cast<const char*>(lv_obj_get_user_data(btn));
+                if (!filename || !g_timelapse_settings)
+                    return;
+
+                g_timelapse_settings->pending_delete_filename_ = filename;
+
+                g_timelapse_settings->delete_confirmation_dialog_ =
+                    helix::ui::modal_show_confirmation(
+                        "Delete Video?", filename, ModalSeverity::Warning, "Delete",
+                        on_delete_video_confirmed, on_delete_video_cancelled, nullptr);
+            },
+            LV_EVENT_CLICKED, nullptr);
+    }
+}
+
+void TimelapseSettingsOverlay::clear_video_list() {
+    if (video_list_container_) {
+        // Each delete button has an LV_EVENT_DELETE callback that frees its
+        // heap-allocated filename user_data. lv_obj_clean() triggers DELETE
+        // events on all descendants, so cleanup is automatic and safe.
+        lv_obj_clean(video_list_container_);
+    }
+}
+
+void TimelapseSettingsOverlay::on_render_now(lv_event_t* e) {
+    (void)e;
+    if (!g_timelapse_settings || !g_timelapse_settings->api_)
+        return;
+
+    spdlog::debug("[Timelapse Settings] Render Now clicked");
+    g_timelapse_settings->api_->render_timelapse(
+        []() { spdlog::info("[Timelapse Settings] Render triggered successfully"); },
+        [](const MoonrakerError& error) {
+            spdlog::error("[Timelapse Settings] Failed to trigger render: {}", error.message);
+            NOTIFY_ERROR("Failed to start timelapse render: {}", error.message);
+        });
+}
+
+void TimelapseSettingsOverlay::on_delete_video_confirmed(lv_event_t* e) {
+    (void)e;
+    if (!g_timelapse_settings || !g_timelapse_settings->api_)
+        return;
+
+    std::string filename = g_timelapse_settings->pending_delete_filename_;
+    if (filename.empty())
+        return;
+
+    std::string full_path = "timelapse/" + filename;
+    spdlog::debug("[Timelapse Settings] Deleting video: {}", full_path);
+
+    g_timelapse_settings->api_->delete_file(
+        full_path,
+        [filename]() {
+            spdlog::info("[Timelapse Settings] Deleted video: {}", filename);
+            // Refresh the list
+            if (g_timelapse_settings) {
+                g_timelapse_settings->fetch_video_list();
+            }
+        },
+        [filename](const MoonrakerError& error) {
+            spdlog::error("[Timelapse Settings] Failed to delete {}: {}", filename, error.message);
+            NOTIFY_ERROR("Failed to delete video: {}", error.message);
+        });
+
+    g_timelapse_settings->pending_delete_filename_.clear();
+    g_timelapse_settings->delete_confirmation_dialog_ = nullptr;
+}
+
+void TimelapseSettingsOverlay::on_delete_video_cancelled(lv_event_t* e) {
+    (void)e;
+    if (!g_timelapse_settings)
+        return;
+    g_timelapse_settings->pending_delete_filename_.clear();
+    g_timelapse_settings->delete_confirmation_dialog_ = nullptr;
+}
+
+// ============================================================================
 // Row Click Callback (opens this overlay from Advanced panel)
 // ============================================================================
 
@@ -324,5 +566,5 @@ static void on_timelapse_row_clicked(lv_event_t* e) {
     }
 
     // Show the overlay - NavigationManager will call on_activate()
-    ui_nav_push_overlay(g_timelapse_settings_panel);
+    NavigationManager::instance().push_overlay(g_timelapse_settings_panel);
 }

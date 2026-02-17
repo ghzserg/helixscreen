@@ -348,6 +348,8 @@ Set the type of AMS simulation (standard multi-slot vs toolchanger).
 HELIX_MOCK_AMS_TYPE=toolchanger ./build/bin/helix-screen --test
 ```
 
+**Multi-extruder and tool testing:** Setting `HELIX_MOCK_AMS_TYPE=toolchanger` also creates multiple tool definitions and extruders in the mock environment. Multiple extruders (extruder, extruder1, etc.) and tools are auto-discovered from Klipper objects at runtime, so no separate env var is needed to control extruder count. The toolchanger mock provides a complete multi-tool, multi-extruder test environment.
+
 ### `HELIX_MOCK_DRYER`
 
 Enable filament dryer simulation in mock mode.

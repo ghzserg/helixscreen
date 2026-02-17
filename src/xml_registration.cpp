@@ -5,6 +5,7 @@
 
 #include "ui_ams_current_tool.h"
 #include "ui_ams_device_operations_overlay.h"
+#include "ui_ams_device_section_detail_overlay.h"
 #include "ui_button.h"
 #include "ui_confetti.h"
 #include "ui_fan_dial.h"
@@ -23,6 +24,7 @@
 #include "ui_z_offset_indicator.h"
 
 #include "layout_manager.h"
+#include "static_subject_registry.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -154,6 +156,9 @@ void register_xml_components() {
     lv_xml_register_subject(nullptr, "", &s_noop_subject);
     s_noop_subject_initialized = true;
 
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticSubjectRegistry::instance().register_deinit("XmlSubjects", helix::deinit_xml_subjects);
+
     // Register custom widgets (BEFORE components that use them)
     ui_gcode_viewer_register();
     ui_spool_canvas_register();       // Needed by Spoolman panel (and AMS panel)
@@ -165,16 +170,27 @@ void register_xml_components() {
 
     // Spoolman components (MUST be after spool_canvas registration)
     register_xml("spoolman_spool_row.xml");
+    register_xml("spoolman_context_menu.xml");
+    register_xml("spoolman_edit_modal.xml");
     register_xml("spoolman_panel.xml");
+
+    // Spool wizard components
+    register_xml("wizard_vendor_row.xml");
+    register_xml("wizard_filament_row.xml");
+    register_xml("create_vendor_modal.xml");
+    register_xml("create_filament_modal.xml");
+    register_xml("spool_wizard.xml");
 
     // Core UI components
     register_xml("icon.xml");
+    register_xml("status_pill.xml");
     register_xml("filament_sensor_indicator.xml");
     register_xml("humidity_indicator.xml");
     register_xml("width_indicator.xml");
     register_xml("probe_indicator.xml");
     register_xml("filament_sensor_row.xml");
     register_xml("temp_display.xml");
+    register_xml("components/nozzle_icon.xml");
     register_xml("header_bar.xml");
     register_xml("overlay_backdrop.xml");
     register_xml("overlay_panel.xml");
@@ -210,6 +226,7 @@ void register_xml_components() {
 
     // Modal dialogs
     register_xml("crash_report_modal.xml");
+    register_xml("debug_bundle_modal.xml");
     register_xml("modal_dialog.xml");
     register_xml("numeric_keypad_panel.xml");
     register_xml("runout_guidance_modal.xml");
@@ -247,6 +264,8 @@ void register_xml_components() {
     // AMS Device Operations (accessed from Settings > AMS)
     helix::ui::get_ams_device_operations_overlay().register_callbacks();
     register_xml("ams_device_operations.xml");
+    helix::ui::get_ams_device_section_detail_overlay().register_callbacks();
+    register_xml("ams_device_section_detail.xml");
 
     // Spoolman Settings (accessed from Settings > Spoolman, future)
     register_xml("ams_settings_spoolman.xml");
@@ -306,6 +325,9 @@ void register_xml_components() {
     register_xml("theme_preview_overlay.xml");
     register_xml("theme_save_as_modal.xml");
     register_xml("sensors_overlay.xml");
+    // Probe type-specific panels (registered before probe_overlay)
+    register_xml("probe_bltouch_panel.xml");
+    register_xml("probe_overlay.xml");
     register_xml("macro_buttons_overlay.xml");
     register_xml("hardware_issue_row.xml");
     register_xml("hardware_health_overlay.xml");

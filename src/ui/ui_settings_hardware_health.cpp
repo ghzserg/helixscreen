@@ -12,7 +12,8 @@
 #include "ui_modal.h"
 #include "ui_nav_manager.h"
 #include "ui_severity_card.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
+#include "ui_update_queue.h"
 
 #include "config.h"
 #include "hardware_validator.h"
@@ -109,7 +110,7 @@ void HardwareHealthOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack (on_activate will be called, which populates issues)
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================
@@ -128,7 +129,7 @@ void HardwareHealthOverlay::on_deactivate() {
 
     // Clean up any open modal dialog
     if (hardware_save_dialog_) {
-        ui_modal_hide(hardware_save_dialog_);
+        helix::ui::modal_hide(hardware_save_dialog_);
         hardware_save_dialog_ = nullptr;
     }
     pending_hardware_save_.clear();
@@ -214,52 +215,62 @@ void HardwareHealthOverlay::populate_hardware_issues() {
                         lv_obj_clear_flag(save_btn, LV_OBJ_FLAG_HIDDEN);
                     }
 
-                    // Store hardware name in row for callback (freed on row delete)
+                    // Store hardware name for callbacks (freed on row delete).
+                    // NOTE: We do NOT use lv_obj_set_user_data() here because
+                    // severity_card (our parent XML component) owns that slot
+                    // to store its severity string. Using event cb user_data instead.
                     char* name_copy = strdup(issue.hardware_name.c_str());
                     if (!name_copy) {
                         spdlog::error("[{}] Failed to allocate memory for hardware name",
                                       get_name());
                         continue;
                     }
-                    lv_obj_set_user_data(row, name_copy);
 
                     // Add delete handler to free the strdup'd name
                     // (acceptable exception to declarative UI rule for cleanup)
                     lv_obj_add_event_cb(
                         row,
                         [](lv_event_t* e) {
-                            auto* obj = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-                            void* data = lv_obj_get_user_data(obj);
+                            void* data = lv_event_get_user_data(e);
                             if (data) {
                                 free(data);
                             }
                         },
-                        LV_EVENT_DELETE, nullptr);
+                        LV_EVENT_DELETE, name_copy);
 
                     // Helper lambda for button click handlers
                     // (acceptable exception to declarative UI rule for dynamic rows)
                     auto add_button_handler = [&](lv_obj_t* btn, bool is_ignore) {
+                        // Pack hardware name pointer and is_ignore flag into a single
+                        // user_data value. name_copy is owned by the row's DELETE handler.
+                        struct ActionCtx {
+                            const char* hw_name;
+                            bool is_ignore;
+                        };
+                        auto* ctx = new ActionCtx{name_copy, is_ignore};
+
                         lv_obj_add_event_cb(
                             btn,
                             [](lv_event_t* e) {
                                 LVGL_SAFE_EVENT_CB_BEGIN("[HardwareHealthOverlay] action_clicked");
-                                auto* btn = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-                                // Navigate up: btn -> action_buttons -> row
-                                lv_obj_t* action_container = lv_obj_get_parent(btn);
-                                lv_obj_t* row = lv_obj_get_parent(action_container);
-                                const char* hw_name =
-                                    static_cast<const char*>(lv_obj_get_user_data(row));
-                                bool is_ignore = static_cast<bool>(
-                                    reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
+                                auto* ctx = static_cast<ActionCtx*>(lv_event_get_user_data(e));
 
-                                if (hw_name) {
-                                    get_hardware_health_overlay().handle_hardware_action(hw_name,
-                                                                                         is_ignore);
+                                if (ctx && ctx->hw_name) {
+                                    get_hardware_health_overlay().handle_hardware_action(
+                                        ctx->hw_name, ctx->is_ignore);
                                 }
                                 LVGL_SAFE_EVENT_CB_END();
                             },
-                            LV_EVENT_CLICKED,
-                            reinterpret_cast<void*>(static_cast<uintptr_t>(is_ignore)));
+                            LV_EVENT_CLICKED, ctx);
+
+                        // Clean up the ActionCtx when the button is destroyed
+                        lv_obj_add_event_cb(
+                            btn,
+                            [](lv_event_t* e) {
+                                auto* ctx = static_cast<ActionCtx*>(lv_event_get_user_data(e));
+                                delete ctx;
+                            },
+                            LV_EVENT_DELETE, ctx);
                     };
 
                     // Wire up Ignore button (always visible for non-critical)
@@ -300,19 +311,22 @@ void HardwareHealthOverlay::handle_hardware_action(const char* hardware_name, bo
     if (is_ignore) {
         // "Ignore" - Mark hardware as optional (no confirmation needed)
         HardwareValidator::set_hardware_optional(config, hw_name, true);
-        ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Hardware marked as optional"), 2000);
+        ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Hardware marked as optional"),
+                                      2000);
         spdlog::info("[{}] Marked hardware '{}' as optional", get_name(), hw_name);
 
         // Remove from cached validation result and refresh overlay
         if (printer_state_) {
             printer_state_->remove_hardware_issue(hw_name);
         }
-        populate_hardware_issues();
+        // SAFETY: Defer rebuild — the Ignore button that fired this event is a child
+        // of the list being cleaned by populate_hardware_issues() (issue #80).
+        helix::ui::queue_update([this]() { populate_hardware_issues(); });
     } else {
         // "Save" - Add to expected hardware (with confirmation)
         // Close any existing dialog first (must happen before writing to static buffer)
         if (hardware_save_dialog_) {
-            ui_modal_hide(hardware_save_dialog_);
+            helix::ui::modal_hide(hardware_save_dialog_);
             hardware_save_dialog_ = nullptr;
         }
 
@@ -326,7 +340,7 @@ void HardwareHealthOverlay::handle_hardware_action(const char* hardware_name, bo
                  hw_name.c_str());
 
         // Show confirmation dialog
-        hardware_save_dialog_ = ui_modal_show_confirmation(
+        hardware_save_dialog_ = helix::ui::modal_show_confirmation(
             lv_tr("Save Hardware"), message_buf, ModalSeverity::Info, lv_tr("Save"),
             on_hardware_save_confirm, on_hardware_save_cancel, this);
     }
@@ -335,7 +349,7 @@ void HardwareHealthOverlay::handle_hardware_action(const char* hardware_name, bo
 void HardwareHealthOverlay::handle_hardware_save_confirm() {
     // Close dialog first
     if (hardware_save_dialog_) {
-        ui_modal_hide(hardware_save_dialog_);
+        helix::ui::modal_hide(hardware_save_dialog_);
         hardware_save_dialog_ = nullptr;
     }
 
@@ -343,21 +357,22 @@ void HardwareHealthOverlay::handle_hardware_save_confirm() {
 
     // Add to expected hardware list
     HardwareValidator::add_expected_hardware(cfg, pending_hardware_save_);
-    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Hardware saved to config"), 2000);
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Hardware saved to config"), 2000);
     spdlog::info("[{}] Added hardware '{}' to expected list", get_name(), pending_hardware_save_);
 
     // Remove from cached validation result and refresh overlay
     if (printer_state_) {
         printer_state_->remove_hardware_issue(pending_hardware_save_);
     }
-    populate_hardware_issues();
+    // SAFETY: Defer rebuild for consistency with the Ignore path (issue #80).
+    helix::ui::queue_update([this]() { populate_hardware_issues(); });
     pending_hardware_save_.clear();
 }
 
 void HardwareHealthOverlay::handle_hardware_save_cancel() {
     // Close dialog
     if (hardware_save_dialog_) {
-        ui_modal_hide(hardware_save_dialog_);
+        helix::ui::modal_hide(hardware_save_dialog_);
         hardware_save_dialog_ = nullptr;
     }
 

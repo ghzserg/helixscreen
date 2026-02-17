@@ -66,6 +66,8 @@ static const IconMapping ICON_MAP[] = {
     {"bed",                "\xF3\xB0\x8B\xA3"},  // F02E3 bed
     {"bell",               "\xF3\xB0\x82\x9A"},  // F009A bell/notifications
     {"block_helper",       "\xF3\xB0\x82\xAD"},  // F00AD block-helper/prohibited
+    {"book",               "\xF3\xB0\x97\x9A"},  // F05DA book-open-page-variant (documentation)
+    {"bug",                "\xF3\xB0\x83\xA4"},  // F00E4 bug (debug bundle)
 
     // Camera icons
     {"camera_timer",       "\xF3\xB0\x84\x89"},  // F0109 camera-timer (timelapse)
@@ -129,6 +131,7 @@ static const IconMapping ICON_MAP[] = {
     // Heat/Heating
     {"heat_wave",          "\xF3\xB1\xA9\x85"},  // F1A45 heat-wave (thermal lines)
     {"heater",             "\xF3\xB1\xA2\xB8"},  // F18B8 printer-3d-nozzle-heat
+    {"help",               "\xF3\xB0\x98\xA5"},  // F0625 help-circle-outline (help & support)
     {"help_circle",        "\xF3\xB0\x8B\x97"},  // F02D7 help-circle/question
     {"home",               "\xF3\xB0\x8B\x9C"},  // F02DC home
     {"home_import",        "\xF3\xB0\xBE\x9C"},  // F0F9C home-import-outline (home-z)
@@ -167,6 +170,7 @@ static const IconMapping ICON_MAP[] = {
     {"lock",               "\xF3\xB0\x8C\xBE"},  // F033E lock
 
     // Misc/Math
+    {"message",            "\xF3\xB0\x8D\xA9"},  // F0369 message-text (discord/chat)
     {"minus",              "\xF3\xB0\x8D\xB4"},  // F0374 minus
     {"move",               "\xF3\xB0\x81\x8C"},  // F004C arrow-expand-all
     {"network",            "\xF3\xB0\x88\x80"},  // F0200 ethernet (network)

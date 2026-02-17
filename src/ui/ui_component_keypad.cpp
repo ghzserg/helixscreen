@@ -5,7 +5,7 @@
  * @file ui_component_keypad.cpp
  * @brief Numeric keypad overlay with reactive Subject-Observer pattern
  *
- * Uses standard overlay navigation (ui_nav_push_overlay/go_back) and reactive
+ * Uses standard overlay navigation (NavigationManager push_overlay/go_back) and reactive
  * bindings for the display. The XML binds to the keypad_display subject,
  * so updating the subject automatically updates the UI.
  */
@@ -14,10 +14,11 @@
 
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 
 #include "lvgl/lvgl.h"
 #include "lvgl/src/xml/lv_xml.h"
+#include "static_panel_registry.h"
 
 #include <spdlog/spdlog.h>
 
@@ -62,6 +63,10 @@ void ui_keypad_init_subjects() {
                               subjects_);
 
     subjects_initialized = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticPanelRegistry::instance().register_destroy("KeypadSubjects", ui_keypad_deinit_subjects);
+
     spdlog::debug("[Keypad] Subjects initialized");
 }
 
@@ -129,7 +134,7 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
     }
 
     // Show via overlay navigation, but keep previous panel visible (transparent overlay)
-    ui_nav_push_overlay(keypad_widget, false /* hide_previous */);
+    NavigationManager::instance().push_overlay(keypad_widget, false /* hide_previous */);
 
     spdlog::info("[Keypad] Showing (initial={:.1f}, range={:.0f}-{:.0f})", config->initial_value,
                  config->min_value, config->max_value);
@@ -137,7 +142,7 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
 
 void ui_keypad_hide() {
     if (keypad_widget && ui_keypad_is_visible()) {
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
     }
 }
 
@@ -229,7 +234,7 @@ static void wire_button_events() {
             lv_obj_add_event_cb(
                 btn,
                 [](lv_event_t* e) {
-                    ui_event_safe_call("keypad_digit", [e]() {
+                    helix::ui::event_safe_call("keypad_digit", [e]() {
                         int digit = (int)(intptr_t)lv_event_get_user_data(e);
                         append_digit(digit);
                     });
@@ -244,7 +249,7 @@ static void wire_button_events() {
         lv_obj_add_event_cb(
             btn_back,
             [](lv_event_t*) {
-                ui_event_safe_call("keypad_backspace", []() { handle_backspace(); });
+                helix::ui::event_safe_call("keypad_backspace", []() { handle_backspace(); });
             },
             LV_EVENT_CLICKED, nullptr);
     }
@@ -257,7 +262,9 @@ static void wire_button_events() {
     if (ok_btn) {
         lv_obj_add_event_cb(
             ok_btn,
-            [](lv_event_t*) { ui_event_safe_call("keypad_confirm", []() { handle_confirm(); }); },
+            [](lv_event_t*) {
+                helix::ui::event_safe_call("keypad_confirm", []() { handle_confirm(); });
+            },
             LV_EVENT_CLICKED, nullptr);
     }
 

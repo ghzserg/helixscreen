@@ -30,6 +30,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Initial State Tests - Document non-obvious default initialization
 // ============================================================================

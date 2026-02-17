@@ -15,11 +15,11 @@
 
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_update_queue.h"
 
 #include "config.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "prerendered_images.h"
 #include "printer_image_manager.h"
 #include "printer_images.h"
@@ -150,7 +150,7 @@ void PrinterImageOverlay::show(lv_obj_t* parent_screen) {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack (on_activate will populate lists)
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 // ============================================================================
@@ -219,6 +219,11 @@ lv_obj_t* PrinterImageOverlay::create_list_row(lv_obj_t* parent, const std::stri
     }
 
     // Store image_id in user_data (freed on row delete)
+    // TODO: lv_obj user_data is safe here ONLY because printer_image_list_item
+    // extends lv_button (which doesn't claim user_data). If the XML component
+    // ever extends a custom widget like severity_card that uses user_data
+    // internally, this will silently collide. Consider event callback user_data
+    // or a C++ side map instead. See L069.
     char* id_copy = strdup(image_id.c_str());
     if (!id_copy) {
         spdlog::error("[{}] Failed to allocate memory for image id", get_name());
@@ -388,7 +393,8 @@ void PrinterImageOverlay::populate_usb_images(const std::string& mount_path) {
     spdlog::debug("[{}] Found {} importable images on USB", get_name(), image_paths.size());
 
     if (image_paths.empty()) {
-        lv_subject_copy_string(&usb_status_subject_, "No PNG or JPEG images found on USB drive");
+        lv_subject_copy_string(&usb_status_subject_,
+                               lv_tr("No PNG or JPEG images found on USB drive"));
         return;
     }
 
@@ -412,10 +418,10 @@ void PrinterImageOverlay::handle_usb_import(const std::string& source_path) {
     lv_subject_copy_string(&usb_status_subject_, msg.c_str());
 
     // import_image_async() currently runs synchronously, but the callback is wrapped
-    // in ui_queue_update() for safety in case the implementation becomes truly async
+    // in helix::ui::queue_update() for safety in case the implementation becomes truly async
     helix::PrinterImageManager::instance().import_image_async(
         source_path, [filename](helix::PrinterImageManager::ImportResult result) {
-            ui_queue_update([result = std::move(result), filename]() {
+            helix::ui::queue_update([result = std::move(result), filename]() {
                 auto& overlay = get_printer_image_overlay();
 
                 if (result.success) {

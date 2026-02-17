@@ -36,32 +36,32 @@ TEST_CASE("DeviceSection struct exists and has required fields", "[ams][device_a
 
         CHECK(section.id.empty());
         CHECK(section.label.empty());
-        CHECK(section.icon.empty());
         // Value-initialized struct has display_order = 0
         CHECK(section.display_order == 0);
+        CHECK(section.description.empty());
     }
 
     SECTION("can construct with values") {
-        DeviceSection section{"calibration", "Calibration", "wrench", 0};
+        DeviceSection section{"calibration", "Calibration", 0, "Bowden length calibration"};
 
         CHECK(section.id == "calibration");
         CHECK(section.label == "Calibration");
-        CHECK(section.icon == "wrench");
         CHECK(section.display_order == 0);
+        CHECK(section.description == "Bowden length calibration");
     }
 
     SECTION("sections can have different display orders") {
-        DeviceSection section1{"first", "First", "one", 0};
-        DeviceSection section2{"second", "Second", "two", 1};
-        DeviceSection section3{"third", "Third", "three", 2};
+        DeviceSection section1{"first", "First", 0};
+        DeviceSection section2{"second", "Second", 1};
+        DeviceSection section3{"third", "Third", 2};
 
         CHECK(section1.display_order < section2.display_order);
         CHECK(section2.display_order < section3.display_order);
     }
 
     SECTION("sections with same display_order are allowed") {
-        DeviceSection section1{"a", "A", "icon", 0};
-        DeviceSection section2{"b", "B", "icon", 0};
+        DeviceSection section1{"a", "A", 0};
+        DeviceSection section2{"b", "B", 0};
 
         CHECK(section1.display_order == section2.display_order);
     }
@@ -276,30 +276,36 @@ TEST_CASE("AmsBackendMock device actions - default configuration", "[ams][device
     backend.set_operation_delay(0);
     REQUIRE(backend.start());
 
-    SECTION("get_device_sections returns default sections") {
+    SECTION("get_device_sections returns default HH sections") {
         auto sections = backend.get_device_sections();
 
-        // Mock should have default AFC-like sections
-        REQUIRE(sections.size() >= 2);
+        // Mock defaults to Happy Hare mode with 3 sections
+        REQUIRE(sections.size() == 3);
 
-        // Find calibration section
+        // Find setup section
         auto it = std::find_if(sections.begin(), sections.end(),
-                               [](const DeviceSection& s) { return s.id == "calibration"; });
+                               [](const DeviceSection& s) { return s.id == "setup"; });
         REQUIRE(it != sections.end());
-        CHECK(it->label == "Calibration");
-        CHECK_FALSE(it->icon.empty());
+        CHECK(it->label == "Setup");
+        CHECK_FALSE(it->label.empty());
 
         // Find speed section
         it = std::find_if(sections.begin(), sections.end(),
                           [](const DeviceSection& s) { return s.id == "speed"; });
         REQUIRE(it != sections.end());
-        CHECK(it->label == "Speed Settings");
+        CHECK(it->label == "Speed");
+
+        // Find maintenance section
+        it = std::find_if(sections.begin(), sections.end(),
+                          [](const DeviceSection& s) { return s.id == "maintenance"; });
+        REQUIRE(it != sections.end());
+        CHECK(it->label == "Maintenance");
     }
 
-    SECTION("get_device_actions returns default actions") {
+    SECTION("get_device_actions returns default HH actions") {
         auto actions = backend.get_device_actions();
 
-        // Mock should have default actions
+        // Mock defaults to Happy Hare: 15 actions across 3 sections
         REQUIRE(actions.size() >= 2);
 
         // Verify actions have required fields populated
@@ -310,26 +316,26 @@ TEST_CASE("AmsBackendMock device actions - default configuration", "[ams][device
         }
     }
 
-    SECTION("default actions include calibration wizard (button)") {
+    SECTION("default HH actions include calibrate_bowden (button)") {
         auto actions = backend.get_device_actions();
 
         auto it = std::find_if(actions.begin(), actions.end(),
-                               [](const DeviceAction& a) { return a.id == "calibration_wizard"; });
+                               [](const DeviceAction& a) { return a.id == "calibrate_bowden"; });
         REQUIRE(it != actions.end());
         CHECK(it->type == ActionType::BUTTON);
-        CHECK(it->section == "calibration");
+        CHECK(it->section == "setup");
         CHECK(it->enabled == true);
     }
 
-    SECTION("default actions include bowden length (slider)") {
+    SECTION("default HH actions include gear_load_speed (slider)") {
         auto actions = backend.get_device_actions();
 
         auto it = std::find_if(actions.begin(), actions.end(),
-                               [](const DeviceAction& a) { return a.id == "bowden_length"; });
+                               [](const DeviceAction& a) { return a.id == "gear_load_speed"; });
         REQUIRE(it != actions.end());
         CHECK(it->type == ActionType::SLIDER);
-        CHECK(it->section == "calibration");
-        CHECK(it->unit == "mm");
+        CHECK(it->section == "speed");
+        CHECK(it->unit == "mm/s");
         CHECK(it->min_value < it->max_value);
     }
 
@@ -364,10 +370,10 @@ TEST_CASE("AmsBackendMock execute_device_action behavior", "[ams][device_actions
     SECTION("stores last executed action for verification") {
         backend.clear_last_executed_action();
 
-        backend.execute_device_action("calibration_wizard");
+        backend.execute_device_action("calibrate_bowden");
 
         auto [last_id, last_value] = backend.get_last_executed_action();
-        CHECK(last_id == "calibration_wizard");
+        CHECK(last_id == "calibrate_bowden");
         CHECK_FALSE(last_value.has_value());
     }
 
@@ -375,16 +381,16 @@ TEST_CASE("AmsBackendMock execute_device_action behavior", "[ams][device_actions
         backend.clear_last_executed_action();
 
         float slider_value = 500.0f;
-        backend.execute_device_action("bowden_length", slider_value);
+        backend.execute_device_action("gear_load_speed", slider_value);
 
         auto [last_id, last_value] = backend.get_last_executed_action();
-        CHECK(last_id == "bowden_length");
+        CHECK(last_id == "gear_load_speed");
         REQUIRE(last_value.has_value());
         CHECK(std::any_cast<float>(last_value) == Catch::Approx(500.0f));
     }
 
     SECTION("clear_last_executed_action clears state") {
-        backend.execute_device_action("calibration_wizard");
+        backend.execute_device_action("calibrate_bowden");
 
         auto [id1, val1] = backend.get_last_executed_action();
         CHECK_FALSE(id1.empty());
@@ -410,7 +416,7 @@ TEST_CASE("AmsBackendMock device action setters", "[ams][device_actions][mock]")
 
     SECTION("set_device_sections replaces sections") {
         std::vector<DeviceSection> custom_sections = {
-            {"custom", "Custom Section", "star", 0},
+            {"custom", "Custom Section", 0},
         };
 
         backend.set_device_sections(custom_sections);
@@ -751,9 +757,9 @@ TEST_CASE("Device actions section ordering", "[ams][device_actions][edge]") {
 
     SECTION("sections maintain insertion order") {
         std::vector<DeviceSection> sections = {
-            {"z_section", "Z Section", "icon_z", 2},
-            {"a_section", "A Section", "icon_a", 0},
-            {"m_section", "M Section", "icon_m", 1},
+            {"z_section", "Z Section", 2},
+            {"a_section", "A Section", 0},
+            {"m_section", "M Section", 1},
         };
 
         backend.set_device_sections(sections);
@@ -782,7 +788,7 @@ TEST_CASE("Device actions thread safety", "[ams][device_actions][mock]") {
 
     SECTION("concurrent reads are safe") {
         // Set up some test data
-        std::vector<DeviceSection> sections = {{"test", "Test", "icon", 0}};
+        std::vector<DeviceSection> sections = {{"test", "Test", 0}};
         std::vector<DeviceAction> actions;
         DeviceAction action;
         action.id = "test_action";

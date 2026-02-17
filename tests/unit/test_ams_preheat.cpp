@@ -25,6 +25,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Test Constants - Define expected values for the preheat system
 // ============================================================================

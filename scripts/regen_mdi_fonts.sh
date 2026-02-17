@@ -58,8 +58,11 @@ MDI_ICONS+=",0xF05D8"    # animation (stacked rectangles - for settings)
 MDI_ICONS+=",0xF093A"    # animation-play (framerate/playback speed)
 MDI_ICONS+=",0xF009A"    # bell (notifications)
 MDI_ICONS+=",0xF00AD"    # block-helper (prohibited)
+MDI_ICONS+=",0xF00E4"    # bug (debug bundle)
 MDI_ICONS+=",0xF00AF"    # bluetooth
 MDI_ICONS+=",0xF0B5C"    # backspace-outline
+MDI_ICONS+=",0xF05DA"    # book-open-page-variant (documentation)
+MDI_ICONS+=",0xF0625"    # help-circle-outline (help & support)
 
 # Check/Close/UI
 MDI_ICONS+=",0xF0109"    # camera-timer (timelapse)
@@ -107,6 +110,7 @@ MDI_ICONS+=",0xF0328"    # layers
 MDI_ICONS+=",0xF0335"    # lightbulb
 MDI_ICONS+=",0xF0339"    # link (tool mapping)
 MDI_ICONS+=",0xF033E"    # lock
+MDI_ICONS+=",0xF0369"    # message-text (discord/chat)
 MDI_ICONS+=",0xF0374"    # minus
 MDI_ICONS+=",0xF0F1B"    # play-outline
 MDI_ICONS+=",0xF0415"    # plus

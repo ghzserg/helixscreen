@@ -2,7 +2,7 @@
 
 How the sound system works internally, how to extend it with new themes/backends/sounds, and full reference for the JSON theme schema and C++ API.
 
-**User-facing doc**: [SOUND_SETTINGS.md](SOUND_SETTINGS.md) (settings UI, enabling/disabling, choosing themes)
+**User-facing doc**: [Sound Settings](../user/guide/settings.md#sound-settings) (enabling/disabling, choosing themes, troubleshooting)
 
 ---
 

@@ -29,6 +29,12 @@
 
 namespace helix {
 
+/// Describes one detected AMS/filament system
+struct DetectedAmsSystem {
+    AmsType type = AmsType::NONE;
+    std::string name; // Human-readable: "Happy Hare", "AFC", "Tool Changer"
+};
+
 class PrinterDiscovery {
   public:
     PrinterDiscovery() = default;
@@ -161,7 +167,8 @@ class PrinterDiscovery {
                 has_z_tilt_ = true;
             } else if (name == "bed_mesh") {
                 has_bed_mesh_ = true;
-            } else if (name == "probe" || name == "bltouch") {
+            } else if (name == "probe" || name == "bltouch" || name == "smart_effector" ||
+                       name == "cartographer" || name == "beacon") {
                 has_probe_ = true;
             } else if (name.rfind("probe_eddy_current ", 0) == 0) {
                 has_probe_ = true;
@@ -218,6 +225,25 @@ class PrinterDiscovery {
                 std::string hub_name = name.substr(8); // Remove "AFC_hub " prefix
                 if (!hub_name.empty()) {
                     afc_hub_names_.push_back(hub_name);
+                }
+            }
+            // AFC_lane discovery (OpenAMS lanes - same as AFC_stepper but different Klipper object
+            // type)
+            else if (name.rfind("AFC_lane ", 0) == 0) {
+                std::string lane_name = name.substr(9); // Remove "AFC_lane " prefix (9 chars)
+                if (!lane_name.empty()) {
+                    afc_lane_names_.push_back(lane_name); // Same vector as AFC_stepper lanes
+                }
+            }
+            // AFC unit-level objects (BoxTurtle, OpenAMS)
+            else if (name.rfind("AFC_BoxTurtle ", 0) == 0 || name.rfind("AFC_OpenAMS ", 0) == 0) {
+                afc_unit_object_names_.push_back(name); // Store FULL name for Klipper queries
+            }
+            // AFC buffer objects
+            else if (name.rfind("AFC_buffer ", 0) == 0) {
+                std::string buffer_name = name.substr(11); // Remove "AFC_buffer " prefix (11 chars)
+                if (!buffer_name.empty()) {
+                    afc_buffer_names_.push_back(buffer_name);
                 }
             }
             // Tool changer detection
@@ -318,13 +344,30 @@ class PrinterDiscovery {
         if (!afc_lane_names_.empty()) {
             std::sort(afc_lane_names_.begin(), afc_lane_names_.end());
         }
+        if (!afc_buffer_names_.empty()) {
+            std::sort(afc_buffer_names_.begin(), afc_buffer_names_.end());
+        }
 
         // Sort tool names for consistent ordering
         if (!tool_names_.empty()) {
             std::sort(tool_names_.begin(), tool_names_.end());
         }
 
-        // Set mmu_type_ for tool changers (after all objects processed)
+        // Collect all detected AMS systems
+        detected_ams_systems_.clear();
+
+        if (has_tool_changer_ && !tool_names_.empty()) {
+            detected_ams_systems_.push_back({AmsType::TOOL_CHANGER, "Tool Changer"});
+        }
+        if (has_mmu_) {
+            if (mmu_type_ == AmsType::HAPPY_HARE) {
+                detected_ams_systems_.push_back({AmsType::HAPPY_HARE, "Happy Hare"});
+            } else if (mmu_type_ == AmsType::AFC) {
+                detected_ams_systems_.push_back({AmsType::AFC, "AFC"});
+            }
+        }
+
+        // Update mmu_type_ for backward compat: toolchanger takes priority
         if (has_tool_changer_ && !tool_names_.empty()) {
             mmu_type_ = AmsType::TOOL_CHANGER;
         }
@@ -391,6 +434,8 @@ class PrinterDiscovery {
         // AMS/MMU discovery
         afc_lane_names_.clear();
         afc_hub_names_.clear();
+        afc_unit_object_names_.clear();
+        afc_buffer_names_.clear();
         tool_names_.clear();
         filament_sensor_names_.clear();
         mmu_encoder_names_.clear();
@@ -426,6 +471,7 @@ class PrinterDiscovery {
         has_klippain_shaketune_ = false;
         has_speaker_ = false;
         mmu_type_ = AmsType::NONE;
+        detected_ams_systems_.clear();
 
         // Printer info
         hostname_.clear();
@@ -581,6 +627,11 @@ class PrinterDiscovery {
         return mmu_type_;
     }
 
+    /// @brief All detected AMS/filament systems (may include multiple backends)
+    [[nodiscard]] const std::vector<DetectedAmsSystem>& detected_ams_systems() const {
+        return detected_ams_systems_;
+    }
+
     [[nodiscard]] const std::vector<std::string>& afc_lane_names() const {
         return afc_lane_names_;
     }
@@ -597,6 +648,14 @@ class PrinterDiscovery {
     /// @brief Alias for afc_hub_names() - compatibility with PrinterCapabilities API
     [[nodiscard]] const std::vector<std::string>& get_afc_hub_names() const {
         return afc_hub_names_;
+    }
+
+    [[nodiscard]] const std::vector<std::string>& afc_unit_object_names() const {
+        return afc_unit_object_names_;
+    }
+
+    [[nodiscard]] const std::vector<std::string>& afc_buffer_names() const {
+        return afc_buffer_names_;
     }
 
     [[nodiscard]] const std::vector<std::string>& tool_names() const {
@@ -867,6 +926,9 @@ class PrinterDiscovery {
     // AMS/MMU discovery
     std::vector<std::string> afc_lane_names_;
     std::vector<std::string> afc_hub_names_;
+    std::vector<std::string>
+        afc_unit_object_names_; // Full names: "AFC_BoxTurtle Turtle_1", "AFC_OpenAMS AMS_1"
+    std::vector<std::string> afc_buffer_names_; // Buffer suffixes: "TN", "TN1", etc.
     std::vector<std::string> tool_names_;
     std::vector<std::string> filament_sensor_names_;
     std::vector<std::string> mmu_encoder_names_;
@@ -902,6 +964,7 @@ class PrinterDiscovery {
     bool has_klippain_shaketune_ = false;
     bool has_speaker_ = false;
     AmsType mmu_type_ = AmsType::NONE;
+    std::vector<DetectedAmsSystem> detected_ams_systems_;
 
     // Printer info (from server.info / printer.info)
     std::string hostname_;
@@ -920,7 +983,9 @@ class PrinterDiscovery {
 
 // Forward declarations for init_subsystems_from_hardware (global scope)
 class MoonrakerAPI;
+namespace helix {
 class MoonrakerClient;
+}
 
 namespace helix {
 
@@ -934,7 +999,7 @@ namespace helix {
  * @param api MoonrakerAPI instance
  * @param client MoonrakerClient instance
  */
-void init_subsystems_from_hardware(const PrinterDiscovery& hardware, ::MoonrakerAPI* api,
-                                   ::MoonrakerClient* client);
+void init_subsystems_from_hardware(const PrinterDiscovery& hardware, MoonrakerAPI* api,
+                                   MoonrakerClient* client);
 
 } // namespace helix

@@ -2,20 +2,38 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
-  <!-- Root row container (clickable for selection) -->
+  <styles>
+    <!-- Style applied when row has LV_STATE_CHECKED (active spool) -->
+    <style name="active_style"
+           border_width="#space_xs" border_side="left" border_color="#primary" bg_color="#elevated_bg"/>
+  </styles>
+  <!-- Root row: lv_button so all child clicks propagate naturally -->
   <view name="spoolman_spool_row"
-        extends="ui_card" width="100%" height="content" style_border_width="0" style_pad_all="#space_md"
-        scrollable="false" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_md" clickable="true">
+        extends="lv_button" width="100%" scrollable="false" clickable="true" style_bg_opa="0"
+        style_border_width="0" style_shadow_width="0" style_pad_all="#space_md" style_radius="#border_radius"
+        flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_md">
+    <style name="active_style" selector="checked"/>
+    <event_cb trigger="clicked" callback="on_spoolman_spool_row_clicked"/>
     <!-- LEFT: 3D Spool Canvas (48x48 fixed size) -->
     <spool_canvas name="spool_canvas" size="#button_height" color="0x808080" fill_level="0.5"/>
+    <!-- Spool Number -->
+    <text_small name="spool_id_label"
+                width="content" text="" style_text_color="#text_muted" style_pad_all="0"
+                clickable="false"/>
     <!-- MIDDLE: Material/Vendor Info (flex-grow to fill space) -->
     <lv_obj name="info_column"
             width="content" height="content" flex_grow="1" style_pad_all="0" scrollable="false" flex_flow="column"
-            style_pad_gap="#space_xs">
-      <!-- Material + Color Name (e.g., "PLA - Jet Black") -->
-      <text_body name="spool_name"
-                 width="100%" text="PLA - Black" translation_tag="PLA - Black" style_text_color="#text" long_mode="dots" style_pad_all="0"
-                 clickable="false"/>
+            style_pad_gap="#space_xs" clickable="false">
+      <!-- Name row: Material + Color Name + Active indicator -->
+      <lv_obj width="100%"
+              height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_cross_place="center"
+              style_pad_gap="#space_xs" clickable="false">
+        <text_body name="spool_name"
+                   width="content" flex_grow="1" text="PLA - Black" style_text_color="#text" long_mode="dots"
+                   style_pad_all="0" clickable="false"/>
+        <!-- Active Selection Indicator (hidden by default) -->
+        <icon name="active_indicator" src="check_circle" size="sm" variant="success" hidden="true" clickable="false"/>
+      </lv_obj>
       <!-- Vendor Name -->
       <text_small name="spool_vendor"
                   width="100%" text="Polymaker" translation_tag="Polymaker" style_text_color="#text_muted" long_mode="dots" style_pad_all="0"
@@ -24,7 +42,7 @@
     <!-- RIGHT: Weight Metrics (right-aligned, fixed width) -->
     <lv_obj name="weight_column"
             width="80" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
-            style_flex_cross_place="end" style_pad_gap="#space_xs">
+            style_flex_cross_place="end" style_pad_gap="#space_xs" clickable="false">
       <!-- Remaining Weight (e.g., "850g") -->
       <text_body name="weight_text"
                  width="100%" text="850g" translation_tag="850g" style_text_color="#text" style_text_align="right" style_pad_all="0"
@@ -36,9 +54,5 @@
     </lv_obj>
     <!-- FAR RIGHT: Low-Stock Warning (conditional, hidden by default) -->
     <icon name="low_stock_indicator" src="alert_octagon" size="sm" variant="warning" hidden="true" clickable="false"/>
-    <!-- Active Selection Indicator (hidden by default) -->
-    <icon name="active_indicator" src="check_circle" size="sm" variant="success" hidden="true" clickable="false"/>
-    <!-- Click event for row selection -->
-    <event_cb trigger="clicked" callback="on_spoolman_spool_row_clicked"/>
   </view>
 </component>

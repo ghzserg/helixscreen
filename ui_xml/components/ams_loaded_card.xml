@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <consts>
+    <px name="swatch_size" value="40"/>
+  </consts>
+  <!--
+    AMS Currently Loaded Card - Shows current filament info.
+
+    Binds to AmsState subjects:
+    - ams_current_material_text: Material name (e.g., "Red PLA")
+    - ams_current_weight_text: Remaining weight (e.g., "1000g")
+    - ams_current_has_weight: Show/hide weight line (0 = hidden)
+
+    Slot info is shown in the section header above (bound to ams_current_slot_text).
+    Color swatch updated by C++ via lv_obj_find_by_name(card, "loaded_swatch").
+  -->
+  <view name="ams_loaded_card" extends="ui_card"
+        width="100%" height="content" style_radius="#border_radius"
+        style_pad_all="#space_sm" flex_flow="row"
+        style_flex_main_place="start" style_flex_cross_place="center"
+        style_pad_gap="#space_sm">
+    <!-- Color swatch (left side) -->
+    <lv_obj name="loaded_swatch"
+            width="#swatch_size" height="#swatch_size" style_radius="#border_radius"
+            style_bg_color="#text_muted" style_bg_opa="255" style_border_width="#space_xxs"
+            style_border_color="#text_muted" style_border_opa="80"
+            scrollable="false" clickable="false"/>
+    <!-- Details column (right side) -->
+    <lv_obj height="content" style_pad_all="0" flex_flow="column"
+            style_flex_main_place="center" style_flex_cross_place="start"
+            style_pad_gap="0" scrollable="false" flex_grow="1">
+      <!-- Material name (wraps for long names) -->
+      <text_body name="loaded_material" width="100%"
+                 bind_text="ams_current_material_text" long_mode="wrap"/>
+      <!-- Weight (hidden when not available) -->
+      <text_small name="loaded_weight" bind_text="ams_current_weight_text">
+        <bind_flag_if_eq subject="ams_current_has_weight" flag="hidden" ref_value="0"/>
+      </text_small>
+    </lv_obj>
+  </view>
+</component>

@@ -8,12 +8,14 @@
 #   make PLATFORM_TARGET=pi    # Cross-compile for Raspberry Pi (aarch64)
 #   make PLATFORM_TARGET=pi32  # Cross-compile for Raspberry Pi (armhf/armv7l)
 #   make PLATFORM_TARGET=ad5m  # Cross-compile for Adventurer 5M (armv7-a)
+#   make PLATFORM_TARGET=cc1   # Cross-compile for Centauri Carbon 1 (armv7-a)
 #   make PLATFORM_TARGET=k1    # Cross-compile for Creality K1 series (MIPS32)
 #   make PLATFORM_TARGET=k2    # Cross-compile for Creality K2 series (ARM)
 #   make PLATFORM_TARGET=snapmaker-u1 # Cross-compile for Snapmaker U1 (aarch64)
 #   make pi-docker             # Docker-based Pi build (64-bit)
 #   make pi32-docker           # Docker-based Pi build (32-bit)
 #   make ad5m-docker           # Docker-based AD5M build
+#   make cc1-docker            # Docker-based CC1 build
 #   make k1-docker             # Docker-based K1 build
 #   make k2-docker             # Docker-based K2 build
 #   make snapmaker-u1-docker   # Docker-based Snapmaker U1 build
@@ -37,7 +39,9 @@ ifeq ($(PLATFORM_TARGET),pi)
     # - /usr/include/libdrm: drm.h (needed by xf86drmMode.h)
     # -Wno-error=conversion: LVGL headers have int32_t->float conversions that GCC 12 flags
     # -DHELIX_RELEASE_BUILD: Disables debug features like LV_USE_ASSERT_STYLE
-    TARGET_CFLAGS := -march=armv8-a -I/usr/aarch64-linux-gnu/include -I/usr/include/libdrm -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD
+    # -funwind-tables: Emit ARM unwind info (.ARM.exidx) so backtrace() can walk
+    # the full call stack in crash reports. ~5-10% code size increase, zero runtime cost.
+    TARGET_CFLAGS := -march=armv8-a -funwind-tables -I/usr/aarch64-linux-gnu/include -I/usr/include/libdrm -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD
     DISPLAY_BACKEND := drm
     ENABLE_SDL := no
     ENABLE_TINYGL_3D := yes
@@ -59,7 +63,9 @@ else ifeq ($(PLATFORM_TARGET),pi32)
     CROSS_COMPILE ?= arm-linux-gnueabihf-
     TARGET_ARCH := armv7-a
     TARGET_TRIPLE := arm-linux-gnueabihf
-    TARGET_CFLAGS := -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard \
+    # -funwind-tables: Emit ARM unwind info (.ARM.exidx) so backtrace() can walk
+    # the full call stack in crash reports. ~5-10% code size increase, zero runtime cost.
+    TARGET_CFLAGS := -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -funwind-tables \
         -I/usr/arm-linux-gnueabihf/include -I/usr/include/libdrm \
         -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD -DHELIX_PLATFORM_PI32
     DISPLAY_BACKEND := drm
@@ -108,6 +114,46 @@ else ifeq ($(PLATFORM_TARGET),ad5m)
     ENABLE_TINYGL_3D := no
     ENABLE_EVDEV := yes
     BUILD_SUBDIR := ad5m
+    # Strip binary for size on memory-constrained device
+    STRIP_BINARY := yes
+
+else ifeq ($(PLATFORM_TARGET),cc1)
+    # -------------------------------------------------------------------------
+    # Elegoo Centauri Carbon 1 - Allwinner R528 (armv7-a Cortex-A7)
+    # Specs: 480x272 display, 112MB RAM, glibc 2.23
+    # -------------------------------------------------------------------------
+    # FULLY STATIC BUILD: Same strategy as AD5M. Link everything statically to
+    # avoid glibc version conflicts. CC1 has glibc 2.23 (even older than AD5M's
+    # 2.25), making static linking essential.
+    # Trade-off: Larger binary (~5-8MB vs ~2MB) but guaranteed compatibility.
+    CROSS_COMPILE ?= arm-none-linux-gnueabihf-
+    TARGET_ARCH := armv7-a
+    TARGET_TRIPLE := arm-none-linux-gnueabihf
+    # Memory-optimized build flags (same as AD5M — similar hardware constraints):
+    # -Os: Optimize for size (vs -O2 for speed)
+    # -flto: Link-Time Optimization for dead code elimination
+    # -ffunction-sections/-fdata-sections: Allow linker to remove unused sections
+    # -Wno-error=conversion: LVGL headers have int32_t->float conversions that GCC flags
+    # -DHELIX_RELEASE_BUILD: Disables debug features like LV_USE_ASSERT_STYLE
+    # NOTE: CC1 framebuffer is 32bpp (ARGB8888), as is lv_conf.h (LV_COLOR_DEPTH=32)
+    TARGET_CFLAGS := -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -mtune=cortex-a7 \
+        -Os -flto -ffunction-sections -fdata-sections \
+        -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD -DHELIX_PLATFORM_CC1
+    # -Wl,--gc-sections: Remove unused sections during linking (works with -ffunction-sections)
+    # -flto: Must match compiler flag for LTO to work
+    # -static: Fully static binary - no runtime dependencies on system libs
+    # This avoids glibc version mismatch (binary needs 2.33, system has 2.23)
+    # -lstdc++fs: Required for std::experimental::filesystem on GCC 10.x
+    TARGET_LDFLAGS := -Wl,--gc-sections -flto -static -lstdc++fs
+    # SSL enabled for HTTPS/WSS support with Moonraker
+    ENABLE_SSL := yes
+    DISPLAY_BACKEND := fbdev
+    ENABLE_SDL := no
+    # Disable TinyGL for CC1 - CPU too weak for software 3D (Cortex-A7 dual-core)
+    # Uses 2D layer preview fallback instead
+    ENABLE_TINYGL_3D := no
+    ENABLE_EVDEV := yes
+    BUILD_SUBDIR := cc1
     # Strip binary for size on memory-constrained device
     STRIP_BINARY := yes
 
@@ -267,7 +313,7 @@ else ifeq ($(PLATFORM_TARGET),native)
     BUILD_SUBDIR :=
 
 else
-    $(error Unknown PLATFORM_TARGET: $(PLATFORM_TARGET). Valid options: native, pi, pi32, ad5m, k1, k1-dynamic, k2, snapmaker-u1)
+    $(error Unknown PLATFORM_TARGET: $(PLATFORM_TARGET). Valid options: native, pi, pi32, ad5m, cc1, k1, k1-dynamic, k2, snapmaker-u1)
 endif
 
 # =============================================================================
@@ -323,6 +369,13 @@ endif
 # For size-optimized targets, override -O2 with -Os
 # (GCC uses last optimization flag, but this makes it explicit)
 ifeq ($(PLATFORM_TARGET),ad5m)
+    CFLAGS := $(subst -O2,-Os,$(CFLAGS))
+    CXXFLAGS := $(subst -O2,-Os,$(CXXFLAGS))
+    SUBMODULE_CFLAGS := $(subst -O2,-Os,$(SUBMODULE_CFLAGS))
+    SUBMODULE_CXXFLAGS := $(subst -O2,-Os,$(SUBMODULE_CXXFLAGS))
+endif
+
+ifeq ($(PLATFORM_TARGET),cc1)
     CFLAGS := $(subst -O2,-Os,$(CFLAGS))
     CXXFLAGS := $(subst -O2,-Os,$(CXXFLAGS))
     SUBMODULE_CFLAGS := $(subst -O2,-Os,$(SUBMODULE_CFLAGS))
@@ -389,7 +442,7 @@ endif
 # Cross-Compilation Build Targets
 # =============================================================================
 
-.PHONY: pi pi32 ad5m k1 k1-dynamic k2 snapmaker-u1 pi-docker pi32-docker ad5m-docker k1-docker k1-dynamic-docker k2-docker snapmaker-u1-docker docker-toolchains docker-toolchain-snapmaker-u1 cross-info ensure-docker ensure-buildx maybe-stop-colima
+.PHONY: pi pi32 ad5m cc1 k1 k1-dynamic k2 snapmaker-u1 pi-docker pi32-docker ad5m-docker cc1-docker k1-docker k1-dynamic-docker k2-docker snapmaker-u1-docker docker-toolchains docker-toolchain-snapmaker-u1 cross-info ensure-docker ensure-buildx maybe-stop-colima
 
 # Direct cross-compilation (requires toolchain installed)
 pi:
@@ -403,6 +456,10 @@ pi32:
 ad5m:
 	@echo "$(CYAN)$(BOLD)Cross-compiling for Adventurer 5M (armv7-a)...$(RESET)"
 	$(Q)$(MAKE) PLATFORM_TARGET=ad5m -j$(NPROC) all
+
+cc1:
+	@echo "$(CYAN)$(BOLD)Cross-compiling for Centauri Carbon 1 (armv7-a)...$(RESET)"
+	$(Q)$(MAKE) PLATFORM_TARGET=cc1 -j$(NPROC) all
 
 k1:
 	@echo "$(CYAN)$(BOLD)Cross-compiling for Creality K1 series (MIPS32)...$(RESET)"
@@ -533,6 +590,21 @@ ad5m-docker: ensure-docker
 		|| echo "$(YELLOW)⚠ Could not extract CA certificates (HTTPS may rely on device certs)$(RESET)"
 	@$(MAKE) --no-print-directory maybe-stop-colima
 
+cc1-docker: ensure-docker
+	@echo "$(CYAN)$(BOLD)Cross-compiling for Centauri Carbon 1 via Docker...$(RESET)"
+	@if ! docker image inspect helixscreen/toolchain-cc1 >/dev/null 2>&1; then \
+		echo "$(YELLOW)Docker image not found. Building toolchain first...$(RESET)"; \
+		$(MAKE) docker-toolchain-cc1; \
+	fi
+	$(Q)docker run --rm --user $$(id -u):$$(id -g) -v "$(PWD)":/src -w /src helixscreen/toolchain-cc1 \
+		make PLATFORM_TARGET=cc1 SKIP_OPTIONAL_DEPS=1 -j$$(nproc)
+	@# Extract CA certificates from Docker image for HTTPS verification on device
+	@mkdir -p build/cc1/certs
+	@docker run --rm helixscreen/toolchain-cc1 cat /etc/ssl/certs/ca-certificates.crt > build/cc1/certs/ca-certificates.crt 2>/dev/null \
+		&& echo "$(GREEN)✓ CA certificates extracted$(RESET)" \
+		|| echo "$(YELLOW)⚠ Could not extract CA certificates (HTTPS may rely on device certs)$(RESET)"
+	@$(MAKE) --no-print-directory maybe-stop-colima
+
 k1-docker: ensure-docker
 	@echo "$(CYAN)$(BOLD)Cross-compiling for Creality K1 series via Docker...$(RESET)"
 	@if ! docker image inspect helixscreen/toolchain-k1 >/dev/null 2>&1; then \
@@ -590,7 +662,7 @@ maybe-stop-colima:
 	fi
 
 # Build Docker toolchain images
-docker-toolchains: docker-toolchain-pi docker-toolchain-pi32 docker-toolchain-ad5m docker-toolchain-k1 docker-toolchain-k1-dynamic docker-toolchain-k2 docker-toolchain-snapmaker-u1
+docker-toolchains: docker-toolchain-pi docker-toolchain-pi32 docker-toolchain-ad5m docker-toolchain-cc1 docker-toolchain-k1 docker-toolchain-k1-dynamic docker-toolchain-k2 docker-toolchain-snapmaker-u1
 	@echo "$(GREEN)$(BOLD)All Docker toolchains built successfully$(RESET)"
 
 docker-toolchain-pi: ensure-buildx
@@ -604,6 +676,10 @@ docker-toolchain-pi32: ensure-buildx
 docker-toolchain-ad5m: ensure-buildx
 	@echo "$(CYAN)Building Adventurer 5M toolchain Docker image...$(RESET)"
 	$(Q)docker buildx build -t helixscreen/toolchain-ad5m -f docker/Dockerfile.ad5m docker/
+
+docker-toolchain-cc1: ensure-buildx
+	@echo "$(CYAN)Building Centauri Carbon 1 toolchain Docker image...$(RESET)"
+	$(Q)docker buildx build -t helixscreen/toolchain-cc1 -f docker/Dockerfile.cc1 docker/
 
 docker-toolchain-k1: ensure-buildx
 	@echo "$(CYAN)Building Creality K1 series toolchain Docker image...$(RESET)"
@@ -638,6 +714,7 @@ help-cross:
 	echo "  $${G}pi-docker$${X}            - Build for Raspberry Pi (aarch64) via Docker"; \
 	echo "  $${G}pi32-docker$${X}          - Build for Raspberry Pi 32-bit (armhf) via Docker"; \
 	echo "  $${G}ad5m-docker$${X}          - Build for Adventurer 5M (armv7-a) via Docker"; \
+	echo "  $${G}cc1-docker$${X}           - Build for Centauri Carbon 1 (armv7-a) via Docker"; \
 	echo "  $${G}k1-docker$${X}            - Build for Creality K1 series (MIPS32, static) via Docker"; \
 	echo "  $${G}k1-dynamic-docker$${X}    - Build for Creality K1 series (MIPS32, dynamic) via Docker"; \
 	echo "  $${G}k2-docker$${X}            - Build for Creality K2 series (ARM, static) via Docker"; \
@@ -646,6 +723,7 @@ help-cross:
 	echo "  $${G}docker-toolchain-pi$${X}  - Build Pi toolchain image only"; \
 	echo "  $${G}docker-toolchain-pi32$${X} - Build Pi 32-bit toolchain image only"; \
 	echo "  $${G}docker-toolchain-ad5m$${X} - Build AD5M toolchain image only"; \
+	echo "  $${G}docker-toolchain-cc1$${X}  - Build CC1 toolchain image only"; \
 	echo "  $${G}docker-toolchain-k1$${X}  - Build K1 static toolchain image only"; \
 	echo "  $${G}docker-toolchain-k1-dynamic$${X} - Build K1 dynamic toolchain image only"; \
 	echo "  $${G}docker-toolchain-k2$${X}  - Build K2 toolchain image only"; \
@@ -655,6 +733,7 @@ help-cross:
 	echo "  $${G}pi$${X}                   - Cross-compile for Raspberry Pi (64-bit)"; \
 	echo "  $${G}pi32$${X}                 - Cross-compile for Raspberry Pi (32-bit)"; \
 	echo "  $${G}ad5m$${X}                 - Cross-compile for Adventurer 5M"; \
+	echo "  $${G}cc1$${X}                  - Cross-compile for Centauri Carbon 1"; \
 	echo "  $${G}k1$${X}                   - Cross-compile for Creality K1 series (static)"; \
 	echo "  $${G}k1-dynamic$${X}           - Cross-compile for Creality K1 series (dynamic)"; \
 	echo "  $${G}k2$${X}                   - Cross-compile for Creality K2 series"; \
@@ -678,6 +757,13 @@ help-cross:
 	echo "  $${G}deploy-ad5m-bin$${X}      - Deploy binaries only (fast iteration)"; \
 	echo "  $${G}ad5m-test$${X}            - Full cycle: remote build + deploy + run (fg)"; \
 	echo "  $${G}ad5m-ssh$${X}             - SSH into the AD5M"; \
+	echo ""; \
+	echo "$${C}CC1 Deployment:$${X}"; \
+	echo "  $${G}deploy-cc1$${X}           - Deploy and restart in background"; \
+	echo "  $${G}deploy-cc1-fg$${X}        - Deploy and run in foreground (debug)"; \
+	echo "  $${G}deploy-cc1-bin$${X}       - Deploy binaries only (fast iteration)"; \
+	echo "  $${G}cc1-test$${X}             - Full cycle: docker build + deploy + run (fg)"; \
+	echo "  $${G}cc1-ssh$${X}              - SSH into the CC1"; \
 	echo ""; \
 	echo "$${C}K1 Deployment - Static (UNTESTED):$${X}"; \
 	echo "  $${G}deploy-k1$${X}            - Deploy and restart in background"; \
@@ -712,6 +798,9 @@ help-cross:
 	echo "  $${Y}AD5M_HOST$${X}=hostname   - AD5M hostname/IP (default: ad5m.local)"; \
 	echo "  $${Y}AD5M_USER$${X}=user       - AD5M username (default: root)"; \
 	echo "  $${Y}AD5M_DEPLOY_DIR$${X}=path - AD5M deploy directory (default: /opt/helixscreen)"; \
+	echo "  $${Y}CC1_HOST$${X}=hostname     - CC1 hostname/IP (default: cc1.local)"; \
+	echo "  $${Y}CC1_USER$${X}=user         - CC1 username (default: root)"; \
+	echo "  $${Y}CC1_DEPLOY_DIR$${X}=path   - CC1 deploy directory (default: /opt/helixscreen)"; \
 	echo "  $${Y}K1_HOST$${X}=hostname     - K1 hostname/IP (default: k1.local)"; \
 	echo "  $${Y}K1_USER$${X}=user         - K1 username (default: root)"; \
 	echo "  $${Y}K1_DEPLOY_DIR$${X}=path   - K1 deploy directory (default: /usr/data/helixscreen)"; \
@@ -769,7 +858,7 @@ define deploy-common
 	@if [ -f $(3)/helix-watchdog ]; then rsync -avz $(3)/helix-watchdog $(1):$(2)/bin/; fi
 	rsync -avz scripts/helix-launcher.sh $(1):$(2)/bin/
 	@# Sync installer script (needed for auto-updates)
-	rsync -avz scripts/install.sh $(1):$(2)/
+	rsync -avz scripts/$(INSTALLER_FILENAME) $(1):$(2)/
 	@# Sync assets (--delete removes stale files)
 	rsync $(DEPLOY_RSYNC_FLAGS) $(DEPLOY_ASSET_EXCLUDES) $(DEPLOY_ASSET_DIRS) $(1):$(2)/
 	@# Sync pre-rendered images
@@ -946,7 +1035,7 @@ deploy-ad5m:
 	fi
 	cat scripts/helix-launcher.sh | ssh $(AD5M_SSH_TARGET) "cat > $(AD5M_DEPLOY_DIR)/bin/helix-launcher.sh && chmod +x $(AD5M_DEPLOY_DIR)/bin/helix-launcher.sh"
 	@# Transfer installer script (needed for auto-updates)
-	cat scripts/install.sh | ssh $(AD5M_SSH_TARGET) "cat > $(AD5M_DEPLOY_DIR)/install.sh && chmod +x $(AD5M_DEPLOY_DIR)/install.sh"
+	cat scripts/$(INSTALLER_FILENAME) | ssh $(AD5M_SSH_TARGET) "cat > $(AD5M_DEPLOY_DIR)/$(INSTALLER_FILENAME) && chmod +x $(AD5M_DEPLOY_DIR)/$(INSTALLER_FILENAME)"
 	@# Transfer assets via tar (uses shared DEPLOY_TAR_EXCLUDES and DEPLOY_ASSET_DIRS)
 	@echo "$(DIM)Transferring assets...$(RESET)"
 	COPYFILE_DISABLE=1 tar -cf - $(DEPLOY_TAR_EXCLUDES) $(DEPLOY_ASSET_DIRS) | ssh $(AD5M_SSH_TARGET) "cd $(AD5M_DEPLOY_DIR) && tar -xf -"
@@ -1073,6 +1162,109 @@ ad5m-ssh:
 
 # Full cycle: remote build + deploy + run in foreground
 ad5m-test: remote-ad5m deploy-ad5m-fg
+
+# =============================================================================
+# CC1 Deployment Configuration
+# =============================================================================
+
+# Centauri Carbon 1 deployment settings (can override via environment or command line)
+# Example: make deploy-cc1 CC1_HOST=192.168.1.100
+# Note: CC1 has rsync and scp in /opt/bin
+#
+# Deploy directory: /opt/helixscreen (CC1 has /opt mounted on UDISK with ~6.5GB)
+# Override with CC1_DEPLOY_DIR if needed.
+CC1_HOST ?= cc1.local
+CC1_USER ?= root
+CC1_DEPLOY_DIR ?= /opt/helixscreen
+
+# Build SSH target for CC1
+CC1_SSH_TARGET := $(CC1_USER)@$(CC1_HOST)
+
+# =============================================================================
+# CC1 Deployment Targets
+# =============================================================================
+
+.PHONY: deploy-cc1 deploy-cc1-fg deploy-cc1-bin cc1-ssh cc1-test
+
+# Deploy full application to CC1 using tar/ssh
+deploy-cc1:
+	@test -f build/cc1/bin/helix-screen || { echo "$(RED)Error: build/cc1/bin/helix-screen not found. Run 'make cc1-docker' first.$(RESET)"; exit 1; }
+	@test -f build/cc1/bin/helix-splash || { echo "$(RED)Error: build/cc1/bin/helix-splash not found. Run 'make cc1-docker' first.$(RESET)"; exit 1; }
+	@echo "$(CYAN)Deploying HelixScreen to $(CC1_SSH_TARGET):$(CC1_DEPLOY_DIR)...$(RESET)"
+	@# Generate pre-rendered images if missing
+	@if [ ! -f build/assets/images/prerendered/splash-logo-small.bin ]; then \
+		echo "$(DIM)Generating pre-rendered splash images...$(RESET)"; \
+		$(MAKE) gen-images; \
+	fi
+	@if [ ! -d build/assets/images/printers/prerendered ]; then \
+		echo "$(DIM)Generating pre-rendered printer images...$(RESET)"; \
+		$(MAKE) gen-printer-images; \
+	fi
+	@# Stop running processes and prepare directory
+	ssh $(CC1_SSH_TARGET) "killall helix-watchdog helix-screen helix-splash 2>/dev/null || true; mkdir -p $(CC1_DEPLOY_DIR)/bin"
+	@# Transfer binaries via cat/ssh
+	@echo "$(DIM)Transferring binaries...$(RESET)"
+	cat build/cc1/bin/helix-screen | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/bin/helix-screen && chmod +x $(CC1_DEPLOY_DIR)/bin/helix-screen"
+	cat build/cc1/bin/helix-splash | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/bin/helix-splash && chmod +x $(CC1_DEPLOY_DIR)/bin/helix-splash"
+	@if [ -f build/cc1/bin/helix-watchdog ]; then \
+		cat build/cc1/bin/helix-watchdog | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/bin/helix-watchdog && chmod +x $(CC1_DEPLOY_DIR)/bin/helix-watchdog"; \
+	fi
+	cat scripts/helix-launcher.sh | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/bin/helix-launcher.sh && chmod +x $(CC1_DEPLOY_DIR)/bin/helix-launcher.sh"
+	@# Transfer installer script (needed for auto-updates)
+	cat scripts/install.sh | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/install.sh && chmod +x $(CC1_DEPLOY_DIR)/install.sh"
+	@# Transfer assets via tar (uses shared DEPLOY_TAR_EXCLUDES and DEPLOY_ASSET_DIRS)
+	@echo "$(DIM)Transferring assets...$(RESET)"
+	COPYFILE_DISABLE=1 tar -cf - $(DEPLOY_TAR_EXCLUDES) $(DEPLOY_ASSET_DIRS) | ssh $(CC1_SSH_TARGET) "cd $(CC1_DEPLOY_DIR) && tar -xf -"
+	@# Transfer pre-rendered images
+	@if [ -d build/assets/images/prerendered ] && ls build/assets/images/prerendered/*.bin >/dev/null 2>&1; then \
+		echo "$(DIM)Transferring pre-rendered images...$(RESET)"; \
+		ssh $(CC1_SSH_TARGET) "mkdir -p $(CC1_DEPLOY_DIR)/assets/images/prerendered $(CC1_DEPLOY_DIR)/assets/images/printers/prerendered"; \
+		COPYFILE_DISABLE=1 tar -cf - -C build/assets/images prerendered | ssh $(CC1_SSH_TARGET) "cd $(CC1_DEPLOY_DIR)/assets/images && tar -xf -"; \
+	fi
+	@if [ -d build/assets/images/printers/prerendered ] && ls build/assets/images/printers/prerendered/*.bin >/dev/null 2>&1; then \
+		COPYFILE_DISABLE=1 tar -cf - -C build/assets/images/printers prerendered | ssh $(CC1_SSH_TARGET) "cd $(CC1_DEPLOY_DIR)/assets/images/printers && tar -xf -"; \
+	fi
+	@# Deploy CA certificates for HTTPS verification
+	@if [ -f build/cc1/certs/ca-certificates.crt ]; then \
+		echo "$(DIM)Transferring CA certificates...$(RESET)"; \
+		ssh $(CC1_SSH_TARGET) "mkdir -p $(CC1_DEPLOY_DIR)/certs"; \
+		cat build/cc1/certs/ca-certificates.crt | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/certs/ca-certificates.crt"; \
+	fi
+	@echo "$(GREEN)✓ Deployed to $(CC1_HOST):$(CC1_DEPLOY_DIR)$(RESET)"
+	@echo "$(CYAN)Starting helix-screen on $(CC1_HOST)...$(RESET)"
+	ssh $(CC1_SSH_TARGET) "cd $(CC1_DEPLOY_DIR) && ./bin/helix-launcher.sh >/dev/null 2>&1 &"
+	@echo "$(GREEN)✓ helix-screen started in background$(RESET)"
+	@echo "$(DIM)Logs: ssh $(CC1_SSH_TARGET) 'logread -f | grep helix'$(RESET)"
+
+# Deploy and run in foreground with verbose logging (for interactive debugging)
+deploy-cc1-fg:
+	@test -f build/cc1/bin/helix-screen || { echo "$(RED)Error: build/cc1/bin/helix-screen not found. Run 'make cc1-docker' first.$(RESET)"; exit 1; }
+	@test -f build/cc1/bin/helix-splash || { echo "$(RED)Error: build/cc1/bin/helix-splash not found. Run 'make cc1-docker' first.$(RESET)"; exit 1; }
+	$(call deploy-common,$(CC1_SSH_TARGET),$(CC1_DEPLOY_DIR),build/cc1/bin)
+	@echo "$(CYAN)Starting helix-screen on $(CC1_HOST) (foreground, verbose)...$(RESET)"
+	ssh -t $(CC1_SSH_TARGET) "cd $(CC1_DEPLOY_DIR) && ./bin/helix-launcher.sh --debug"
+
+# Deploy binaries only (fast, for quick iteration)
+deploy-cc1-bin:
+	@test -f build/cc1/bin/helix-screen || { echo "$(RED)Error: build/cc1/bin/helix-screen not found. Run 'make cc1-docker' first.$(RESET)"; exit 1; }
+	@echo "$(CYAN)Deploying binaries only to $(CC1_SSH_TARGET):$(CC1_DEPLOY_DIR)/bin...$(RESET)"
+	ssh $(CC1_SSH_TARGET) "killall helix-watchdog helix-screen helix-splash 2>/dev/null || true; mkdir -p $(CC1_DEPLOY_DIR)/bin"
+	cat build/cc1/bin/helix-screen | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/bin/helix-screen && chmod +x $(CC1_DEPLOY_DIR)/bin/helix-screen"
+	cat build/cc1/bin/helix-splash | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/bin/helix-splash && chmod +x $(CC1_DEPLOY_DIR)/bin/helix-splash"
+	@if [ -f build/cc1/bin/helix-watchdog ]; then \
+		cat build/cc1/bin/helix-watchdog | ssh $(CC1_SSH_TARGET) "cat > $(CC1_DEPLOY_DIR)/bin/helix-watchdog && chmod +x $(CC1_DEPLOY_DIR)/bin/helix-watchdog"; \
+	fi
+	@echo "$(GREEN)✓ Binaries deployed$(RESET)"
+	@echo "$(CYAN)Restarting helix-screen on $(CC1_HOST)...$(RESET)"
+	ssh $(CC1_SSH_TARGET) "killall helix-watchdog helix-screen helix-splash 2>/dev/null || true; sleep 1; cd $(CC1_DEPLOY_DIR) && ./bin/helix-launcher.sh >/dev/null 2>&1 &"
+	@echo "$(GREEN)✓ helix-screen restarted$(RESET)"
+
+# Convenience: SSH into the CC1
+cc1-ssh:
+	ssh $(CC1_SSH_TARGET)
+
+# Full cycle: docker build + deploy + run in foreground
+cc1-test: cc1-docker deploy-cc1-fg
 
 # =============================================================================
 # Snapmaker U1 Deployment Configuration
@@ -1455,6 +1647,8 @@ release-pi: | build/pi/bin/helix-screen build/pi/bin/helix-splash
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1490,6 +1684,8 @@ release-pi32: | build/pi32/bin/helix-screen build/pi32/bin/helix-splash
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1528,6 +1724,8 @@ release-ad5m: | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
 	@# Copy AD5M Pro default config as config/helixconfig.json (skips wizard on first run)
 	@cp config/presets/ad5m.json $(RELEASE_DIR)/helixscreen/config/helixconfig.json
 	@echo "  $(DIM)Included pre-configured config/helixconfig.json for AD5M Pro$(RESET)"
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1559,6 +1757,49 @@ release-ad5m: | build/ad5m/bin/helix-screen build/ad5m/bin/helix-splash
 	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-ad5m-$(RELEASE_VERSION).tar.gz + helixscreen-ad5m.zip$(RESET)"
 	@ls -lh $(RELEASE_DIR)/helixscreen-ad5m-$(RELEASE_VERSION).tar.gz $(RELEASE_DIR)/helixscreen-ad5m.zip
 
+# Package CC1 release
+release-cc1: | build/cc1/bin/helix-screen build/cc1/bin/helix-splash
+	@echo "$(CYAN)$(BOLD)Packaging CC1 release v$(VERSION)...$(RESET)"
+	@mkdir -p $(RELEASE_DIR)/helixscreen/bin
+	@cp build/cc1/bin/helix-screen build/cc1/bin/helix-splash $(RELEASE_DIR)/helixscreen/bin/
+	@if [ -f build/cc1/bin/helix-watchdog ]; then cp build/cc1/bin/helix-watchdog $(RELEASE_DIR)/helixscreen/bin/; fi
+	@cp scripts/helix-launcher.sh $(RELEASE_DIR)/helixscreen/bin/
+	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
+	@# Remove any personal config — release ships template only (installer copies it on first run)
+	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
+	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
+	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
+	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
+	@for asset in $(RELEASE_ASSETS); do \
+		if [ -d "$$asset" ]; then cp -r "$$asset" $(RELEASE_DIR)/helixscreen/assets/; fi; \
+	done
+	@# Copy pre-rendered images from build directory (splash + printer images)
+	@if [ -d "build/assets/images/prerendered" ]; then \
+		mkdir -p $(RELEASE_DIR)/helixscreen/assets/images/prerendered; \
+		cp -r build/assets/images/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/prerendered/; \
+	fi
+	@if [ -d "build/assets/images/printers/prerendered" ]; then \
+		mkdir -p $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered; \
+		cp -r build/assets/images/printers/prerendered/* $(RELEASE_DIR)/helixscreen/assets/images/printers/prerendered/; \
+	fi
+	@# Bundle CA certificates for HTTPS verification (fallback if device lacks system certs)
+	@if [ -f "build/cc1/certs/ca-certificates.crt" ]; then \
+		mkdir -p $(RELEASE_DIR)/helixscreen/certs; \
+		cp build/cc1/certs/ca-certificates.crt $(RELEASE_DIR)/helixscreen/certs/; \
+		echo "  $(DIM)Included CA certificates for HTTPS$(RESET)"; \
+	fi
+	@find $(RELEASE_DIR)/helixscreen -name '.DS_Store' -delete 2>/dev/null || true
+	$(call release-clean-assets,$(RELEASE_DIR)/helixscreen)
+	@xattr -cr $(RELEASE_DIR)/helixscreen 2>/dev/null || true
+	@echo '{"project_name":"helixscreen","project_owner":"prestonbrown","version":"$(RELEASE_VERSION)","asset_name":"helixscreen-cc1.zip"}' > $(RELEASE_DIR)/helixscreen/release_info.json
+	@cd $(RELEASE_DIR)/helixscreen && zip -qr ../helixscreen-cc1.zip .
+	@cd $(RELEASE_DIR) && COPYFILE_DISABLE=1 tar -czvf helixscreen-cc1-$(RELEASE_VERSION).tar.gz helixscreen
+	@rm -rf $(RELEASE_DIR)/helixscreen
+	@echo "$(GREEN)✓ Created $(RELEASE_DIR)/helixscreen-cc1-$(RELEASE_VERSION).tar.gz + helixscreen-cc1.zip$(RESET)"
+	@ls -lh $(RELEASE_DIR)/helixscreen-cc1-$(RELEASE_VERSION).tar.gz $(RELEASE_DIR)/helixscreen-cc1.zip
+
 # Package K1 release
 release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
 	@echo "$(CYAN)$(BOLD)Packaging K1 release v$(VERSION)...$(RESET)"
@@ -1569,6 +1810,8 @@ release-k1: | build/k1/bin/helix-screen build/k1/bin/helix-splash
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1603,6 +1846,8 @@ release-k1-dynamic: | build/k1-dynamic/bin/helix-screen build/k1-dynamic/bin/hel
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1637,6 +1882,8 @@ release-k2: | build/k2/bin/helix-screen build/k2/bin/helix-splash
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@# Remove any personal config — release ships template only (installer copies it on first run)
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME)
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1670,6 +1917,8 @@ release-snapmaker-u1: | build/snapmaker-u1/bin/helix-screen
 	@cp scripts/helix-launcher.sh $(RELEASE_DIR)/helixscreen/bin/ 2>/dev/null || true
 	@cp -r ui_xml config $(RELEASE_DIR)/helixscreen/
 	@rm -f $(RELEASE_DIR)/helixscreen/config/helixconfig.json $(RELEASE_DIR)/helixscreen/config/helixconfig-test.json
+	@cp scripts/$(INSTALLER_FILENAME) $(RELEASE_DIR)/helixscreen/ 2>/dev/null || true
+	@chmod +x $(RELEASE_DIR)/helixscreen/$(INSTALLER_FILENAME) 2>/dev/null || true
 	@mkdir -p $(RELEASE_DIR)/helixscreen/scripts
 	@cp scripts/uninstall.sh $(RELEASE_DIR)/helixscreen/scripts/ 2>/dev/null || true
 	@mkdir -p $(RELEASE_DIR)/helixscreen/assets
@@ -1692,7 +1941,7 @@ release-snapmaker-u1: | build/snapmaker-u1/bin/helix-screen
 	@ls -lh $(RELEASE_DIR)/helixscreen-snapmaker-u1-$(RELEASE_VERSION).tar.gz $(RELEASE_DIR)/helixscreen-snapmaker-u1.zip
 
 # Package all releases
-release-all: release-pi release-pi32 release-ad5m release-k1 release-k1-dynamic release-k2
+release-all: release-pi release-pi32 release-ad5m release-cc1 release-k1 release-k1-dynamic release-k2
 	@echo "$(GREEN)$(BOLD)✓ All releases packaged in $(RELEASE_DIR)/$(RESET)"
 	@ls -lh $(RELEASE_DIR)/*.tar.gz $(RELEASE_DIR)/*.zip
 
@@ -1703,14 +1952,15 @@ release-clean:
 
 # Aliases for package-* (matches scripts/package.sh naming)
 # These trigger the full build + package workflow
-.PHONY: package-ad5m package-pi package-pi32 package-k1-dynamic package-k2 package-snapmaker-u1 package-all package-clean
+.PHONY: package-ad5m package-cc1 package-pi package-pi32 package-k1-dynamic package-k2 package-snapmaker-u1 package-all package-clean
 package-ad5m: ad5m-docker gen-images-ad5m gen-splash-3d-ad5m gen-printer-images release-ad5m
+package-cc1: cc1-docker gen-images gen-printer-images release-cc1
 package-pi: pi-docker gen-images gen-splash-3d gen-printer-images release-pi
 package-pi32: pi32-docker gen-images gen-splash-3d gen-printer-images release-pi32
 package-k1-dynamic: k1-dynamic-docker gen-images gen-splash-3d-k1 gen-printer-images release-k1-dynamic
 package-k2: k2-docker gen-images gen-printer-images release-k2
 package-snapmaker-u1: snapmaker-u1-docker gen-images gen-printer-images release-snapmaker-u1
-package-all: package-ad5m package-pi package-pi32 package-k1-dynamic package-k2
+package-all: package-ad5m package-cc1 package-pi package-pi32 package-k1-dynamic package-k2
 package-clean: release-clean
 
 # Convenience aliases (verb-target → target-verb)

@@ -111,7 +111,7 @@ void ui_bed_mesh_evaluate_render_mode(lv_obj_t* canvas);
  * @param canvas The bed_mesh canvas widget
  * @return Current render mode (AUTO, FORCE_3D, or FORCE_2D)
  */
-bed_mesh_render_mode_t ui_bed_mesh_get_render_mode(lv_obj_t* canvas);
+helix::BedMeshRenderMode ui_bed_mesh_get_render_mode(lv_obj_t* canvas);
 
 /**
  * @brief Set render mode
@@ -119,7 +119,7 @@ bed_mesh_render_mode_t ui_bed_mesh_get_render_mode(lv_obj_t* canvas);
  * @param canvas The bed_mesh canvas widget
  * @param mode Render mode to use (AUTO, FORCE_3D, or FORCE_2D)
  */
-void ui_bed_mesh_set_render_mode(lv_obj_t* canvas, bed_mesh_render_mode_t mode);
+void ui_bed_mesh_set_render_mode(lv_obj_t* canvas, helix::BedMeshRenderMode mode);
 
 /**
  * @brief Show or hide the zero reference plane

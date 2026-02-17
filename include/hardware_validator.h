@@ -14,16 +14,16 @@
 
 #pragma once
 
+#include "json_fwd.h"
+
 #include <optional>
 #include <string>
 #include <vector>
 
-#include "hv/json.hpp"
-
-using json = nlohmann::json;
-
 // Forward declarations
+namespace helix {
 class Config;
+}
 
 namespace helix {
 class PrinterDiscovery;
@@ -243,7 +243,8 @@ class HardwareValidator {
      * @param hardware PrinterDiscovery with discovered hardware
      * @return Validation result with categorized issues
      */
-    HardwareValidationResult validate(Config* config, const helix::PrinterDiscovery& hardware);
+    HardwareValidationResult validate(helix::Config* config,
+                                      const helix::PrinterDiscovery& hardware);
 
     /**
      * @brief Show persistent notification with "View Details" action
@@ -264,7 +265,7 @@ class HardwareValidator {
      * @param config Config instance to save to
      * @param hardware PrinterDiscovery with discovered hardware
      */
-    void save_session_snapshot(Config* config, const helix::PrinterDiscovery& hardware);
+    void save_session_snapshot(helix::Config* config, const helix::PrinterDiscovery& hardware);
 
     /**
      * @brief Create snapshot from current hardware discovery state
@@ -280,7 +281,7 @@ class HardwareValidator {
      * @param config Config instance to load from
      * @return Previous snapshot, or nullopt if none exists
      */
-    static std::optional<HardwareSnapshot> load_session_snapshot(Config* config);
+    static std::optional<HardwareSnapshot> load_session_snapshot(helix::Config* config);
 
     /**
      * @brief Check if hardware is marked as optional in config
@@ -289,7 +290,7 @@ class HardwareValidator {
      * @param hardware_name Full hardware name (e.g., "neopixel chamber_light")
      * @return true if user marked as intentionally disconnected
      */
-    static bool is_hardware_optional(Config* config, const std::string& hardware_name);
+    static bool is_hardware_optional(helix::Config* config, const std::string& hardware_name);
 
     /**
      * @brief Mark hardware as optional (suppress future warnings)
@@ -300,7 +301,7 @@ class HardwareValidator {
      * @param hardware_name Full hardware name
      * @param optional true to mark optional, false to remove marking
      */
-    static void set_hardware_optional(Config* config, const std::string& hardware_name,
+    static void set_hardware_optional(helix::Config* config, const std::string& hardware_name,
                                       bool optional);
 
     /**
@@ -312,7 +313,7 @@ class HardwareValidator {
      * @param config Config instance to modify
      * @param hardware_name Full hardware name to add
      */
-    static void add_expected_hardware(Config* config, const std::string& hardware_name);
+    static void add_expected_hardware(helix::Config* config, const std::string& hardware_name);
 
   private:
     /**
@@ -324,20 +325,21 @@ class HardwareValidator {
     /**
      * @brief Validate configured hardware in helixconfig exists
      */
-    void validate_configured_hardware(Config* config, const helix::PrinterDiscovery& hardware,
+    void validate_configured_hardware(helix::Config* config,
+                                      const helix::PrinterDiscovery& hardware,
                                       HardwareValidationResult& result);
 
     /**
      * @brief Find hardware discovered but not in config (suggest adding)
      */
-    void validate_new_hardware(Config* config, const helix::PrinterDiscovery& hardware,
+    void validate_new_hardware(helix::Config* config, const helix::PrinterDiscovery& hardware,
                                HardwareValidationResult& result);
 
     /**
      * @brief Compare current session against previous to find changes
      */
     void validate_session_changes(const HardwareSnapshot& previous, const HardwareSnapshot& current,
-                                  Config* config, HardwareValidationResult& result);
+                                  helix::Config* config, HardwareValidationResult& result);
 
     /**
      * @brief Check if a name is in a vector (case-insensitive)

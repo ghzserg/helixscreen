@@ -6,11 +6,10 @@
 #include "ui_emergency_stop.h"
 #include "ui_frequency_response_chart.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
+#include "ui_update_queue.h"
 
-#include "async_helpers.h"
 #include "format_utils.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
@@ -24,6 +23,8 @@
 #include <cmath>
 #include <cstdio>
 #include <random>
+
+using namespace helix;
 
 // Shaper overlay colors (distinct, visible on dark bg) — shared by chart and legend
 static constexpr uint32_t SHAPER_OVERLAY_COLORS[] = {
@@ -343,7 +344,7 @@ lv_obj_t* InputShaperPanel::create(lv_obj_t* parent) {
         return nullptr;
     }
 
-    // Start hidden (ui_nav_push_overlay will show it)
+    // Start hidden (push_overlay will show it)
     lv_obj_add_flag(overlay_root_, LV_OBJ_FLAG_HIDDEN);
 
     setup_widgets();
@@ -403,7 +404,7 @@ void InputShaperPanel::show() {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     spdlog::info("[InputShaper] Overlay shown");
 }
@@ -428,14 +429,14 @@ void InputShaperPanel::on_activate() {
         auto alive = alive_;
         api_->get_input_shaper_config(
             [this, alive](const InputShaperConfig& config) {
-                helix::async::invoke([this, alive, config]() {
+                helix::ui::queue_update([this, alive, config]() {
                     if (!alive->load())
                         return;
                     populate_current_config(config);
                 });
             },
             [this, alive](const MoonrakerError& err) {
-                helix::async::invoke([this, alive, msg = err.message]() {
+                helix::ui::queue_update([this, alive, msg = err.message]() {
                     if (!alive->load())
                         return;
                     spdlog::debug("[InputShaper] Could not query config: {}", msg);
@@ -678,7 +679,7 @@ void InputShaperPanel::measure_noise() {
             spdlog::debug("[InputShaper] Accelerometer check complete, noise={:.4f}", noise_level);
             char msg[64];
             snprintf(msg, sizeof(msg), "Noise level: %.4f", noise_level);
-            ui_toast_show(ToastSeverity::INFO, msg, 3000);
+            ToastManager::instance().show(ToastSeverity::INFO, msg, 3000);
             set_state(State::IDLE);
         },
         [this, alive](const std::string& err) {
@@ -754,15 +755,16 @@ void InputShaperPanel::apply_recommendation() {
                 if (!recommended_type_.empty() && recommended_freq_ > 0) {
                     apply_y_after_x();
                 } else {
-                    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Input shaper settings applied!"),
-                                  2500);
+                    ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                                  lv_tr("Input shaper settings applied!"), 2500);
                 }
             },
             [alive](const std::string& err) {
                 if (!alive->load())
                     return;
                 spdlog::error("[InputShaper] Failed to apply X settings: {}", err);
-                ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to apply settings"), 3000);
+                ToastManager::instance().show(ToastSeverity::ERROR,
+                                              lv_tr("Failed to apply settings"), 3000);
             });
     } else if (!recommended_type_.empty() && recommended_freq_ > 0) {
         // Single axis apply
@@ -780,14 +782,15 @@ void InputShaperPanel::apply_recommendation() {
                 if (!alive->load())
                     return;
                 spdlog::info("[InputShaper] Settings applied successfully");
-                ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Input shaper settings applied!"),
-                              2500);
+                ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                              lv_tr("Input shaper settings applied!"), 2500);
             },
             [alive](const std::string& err) {
                 if (!alive->load())
                     return;
                 spdlog::error("[InputShaper] Failed to apply settings: {}", err);
-                ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to apply settings"), 3000);
+                ToastManager::instance().show(ToastSeverity::ERROR,
+                                              lv_tr("Failed to apply settings"), 3000);
             });
     } else {
         spdlog::error("[InputShaper] Cannot apply - no valid recommendation");
@@ -810,12 +813,13 @@ void InputShaperPanel::apply_y_after_x() {
             if (!alive->load())
                 return;
             spdlog::info("[InputShaper] Both axis settings applied");
-            ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Input shaper settings applied!"), 2500);
+            ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                          lv_tr("Input shaper settings applied!"), 2500);
             // Refresh the current config display
             if (api_) {
                 api_->get_input_shaper_config(
                     [this, alive](const InputShaperConfig& config) {
-                        helix::async::invoke([this, alive, config]() {
+                        helix::ui::queue_update([this, alive, config]() {
                             if (!alive->load())
                                 return;
                             populate_current_config(config);
@@ -828,7 +832,8 @@ void InputShaperPanel::apply_y_after_x() {
             if (!alive->load())
                 return;
             spdlog::error("[InputShaper] Failed to apply Y settings: {}", err);
-            ui_toast_show(ToastSeverity::WARNING, lv_tr("X axis applied, but Y axis failed"), 4000);
+            ToastManager::instance().show(ToastSeverity::WARNING,
+                                          lv_tr("X axis applied, but Y axis failed"), 4000);
         });
 }
 
@@ -838,7 +843,8 @@ void InputShaperPanel::save_configuration() {
     }
 
     spdlog::info("[InputShaper] Saving configuration (SAVE_CONFIG)");
-    ui_toast_show(ToastSeverity::WARNING, lv_tr("Saving config... Klipper will restart."), 3000);
+    ToastManager::instance().show(ToastSeverity::WARNING,
+                                  lv_tr("Saving config... Klipper will restart."), 3000);
 
     // Capture alive for async callback safety [L012]
     auto alive = alive_;
@@ -853,7 +859,8 @@ void InputShaperPanel::save_configuration() {
             if (!alive->load())
                 return;
             spdlog::error("[InputShaper] SAVE_CONFIG failed: {}", err);
-            ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to save configuration"), 3000);
+            ToastManager::instance().show(ToastSeverity::ERROR,
+                                          lv_tr("Failed to save configuration"), 3000);
         });
 }
 
@@ -932,8 +939,8 @@ void InputShaperPanel::populate_current_config(const InputShaperConfig& config) 
         lv_subject_copy_string(&is_current_x_type_, is_current_x_type_buf_);
 
         // X frequency
-        helix::fmt::format_frequency_hz(config.shaper_freq_x, is_current_x_freq_buf_,
-                                        sizeof(is_current_x_freq_buf_));
+        helix::format::format_frequency_hz(config.shaper_freq_x, is_current_x_freq_buf_,
+                                           sizeof(is_current_x_freq_buf_));
         lv_subject_copy_string(&is_current_x_freq_, is_current_x_freq_buf_);
 
         // Uppercase Y type
@@ -944,8 +951,8 @@ void InputShaperPanel::populate_current_config(const InputShaperConfig& config) 
         lv_subject_copy_string(&is_current_y_type_, is_current_y_type_buf_);
 
         // Y frequency
-        helix::fmt::format_frequency_hz(config.shaper_freq_y, is_current_y_freq_buf_,
-                                        sizeof(is_current_y_freq_buf_));
+        helix::format::format_frequency_hz(config.shaper_freq_y, is_current_y_freq_buf_,
+                                           sizeof(is_current_y_freq_buf_));
         lv_subject_copy_string(&is_current_y_freq_, is_current_y_freq_buf_);
 
         // Max accel - leave empty for now (populated from results in Chunk 3)
@@ -1033,7 +1040,7 @@ void InputShaperPanel::populate_axis_result(char axis, const InputShaperResult& 
 
     // Format frequency
     char freq_buf[16];
-    helix::fmt::format_frequency_hz(result.shaper_freq, freq_buf, sizeof(freq_buf));
+    helix::format::format_frequency_hz(result.shaper_freq, freq_buf, sizeof(freq_buf));
 
     if (axis == 'X') {
         lv_subject_set_int(&is_results_has_x_, 1);
@@ -1098,7 +1105,7 @@ void InputShaperPanel::populate_axis_result(char axis, const InputShaperResult& 
             lv_subject_copy_string(&cmp[i].type, cmp[i].type_buf);
 
             // Frequency
-            helix::fmt::format_frequency_hz(opt.frequency, cmp[i].freq_buf, CMP_VALUE_BUF);
+            helix::format::format_frequency_hz(opt.frequency, cmp[i].freq_buf, CMP_VALUE_BUF);
             lv_subject_copy_string(&cmp[i].freq, cmp[i].freq_buf);
 
             // Vibration with quality description
@@ -1530,7 +1537,7 @@ void InputShaperPanel::handle_close_clicked() {
     spdlog::debug("[InputShaper] Close clicked");
     clear_results();
     set_state(State::IDLE);
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void InputShaperPanel::handle_retry_clicked() {
@@ -1572,8 +1579,9 @@ void InputShaperPanel::handle_print_test_pattern_clicked() {
                 if (*alive) {
                     spdlog::info(
                         "[InputShaper] Tuning tower enabled - start a print to test calibration");
-                    ui_toast_show(ToastSeverity::INFO,
-                                  lv_tr("Tuning tower enabled - start a print to test"), 3000);
+                    ToastManager::instance().show(
+                        ToastSeverity::INFO, lv_tr("Tuning tower enabled - start a print to test"),
+                        3000);
                 }
             }
         },
@@ -1581,8 +1589,8 @@ void InputShaperPanel::handle_print_test_pattern_clicked() {
             if (auto alive = alive_weak.lock()) {
                 if (*alive) {
                     spdlog::error("[InputShaper] Failed to enable tuning tower: {}", err.message);
-                    ui_toast_show(ToastSeverity::ERROR, lv_tr("Failed to enable tuning tower"),
-                                  3000);
+                    ToastManager::instance().show(ToastSeverity::ERROR,
+                                                  lv_tr("Failed to enable tuning tower"), 3000);
                 }
             }
         });
@@ -1616,29 +1624,5 @@ void InputShaperPanel::handle_help_clicked() {
 
         "Lower vibration % is better. Lower smoothing preserves detail.";
 
-    const char* attrs[] = {"title", "Input Shaper Help", "message", help_message, nullptr};
-
-    ui_modal_configure(ModalSeverity::Info, false, "Got It", nullptr);
-    lv_obj_t* help_dialog = ui_modal_show("modal_dialog", attrs);
-
-    if (!help_dialog) {
-        spdlog::error("[InputShaper] Failed to show help modal");
-        return;
-    }
-
-    // Wire up Ok button to close
-    lv_obj_t* ok_btn = lv_obj_find_by_name(help_dialog, "btn_primary");
-    if (ok_btn) {
-        lv_obj_set_user_data(ok_btn, help_dialog);
-        lv_obj_add_event_cb(
-            ok_btn,
-            [](lv_event_t* e) {
-                auto* btn = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-                auto* dialog = static_cast<lv_obj_t*>(lv_obj_get_user_data(btn));
-                if (dialog) {
-                    ui_modal_hide(dialog);
-                }
-            },
-            LV_EVENT_CLICKED, nullptr);
-    }
+    helix::ui::modal_show_alert("Input Shaper Help", help_message, ModalSeverity::Info, "Got It");
 }

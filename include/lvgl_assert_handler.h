@@ -92,7 +92,7 @@ static inline void helix_lvgl_assert_handler(const char* file, int line, const c
             "║ Common causes:                                               ║\n"
             "║   1. lv_obj_invalidate() during render phase                 ║\n"
             "║   2. Subject observers triggering UI updates                 ║\n"
-            "║   3. Async callbacks not using ui_async_call()               ║\n"
+            "║   3. Async callbacks not using helix::ui::async_call()               ║\n"
             "║   4. NULL font/text/attributes in text operations            ║\n"
             "╚══════════════════════════════════════════════════════════════╝\n",
             time_buf, file, line, func);

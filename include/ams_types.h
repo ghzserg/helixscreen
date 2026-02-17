@@ -5,9 +5,11 @@
 
 #include "filament_database.h"
 
+#include <algorithm>
 #include <any>
 #include <cmath>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -503,6 +505,31 @@ inline PathSegment path_segment_from_afc_sensors(bool prep_sensor, bool hub_sens
 }
 
 /**
+ * @brief Per-slot error state
+ *
+ * Populated by backends when a slot/lane enters an error condition.
+ * AFC populates from per-lane status; Happy Hare maps system-level
+ * errors to the active gate.
+ */
+struct SlotError {
+    std::string message;                                     ///< Human-readable error description
+    enum Severity { INFO, WARNING, ERROR } severity = ERROR; ///< Error severity level
+};
+
+/**
+ * @brief Buffer health data for AFC buffer fault detection
+ *
+ * Populated from AFC_buffer status objects. Only applicable to AFC
+ * systems with TurtleNeck buffer hardware. Other backends leave
+ * buffer_health as nullopt on SlotInfo.
+ */
+struct BufferHealth {
+    bool fault_detection_enabled = false; ///< Whether buffer fault detection is active
+    float distance_to_fault = 0;          ///< Distance to fault in mm (0 = no fault proximity)
+    std::string state;                    ///< Buffer state (e.g., "Advancing", "Trailing")
+};
+
+/**
  * @brief Information about a single slot/lane
  *
  * This represents one filament slot in an AMS unit.
@@ -538,6 +565,9 @@ struct SlotInfo {
     // Endless spool support (Happy Hare)
     int endless_spool_group = -1; ///< Endless spool group (-1=not grouped)
 
+    // Error state
+    std::optional<SlotError> error; ///< Per-slot error state (nullopt = no error)
+
     /**
      * @brief Get remaining percentage
      * @return 0-100 or -1 if unknown
@@ -563,6 +593,14 @@ struct SlotInfo {
     [[nodiscard]] bool is_multi_color() const {
         return !multi_color_hexes.empty();
     }
+
+    /**
+     * @brief Check if filament is present in this slot
+     * @return true for AVAILABLE, LOADED, FROM_BUFFER, BLOCKED; false for EMPTY, UNKNOWN
+     */
+    [[nodiscard]] bool is_present() const {
+        return status != SlotStatus::EMPTY && status != SlotStatus::UNKNOWN;
+    }
 };
 
 /**
@@ -587,6 +625,25 @@ struct AmsUnit {
     bool has_encoder = false;         ///< Has filament encoder
     bool has_toolhead_sensor = false; ///< Has toolhead filament sensor
     bool has_slot_sensors = false;    ///< Has per-slot sensors
+
+    // Hub/combiner sensor (AFC Box Turtle, Night Owl, etc.)
+    bool has_hub_sensor = false;       ///< Unit has a hub/combiner sensor
+    bool hub_sensor_triggered = false; ///< Filament detected at this unit's hub
+
+    // Buffer health (AFC TurtleNeck — one buffer per unit, sits between hub and toolhead)
+    std::optional<BufferHealth> buffer_health; ///< Buffer fault state (nullopt = no buffer data)
+
+    // Per-unit topology (for mixed-topology setups like Box Turtle + OpenAMS)
+    PathTopology topology = PathTopology::HUB; ///< Filament path topology for this unit
+
+    /**
+     * @brief Check if any slot in this unit has an error
+     * @return true if at least one slot has error.has_value()
+     */
+    [[nodiscard]] bool has_any_error() const {
+        return std::any_of(slots.begin(), slots.end(),
+                           [](const SlotInfo& s) { return s.error.has_value(); });
+    }
 
     /**
      * @brief Get slot by local index (within this unit)
@@ -636,7 +693,6 @@ struct AmsSystemInfo {
 
     // Capability flags
     bool supports_endless_spool = false;
-    bool supports_spoolman = false;
     bool supports_tool_mapping = false;
     bool supports_bypass = false;            ///< Has bypass selector position
     bool has_hardware_bypass_sensor = false; ///< true=auto-detect sensor, false=virtual/manual
@@ -702,6 +758,79 @@ struct AmsSystemInfo {
      */
     [[nodiscard]] bool is_busy() const {
         return action != AmsAction::IDLE && action != AmsAction::ERROR;
+    }
+
+    // === Multi-unit helpers ===
+
+    /**
+     * @brief Check if this is a multi-unit setup (2+ physical units)
+     * @return true if more than one AmsUnit exists
+     */
+    [[nodiscard]] bool is_multi_unit() const {
+        return units.size() > 1;
+    }
+
+    /**
+     * @brief Get number of physical units
+     * @return Number of AmsUnit entries
+     */
+    [[nodiscard]] int unit_count() const {
+        return static_cast<int>(units.size());
+    }
+
+    /**
+     * @brief Get the unit that contains a given global slot index
+     * @param global_index Global slot index (0 to total_slots-1)
+     * @return Pointer to containing AmsUnit or nullptr if out of range
+     */
+    [[nodiscard]] const AmsUnit* get_unit_for_slot(int global_index) const {
+        for (const auto& unit : units) {
+            if (global_index >= unit.first_slot_global_index &&
+                global_index < unit.first_slot_global_index + unit.slot_count) {
+                return &unit;
+            }
+        }
+        return nullptr;
+    }
+
+    /**
+     * @brief Get mutable unit that contains a given global slot index
+     * @param global_index Global slot index (0 to total_slots-1)
+     * @return Pointer to containing AmsUnit or nullptr if out of range
+     */
+    [[nodiscard]] AmsUnit* get_unit_for_slot(int global_index) {
+        for (auto& unit : units) {
+            if (global_index >= unit.first_slot_global_index &&
+                global_index < unit.first_slot_global_index + unit.slot_count) {
+                return &unit;
+            }
+        }
+        return nullptr;
+    }
+
+    /**
+     * @brief Get unit by index
+     * @param unit_index Unit index (0 to unit_count()-1)
+     * @return Pointer to AmsUnit or nullptr if out of range
+     */
+    [[nodiscard]] const AmsUnit* get_unit(int unit_index) const {
+        if (unit_index < 0 || unit_index >= static_cast<int>(units.size())) {
+            return nullptr;
+        }
+        return &units[unit_index];
+    }
+
+    /**
+     * @brief Get the unit index that contains the currently active slot
+     * @return Unit index (0-based) or -1 if no active slot
+     */
+    [[nodiscard]] int get_active_unit_index() const {
+        if (current_slot < 0)
+            return -1;
+        const auto* unit = get_unit_for_slot(current_slot);
+        if (!unit)
+            return -1;
+        return unit->unit_index;
     }
 };
 
@@ -922,10 +1051,10 @@ inline const char* action_type_to_string(ActionType type) {
  * Groups related device actions together in the UI.
  */
 struct DeviceSection {
-    std::string id;    ///< Section identifier (e.g., "calibration")
-    std::string label; ///< Display label (e.g., "Calibration")
-    std::string icon;  ///< Icon name for the section header
-    int display_order; ///< Sort order (0 = first)
+    std::string id;          ///< Section identifier (e.g., "calibration")
+    std::string label;       ///< Display label (e.g., "Calibration")
+    int display_order;       ///< Sort order (0 = first)
+    std::string description; ///< Short description for settings row
 };
 
 /**

@@ -30,6 +30,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Tracked LED Tests - set_tracked_led / get_tracked_led / has_tracked_led
 // ============================================================================

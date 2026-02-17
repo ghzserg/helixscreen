@@ -5,7 +5,7 @@
 
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
-#include "ui_keyboard.h"
+#include "ui_keyboard_manager.h"
 #include "ui_notification.h"
 #include "ui_subject_registry.h"
 #include "ui_update_queue.h"
@@ -30,6 +30,8 @@
 #include <cstring>
 #include <memory>
 #include <string>
+
+using namespace helix;
 
 // ============================================================================
 // External Subject (defined in ui_wizard.cpp)
@@ -82,64 +84,6 @@ void WizardConnectionStep::set_mdns_discovery(std::unique_ptr<IMdnsDiscovery> di
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardConnectionStep::WizardConnectionStep(WizardConnectionStep&& other) noexcept
-    : screen_root_(other.screen_root_), connection_ip_(other.connection_ip_),
-      connection_port_(other.connection_port_),
-      connection_status_icon_(other.connection_status_icon_),
-      connection_status_text_(other.connection_status_text_),
-      connection_testing_(other.connection_testing_),
-      connection_validated_(other.connection_validated_),
-      subjects_initialized_(other.subjects_initialized_), saved_ip_(std::move(other.saved_ip_)),
-      saved_port_(std::move(other.saved_port_)) {
-    // Move buffers
-    std::memcpy(connection_ip_buffer_, other.connection_ip_buffer_, sizeof(connection_ip_buffer_));
-    std::memcpy(connection_port_buffer_, other.connection_port_buffer_,
-                sizeof(connection_port_buffer_));
-    std::memcpy(connection_status_icon_buffer_, other.connection_status_icon_buffer_,
-                sizeof(connection_status_icon_buffer_));
-    std::memcpy(connection_status_text_buffer_, other.connection_status_text_buffer_,
-                sizeof(connection_status_text_buffer_));
-
-    // Null out other
-    other.screen_root_ = nullptr;
-    other.subjects_initialized_ = false;
-    other.connection_validated_ = false;
-}
-
-WizardConnectionStep& WizardConnectionStep::operator=(WizardConnectionStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        connection_ip_ = other.connection_ip_;
-        connection_port_ = other.connection_port_;
-        connection_status_icon_ = other.connection_status_icon_;
-        connection_status_text_ = other.connection_status_text_;
-        connection_testing_ = other.connection_testing_;
-        connection_validated_ = other.connection_validated_;
-        subjects_initialized_ = other.subjects_initialized_;
-        saved_ip_ = std::move(other.saved_ip_);
-        saved_port_ = std::move(other.saved_port_);
-
-        // Move buffers
-        std::memcpy(connection_ip_buffer_, other.connection_ip_buffer_,
-                    sizeof(connection_ip_buffer_));
-        std::memcpy(connection_port_buffer_, other.connection_port_buffer_,
-                    sizeof(connection_port_buffer_));
-        std::memcpy(connection_status_icon_buffer_, other.connection_status_icon_buffer_,
-                    sizeof(connection_status_icon_buffer_));
-        std::memcpy(connection_status_text_buffer_, other.connection_status_text_buffer_,
-                    sizeof(connection_status_text_buffer_));
-
-        // Null out other
-        other.screen_root_ = nullptr;
-        other.subjects_initialized_ = false;
-        other.connection_validated_ = false;
-    }
-    return *this;
-}
-
 // ============================================================================
 // Subject Initialization
 // ============================================================================
@@ -234,9 +178,9 @@ void WizardConnectionStep::handle_test_connection_clicked() {
 
     // Get values from subjects
     const char* ip = lv_subject_get_string(&connection_ip_);
-    const char* port_str = lv_subject_get_string(&connection_port_);
+    std::string port_clean = sanitize_port(lv_subject_get_string(&connection_port_));
 
-    spdlog::debug("[{}] Test connection clicked: {}:{}", get_name(), ip, port_str);
+    spdlog::debug("[{}] Test connection clicked: {}:{}", get_name(), ip, port_clean);
 
     // Clear previous validation state
     connection_validated_ = false;
@@ -255,9 +199,9 @@ void WizardConnectionStep::handle_test_connection_clicked() {
         return;
     }
 
-    if (!is_valid_port(port_str)) {
+    if (!is_valid_port(port_clean)) {
         set_status("icon_xmark_circle", StatusVariant::Danger, "Invalid port (must be 1-65535)");
-        spdlog::warn("[{}] Invalid port: {}", get_name(), port_str);
+        spdlog::warn("[{}] Invalid port: {}", get_name(), port_clean);
         return;
     }
 
@@ -281,20 +225,20 @@ void WizardConnectionStep::handle_test_connection_clicked() {
     {
         std::lock_guard<std::mutex> lock(saved_values_mutex_);
         saved_ip_ = ip;
-        saved_port_ = port_str;
+        saved_port_ = port_clean;
     }
 
     // Set UI to testing state
     lv_subject_set_int(&connection_testing_, 1);
     set_status("icon_question_circle", StatusVariant::None, "Testing connection...");
 
-    spdlog::debug("[{}] Starting connection test to {}:{}", get_name(), ip, port_str);
+    spdlog::debug("[{}] Starting connection test to {}:{}", get_name(), ip, port_clean);
 
     // Set shorter timeout for wizard testing
     client->set_connection_timeout(5000);
 
     // Construct WebSocket URL
-    std::string ws_url = "ws://" + std::string(ip) + ":" + std::string(port_str) + "/websocket";
+    std::string ws_url = "ws://" + std::string(ip) + ":" + port_clean + "/websocket";
 
     // Capture generation counter to detect stale callbacks
     // If cleanup_called_ or generation changes, callback will be ignored
@@ -336,7 +280,7 @@ void WizardConnectionStep::on_connection_success() {
     spdlog::info("[Wizard Connection] Connection successful!");
 
     // Defer ALL operations (including config) to main thread
-    ui_async_call(
+    helix::ui::async_call(
         [](void* ctx) {
             auto* self = static_cast<WizardConnectionStep*>(ctx);
 
@@ -398,7 +342,7 @@ void WizardConnectionStep::on_connection_success() {
                         spdlog::info("[Wizard Connection] Hardware discovery complete!");
 
                         // Defer discovery UI update to main thread
-                        ui_async_call(
+                        helix::ui::async_call(
                             [](void* ctx2) {
                                 auto* self2 = static_cast<WizardConnectionStep*>(ctx2);
 
@@ -447,7 +391,7 @@ void WizardConnectionStep::on_connection_success() {
                         spdlog::warn("[Wizard Connection] Discovery failed: {}", reason);
 
                         // Defer error UI update to main thread
-                        ui_async_call(
+                        helix::ui::async_call(
                             [](void* ctx2) {
                                 auto* self2 = static_cast<WizardConnectionStep*>(ctx2);
 
@@ -488,7 +432,7 @@ void WizardConnectionStep::on_connection_failure() {
     spdlog::debug("[Wizard Connection] on_disconnected fired");
 
     // Defer LVGL operations to main thread
-    ui_async_call(
+    helix::ui::async_call(
         [](void* ctx) {
             auto* self = static_cast<WizardConnectionStep*>(ctx);
 
@@ -553,11 +497,11 @@ void WizardConnectionStep::auto_probe_timer_cb(lv_timer_t* timer) {
 void WizardConnectionStep::attempt_auto_probe() {
     // Get the IP/port from subjects - may be from config or default
     const char* ip = lv_subject_get_string(&connection_ip_);
-    const char* port = lv_subject_get_string(&connection_port_);
+    std::string port_clean = sanitize_port(lv_subject_get_string(&connection_port_));
 
     // If IP is empty, use localhost as default probe target
     std::string probe_ip = (ip && strlen(ip) > 0) ? ip : "127.0.0.1";
-    std::string probe_port = (port && strlen(port) > 0) ? port : "7125";
+    std::string probe_port = !port_clean.empty() ? port_clean : "7125";
 
     spdlog::debug("[{}] Starting auto-probe to {}:{}", get_name(), probe_ip, probe_port);
 
@@ -656,7 +600,7 @@ void WizardConnectionStep::on_auto_probe_success() {
     auto_probe_state_.store(AutoProbeState::SUCCEEDED);
 
     // Defer ALL operations (including config) to main thread
-    ui_async_call(
+    helix::ui::async_call(
         [](void* ctx) {
             auto* self = static_cast<WizardConnectionStep*>(ctx);
 
@@ -730,7 +674,7 @@ void WizardConnectionStep::on_auto_probe_success() {
                         spdlog::info("[Wizard Connection] Auto-probe: Hardware discovery complete");
 
                         // Defer discovery completion UI update to main thread
-                        ui_async_call(
+                        helix::ui::async_call(
                             [](void* ctx2) {
                                 auto* self2 = static_cast<WizardConnectionStep*>(ctx2);
 
@@ -773,7 +717,7 @@ void WizardConnectionStep::on_auto_probe_success() {
                                      reason);
 
                         // Defer error UI update to main thread
-                        ui_async_call(
+                        helix::ui::async_call(
                             [](void* ctx2) {
                                 auto* self2 = static_cast<WizardConnectionStep*>(ctx2);
 
@@ -823,7 +767,7 @@ void WizardConnectionStep::on_auto_probe_failure() {
     auto_probe_state_.store(AutoProbeState::FAILED);
 
     // Defer LVGL operations to main thread
-    ui_async_call(
+    helix::ui::async_call(
         [](void* ctx) {
             auto* self = static_cast<WizardConnectionStep*>(ctx);
 
@@ -955,19 +899,23 @@ lv_obj_t* WizardConnectionStep::create(lv_obj_t* parent) {
             spdlog::debug("[{}] Pre-filled IP input: {}", get_name(), ip_text);
         }
         lv_obj_add_event_cb(ip_input, on_ip_input_changed_static, LV_EVENT_VALUE_CHANGED, this);
-        ui_keyboard_register_textarea(ip_input);
+        KeyboardManager::instance().register_textarea(ip_input);
         spdlog::debug("[{}] IP input configured with keyboard", get_name());
     }
 
     lv_obj_t* port_input = lv_obj_find_by_name(screen_root_, "port_input");
     if (port_input) {
+        // Note: NOT using lv_textarea_set_accepted_chars() here because it conflicts
+        // with bind_text two-way binding — set_text adds chars one-by-one, each fires
+        // VALUE_CHANGED, and the observer cascade truncates the text. Port sanitization
+        // is handled by sanitize_port() at all read sites instead.
         const char* port_text = lv_subject_get_string(&connection_port_);
         if (port_text && strlen(port_text) > 0) {
             lv_textarea_set_text(port_input, port_text);
             spdlog::debug("[{}] Pre-filled port input: {}", get_name(), port_text);
         }
         lv_obj_add_event_cb(port_input, on_port_input_changed_static, LV_EVENT_VALUE_CHANGED, this);
-        ui_keyboard_register_textarea(port_input);
+        KeyboardManager::instance().register_textarea(port_input);
         spdlog::debug("[{}] Port input configured with keyboard", get_name());
     }
 
@@ -976,7 +924,7 @@ lv_obj_t* WizardConnectionStep::create(lv_obj_t* parent) {
     // Set initial dropdown text (bind_options doesn't work for dropdowns)
     lv_obj_t* printer_dropdown = lv_obj_find_by_name(screen_root_, "printer_dropdown");
     if (printer_dropdown) {
-        lv_dropdown_set_options(printer_dropdown, "Searching...");
+        lv_dropdown_set_options(printer_dropdown, lv_tr("Searching..."));
     }
 
     // Schedule auto-probe if appropriate (empty config, first visit)
@@ -1198,13 +1146,14 @@ bool WizardConnectionStep::get_url(char* buffer, size_t size) const {
 
     // Cast away const for LVGL API (subject is not modified by get_string)
     const char* ip = lv_subject_get_string(const_cast<lv_subject_t*>(&connection_ip_));
-    const char* port_str = lv_subject_get_string(const_cast<lv_subject_t*>(&connection_port_));
+    std::string port_clean =
+        sanitize_port(lv_subject_get_string(const_cast<lv_subject_t*>(&connection_port_)));
 
-    if (!is_valid_ip_or_hostname(ip) || !is_valid_port(port_str)) {
+    if (!is_valid_ip_or_hostname(ip) || !is_valid_port(port_clean)) {
         return false;
     }
 
-    snprintf(buffer, size, "ws://%s:%s/websocket", ip, port_str);
+    snprintf(buffer, size, "ws://%s:%s/websocket", ip, port_clean.c_str());
     return true;
 }
 

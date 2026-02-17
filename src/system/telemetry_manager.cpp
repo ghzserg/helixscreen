@@ -3,13 +3,17 @@
 
 #include "system/telemetry_manager.h"
 
+#include "ui_update_queue.h"
+
 #include "ams_types.h"
 #include "app_globals.h"
 #include "config.h"
 #include "display_backend.h"
 #include "display_manager.h"
 #include "hv/requests.h"
+#include "moonraker_api.h"
 #include "moonraker_client.h"
+#include "moonraker_types.h"
 #include "platform_capabilities.h"
 #include "printer_state.h"
 #include "settings_manager.h"
@@ -35,6 +39,7 @@
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+using namespace helix;
 
 // =============================================================================
 // SHA-256 implementation
@@ -424,11 +429,7 @@ size_t TelemetryManager::queue_size() const {
 
 nlohmann::json TelemetryManager::get_queue_snapshot() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    json snapshot = json::array();
-    for (const auto& event : queue_) {
-        snapshot.push_back(event);
-    }
-    return snapshot;
+    return json(queue_);
 }
 
 void TelemetryManager::clear_queue() {
@@ -443,12 +444,8 @@ void TelemetryManager::clear_queue() {
 
 nlohmann::json TelemetryManager::build_batch() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    json batch = json::array();
     size_t batch_size = std::min(queue_.size(), MAX_BATCH_SIZE);
-    for (size_t i = 0; i < batch_size; ++i) {
-        batch.push_back(queue_[i]);
-    }
-    return batch;
+    return json(std::vector<json>(queue_.begin(), queue_.begin() + static_cast<long>(batch_size)));
 }
 
 void TelemetryManager::remove_sent_events(size_t count) {
@@ -642,14 +639,9 @@ void TelemetryManager::save_queue() const {
     std::lock_guard<std::mutex> lock(mutex_);
     try {
         std::string path = get_queue_path();
-        json arr = json::array();
-        for (const auto& event : queue_) {
-            arr.push_back(event);
-        }
-
         std::ofstream file(path);
         if (file.good()) {
-            file << arr.dump(2);
+            file << json(queue_).dump(2);
             spdlog::trace("[TelemetryManager] Saved {} events to {}", queue_.size(), path);
         } else {
             spdlog::warn("[TelemetryManager] Failed to open queue file for writing: {}", path);
@@ -722,28 +714,20 @@ void TelemetryManager::check_previous_crash() {
     event["device_id"] = get_hashed_device_id();
 
     // Use timestamp from crash file if available, otherwise current time
-    if (crash_data.contains("timestamp")) {
-        event["timestamp"] = crash_data["timestamp"];
-    } else {
-        event["timestamp"] = get_timestamp();
+    event["timestamp"] =
+        crash_data.contains("timestamp") ? crash_data["timestamp"] : json(get_timestamp());
+
+    // Copy crash-specific fields (signal info, backtrace, register state)
+    for (const char* key :
+         {"signal", "signal_name", "app_version", "uptime_sec", "backtrace", "fault_addr",
+          "fault_code", "fault_code_name", "reg_pc", "reg_sp", "reg_lr", "reg_bp", "load_base"}) {
+        if (crash_data.contains(key)) {
+            event[key] = crash_data[key];
+        }
     }
 
-    // Copy crash-specific fields
-    if (crash_data.contains("signal")) {
-        event["signal"] = crash_data["signal"];
-    }
-    if (crash_data.contains("signal_name")) {
-        event["signal_name"] = crash_data["signal_name"];
-    }
-    if (crash_data.contains("app_version")) {
-        event["app_version"] = crash_data["app_version"];
-    }
-    if (crash_data.contains("uptime_sec")) {
-        event["uptime_sec"] = crash_data["uptime_sec"];
-    }
-    if (crash_data.contains("backtrace")) {
-        event["backtrace"] = crash_data["backtrace"];
-    }
+    // Add platform (not in crash file — determined at runtime)
+    event["app_platform"] = UpdateChecker::get_platform_key();
 
     // Only enqueue if telemetry is enabled (respect user opt-in)
     if (enabled_.load()) {
@@ -1121,6 +1105,11 @@ bool s_telemetry_first_update = false;
 /// max value seen to report how many phases were completed.
 int s_telemetry_max_phase = 0;
 
+/// Cached filament metadata from file metadata fetch at print start.
+/// Written via ui_queue_update (main thread), read on main thread at print end.
+std::string s_telemetry_filament_type;
+float s_telemetry_filament_used_mm = 0.0f;
+
 /// Observer callback for print state transitions (telemetry recording)
 void on_print_state_changed_for_telemetry(lv_observer_t* observer, lv_subject_t* subject) {
     (void)observer;
@@ -1150,6 +1139,44 @@ void on_print_state_changed_for_telemetry(lv_observer_t* observer, lv_subject_t*
         phase = lv_subject_get_int(ps.get_print_start_phase_subject());
         if (phase > s_telemetry_max_phase) {
             s_telemetry_max_phase = phase;
+        }
+
+        // Reset filament cache (prevent stale data from previous print)
+        s_telemetry_filament_type.clear();
+        s_telemetry_filament_used_mm = 0.0f;
+
+        // Fetch file metadata to populate filament info for this print.
+        // Note: if print ends before the async callback arrives, filament data
+        // will be empty — this is acceptable (benign race, telemetry best-effort).
+        const char* filename = lv_subject_get_string(ps.get_print_filename_subject());
+        if (filename && filename[0] != '\0') {
+            std::string fname(filename);
+            spdlog::debug("[Telemetry] Fetching metadata for filament info: {}", fname);
+
+            auto* api = get_moonraker_api();
+            if (api) {
+                api->get_file_metadata(
+                    fname,
+                    [](const FileMetadata& metadata) {
+                        // Callback runs on background WebSocket thread —
+                        // marshal cache write to main thread via ui_queue_update
+                        std::string ftype = metadata.filament_type;
+                        float ftotal = static_cast<float>(metadata.filament_total);
+                        helix::ui::queue_update([ftype = std::move(ftype), ftotal]() {
+                            s_telemetry_filament_type = ftype;
+                            s_telemetry_filament_used_mm = ftotal;
+                            spdlog::debug("[Telemetry] Cached filament: type='{}', total={:.1f}mm",
+                                          s_telemetry_filament_type, s_telemetry_filament_used_mm);
+                        });
+                    },
+                    [](const MoonrakerError& error) {
+                        spdlog::warn(
+                            "[Telemetry] Failed to fetch file metadata for filament info: {}",
+                            error.message);
+                    },
+                    true // silent — don't log 404s for missing metadata
+                );
+            }
         }
     }
 
@@ -1182,18 +1209,19 @@ void on_print_state_changed_for_telemetry(lv_observer_t* observer, lv_subject_t*
         int phases_completed = s_telemetry_max_phase;
 
         // Temperatures: subjects store centidegrees (value * 10), divide by 10
-        int nozzle_temp_centi = lv_subject_get_int(ps.get_extruder_target_subject());
+        int nozzle_temp_centi = lv_subject_get_int(ps.get_active_extruder_target_subject());
         int bed_temp_centi = lv_subject_get_int(ps.get_bed_target_subject());
         int nozzle_temp = nozzle_temp_centi / 10;
         int bed_temp = bed_temp_centi / 10;
 
-        // Filament usage and type are not available as subjects at this point.
-        // Pass defaults; future phases may add metadata tracking.
-        float filament_used_mm = 0.0f;
-        std::string filament_type;
+        // Use filament data cached at print start from file metadata
+        float filament_used_mm = s_telemetry_filament_used_mm;
+        std::string filament_type = s_telemetry_filament_type;
 
-        spdlog::info("[Telemetry] Print {} - duration={}s, phases={}, nozzle={}C, bed={}C", outcome,
-                     duration_sec, phases_completed, nozzle_temp, bed_temp);
+        spdlog::info("[Telemetry] Print {} - duration={}s, phases={}, nozzle={}C, bed={}C, "
+                     "filament='{}' {:.0f}mm",
+                     outcome, duration_sec, phases_completed, nozzle_temp, bed_temp, filament_type,
+                     filament_used_mm);
 
         TelemetryManager::instance().record_print_outcome(outcome, duration_sec, phases_completed,
                                                           filament_used_mm, filament_type,
@@ -1213,6 +1241,8 @@ ObserverGuard TelemetryManager::init_print_outcome_observer() {
     s_telemetry_first_update = false;
     s_telemetry_prev_state = PrintJobState::STANDBY;
     s_telemetry_max_phase = 0;
+    s_telemetry_filament_type.clear();
+    s_telemetry_filament_used_mm = 0.0f;
 
     spdlog::debug("[Telemetry] Print outcome observer registered");
     return ObserverGuard(get_printer_state().get_print_state_enum_subject(),

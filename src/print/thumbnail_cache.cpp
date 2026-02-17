@@ -15,6 +15,8 @@
 #include <functional>
 #include <vector>
 
+using namespace helix;
+
 // Global singleton using Meyer's Singleton pattern (thread-safe, no leak)
 ThumbnailCache& get_thumbnail_cache() {
     static ThumbnailCache instance;

@@ -301,8 +301,26 @@ use_local_tarball() {
     # The extract_release function looks for ${TMP_DIR}/helixscreen.tar.gz
     local dest="${TMP_DIR}/helixscreen.tar.gz"
     if [ "$src" != "$dest" ]; then
-        # Use symlink if possible, otherwise copy
-        ln -sf "$src" "$dest" 2>/dev/null || cp "$src" "$dest"
+        # Resolve to absolute path so a symlink created in $TMP_DIR doesn't
+        # become dangling if the user passed a relative path.
+        # (BusyBox readlink may not support -f, so try realpath first.)
+        local abs_src
+        abs_src=$(realpath "$src" 2>/dev/null)
+        [ -n "$abs_src" ] || abs_src=$(readlink -f "$src" 2>/dev/null)
+        [ -n "$abs_src" ] || abs_src="$src"
+
+        # Prefer a symlink to avoid copying large files on constrained devices,
+        # but *verify* the staged tarball is readable. Fall back to copying.
+        if ln -sf "$abs_src" "$dest" 2>/dev/null && [ -r "$dest" ]; then
+            : # symlink OK
+        elif cp "$abs_src" "$dest" 2>/dev/null && [ -r "$dest" ]; then
+            : # copy OK
+        else
+            log_error "Failed to stage tarball at $dest"
+            log_error "Source: $abs_src"
+            log_error "Check that the source file exists and the temp directory is writable."
+            exit 1
+        fi
     fi
 
     local size
@@ -361,10 +379,15 @@ validate_binary_architecture() {
     # Determine expected values based on platform
     local expected_class expected_machine_lo expected_desc
     case "$platform" in
-        ad5m|k1|pi32)
+        ad5m|pi32)
             expected_class="01"
             expected_machine_lo="28"
             expected_desc="ARM 32-bit (armv7l)"
+            ;;
+        k1)
+            expected_class="01"
+            expected_machine_lo="08"
+            expected_desc="MIPS 32-bit (mipsel)"
             ;;
         pi)
             expected_class="02"
@@ -380,6 +403,8 @@ validate_binary_architecture() {
     local actual_desc
     if [ "$elf_class" = "01" ] && [ "$machine_lo" = "28" ]; then
         actual_desc="ARM 32-bit (armv7l)"
+    elif [ "$elf_class" = "01" ] && [ "$machine_lo" = "08" ]; then
+        actual_desc="MIPS 32-bit (mipsel)"
     elif [ "$elf_class" = "02" ] && [ "$machine_lo" = "b7" ]; then
         actual_desc="AARCH64 64-bit"
     else
@@ -497,7 +522,7 @@ extract_release() {
         fi
 
         # Atomic swap: move old install to .old backup
-        if ! $SUDO mv "${INSTALL_DIR}" "${INSTALL_DIR}.old"; then
+        if ! $(file_sudo "${INSTALL_DIR}") mv "${INSTALL_DIR}" "${INSTALL_DIR}.old"; then
             log_error "Failed to backup existing installation."
             rm -rf "$extract_dir"
             exit 1
@@ -505,13 +530,13 @@ extract_release() {
     fi
 
     # Phase 5: Move new install into place
-    $SUDO mkdir -p "$(dirname "${INSTALL_DIR}")"
-    if ! $SUDO mv "${new_install}" "${INSTALL_DIR}"; then
+    $(file_sudo "$(dirname "${INSTALL_DIR}")") mkdir -p "$(dirname "${INSTALL_DIR}")"
+    if ! $(file_sudo "$(dirname "${INSTALL_DIR}")") mv "${new_install}" "${INSTALL_DIR}"; then
         log_error "Failed to install new release."
         # ROLLBACK: restore old installation
         if [ -d "${INSTALL_DIR}.old" ]; then
             log_warn "Rolling back to previous installation..."
-            if $SUDO mv "${INSTALL_DIR}.old" "${INSTALL_DIR}"; then
+            if $(file_sudo "${INSTALL_DIR}.old") mv "${INSTALL_DIR}.old" "${INSTALL_DIR}"; then
                 log_warn "Rollback complete. Previous installation restored."
             else
                 log_error "CRITICAL: Rollback failed! Previous install at ${INSTALL_DIR}.old"
@@ -524,8 +549,8 @@ extract_release() {
 
     # Phase 6: Restore config
     if [ -n "${BACKUP_CONFIG:-}" ] && [ -f "$BACKUP_CONFIG" ]; then
-        $SUDO mkdir -p "${INSTALL_DIR}/config"
-        $SUDO cp "$BACKUP_CONFIG" "${INSTALL_DIR}/config/helixconfig.json"
+        $(file_sudo "${INSTALL_DIR}") mkdir -p "${INSTALL_DIR}/config"
+        $(file_sudo "${INSTALL_DIR}/config") cp "$BACKUP_CONFIG" "${INSTALL_DIR}/config/helixconfig.json"
         log_info "Restored existing configuration to config/"
     fi
 
@@ -537,7 +562,7 @@ extract_release() {
 # Remove backup of previous installation (call after service starts successfully)
 cleanup_old_install() {
     if [ -d "${INSTALL_DIR}.old" ]; then
-        $SUDO rm -rf "${INSTALL_DIR}.old"
+        $(file_sudo "${INSTALL_DIR}.old") rm -rf "${INSTALL_DIR}.old"
         log_info "Cleaned up previous installation backup"
     fi
 }

@@ -9,6 +9,8 @@
 
 #include <algorithm>
 
+using namespace helix;
+
 void CapabilityOverrides::load_from_config() {
     Config* cfg = Config::get_instance();
     if (!cfg) {

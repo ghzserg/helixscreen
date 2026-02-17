@@ -3,9 +3,10 @@
 
 #include "ui_crash_report_modal.h"
 
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "system/crash_reporter.h"
 
 #include <spdlog/spdlog.h>
@@ -53,7 +54,8 @@ bool CrashReportModal::show_modal(lv_obj_t* parent) {
     }
 
     lv_subject_copy_string(&details_subject_, details.c_str());
-    lv_subject_copy_string(&status_subject_, "Send this crash report to help improve HelixScreen.");
+    lv_subject_copy_string(&status_subject_,
+                           lv_tr("Send this crash report to help improve HelixScreen."));
 
     // Call base class show
     bool result = show(parent);
@@ -79,7 +81,7 @@ void CrashReportModal::on_hide() {
     // Self-delete: this modal is heap-allocated in application.cpp startup
     // and has no other owner. Deferred so hide() finishes before destruction.
     auto* self = this;
-    ui_async_call([](void* data) { delete static_cast<CrashReportModal*>(data); }, self);
+    helix::ui::async_call([](void* data) { delete static_cast<CrashReportModal*>(data); }, self);
 }
 
 // =============================================================================
@@ -171,7 +173,7 @@ void CrashReportModal::attempt_delivery() {
     auto& cr = CrashReporter::instance();
 
     // Update status
-    lv_subject_copy_string(&status_subject_, "Sending...");
+    lv_subject_copy_string(&status_subject_, lv_tr("Sending..."));
 
     // Try auto-send first
     if (cr.try_auto_send(report_)) {
@@ -179,7 +181,8 @@ void CrashReportModal::attempt_delivery() {
         cr.save_to_file(report_);
         cr.consume_crash_file();
         hide();
-        ui_toast_show(ToastSeverity::SUCCESS, "Crash report sent — thank you!", 4000);
+        ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                      lv_tr("Crash report sent — thank you!"), 4000);
         return;
     } else {
         // Auto-send failed — try QR code
@@ -187,9 +190,9 @@ void CrashReportModal::attempt_delivery() {
         if (!url.empty()) {
             show_qr_code(url);
             lv_subject_copy_string(&status_subject_,
-                                   "No network. Scan QR code to report on your phone.");
+                                   lv_tr("No network. Scan QR code to report on your phone."));
         } else {
-            lv_subject_copy_string(&status_subject_, "Report saved to crash_report.txt");
+            lv_subject_copy_string(&status_subject_, lv_tr("Report saved to crash_report.txt"));
         }
     }
 
@@ -225,7 +228,7 @@ void CrashReportModal::show_qr_code(const std::string& url) {
     }
 #else
     spdlog::warn("[CrashReportModal] QR code support not compiled in (LV_USE_QRCODE=0)");
-    lv_subject_copy_string(&status_subject_, "Saved to crash_report.txt (QR not available)");
+    lv_subject_copy_string(&status_subject_, lv_tr("Saved to crash_report.txt (QR not available)"));
     (void)url;
 #endif
 }

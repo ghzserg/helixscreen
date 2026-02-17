@@ -5,7 +5,7 @@
 
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
-#include "ui_keyboard.h"
+#include "ui_keyboard_manager.h"
 #include "ui_subject_registry.h"
 #include "ui_wizard.h"
 
@@ -28,6 +28,8 @@
 #include <memory>
 #include <sstream>
 #include <string>
+
+using namespace helix;
 
 // ============================================================================
 // External Subject (defined in ui_wizard.cpp)
@@ -71,52 +73,6 @@ WizardPrinterIdentifyStep::~WizardPrinterIdentifyStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardPrinterIdentifyStep::WizardPrinterIdentifyStep(WizardPrinterIdentifyStep&& other) noexcept
-    : screen_root_(other.screen_root_), printer_preview_image_(other.printer_preview_image_),
-      printer_name_(other.printer_name_), printer_type_selected_(other.printer_type_selected_),
-      printer_detection_status_(other.printer_detection_status_),
-      printer_identify_validated_(other.printer_identify_validated_),
-      subjects_initialized_(other.subjects_initialized_) {
-    // Move buffers
-    std::memcpy(printer_name_buffer_, other.printer_name_buffer_, sizeof(printer_name_buffer_));
-    std::memcpy(printer_detection_status_buffer_, other.printer_detection_status_buffer_,
-                sizeof(printer_detection_status_buffer_));
-
-    // Null out other
-    other.screen_root_ = nullptr;
-    other.printer_preview_image_ = nullptr;
-    other.subjects_initialized_ = false;
-    other.printer_identify_validated_ = false;
-}
-
-WizardPrinterIdentifyStep&
-WizardPrinterIdentifyStep::operator=(WizardPrinterIdentifyStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        printer_preview_image_ = other.printer_preview_image_;
-        printer_name_ = other.printer_name_;
-        printer_type_selected_ = other.printer_type_selected_;
-        printer_detection_status_ = other.printer_detection_status_;
-        printer_identify_validated_ = other.printer_identify_validated_;
-        subjects_initialized_ = other.subjects_initialized_;
-
-        // Move buffers
-        std::memcpy(printer_name_buffer_, other.printer_name_buffer_, sizeof(printer_name_buffer_));
-        std::memcpy(printer_detection_status_buffer_, other.printer_detection_status_buffer_,
-                    sizeof(printer_detection_status_buffer_));
-
-        // Null out other
-        other.screen_root_ = nullptr;
-        other.printer_preview_image_ = nullptr;
-        other.subjects_initialized_ = false;
-        other.printer_identify_validated_ = false;
-    }
-    return *this;
-}
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -263,29 +219,29 @@ void WizardPrinterIdentifyStep::init_subjects() {
     UI_SUBJECT_INIT_AND_REGISTER_STRING(printer_name_, printer_name_buffer_, printer_name_buffer_,
                                         "printer_name");
 
-    // Run auto-detection if no saved type (uses filtered list for index)
-    PrinterDetectionHint hint{PrinterDetector::get_unknown_list_index(detected_kinematics_), 0, ""};
-    if (saved_type.empty()) {
-        hint = detect_printer_type(detected_kinematics_);
-        if (hint.confidence >= 70) {
+    // Always run auto-detection (even when config has a saved type, e.g. re-running wizard)
+    PrinterDetectionHint hint = detect_printer_type(detected_kinematics_);
+    if (hint.confidence >= 70) {
+        // High-confidence detection overrides saved type
+        default_type = hint.type_index;
+        spdlog::info("[{}] Auto-detection: {} (confidence: {}%)", get_name(), hint.type_name,
+                     hint.confidence);
+    } else if (hint.confidence > 0) {
+        spdlog::info("[{}] Auto-detection suggestion: {} (confidence: {}%)", get_name(),
+                     hint.type_name, hint.confidence);
+        // Low confidence: keep saved type if available, otherwise use suggestion
+        if (saved_type.empty()) {
             default_type = hint.type_index;
-            spdlog::debug("[{}] Auto-detection: {} (confidence: {}%)", get_name(), hint.type_name,
-                          hint.confidence);
-        } else if (hint.confidence > 0) {
-            spdlog::debug("[{}] Auto-detection suggestion: {} (confidence: {}%)", get_name(),
-                          hint.type_name, hint.confidence);
-        } else {
-            spdlog::debug("[{}] Auto-detection: {}", get_name(), hint.type_name);
         }
+    } else {
+        spdlog::debug("[{}] Auto-detection: no match", get_name());
     }
 
     UI_SUBJECT_INIT_AND_REGISTER_INT(printer_type_selected_, default_type, "printer_type_selected");
 
     // Initialize detection status message
     const char* status_msg;
-    if (!saved_type.empty()) {
-        status_msg = "Loaded from configuration";
-    } else if (hint.confidence >= 70) {
+    if (hint.confidence >= 70) {
         snprintf(printer_detection_status_buffer_, sizeof(printer_detection_status_buffer_), "%s",
                  hint.type_name.c_str());
         status_msg = printer_detection_status_buffer_;
@@ -293,6 +249,8 @@ void WizardPrinterIdentifyStep::init_subjects() {
         snprintf(printer_detection_status_buffer_, sizeof(printer_detection_status_buffer_),
                  "%s (low confidence)", hint.type_name.c_str());
         status_msg = printer_detection_status_buffer_;
+    } else if (!saved_type.empty()) {
+        status_msg = "Loaded from configuration";
     } else {
         status_msg = "No printer detected - please confirm type";
     }
@@ -453,7 +411,7 @@ lv_obj_t* WizardPrinterIdentifyStep::create(lv_obj_t* parent) {
     if (name_ta) {
         lv_textarea_set_text(name_ta, printer_name_buffer_);
         lv_obj_add_event_cb(name_ta, on_printer_name_changed_static, LV_EVENT_VALUE_CHANGED, this);
-        ui_keyboard_register_textarea(name_ta);
+        KeyboardManager::instance().register_textarea(name_ta);
         spdlog::debug("[{}] Name textarea configured (initial: '{}')", get_name(),
                       printer_name_buffer_);
     }

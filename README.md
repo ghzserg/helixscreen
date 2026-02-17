@@ -12,6 +12,7 @@
   <a href="https://lvgl.io/"><img src="https://img.shields.io/badge/LVGL-9.4.0-green.svg" alt="LVGL"></a>
   <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey.svg" alt="Platform">
   <a href="https://github.com/prestonbrown/helixscreen/releases"><img src="https://img.shields.io/github/v/release/prestonbrown/helixscreen?label=version" alt="Version"></a>
+  <a href="https://discord.gg/rZ9dB74V"><img src="https://img.shields.io/discord/1472057991346782238?logo=discord&label=Discord&color=5865F2" alt="Discord"></a>
 </p>
 
 Your printer can do way more than your current touchscreen lets you. Bed mesh visualization, input shaper graphs, multi-material management, print history — it's all trapped in a browser tab. HelixScreen puts it at your fingertips.
@@ -20,7 +21,7 @@ Fast, beautiful, and built for every Klipper printer — from a Creality K1 to a
 
 ---
 
-> **Beta Release — v0.9.18**
+> **Beta Release — v0.10.0**
 >
 > Core features are complete and stabilizing. We're looking for testers across different printer setups.
 >
@@ -36,11 +37,11 @@ Fast, beautiful, and built for every Klipper printer — from a Creality K1 to a
 >
 > **Creality K2:** Build target exists (ARM, static musl) but is **completely untested**. Stock Moonraker on port 4408 makes this a promising target. If you have a K2/K2 Plus with SSH access, we'd love your help!
 >
-> **Ready to help?** See [Installation](#installation). Found a bug? [Open an issue](https://github.com/prestonbrown/helixscreen/issues). Have an idea? [Request a feature](https://github.com/prestonbrown/helixscreen/issues/new?labels=enhancement).
+> **Ready to help?** See [Installation](#installation). Found a bug? [Open an issue](https://github.com/prestonbrown/helixscreen/issues). Have an idea? [Request a feature](https://github.com/prestonbrown/helixscreen/issues/new?labels=enhancement). Want to chat? [Join our Discord](https://discord.gg/rZ9dB74V).
 
 ---
 
-**Quick Links:** [Features](#features) · [Screenshots](#screenshots) · [Installation](#installation) · [User Guide](docs/user/USER_GUIDE.md) · [FAQ](#faq) · [Contributing](docs/DEVELOPMENT.md#contributing) · [Roadmap](docs/ROADMAP.md) · [Community](#community)
+**Quick Links:** [Features](#features) · [Screenshots](#screenshots) · [Installation](#installation) · [User Guide](docs/user/USER_GUIDE.md) · [FAQ](#faq) · [Contributing](docs/DEVELOPMENT.md#contributing) · [Roadmap](docs/ROADMAP.md) · [Discord](https://discord.gg/rZ9dB74V)
 
 ---
 
@@ -107,7 +108,7 @@ See [docs/GALLERY.md](docs/GALLERY.md) for all screenshots.
 curl -sSL https://raw.githubusercontent.com/prestonbrown/helixscreen/main/scripts/install.sh | sh
 ```
 
-**Adventurer 5M/Pro:** Requires downloading to your computer first, then copying to the printer (BusyBox lacks HTTPS support).
+**Adventurer 5M/Pro:** We provide a [ready-made firmware image](https://github.com/prestonbrown/ff5m) (Forge-X 1.4.0 fork with HelixScreen pre-configured) — just flash from a USB drive. Or install manually on an existing Forge-X/Klipper Mod setup.
 
 See [Installation Guide](docs/user/INSTALL.md) for detailed instructions, display configuration, and troubleshooting.
 
@@ -182,13 +183,13 @@ See [docs/user/TROUBLESHOOTING.md](docs/user/TROUBLESHOOTING.md) for more soluti
 
 ## Community
 
-**Discussion:**
+**[Join the HelixScreen Discord](https://discord.gg/rZ9dB74V)** — Get help, share your setup, request features, and follow development.
+
+**Also discussed in:**
 - [FuriousForging Discord](https://discord.gg/Cg4yas4V) — #mods-and-projects ([jump to HelixScreen topic](https://discord.com/channels/1323351124069191691/1444485365376352276))
 - [VORONDesign Discord](https://discord.gg/voron) — #voc_works ([jump to HelixScreen topic](https://discord.com/channels/460117602945990666/1468467369407156346))
 
-I check in on these when I can, but they aren't official support channels — response times will vary. For reliable tracking of bugs and feature requests, use GitHub Issues.
-
-**Bug Reports & Feature Requests:** [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues) — this is the best way to reach me. Please include your printer model and logs (`helix-screen -vv`) when reporting bugs.
+**Bug Reports & Feature Requests:** [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues) — please include your printer model and logs (`helix-screen -vv`) when reporting bugs.
 
 ## License
 

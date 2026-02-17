@@ -19,7 +19,7 @@ scripts/setup-worktree.sh feature/my-branch  # Symlinks deps, builds fast
 ```
 
 **Nav panels:** home, print-select, controls, filament, settings, advanced
-**Overlays:** motion, print-status, console, bed-mesh, input-shaper, macros, spoolman, ams, pid-calibration, zoffset-calibration, screws-tilt, history-dashboard, history-list, power, notification-history
+**Overlays:** motion, print-status, console, bed-mesh, input-shaper, macros, spoolman, spool-wizard, ams, pid-calibration, zoffset-calibration, screws-tilt, history-dashboard, history-list, power, notification-history
 **Screenshots:** Press 'S' in UI, or `./scripts/screenshot.sh helix-screen output-name [panel]`
 
 ---
@@ -32,6 +32,7 @@ Most commonly needed:
 
 | Doc | When |
 |-----|------|
+| `docs/devel/UI_CONTRIBUTOR_GUIDE.md` | UI/layout work: breakpoints, tokens, colors, widgets, layout overrides |
 | `docs/devel/LVGL9_XML_GUIDE.md` | XML layouts, widgets, bindings, observer cleanup |
 | `docs/devel/MODAL_SYSTEM.md` | Modal architecture: ui_dialog, modal_button_row, Modal pattern |
 | `docs/devel/FILAMENT_MANAGEMENT.md` | AMS, AFC, Happy Hare, ValgACE, Tool Changer |
@@ -92,9 +93,25 @@ Note: `ui_theme_get_color()` for tokens, `ui_theme_parse_color()` for hex string
 ## Threading & Lifecycle
 
 WebSocket/libhv callbacks = background thread. **NEVER** call `lv_subject_set_*()` directly.
-Use `ui_async_call()` from `ui_update_queue.h`. Pattern: `printer_state.cpp` `set_*_internal()`
+Use `ui_queue_update()` from `ui_update_queue.h`. Pattern: `printer_state.cpp` `set_*_internal()`
 
 Use `ObserverGuard` for RAII cleanup. See `observer_factory.h` for `observe_int_sync`, `observe_int_async`, `observe_string`, `observe_string_async`.
+
+**Observer safety:** `observe_int_sync` and `observe_string` **defer callbacks** via `ui_queue_update()` to prevent re-entrant observer destruction crashes (issue #82). Use `observe_int_immediate` / `observe_string_immediate` ONLY if you're certain the callback won't modify observer lifecycle (no reassignment, no widget destruction).
+
+**Subject shutdown safety (MANDATORY):** Any class that creates LVGL subjects MUST self-register its cleanup inside `init_subjects()`. This prevents shutdown crashes (observer removal on freed subjects during `lv_deinit`). See `static_subject_registry.h` for full docs.
+
+```cpp
+void MyState::init_subjects() {
+    if (subjects_initialized_) return;
+    // ... create subjects ...
+    subjects_initialized_ = true;
+    StaticSubjectRegistry::instance().register_deinit(
+        "MyState", []() { MyState::instance().deinit_subjects(); });
+}
+```
+
+**Never** register cleanup externally (e.g., in SubjectInitializer). Co-locating init+cleanup prevents forgotten registrations that cause shutdown crashes.
 
 ---
 
@@ -102,6 +119,7 @@ Use `ObserverGuard` for RAII cleanup. See `observer_factory.h` for `observe_int_
 
 | Pattern | Key Point |
 |---------|-----------|
+| **Subject self-registration** | **init_subjects() MUST self-register with StaticSubjectRegistry** (see below) |
 | Subject init order | Register components → init subjects → create XML |
 | Widget lookup | `lv_obj_find_by_name()` not `lv_obj_get_child()` |
 | Overlays | `ui_nav_push_overlay()`/`ui_nav_go_back()` |
@@ -115,7 +133,7 @@ Use `ObserverGuard` for RAII cleanup. See `observer_factory.h` for `observe_int_
 ## Where Things Live
 
 **Singletons** (all `::instance()`):
-`PrinterState` (all printer data/subjects), `SettingsManager` (persistent settings), `NavigationManager` (panel/overlay stack), `UpdateQueue` (thread-safe UI updates), `SoundManager`, `DisplayManager`, `ModalStack`, `PrinterDetector` (printer DB + capabilities)
+`PrinterState` (all printer data/subjects), `SettingsManager` (persistent settings), `NavigationManager` (panel/overlay stack), `UpdateQueue` (thread-safe UI updates), `SoundManager`, `DisplayManager`, `ModalStack`, `PrinterDetector` (printer DB + capabilities), `ToolState` (multi-tool tracking), `AmsState` (multi-backend filament systems)
 
 **Entry flow**: `main.cpp` → `Application` → `DisplayManager` → panels via `NavigationManager`
 

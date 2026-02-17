@@ -10,6 +10,8 @@
 #include <fstream>
 #include <sys/stat.h>
 
+using namespace helix;
+
 TipsManager* TipsManager::instance{nullptr};
 
 TipsManager::TipsManager() {

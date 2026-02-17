@@ -187,7 +187,7 @@ echo "Validating ICON_MAP sort order..."
 
 # Extract icon names in order (as they appear in the file)
 ICON_NAMES_ACTUAL=$(grep -E '\{"[^"]+",\s*"\\x' "$CODEPOINTS_FILE" | sed -E 's/.*\{"([^"]+)".*/\1/')
-ICON_NAMES_SORTED=$(echo "$ICON_NAMES_ACTUAL" | sort)
+ICON_NAMES_SORTED=$(echo "$ICON_NAMES_ACTUAL" | env LANG=en_EN.UTF-8 sort)
 
 # Compare actual order with sorted order
 if [[ "$ICON_NAMES_ACTUAL" != "$ICON_NAMES_SORTED" ]]; then

@@ -16,8 +16,7 @@ class PrinterPrintStateTestAccess {
     }
 };
 
-} // namespace helix
-
+// PrinterStateTestAccess must be in namespace helix to match friend declaration in PrinterState
 class PrinterStateTestAccess {
   public:
     static void reset(PrinterState& ps) {
@@ -28,6 +27,10 @@ class PrinterStateTestAccess {
         ps.z_offset_calibration_strategy_ = ZOffsetCalibrationStrategy::PROBE_CALIBRATE;
         ps.auto_detected_bed_moves_ = false;
         ps.last_kinematics_.clear();
-        helix::PrinterPrintStateTestAccess::reset_extra(ps.print_domain_);
+        PrinterPrintStateTestAccess::reset_extra(ps.print_domain_);
     }
 };
+
+} // namespace helix
+
+using namespace helix;

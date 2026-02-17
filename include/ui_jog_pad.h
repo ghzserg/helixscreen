@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include "ui_panel_motion.h" // For jog_direction_t and jog_distance_t enums
+#include "ui_panel_motion.h" // For JogDirection and JogDistance enums
 
 #include <lvgl.h>
 
 // Jog pad event callbacks
-typedef void (*jog_pad_jog_cb_t)(jog_direction_t direction, float distance_mm, void* user_data);
+typedef void (*jog_pad_jog_cb_t)(helix::JogDirection direction, float distance_mm, void* user_data);
 typedef void (*jog_pad_home_cb_t)(void* user_data);
 
 /**
@@ -48,17 +48,17 @@ void ui_jog_pad_set_home_callback(lv_obj_t* obj, jog_pad_home_cb_t cb, void* use
  * Set current jog distance mode (affects which distance is used for zones)
  *
  * Inner zone distance:
- * - JOG_DIST_0_1MM or JOG_DIST_1MM → uses that distance
- * - JOG_DIST_10MM or JOG_DIST_100MM → defaults to 1mm
+ * - JogDistance::Dist0_1mm or JogDistance::Dist1mm → uses that distance
+ * - JogDistance::Dist10mm or JogDistance::Dist100mm → defaults to 1mm
  *
  * Outer zone distance:
- * - JOG_DIST_10MM or JOG_DIST_100MM → uses that distance
- * - JOG_DIST_0_1MM or JOG_DIST_1MM → defaults to 10mm
+ * - JogDistance::Dist10mm or JogDistance::Dist100mm → uses that distance
+ * - JogDistance::Dist0_1mm or JogDistance::Dist1mm → defaults to 10mm
  *
  * @param obj Jog pad object
  * @param distance Distance mode
  */
-void ui_jog_pad_set_distance(lv_obj_t* obj, jog_distance_t distance);
+void ui_jog_pad_set_distance(lv_obj_t* obj, helix::JogDistance distance);
 
 /**
  * Get current jog distance mode
@@ -66,7 +66,7 @@ void ui_jog_pad_set_distance(lv_obj_t* obj, jog_distance_t distance);
  * @param obj Jog pad object
  * @return Current distance mode
  */
-jog_distance_t ui_jog_pad_get_distance(lv_obj_t* obj);
+helix::JogDistance ui_jog_pad_get_distance(lv_obj_t* obj);
 
 /**
  * Refresh colors from theme (call when theme changes)

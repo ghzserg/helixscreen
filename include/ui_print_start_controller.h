@@ -10,7 +10,9 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class PrinterState;
+}
 class MoonrakerAPI;
 struct PrintFileData;
 

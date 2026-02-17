@@ -26,6 +26,8 @@
 #include <string>
 #include <vector>
 
+using namespace helix;
+
 // Global wizard subject for Next button state (defined in ui_wizard.cpp)
 extern lv_subject_t connection_test_passed;
 
@@ -59,41 +61,6 @@ WizardFanSelectStep::~WizardFanSelectStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardFanSelectStep::WizardFanSelectStep(WizardFanSelectStep&& other) noexcept
-    : screen_root_(other.screen_root_), hotend_fan_selected_(other.hotend_fan_selected_),
-      part_fan_selected_(other.part_fan_selected_),
-      chamber_fan_selected_(other.chamber_fan_selected_),
-      exhaust_fan_selected_(other.exhaust_fan_selected_),
-      hotend_fan_items_(std::move(other.hotend_fan_items_)),
-      part_fan_items_(std::move(other.part_fan_items_)),
-      chamber_fan_items_(std::move(other.chamber_fan_items_)),
-      exhaust_fan_items_(std::move(other.exhaust_fan_items_)),
-      subjects_initialized_(other.subjects_initialized_) {
-    other.screen_root_ = nullptr;
-    other.subjects_initialized_ = false;
-}
-
-WizardFanSelectStep& WizardFanSelectStep::operator=(WizardFanSelectStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        hotend_fan_selected_ = other.hotend_fan_selected_;
-        part_fan_selected_ = other.part_fan_selected_;
-        chamber_fan_selected_ = other.chamber_fan_selected_;
-        exhaust_fan_selected_ = other.exhaust_fan_selected_;
-        hotend_fan_items_ = std::move(other.hotend_fan_items_);
-        part_fan_items_ = std::move(other.part_fan_items_);
-        chamber_fan_items_ = std::move(other.chamber_fan_items_);
-        exhaust_fan_items_ = std::move(other.exhaust_fan_items_);
-        subjects_initialized_ = other.subjects_initialized_;
-
-        other.screen_root_ = nullptr;
-        other.subjects_initialized_ = false;
-    }
-    return *this;
-}
 
 // ============================================================================
 // Subject Initialization
@@ -134,7 +101,7 @@ static void update_next_button_state() {
             if (valid) {
                 lv_obj_add_flag(status_text, LV_OBJ_FLAG_HIDDEN);
             } else {
-                lv_label_set_text(status_text, "Each fan can only be selected once");
+                lv_label_set_text(status_text, lv_tr("Each fan can only be selected once"));
                 lv_obj_remove_flag(status_text, LV_OBJ_FLAG_HIDDEN);
             }
         }

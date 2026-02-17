@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Semantic status pill/badge with variant-based coloring. -->
+<!-- Usage: <status_pill text="Active" variant="success"/> -->
+<!-- Variants: success, warning, danger, info, muted, primary, secondary, tertiary, disabled -->
+<component>
+  <api>
+    <prop name="text" type="string" default=""/>
+    <prop name="variant" type="string" default="muted"/>
+  </api>
+  <view extends="lv_obj"/>
+</component>

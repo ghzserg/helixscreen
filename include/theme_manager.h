@@ -97,14 +97,16 @@ struct ThemePalette {
     int shadow_offset_y = 2;
 };
 
+namespace helix {
 /// Style configure function type - applies palette colors to a style.
 using StyleConfigureFn = void (*)(lv_style_t* style, const ThemePalette& palette);
+} // namespace helix
 
 /// Style entry - binds a role to its style and configure function.
 struct StyleEntry {
     StyleRole role;
     lv_style_t style{};
-    StyleConfigureFn configure = nullptr;
+    helix::StyleConfigureFn configure = nullptr;
 };
 
 #include <array>
@@ -249,6 +251,15 @@ class ThemeManager {
  * @param use_dark_mode true for dark theme, false for light theme
  */
 void theme_manager_init(lv_display_t* display, bool use_dark_mode);
+
+/**
+ * @brief Deinitialize theme subjects before lv_deinit()
+ *
+ * Must be called during shutdown BEFORE lv_deinit() to prevent crash
+ * in lv_observer_remove(). Deinits theme_changed_subject and swatch
+ * description subjects, removing all observer callbacks from widgets.
+ */
+void theme_manager_deinit();
 
 /**
  * @brief Get breakpoint suffix for a given resolution
@@ -401,14 +412,6 @@ void theme_manager_preview(const helix::ThemeData& theme);
  * @param is_dark Whether to preview in dark mode
  */
 void theme_manager_preview(const helix::ThemeData& theme, bool is_dark);
-
-/**
- * @brief Revert to active theme
- *
- * @deprecated Callers should store the original theme and call
- * theme_manager_apply_theme() with it directly.
- */
-void theme_manager_revert_preview();
 
 /**
  * @brief Parse hex color string to lv_color_t

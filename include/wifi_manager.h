@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+namespace helix {
+
 /**
  * @brief WiFi Manager - Clean interface using backend system
  *
@@ -219,3 +221,5 @@ class WiFiManager {
  * @return Shared pointer to the global WiFiManager instance
  */
 std::shared_ptr<WiFiManager> get_wifi_manager();
+
+} // namespace helix

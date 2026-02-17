@@ -5,7 +5,6 @@
 
 #include "ui_emergency_stop.h"
 #include "ui_event_safety.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_temp_control.h"
 #include "ui_update_queue.h"
@@ -222,7 +221,7 @@ void PIDCalibrationPanel::show() {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     spdlog::info("[PIDCal] Overlay shown");
 }
@@ -505,7 +504,7 @@ void PIDCalibrationPanel::send_pid_calibrate() {
         heater_name, target_temp_,
         [this](float kp, float ki, float kd) {
             // Callback from background thread - marshal to UI thread
-            ui_queue_update([this, kp, ki, kd]() {
+            helix::ui::queue_update([this, kp, ki, kd]() {
                 if (cleanup_called())
                     return;
                 // Ignore results if user already aborted
@@ -520,7 +519,7 @@ void PIDCalibrationPanel::send_pid_calibrate() {
         },
         [this](const MoonrakerError& err) {
             std::string msg = err.message;
-            ui_queue_update([this, msg]() {
+            helix::ui::queue_update([this, msg]() {
                 if (cleanup_called())
                     return;
                 if (state_ != State::CALIBRATING) {
@@ -533,7 +532,7 @@ void PIDCalibrationPanel::send_pid_calibrate() {
             });
         },
         [this](int sample, float tolerance) {
-            ui_queue_update([this, sample, tolerance]() {
+            helix::ui::queue_update([this, sample, tolerance]() {
                 if (cleanup_called())
                     return;
                 on_pid_progress(sample, tolerance);
@@ -551,7 +550,7 @@ void PIDCalibrationPanel::send_save_config() {
     spdlog::info("[PIDCal] Sending SAVE_CONFIG");
     api_->save_config(
         [this]() {
-            ui_queue_update([this]() {
+            helix::ui::queue_update([this]() {
                 if (cleanup_called())
                     return;
                 if (state_ == State::SAVING) {
@@ -561,7 +560,7 @@ void PIDCalibrationPanel::send_save_config() {
         },
         [this](const MoonrakerError& err) {
             std::string msg = err.message;
-            ui_queue_update([this, msg]() {
+            helix::ui::queue_update([this, msg]() {
                 if (cleanup_called())
                     return;
                 // Still show results even if save fails
@@ -711,7 +710,7 @@ void PIDCalibrationPanel::handle_preset_clicked(int temp, const char* material_n
 void PIDCalibrationPanel::handle_done_clicked() {
     spdlog::debug("[PIDCal] Done clicked");
     set_state(State::IDLE);
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void PIDCalibrationPanel::handle_retry_clicked() {

@@ -52,9 +52,13 @@
 #include <memory>
 
 // Forward declarations
+namespace helix {
 class PrinterState;
 class MoonrakerClient;
+} // namespace helix
 class MoonrakerAPI;
+
+using namespace helix;
 
 /**
  * @brief Full UI integration test fixture with production-like initialization

@@ -8,7 +8,7 @@
 #include "ui_global_panel_helper.h"
 #include "ui_keyboard_manager.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_toast_manager.h"
 
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -24,6 +24,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <sys/stat.h>
+
+using namespace helix;
 
 // ============================================================================
 // GLOBAL INSTANCE
@@ -352,12 +354,12 @@ void ThemeEditorOverlay::update_title_dirty_indicator() {
 
     // Update title text and save button state
     if (dirty_) {
-        lv_label_set_text(title_label, "Edit Theme Colors (Modified)");
+        lv_label_set_text(title_label, lv_tr("Edit Theme Colors (Modified)"));
         if (save_btn) {
             lv_obj_remove_state(save_btn, LV_STATE_DISABLED);
         }
     } else {
-        lv_label_set_text(title_label, "Edit Theme Colors");
+        lv_label_set_text(title_label, lv_tr("Edit Theme Colors"));
         if (save_btn) {
             lv_obj_add_state(save_btn, LV_STATE_DISABLED);
         }
@@ -494,10 +496,10 @@ void ThemeEditorOverlay::on_discard_cancel(lv_event_t* e) {
 void ThemeEditorOverlay::handle_back_clicked() {
     if (dirty_) {
         // Show confirmation before closing
-        show_discard_confirmation([]() { ui_nav_go_back(); });
+        show_discard_confirmation([]() { NavigationManager::instance().go_back(); });
     } else {
         // Not dirty, close immediately
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
     }
 }
 
@@ -562,7 +564,7 @@ void ThemeEditorOverlay::handle_save_clicked() {
         spdlog::info("[{}] Theme '{}' saved and applied live", get_name(), editing_theme_.name);
 
         // Close the editor overlay
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
     } else {
         spdlog::error("[{}] Failed to save theme to '{}'", get_name(), filepath);
     }
@@ -604,7 +606,7 @@ void ThemeEditorOverlay::handle_reset_clicked() {
         } else {
             // Not dirty, no changes to revert
             spdlog::debug("[{}] No changes to revert", get_name());
-            ToastManager::instance().show(ToastSeverity::INFO, "No changes to revert");
+            ToastManager::instance().show(ToastSeverity::INFO, lv_tr("No changes to revert"));
         }
     }
 }
@@ -613,7 +615,7 @@ void ThemeEditorOverlay::perform_reset_to_default() {
     auto result = helix::reset_theme_to_default(editing_theme_.filename);
     if (!result) {
         spdlog::error("[{}] Failed to reset theme to default", get_name());
-        ToastManager::instance().show(ToastSeverity::ERROR, "Failed to reset theme");
+        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Failed to reset theme"));
         return;
     }
 
@@ -630,7 +632,7 @@ void ThemeEditorOverlay::perform_reset_to_default() {
     theme_manager_preview(editing_theme_);
 
     spdlog::info("[{}] Theme '{}' reset to defaults", get_name(), editing_theme_.name);
-    ToastManager::instance().show(ToastSeverity::SUCCESS, "Theme reset to defaults");
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Theme reset to defaults"));
 }
 
 // ============================================================================
@@ -730,7 +732,7 @@ void ThemeEditorOverlay::show_save_as_dialog() {
     }
 
     // Show save as modal
-    save_as_dialog_ = ui_modal_show("theme_save_as_modal");
+    save_as_dialog_ = helix::ui::modal_show("theme_save_as_modal");
     if (!save_as_dialog_) {
         spdlog::error("[{}] Failed to show Save As dialog", get_name());
         return;
@@ -745,7 +747,7 @@ void ThemeEditorOverlay::show_save_as_dialog() {
         lv_textarea_set_cursor_pos(input, LV_TEXTAREA_CURSOR_LAST);
 
         // Register with keyboard manager for on-screen keyboard
-        ui_modal_register_keyboard(save_as_dialog_, input);
+        helix::ui::modal_register_keyboard(save_as_dialog_, input);
     }
 
     spdlog::debug("[{}] Showing Save As dialog", get_name());
@@ -756,7 +758,7 @@ void ThemeEditorOverlay::show_discard_confirmation(std::function<void()> on_disc
     pending_discard_action_ = std::move(on_discard);
 
     // Show confirmation dialog using modal system
-    discard_dialog_ = ui_modal_show_confirmation(
+    discard_dialog_ = helix::ui::modal_show_confirmation(
         lv_tr("Discard Changes?"), lv_tr("You have unsaved changes. Discard them?"),
         ModalSeverity::Warning, lv_tr("Discard"), on_discard_confirm, on_discard_cancel, nullptr);
 
@@ -809,7 +811,7 @@ void ThemeEditorOverlay::handle_save_as_confirm() {
         // Show error in status field
         lv_obj_t* status = lv_obj_find_by_name(save_as_dialog_, "save_as_status");
         if (status) {
-            lv_label_set_text(status, "Please enter a theme name");
+            lv_label_set_text(status, lv_tr("Please enter a theme name"));
             lv_obj_remove_flag(status, LV_OBJ_FLAG_HIDDEN);
         }
         return;
@@ -835,7 +837,7 @@ void ThemeEditorOverlay::handle_save_as_confirm() {
         spdlog::error("[{}] Failed to save theme to '{}'", get_name(), filepath);
         lv_obj_t* status = lv_obj_find_by_name(save_as_dialog_, "save_as_status");
         if (status) {
-            lv_label_set_text(status, "Failed to save theme file");
+            lv_label_set_text(status, lv_tr("Failed to save theme file"));
             lv_obj_remove_flag(status, LV_OBJ_FLAG_HIDDEN);
         }
         return;
@@ -861,7 +863,7 @@ void ThemeEditorOverlay::handle_save_as_confirm() {
     spdlog::info("[{}] Theme saved as '{}' and applied live", get_name(), editing_theme_.name);
 
     // Close the editor overlay
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 // ============================================================================

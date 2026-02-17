@@ -205,7 +205,7 @@ class HistoryDashboardPanel : public OverlayBase {
     ObserverGuard connection_observer_;
 
     /// Observer callback for history manager changes
-    HistoryChangedCallback history_observer_;
+    helix::HistoryChangedCallback history_observer_;
 
     // SubjectManager for automatic subject cleanup (RAII)
     SubjectManager subjects_;

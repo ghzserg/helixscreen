@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <string>
 
-namespace helix::fmt {
+namespace helix::format {
 
 // =============================================================================
 // Constants
@@ -297,4 +297,4 @@ struct HeaterDisplayResult {
  */
 HeaterDisplayResult heater_display(int current_centi, int target_centi);
 
-} // namespace helix::fmt
+} // namespace helix::format

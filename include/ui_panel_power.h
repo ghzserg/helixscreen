@@ -22,7 +22,7 @@
  */
 class PowerPanel : public PanelBase {
   public:
-    PowerPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    PowerPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
     ~PowerPanel() override;
 
     void init_subjects() override;

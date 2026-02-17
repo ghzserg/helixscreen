@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <!-- Tray styling tokens - single source of truth for both AmsPanel and AmsOverviewPanel -->
+  <consts>
+    <color name="tray_bg" value="#505050"/>
+    <color name="tray_border" value="#606060"/>
+    <number name="tray_bg_opa" value="200"/>
+    <number name="tray_border_opa" value="140"/>
+    <px name="tray_default_height" value="30"/>
+    <number name="tray_accent_border_opa" value="180"/>
+  </consts>
+  <!--
+    AMS Unit Detail - Shared spool grid + tray + labels layer structure.
+
+    Used by both AmsPanel (single-unit view) and AmsOverviewPanel (detail mode).
+    C++ resolves child widgets via lv_obj_find_by_name():
+    - "slot_grid": flex row container for ams_slot widgets (created dynamically)
+    - "labels_layer": overlay for material labels when 5+ slots overlap
+    - "slot_tray": visual "holder" that renders ON TOP of spool bottoms
+
+    Z-order (front to back): labels_layer > slot_tray > slot_grid
+    Badge z-order handled by lv_obj_move_to_index(-1) in ui_ams_slot.cpp.
+  -->
+  <view name="ams_unit_detail" extends="lv_obj"
+        width="100%" height="content" style_pad_all="0" scrollable="false">
+    <!-- Slot Grid (rendered first = behind everything) -->
+    <lv_obj name="slot_grid"
+            width="content" height="content" style_pad_all="0" style_pad_row="0"
+            style_pad_column="0" flex_flow="row" style_flex_main_place="start"
+            style_flex_cross_place="start" scrollable="false">
+      <!-- Slots created dynamically by ams_detail_create_slots() -->
+    </lv_obj>
+    <!-- Labels Layer - renders on top of overlapping slots for 5+ gates -->
+    <lv_obj name="labels_layer"
+            width="100%" height="80" style_pad_all="0" scrollable="false"
+            clickable="false"/>
+    <!-- Tray - visual "holder" in front of spools, positioned at bottom.
+         Height set dynamically by ams_detail_update_tray() to 1/3 of slot height. -->
+    <lv_obj name="slot_tray"
+            width="100%" height="#tray_default_height" align="bottom_mid"
+            style_bg_color="#tray_bg" style_bg_opa="#tray_bg_opa"
+            style_border_width="1" style_border_color="#tray_border"
+            style_border_opa="#tray_border_opa"
+            style_radius="#border_radius" style_pad_all="0"
+            scrollable="false" clickable="false">
+      <!-- Left accent line -->
+      <lv_obj width="#space_xs" height="80%" align="left_mid"
+              style_translate_x="#space_xs" style_border_width="#space_xxs"
+              style_border_color="#text" style_border_opa="#tray_accent_border_opa"
+              style_border_side="left" style_radius="#border_radius"
+              style_pad_all="0" scrollable="false" clickable="false"/>
+      <!-- Right accent line -->
+      <lv_obj width="#space_xs" height="80%" align="right_mid"
+              style_translate_x="-2" style_border_width="#space_xxs"
+              style_border_color="#text" style_border_opa="#tray_accent_border_opa"
+              style_border_side="right" style_radius="#border_radius"
+              style_pad_all="0" scrollable="false" clickable="false"/>
+    </lv_obj>
+  </view>
+</component>

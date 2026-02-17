@@ -34,9 +34,9 @@ class FanControlOverlay : public OverlayBase {
   public:
     /**
      * @brief Construct FanControlOverlay with injected dependencies
-     * @param printer_state Reference to PrinterState for fan data
+     * @param printer_state Reference to helix::PrinterState for fan data
      */
-    explicit FanControlOverlay(PrinterState& printer_state);
+    explicit FanControlOverlay(helix::PrinterState& printer_state);
     ~FanControlOverlay() override;
 
     //
@@ -101,7 +101,7 @@ class FanControlOverlay : public OverlayBase {
 
   private:
     /**
-     * @brief Populate fan widgets from PrinterState
+     * @brief Populate fan widgets from helix::PrinterState
      *
      * Creates FanDial widgets for controllable fans and
      * fan_status_card components for auto-controlled fans.
@@ -109,7 +109,7 @@ class FanControlOverlay : public OverlayBase {
     void populate_fans();
 
     /**
-     * @brief Update fan speed displays from PrinterState
+     * @brief Update fan speed displays from helix::PrinterState
      *
      * Called when fans_version subject changes to refresh
      * current speed values on all fan widgets.
@@ -144,7 +144,7 @@ class FanControlOverlay : public OverlayBase {
     // === Injected Dependencies ===
     //
 
-    PrinterState& printer_state_;
+    helix::PrinterState& printer_state_;
     MoonrakerAPI* api_ = nullptr;
 
     //
@@ -200,6 +200,6 @@ FanControlOverlay& get_fan_control_overlay();
 
 /**
  * @brief Initialize global FanControlOverlay instance
- * @param printer_state Reference to global PrinterState
+ * @param printer_state Reference to global helix::PrinterState
  */
-void init_fan_control_overlay(PrinterState& printer_state);
+void init_fan_control_overlay(helix::PrinterState& printer_state);

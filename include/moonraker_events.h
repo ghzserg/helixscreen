@@ -35,7 +35,9 @@ struct MoonrakerEvent {
     bool is_error;       ///< true for errors, false for warnings/info
 };
 
+namespace helix {
 /**
  * @brief Callback type for event handlers
  */
 using MoonrakerEventCallback = std::function<void(const MoonrakerEvent&)>;
+} // namespace helix

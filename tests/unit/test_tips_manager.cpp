@@ -9,6 +9,8 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
+
 // Test fixture for TipsManager testing
 class TipsManagerTestFixture {
   protected:

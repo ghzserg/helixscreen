@@ -115,42 +115,42 @@ void ThumbnailProcessor::process_async(const std::vector<uint8_t>& png_data,
     auto png_copy = png_data;
     auto source_copy = source_path;
 
-    thread_pool_->commit(
-        [this, png_copy = std::move(png_copy), source_copy = std::move(source_copy),
-         cache_dir_copy = std::move(cache_dir_copy), target, on_success, on_error]() {
-            ProcessResult result = do_process(png_copy, source_copy, target, cache_dir_copy);
+    thread_pool_->commit([this, png_copy = std::move(png_copy),
+                          source_copy = std::move(source_copy),
+                          cache_dir_copy = std::move(cache_dir_copy), target, on_success,
+                          on_error]() {
+        ProcessResult result = do_process(png_copy, source_copy, target, cache_dir_copy);
 
-            if (result.success) {
-                spdlog::debug("[ThumbnailProcessor] Processed {} -> {} ({}x{})", source_copy,
-                              result.output_path, result.output_width, result.output_height);
-                if (on_success) {
-                    // CRITICAL: Defer callback to main UI thread to avoid LVGL threading issues.
-                    // Without this, callbacks can trigger widget operations from worker thread,
-                    // causing "lv_inv_area() rendering_in_progress" assertion on slow devices.
-                    struct SuccessCtx {
-                        ProcessSuccessCallback callback;
-                        std::string path;
-                    };
-                    auto ctx =
-                        std::make_unique<SuccessCtx>(SuccessCtx{on_success, result.output_path});
-                    ui_queue_update<SuccessCtx>(std::move(ctx),
-                                                [](SuccessCtx* c) { c->callback(c->path); });
-                }
-            } else {
-                spdlog::warn("[ThumbnailProcessor] Failed to process {}: {}", source_copy,
-                             result.error);
-                if (on_error) {
-                    // CRITICAL: Defer callback to main UI thread (same reason as on_success)
-                    struct ErrorCtx {
-                        ProcessErrorCallback callback;
-                        std::string error;
-                    };
-                    auto ctx = std::make_unique<ErrorCtx>(ErrorCtx{on_error, result.error});
-                    ui_queue_update<ErrorCtx>(std::move(ctx),
-                                              [](ErrorCtx* c) { c->callback(c->error); });
-                }
+        if (result.success) {
+            spdlog::debug("[ThumbnailProcessor] Processed {} -> {} ({}x{})", source_copy,
+                          result.output_path, result.output_width, result.output_height);
+            if (on_success) {
+                // CRITICAL: Defer callback to main UI thread to avoid LVGL threading issues.
+                // Without this, callbacks can trigger widget operations from worker thread,
+                // causing "lv_inv_area() rendering_in_progress" assertion on slow devices.
+                struct SuccessCtx {
+                    ProcessSuccessCallback callback;
+                    std::string path;
+                };
+                auto ctx = std::make_unique<SuccessCtx>(SuccessCtx{on_success, result.output_path});
+                helix::ui::queue_update<SuccessCtx>(std::move(ctx),
+                                                    [](SuccessCtx* c) { c->callback(c->path); });
             }
-        });
+        } else {
+            spdlog::warn("[ThumbnailProcessor] Failed to process {}: {}", source_copy,
+                         result.error);
+            if (on_error) {
+                // CRITICAL: Defer callback to main UI thread (same reason as on_success)
+                struct ErrorCtx {
+                    ProcessErrorCallback callback;
+                    std::string error;
+                };
+                auto ctx = std::make_unique<ErrorCtx>(ErrorCtx{on_error, result.error});
+                helix::ui::queue_update<ErrorCtx>(std::move(ctx),
+                                                  [](ErrorCtx* c) { c->callback(c->error); });
+            }
+        }
+    });
 }
 
 ProcessResult ThumbnailProcessor::process_sync(const std::vector<uint8_t>& png_data,

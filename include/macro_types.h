@@ -64,5 +64,7 @@ enum class MacroCategory {
 // Macro Callback Types
 // ============================================================================
 
+namespace helix {
 /// Macro list callback
 using MacroListCallback = std::function<void(const std::vector<MacroInfo>&)>;
+} // namespace helix

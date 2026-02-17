@@ -26,3 +26,14 @@ bool is_valid_ip_or_hostname(const std::string& host);
  * @return true if valid, false otherwise
  */
 bool is_valid_port(const std::string& port_str);
+
+/**
+ * @brief Strip non-numeric characters from a string
+ *
+ * Useful for sanitizing port input that may contain stray characters.
+ *
+ * @param str Input string (may be nullptr)
+ * @return String containing only digit characters
+ */
+std::string sanitize_port(const char* str);
+std::string sanitize_port(const std::string& str);

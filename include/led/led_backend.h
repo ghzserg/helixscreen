@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include <cctype>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace helix::led {
@@ -30,12 +30,12 @@ struct LedEffectInfo {
 enum class MacroLedType { ON_OFF, TOGGLE, PRESET };
 
 struct LedMacroInfo {
-    std::string display_name;                                 // User-friendly label
-    MacroLedType type = MacroLedType::TOGGLE;                 // Control style
-    std::string on_macro;                                     // ON_OFF type: gcode to turn on
-    std::string off_macro;                                    // ON_OFF type: gcode to turn off
-    std::string toggle_macro;                                 // TOGGLE type: single toggle macro
-    std::vector<std::pair<std::string, std::string>> presets; // PRESET type: {name, macro}
+    std::string display_name;                 // User-friendly label
+    MacroLedType type = MacroLedType::TOGGLE; // Control style
+    std::string on_macro;                     // ON_OFF type: gcode to turn on
+    std::string off_macro;                    // ON_OFF type: gcode to turn off
+    std::string toggle_macro;                 // TOGGLE type: single toggle macro
+    std::vector<std::string> presets;         // PRESET type: Klipper macro names
 };
 
 /// WLED preset info fetched from device
@@ -50,5 +50,38 @@ struct WledStripState {
     int brightness = 255;   // 0-255
     int active_preset = -1; // -1 = no preset active
 };
+
+/// Pretty-print a Klipper macro name for display.
+/// Strips common prefixes (LED_, LIGHT_, STATUS_LED_), replaces underscores
+/// with spaces, and title-cases each word.
+/// Example: "LED_PARTY_MODE" -> "Party Mode"
+inline std::string pretty_print_macro(const std::string& macro_name) {
+    std::string s = macro_name;
+
+    // Strip common prefixes (longest first)
+    static const std::string prefixes[] = {"STATUS_LED_", "LIGHT_", "LED_"};
+    for (const auto& prefix : prefixes) {
+        if (s.size() > prefix.size() && s.compare(0, prefix.size(), prefix) == 0) {
+            s = s.substr(prefix.size());
+            break;
+        }
+    }
+
+    // Replace underscores with spaces and title-case
+    bool capitalize_next = true;
+    for (auto& ch : s) {
+        if (ch == '_') {
+            ch = ' ';
+            capitalize_next = true;
+        } else if (capitalize_next) {
+            ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+            capitalize_next = false;
+        } else {
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+    }
+
+    return s;
+}
 
 } // namespace helix::led

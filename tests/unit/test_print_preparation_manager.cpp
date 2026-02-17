@@ -1145,9 +1145,9 @@ class MacroAnalysisRetryFixture {
         // Initialize LVGL for subjects and update queue
         lv_init_safe();
 
-        // Initialize update queue once (static guard) - CRITICAL for ui_queue_update()
+        // Initialize update queue once (static guard) - CRITICAL for helix::ui::queue_update()
         if (!queue_initialized) {
-            ui_update_queue_init();
+            helix::ui::update_queue_init();
             queue_initialized = true;
         }
 
@@ -1205,7 +1205,7 @@ class MacroAnalysisRetryFixture {
         UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
         // Shutdown queue
-        ui_update_queue_shutdown();
+        helix::ui::update_queue_shutdown();
 
         // Reset static flag for next test [L053]
         queue_initialized = false;

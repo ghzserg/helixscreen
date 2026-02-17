@@ -5,11 +5,12 @@
 
 #include "ui_component_keypad.h"
 #include "ui_error_reporting.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_subject_registry.h"
 #include "ui_temp_graph_scaling.h"
 #include "ui_temperature_utils.h"
+#include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "app_constants.h"
@@ -20,14 +21,17 @@
 #include "printer_state.h"
 #include "temperature_history_manager.h"
 #include "theme_manager.h"
+#include "tool_state.h"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <ctime>
 #include <memory>
 
+using namespace helix;
 using helix::ui::observe_int_sync;
 using helix::ui::temperature::centi_to_degrees_f;
 
@@ -52,7 +56,7 @@ TempControlPanel::TempControlPanel(PrinterState& printer_state, MoonrakerAPI* ap
     int bed_petg = petg_info ? petg_info->bed_temp : 80;
     int bed_abs = abs_info ? abs_info->bed_temp : 100;
 
-    nozzle_config_ = {.type = HEATER_NOZZLE,
+    nozzle_config_ = {.type = helix::HeaterType::Nozzle,
                       .name = "Nozzle",
                       .title = "Nozzle Temperature",
                       .color = theme_manager_get_color("heating_color"),
@@ -61,7 +65,7 @@ TempControlPanel::TempControlPanel(PrinterState& printer_state, MoonrakerAPI* ap
                       .presets = {0, nozzle_pla, nozzle_petg, nozzle_abs},
                       .keypad_range = {0.0f, 350.0f}};
 
-    bed_config_ = {.type = HEATER_BED,
+    bed_config_ = {.type = helix::HeaterType::Bed,
                    .name = "Bed",
                    .title = "Heatbed Temperature",
                    .color = theme_manager_get_color("cooling_color"),
@@ -79,20 +83,20 @@ TempControlPanel::TempControlPanel(PrinterState& printer_state, MoonrakerAPI* ap
     nozzle_status_buf_.fill('\0');
     bed_status_buf_.fill('\0');
 
-    // Subscribe to temperature subjects using bundle (replaces 4 individual observers)
-    temp_observers_.setup_sync(
-        this, printer_state_,
-        [](TempControlPanel* self, int temp) {
-            // Throttled logging: log every 40th unique major value change (~10 seconds)
-            static int last_logged = 0;
-            if (temp != last_logged && (temp / 100) != (last_logged / 100)) {
-                spdlog::trace("[TempPanel] Observer fired: nozzle temp = {} centideg", temp);
-                last_logged = temp;
-            }
-            self->on_nozzle_temp_changed(temp);
-        },
-        [](TempControlPanel* self, int target) { self->on_nozzle_target_changed(target); },
-        [](TempControlPanel* self, int temp) { self->on_bed_temp_changed(temp); },
+    // Subscribe to temperature subjects with individual ObserverGuards.
+    // Nozzle observers are separate so they can be rebound when switching
+    // extruders in multi-extruder setups (bed observers stay constant).
+    nozzle_temp_observer_ = observe_int_sync<TempControlPanel>(
+        printer_state_.get_active_extruder_temp_subject(), this,
+        [](TempControlPanel* self, int temp) { self->on_nozzle_temp_changed(temp); });
+    nozzle_target_observer_ = observe_int_sync<TempControlPanel>(
+        printer_state_.get_active_extruder_target_subject(), this,
+        [](TempControlPanel* self, int target) { self->on_nozzle_target_changed(target); });
+    bed_temp_observer_ = observe_int_sync<TempControlPanel>(
+        printer_state_.get_bed_temp_subject(), this,
+        [](TempControlPanel* self, int temp) { self->on_bed_temp_changed(temp); });
+    bed_target_observer_ = observe_int_sync<TempControlPanel>(
+        printer_state_.get_bed_target_subject(), this,
         [](TempControlPanel* self, int target) { self->on_bed_target_changed(target); });
 
     // Register XML event callbacks in constructor (BEFORE any lv_xml_create calls)
@@ -353,7 +357,8 @@ void TempControlPanel::update_bed_display() {
 }
 
 void TempControlPanel::send_nozzle_temperature(int target) {
-    spdlog::debug("[TempPanel] Sending nozzle temperature: {}°C", target);
+    spdlog::debug("[TempPanel] Sending nozzle temperature: {}°C to {}", target,
+                  active_extruder_name_);
 
     if (!api_) {
         spdlog::warn("[TempPanel] Cannot set nozzle temp: no API connection");
@@ -361,7 +366,7 @@ void TempControlPanel::send_nozzle_temperature(int target) {
     }
 
     api_->set_temperature(
-        "extruder", static_cast<double>(target),
+        active_extruder_name_, static_cast<double>(target),
         []() {
             // No toast on success - immediate visual feedback is sufficient
         },
@@ -579,7 +584,7 @@ void TempControlPanel::on_nozzle_confirm_clicked(lv_event_t* e) {
 
     if (self->api_) {
         self->api_->set_temperature(
-            "extruder", static_cast<double>(target),
+            self->active_extruder_name_, static_cast<double>(target),
             [target]() {
                 if (target == 0) {
                     NOTIFY_SUCCESS("Nozzle heater turned off");
@@ -592,7 +597,7 @@ void TempControlPanel::on_nozzle_confirm_clicked(lv_event_t* e) {
             });
     }
 
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void TempControlPanel::on_bed_confirm_clicked(lv_event_t* e) {
@@ -629,7 +634,7 @@ void TempControlPanel::on_bed_confirm_clicked(lv_event_t* e) {
             });
     }
 
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 // Nozzle preset button callbacks - immediately send temperature to printer
@@ -719,7 +724,7 @@ void TempControlPanel::on_bed_preset_abs_clicked(lv_event_t* e) {
 // Struct for keypad callback
 struct KeypadCallbackData {
     TempControlPanel* panel;
-    heater_type_t type;
+    helix::HeaterType type;
 };
 
 void TempControlPanel::keypad_value_cb(float value, void* user_data) {
@@ -728,7 +733,7 @@ void TempControlPanel::keypad_value_cb(float value, void* user_data) {
         return;
 
     int temp = static_cast<int>(value);
-    if (data->type == HEATER_NOZZLE) {
+    if (data->type == helix::HeaterType::Nozzle) {
         spdlog::debug("[TempPanel] Nozzle custom temperature: {}°C via keypad", temp);
         data->panel->send_nozzle_temperature(temp);
     } else {
@@ -747,7 +752,7 @@ void TempControlPanel::on_nozzle_custom_clicked(lv_event_t* e) {
     if (!self)
         return;
 
-    nozzle_keypad_data = {self, HEATER_NOZZLE};
+    nozzle_keypad_data = {self, helix::HeaterType::Nozzle};
 
     ui_keypad_config_t keypad_config = {.initial_value = static_cast<float>(self->nozzle_target_),
                                         .min_value = self->nozzle_config_.keypad_range.min,
@@ -768,7 +773,7 @@ void TempControlPanel::on_bed_custom_clicked(lv_event_t* e) {
     if (!self)
         return;
 
-    bed_keypad_data = {self, HEATER_BED};
+    bed_keypad_data = {self, helix::HeaterType::Bed};
 
     ui_keypad_config_t keypad_config = {.initial_value = static_cast<float>(self->bed_target_),
                                         .min_value = self->bed_config_.keypad_range.min,
@@ -789,8 +794,8 @@ void TempControlPanel::setup_nozzle_panel(lv_obj_t* panel, lv_obj_t* parent_scre
     // NOTE: Event callbacks are registered in constructor (before any lv_xml_create calls)
 
     // Read current values from PrinterState (observers only fire on changes, not initial state)
-    nozzle_current_ = lv_subject_get_int(printer_state_.get_extruder_temp_subject());
-    nozzle_target_ = lv_subject_get_int(printer_state_.get_extruder_target_subject());
+    nozzle_current_ = lv_subject_get_int(printer_state_.get_active_extruder_temp_subject());
+    nozzle_target_ = lv_subject_get_int(printer_state_.get_active_extruder_target_subject());
     spdlog::debug("[TempPanel] Nozzle initial state from PrinterState: current={}°C, target={}°C",
                   nozzle_current_, nozzle_target_);
 
@@ -867,12 +872,41 @@ void TempControlPanel::setup_nozzle_panel(lv_obj_t* panel, lv_obj_t* parent_scre
     replay_nozzle_history_to_graph();
 
     // Attach heating icon animator (simplified to single icon, color controlled programmatically)
-    lv_obj_t* heater_icon = lv_obj_find_by_name(panel, "heater_icon");
+    lv_obj_t* heater_icon = lv_obj_find_by_name(panel, "nozzle_icon_glyph");
     if (heater_icon) {
         nozzle_animator_.attach(heater_icon);
         // Initialize with current state
         nozzle_animator_.update(nozzle_current_, nozzle_target_);
         spdlog::debug("[TempPanel] Nozzle heating animator attached");
+    }
+
+    // Multi-extruder: show segmented control if multiple extruders discovered
+    if (printer_state_.extruder_count() > 1) {
+        rebuild_extruder_segments();
+    }
+
+    // Watch for late extruder discovery (e.g., reconnection) to rebuild selector
+    extruder_version_observer_ = observe_int_sync<TempControlPanel>(
+        printer_state_.get_extruder_version_subject(), this,
+        [](TempControlPanel* self, int /*version*/) {
+            spdlog::debug("[TempPanel] Extruder list changed, rebuilding selector");
+            self->rebuild_extruder_segments();
+        });
+
+    // When active tool changes, auto-switch to that tool's extruder.
+    // observe_int_sync defers callbacks automatically (issue #82), so
+    // select_extruder()'s observer reassignment is safe from re-entrancy.
+    auto& tool_state = helix::ToolState::instance();
+    if (tool_state.is_multi_tool()) {
+        active_tool_observer_ =
+            observe_int_sync<TempControlPanel>(tool_state.get_active_tool_subject(), this,
+                                               [](TempControlPanel* self, int /*tool_idx*/) {
+                                                   auto& ts = helix::ToolState::instance();
+                                                   const auto* tool = ts.active_tool();
+                                                   if (tool && tool->extruder_name) {
+                                                       self->select_extruder(*tool->extruder_name);
+                                                   }
+                                               });
     }
 
     spdlog::debug("[TempPanel] Nozzle panel setup complete!");
@@ -1083,6 +1117,167 @@ void TempControlPanel::set_bed_limits(int min_temp, int max_temp) {
     spdlog::debug("[TempPanel] Bed limits updated: {}-{}°C", min_temp, max_temp);
 }
 
+// ============================================================================
+// MULTI-EXTRUDER SUPPORT
+// ============================================================================
+
+void TempControlPanel::select_extruder(const std::string& name) {
+    if (name == active_extruder_name_) {
+        return;
+    }
+
+    spdlog::info("[TempPanel] Switching extruder: {} -> {}", active_extruder_name_, name);
+    active_extruder_name_ = name;
+
+    // Rebind nozzle observers to the selected extruder's subjects
+    auto* temp_subj = printer_state_.get_extruder_temp_subject(name);
+    auto* target_subj = printer_state_.get_extruder_target_subject(name);
+
+    if (temp_subj) {
+        nozzle_temp_observer_ = observe_int_sync<TempControlPanel>(
+            temp_subj, this,
+            [](TempControlPanel* self, int temp) { self->on_nozzle_temp_changed(temp); });
+        // Read initial value from the new subject
+        nozzle_current_ = lv_subject_get_int(temp_subj);
+    }
+    if (target_subj) {
+        nozzle_target_observer_ = observe_int_sync<TempControlPanel>(
+            target_subj, this,
+            [](TempControlPanel* self, int target) { self->on_nozzle_target_changed(target); });
+        // Read initial value from the new subject
+        nozzle_target_ = lv_subject_get_int(target_subj);
+    }
+
+    // Clear pending selection, refresh display
+    nozzle_pending_ = -1;
+    update_nozzle_display();
+    update_nozzle_status();
+
+    // Replay graph history for the newly selected extruder
+    if (nozzle_graph_ && nozzle_series_id_ >= 0) {
+        // Clear existing graph data before replaying
+        ui_temp_graph_clear_series(nozzle_graph_, nozzle_series_id_);
+        replay_nozzle_history_to_graph();
+    }
+
+    // Update button states in the selector
+    rebuild_extruder_segments();
+}
+
+void TempControlPanel::rebuild_extruder_segments() {
+    // SAFETY: Defer the clean+rebuild. When called from the extruder button click
+    // handler (select_extruder), the clicked button is a child of the selector being
+    // cleaned. Destroying it mid-callback causes use-after-free (issue #80).
+    helix::ui::queue_update([this]() { rebuild_extruder_segments_impl(); });
+}
+
+void TempControlPanel::rebuild_extruder_segments_impl() {
+    auto* selector = lv_obj_find_by_name(nozzle_panel_, "extruder_selector");
+    if (!selector) {
+        return;
+    }
+
+    int count = printer_state_.extruder_count();
+    if (count <= 1) {
+        lv_obj_add_flag(selector, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    lv_obj_remove_flag(selector, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clean(selector);
+
+    // Build sorted extruder list for deterministic button order
+    const auto& extruders = printer_state_.temperature_state().extruders();
+    std::vector<std::string> names;
+    names.reserve(extruders.size());
+    for (const auto& [ext_name, info] : extruders) {
+        names.push_back(ext_name);
+    }
+    std::sort(names.begin(), names.end());
+
+    // Reset active extruder if it no longer exists (e.g., reconnect to different printer)
+    if (extruders.find(active_extruder_name_) == extruders.end() && !names.empty()) {
+        select_extruder(names.front()); // This calls rebuild_extruder_segments() again
+        return;                         // Inner call already populated the selector
+    }
+
+    // Configure selector as a horizontal button row
+    lv_obj_set_flex_flow(selector, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(selector, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(selector, 8, 0);
+
+    // For multi-tool printers, use tool names (T0, T1) instead of generic display names
+    auto& tool_state = helix::ToolState::instance();
+
+    for (const auto& ext_name : names) {
+        const auto& info = extruders.at(ext_name);
+        lv_obj_t* btn = lv_button_create(selector);
+        lv_obj_set_flex_grow(btn, 1);
+        lv_obj_set_height(btn, LV_SIZE_CONTENT);
+
+        // Style: checked state for the active extruder
+        lv_obj_add_flag(btn, LV_OBJ_FLAG_CHECKABLE);
+        if (ext_name == active_extruder_name_) {
+            lv_obj_add_state(btn, LV_STATE_CHECKED);
+        } else {
+            lv_obj_remove_state(btn, LV_STATE_CHECKED);
+        }
+
+        // Use tool name (T0, T1) for multi-tool printers, otherwise display_name
+        std::string tool_name = tool_state.tool_name_for_extruder(ext_name);
+        const std::string& btn_label = tool_name.empty() ? info.display_name : tool_name;
+
+        lv_obj_t* label = lv_label_create(btn);
+        lv_label_set_text(label, btn_label.c_str());
+        lv_obj_center(label);
+
+        // Store TempControlPanel pointer as user data on the button.
+        // The extruder name is recoverable from the button's position/label.
+        lv_obj_set_user_data(btn, this);
+
+        // Dynamically created buttons use C++ event callbacks (exception to
+        // the "no lv_obj_add_event_cb" rule -- same pattern as FanDial)
+        lv_obj_add_event_cb(
+            btn,
+            [](lv_event_t* e) {
+                auto* self = static_cast<TempControlPanel*>(lv_event_get_user_data(e));
+                if (!self) {
+                    return;
+                }
+                lv_obj_t* clicked_btn = static_cast<lv_obj_t*>(lv_event_get_target(e));
+                // Find which extruder was clicked by reading the label text
+                lv_obj_t* lbl = lv_obj_get_child(clicked_btn, 0);
+                if (!lbl) {
+                    return;
+                }
+                const char* display_text = lv_label_get_text(lbl);
+
+                // Match label text back to klipper extruder name.
+                // Button may show display_name ("Nozzle 1") or tool name ("T0").
+                const auto& exts = self->printer_state_.temperature_state().extruders();
+                for (const auto& [kname, kinfo] : exts) {
+                    if (kinfo.display_name == display_text) {
+                        self->select_extruder(kname);
+                        return;
+                    }
+                }
+                // Fallback: match tool name (T0, T1) back to extruder via ToolState
+                auto& ts = helix::ToolState::instance();
+                for (const auto& [kname, kinfo] : exts) {
+                    if (ts.tool_name_for_extruder(kname) == display_text) {
+                        self->select_extruder(kname);
+                        return;
+                    }
+                }
+                spdlog::warn("[TempPanel] Could not find extruder for label '{}'", display_text);
+            },
+            LV_EVENT_CLICKED, this);
+    }
+
+    spdlog::debug("[TempPanel] Rebuilt extruder selector with {} buttons", names.size());
+}
+
 void TempControlPanel::replay_history_from_manager(ui_temp_graph_t* graph, int series_id,
                                                    const std::string& heater_name) {
     auto* mgr = get_temperature_history_manager();
@@ -1112,8 +1307,8 @@ void TempControlPanel::replay_nozzle_history_to_graph() {
         return;
     }
 
-    // Use TemperatureHistoryManager for history data
-    replay_history_from_manager(nozzle_graph_, nozzle_series_id_, "extruder");
+    // Use TemperatureHistoryManager for history data (active extruder)
+    replay_history_from_manager(nozzle_graph_, nozzle_series_id_, active_extruder_name_);
 }
 
 void TempControlPanel::replay_bed_history_to_graph() {
@@ -1200,7 +1395,8 @@ void TempControlPanel::setup_mini_combined_graph(lv_obj_t* container) {
 
 void TempControlPanel::register_heater_graph(ui_temp_graph_t* graph, int series_id,
                                              const std::string& heater) {
-    if (heater == "extruder") {
+    // Match any extruder name (extruder, extruder1, etc.) to nozzle graphs
+    if (heater.rfind("extruder", 0) == 0) {
         nozzle_temp_graphs_.push_back({graph, series_id});
     } else if (heater == "heater_bed") {
         bed_temp_graphs_.push_back({graph, series_id});
@@ -1270,7 +1466,7 @@ void TempControlPanel::replay_history_to_mini_graph() {
         }
     };
 
-    // Replay both heaters
-    replay_heater("extruder", mini_nozzle_series_id_);
+    // Replay both heaters (use active extruder for nozzle)
+    replay_heater(active_extruder_name_, mini_nozzle_series_id_);
     replay_heater("heater_bed", mini_bed_series_id_);
 }

@@ -13,7 +13,9 @@
 #include <string>
 #include <vector>
 
+namespace helix {
 class MoonrakerClient;
+}
 class MoonrakerAPI;
 
 /**
@@ -35,7 +37,7 @@ class MoonrakerAPI;
  * ```cpp
  * ScrewsTiltPanel& panel = get_global_screws_tilt_panel();
  * panel.setup(lv_obj, parent_screen, moonraker_client, moonraker_api);
- * ui_nav_push_overlay(lv_obj);
+ * NavigationManager::instance().push_overlay(lv_obj);
  * ```
  */
 class ScrewsTiltPanel : public OverlayBase {
@@ -124,7 +126,7 @@ class ScrewsTiltPanel : public OverlayBase {
      * @param client Moonraker client for sending commands
      * @param api Moonraker API for calculate_screws_tilt()
      */
-    void set_client(MoonrakerClient* client, MoonrakerAPI* api) {
+    void set_client(helix::MoonrakerClient* client, MoonrakerAPI* api) {
         client_ = client;
         api_ = api;
     }
@@ -193,7 +195,7 @@ class ScrewsTiltPanel : public OverlayBase {
     // Widget references
     // Note: overlay_root_ inherited from OverlayBase
     lv_obj_t* parent_screen_ = nullptr;
-    MoonrakerClient* client_ = nullptr;
+    helix::MoonrakerClient* client_ = nullptr;
     MoonrakerAPI* api_ = nullptr;
 
     // Results UI elements

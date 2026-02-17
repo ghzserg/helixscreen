@@ -8,12 +8,12 @@
 #include "ui_event_safety.h"
 #include "ui_global_panel_helper.h"
 #include "ui_led_chip_factory.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
 #include "led/led_controller.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "lvgl/src/xml/lv_xml.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <cstdio>
 
+using namespace helix;
 using namespace helix::led;
 
 // ============================================================================
@@ -216,7 +217,7 @@ void LedControlOverlay::on_activate() {
             uint8_t g = static_cast<uint8_t>(color.g * 255.0);
             uint8_t b = static_cast<uint8_t>(color.b * 255.0);
             lv_obj_t* swatch = current_color_swatch_;
-            ui_queue_update([swatch, r, g, b]() {
+            helix::ui::queue_update([swatch, r, g, b]() {
                 if (swatch)
                     lv_obj_set_style_bg_color(swatch, lv_color_make(r, g, b), 0);
             });
@@ -516,7 +517,7 @@ void LedControlOverlay::populate_wled() {
         // Fallback to numbered presets
         for (int i = 1; i <= 5; ++i) {
             char buf[16];
-            snprintf(buf, sizeof(buf), "Preset %d", i);
+            snprintf(buf, sizeof(buf), "%s %d", lv_tr("Preset"), i);
             entries.push_back({i, buf});
         }
     } else {
@@ -600,17 +601,19 @@ void LedControlOverlay::populate_macros() {
 void LedControlOverlay::populate_macro_controls(const LedMacroInfo& macro) {
     switch (macro.type) {
     case MacroLedType::ON_OFF:
-        add_macro_chip("Turn On", macro.display_name, &LedControlOverlay::handle_macro_on);
-        add_macro_chip("Turn Off", macro.display_name, &LedControlOverlay::handle_macro_off);
+        add_macro_chip(lv_tr("Turn On"), macro.display_name, &LedControlOverlay::handle_macro_on);
+        add_macro_chip(lv_tr("Turn Off"), macro.display_name, &LedControlOverlay::handle_macro_off);
         break;
 
     case MacroLedType::TOGGLE:
-        add_macro_chip("Toggle", macro.display_name, &LedControlOverlay::handle_macro_toggle);
+        add_macro_chip(lv_tr("Toggle"), macro.display_name,
+                       &LedControlOverlay::handle_macro_toggle);
         break;
 
     case MacroLedType::PRESET:
-        for (const auto& [preset_name, preset_gcode] : macro.presets) {
-            add_macro_chip(preset_name, preset_gcode, &LedControlOverlay::handle_macro_custom);
+        for (const auto& preset_macro : macro.presets) {
+            add_macro_chip(pretty_print_macro(preset_macro), preset_macro,
+                           &LedControlOverlay::handle_macro_custom);
         }
         break;
     }
@@ -937,13 +940,16 @@ void LedControlOverlay::handle_strip_selected(const std::string& strip_id) {
         }
     }
 
-    // Rebuild strip selector to update visual states
-    if (strip_selector_section_) {
-        lv_obj_clean(strip_selector_section_);
-        populate_strip_selector();
-    }
-
-    update_section_visibility();
+    // SAFETY: Defer strip selector rebuild — the clicked chip is a child of
+    // strip_selector_section_ being cleaned. Destroying it mid-callback causes
+    // use-after-free (issue #80).
+    helix::ui::queue_update([this]() {
+        if (strip_selector_section_) {
+            lv_obj_clean(strip_selector_section_);
+            populate_strip_selector();
+        }
+        update_section_visibility();
+    });
 }
 
 // ============================================================================

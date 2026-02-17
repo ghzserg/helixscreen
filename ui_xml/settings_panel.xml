@@ -46,11 +46,11 @@
                           description="Configure filament detection sensors"
                           description_tag="Configure filament detection sensors" callback="on_filament_sensors_clicked"/>
     </lv_obj>
-    <!-- AMS Settings (hidden if no AMS detected) -->
+    <!-- AMS Management (hidden if no AMS detected) -->
     <lv_obj name="container_ams_settings" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="ams_slot_count" flag="hidden" ref_value="0"/>
       <setting_action_row name="row_ams_settings"
-                          label="AMS Settings" label_tag="AMS Settings" icon="filament"
+                          label="AMS Management" label_tag="AMS Management" icon="filament"
                           description="Quick actions, calibration, speed"
                           description_tag="Quick actions, calibration, speed" callback="on_ams_settings_clicked"/>
     </lv_obj>
@@ -121,14 +121,27 @@
                         label="E-Stop Confirmation" label_tag="E-Stop Confirmation" icon="alert_octagon"
                         description="Require confirmation before emergency stop"
                         description_tag="Require confirmation before emergency stop" callback="on_estop_confirm_changed"/>
+    <!-- Cancel Escalation Toggle -->
+    <setting_toggle_row name="row_cancel_escalation"
+                        label="Cancel Escalation" label_tag="Cancel Escalation" icon="alert_octagon"
+                        description="Escalate to emergency stop if cancel doesn't respond"
+                        description_tag="Escalate to emergency stop if cancel doesn't respond"
+                        subject="settings_cancel_escalation_enabled" callback="on_cancel_escalation_changed"/>
+    <!-- Cancel Escalation Timeout (visible only when escalation enabled) -->
+    <lv_obj name="container_cancel_escalation_timeout" width="100%" style_pad_all="0" scrollable="false">
+      <bind_flag_if_eq subject="settings_cancel_escalation_enabled" flag="hidden" ref_value="0"/>
+      <setting_dropdown_row name="row_cancel_escalation_timeout"
+                            label="Escalation Timeout" label_tag="Escalation Timeout" icon="clock"
+                            description="Time to wait before escalating to emergency stop"
+                            description_tag="Time to wait before escalating to emergency stop"
+                            options="15 seconds&#10;30 seconds&#10;60 seconds&#10;120 seconds"
+                            bind_selected="settings_cancel_escalation_timeout"
+                            callback="on_cancel_escalation_timeout_changed"/>
+    </lv_obj>
     <!-- ================================================================== -->
     <!-- SYSTEM SECTION -->
     <!-- ================================================================== -->
     <setting_section_header title="SYSTEM" title_tag="SYSTEM" icon="sysinfo"/>
-    <!-- Printer Name -->
-    <setting_info_row name="row_printer" label="Printer Name" label_tag="Printer Name" icon="printer_3d">
-      <text_muted name="value" bind_text="printer_value"/>
-    </setting_info_row>
     <!-- Network Settings (hidden on Android where OS manages WiFi) -->
     <lv_obj name="container_network_settings" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="show_network_settings" flag="hidden" ref_value="0"/>
@@ -158,16 +171,6 @@
                           description_tag="Review detected hardware validation issues"
                           callback="on_hardware_health_clicked"/>
     </lv_obj>
-    <!-- Restart HelixScreen -->
-    <setting_action_row name="row_restart_helix"
-                        label="Restart HelixScreen" label_tag="Restart HelixScreen" icon="restart"
-                        description="Restart the display application" description_tag="Restart the display application"
-                        callback="on_restart_helix_settings_clicked"/>
-    <!-- Factory Reset -->
-    <setting_action_row name="row_factory_reset"
-                        label="Factory Reset" label_tag="Factory Reset" icon="refresh"
-                        description="Reset all settings and restart wizard"
-                        description_tag="Reset all settings and restart wizard" callback="on_factory_reset_clicked"/>
     <!-- Plugins (gated by beta_features config flag) -->
     <beta_feature>
       <setting_action_row name="row_plugins"
@@ -186,15 +189,17 @@
                         description_tag="See exactly what data will be sent" callback="on_telemetry_view_data">
       <bind_flag_if_eq subject="settings_telemetry_enabled" flag="hidden" ref_value="0"/>
     </setting_action_row>
-    <!-- Update Channel (gated by beta_features) -->
-    <lv_obj name="container_update_channel" width="100%" style_pad_all="0">
-      <bind_flag_if_eq subject="show_beta_features" flag="hidden" ref_value="0"/>
-      <setting_dropdown_row name="row_update_channel"
-                            label="Update Channel" label_tag="Update Channel" icon="swap_vertical"
-                            options="Stable&#10;Beta&#10;Dev" bind_selected="update_channel"
-                            callback="on_update_channel_changed"/>
-    </lv_obj>
-    <!-- Install Update (visible only when update available; hidden on Android) -->
+    <!-- Restart HelixScreen -->
+    <setting_action_row name="row_restart_helix"
+                        label="Restart HelixScreen" label_tag="Restart HelixScreen" icon="restart"
+                        description="Restart the display application" description_tag="Restart the display application"
+                        callback="on_restart_helix_settings_clicked"/>
+    <!-- Factory Reset -->
+    <setting_action_row name="row_factory_reset"
+                        label="Factory Reset" label_tag="Factory Reset" icon="refresh"
+                        description="Reset all settings and restart wizard"
+                        description_tag="Reset all settings and restart wizard" callback="on_factory_reset_clicked"/>
+    <!-- Install Update (visible only when update available) -->
     <lv_obj name="container_install_update" width="100%" style_pad_all="0">
       <bind_flag_if_eq subject="show_update_settings" flag="hidden" ref_value="0"/>
       <bind_flag_if_not_eq subject="update_status" flag="hidden" ref_value="2"/>
@@ -203,9 +208,28 @@
                           description_tag="" callback="on_install_update_clicked"/>
     </lv_obj>
     <!-- ================================================================== -->
+    <!-- HELP & SUPPORT SECTION -->
+    <!-- ================================================================== -->
+    <setting_section_header title="HELP &amp; SUPPORT" title_tag="HELP &amp; SUPPORT" icon="help"/>
+    <setting_action_row name="row_debug_bundle"
+                        label="Upload Debug Bundle" label_tag="Upload Debug Bundle" icon="bug"
+                        description="Collect logs and system info for support"
+                        description_tag="Collect logs and system info for support" callback="on_debug_bundle_clicked"/>
+    <setting_action_row name="row_discord"
+                        label="Discord Community" label_tag="Discord Community" icon="message"
+                        description="Get help and share feedback" description_tag="Get help and share feedback"
+                        callback="on_discord_clicked"/>
+    <setting_action_row name="row_docs"
+                        label="Documentation" label_tag="Documentation" icon="book" description="Guides and reference"
+                        description_tag="Guides and reference" callback="on_docs_clicked"/>
+    <!-- ================================================================== -->
     <!-- ABOUT SECTION -->
     <!-- ================================================================== -->
     <setting_section_header title="ABOUT" title_tag="ABOUT" icon="info"/>
+    <!-- Printer Name -->
+    <setting_info_row name="row_printer" label="Printer Name" label_tag="Printer Name" icon="printer_3d">
+      <text_muted name="value" bind_text="printer_value"/>
+    </setting_info_row>
     <!-- Current Version - ui_button for native press feedback (7-tap secret to toggle beta features) -->
     <ui_button name="row_version" width="100%" height="content" variant="ghost" style_radius="0" style_pad_all="0">
       <lv_obj width="100%"
@@ -221,6 +245,14 @@
       </lv_obj>
       <event_cb trigger="clicked" callback="on_version_clicked"/>
     </ui_button>
+    <!-- Update Channel (gated by beta_features) -->
+    <lv_obj name="container_update_channel" width="100%" style_pad_all="0">
+      <bind_flag_if_eq subject="show_beta_features" flag="hidden" ref_value="0"/>
+      <setting_dropdown_row name="row_update_channel"
+                            label="Update Channel" label_tag="Update Channel" icon="swap_vertical"
+                            options="Stable&#10;Beta&#10;Dev" bind_selected="update_channel"
+                            callback="on_update_channel_changed"/>
+    </lv_obj>
     <!-- Check for Updates (reactive description shows available version; hidden on Android) -->
     <lv_obj name="container_check_updates" width="100%" style_pad_all="0" scrollable="false">
       <bind_flag_if_eq subject="show_update_settings" flag="hidden" ref_value="0"/>
@@ -228,13 +260,6 @@
                           label="Check for Updates" label_tag="Check for Updates" icon="refresh"
                           bind_description="update_version_text" callback="on_check_updates_clicked"/>
     </lv_obj>
-    <!-- Printer Name -->
-    <setting_info_row name="row_printer" label="Printer" label_tag="Printer" icon="printer_3d">
-      <text_muted name="value" bind_text="printer_value"/>
-    </setting_info_row>
-    <!-- Printer Host (clickable - opens change host modal) -->
-    <setting_action_row name="row_printer_host"
-                        label="Host" label_tag="Host" icon="lan" callback="on_change_host_clicked"/>
     <!-- Klipper Version -->
     <setting_info_row name="row_klipper" label="Klipper" label_tag="Klipper" icon="toy_brick_outline">
       <text_muted name="value" text="—"/>
@@ -247,10 +272,10 @@
     <setting_info_row name="row_os" label="OS" label_tag="OS" icon="console">
       <text_muted name="value" text="—"/>
     </setting_info_row>
-    <!-- Total Print Hours -->
-    <setting_info_row name="row_print_hours" label="Print Hours" label_tag="Print Hours" icon="clock">
-      <text_body name="value" bind_text="print_hours_value" style_text_color="#text_muted"/>
-    </setting_info_row>
+    <!-- Total Print Hours (opens history dashboard) -->
+    <setting_action_row name="row_print_hours"
+                        label="Print Hours" label_tag="Print Hours" icon="clock" bind_description="print_hours_value"
+                        callback="on_print_hours_clicked"/>
     <!-- Bottom padding for scroll -->
     <lv_obj width="100%" height="#space_lg" scrollable="false"/>
   </view>

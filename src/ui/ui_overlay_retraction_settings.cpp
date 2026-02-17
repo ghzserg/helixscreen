@@ -3,7 +3,6 @@
 
 #include "ui_overlay_retraction_settings.h"
 
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 
 #include "lvgl/src/xml/lv_xml.h"
@@ -285,5 +284,5 @@ static void on_retraction_row_clicked(lv_event_t* /*e*/) {
     }
 
     // Show the overlay - NavigationManager will call on_activate()
-    ui_nav_push_overlay(g_retraction_settings_panel);
+    NavigationManager::instance().push_overlay(g_retraction_settings_panel);
 }

@@ -46,7 +46,7 @@ void StaticPanelRegistry::destroy_all() {
     spdlog::trace("[StaticPanelRegistry] Destroying {} panels in reverse order...",
                   destroyers_.size());
 
-    // Set flag so lv_obj_safe_delete() skips deletion during this window
+    // Set flag so helix::ui::safe_delete() skips deletion during this window
     s_destroying_all_.store(true, std::memory_order_release);
 
     // Destroy in reverse registration order (LIFO)

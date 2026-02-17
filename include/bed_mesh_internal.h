@@ -96,7 +96,7 @@ struct bed_mesh_renderer {
     // ===== Adaptive Render Mode (Phase 4) =====
 
     // Render mode control
-    bed_mesh_render_mode_t render_mode = BED_MESH_RENDER_MODE_AUTO;
+    helix::BedMeshRenderMode render_mode = helix::BedMeshRenderMode::Auto;
     bool using_2d_fallback = false; // True if currently rendering as 2D heatmap
 
     // FPS tracking (rolling window average)

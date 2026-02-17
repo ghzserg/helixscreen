@@ -11,9 +11,10 @@ setup() {
 
     # Override the no-op log stubs so we can assert on output
     log_error()   { echo "ERROR: $*"; }
+    log_warn()    { echo "WARN: $*"; }
     log_info()    { echo "INFO: $*"; }
     log_success() { echo "OK: $*"; }
-    export -f log_error log_info log_success
+    export -f log_error log_warn log_info log_success
 
     # Reset source guard so we can re-source per test
     unset _HELIX_REQUIREMENTS_SOURCED
@@ -333,4 +334,150 @@ echo "/dev/sda1          1000   800       200  80% /"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Checking runtime dependencies"* ]]
     [[ "$output" == *"already installed"* ]]
+}
+
+# ===========================================================================
+# verify_binary_deps
+# ===========================================================================
+
+# Helper: set up a fake binary and mock ldd for verify_binary_deps tests
+setup_verify_binary() {
+    mkdir -p "$INSTALL_DIR/bin"
+    printf '#!/bin/sh\nexit 0\n' > "$INSTALL_DIR/bin/helix-screen"
+    chmod +x "$INSTALL_DIR/bin/helix-screen"
+}
+
+@test "verify_binary_deps: succeeds when all libs found" {
+    setup_verify_binary
+    mock_command_script "ldd" '
+echo "	linux-vdso.so.1 (0x7fff12345000)"
+echo "	libdrm.so.2 => /usr/lib/aarch64-linux-gnu/libdrm.so.2 (0x7f1234000000)"
+echo "	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x7f1230000000)"
+'
+
+    run verify_binary_deps "pi"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"All shared library dependencies satisfied"* ]]
+}
+
+@test "verify_binary_deps: skips when ldd not available" {
+    setup_verify_binary
+    mock_command_fail "ldd"
+
+    run verify_binary_deps "pi"
+    [ "$status" -eq 0 ]
+}
+
+@test "verify_binary_deps: skips when binary not found" {
+    # Provide ldd but don't create the binary
+    mock_command "ldd" ""
+
+    run verify_binary_deps "pi"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Binary not found"* ]]
+}
+
+@test "verify_binary_deps: detects missing libssl.so.1.1 and installs compat" {
+    setup_verify_binary
+
+    # First ldd call: libssl missing. Second call (after install): all good.
+    local call_count_file="$BATS_TEST_TMPDIR/ldd_calls"
+    echo "0" > "$call_count_file"
+
+    mock_command_script "ldd" "
+count=\$(cat '$call_count_file')
+count=\$((count + 1))
+echo \$count > '$call_count_file'
+if [ \$count -eq 1 ]; then
+    echo '	libssl.so.1.1 => not found'
+    echo '	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x7f1230000000)'
+else
+    echo '	libssl.so.1.1 => /usr/lib/aarch64-linux-gnu/libssl.so.1.1 (0x7f1234000000)'
+    echo '	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x7f1230000000)'
+fi
+"
+
+    # apt-cache says libssl1.1 is available
+    mock_command_script "apt-cache" 'echo "Package: libssl1.1"'
+    # apt-get install succeeds
+    mock_command "apt-get" ""
+
+    run verify_binary_deps "pi"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"libssl.so.1.1 not found"* ]]
+    [[ "$output" == *"Installing libssl1.1"* ]]
+    [[ "$output" == *"resolved"* ]]
+}
+
+@test "verify_binary_deps: fails when libssl1.1 package not available" {
+    setup_verify_binary
+    mock_command_script "ldd" '
+echo "	libssl.so.1.1 => not found"
+echo "	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x7f1230000000)"
+'
+    # apt-cache says no such package
+    mock_command_fail "apt-cache"
+
+    run verify_binary_deps "pi"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"libssl1.1 package not available"* ]]
+    [[ "$output" == *"OpenSSL 3"* ]]
+}
+
+@test "verify_binary_deps: fails when non-ssl library missing on pi" {
+    setup_verify_binary
+    mock_command_script "ldd" '
+echo "	libfoo.so.42 => not found"
+echo "	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x7f1230000000)"
+'
+
+    run verify_binary_deps "pi"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Missing shared libraries"* ]]
+    [[ "$output" == *"libfoo.so.42"* ]]
+    [[ "$output" == *"Could not resolve"* ]]
+}
+
+@test "verify_binary_deps: warns but continues on non-pi platforms" {
+    setup_verify_binary
+    mock_command_script "ldd" '
+echo "	libfoo.so.1 => not found"
+'
+
+    run verify_binary_deps "ad5m"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Missing shared libraries"* ]]
+    [[ "$output" == *"may not start correctly"* ]]
+}
+
+@test "verify_binary_deps: works for pi32 platform same as pi" {
+    setup_verify_binary
+    mock_command_script "ldd" '
+echo "	libssl.so.1.1 => not found"
+'
+    mock_command_fail "apt-cache"
+
+    run verify_binary_deps "pi32"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"libssl1.1 package not available"* ]]
+}
+
+@test "verify_binary_deps: multiple missing libs all reported" {
+    setup_verify_binary
+    mock_command_script "ldd" '
+echo "	libssl.so.1.1 => not found"
+echo "	libcrypto.so.1.1 => not found"
+echo "	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x7f1230000000)"
+'
+
+    # apt-cache says libssl1.1 is available, but libcrypto stays missing
+    mock_command_script "apt-cache" 'echo "Package: libssl1.1"'
+    mock_command "apt-get" ""
+    # After "install", ldd still shows libcrypto missing
+    # (We can't easily change mock mid-test, so the re-check will still show both)
+
+    run verify_binary_deps "pi"
+    [[ "$output" == *"Missing shared libraries"* ]]
+    [[ "$output" == *"libssl.so.1.1"* ]]
+    [[ "$output" == *"libcrypto.so.1.1"* ]]
 }

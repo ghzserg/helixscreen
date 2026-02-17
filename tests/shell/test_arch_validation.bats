@@ -20,9 +20,9 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "validate_binary_architecture: ARM32 binary passes for k1" {
+@test "validate_binary_architecture: MIPS binary passes for k1" {
     local binary="$BATS_TEST_TMPDIR/helix-screen"
-    create_fake_arm32_elf "$binary"
+    create_fake_mips_elf "$binary"
     run validate_binary_architecture "$binary" "k1"
     [ "$status" -eq 0 ]
 }
@@ -55,6 +55,13 @@ setup() {
 @test "validate_binary_architecture: AARCH64 binary FAILS for k1" {
     local binary="$BATS_TEST_TMPDIR/helix-screen"
     create_fake_aarch64_elf "$binary"
+    run validate_binary_architecture "$binary" "k1"
+    [ "$status" -eq 1 ]
+}
+
+@test "validate_binary_architecture: ARM32 binary FAILS for k1" {
+    local binary="$BATS_TEST_TMPDIR/helix-screen"
+    create_fake_arm32_elf "$binary"
     run validate_binary_architecture "$binary" "k1"
     [ "$status" -eq 1 ]
 }

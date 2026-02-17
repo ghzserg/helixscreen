@@ -111,7 +111,8 @@ MoonrakerSubscriptionId PluginAPI::subscribe_moonraker(const std::vector<std::st
                     // Marshal to main thread for LVGL safety
                     // Plugins don't need to worry about threading
                     json filtered_copy = filtered; // Copy for capture
-                    ui_queue_update([callback, filtered_copy]() { callback(filtered_copy); });
+                    helix::ui::queue_update(
+                        [callback, filtered_copy]() { callback(filtered_copy); });
                 }
             });
 
@@ -396,7 +397,8 @@ void PluginAPI::apply_deferred_subscriptions() {
                 if (!filtered.empty()) {
                     // Marshal to main thread for LVGL safety
                     json filtered_copy = filtered;
-                    ui_queue_update([callback, filtered_copy]() { callback(filtered_copy); });
+                    helix::ui::queue_update(
+                        [callback, filtered_copy]() { callback(filtered_copy); });
                 }
             });
 

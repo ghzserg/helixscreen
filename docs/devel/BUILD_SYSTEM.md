@@ -20,6 +20,9 @@ make pi32-docker
 # Build for Flashforge Adventurer 5M (armv7-a/ARM32)
 make ad5m-docker
 
+# Build for Elegoo Centauri Carbon 1 (armv7-a/ARM32)
+make cc1-docker
+
 # Build for Creality K1 series (MIPS32, static/musl)
 make k1-docker
 
@@ -33,6 +36,7 @@ make k2-docker
 file build/pi/bin/helix-screen     # ELF 64-bit LSB, ARM aarch64
 file build/pi32/bin/helix-screen   # ELF 32-bit LSB, ARM, EABI5
 file build/ad5m/bin/helix-screen   # ELF 32-bit LSB, ARM, EABI5
+file build/cc1/bin/helix-screen    # ELF 32-bit LSB, ARM, EABI5
 file build/k1/bin/helix-screen     # ELF 32-bit LSB, MIPS32 (static)
 file build/k1-dynamic/bin/helix-screen  # ELF 32-bit LSB, MIPS32 (dynamic)
 file build/k2/bin/helix-screen     # ELF 32-bit LSB, ARM, EABI5
@@ -47,6 +51,7 @@ Docker images are **automatically built** on first use - no manual setup require
 | **Raspberry Pi (64-bit)** | `make pi-docker` | aarch64 (ARM64) | DRM/fbdev | `build/pi/` |
 | **Raspberry Pi (32-bit)** | `make pi32-docker` | armv7-a (armhf) | DRM/fbdev | `build/pi32/` |
 | **Adventurer 5M** | `make ad5m-docker` | armv7-a (hard-float) | fbdev | `build/ad5m/` |
+| **Centauri Carbon 1** | `make cc1-docker` | armv7-a (hard-float) | fbdev | `build/cc1/` |
 | **Creality K1 (static)** | `make k1-docker` | MIPS32r2 (musl) | fbdev | `build/k1/` |
 | **Creality K1 (dynamic)** | `make k1-dynamic-docker` | MIPS32r2 (glibc) | fbdev | `build/k1-dynamic/` |
 | **Creality K2** | `make k2-docker` | armv7-a (musl) | fbdev | `build/k2/` |
@@ -65,7 +70,7 @@ Docker images are **automatically built** on first use - no manual setup require
 
 4. **Display Backend Selection**: Cross-compilation automatically selects the appropriate display backend:
    - **Pi / Pi32**: DRM (preferred) with fbdev fallback
-   - **AD5M**: fbdev (800×480 framebuffer)
+   - **AD5M / CC1**: fbdev (framebuffer)
 
 ### Build Targets
 
@@ -74,6 +79,7 @@ Docker images are **automatically built** on first use - no manual setup require
 make pi-docker           # Raspberry Pi 64-bit via Docker
 make pi32-docker         # Raspberry Pi 32-bit via Docker
 make ad5m-docker         # Adventurer 5M via Docker
+make cc1-docker          # Centauri Carbon 1 via Docker
 make k1-docker           # Creality K1 series via Docker (static/musl)
 make k1-dynamic-docker   # Creality K1 series via Docker (dynamic/glibc)
 make k2-docker           # Creality K2 series via Docker (UNTESTED)
@@ -83,6 +89,7 @@ make docker-toolchains   # Pre-build all Docker images
 make pi                  # Raspberry Pi 64-bit (needs aarch64-linux-gnu-gcc)
 make pi32                # Raspberry Pi 32-bit (needs arm-linux-gnueabihf-gcc)
 make ad5m                # Adventurer 5M (needs arm-linux-gnueabihf-gcc)
+make cc1                 # Centauri Carbon 1 (needs arm-linux-gnueabihf-gcc)
 make k1                  # Creality K1 static (needs Bootlin mips32el-musl toolchain)
 make k1-dynamic          # Creality K1 dynamic (needs custom NaN2008 GCC 7.5 toolchain)
 make k2                  # Creality K2 (needs Bootlin armv7-eabihf-musl toolchain)
@@ -116,6 +123,15 @@ make cross-info          # Show cross-compilation help
 - **C Library**: glibc 2.25 (requires older toolchain for compatibility)
 - **RAM**: 110MB total (~36MB available with Klipper running)
 - **Docker Image**: `helixscreen/toolchain-ad5m` (Debian Buster)
+
+#### Elegoo Centauri Carbon 1
+- **SoC**: Allwinner R528 / sun8iw20 (Cortex-A7 dual-core, armv7-a hard-float)
+- **Toolchain**: ARM GCC 10.3 (`arm-none-linux-gnueabihf-gcc`)
+- **Display**: 480×272 framebuffer (`/dev/fb0`), 32bpp ARGB8888
+- **Input**: evdev for touch (Goodix gt9xxnew_ts on `/dev/input/event1`)
+- **C Library**: glibc 2.23 (static linking avoids version conflicts)
+- **RAM**: 112MB total (~34MB available with Klipper running)
+- **Docker Image**: `helixscreen/toolchain-cc1` (Debian Bookworm)
 
 #### Creality K1 Series — Static (K1C, K1 Max)
 - **CPU**: Ingenic X2000E (MIPS32r2 dual-core @ 1.2 GHz)
@@ -156,6 +172,7 @@ docker/
 ├── Dockerfile.pi          # Pi 64-bit toolchain (Debian Bullseye, GCC 10)
 ├── Dockerfile.pi32        # Pi 32-bit toolchain (Debian Bullseye, GCC 10)
 ├── Dockerfile.ad5m        # AD5M toolchain (Debian Buster, GCC 8)
+├── Dockerfile.cc1         # CC1 toolchain (Debian Bookworm, ARM GCC 10.3)
 ├── Dockerfile.k1          # K1 static toolchain (Bootlin mips32el-musl, GCC 12)
 ├── Dockerfile.k1-dynamic  # K1 dynamic toolchain (crosstool-NG, GCC 7.5, glibc 2.29)
 └── Dockerfile.k2          # K2 toolchain (Bootlin armv7-eabihf-musl, GCC 12)
@@ -172,7 +189,7 @@ The Dockerfiles handle:
 Cross-compilation is handled by `mk/cross.mk`, which defines:
 
 ```makefile
-# Set target platform (native, pi, pi32, ad5m, k1, k1-dynamic, k2)
+# Set target platform (native, pi, pi32, ad5m, cc1, k1, k1-dynamic, k2)
 PLATFORM_TARGET ?= native
 
 # Cross-compiler configuration

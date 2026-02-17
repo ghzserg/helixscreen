@@ -84,7 +84,7 @@ else
 fi
 
 # Scan for platform tarballs
-PLATFORMS=(pi pi32 ad5m k1)
+PLATFORMS=(pi pi32 ad5m cc1 k1)
 FOUND_ANY=false
 ASSETS_JSON="{}"
 

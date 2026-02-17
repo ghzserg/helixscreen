@@ -25,6 +25,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // PrinterState Printer Type Storage Tests
 // ============================================================================

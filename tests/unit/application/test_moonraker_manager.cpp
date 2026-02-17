@@ -100,6 +100,8 @@ TEST_CASE("RuntimeConfig mock_ams_gate_count", "[application][config]") {
 #include "moonraker_manager.h"
 #include "printer_state.h"
 
+using namespace helix;
+
 TEST_CASE("should_start_print_collector - fresh print start", "[application][print_start]") {
     // Transition from STANDBY to PRINTING with 0% progress = fresh print start
     REQUIRE(MoonrakerManager::should_start_print_collector(PrintJobState::STANDBY,

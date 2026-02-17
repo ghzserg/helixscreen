@@ -17,6 +17,8 @@
 #include <cstring>
 #include <string>
 
+using namespace helix;
+
 // ============================================================================
 // ANIMATION CONSTANTS
 // ============================================================================
@@ -145,7 +147,7 @@ void ToastManager::animate_exit(lv_obj_t* toast) {
     if (!SettingsManager::instance().get_animations_enabled()) {
         // Directly delete the toast - no animation
         if (toast && active_toast_ == toast) {
-            lv_obj_safe_delete(active_toast_);
+            helix::ui::safe_delete(active_toast_);
             animating_exit_ = false;
             spdlog::debug("[ToastManager] Animations disabled - hiding toast instantly");
         }
@@ -182,7 +184,7 @@ void ToastManager::exit_animation_complete_cb(lv_anim_t* anim) {
             lv_group_remove_obj(toast);
         }
 
-        lv_obj_safe_delete(mgr.active_toast_);
+        helix::ui::safe_delete(mgr.active_toast_);
         mgr.animating_exit_ = false;
         spdlog::debug("[ToastManager] Exit animation complete, toast deleted");
     }
@@ -241,7 +243,20 @@ void ToastManager::deinit_subjects() {
 }
 
 void ToastManager::show(ToastSeverity severity, const char* message, uint32_t duration_ms) {
-    create_toast_internal(severity, message, duration_ms, false);
+    // Thread-safe: queue to main thread since LVGL calls must happen there
+    struct ToastParams {
+        ToastSeverity severity;
+        std::string message;
+        uint32_t duration_ms;
+    };
+
+    auto params =
+        std::make_unique<ToastParams>(ToastParams{severity, message ? message : "", duration_ms});
+
+    helix::ui::queue_update<ToastParams>(std::move(params), [](ToastParams* p) {
+        ToastManager::instance().create_toast_internal(p->severity, p->message.c_str(),
+                                                       p->duration_ms, false);
+    });
 }
 
 void ToastManager::show_with_action(ToastSeverity severity, const char* message,
@@ -253,16 +268,34 @@ void ToastManager::show_with_action(ToastSeverity severity, const char* message,
         return;
     }
 
-    // Store callback for when action button is clicked
-    action_callback_ = callback;
-    action_user_data_ = user_data;
+    // Thread-safe: queue to main thread since LVGL calls must happen there
+    struct ToastActionParams {
+        ToastSeverity severity;
+        std::string message;
+        std::string action_text;
+        toast_action_callback_t action_callback;
+        void* user_data;
+        uint32_t duration_ms;
+    };
 
-    // Update action button text and visibility via subjects
-    snprintf(action_text_buf_, sizeof(action_text_buf_), "%s", action_text);
-    lv_subject_set_pointer(&action_text_subject_, action_text_buf_);
-    lv_subject_set_int(&action_visible_subject_, 1);
+    auto params = std::make_unique<ToastActionParams>(
+        ToastActionParams{severity, message ? message : "", action_text ? action_text : "",
+                          callback, user_data, duration_ms});
 
-    create_toast_internal(severity, message, duration_ms, true);
+    helix::ui::queue_update<ToastActionParams>(std::move(params), [](ToastActionParams* p) {
+        auto& mgr = ToastManager::instance();
+
+        // Store callback for when action button is clicked
+        mgr.action_callback_ = p->action_callback;
+        mgr.action_user_data_ = p->user_data;
+
+        // Update action button text and visibility via subjects
+        snprintf(mgr.action_text_buf_, sizeof(mgr.action_text_buf_), "%s", p->action_text.c_str());
+        lv_subject_set_pointer(&mgr.action_text_subject_, mgr.action_text_buf_);
+        lv_subject_set_int(&mgr.action_visible_subject_, 1);
+
+        mgr.create_toast_internal(p->severity, p->message.c_str(), p->duration_ms, true);
+    });
 }
 
 void ToastManager::hide() {
@@ -286,9 +319,9 @@ void ToastManager::hide() {
     size_t unread = NotificationHistory::instance().get_unread_count();
 
     if (unread == 0) {
-        ui_status_bar_update_notification(NotificationStatus::NONE);
+        helix::ui::notification_update(NotificationStatus::NONE);
     } else {
-        ui_status_bar_update_notification(severity_to_notification_status(highest));
+        helix::ui::notification_update(severity_to_notification_status(highest));
     }
 
     // Animate exit (widget deletion happens in completion callback)
@@ -311,8 +344,24 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
 
     // Immediately delete existing toast if any (skip animation for replacement)
     if (active_toast_) {
-        // Cancel any running animations on the old toast
-        lv_anim_delete(active_toast_, nullptr);
+        // Take ownership of the old toast pointer and nullify the member FIRST.
+        // This prevents exit_animation_complete_cb from also deleting the object
+        // if lv_anim_delete triggers the completion callback synchronously.
+        lv_obj_t* old_toast = active_toast_;
+        active_toast_ = nullptr;
+        animating_exit_ = false;
+
+        // Cancel any running animations on the old toast AND its children.
+        // Child widgets (icons, buttons) may have independent animations whose
+        // callbacks would reference freed memory after deletion.
+        lv_anim_delete(old_toast, nullptr);
+        uint32_t child_count = lv_obj_get_child_count(old_toast);
+        for (uint32_t i = 0; i < child_count; i++) {
+            lv_obj_t* child = lv_obj_get_child(old_toast, static_cast<int32_t>(i));
+            if (child) {
+                lv_anim_delete(child, nullptr);
+            }
+        }
 
         // Cancel dismiss timer if active
         if (dismiss_timer_) {
@@ -320,9 +369,9 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
             dismiss_timer_ = nullptr;
         }
 
-        // Delete immediately (no exit animation when replacing)
-        lv_obj_safe_delete(active_toast_);
-        animating_exit_ = false;
+        // Use safe_delete for consistent cleanup (defocuses tree, guards against
+        // deletion during LVGL shutdown). See GitHub issue #98.
+        helix::ui::safe_delete(old_toast);
     }
 
     // Clear action state for basic toasts, keep for action toasts
@@ -362,7 +411,7 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
     lv_timer_set_repeat_count(dismiss_timer_, 1); // Run once then stop
 
     // Update status bar notification icon
-    ui_status_bar_update_notification(severity_to_notification_status(severity));
+    helix::ui::notification_update(severity_to_notification_status(severity));
 
     // Play error sound for error toasts (uses EVENT priority so it's not affected by
     // ui_sounds_enabled)
@@ -401,62 +450,4 @@ void ToastManager::action_btn_clicked(lv_event_t* e) {
         spdlog::debug("[ToastManager] Toast action button clicked - invoking callback");
         cb(data);
     }
-}
-
-// ============================================================================
-// LEGACY API (forwards to ToastManager)
-// ============================================================================
-
-void ui_toast_init() {
-    ToastManager::instance().init();
-}
-
-// Thread-safe toast showing - can be called from any thread
-// Uses ui_queue_update to defer to main thread if needed
-void ui_toast_show(ToastSeverity severity, const char* message, uint32_t duration_ms) {
-    // Capture parameters by value (copy strings to heap)
-    struct ToastParams {
-        ToastSeverity severity;
-        std::string message;
-        uint32_t duration_ms;
-    };
-
-    auto params =
-        std::make_unique<ToastParams>(ToastParams{severity, message ? message : "", duration_ms});
-
-    ui_queue_update<ToastParams>(std::move(params), [](ToastParams* p) {
-        ToastManager::instance().show(p->severity, p->message.c_str(), p->duration_ms);
-    });
-}
-
-void ui_toast_show_with_action(ToastSeverity severity, const char* message, const char* action_text,
-                               toast_action_callback_t action_callback, void* user_data,
-                               uint32_t duration_ms) {
-    // Capture parameters by value (copy strings to heap)
-    struct ToastActionParams {
-        ToastSeverity severity;
-        std::string message;
-        std::string action_text;
-        toast_action_callback_t action_callback;
-        void* user_data;
-        uint32_t duration_ms;
-    };
-
-    auto params = std::make_unique<ToastActionParams>(
-        ToastActionParams{severity, message ? message : "", action_text ? action_text : "",
-                          action_callback, user_data, duration_ms});
-
-    ui_queue_update<ToastActionParams>(std::move(params), [](ToastActionParams* p) {
-        ToastManager::instance().show_with_action(p->severity, p->message.c_str(),
-                                                  p->action_text.c_str(), p->action_callback,
-                                                  p->user_data, p->duration_ms);
-    });
-}
-
-void ui_toast_hide() {
-    ui_async_call([](void*) { ToastManager::instance().hide(); }, nullptr);
-}
-
-bool ui_toast_is_visible() {
-    return ToastManager::instance().is_visible();
 }

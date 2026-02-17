@@ -10,9 +10,15 @@
 #include "hv/json.hpp"
 
 // Forward declaration - enums are defined in printer_state.h
+namespace helix {
 enum class PrintJobState;
+}
+namespace helix {
 enum class PrintOutcome;
+}
+namespace helix {
 enum class PrintStartPhase;
+}
 
 namespace helix {
 
@@ -205,7 +211,7 @@ class PrinterPrintState {
     /**
      * @brief Set current layer number (gcode response fallback)
      *
-     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     * Thread-safe: Uses helix::ui::queue_update() for main-thread execution.
      * Called from gcode response parser when print_stats.info doesn't fire.
      *
      * @param layer Current layer number
@@ -223,7 +229,7 @@ class PrinterPrintState {
     /**
      * @brief Set print start phase and update message/progress
      *
-     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     * Thread-safe: Uses helix::ui::queue_update() for main-thread execution.
      *
      * @param phase Current PrintStartPhase
      * @param message Human-readable message (e.g., "Heating Nozzle...")
@@ -234,14 +240,14 @@ class PrinterPrintState {
     /**
      * @brief Reset print start to IDLE
      *
-     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     * Thread-safe: Uses helix::ui::queue_update() for main-thread execution.
      */
     void reset_print_start_state();
 
     /**
      * @brief Set the print-in-progress flag (UI workflow state)
      *
-     * Thread-safe: Uses helix::async::invoke() for main-thread execution.
+     * Thread-safe: Uses helix::ui::queue_update() for main-thread execution.
      */
     void set_print_in_progress(bool in_progress);
 

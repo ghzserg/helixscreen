@@ -10,6 +10,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 /**
  * @file test_ams_backend_mock_realistic.cpp
  * @brief Unit tests for AMS mock backend realistic mode functionality
@@ -459,4 +460,60 @@ TEST_CASE("AmsBackendMock error recovery sequence", "[ams][mock][realistic][reco
     }
 
     backend.stop();
+}
+
+// ============================================================================
+// Mock data consistency tests
+// ============================================================================
+
+TEST_CASE("Mock backend: slots have valid Spoolman IDs and filament data",
+          "[ams][mock][slot-data]") {
+    auto backend = AmsBackend::create_mock(4);
+    backend->start();
+
+    for (int i = 0; i < 4; ++i) {
+        auto slot = backend->get_slot_info(i);
+        CAPTURE(i);
+        // Each slot should have a spoolman_id matching its 1-based index
+        REQUIRE(slot.spoolman_id == i + 1);
+        // Should have non-empty filament data
+        REQUIRE_FALSE(slot.material.empty());
+        REQUIRE_FALSE(slot.brand.empty());
+        REQUIRE_FALSE(slot.color_name.empty());
+        REQUIRE(slot.color_rgb != 0);
+        REQUIRE(slot.total_weight_g > 0);
+        REQUIRE(slot.remaining_weight_g > 0);
+    }
+
+    backend->stop();
+}
+
+TEST_CASE("Mock backend: slot data matches first N Spoolman mock spools",
+          "[ams][mock][slot-data]") {
+    // Verifies AMS mock slots and Spoolman mock spools use consistent data.
+    // If either mock changes independently, this test catches the drift.
+    auto backend = AmsBackend::create_mock(4);
+    backend->start();
+
+    struct Expected {
+        const char* brand;
+        const char* material;
+        const char* color_name;
+    };
+    const Expected expected[] = {
+        {"Polymaker", "PLA", "Jet Black"},
+        {"eSUN", "Silk PLA", "Silk Blue"},
+        {"Elegoo", "ASA", "Pop Blue"},
+        {"Flashforge", "ABS", "Fire Engine Red"},
+    };
+
+    for (int i = 0; i < 4; ++i) {
+        auto slot = backend->get_slot_info(i);
+        CAPTURE(i, slot.brand, slot.material, slot.color_name);
+        REQUIRE(slot.brand == expected[i].brand);
+        REQUIRE(slot.material == expected[i].material);
+        REQUIRE(slot.color_name == expected[i].color_name);
+    }
+
+    backend->stop();
 }

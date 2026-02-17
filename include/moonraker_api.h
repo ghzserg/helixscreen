@@ -92,7 +92,7 @@ class MoonrakerAPI {
      * @brief Progress callback for file transfer operations
      *
      * Called periodically during download/upload with bytes transferred and total.
-     * NOTE: Called from background HTTP thread - use ui_async_call() for UI updates.
+     * NOTE: Called from background HTTP thread - use helix::ui::async_call() for UI updates.
      *
      * @param current Bytes transferred so far
      * @param total Total bytes to transfer
@@ -108,7 +108,7 @@ class MoonrakerAPI {
      * @param client MoonrakerClient instance (must remain valid during API lifetime)
      * @param state PrinterState instance (must remain valid during API lifetime)
      */
-    MoonrakerAPI(MoonrakerClient& client, PrinterState& state);
+    MoonrakerAPI(helix::MoonrakerClient& client, helix::PrinterState& state);
     virtual ~MoonrakerAPI();
 
     // ========================================================================
@@ -254,7 +254,7 @@ class MoonrakerAPI {
      * - Starts the print via the symlink
      * - Patches history to record the original filename
      *
-     * Use has_helix_plugin() to check availability.
+     * Use PrinterState::service_has_helix_plugin() to check availability.
      *
      * @param original_filename Path to the original G-code file (for history)
      * @param temp_file_path Path to already-uploaded modified file (e.g., ".helix_temp/foo.gcode")
@@ -277,24 +277,6 @@ class MoonrakerAPI {
      * @param on_error Error callback (also means plugin not available)
      */
     virtual void check_helix_plugin(BoolCallback on_result, ErrorCallback on_error);
-
-    /**
-     * @brief Check if helix_print plugin is available (cached)
-     *
-     * @deprecated Use PrinterState::service_has_helix_plugin() instead.
-     * Plugin detection now happens during discovery flow, and state is stored
-     * in PrinterState as the single source of truth. This cached value may be
-     * stale if check_helix_plugin() hasn't been called recently.
-     *
-     * Returns cached result from previous check_helix_plugin() call.
-     * Returns false if check hasn't been performed yet.
-     *
-     * @return true if plugin is available and detected
-     */
-    [[deprecated("Use PrinterState::service_has_helix_plugin() instead")]]
-    bool has_helix_plugin() const {
-        return helix_plugin_available_;
-    }
 
     /**
      * @brief Pause the current print
@@ -937,6 +919,27 @@ class MoonrakerAPI {
     virtual void set_timelapse_enabled(bool enabled, SuccessCallback on_success,
                                        ErrorCallback on_error);
 
+    /**
+     * @brief Trigger timelapse video rendering
+     *
+     * Starts the rendering process for captured frames into a video file.
+     * Progress is reported via notify_timelapse_event WebSocket events.
+     */
+    virtual void render_timelapse(SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Save timelapse frames without rendering
+     *
+     * Saves captured frame files for later processing.
+     */
+    virtual void save_timelapse_frames(SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Get information about the last captured frame
+     */
+    virtual void get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
+                                     ErrorCallback on_error);
+
     // ========================================================================
     // Webcam Operations
     // ========================================================================
@@ -1040,16 +1043,19 @@ class MoonrakerAPI {
     virtual bool is_connected() const;
 
     /// Get current connection state
-    virtual ConnectionState get_connection_state() const;
+    virtual helix::ConnectionState get_connection_state() const;
 
     /// Get the WebSocket URL used for the current connection
     virtual std::string get_websocket_url() const;
 
     /// Subscribe to status update notifications (mirrors MoonrakerClient::register_notify_update)
-    virtual SubscriptionId subscribe_notifications(std::function<void(json)> callback);
+    virtual helix::SubscriptionId subscribe_notifications(std::function<void(json)> callback);
 
     /// Unsubscribe from status update notifications
-    virtual bool unsubscribe_notifications(SubscriptionId id);
+    virtual bool unsubscribe_notifications(helix::SubscriptionId id);
+
+    /// Get client lifetime guard (for SubscriptionGuard safety)
+    std::weak_ptr<bool> client_lifetime_weak() const;
 
     /// Register a persistent callback for a specific notification method
     virtual void register_method_callback(const std::string& method, const std::string& name,
@@ -1105,7 +1111,7 @@ class MoonrakerAPI {
      *
      * @return Reference to MoonrakerClient
      */
-    MoonrakerClient& get_client() {
+    helix::MoonrakerClient& get_client() {
         return client_;
     }
 
@@ -1182,7 +1188,7 @@ class MoonrakerAPI {
      * @param on_success Called with screw adjustment results
      * @param on_error Called on failure
      */
-    virtual void calculate_screws_tilt(ScrewTiltCallback on_success, ErrorCallback on_error);
+    virtual void calculate_screws_tilt(helix::ScrewTiltCallback on_success, ErrorCallback on_error);
 
     /**
      * @brief Run Quad Gantry Level
@@ -1219,8 +1225,9 @@ class MoonrakerAPI {
      * @param on_complete Called with test results
      * @param on_error Called on failure
      */
-    virtual void start_resonance_test(char axis, AdvancedProgressCallback on_progress,
-                                      InputShaperCallback on_complete, ErrorCallback on_error);
+    virtual void start_resonance_test(char axis, helix::AdvancedProgressCallback on_progress,
+                                      helix::InputShaperCallback on_complete,
+                                      ErrorCallback on_error);
 
     /**
      * @brief Start Klippain Shake&Tune calibration
@@ -1303,7 +1310,7 @@ class MoonrakerAPI {
      * @param on_success Called with spool list
      * @param on_error Called on failure
      */
-    virtual void get_spoolman_spools(SpoolListCallback on_success, ErrorCallback on_error);
+    virtual void get_spoolman_spools(helix::SpoolListCallback on_success, ErrorCallback on_error);
 
     /**
      * @brief Get a single spool's details by ID
@@ -1316,7 +1323,8 @@ class MoonrakerAPI {
      * @param on_success Called with spool info (empty optional if not found)
      * @param on_error Called on failure (network error, etc.)
      */
-    virtual void get_spoolman_spool(int spool_id, SpoolCallback on_success, ErrorCallback on_error);
+    virtual void get_spoolman_spool(int spool_id, helix::SpoolCallback on_success,
+                                    ErrorCallback on_error);
 
     /**
      * @brief Set the active spool for filament tracking
@@ -1354,6 +1362,34 @@ class MoonrakerAPI {
                                               SuccessCallback on_success, ErrorCallback on_error);
 
     /**
+     * @brief Update a spool's properties in Spoolman
+     *
+     * General-purpose PATCH for spool fields (remaining_weight, price, lot_nr, comment, etc.).
+     * Uses Moonraker's Spoolman proxy to PATCH /v1/spool/{id}.
+     *
+     * @param spool_id Spoolman spool ID
+     * @param spool_data JSON object with fields to update
+     * @param on_success Called when update succeeds
+     * @param on_error Called on failure
+     */
+    virtual void update_spoolman_spool(int spool_id, const nlohmann::json& spool_data,
+                                       SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Update a filament definition in Spoolman
+     *
+     * Uses Moonraker's Spoolman proxy to PATCH /v1/filament/{id}.
+     * WARNING: This affects ALL spools using this filament definition.
+     *
+     * @param filament_id Spoolman filament ID (not spool ID!)
+     * @param filament_data JSON object with fields to update
+     * @param on_success Called when update succeeds
+     * @param on_error Called on failure
+     */
+    virtual void update_spoolman_filament(int filament_id, const nlohmann::json& filament_data,
+                                          SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
      * @brief Update a filament's color in Spoolman
      *
      * Uses Moonraker's Spoolman proxy to PATCH /v1/filament/{id}.
@@ -1367,6 +1403,120 @@ class MoonrakerAPI {
     virtual void update_spoolman_filament_color(int filament_id, const std::string& color_hex,
                                                 SuccessCallback on_success, ErrorCallback on_error);
 
+    /**
+     * @brief Get list of vendors from Spoolman
+     *
+     * @param on_success Called with vendor list
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_vendors(helix::VendorListCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Get list of filaments from Spoolman
+     *
+     * @param on_success Called with filament list
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_filaments(helix::FilamentListCallback on_success,
+                                        ErrorCallback on_error);
+
+    /**
+     * @brief Create a new vendor in Spoolman
+     *
+     * @param vendor_data JSON body with vendor fields (name, url)
+     * @param on_success Called with created vendor info
+     * @param on_error Called on failure
+     */
+    virtual void create_spoolman_vendor(const nlohmann::json& vendor_data,
+                                        helix::VendorCreateCallback on_success,
+                                        ErrorCallback on_error);
+
+    /**
+     * @brief Create a new filament in Spoolman
+     *
+     * @param filament_data JSON body with filament fields
+     * @param on_success Called with created filament info
+     * @param on_error Called on failure
+     */
+    virtual void create_spoolman_filament(const nlohmann::json& filament_data,
+                                          helix::FilamentCreateCallback on_success,
+                                          ErrorCallback on_error);
+
+    /**
+     * @brief Create a new spool in Spoolman
+     *
+     * @param spool_data JSON body with spool fields
+     * @param on_success Called with created spool info
+     * @param on_error Called on failure
+     */
+    virtual void create_spoolman_spool(const nlohmann::json& spool_data,
+                                       helix::SpoolCreateCallback on_success,
+                                       ErrorCallback on_error);
+
+    /**
+     * @brief Delete a spool from Spoolman
+     *
+     * @param spool_id Spoolman spool ID to delete
+     * @param on_success Called when deletion succeeds
+     * @param on_error Called on failure
+     */
+    virtual void delete_spoolman_spool(int spool_id, SuccessCallback on_success,
+                                       ErrorCallback on_error);
+
+    /**
+     * @brief Get list of vendors from SpoolmanDB (external database)
+     *
+     * Queries the Spoolman server's external vendor endpoint.
+     *
+     * @param on_success Called with vendor list from SpoolmanDB
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_external_vendors(helix::VendorListCallback on_success,
+                                               ErrorCallback on_error);
+
+    /**
+     * @brief Get list of filaments from SpoolmanDB filtered by vendor name
+     *
+     * Queries the Spoolman server's external filament endpoint.
+     *
+     * @param vendor_name Vendor name to filter by
+     * @param on_success Called with filament list from SpoolmanDB
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_external_filaments(const std::string& vendor_name,
+                                                 helix::FilamentListCallback on_success,
+                                                 ErrorCallback on_error);
+
+    /**
+     * @brief Get list of filaments from Spoolman filtered by vendor ID
+     *
+     * @param vendor_id Vendor ID to filter by
+     * @param on_success Called with filament list
+     * @param on_error Called on failure
+     */
+    virtual void get_spoolman_filaments(int vendor_id, helix::FilamentListCallback on_success,
+                                        ErrorCallback on_error);
+
+    /**
+     * @brief Delete a vendor from Spoolman
+     *
+     * @param vendor_id Spoolman vendor ID to delete
+     * @param on_success Called when deletion succeeds
+     * @param on_error Called on failure
+     */
+    virtual void delete_spoolman_vendor(int vendor_id, SuccessCallback on_success,
+                                        ErrorCallback on_error);
+
+    /**
+     * @brief Delete a filament from Spoolman
+     *
+     * @param filament_id Spoolman filament ID to delete
+     * @param on_success Called when deletion succeeds
+     * @param on_error Called on failure
+     */
+    virtual void delete_spoolman_filament(int filament_id, SuccessCallback on_success,
+                                          ErrorCallback on_error);
+
     // ========================================================================
     // Advanced Panel Operations - Machine Limits
     // ========================================================================
@@ -1379,7 +1529,8 @@ class MoonrakerAPI {
      * @param on_success Called with current limits
      * @param on_error Called on failure
      */
-    virtual void get_machine_limits(MachineLimitsCallback on_success, ErrorCallback on_error);
+    virtual void get_machine_limits(helix::MachineLimitsCallback on_success,
+                                    ErrorCallback on_error);
 
     /**
      * @brief Set machine limits (temporary, not saved to config)
@@ -1470,7 +1621,7 @@ class MoonrakerAPI {
 
   private:
     std::string http_base_url_; ///< HTTP base URL for file transfers
-    MoonrakerClient& client_;
+    helix::MoonrakerClient& client_;
 
     /// Discovered printer hardware (heaters, fans, sensors, LEDs, capabilities)
     helix::PrinterDiscovery hardware_;
@@ -1481,11 +1632,6 @@ class MoonrakerAPI {
 
     SafetyLimits safety_limits_;
     bool limits_explicitly_set_ = false;
-
-    // HelixPrint plugin detection
-    std::atomic<bool> helix_plugin_available_{false};
-    std::atomic<bool> helix_plugin_checked_{false};
-    std::string helix_plugin_version_; ///< Plugin version (e.g., "2.0.0")
 
     // Bed mesh storage (migrated from MoonrakerClient)
     BedMeshProfile active_bed_mesh_;

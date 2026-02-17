@@ -6,7 +6,7 @@
  * @brief Thread-safe notification toast system callable from any thread
  *
  * @pattern Auto-detects background thread context; marshals to main thread
- * @threading Safe from any thread - automatically uses ui_async_call() when needed
+ * @threading Safe from any thread - automatically uses helix::ui::async_call() when needed
  *
  * @see "Thread-safe:" comment in show() implementation
  */
@@ -17,7 +17,7 @@
 #include "ui_notification_history.h"
 #include "ui_notification_manager.h"
 #include "ui_observer_guard.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
@@ -31,8 +31,6 @@
 
 // Forward declarations
 static void notification_observer_cb(lv_observer_t* observer, lv_subject_t* subject);
-static void modal_ok_btn_clicked(lv_event_t* e);
-
 // Thread tracking for auto-detection
 static std::thread::id g_main_thread_id;
 static std::atomic<bool> g_main_thread_id_initialized{false};
@@ -81,7 +79,7 @@ static void async_message_callback(void* user_data) {
             strncpy(display_buf, data->message, sizeof(display_buf) - 1);
             display_buf[sizeof(display_buf) - 1] = '\0';
         }
-        ui_toast_show(data->severity, display_buf, data->duration_ms);
+        ToastManager::instance().show(data->severity, display_buf, data->duration_ms);
 
         // Add to history
         NotificationHistoryEntry entry = {};
@@ -100,7 +98,7 @@ static void async_message_callback(void* user_data) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     }
     delete data;
 }
@@ -110,7 +108,7 @@ static void async_error_callback(void* user_data) {
     if (data && data->message[0] != '\0') {
         if (data->modal && data->has_title) {
             // Check if a modal with the same title is already showing
-            lv_obj_t* existing_modal = ui_modal_get_top();
+            lv_obj_t* existing_modal = helix::ui::modal_get_top();
             if (existing_modal) {
                 // The modal_dialog.xml uses "dialog_title" for the title label
                 lv_obj_t* title_label = lv_obj_find_by_name(existing_modal, "dialog_title");
@@ -126,23 +124,12 @@ static void async_error_callback(void* user_data) {
             }
 
             // Show modal dialog for critical errors
-            const char* attrs[] = {"title", data->title, "message", data->message, nullptr};
+            helix::ui::modal_show_alert(data->title, data->message, ModalSeverity::Error, "OK");
 
-            // Configure modal_dialog: ERROR severity, single OK button
-            ui_modal_configure(ModalSeverity::Error, false, "OK", nullptr);
-            lv_obj_t* modal = ui_modal_show("modal_dialog", attrs);
-
-            if (modal) {
-                lv_obj_t* ok_btn = lv_obj_find_by_name(modal, "btn_primary");
-                if (ok_btn) {
-                    lv_obj_add_event_cb(ok_btn, modal_ok_btn_clicked, LV_EVENT_CLICKED, modal);
-                }
-            }
-
-            ui_status_bar_update_notification(NotificationStatus::ERROR);
+            helix::ui::notification_update(NotificationStatus::ERROR);
         } else {
             // Show toast for non-critical errors
-            ui_toast_show(ToastSeverity::ERROR, data->message, 6000);
+            ToastManager::instance().show(ToastSeverity::ERROR, data->message, 6000);
         }
 
         // Add to history
@@ -163,7 +150,7 @@ static void async_error_callback(void* user_data) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     }
     delete data;
 }
@@ -193,7 +180,7 @@ void ui_notification_info(const char* message) {
 
     if (is_main_thread()) {
         // Main thread: call LVGL directly
-        ui_toast_show(ToastSeverity::INFO, message, 4000);
+        ToastManager::instance().show(ToastSeverity::INFO, message, 4000);
 
         NotificationHistoryEntry entry = {};
         entry.timestamp_ms = lv_tick_get();
@@ -205,7 +192,7 @@ void ui_notification_info(const char* message) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncMessageData{};
@@ -221,7 +208,7 @@ void ui_notification_info(const char* message) {
         data->severity = ToastSeverity::INFO;
         data->duration_ms = 4000;
 
-        ui_async_call(async_message_callback, data);
+        helix::ui::async_call(async_message_callback, data);
     }
 }
 
@@ -233,7 +220,7 @@ void ui_notification_success(const char* message) {
 
     if (is_main_thread()) {
         // Main thread: call LVGL directly
-        ui_toast_show(ToastSeverity::SUCCESS, message, 4000);
+        ToastManager::instance().show(ToastSeverity::SUCCESS, message, 4000);
 
         NotificationHistoryEntry entry = {};
         entry.timestamp_ms = lv_tick_get();
@@ -245,7 +232,7 @@ void ui_notification_success(const char* message) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncMessageData{};
@@ -261,7 +248,7 @@ void ui_notification_success(const char* message) {
         data->severity = ToastSeverity::SUCCESS;
         data->duration_ms = 4000;
 
-        ui_async_call(async_message_callback, data);
+        helix::ui::async_call(async_message_callback, data);
     }
 }
 
@@ -273,7 +260,7 @@ void ui_notification_warning(const char* message) {
 
     if (is_main_thread()) {
         // Main thread: call LVGL directly
-        ui_toast_show(ToastSeverity::WARNING, message, 5000);
+        ToastManager::instance().show(ToastSeverity::WARNING, message, 5000);
 
         NotificationHistoryEntry entry = {};
         entry.timestamp_ms = lv_tick_get();
@@ -285,7 +272,7 @@ void ui_notification_warning(const char* message) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncMessageData{};
@@ -301,7 +288,7 @@ void ui_notification_warning(const char* message) {
         data->severity = ToastSeverity::WARNING;
         data->duration_ms = 5000;
 
-        ui_async_call(async_message_callback, data);
+        helix::ui::async_call(async_message_callback, data);
     }
 }
 
@@ -326,7 +313,7 @@ static void show_titled_notification(const char* title, const char* message, Toa
 
     if (is_main_thread()) {
         // Main thread: call LVGL directly
-        ui_toast_show(severity, display_msg.c_str(), duration_ms);
+        ToastManager::instance().show(severity, display_msg.c_str(), duration_ms);
 
         NotificationHistoryEntry entry = {};
         entry.timestamp_ms = lv_tick_get();
@@ -339,7 +326,7 @@ static void show_titled_notification(const char* title, const char* message, Toa
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncMessageData{};
@@ -356,7 +343,7 @@ static void show_titled_notification(const char* title, const char* message, Toa
         data->severity = severity;
         data->duration_ms = duration_ms;
 
-        ui_async_call(async_message_callback, data);
+        helix::ui::async_call(async_message_callback, data);
     }
 }
 
@@ -388,18 +375,18 @@ void ui_notification_info_with_action(const char* title, const char* message, co
 
     if (is_main_thread()) {
         NotificationHistory::instance().add(entry);
-        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         auto* data = new (std::nothrow) NotificationHistoryEntry(entry);
         if (!data) {
             spdlog::error("[Notification] Failed to allocate for async action notification");
             return;
         }
-        ui_async_call(
+        helix::ui::async_call(
             [](void* user_data) {
                 auto* e = static_cast<NotificationHistoryEntry*>(user_data);
                 NotificationHistory::instance().add(*e);
-                ui_status_bar_update_notification_count(
+                helix::ui::notification_update_count(
                     NotificationHistory::instance().get_unread_count());
                 delete e;
             },
@@ -428,7 +415,7 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
         if (modal && title) {
             // Check if a modal with the same title is already showing
             // This prevents duplicate modals when multiple components report the same error
-            lv_obj_t* existing_modal = ui_modal_get_top();
+            lv_obj_t* existing_modal = helix::ui::modal_get_top();
             if (existing_modal) {
                 // The modal_dialog.xml uses "dialog_title" for the title label
                 lv_obj_t* title_label = lv_obj_find_by_name(existing_modal, "dialog_title");
@@ -442,23 +429,12 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
             }
 
             // Show modal dialog for critical errors
-            const char* attrs[] = {"title", title, "message", message, nullptr};
+            helix::ui::modal_show_alert(title, message, ModalSeverity::Error, "OK");
 
-            // Configure modal_dialog: ERROR severity, single OK button
-            ui_modal_configure(ModalSeverity::Error, false, "OK", nullptr);
-            lv_obj_t* modal_obj = ui_modal_show("modal_dialog", attrs);
-
-            if (modal_obj) {
-                lv_obj_t* ok_btn = lv_obj_find_by_name(modal_obj, "btn_primary");
-                if (ok_btn) {
-                    lv_obj_add_event_cb(ok_btn, modal_ok_btn_clicked, LV_EVENT_CLICKED, modal_obj);
-                }
-            }
-
-            ui_status_bar_update_notification(NotificationStatus::ERROR);
+            helix::ui::notification_update(NotificationStatus::ERROR);
         } else {
             // Show toast for non-critical errors
-            ui_toast_show(ToastSeverity::ERROR, message, 6000);
+            ToastManager::instance().show(ToastSeverity::ERROR, message, 6000);
         }
 
         // Add to history
@@ -479,7 +455,7 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
         entry.message[sizeof(entry.message) - 1] = '\0';
 
         NotificationHistory::instance().add(entry);
-        ui_status_bar_update_notification_count(NotificationHistory::instance().get_unread_count());
+        helix::ui::notification_update_count(NotificationHistory::instance().get_unread_count());
     } else {
         // Background thread: marshal to main thread
         auto* data = new (std::nothrow) AsyncErrorData{};
@@ -504,7 +480,7 @@ void ui_notification_error(const char* title, const char* message, bool modal) {
 
         data->modal = modal;
 
-        ui_async_call(async_error_callback, data);
+        helix::ui::async_call(async_error_callback, data);
     }
 }
 
@@ -550,12 +526,4 @@ static void notification_observer_cb(lv_observer_t* observer, lv_subject_t* subj
 
     spdlog::debug("[Notification] Notification routed: modal={}, severity={}, msg={}",
                   data->show_modal, static_cast<int>(data->severity), data->message);
-}
-
-// Modal OK button callback
-static void modal_ok_btn_clicked(lv_event_t* e) {
-    lv_obj_t* modal = (lv_obj_t*)lv_event_get_user_data(e);
-    if (modal) {
-        ui_modal_hide(modal);
-    }
 }

@@ -46,7 +46,7 @@
     <lv_obj width="100%" height="#button_height" style_pad_all="0" style_pad_gap="0" flex_flow="row">
       <!-- Secondary button - hidden by default, shown when dialog_show_cancel=1 -->
       <ui_button name="btn_secondary"
-                 height="100%" flex_grow="1" style_radius="0" hidden="true" bind_text="dialog_cancel_text">
+                 height="100%" flex_grow="1" style_radius="0" focusable="false" hidden="true" bind_text="dialog_cancel_text">
         <bind_flag_if_eq subject="dialog_show_cancel" flag="hidden" ref_value="0"/>
         <!-- NOTE: Callbacks wired programmatically per-instance, not via XML -->
       </ui_button>
@@ -55,7 +55,7 @@
         <bind_flag_if_eq subject="dialog_show_cancel" flag="hidden" ref_value="0"/>
       </divider_vertical>
       <!-- Primary button (always visible) -->
-      <ui_button name="btn_primary" height="100%" flex_grow="1" style_radius="0" bind_text="dialog_primary_text">
+      <ui_button name="btn_primary" height="100%" flex_grow="1" style_radius="0" focusable="false" bind_text="dialog_primary_text">
         <!-- NOTE: Callbacks wired programmatically per-instance, not via XML -->
       </ui_button>
     </lv_obj>

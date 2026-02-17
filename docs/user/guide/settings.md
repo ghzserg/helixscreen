@@ -37,16 +37,79 @@ Access via the **Gear icon** in the navigation bar.
 
 ## Sound Settings
 
-Tap **Sound** in Settings to open the dedicated sound overlay:
+HelixScreen can play sounds for button presses, navigation, print events, and alerts. Sounds work on all supported hardware — from desktop speakers to the tiny buzzer on your Creality printer.
 
-| Setting | Options |
-|---------|---------|
-| **Enable sounds** | Toggle all sound effects on/off |
-| **Volume slider** | Adjust volume level (plays a test beep when you release the slider) |
-| **Sound theme** | Choose a theme: Minimal (subtle) or Retro Chiptune (8-bit) |
-| **Completion alert** | How to notify when prints finish (Off, Notification, Alert) |
+> **Note:** Sound settings only appear when HelixScreen detects a speaker or buzzer on your printer. If you don't see the sound section in Settings, your printer may not have audio output hardware. See [Troubleshooting](#sound-troubleshooting) below.
 
-> **Note:** Sound uses the best available backend for your hardware: SDL audio on Pi/desktop, PWM on embedded boards, or M300 G-code commands as fallback. Sound is currently a beta feature.
+### Toggles
+
+| Setting | Effect |
+|---------|--------|
+| **Sounds Enabled** | Master toggle. Turns all sounds on or off. |
+| **UI Sounds Enabled** | Controls button taps, navigation, and toggle sounds. When off, only important sounds still play (print complete, errors, alarms). Useful if you want notifications but not click feedback. |
+
+Both toggles take effect immediately.
+
+### Sound Themes
+
+HelixScreen comes with three built-in themes:
+
+| Theme | Description |
+|-------|-------------|
+| **Default** | Balanced, tasteful sounds. Subtle clicks, smooth navigation chirps, and a melodic fanfare when your print completes. |
+| **Minimal** | Only plays sounds for important events: print complete, errors, and alarms. No button or navigation sounds at all. |
+| **Retro** | 8-bit chiptune style. Punchy square-wave arpeggios, a Mario-style victory fanfare, and buzzy retro alarms. |
+
+To change themes, go to **Settings > Sound Theme** and select from the dropdown. A test sound plays immediately so you can preview.
+
+Advanced users can create custom sound themes by adding a JSON file to `config/sounds/` on the printer. Custom themes appear automatically in the dropdown — no restart required. See the [Sound System developer docs](../../devel/SOUND_SYSTEM.md#adding-a-new-sound-theme) for the file format.
+
+### What Sounds When
+
+| Event | Sound | When It Plays |
+|-------|-------|---------------|
+| Button press | Short click | Any button tapped |
+| Toggle on | Rising chirp | A switch turned on |
+| Toggle off | Falling chirp | A switch turned off |
+| Navigate forward | Ascending tone | Opening a screen or overlay |
+| Navigate back | Descending tone | Closing an overlay or going back |
+| Print complete | Victory melody | Print finished successfully |
+| Print cancelled | Descending tone | Print job cancelled |
+| Error alert | Pulsing alarm | A significant error occurred |
+| Error notification | Short buzz | An error toast appeared |
+| Critical alarm | Urgent siren | Critical failure requiring attention |
+| Test sound | Short beep | "Test Sound" button in settings |
+
+The first five (button press, toggles, navigation) are **UI sounds** and respect the "UI Sounds Enabled" toggle. The rest always play as long as the master toggle is on.
+
+### Supported Hardware
+
+HelixScreen auto-detects your audio hardware at startup:
+
+| Hardware | How It Works |
+|----------|-------------|
+| **Desktop (SDL)** | Full audio synthesis through your computer speakers. Best sound quality. |
+| **Creality AD5M / AD5M Pro** | Hardware PWM buzzer. Supports different tones and volume levels. |
+| **Other Klipper printers** | Beeper commands sent through Moonraker. Requires `[output_pin beeper]` in your Klipper config. Basic beep tones only. |
+
+If no audio hardware is detected, sound settings are hidden and HelixScreen operates silently.
+
+### Sound Troubleshooting
+
+**I don't see sound settings in the Settings panel.**
+Your printer doesn't have a detected speaker or buzzer. For Klipper printers, make sure you have `[output_pin beeper]` configured in your `printer.cfg`, then restart HelixScreen.
+
+**Sounds are too quiet or too loud.**
+Volume varies by theme. Try switching to a different theme. Custom themes let you adjust volume per sound.
+
+**Print complete sound doesn't play.**
+Make sure the master "Sounds Enabled" toggle is on. The "UI Sounds" toggle does not affect print completion sounds.
+
+**Button click sounds are annoying.**
+Turn off "UI Sounds Enabled" in Settings. This disables button, toggle, and navigation sounds while keeping important notifications.
+
+**Sounds work on desktop but not on my printer.**
+Confirm your printer has audio hardware. For Klipper printers, verify `[output_pin beeper]` is present and correctly configured. Test by sending an `M300` command from the Klipper console.
 
 ---
 
@@ -83,48 +146,149 @@ Manage all printer sensors:
 
 ## LED Settings
 
-Tap **LED Settings** in Settings to open the LED configuration overlay.
+Tap **LED Settings** in Settings to open the LED configuration overlay. This is where you choose which lights HelixScreen controls and how they behave.
+
+> **Tip:** To control your LEDs during a print, **long-press the lightbulb button** on the Home Panel to open the LED Control Overlay. See [Home Panel > LED Controls](home-panel.md#led-controls) for details.
+
+### Supported LED Types
+
+HelixScreen auto-detects your LED hardware from Klipper and Moonraker. Four types of lighting are supported:
+
+| Type | Examples | How It's Detected |
+|------|----------|-------------------|
+| **Klipper native strips** | Neopixel (WS2812, SK6812), Dotstar (APA102), PCA9632, GPIO LEDs | Automatically from your Klipper config |
+| **WLED strips** | Network-attached WLED controllers | From Moonraker's WLED configuration |
+| **LED effects** | Animated effects (breathing, rainbow, etc.) | Requires the [klipper-led_effect](https://github.com/julianschill/klipper-led_effect) plugin |
+| **Macro devices** | Any Klipper macro that controls lights | User-configured (see [Macro Devices](#macro-devices) below) |
 
 ### LED Strip Selection
 
-Multi-select chips show all detected LED strips from your printer (neopixel, dotstar, led, and WLED strips). Tap a chip to toggle whether HelixScreen controls that strip. You can select multiple strips at once.
+Multi-select chips show all detected strips. Tap a chip to toggle whether HelixScreen controls that strip. You can select multiple strips — they'll all respond to the lightbulb toggle on the Home Panel.
+
+**If you don't see your LEDs here:**
+- Make sure the LED is defined in your Klipper config (`printer.cfg`)
+- For WLED, make sure it's configured in Moonraker (`moonraker.conf`)
+- Restart HelixScreen after adding new LED hardware
 
 ### LED On At Start
 
-Toggle this on to automatically turn your LEDs on when Klipper becomes ready. Useful for chamber lights that should always be on.
+Toggle this on to automatically turn your selected LEDs on when Klipper becomes ready. Useful for chamber lights that should always be on when the printer is powered up.
 
 ### Auto-State Lighting
 
-When enabled, your LEDs automatically change based on what the printer is doing. Configure behavior for six printer states: **Idle**, **Heating**, **Printing**, **Paused**, **Error**, and **Complete**.
+When enabled, your LEDs automatically change based on what the printer is doing — no macros or manual control needed. This is great for visual status feedback: dim lights when idle, bright white while printing, green when a print finishes.
 
-Each state has an action type dropdown:
+Configure behavior for six printer states:
+
+| State | When It Triggers |
+|-------|-----------------|
+| **Idle** | Klipper is ready, not printing |
+| **Heating** | Extruder is heating up (target > 0, not yet printing) |
+| **Printing** | Print is in progress |
+| **Paused** | Print is paused |
+| **Error** | Klipper error or shutdown |
+| **Complete** | Print just finished |
+
+Each state has an action type dropdown — what HelixScreen does with your LEDs when that state is entered:
 
 | Action | What It Does |
 |--------|--------------|
-| **Off** | LEDs turn off for this state |
-| **Brightness** | Set a brightness level (0-100%) |
-| **Color** | Choose from color presets with a brightness slider |
-| **Effect** | Select a Klipper LED effect (requires `led_effect` plugin) |
-| **WLED Preset** | Choose a WLED preset ID (requires WLED integration) |
-| **Macro** | Run a configured LED macro |
+| **Off** | Turn LEDs off |
+| **Brightness** | Set a brightness level (0–100%) without changing color |
+| **Color** | Set a specific color from the preset swatches, with a brightness slider |
+| **Effect** | Activate a Klipper LED effect (e.g., breathing, rainbow) |
+| **WLED Preset** | Activate a WLED preset by ID |
+| **Macro** | Run a configured LED macro device |
 
-> **Note:** Only actions supported by your hardware are shown. For example, **Effect** only appears if the `led_effect` Klipper plugin is installed, and **WLED Preset** only appears if WLED strips are detected.
+> **Note:** Only actions your hardware supports are shown. **Effect** requires the `led_effect` Klipper plugin. **WLED Preset** requires WLED strips. **Color** requires color-capable strips (not single-channel PWM).
+
+**Example setup:**
+
+| State | Action | Setting |
+|-------|--------|---------|
+| Idle | Brightness | 30% (dim standby light) |
+| Heating | Color | Red at 100% |
+| Printing | Color | White at 100% |
+| Paused | Effect | "breathing" |
+| Error | Color | Red at 100% |
+| Complete | Color | Green at 100% |
 
 ### Macro Devices
 
-Define custom LED macro devices that appear as cards in the LED control overlay. Three device types are available:
+Macro devices let you control LEDs that aren't directly supported by Klipper's LED system — like relay-switched cabinet lights, custom G-code lighting macros, or multi-mode LED setups.
 
-| Type | Description |
-|------|-------------|
-| **On/Off** | Separate on and off macros |
-| **Toggle** | Single macro that toggles the LED |
-| **Preset** | Multiple named presets, each mapped to a different macro |
+**Auto-discovery:** HelixScreen automatically finds Klipper macros with "led" or "light" in their name and makes them available in the macro dropdown lists.
 
-Macros are auto-discovered from Klipper — any macro with "led" or "light" in its name appears in the selection list.
+Three device types are available:
 
-- Tap **+** to add a new macro device
-- Tap the **pencil icon** to edit an existing device
-- Tap the **trash icon** to delete a device
+| Type | Best For | Controls |
+|------|----------|----------|
+| **On/Off** | Lights with separate on and off macros | Two macros: one to turn on, one to turn off |
+| **Toggle** | Lights with a single toggle macro | One macro that flips the state |
+| **Preset** | Multi-mode lights (e.g., party mode, reading mode) | Multiple named presets, each mapped to a different macro |
+
+**To add a macro device:**
+
+1. Tap the **+** button in the Macro Devices section
+2. Enter a display name (e.g., "Cabinet Light")
+3. Choose a device type
+4. Select the appropriate macros from the dropdown(s)
+5. Tap **Save**
+
+**To edit or delete:** Tap the **pencil icon** to modify, or the **trash icon** to remove.
+
+**Example:** If you have macros `LIGHTS_CABINET_ON` and `LIGHTS_CABINET_OFF` in your Klipper config, create an **On/Off** device named "Cabinet Light" and map each macro accordingly. It will appear as a controllable device in the LED Control Overlay.
+
+### Setting Up Different LED Types
+
+#### Klipper Native Strips (Neopixel, Dotstar, etc.)
+
+These work out of the box. Define them in your `printer.cfg`:
+
+```ini
+[neopixel chamber_light]
+pin: PA8
+chain_count: 24
+color_order: GRB
+```
+
+Restart Klipper, then open **Settings > LED Settings** — the strip appears automatically. Select it and you'll get full color and brightness control.
+
+#### WLED Network Strips
+
+WLED strips are network-attached LED controllers managed outside of Klipper. Configure them in `moonraker.conf`:
+
+```ini
+[wled strip_name]
+address: 192.168.1.100
+```
+
+After restarting Moonraker, the WLED strip appears in LED Settings. You get on/off toggle, brightness, and access to all WLED presets you've configured in the WLED web interface.
+
+#### LED Effects (Animated Patterns)
+
+Install the [klipper-led_effect](https://github.com/julianschill/klipper-led_effect) plugin and define effects in your `printer.cfg`:
+
+```ini
+[led_effect breathing]
+leds:
+    neopixel:chamber_light
+autostart: false
+frame_rate: 24
+layers:
+    breathing 10 1 top (1.0, 1.0, 1.0)
+```
+
+Effects show up in the LED Control Overlay and as auto-state action options. Only effects targeting the currently selected strip are displayed.
+
+#### Macro-Controlled Lights
+
+For lights controlled via G-code macros (relay-switched enclosure lights, Klipper macros wrapping custom commands, etc.):
+
+1. Define your macros in Klipper (include "led" or "light" in the name for auto-discovery)
+2. Go to **Settings > LED Settings > Macro Devices**
+3. Create a device and map the appropriate macros
+4. The device appears in the LED Control Overlay alongside your other strips
 
 ---
 
@@ -169,6 +333,8 @@ Use this when adding or removing hardware to keep HelixScreen's expectations acc
 | Setting | Description |
 |---------|-------------|
 | **E-Stop confirmation** | Require tap-and-hold before emergency stop |
+| **Cancel Escalation** | When enabled, automatically escalates a stalled cancel to an emergency stop after the configured timeout. **Off by default** — cancel waits for the printer to finish its cancel routine. Useful to leave off for toolchangers and printers with long cancel macros. |
+| **Escalation Timeout** | Only visible when Cancel Escalation is on. How long to wait before escalating: 15, 30, 60, or 120 seconds. |
 
 ---
 
@@ -187,6 +353,46 @@ These override your Klipper config temporarily — useful for testing or trouble
 ## Factory Reset
 
 Clears all HelixScreen settings and restarts the Setup Wizard. Does not affect Klipper configuration.
+
+---
+
+## Help & Support
+
+Three quick links to get help or share diagnostic information:
+
+| Action | What It Does |
+|--------|--------------|
+| **Upload Debug Bundle** | Collects logs and system info into a debug bundle for support. Opens a dialog where you can review and upload the bundle, then share the resulting code with the HelixScreen team. |
+| **Discord Community** | Join the HelixScreen Discord server at **discord.gg/helixscreen** for community help, feature discussions, and feedback. |
+| **Documentation** | Visit **docs.helixscreen.org** for guides, configuration reference, and troubleshooting. |
+
+### Debug Bundles
+
+When you need help troubleshooting an issue:
+
+1. Tap **Upload Debug Bundle** in Settings
+2. The bundle collects your logs, system info, and configuration (no personal data)
+3. Tap **Upload** to send the bundle
+4. Share the resulting code with the HelixScreen team on Discord or GitHub
+
+---
+
+## About
+
+View system information and manage updates:
+
+| Item | Description |
+|------|-------------|
+| **Printer Name** | The name of your connected printer |
+| **Current Version** | Your installed HelixScreen version |
+| **Update Channel** | Choose Stable, Beta, or Dev (only visible after enabling beta features) |
+| **Check for Updates** | Check for and install new versions |
+| **Klipper** | Installed Klipper version |
+| **Moonraker** | Installed Moonraker version |
+| **OS** | Operating system version |
+| **Print Hours** | Total print hours tracked (tap to open the history dashboard) |
+
+> **Tip:** Tap the **Current Version** row seven times to unlock beta features. This enables the Update Channel selector and access to experimental features in Settings.
 
 ---
 

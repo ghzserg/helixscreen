@@ -5,6 +5,232 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.3] - 2026-02-17
+
+Big AMS release — unified slot editor with Spoolman integration, mixed-topology AFC support, error state visualization, and a major DRY refactor of shared drawing utilities across all AMS panels. Also adds 34 new translations and fixes several installer issues.
+
+### Added
+- **Unified Slot Editor**: New AMS slot edit modal with inline Spoolman picker, side-by-side vendor/material dropdowns, cancel/save flow, and in-use spool disabling
+- **Spoolman Slot Saver**: Change detection and automatic save flow for slot-to-spool assignments with filament persistence
+- **Mixed AFC Topology**: Box Turtle PARALLEL + OpenAMS HUB coexisting in a single AFC system
+- **AMS Error Visualization**: Slot error dots, hub tinting, pulsing animations, severity colors, and aligned error detection across mini status and slot views
+- **Shared Drawing Utilities**: Consolidated color, contrast, severity, fill, bar-width, display-name, logo fallback, pulse, error badge, slot bar, and container helpers
+- Canonical `SlotInfo::is_present()` presence check for consistent slot detection
+- Picker sub-view XML and header declarations for the unified edit modal
+- 34 new translations across all 8 target languages with missing `translation_tag` attributes added
+- Debug bundle fetch/display helper script
+- ARM unwind tables and /proc/self/maps in crash reports
+
+### Fixed
+- Non-translatable strings (product names, URLs, OK) incorrectly wrapped in lv_tr()
+- AMS edit modal Spoolman callbacks not marshalled to main thread
+- AMS bypass detection, Happy Hare speed params, and other deferred TODOs resolved
+- AMS bypass, dryer, reset, and settings hidden for tool changers
+- Brand/spoolman_id missing from AFC and multi-AMS mock slots
+- Load button enabled when slot already loaded
+- Change Spool button label not updating correctly (ui_button_set_text)
+- Static instance pointer for edit modal callbacks
+- Updater diagnostic logs too noisy (downgraded to debug), added 2-min install timeout
+- zlib updated from 1.3.1 to 1.3.2; Ubuntu CI build timeout bumped to 45min
+- Installer stale .old directory blocking repeated updates (PR #102, thanks @bassco)
+- Installer false-fail when cleanup_old_install hits root-owned hooks.sh
+
+### Changed
+- AMS panels refactored to use shared drawing utilities (DRY across 5 UI files: slot, mini status, overview, spool canvas, panel)
+- Assign Spool removed from AMS context menu, replaced by unified slot editor
+- Deprecated C-style wrapper APIs and legacy compatibility code removed
+- Bundled installer regenerated with latest module changes
+
+## [0.10.2] - 2026-02-17
+
+This release significantly improves multi-tool printer support with per-tool spool persistence and an extruder selector for filament management, decouples Spoolman from AMS backends for cleaner architecture, and fixes several crash bugs and installer issues.
+
+### Added
+- Extruder selector dropdown for multi-tool printers in filament management
+- Per-tool spool persistence decoupled from AMS backends
+- Crash analytics dashboard with crash list view
+- Load base and platform metadata in crash telemetry events
+- Filament type tracking in print outcome telemetry events
+- Discord notifications on successful releases
+
+### Fixed
+- Use-after-free during toast notification replacement (fixes #98)
+- Dangling pointer after external modal deletion in AMS dryer dialog (fixes #97)
+- Crash from null font pointer in AMS mini status overflow label (fixes #90, #91)
+- Unsafe move operators corrupting lv_subject_t linked lists in setup wizard
+- OTA updater "Installer not found" regression from systemd PATH resolution
+- ELF architecture validation for K1/MIPS platform
+- Static-linked OpenSSL for pi32 with post-install ldd verification
+- AMS context menu positioning and ghost button borders
+- Hidden tray and redundant tool badges for tool changers
+- AMS bypass, dryer, reset, and settings visibility for tool changers
+- Click-through on nozzle icon component
+- Navigation bar buttons not filling available width, with lingering focus rings
+
+### Changed
+- Spoolman integration decoupled from AMS backends into standalone architecture
+- Nozzle icon extracted into reusable component with consolidated tool badge logic
+- Codebase migrated to `helix::` namespace with modernized enum classes
+- Telemetry worker updated to support schema v2 nested fields
+
+## [0.10.1] - 2026-02-16
+
+### Added
+- Debug bundle upload for streamlined support diagnostics
+- Unified active extruder temperature tracking across multi-tool setups
+- Dynamic nozzle label showing tool number for multi-tool printers
+- Configurable size property for filament sensor indicator
+- PrusaWire added to printer database
+- Email notifications for debug bundle uploads (crash worker)
+- 69 new translations across 8 languages
+
+### Fixed
+- Use-after-free in deferred observer callbacks (fixes #83)
+- Crash from error callbacks firing during MoonrakerClient destruction
+- Crash from SubscriptionGuard accessing destroyed MoonrakerClient on shutdown
+- Crash from theme token mismatch in AMS backend selector
+- Observer crash on quit from NavigationManager init ordering
+- Spdlog call in ObserverGuard static destructor causing shutdown hang
+- Tool badge showing unnecessarily with single-tool printers
+- Hardware discovery falsely flagging expected devices as new
+- Setup wizard not clearing hardware config on re-run
+- Wizard port input accepting non-numeric characters
+- Splash screen suppressing rendering without an external splash process
+- Noisy WLED and REST 404 logs downgraded from warn to debug
+- AMS slot info updates logged on every poll instead of only on change
+- Installer using bare sudo instead of file_sudo for release swap/restore
+- AMS edit modal Spoolman callbacks not marshalled to main thread
+
+### Changed
+- Spoolman vendor/filament creation moved to modal dialogs
+- Spool wizard graduated from beta
+- Lifetime checks added to SubscriptionGuard and ObserverGuard
+- Shutdown cleanup self-registered in all init_subjects() methods
+
+## [0.10.0] - 2026-02-15
+
+Major feature release bringing full Spoolman spool management, a guided spool creation wizard, multi-unit AMS support for AFC and Happy Hare, probe management, and a Klipper config editor. Also adds Elegoo Centauri Carbon 1 support and fixes several crash bugs.
+
+### Added
+- **Spoolman Management**: Browse, search, edit, and delete spools with virtualized list, context menu, and inline edit modal
+- **New Spool Wizard** (beta): 3-step guided creation (Vendor → Filament → Spool Details) with dual-source data from Spoolman server and SpoolmanDB catalog, atomic creation with rollback
+- **Multi-unit AMS**: Support for multiple AMS/AFC/Happy Hare units with per-unit overview panel, shared spool grid components, and error/buffer health visualization
+- **Probe Management** (beta): BLTouch panel with deploy/retract/self-test, probe type detection for Cartographer, Beacon, Tap, and Klicky
+- **Klipper Config Editor**: Structure parser with include resolution, targeted edits, and post-edit health check with automatic backup restore
+- **Elegoo Centauri Carbon 1**: Platform support with dedicated build toolchain and presets
+- AFC error notifications with deduplication and action prompt suppression
+- Android-style clear button for all search inputs
+- Toast notifications for AMS device actions
+- Internationalization for remaining hardcoded UI strings
+
+### Fixed
+- Crash from re-entrant observer destruction during callback dispatch (fixes #82)
+- Use-after-free when destroying widgets from event callbacks (fixes #80)
+- AMS slot tray visibility behind badge/halo overlays
+- AFC buffer fault warnings not clearing on recovery
+- Happy Hare reason_for_pause not clearing on idle
+- Icon font validation locale handling
+- Focus on close/context menu buttons causing unintended list scroll
+- Modal dialog bind_text subject references missing @ prefix
+
+### Changed
+- AMS detail views refactored to shared ams_unit_detail and ams_loaded_card components
+- Spoolman and history panel search inputs use shared text_input clear button
+- R2 release retention policy added to prune old releases
+
+## [0.9.24] - 2026-02-15
+
+### Fixed
+- OTA updates now correctly extract the installer from release tarballs (path mismatch between packaging and extraction)
+- Button visual shift on release by setting transform pivot in base button style
+
+## [0.9.23] - 2026-02-15
+
+### Added
+- LED colors stored as human-readable #RRGGBB hex strings with automatic legacy integer migration
+- ASLR auto-detection in backtrace resolver for more accurate crash report symbol resolution
+
+### Fixed
+- Crash from LVGL object user_data ownership collisions causing SIGABRT
+- Crash from NULL pointer passed to lv_strdup
+- Use-after-free in animation completion callbacks
+- Use-after-free when replacing toast notifications during exit animation
+
+## [0.9.22] - 2026-02-15
+
+### Added
+- Timelapse phase 2: event handling, render notifications, and video management
+- AD5M ready-made firmware image as primary install option in docs
+
+### Fixed
+- **Critical**: install.sh now included in release packages, fixing "Installer not found" error during UI-initiated updates (thanks @bassco)
+
+### Changed
+- CI release pipeline refactored to matrix builds for easier platform maintenance (thanks @bassco)
+
+## [0.9.21] - 2026-02-14
+
+### Added
+- G-code console gated behind beta features setting
+- Cancel escalation system: configurable e-stop timeout with settings toggle and dropdown
+- Internationalization for hardcoded settings strings
+
+### Fixed
+- Nested overlay backdrops no longer double-stack
+- Crash handler and report dialog disabled in test mode to prevent test interference
+- Installer now extracts install.sh from tarball to prevent stale script failures
+- Operation timeout guards increased for homing, QGL, and Z-tilt commands
+- Touch calibration option hidden for USB HID input devices
+
+### Changed
+- G-code console and cancel escalation documented in user guide
+
+## [0.9.20] - 2026-02-14
+
+This release adds multi-extruder temperature support, tool state tracking, multi-backend AMS (allowing printers with multiple filament systems), and fixes a critical installer bug that prevented Moonraker from starting on ForgeX AD5M printers after reboot.
+
+### Added
+- Multi-extruder temperature support with dynamic ExtruderInfo discovery and selection panel
+- Tool state tracking (ToolState singleton) with active tool badge and tool-prefixed temperature display
+- Multi-backend AMS: per-backend slot storage, event routing, backend selector UI, and multi-system detection
+- ASLR-aware crash reports: ELF load base emitted for accurate symbol resolution
+- AD5M boot diagnostic script for troubleshooting boot/networking issues
+- Russian translation updates (thanks @kostake, @panzerhalzen)
+- Telemetry Analytics Engine dashboard
+
+### Fixed
+- **Critical**: ForgeX installer logged wrapper broke S99root boot sequence, preventing Moonraker from starting after reboot (#36)
+- Splash screen no longer triggers LVGL rendering while it owns the framebuffer
+- Exception-safe subject updates in sensor callbacks
+- UpdateQueue crash protection with try-catch in process_pending
+- Notification and input shaper overlays use modal alert system instead of manual event wiring
+- Invalid text_secondary design token replaced with text_muted
+- LED macro preset UX improvements and stale deletion bug fix
+- systemd service adds tty to SupplementaryGroups for console suppression
+
+### Changed
+- Async invoke simplified to forward directly to ui_queue_update
+- LED preset labels auto-generated from macro names instead of manual naming
+
+## [0.9.19] - 2026-02-13
+
+### Added
+- Crash reports now include fault info, CPU registers, and frame pointers for better diagnostics
+- XLARGE breakpoint tier for responsive UI on larger displays
+- Responsive fan card rendering with dynamic arc sizing and tiny breakpoint support
+- Unified responsive icon sizing via design tokens
+- Geralkom X400/X500 and Voron Micron added to printer database
+- HelixScreen Discord community link in documentation
+
+### Fixed
+- Overlay close callback deferred to prevent use-after-free crash (#70)
+- macOS build error caused by libhv gettid() conflict
+
+### Changed
+- 182 missing translation keys added across the UI
+- Navigation bar width moved from C++ to XML for declarative layout control
+- Qidi and Creality printer images updated; Qidi Q2 Pro removed
+
 ## [0.9.18] - 2026-02-13
 
 ### Added
@@ -448,6 +674,16 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.10.3]: https://github.com/prestonbrown/helixscreen/compare/v0.10.2...v0.10.3
+[0.10.2]: https://github.com/prestonbrown/helixscreen/compare/v0.10.1...v0.10.2
+[0.10.1]: https://github.com/prestonbrown/helixscreen/compare/v0.10.0...v0.10.1
+[0.10.0]: https://github.com/prestonbrown/helixscreen/compare/v0.9.24...v0.10.0
+[0.9.24]: https://github.com/prestonbrown/helixscreen/compare/v0.9.23...v0.9.24
+[0.9.23]: https://github.com/prestonbrown/helixscreen/compare/v0.9.22...v0.9.23
+[0.9.22]: https://github.com/prestonbrown/helixscreen/compare/v0.9.21...v0.9.22
+[0.9.21]: https://github.com/prestonbrown/helixscreen/compare/v0.9.20...v0.9.21
+[0.9.20]: https://github.com/prestonbrown/helixscreen/compare/v0.9.19...v0.9.20
+[0.9.19]: https://github.com/prestonbrown/helixscreen/compare/v0.9.18...v0.9.19
 [0.9.18]: https://github.com/prestonbrown/helixscreen/compare/v0.9.17...v0.9.18
 [0.9.17]: https://github.com/prestonbrown/helixscreen/compare/v0.9.16...v0.9.17
 [0.9.16]: https://github.com/prestonbrown/helixscreen/compare/v0.9.15...v0.9.16

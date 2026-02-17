@@ -182,7 +182,7 @@ static void* ui_gradient_canvas_xml_create(lv_xml_parser_state_t* state, const c
 
     if (!data_ptr->draw_buf) {
         LOG_ERROR_INTERNAL("[GradientCanvas] Failed to create draw buffer");
-        lv_obj_safe_delete(img);
+        helix::ui::safe_delete(img);
         return nullptr;
     }
 
@@ -277,7 +277,7 @@ void ui_gradient_canvas_redraw(lv_obj_t* obj) {
         render_gradient_buffer(data);
         // Defer invalidation to avoid calling during render phase
         // Check lv_obj_is_valid() in case widget is deleted before callback executes
-        ui_async_call(
+        helix::ui::async_call(
             [](void* obj_ptr) {
                 auto* obj = static_cast<lv_obj_t*>(obj_ptr);
                 if (lv_obj_is_valid(obj)) {
@@ -297,7 +297,7 @@ void ui_gradient_canvas_set_dither(lv_obj_t* obj, bool enable) {
         render_gradient_buffer(data);
         // Defer invalidation to avoid calling during render phase
         // Check lv_obj_is_valid() in case widget is deleted before callback executes
-        ui_async_call(
+        helix::ui::async_call(
             [](void* obj_ptr) {
                 auto* obj = static_cast<lv_obj_t*>(obj_ptr);
                 if (lv_obj_is_valid(obj)) {

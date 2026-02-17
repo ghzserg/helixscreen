@@ -63,7 +63,7 @@ PrivateTmp=true
 NoNewPrivileges=true
 
 # Allow framebuffer/DRM access
-SupplementaryGroups=video input render
+SupplementaryGroups=video input render tty
 
 # Logging
 StandardOutput=journal

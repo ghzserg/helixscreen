@@ -34,6 +34,8 @@
 #include "streaming_policy.h"
 #include "subject_initializer.h"
 #include "temperature_history_manager.h"
+#include "timelapse_state.h"
+#include "wizard_config_paths.h"
 
 // UI headers
 #include "ui_ams_mini_status.h"
@@ -49,13 +51,13 @@
 #include "ui_gradient_canvas.h"
 #include "ui_icon.h"
 #include "ui_icon_loader.h"
-#include "ui_keyboard.h"
-#include "ui_nav.h"
+#include "ui_keyboard_manager.h"
 #include "ui_nav_manager.h"
 #include "ui_notification_history.h"
 #include "ui_notification_manager.h"
 #include "ui_overlay_network_settings.h"
 #include "ui_panel_ams.h"
+#include "ui_panel_ams_overview.h"
 #include "ui_panel_bed_mesh.h"
 #include "ui_panel_calibration_pid.h"
 #include "ui_panel_calibration_zoffset.h"
@@ -78,14 +80,16 @@
 #include "ui_panel_test.h"
 #include "ui_print_tune_overlay.h"
 #include "ui_printer_status_icon.h"
+#include "ui_probe_overlay.h"
 #include "ui_settings_display.h"
 #include "ui_settings_hardware_health.h"
 #include "ui_settings_sensors.h"
 #include "ui_severity_card.h"
+#include "ui_status_pill.h"
 #include "ui_switch.h"
 #include "ui_temp_display.h"
 #include "ui_theme_editor_overlay.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_touch_calibration_overlay.h"
 #include "ui_utils.h"
 #include "ui_wizard.h"
@@ -109,11 +113,12 @@
 #include "wifi_manager.h"
 
 // Backend headers
+#include "ui_update_queue.h"
+
 #include "abort_manager.h"
 #include "action_prompt_manager.h"
 #include "action_prompt_modal.h"
 #include "app_globals.h"
-#include "async_helpers.h"
 #include "filament_sensor_manager.h"
 #include "gcode_file_modifier.h"
 #include "hv/hlog.h" // libhv logging - sync level with spdlog
@@ -153,6 +158,8 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
+
+using namespace helix;
 
 // External globals for logging (defined in cli_args.cpp, populated by parse_cli_args)
 extern std::string g_log_dest_cli;
@@ -213,7 +220,10 @@ int Application::run(int argc, char** argv) {
 
     // Install crash handler early (before other init that could crash)
     // Uses the config directory for the crash file so TelemetryManager can find it on next startup
-    crash_handler::install("config/crash.txt");
+    // Skip in test mode — don't record or report crashes during development
+    if (!get_runtime_config()->is_test_mode()) {
+        crash_handler::install("config/crash.txt");
+    }
 
     // Phase 2: Initialize config system
     if (!init_config()) {
@@ -336,7 +346,11 @@ int Application::run(int argc, char** argv) {
     }
 
     // Check for crash from previous session (after UI exists, before wizard)
-    if (CrashReporter::instance().has_crash_report()) {
+    // Skip in test mode — don't show crash dialog during development
+    // Exception: --mock-crash explicitly requests the dialog for testing
+    bool show_crash_dialog =
+        !get_runtime_config()->is_test_mode() || get_runtime_config()->mock_crash;
+    if (show_crash_dialog && CrashReporter::instance().has_crash_report()) {
         spdlog::info("[Application] Previous crash detected — showing crash report dialog");
         auto report = CrashReporter::instance().collect_report();
         auto* modal = new CrashReportModal();
@@ -670,6 +684,14 @@ bool Application::init_display() {
     // Initialize splash screen manager for deferred exit
     m_splash_manager.start(get_runtime_config()->splash_pid);
 
+    // Suppress LVGL rendering while splash is alive — prevents framebuffer flicker
+    // from both processes writing to the same framebuffer simultaneously.
+    // Re-enabled in main loop when splash exits.
+    if (get_runtime_config()->splash_pid > 0 && !m_splash_manager.has_exited()) {
+        lv_display_enable_invalidation(nullptr, false);
+        spdlog::debug("[Application] Display invalidation suppressed while splash is active");
+    }
+
     return true;
 }
 
@@ -722,6 +744,7 @@ bool Application::init_assets() {
 
 bool Application::register_widgets() {
     ui_icon_register_widget();
+    ui_status_pill_register_widget();
     ui_switch_register();
     ui_card_register();
     ui_temp_display_init();
@@ -818,10 +841,11 @@ bool Application::init_panel_subjects() {
     // Must happen after both API and AbortManager::init_subjects()
     helix::AbortManager::instance().init(m_moonraker->api(), &get_printer_state());
 
-    // Register status bar callbacks
-    ui_status_bar_register_callbacks();
+    // Register notification callbacks
+    helix::ui::notification_register_callbacks();
     ui_panel_screws_tilt_register_callbacks();
     ui_panel_input_shaper_register_callbacks();
+    ui_probe_overlay_register_callbacks();
 
     // Create temperature history manager (collects temp samples from PrinterState subjects)
     m_temp_history_manager = std::make_unique<TemperatureHistoryManager>(get_printer_state());
@@ -849,20 +873,20 @@ bool Application::init_ui() {
     lv_obj_update_layout(m_screen);
 
     // Register app_layout with navigation
-    ui_nav_set_app_layout(m_app_layout);
+    NavigationManager::instance().set_app_layout(m_app_layout);
 
     // Initialize printer status icon (sets up observers on PrinterState)
-    ui_printer_status_icon_init();
+    PrinterStatusIcon::instance().init();
 
-    // Initialize notification system (status bar without printer icon)
-    ui_status_bar_init();
+    // Initialize notification system
+    helix::ui::notification_manager_init();
 
     // Seed test notifications in --test mode for debugging
     if (get_runtime_config()->is_test_mode()) {
         auto& history = NotificationHistory::instance();
         history.seed_test_data();
-        // Update status bar to show unread count and severity
-        ui_status_bar_update_notification_count(history.get_unread_count());
+        // Update notification badge to show unread count and severity
+        helix::ui::notification_update_count(history.get_unread_count());
         // Map ToastSeverity to NotificationStatus for bell color
         auto severity = history.get_highest_unread_severity();
         NotificationStatus status = NotificationStatus::NONE;
@@ -873,14 +897,14 @@ bool Application::init_ui() {
         } else if (severity == ToastSeverity::INFO || severity == ToastSeverity::SUCCESS) {
             status = NotificationStatus::INFO;
         }
-        ui_status_bar_update_notification(status);
+        helix::ui::notification_update(status);
     }
 
     // Initialize toast system
-    ui_toast_init();
+    ToastManager::instance().init();
 
     // Initialize overlay backdrop
-    ui_nav_init_overlay_backdrop(m_screen);
+    NavigationManager::instance().init_overlay_backdrop(m_screen);
 
     // Find navbar and content area
     lv_obj_t* navbar = lv_obj_find_by_name(m_app_layout, "navbar");
@@ -892,7 +916,7 @@ bool Application::init_ui() {
     }
 
     // Wire navigation
-    ui_nav_wire_events(navbar);
+    NavigationManager::instance().wire_events(navbar);
 
     // Find panel container
     lv_obj_t* panel_container = lv_obj_find_by_name(content_area, "panel_container");
@@ -964,7 +988,7 @@ bool Application::init_moonraker() {
     }
 
     // Initialize global keyboard
-    ui_keyboard_init(m_screen);
+    KeyboardManager::instance().init(m_screen);
 
     // Initialize memory stats overlay
     MemoryStatsOverlay::instance().init(m_screen, m_args.show_memory);
@@ -1024,7 +1048,8 @@ bool Application::init_plugins() {
                 [](void* user_data) {
                     auto* ctx = static_cast<PluginDisableContext*>(user_data);
                     if (ctx->manager && ctx->manager->disable_plugin(ctx->plugin_id)) {
-                        ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Plugin disabled"), 3000);
+                        ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                                      lv_tr("Plugin disabled"), 3000);
                     }
                     delete ctx;
                 },
@@ -1037,7 +1062,7 @@ bool Application::init_plugins() {
             ToastManager::instance().show_with_action(
                 ToastSeverity::WARNING, toast_msg, "Manage",
                 [](void* /*user_data*/) {
-                    ui_nav_set_active(UI_PANEL_SETTINGS);
+                    NavigationManager::instance().set_active(PanelId::Settings);
                     get_global_settings_panel().handle_plugins_clicked();
                 },
                 nullptr, 8000);
@@ -1064,6 +1089,35 @@ bool Application::run_wizard() {
 
     spdlog::info("[Application] Starting first-run wizard");
 
+    // When re-running wizard (--wizard), clear all wizard-managed config so
+    // stale hardware selections don't trigger false hardware health warnings
+    if (m_args.force_wizard && m_config) {
+        spdlog::info("[Application] Re-running wizard — clearing wizard configuration");
+
+        // Clear hardware validation state
+        m_config->set<nlohmann::json>(m_config->df() + "hardware/expected",
+                                      nlohmann::json::array());
+        m_config->set<nlohmann::json>(m_config->df() + "hardware/optional",
+                                      nlohmann::json::array());
+        m_config->set<nlohmann::json>(m_config->df() + "hardware/last_snapshot",
+                                      nlohmann::json::object());
+
+        // Clear wizard hardware selections (heaters, fans, LEDs, sensors)
+        const char* wizard_paths[] = {
+            helix::wizard::BED_HEATER,    helix::wizard::HOTEND_HEATER, helix::wizard::BED_SENSOR,
+            helix::wizard::HOTEND_SENSOR, helix::wizard::HOTEND_FAN,    helix::wizard::PART_FAN,
+            helix::wizard::CHAMBER_FAN,   helix::wizard::EXHAUST_FAN,   helix::wizard::LED_STRIP,
+        };
+        for (const auto* path : wizard_paths) {
+            m_config->set<std::string>(path, "");
+        }
+        m_config->set<nlohmann::json>(helix::wizard::LED_SELECTED, nlohmann::json::array());
+        m_config->set<nlohmann::json>(m_config->df() + "filament_sensors/sensors",
+                                      nlohmann::json::array());
+
+        m_config->save();
+    }
+
     ui_wizard_register_event_callbacks();
     ui_wizard_container_register_responsive_constants();
 
@@ -1089,7 +1143,7 @@ bool Application::run_wizard() {
     ui_wizard_navigate_to_step(initial_step);
 
     // Move keyboard above wizard
-    lv_obj_t* keyboard = ui_keyboard_get_instance();
+    lv_obj_t* keyboard = KeyboardManager::instance().get_instance();
     if (keyboard) {
         lv_obj_move_foreground(keyboard);
     }
@@ -1100,7 +1154,7 @@ bool Application::run_wizard() {
 void Application::create_overlays() {
     // Navigate to initial panel
     if (m_args.initial_panel >= 0) {
-        ui_nav_set_active(static_cast<ui_panel_id_t>(m_args.initial_panel));
+        NavigationManager::instance().set_active(static_cast<PanelId>(m_args.initial_panel));
     }
 
     // Create requested overlay panels
@@ -1118,7 +1172,7 @@ void Application::create_overlays() {
         if (p) {
             m_overlay_panels.motion = p;
             NavigationManager::instance().register_overlay_instance(p, &motion);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1126,7 +1180,7 @@ void Application::create_overlays() {
         if (auto* p = create_overlay_panel(m_screen, "nozzle_temp_panel", "nozzle temp")) {
             m_overlay_panels.nozzle_temp = p;
             m_subjects->temp_control_panel()->setup_nozzle_panel(p, m_screen);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1134,7 +1188,7 @@ void Application::create_overlays() {
         if (auto* p = create_overlay_panel(m_screen, "bed_temp_panel", "bed temp")) {
             m_overlay_panels.bed_temp = p;
             m_subjects->temp_control_panel()->setup_bed_panel(p, m_screen);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1154,7 +1208,7 @@ void Application::create_overlays() {
         auto* p = overlay.create(m_screen);
         if (p) {
             NavigationManager::instance().register_overlay_instance(p, &overlay);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1174,12 +1228,12 @@ void Application::create_overlays() {
         auto* p = overlay.create(m_screen);
         if (p) {
             NavigationManager::instance().register_overlay_instance(p, &overlay);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
     if (m_args.overlays.print_status && m_overlay_panels.print_status) {
-        ui_nav_push_overlay(m_overlay_panels.print_status);
+        NavigationManager::instance().push_overlay(m_overlay_panels.print_status);
     }
 
     if (m_args.overlays.bed_mesh) {
@@ -1196,7 +1250,7 @@ void Application::create_overlays() {
         if (p) {
             m_overlay_panels.bed_mesh = p;
             NavigationManager::instance().register_overlay_instance(p, &overlay);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1250,7 +1304,7 @@ void Application::create_overlays() {
         auto* p = overlay.create(m_screen);
         if (p) {
             NavigationManager::instance().register_overlay_instance(p, &overlay);
-            ui_nav_push_overlay(p);
+            NavigationManager::instance().push_overlay(p);
         }
     }
 
@@ -1279,15 +1333,9 @@ void Application::create_overlays() {
     }
 
     if (m_args.overlays.ams) {
-        auto& ams_panel = get_global_ams_panel();
-        if (!ams_panel.are_subjects_initialized()) {
-            ams_panel.init_subjects();
-        }
-        lv_obj_t* panel_obj = ams_panel.get_panel();
-        if (panel_obj) {
-            ams_panel.on_activate();
-            ui_nav_push_overlay(panel_obj);
-        }
+        // Use multi-unit-aware navigation: shows overview for multi-unit,
+        // detail panel directly for single-unit
+        navigate_to_ams_panel();
     }
 
     if (m_args.overlays.spoolman) {
@@ -1299,7 +1347,7 @@ void Application::create_overlays() {
         lv_obj_t* panel_obj = spoolman.create(m_screen);
         if (panel_obj) {
             NavigationManager::instance().register_overlay_instance(panel_obj, &spoolman);
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
         }
     }
 
@@ -1308,7 +1356,7 @@ void Application::create_overlays() {
         step->init_subjects();
         lv_obj_t* panel_obj = step->create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
         }
     }
 
@@ -1337,7 +1385,7 @@ void Application::create_overlays() {
             std::string current_theme = SettingsManager::instance().get_theme_name();
             theme_editor.set_editing_dark_mode(SettingsManager::instance().get_dark_mode());
             theme_editor.load_theme(current_theme);
-            ui_nav_push_overlay(editor_panel);
+            NavigationManager::instance().push_overlay(editor_panel);
             spdlog::info("[Application] Opened theme editor overlay via CLI");
         }
     }
@@ -1360,7 +1408,7 @@ void Application::create_overlays() {
         overlay.init_subjects();
         lv_obj_t* panel_obj = overlay.create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
             spdlog::info("[Application] Opened touch calibration overlay via CLI");
         }
     }
@@ -1376,7 +1424,7 @@ void Application::create_overlays() {
         overlay.init_subjects();
         lv_obj_t* panel_obj = overlay.create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
             spdlog::info("[Application] Opened network settings overlay via CLI");
         }
     }
@@ -1387,7 +1435,7 @@ void Application::create_overlays() {
         overlay.init_subjects();
         lv_obj_t* panel_obj = overlay.create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
             spdlog::info("[Application] Opened macros overlay via CLI");
         }
     }
@@ -1397,7 +1445,7 @@ void Application::create_overlays() {
         overlay.init_subjects();
         lv_obj_t* panel_obj = overlay.create(m_screen);
         if (panel_obj) {
-            ui_nav_push_overlay(panel_obj);
+            NavigationManager::instance().push_overlay(panel_obj);
             spdlog::info("[Application] Opened print tune overlay via CLI");
         }
     }
@@ -1434,7 +1482,7 @@ void Application::create_overlays() {
     // Handle --select-file flag
     RuntimeConfig* runtime_config = get_runtime_config();
     if (runtime_config->select_file != nullptr) {
-        ui_nav_set_active(UI_PANEL_PRINT_SELECT);
+        NavigationManager::instance().set_active(PanelId::PrintSelect);
         auto* print_panel = get_print_select_panel(get_printer_state(), m_moonraker->api());
         if (print_panel) {
             print_panel->set_pending_file_selection(runtime_config->select_file);
@@ -1454,11 +1502,12 @@ void Application::setup_discovery_callbacks() {
         };
         auto ctx =
             std::make_unique<HardwareDiscoveredCtx>(HardwareDiscoveredCtx{hardware, api, client});
-        ui_queue_update<HardwareDiscoveredCtx>(std::move(ctx), [](HardwareDiscoveredCtx* c) {
-            // Update API's hardware data (replaces MoonrakerAPI constructor callback)
-            c->api->hardware() = c->hardware;
-            helix::init_subsystems_from_hardware(c->hardware, c->api, c->client);
-        });
+        helix::ui::queue_update<HardwareDiscoveredCtx>(
+            std::move(ctx), [](HardwareDiscoveredCtx* c) {
+                // Update API's hardware data (replaces MoonrakerAPI constructor callback)
+                c->api->hardware() = c->hardware;
+                helix::init_subsystems_from_hardware(c->hardware, c->api, c->client);
+            });
     });
 
     // Capture Application pointer for callback - used to check shutdown state and access plugin
@@ -1474,7 +1523,7 @@ void Application::setup_discovery_callbacks() {
         };
         auto ctx = std::make_unique<DiscoveryCompleteCtx>(
             DiscoveryCompleteCtx{hardware, api, client, app});
-        ui_queue_update<DiscoveryCompleteCtx>(std::move(ctx), [](DiscoveryCompleteCtx* c) {
+        helix::ui::queue_update<DiscoveryCompleteCtx>(std::move(ctx), [](DiscoveryCompleteCtx* c) {
             // Safety check: if Application is shutting down, skip all processing
             // This prevents use-after-free if shutdown races with callback delivery
             if (c->app->m_shutdown_complete) {
@@ -1508,12 +1557,19 @@ void Application::setup_discovery_callbacks() {
                                                     get_global_settings_panel().fetch_print_hours();
                                                 });
 
+            // Register for timelapse events when timelapse is detected
+            c->client->register_method_callback(
+                "notify_timelapse_event", "timelapse_state", [](const nlohmann::json& data) {
+                    helix::TimelapseState::instance().handle_timelapse_event(data);
+                });
+
             // Hardware validation: check config expectations vs discovered hardware
             HardwareValidator validator;
             auto validation_result = validator.validate(Config::get_instance(), c->hardware);
             get_printer_state().set_hardware_validation_result(validation_result);
 
-            if (validation_result.has_issues() && !Config::get_instance()->is_wizard_required()) {
+            if (validation_result.has_issues() && !Config::get_instance()->is_wizard_required() &&
+                !is_wizard_active()) {
                 validator.notify_user(validation_result);
             }
 
@@ -1538,7 +1594,7 @@ void Application::setup_discovery_callbacks() {
                         int max_temp = static_cast<int>(limits.max_temperature_celsius);
                         int min_temp = static_cast<int>(limits.min_temperature_celsius);
 
-                        ui_queue_update([min_temp, max_temp, min_extrude]() {
+                        helix::ui::queue_update([min_temp, max_temp, min_extrude]() {
                             get_global_filament_panel().set_limits(min_temp, max_temp, min_extrude);
                             spdlog::debug("[Application] Safety limits propagated to panels");
                         });
@@ -1572,10 +1628,10 @@ void Application::setup_discovery_callbacks() {
             // Auto-navigate to Z-Offset Calibration if manual probe is already active
             // (e.g., PROBE_CALIBRATE started from Mainsail or console before HelixScreen launched)
             // Deferred one tick: status updates from the subscription response are queued
-            // via helix::async::invoke and may not have landed yet at this point.
+            // via ui_queue_update and may not have landed yet at this point.
             MoonrakerAPI* api_ptr_zoffset = c->api;
             lv_obj_t* screen = c->app->m_screen;
-            helix::async::invoke([api_ptr_zoffset, screen]() {
+            helix::ui::queue_update([api_ptr_zoffset, screen]() {
                 auto& ps = get_printer_state();
                 int probe_active = lv_subject_get_int(ps.get_manual_probe_active_subject());
                 spdlog::info("[Application] Checking manual_probe at startup: is_active={}",
@@ -1675,8 +1731,9 @@ void Application::init_action_prompt() {
         return;
     }
 
-    // Create ActionPromptManager
+    // Create ActionPromptManager and register global instance for cross-TU access
     m_action_prompt_manager = std::make_unique<helix::ActionPromptManager>();
+    helix::ActionPromptManager::set_instance(m_action_prompt_manager.get());
 
     // Create ActionPromptModal
     m_action_prompt_modal = std::make_unique<helix::ui::ActionPromptModal>();
@@ -1696,8 +1753,8 @@ void Application::init_action_prompt() {
     // Wire on_show callback to display modal (uses ui_async_call for thread safety)
     m_action_prompt_manager->set_on_show([this](const helix::PromptData& data) {
         spdlog::info("[ActionPrompt] Showing prompt: {}", data.title);
-        // WebSocket callbacks run on background thread - must use helix::async::invoke
-        helix::async::invoke([this, data]() {
+        // WebSocket callbacks run on background thread - must use ui_queue_update
+        helix::ui::queue_update([this, data]() {
             if (m_action_prompt_modal && m_screen) {
                 m_action_prompt_modal->show_prompt(m_screen, data);
             }
@@ -1707,7 +1764,7 @@ void Application::init_action_prompt() {
     // Wire on_close callback to hide modal
     m_action_prompt_manager->set_on_close([this]() {
         spdlog::info("[ActionPrompt] Closing prompt");
-        helix::async::invoke([this]() {
+        helix::ui::queue_update([this]() {
             if (m_action_prompt_modal) {
                 m_action_prompt_modal->hide();
             }
@@ -1717,10 +1774,15 @@ void Application::init_action_prompt() {
     // Wire on_notify callback for standalone notifications (action:notify)
     m_action_prompt_manager->set_on_notify([](const std::string& message) {
         spdlog::info("[ActionPrompt] Notification: {}", message);
-        helix::async::invoke([message]() {
+        helix::ui::queue_update([message]() {
             ToastManager::instance().show(ToastSeverity::INFO, message.c_str(), 5000);
         });
     });
+
+    // Allow mock AMS backends to inject action_prompt lines (e.g., calibration wizard)
+    auto* prompt_mgr = m_action_prompt_manager.get();
+    AmsState::instance().set_gcode_response_callback(
+        [prompt_mgr](const std::string& line) { prompt_mgr->process_line(line); });
 
     // Register for notify_gcode_response messages from Moonraker
     // All lines from G-code console output come through this notification
@@ -1911,6 +1973,13 @@ int Application::main_loop() {
     uint32_t last_fb_selfheal_tick = start_time;
     static constexpr uint32_t FB_SELFHEAL_INTERVAL_MS = 10000; // 10 seconds
 
+    // Failsafe: track invalidation suppression with a hard deadline.
+    // If splash handoff doesn't complete within this time, force rendering back on
+    // to avoid a permanently black screen.
+    bool invalidation_suppressed = !m_splash_manager.has_exited();
+    static constexpr uint32_t INVALIDATION_FAILSAFE_MS =
+        8000; // Must exceed DISCOVERY_TIMEOUT_MS (5s)
+
     // Configure main loop handler
     helix::application::MainLoopHandler::Config loop_config;
     loop_config.screenshot_enabled = m_args.screenshot_enabled;
@@ -1959,13 +2028,17 @@ int Application::main_loop() {
         lv_timer_handler();
         fflush(stdout);
 
-        // Signal splash to exit after first frame is rendered
-        // This ensures our UI is visible before splash disappears
+        // Signal splash to exit when discovery completes (or timeout)
         m_splash_manager.check_and_signal();
 
-        // Post-splash full screen refresh after splash exits
-        // The splash clears the framebuffer; we need to repaint our UI
-        if (m_splash_manager.needs_post_splash_refresh()) {
+        // Post-splash handoff: re-enable rendering and repaint
+        // Display invalidation was suppressed to prevent framebuffer flicker
+        // while both splash and main app were running simultaneously.
+        if (invalidation_suppressed && m_splash_manager.needs_post_splash_refresh()) {
+            invalidation_suppressed = false;
+            lv_display_enable_invalidation(nullptr, true);
+            spdlog::info("[Application] Display invalidation re-enabled after splash exit");
+
             lv_obj_t* screen = lv_screen_active();
             if (screen) {
                 lv_obj_update_layout(screen);
@@ -1973,6 +2046,16 @@ int Application::main_loop() {
                 lv_refr_now(nullptr);
             }
             m_splash_manager.mark_refresh_done();
+        }
+
+        // Failsafe: if invalidation is still suppressed after hard deadline, force it back on.
+        // Prevents permanent black screen if splash handoff fails for any reason.
+        if (invalidation_suppressed && (current_tick - start_time) >= INVALIDATION_FAILSAFE_MS) {
+            invalidation_suppressed = false;
+            lv_display_enable_invalidation(nullptr, true);
+            spdlog::warn("[Application] Invalidation failsafe triggered after {}ms",
+                         INVALIDATION_FAILSAFE_MS);
+            lv_obj_invalidate(lv_screen_active());
         }
 
         // Benchmark mode - force redraws and report FPS
@@ -2131,15 +2214,29 @@ void Application::shutdown() {
     m_history_manager.reset();
     m_temp_history_manager.reset();
 
+    // Unregister timelapse event callback
+    if (m_moonraker && m_moonraker->client()) {
+        m_moonraker->client()->unregister_method_callback("notify_timelapse_event",
+                                                          "timelapse_state");
+    }
+
     // Unregister action prompt callback before moonraker is destroyed
     if (m_moonraker && m_moonraker->client() && m_action_prompt_manager) {
         m_moonraker->client()->unregister_method_callback("notify_gcode_response",
                                                           "action_prompt_manager");
     }
+    // Clear mock gcode injection callback before destroying ActionPromptManager
+    // (AmsState singleton outlives Application — callback would dangle)
+    AmsState::instance().set_gcode_response_callback(nullptr);
     m_action_prompt_modal.reset();
+    helix::ActionPromptManager::set_instance(nullptr);
     m_action_prompt_manager.reset();
 
-    m_moonraker.reset();
+    // Stop AMS backend subscriptions BEFORE destroying MoonrakerClient.
+    // Backends hold SubscriptionGuards with raw MoonrakerClient* pointers —
+    // they must unsubscribe while the client's mutex is still alive.
+    AmsState::instance().clear_backends();
+
     m_panels.reset();
     m_subjects.reset();
 
@@ -2151,7 +2248,7 @@ void Application::shutdown() {
     // Clear pending async callbacks BEFORE destroying panels.
     // This prevents use-after-free: async observer callbacks may have been queued
     // with stale 'self' pointers that will crash if processed after panel destruction.
-    ui_update_queue_shutdown();
+    helix::ui::update_queue_shutdown();
 
     // Stop ALL LVGL animations before destroying panels.
     // Animations hold pointers to objects; if panels are destroyed first,
@@ -2170,6 +2267,15 @@ void Application::shutdown() {
     // After this, widgets have no observer callbacks, so lv_deinit() deletes them
     // cleanly without firing stale unsubscribe callbacks on corrupted linked lists.
     StaticSubjectRegistry::instance().deinit_all();
+
+    // Deinitialize theme manager subjects (theme_changed_subject, swatch descriptions).
+    // These are file-scope statics not tracked by StaticSubjectRegistry.
+    theme_manager_deinit();
+
+    // Destroy MoonrakerManager (releases its ObserverGuards and client).
+    // Safe here: LVGL subjects are deinitialized but lv_deinit() hasn't run yet,
+    // so lv_observer_remove() can still operate on the observer linked lists.
+    m_moonraker.reset();
 
     // Shutdown display (calls lv_deinit). All observer callbacks were already
     // removed above, so widget deletion is clean — no observer linked list access.

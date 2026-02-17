@@ -217,7 +217,12 @@ uint16_t GeometryBuilder::add_to_normal_palette(RibbonGeometry& geometry, const 
 
     // Not in cache - add to palette
     if (geometry.normal_palette.size() >= 65536) {
-        spdlog::warn("[GCode Geometry] Normal palette full (65536 entries), reusing last entry");
+        static bool warned = false;
+        if (!warned) {
+            spdlog::warn(
+                "[GCode Geometry] Normal palette full (65536 entries), reusing last entry");
+            warned = true;
+        }
         return 65535;
     }
 

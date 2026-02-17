@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- AMS Device Section Detail Overlay Panel -->
+<!-- Shows detailed controls for a specific device section (e.g., Speed Settings, Calibration) -->
+<component>
+  <view name="ams_device_section_detail"
+        extends="overlay_panel" width="#overlay_panel_width_full"
+        title="Section Detail" title_tag="Device Section" bg_color="#screen_bg">
+    <!-- Content Area (scrollable) -->
+    <lv_obj name="overlay_content"
+            width="100%" flex_grow="1" style_pad_all="#space_md" scrollable="true" flex_flow="column"
+            style_pad_gap="#space_md">
+
+      <!-- Dynamic controls container (populated by C++) -->
+      <lv_obj name="section_actions_container"
+              width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm"
+              scrollable="false">
+      </lv_obj>
+
+    </lv_obj>
+  </view>
+</component>

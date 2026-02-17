@@ -50,11 +50,11 @@ TEST_CASE("CHAR: centi_to_degrees_f preserves decimals",
  * FilamentPanel pattern: transforms centidegrees to degrees in callback
  *
  * extruder_temp_observer_ = ObserverGuard(
- *     printer_state_.get_extruder_temp_subject(),
+ *     printer_state_.get_active_extruder_temp_subject(),
  *     [](lv_observer_t* observer, lv_subject_t* subject) {
  *         auto* self = static_cast<FilamentPanel*>(lv_observer_get_user_data(observer));
  *         self->nozzle_current_ = centi_to_degrees(lv_subject_get_int(subject));
- *         ui_async_call(...);  // Queue UI updates
+ *         helix::ui::async_call(...);  // Queue UI updates
  *     }, this);
  */
 TEST_CASE_METHOD(LVGLTestFixture, "CHAR: FilamentPanel transforms centidegrees in callback",

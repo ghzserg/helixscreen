@@ -22,6 +22,7 @@
 #include "ams_backend_afc.h"
 #include "ams_backend_happy_hare.h"
 
+using namespace helix;
 using namespace helix::printer;
 
 // =============================================================================

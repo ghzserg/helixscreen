@@ -51,10 +51,10 @@ class FilamentPanel : public PanelBase {
     /**
      * @brief Construct FilamentPanel with injected dependencies
      *
-     * @param printer_state Reference to PrinterState
+     * @param printer_state Reference to helix::PrinterState
      * @param api Pointer to MoonrakerAPI (for future temp commands)
      */
-    FilamentPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    FilamentPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     ~FilamentPanel() override;
 
@@ -181,6 +181,12 @@ class FilamentPanel : public PanelBase {
     lv_subject_t material_nozzle_temp_subject_;
     lv_subject_t material_bed_temp_subject_;
 
+    // Nozzle label (dynamic: "Nozzle" or "Nozzle N" for multi-tool)
+    lv_subject_t nozzle_label_subject_;
+    char nozzle_label_buf_[32] = {};
+    ObserverGuard active_tool_observer_;
+    void update_nozzle_label();
+
     // Left card temperature subjects (current and target for nozzle/bed)
     lv_subject_t nozzle_current_subject_;
     lv_subject_t nozzle_target_subject_;
@@ -252,6 +258,19 @@ class FilamentPanel : public PanelBase {
     // Temperature layout widgets (for dynamic sizing when AMS hidden)
     lv_obj_t* temp_group_ = nullptr;
     lv_obj_t* temp_graph_card_ = nullptr;
+
+    // Multi-filament card widgets (extruder dropdown + AMS row)
+    lv_obj_t* ams_status_card_ = nullptr;
+    lv_obj_t* extruder_selector_group_ = nullptr;
+    lv_obj_t* extruder_dropdown_ = nullptr;
+    lv_obj_t* btn_manage_slots_ = nullptr;
+    lv_obj_t* ams_manage_row_ = nullptr;
+    ObserverGuard tools_version_observer_;
+
+    void populate_extruder_dropdown();
+    void update_multi_filament_card_visibility();
+    void handle_extruder_changed();
+    static void on_extruder_dropdown_changed(lv_event_t* e);
 
     // Temperature observer bundle (nozzle + bed current/target)
     helix::ui::TemperatureObserverBundle<FilamentPanel> temp_observers_;

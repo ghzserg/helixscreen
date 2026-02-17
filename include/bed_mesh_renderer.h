@@ -3,11 +3,26 @@
 
 #pragma once
 
+#include "lvgl/lvgl.h"
+
 #ifdef __cplusplus
+namespace helix {
+
+/**
+ * @brief Render mode for bed mesh visualization
+ *
+ * Controls whether 3D perspective or 2D heatmap rendering is used.
+ */
+enum class BedMeshRenderMode {
+    Auto,    ///< Automatically choose based on measured FPS
+    Force3D, ///< Always use 3D perspective (may be slow)
+    Force2D  ///< Always use 2D heatmap (fast)
+};
+
+} // namespace helix
+
 extern "C" {
 #endif
-
-#include "lvgl/lvgl.h"
 
 #include <stdbool.h>
 
@@ -94,17 +109,6 @@ extern "C" {
 // FPS threshold for auto-degrading to 2D mode
 #define BED_MESH_FPS_THRESHOLD 15.0 // Switch to 2D if FPS drops below this
 #define BED_MESH_FPS_WINDOW_SIZE 10 // Rolling window for FPS averaging
-
-/**
- * @brief Render mode for bed mesh visualization
- *
- * Controls whether 3D perspective or 2D heatmap rendering is used.
- */
-typedef enum {
-    BED_MESH_RENDER_MODE_AUTO,     ///< Automatically choose based on measured FPS
-    BED_MESH_RENDER_MODE_FORCE_3D, ///< Always use 3D perspective (may be slow)
-    BED_MESH_RENDER_MODE_FORCE_2D  ///< Always use 2D heatmap (fast)
-} bed_mesh_render_mode_t;
 
 // 3D point in world space after perspective projection
 struct bed_mesh_point_3d_t {
@@ -322,7 +326,8 @@ bool bed_mesh_renderer_render(bed_mesh_renderer_t* renderer, lv_layer_t* layer, 
  * @param renderer Renderer instance
  * @param mode Desired render mode
  */
-void bed_mesh_renderer_set_render_mode(bed_mesh_renderer_t* renderer, bed_mesh_render_mode_t mode);
+void bed_mesh_renderer_set_render_mode(bed_mesh_renderer_t* renderer,
+                                       helix::BedMeshRenderMode mode);
 
 /**
  * @brief Get current render mode setting
@@ -330,7 +335,7 @@ void bed_mesh_renderer_set_render_mode(bed_mesh_renderer_t* renderer, bed_mesh_r
  * @param renderer Renderer instance
  * @return Current render mode (AUTO, FORCE_3D, or FORCE_2D)
  */
-bed_mesh_render_mode_t bed_mesh_renderer_get_render_mode(bed_mesh_renderer_t* renderer);
+helix::BedMeshRenderMode bed_mesh_renderer_get_render_mode(bed_mesh_renderer_t* renderer);
 
 /**
  * @brief Check if currently using 2D fallback mode

@@ -6,7 +6,7 @@
 #include "ui_event_safety.h"
 #include "ui_modal.h"
 #include "ui_subject_registry.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_wizard.h"
 #include "ui_wizard_input_shaper.h"
 
@@ -26,6 +26,8 @@
 #include <memory>
 #include <sstream>
 #include <string>
+
+using namespace helix;
 
 // ============================================================================
 // Global Instance
@@ -74,91 +76,6 @@ WizardSummaryStep::~WizardSummaryStep() {
 // ============================================================================
 // Move Semantics
 // ============================================================================
-
-WizardSummaryStep::WizardSummaryStep(WizardSummaryStep&& other) noexcept
-    : screen_root_(other.screen_root_), printer_name_(other.printer_name_),
-      printer_type_(other.printer_type_), wifi_ssid_(other.wifi_ssid_),
-      moonraker_connection_(other.moonraker_connection_), bed_(other.bed_), hotend_(other.hotend_),
-      part_fan_(other.part_fan_), part_fan_visible_(other.part_fan_visible_),
-      hotend_fan_(other.hotend_fan_), hotend_fan_visible_(other.hotend_fan_visible_),
-      led_strip_(other.led_strip_), led_strip_visible_(other.led_strip_visible_),
-      filament_sensor_(other.filament_sensor_),
-      filament_sensor_visible_(other.filament_sensor_visible_), ams_type_(other.ams_type_),
-      ams_visible_(other.ams_visible_), input_shaper_(other.input_shaper_),
-      input_shaper_visible_(other.input_shaper_visible_),
-      telemetry_info_text_(other.telemetry_info_text_),
-      subjects_initialized_(other.subjects_initialized_) {
-    // Move buffers
-    std::memcpy(printer_name_buffer_, other.printer_name_buffer_, sizeof(printer_name_buffer_));
-    std::memcpy(printer_type_buffer_, other.printer_type_buffer_, sizeof(printer_type_buffer_));
-    std::memcpy(wifi_ssid_buffer_, other.wifi_ssid_buffer_, sizeof(wifi_ssid_buffer_));
-    std::memcpy(moonraker_connection_buffer_, other.moonraker_connection_buffer_,
-                sizeof(moonraker_connection_buffer_));
-    std::memcpy(bed_buffer_, other.bed_buffer_, sizeof(bed_buffer_));
-    std::memcpy(hotend_buffer_, other.hotend_buffer_, sizeof(hotend_buffer_));
-    std::memcpy(part_fan_buffer_, other.part_fan_buffer_, sizeof(part_fan_buffer_));
-    std::memcpy(hotend_fan_buffer_, other.hotend_fan_buffer_, sizeof(hotend_fan_buffer_));
-    std::memcpy(led_strip_buffer_, other.led_strip_buffer_, sizeof(led_strip_buffer_));
-    std::memcpy(filament_sensor_buffer_, other.filament_sensor_buffer_,
-                sizeof(filament_sensor_buffer_));
-    std::memcpy(ams_type_buffer_, other.ams_type_buffer_, sizeof(ams_type_buffer_));
-    std::memcpy(input_shaper_buffer_, other.input_shaper_buffer_, sizeof(input_shaper_buffer_));
-    std::memcpy(telemetry_info_text_buffer_, other.telemetry_info_text_buffer_,
-                sizeof(telemetry_info_text_buffer_));
-
-    // Null out other
-    other.screen_root_ = nullptr;
-    other.subjects_initialized_ = false;
-}
-
-WizardSummaryStep& WizardSummaryStep::operator=(WizardSummaryStep&& other) noexcept {
-    if (this != &other) {
-        screen_root_ = other.screen_root_;
-        printer_name_ = other.printer_name_;
-        printer_type_ = other.printer_type_;
-        wifi_ssid_ = other.wifi_ssid_;
-        moonraker_connection_ = other.moonraker_connection_;
-        bed_ = other.bed_;
-        hotend_ = other.hotend_;
-        part_fan_ = other.part_fan_;
-        part_fan_visible_ = other.part_fan_visible_;
-        hotend_fan_ = other.hotend_fan_;
-        hotend_fan_visible_ = other.hotend_fan_visible_;
-        led_strip_ = other.led_strip_;
-        led_strip_visible_ = other.led_strip_visible_;
-        filament_sensor_ = other.filament_sensor_;
-        filament_sensor_visible_ = other.filament_sensor_visible_;
-        ams_type_ = other.ams_type_;
-        ams_visible_ = other.ams_visible_;
-        input_shaper_ = other.input_shaper_;
-        input_shaper_visible_ = other.input_shaper_visible_;
-        telemetry_info_text_ = other.telemetry_info_text_;
-        subjects_initialized_ = other.subjects_initialized_;
-
-        // Move buffers
-        std::memcpy(printer_name_buffer_, other.printer_name_buffer_, sizeof(printer_name_buffer_));
-        std::memcpy(printer_type_buffer_, other.printer_type_buffer_, sizeof(printer_type_buffer_));
-        std::memcpy(wifi_ssid_buffer_, other.wifi_ssid_buffer_, sizeof(wifi_ssid_buffer_));
-        std::memcpy(moonraker_connection_buffer_, other.moonraker_connection_buffer_,
-                    sizeof(moonraker_connection_buffer_));
-        std::memcpy(bed_buffer_, other.bed_buffer_, sizeof(bed_buffer_));
-        std::memcpy(hotend_buffer_, other.hotend_buffer_, sizeof(hotend_buffer_));
-        std::memcpy(part_fan_buffer_, other.part_fan_buffer_, sizeof(part_fan_buffer_));
-        std::memcpy(hotend_fan_buffer_, other.hotend_fan_buffer_, sizeof(hotend_fan_buffer_));
-        std::memcpy(led_strip_buffer_, other.led_strip_buffer_, sizeof(led_strip_buffer_));
-        std::memcpy(filament_sensor_buffer_, other.filament_sensor_buffer_,
-                    sizeof(filament_sensor_buffer_));
-        std::memcpy(ams_type_buffer_, other.ams_type_buffer_, sizeof(ams_type_buffer_));
-        std::memcpy(input_shaper_buffer_, other.input_shaper_buffer_, sizeof(input_shaper_buffer_));
-        std::memcpy(telemetry_info_text_buffer_, other.telemetry_info_text_buffer_,
-                    sizeof(telemetry_info_text_buffer_));
-
-        // Null out other
-        other.screen_root_ = nullptr;
-        other.subjects_initialized_ = false;
-    }
-    return *this;
-}
 
 // ============================================================================
 // Helper Functions
@@ -449,8 +366,9 @@ void WizardSummaryStep::on_wizard_telemetry_changed(lv_event_t* e) {
     spdlog::info("[WizardSummary] Telemetry toggled: {}", enabled ? "ON" : "OFF");
     SettingsManager::instance().set_telemetry_enabled(enabled);
     if (enabled) {
-        ui_toast_show(ToastSeverity::SUCCESS,
-                      lv_tr("Thanks! Anonymous usage data helps improve HelixScreen."), 4000);
+        ToastManager::instance().show(
+            ToastSeverity::SUCCESS,
+            lv_tr("Thanks! Anonymous usage data helps improve HelixScreen."), 4000);
     }
     LVGL_SAFE_EVENT_CB_END();
 }

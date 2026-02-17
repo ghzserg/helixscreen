@@ -24,6 +24,7 @@
 #include "../catch_amalgamated.hpp"
 
 using json = nlohmann::json;
+using namespace helix;
 
 // ============================================================================
 // HardwareSnapshot Tests
@@ -421,6 +422,8 @@ TEST_CASE("HardwareValidator - Snapshot roundtrip", "[hardware][validator]") {
 // Test fixture for Config-dependent HardwareValidator tests
 // NOTE: After the plural naming refactor, hardware config moves from
 // /hardware/ to /printer/hardware/
+// Must be in namespace helix to match friend declaration in Config
+namespace helix {
 class HardwareValidatorConfigFixture {
   protected:
     Config config;
@@ -483,6 +486,7 @@ class HardwareValidatorConfigFixture {
                            {"last_snapshot", snapshot}}}}}};
     }
 };
+} // namespace helix
 
 TEST_CASE_METHOD(HardwareValidatorConfigFixture,
                  "HardwareValidator - is_hardware_optional with empty config",
@@ -712,6 +716,8 @@ TEST_CASE_METHOD(HardwareValidatorConfigFixture,
 // ============================================================================
 
 // Fixture for MMU detection tests - extends HardwareValidatorConfigFixture for Config access
+// Must be in namespace helix to match friend declaration in Config (inherited via base)
+namespace helix {
 class MmuDetectionFixture : public HardwareValidatorConfigFixture {
   protected:
     MoonrakerClientMock client;
@@ -735,6 +741,7 @@ class MmuDetectionFixture : public HardwareValidatorConfigFixture {
         return false;
     }
 };
+} // namespace helix
 
 TEST_CASE_METHOD(MmuDetectionFixture,
                  "HardwareValidator - MMU detection uses has_mmu() capability flag",
@@ -959,4 +966,135 @@ TEST_CASE_METHOD(HardwareValidatorConfigFixture,
         }
     }
     REQUIRE_FALSE(found_fan_missing);
+}
+
+// ============================================================================
+// Expected Hardware Suppresses New Discovery Tests
+// Validates that hardware saved via "Save" button (added to hardware/expected)
+// is not re-reported as "newly discovered" on subsequent app launches.
+// ============================================================================
+
+class ExpectedHardwareSuppressFixture : public HardwareValidatorConfigFixture {
+  protected:
+    MoonrakerClientMock client;
+
+    bool has_newly_discovered(const HardwareValidationResult& result, const std::string& name) {
+        for (const auto& issue : result.newly_discovered) {
+            if (issue.hardware_name == name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    int count_newly_discovered(const HardwareValidationResult& result, HardwareType type) {
+        int count = 0;
+        for (const auto& issue : result.newly_discovered) {
+            if (issue.hardware_type == type) {
+                count++;
+            }
+        }
+        return count;
+    }
+};
+
+TEST_CASE_METHOD(ExpectedHardwareSuppressFixture,
+                 "HardwareValidator - expected LED not reported as newly discovered",
+                 "[hardware][validator][expected]") {
+    // Printer has a LED strip, user already saved it via hardware health overlay
+    client.set_heaters({"extruder", "heater_bed"});
+    client.set_leds({"neopixel case_lights"});
+
+    // Config: LED not in wizard config, but IS in hardware/expected
+    setup_config({{"printer",
+                   {{"moonraker_host", "127.0.0.1"},
+                    {"moonraker_port", 7125},
+                    {"hardware",
+                     {{"optional", json::array()},
+                      {"expected", json::array({"neopixel case_lights"})},
+                      {"last_snapshot", json::object()}}}}}});
+
+    HardwareValidator validator;
+    auto result = validator.validate(&config, client.hardware());
+
+    REQUIRE_FALSE(has_newly_discovered(result, "neopixel case_lights"));
+}
+
+TEST_CASE_METHOD(ExpectedHardwareSuppressFixture,
+                 "HardwareValidator - expected filament sensor not reported as newly discovered",
+                 "[hardware][validator][expected]") {
+    // Printer has filament sensors, user already saved them
+    client.set_heaters({"extruder", "heater_bed"});
+    client.set_filament_sensors(
+        {"filament_switch_sensor tool_start", "filament_switch_sensor tool_end"});
+
+    // Config: sensors not in wizard filament_sensors config, but ARE in hardware/expected
+    // Note: mock always includes a default "filament_switch_sensor runout_sensor" via
+    // rebuild_hardware(), so we include it in expected too
+    setup_config({{"printer",
+                   {{"moonraker_host", "127.0.0.1"},
+                    {"moonraker_port", 7125},
+                    {"hardware",
+                     {{"optional", json::array()},
+                      {"expected", json::array({"filament_switch_sensor tool_start",
+                                                "filament_switch_sensor tool_end",
+                                                "filament_switch_sensor runout_sensor"})},
+                      {"last_snapshot", json::object()}}}}}});
+
+    HardwareValidator validator;
+    auto result = validator.validate(&config, client.hardware());
+
+    REQUIRE_FALSE(has_newly_discovered(result, "filament_switch_sensor tool_start"));
+    REQUIRE_FALSE(has_newly_discovered(result, "filament_switch_sensor tool_end"));
+    REQUIRE_FALSE(has_newly_discovered(result, "filament_switch_sensor runout_sensor"));
+    REQUIRE(count_newly_discovered(result, HardwareType::FILAMENT_SENSOR) == 0);
+}
+
+TEST_CASE_METHOD(ExpectedHardwareSuppressFixture,
+                 "HardwareValidator - mix of expected and new hardware",
+                 "[hardware][validator][expected]") {
+    // Printer has multiple sensors, only some are in expected list
+    client.set_heaters({"extruder", "heater_bed"});
+    client.set_filament_sensors({"filament_switch_sensor tool_start",
+                                 "filament_switch_sensor tool_end",
+                                 "filament_switch_sensor runout"});
+
+    // Only tool_start is in expected — tool_end and runout should still be reported
+    setup_config({{"printer",
+                   {{"moonraker_host", "127.0.0.1"},
+                    {"moonraker_port", 7125},
+                    {"hardware",
+                     {{"optional", json::array()},
+                      {"expected", json::array({"filament_switch_sensor tool_start"})},
+                      {"last_snapshot", json::object()}}}}}});
+
+    HardwareValidator validator;
+    auto result = validator.validate(&config, client.hardware());
+
+    REQUIRE_FALSE(has_newly_discovered(result, "filament_switch_sensor tool_start"));
+    REQUIRE(has_newly_discovered(result, "filament_switch_sensor tool_end"));
+    REQUIRE(has_newly_discovered(result, "filament_switch_sensor runout"));
+}
+
+TEST_CASE_METHOD(ExpectedHardwareSuppressFixture,
+                 "HardwareValidator - LED still discovered when not in expected",
+                 "[hardware][validator][expected]") {
+    // Printer has LED, expected list has other hardware but not this LED
+    client.set_heaters({"extruder", "heater_bed"});
+    client.set_leds({"neopixel case_lights"});
+
+    // Expected has a filament sensor, but NOT the LED
+    setup_config({{"printer",
+                   {{"moonraker_host", "127.0.0.1"},
+                    {"moonraker_port", 7125},
+                    {"hardware",
+                     {{"optional", json::array()},
+                      {"expected", json::array({"filament_switch_sensor tool_start"})},
+                      {"last_snapshot", json::object()}}}}}});
+
+    HardwareValidator validator;
+    auto result = validator.validate(&config, client.hardware());
+
+    // LED should still be reported as new (not in expected, not in wizard config)
+    REQUIRE(has_newly_discovered(result, "neopixel case_lights"));
 }

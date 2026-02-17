@@ -73,6 +73,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // Suppress deprecated warnings for testing mock behavior
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"

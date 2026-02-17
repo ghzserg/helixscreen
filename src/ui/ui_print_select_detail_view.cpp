@@ -6,7 +6,6 @@
 #include "ui_error_reporting.h"
 #include "ui_icon.h"
 #include "ui_modal.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_print_preparation_manager.h"
 #include "ui_utils.h"
@@ -76,12 +75,12 @@ PrintSelectDetailView::~PrintSelectDetailView() {
 
     // Clean up confirmation dialog if open
     if (confirmation_dialog_widget_) {
-        ui_modal_hide(confirmation_dialog_widget_);
+        helix::ui::modal_hide(confirmation_dialog_widget_);
         confirmation_dialog_widget_ = nullptr;
     }
 
     // Clean up main widget if created
-    lv_obj_safe_delete(overlay_root_);
+    helix::ui::safe_delete(overlay_root_);
 }
 
 // ============================================================================
@@ -246,7 +245,7 @@ void PrintSelectDetailView::show(const std::string& filename, const std::string&
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 
     if (visible_subject_) {
         lv_subject_set_int(visible_subject_, 1);
@@ -262,7 +261,7 @@ void PrintSelectDetailView::hide() {
     }
 
     // Pop from navigation stack - on_deactivate() will be called by NavigationManager
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 
     if (visible_subject_) {
         lv_subject_set_int(visible_subject_, 0);
@@ -350,7 +349,7 @@ void PrintSelectDetailView::show_delete_confirmation(const std::string& filename
              "Are you sure you want to delete '%s'? This action cannot be undone.",
              filename.c_str());
 
-    confirmation_dialog_widget_ = ui_modal_show_confirmation(
+    confirmation_dialog_widget_ = helix::ui::modal_show_confirmation(
         lv_tr("Delete File?"), msg_buf, ModalSeverity::Warning, lv_tr("Delete"),
         on_confirm_delete_static, on_cancel_delete_static, this);
 
@@ -364,7 +363,7 @@ void PrintSelectDetailView::show_delete_confirmation(const std::string& filename
 
 void PrintSelectDetailView::hide_delete_confirmation() {
     if (confirmation_dialog_widget_) {
-        ui_modal_hide(confirmation_dialog_widget_);
+        helix::ui::modal_hide(confirmation_dialog_widget_);
         confirmation_dialog_widget_ = nullptr;
     }
 }
@@ -489,7 +488,7 @@ void PrintSelectDetailView::update_history_status(FileHistoryStatus status, int 
         lv_obj_remove_flag(history_status_row_, LV_OBJ_FLAG_HIDDEN);
         ui_icon_set_source(history_status_icon_, "clock");
         ui_icon_set_variant(history_status_icon_, "accent");
-        lv_label_set_text(history_status_label_, "Currently printing");
+        lv_label_set_text(history_status_label_, lv_tr("Currently printing"));
         break;
 
     case FileHistoryStatus::COMPLETED: {
@@ -508,14 +507,14 @@ void PrintSelectDetailView::update_history_status(FileHistoryStatus status, int 
         lv_obj_remove_flag(history_status_row_, LV_OBJ_FLAG_HIDDEN);
         ui_icon_set_source(history_status_icon_, "alert");
         ui_icon_set_variant(history_status_icon_, "error");
-        lv_label_set_text(history_status_label_, "Last print failed");
+        lv_label_set_text(history_status_label_, lv_tr("Last print failed"));
         break;
 
     case FileHistoryStatus::CANCELLED:
         lv_obj_remove_flag(history_status_row_, LV_OBJ_FLAG_HIDDEN);
         ui_icon_set_source(history_status_icon_, "cancel");
         ui_icon_set_variant(history_status_icon_, "warning");
-        lv_label_set_text(history_status_label_, "Last print cancelled");
+        lv_label_set_text(history_status_label_, lv_tr("Last print cancelled"));
         break;
     }
 }

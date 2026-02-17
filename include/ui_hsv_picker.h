@@ -55,8 +55,10 @@ uint32_t ui_hsv_picker_get_color_rgb(lv_obj_t* obj);
  * @param callback Function called with (rgb_color, user_data) when color changes
  * @param user_data Pointer passed to callback
  */
+namespace helix {
 using HsvPickerCallback = std::function<void(uint32_t rgb, void* user_data)>;
-void ui_hsv_picker_set_callback(lv_obj_t* obj, HsvPickerCallback callback, void* user_data);
+} // namespace helix
+void ui_hsv_picker_set_callback(lv_obj_t* obj, helix::HsvPickerCallback callback, void* user_data);
 
 /**
  * @brief Set HSV values directly

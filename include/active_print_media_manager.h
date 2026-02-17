@@ -19,14 +19,14 @@ namespace helix {
  *
  * Decouples shared print media from PrintStatusPanel so that:
  * 1. HomePanel always has current data (regardless of which panels are open)
- * 2. Thread-safe LVGL updates via ui_queue_update()
+ * 2. Thread-safe LVGL updates via helix::ui::queue_update()
  * 3. Single point of truth for filename resolution and thumbnail loading
  *
  * Thread Safety:
  * - set_api() must be called from main thread only
  * - set_thumbnail_source() must be called from main thread only
  * - Observer callbacks from PrinterState trigger on main thread (LVGL observer)
- * - All lv_subject updates are deferred to main thread via ui_queue_update()
+ * - All lv_subject updates are deferred to main thread via helix::ui::queue_update()
  *
  * Initialization order: PrinterState -> ActivePrintMediaManager -> Panels
  */

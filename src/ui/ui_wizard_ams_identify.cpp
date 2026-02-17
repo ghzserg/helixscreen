@@ -57,35 +57,6 @@ WizardAmsIdentifyStep::~WizardAmsIdentifyStep() {
 }
 
 // ============================================================================
-// Move Semantics
-// ============================================================================
-
-WizardAmsIdentifyStep::WizardAmsIdentifyStep(WizardAmsIdentifyStep&& other) noexcept
-    : screen_root_(other.screen_root_), subjects_(std::move(other.subjects_)),
-      wizard_ams_type_(other.wizard_ams_type_), wizard_ams_details_(other.wizard_ams_details_),
-      subjects_initialized_(other.subjects_initialized_) {
-    other.screen_root_ = nullptr;
-    other.subjects_initialized_ = false; // Prevent double-deinit
-}
-
-WizardAmsIdentifyStep& WizardAmsIdentifyStep::operator=(WizardAmsIdentifyStep&& other) noexcept {
-    if (this != &other) {
-        // Deinit our subjects first
-        if (subjects_initialized_) {
-            subjects_.deinit_all();
-        }
-
-        screen_root_ = other.screen_root_;
-        subjects_ = std::move(other.subjects_);
-        wizard_ams_type_ = other.wizard_ams_type_;
-        wizard_ams_details_ = other.wizard_ams_details_;
-        subjects_initialized_ = other.subjects_initialized_;
-
-        other.screen_root_ = nullptr;
-        other.subjects_initialized_ = false; // Prevent double-deinit
-    }
-    return *this;
-}
 
 // ============================================================================
 // Subject Initialization

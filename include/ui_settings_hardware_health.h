@@ -30,7 +30,9 @@
 #include <string>
 
 // Forward declarations
+namespace helix {
 class PrinterState;
+}
 
 namespace helix::settings {
 

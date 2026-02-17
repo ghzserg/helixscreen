@@ -30,13 +30,13 @@ class GlyphsPanel : public PanelBase {
     /**
      * @brief Construct GlyphsPanel with injected dependencies
      *
-     * @param printer_state Reference to PrinterState (not actively used)
+     * @param printer_state Reference to helix::PrinterState (not actively used)
      * @param api Pointer to MoonrakerAPI (not actively used)
      *
      * @note Dependencies are passed for interface consistency with PanelBase,
      *       but this panel doesn't require printer connectivity.
      */
-    GlyphsPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    GlyphsPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     ~GlyphsPanel() override = default;
 

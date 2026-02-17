@@ -3,6 +3,7 @@
 #include "printer_discovery.h"
 
 #include "ams_state.h"
+#include "app_globals.h"
 #include "filament_sensor_manager.h"
 #include "led/led_controller.h"
 #include "moonraker_api.h"
@@ -10,6 +11,7 @@
 #include "spdlog/spdlog.h"
 #include "standard_macros.h"
 #include "temperature_sensor_manager.h"
+#include "tool_state.h"
 
 #include <sstream>
 #include <vector>
@@ -82,8 +84,8 @@ std::string PrinterDiscovery::summary() const {
     return ss.str();
 }
 
-void init_subsystems_from_hardware(const PrinterDiscovery& hardware, ::MoonrakerAPI* api,
-                                   ::MoonrakerClient* client) {
+void init_subsystems_from_hardware(const PrinterDiscovery& hardware, MoonrakerAPI* api,
+                                   MoonrakerClient* client) {
     spdlog::debug("[PrinterDiscovery] Initializing subsystems from hardware discovery");
 
     // Initialize AMS backend (AFC, Happy Hare, ValgACE, Tool Changer)
@@ -102,6 +104,13 @@ void init_subsystems_from_hardware(const PrinterDiscovery& hardware, ::Moonraker
     // hardware.sensors() returns temperature_sensor and temperature_fan objects
     auto& tsm = helix::sensors::TemperatureSensorManager::instance();
     tsm.discover(hardware.sensors());
+
+    // Initialize multi-extruder temperature tracking
+    auto& printer_state = get_printer_state();
+    printer_state.init_extruders(hardware.heaters());
+
+    // Initialize tool changer state from discovered hardware
+    helix::ToolState::instance().init_tools(hardware);
 
     // Initialize standard macros
     StandardMacros::instance().init(hardware);

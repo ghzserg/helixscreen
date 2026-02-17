@@ -36,7 +36,7 @@ enum class HeaterType { EXTRUDER, BED, CHAMBER };
 /**
  * @brief Manages temperature history collection for all heaters
  *
- * Collects temperature samples from PrinterState subjects at app startup,
+ * Collects temperature samples from helix::PrinterState subjects at app startup,
  * stores 20 minutes of history (1200 samples @ 1Hz) per heater,
  * and provides observer notifications when new samples arrive.
  *
@@ -47,7 +47,7 @@ enum class HeaterType { EXTRUDER, BED, CHAMBER };
  * ## Usage Example
  *
  * ```cpp
- * // Create manager with PrinterState reference
+ * // Create manager with helix::PrinterState reference
  * TemperatureHistoryManager manager(printer_state);
  *
  * // Register observer for updates
@@ -69,14 +69,14 @@ class TemperatureHistoryManager {
         100; ///< Window for retroactive target updates
 
     /**
-     * @brief Construct TemperatureHistoryManager with PrinterState reference
+     * @brief Construct TemperatureHistoryManager with helix::PrinterState reference
      *
      * Pre-populates heater map with "extruder" and "heater_bed".
      * Subscribes to temperature subjects for automatic sample collection.
      *
-     * @param printer_state Reference to PrinterState for subject subscription
+     * @param printer_state Reference to helix::PrinterState for subject subscription
      */
-    explicit TemperatureHistoryManager(PrinterState& printer_state);
+    explicit TemperatureHistoryManager(helix::PrinterState& printer_state);
 
     /**
      * @brief Destructor - unsubscribes from subjects
@@ -217,12 +217,12 @@ class TemperatureHistoryManager {
     void notify_observers(const std::string& heater_name);
 
     /**
-     * @brief Subscribe to PrinterState temperature subjects
+     * @brief Subscribe to helix::PrinterState temperature subjects
      */
     void subscribe_to_subjects();
 
     /**
-     * @brief Unsubscribe from PrinterState temperature subjects
+     * @brief Unsubscribe from helix::PrinterState temperature subjects
      */
     void unsubscribe_from_subjects();
 
@@ -243,7 +243,7 @@ class TemperatureHistoryManager {
     static void target_observer_callback(lv_observer_t* observer, lv_subject_t* subject);
 
     // Dependencies
-    PrinterState& printer_state_;
+    helix::PrinterState& printer_state_;
 
     // Per-heater circular buffers
     std::unordered_map<std::string, HeaterHistory> heaters_;

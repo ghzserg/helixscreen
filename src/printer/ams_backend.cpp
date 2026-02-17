@@ -17,6 +17,8 @@
 #include <cctype>
 #include <cstdlib>
 
+using namespace helix;
+
 // Helper to create mock backend with optional features
 static std::unique_ptr<AmsBackendMock> create_mock_with_features(int gate_count) {
     auto mock = std::make_unique<AmsBackendMock>(gate_count);
@@ -31,10 +33,27 @@ static std::unique_ptr<AmsBackendMock> create_mock_with_features(int gate_count)
         if (type_str == "toolchanger" || type_str == "tool_changer" || type_str == "tc") {
             mock->set_tool_changer_mode(true);
             spdlog::info("[AMS Backend] Mock tool changer mode enabled via HELIX_MOCK_AMS_TYPE");
+        } else if (type_str == "mixed") {
+            mock->set_mixed_topology_mode(true);
+            spdlog::info("[AMS Backend] Mock mixed topology mode enabled via HELIX_MOCK_AMS_TYPE");
         } else if (type_str == "afc" || type_str == "box_turtle" || type_str == "boxturtle") {
             mock->set_afc_mode(true);
             spdlog::info("[AMS Backend] Mock AFC mode enabled via HELIX_MOCK_AMS_TYPE");
         }
+    }
+
+    // Check for multi-unit mode (overrides AFC mode if both set)
+    const char* multi_unit_env = std::getenv("HELIX_MOCK_MULTI_UNIT");
+    if (multi_unit_env && std::string(multi_unit_env) == "1") {
+        mock->set_multi_unit_mode(true);
+        spdlog::info("[AMS Backend] Mock multi-unit mode enabled via HELIX_MOCK_MULTI_UNIT");
+    }
+
+    // Inject mock error states for visual testing (slot errors + buffer fault)
+    const char* errors_env = std::getenv("HELIX_MOCK_AMS_ERRORS");
+    if (errors_env && std::string(errors_env) == "1") {
+        mock->inject_mock_errors();
+        spdlog::info("[AMS Backend] Mock error states injected via HELIX_MOCK_AMS_ERRORS");
     }
 
     // Enable mock dryer if requested via environment variable

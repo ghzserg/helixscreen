@@ -3,15 +3,12 @@
 
 #pragma once
 
+#include "json_fwd.h"
 #include "moonraker_error.h"
 
 #include <chrono>
 #include <functional>
 #include <string>
-
-#include "hv/json.hpp"
-
-using json = nlohmann::json;
 
 /**
  * @brief Structure to track pending JSON-RPC requests

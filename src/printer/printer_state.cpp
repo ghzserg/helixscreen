@@ -31,7 +31,9 @@
 #include "probe_sensor_manager.h"
 #include "runtime_config.h"
 #include "settings_manager.h"
+#include "static_subject_registry.h"
 #include "temperature_sensor_manager.h"
+#include "timelapse_state.h"
 #include "unit_conversions.h"
 #include "width_sensor_manager.h"
 
@@ -42,6 +44,8 @@
 // ============================================================================
 // PrintJobState Free Functions
 // ============================================================================
+
+namespace helix {
 
 PrintJobState parse_print_job_state(const char* state_str) {
     if (!state_str) {
@@ -86,6 +90,10 @@ const char* print_job_state_to_string(PrintJobState state) {
         return "Unknown";
     }
 }
+
+} // namespace helix
+
+using namespace helix;
 
 // ============================================================================
 // PrinterState Implementation
@@ -254,6 +262,11 @@ void PrinterState::init_subjects(bool register_xml) {
     // All component subjects handle their own XML registration in init_subjects(register_xml)
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticSubjectRegistry::instance().register_deinit("PrinterState",
+                                                      [this]() { deinit_subjects(); });
+
     spdlog::trace("[PrinterState] Subjects initialized and registered successfully");
 }
 
@@ -271,11 +284,11 @@ void PrinterState::update_from_notification(const json& notification) {
     }
 
     // Extract printer state from params[0] and delegate to update_from_status
-    // CRITICAL: Defer to main thread via helix::async::invoke to avoid LVGL assertion
+    // CRITICAL: Defer to main thread via ui_queue_update to avoid LVGL assertion
     // when subject updates trigger lv_obj_invalidate() during rendering
     auto params = notification["params"];
     if (params.is_array() && !params.empty()) {
-        helix::async::invoke([this, state_json = params[0]]() {
+        helix::ui::queue_update([this, state_json = params[0]]() {
             // Debug check: log if we're somehow in render phase (should never happen)
             if (lvgl_is_rendering()) {
                 spdlog::error("[PrinterState] async status update running during render phase!");
@@ -312,6 +325,12 @@ void PrinterState::update_from_status(const json& state) {
         if (toolhead.contains("kinematics") && toolhead["kinematics"].is_string()) {
             std::string kin = toolhead["kinematics"].get<std::string>();
             set_kinematics(kin);
+        }
+
+        // Track active extruder from toolhead (for tool changers and multi-extruder setups)
+        if (toolhead.contains("extruder") && toolhead["extruder"].is_string()) {
+            std::string active_ext = toolhead["extruder"].get<std::string>();
+            temperature_state_.set_active_extruder(active_ext);
         }
     }
 
@@ -415,6 +434,7 @@ json& PrinterState::get_json_state() {
 
 void PrinterState::reset_for_new_print() {
     print_domain_.reset_for_new_print();
+    helix::TimelapseState::instance().reset();
 }
 
 // Note: Multi-fan tracking (init_fans, update_fan_speed, get_fan_speed_subject) is now
@@ -423,7 +443,7 @@ void PrinterState::reset_for_new_print() {
 void PrinterState::set_printer_connection_state(int state, const char* message) {
     // Thread-safe wrapper: defer LVGL subject updates to main thread
     std::string msg = message ? message : "";
-    helix::async::invoke(
+    helix::ui::queue_update(
         [this, state, msg]() { set_printer_connection_state_internal(state, msg.c_str()); });
 }
 
@@ -531,9 +551,9 @@ void PrinterState::set_timelapse_available(bool available) {
 }
 
 void PrinterState::set_helix_plugin_installed(bool installed) {
-    // Thread-safe: Use helix::async::invoke to update LVGL subject from any thread
+    // Thread-safe: Use ui_queue_update to update LVGL subject from any thread
     // We handle the async dispatch here because we need to update composite subjects after
-    helix::async::invoke([this, installed]() {
+    helix::ui::queue_update([this, installed]() {
         plugin_status_state_.set_installed_sync(installed);
 
         // Update composite subjects for G-code modification options

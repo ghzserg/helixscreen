@@ -266,6 +266,8 @@ bool ui_image_scale_to_contain(lv_obj_t* image_widget, lv_coord_t target_width,
 // List/Empty State Visibility
 // ============================================================================
 
+namespace helix::ui {
+
 /**
  * @brief Toggle visibility between a list container and its empty state
  *
@@ -277,12 +279,14 @@ bool ui_image_scale_to_contain(lv_obj_t* image_widget, lv_coord_t target_width,
  * @param empty_state The empty state placeholder widget (may be nullptr)
  * @param has_items Whether the list has items to display
  */
-inline void ui_toggle_list_empty_state(lv_obj_t* list, lv_obj_t* empty_state, bool has_items) {
+inline void toggle_list_empty_state(lv_obj_t* list, lv_obj_t* empty_state, bool has_items) {
     if (list)
         lv_obj_set_flag(list, LV_OBJ_FLAG_HIDDEN, !has_items);
     if (empty_state)
         lv_obj_set_flag(empty_state, LV_OBJ_FLAG_HIDDEN, has_items);
 }
+
+} // namespace helix::ui
 
 // ============================================================================
 // Backdrop Utilities
@@ -346,12 +350,14 @@ void ui_create_ripple(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, int start_si
  * (buttons, textareas, etc.) are deleted, which triggers scroll-on-focus.
  * Safe to call on objects not in any group (no-op).
  *
- * Called automatically by lv_obj_safe_delete() - manual use only needed
+ * Called automatically by helix::ui::safe_delete() - manual use only needed
  * when removing objects from the group without deleting them.
  *
  * @param obj Root object of the tree to defocus
  */
 void ui_defocus_tree(lv_obj_t* obj);
+
+namespace helix::ui {
 
 /**
  * @brief Safely delete an LVGL object, guarding against shutdown race conditions
@@ -372,13 +378,13 @@ void ui_defocus_tree(lv_obj_t* obj);
  * }
  *
  * // After (safe, auto-nulls):
- * lv_obj_safe_delete(widget_);
+ * helix::ui::safe_delete(widget_);
  * @endcode
  *
  * @param obj Reference to pointer to the LVGL object (will be set to nullptr)
  * @return true if object was deleted, false if skipped (nullptr or shutdown in progress)
  */
-inline bool lv_obj_safe_delete(lv_obj_t*& obj) {
+inline bool safe_delete(lv_obj_t*& obj) {
     if (!obj)
         return false;
     if (!lv_is_initialized()) {
@@ -401,3 +407,5 @@ inline bool lv_obj_safe_delete(lv_obj_t*& obj) {
     obj = nullptr;
     return true;
 }
+
+} // namespace helix::ui

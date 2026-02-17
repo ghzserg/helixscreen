@@ -5,7 +5,7 @@
  * @brief WebSocket client for Moonraker printer API communication
  *
  * @pattern libhv WebSocketClient with atomic state machine
- * @threading Callbacks run on libhv event loop thread - use ui_async_call() for LVGL
+ * @threading Callbacks run on libhv event loop thread - use helix::ui::async_call() for LVGL
  * @gotchas is_destroying_ flag blocks callbacks during destruction; skip cleanup during static
  * destruction
  *
@@ -23,6 +23,8 @@
 
 #include <algorithm> // For std::sort in MCU query handling
 #include <sstream>   // For annotate_gcode()
+
+using namespace helix;
 
 using namespace hv;
 
@@ -106,33 +108,12 @@ MoonrakerClient::~MoonrakerClient() {
     // Clear state change callback without locking (destructor context)
     state_change_callback_ = nullptr;
 
-    // Try to cleanup pending requests if mutex is available.
-    // During static destruction (via exit()), mutexes may be in an invalid state,
-    // so we use try_lock() to avoid blocking on a potentially corrupted mutex.
-    // If try_lock fails, we skip cleanup - any pending callbacks will be abandoned.
-    std::vector<std::function<void()>> cleanup_callbacks;
+    // Clear pending requests without invoking error callbacks.
+    // During destruction, callback targets (UI panels, file providers, etc.) may
+    // already be destroyed — invoking them would be use-after-free. Just drop them.
     if (requests_mutex_.try_lock()) {
-        // Successfully acquired lock - safe to clean up
-        for (auto& [id, request] : pending_requests_) {
-            if (request.error_callback) {
-                MoonrakerError error = MoonrakerError::connection_lost(request.method);
-                cleanup_callbacks.push_back(
-                    [cb = std::move(request.error_callback), error]() mutable {
-                        try {
-                            cb(error);
-                        } catch (...) {
-                            // Swallow exceptions during destruction cleanup
-                        }
-                    });
-            }
-        }
         pending_requests_.clear();
         requests_mutex_.unlock();
-
-        // Invoke callbacks outside the lock
-        for (auto& callback : cleanup_callbacks) {
-            callback();
-        }
     }
     // If try_lock failed, we're likely in static destruction - skip cleanup
 
@@ -1517,6 +1498,16 @@ void MoonrakerClient::complete_discovery_subscription(std::function<void()> on_c
         subscription_objects[sensor] = nullptr;
     }
 
+    // All discovered tool objects (for toolchanger support)
+    if (hardware_.has_tool_changer()) {
+        subscription_objects["toolchanger"] = nullptr;
+        for (const auto& tool_name : hardware_.tool_names()) {
+            subscription_objects["tool " + tool_name] = nullptr;
+        }
+        spdlog::info("[Moonraker Client] Subscribing to toolchanger + {} tool objects",
+                     hardware_.tool_names().size());
+    }
+
     // Firmware retraction settings (if printer has firmware_retraction module)
     if (hardware_.has_firmware_retraction()) {
         subscription_objects["firmware_retraction"] = nullptr;
@@ -1656,10 +1647,13 @@ void MoonrakerClient::parse_objects(const json& objects) {
                  name.rfind("dotstar ", 0) == 0) {
             leds_.push_back(name);
         }
-        // AFC MMU objects (AFC_stepper, AFC_hub, AFC_extruder, AFC)
-        // These need subscription for lane state, sensor data, and filament info
+        // AFC MMU objects (AFC_stepper, AFC_hub, AFC_extruder, AFC, AFC_lane, AFC_BoxTurtle,
+        // AFC_OpenAMS, AFC_buffer) These need subscription for lane state, sensor data, and
+        // filament info
         else if (name == "AFC" || name.rfind("AFC_stepper ", 0) == 0 ||
-                 name.rfind("AFC_hub ", 0) == 0 || name.rfind("AFC_extruder ", 0) == 0) {
+                 name.rfind("AFC_hub ", 0) == 0 || name.rfind("AFC_extruder ", 0) == 0 ||
+                 name.rfind("AFC_lane ", 0) == 0 || name.rfind("AFC_BoxTurtle ", 0) == 0 ||
+                 name.rfind("AFC_OpenAMS ", 0) == 0 || name.rfind("AFC_buffer ", 0) == 0) {
             afc_objects_.push_back(name);
         }
         // Filament sensors (switch or motion type)

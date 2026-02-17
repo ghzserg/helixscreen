@@ -11,6 +11,7 @@
 #
 # Platforms:
 #   ad5m  - Adventurer 5M (armv7-a, static binary)
+#   cc1   - Centauri Carbon 1 (armv7-a, static binary)
 #   pi    - Raspberry Pi (aarch64, dynamic binary)
 #   all   - Package all platforms (default)
 #
@@ -51,7 +52,7 @@ PLATFORMS=""
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        ad5m|pi|all)
+        ad5m|cc1|pi|all)
             PLATFORMS="$1"
             shift
             ;;
@@ -176,6 +177,9 @@ package_platform() {
     if [ "$platform" = "ad5m" ] && [ -f "${PROJECT_DIR}/config/presets/ad5m.json" ]; then
         cp "${PROJECT_DIR}/config/presets/ad5m.json" "$pkg_dir/config/helixconfig.json"
         log_info "  Using AD5M preset as default config"
+    elif [ "$platform" = "cc1" ] && [ -f "${PROJECT_DIR}/config/presets/cc1.json" ]; then
+        cp "${PROJECT_DIR}/config/presets/cc1.json" "$pkg_dir/config/helixconfig.json"
+        log_info "  Using CC1 preset as default config"
     else
         cp "${PROJECT_DIR}/config/helixconfig.json.template" "$pkg_dir/config/helixconfig.json.template" 2>/dev/null || true
     fi
@@ -220,6 +224,9 @@ case "$PLATFORMS" in
     ad5m)
         package_platform "ad5m"
         ;;
+    cc1)
+        package_platform "cc1"
+        ;;
     pi)
         package_platform "pi"
         ;;
@@ -229,6 +236,11 @@ case "$PLATFORMS" in
             package_platform "ad5m"
         else
             log_warn "Skipping ad5m (not built)"
+        fi
+        if [ -f "${PROJECT_DIR}/build/cc1/bin/helix-screen" ]; then
+            package_platform "cc1"
+        else
+            log_warn "Skipping cc1 (not built)"
         fi
         if [ -f "${PROJECT_DIR}/build/pi/bin/helix-screen" ]; then
             package_platform "pi"

@@ -49,26 +49,15 @@ enum class PrintState {
     Error      ///< Print failed with error
 };
 
-// Legacy C-style enum for backwards compatibility
-typedef enum {
-    PRINT_STATE_IDLE = static_cast<int>(PrintState::Idle),
-    PRINT_STATE_PREPARING = static_cast<int>(PrintState::Preparing),
-    PRINT_STATE_PRINTING = static_cast<int>(PrintState::Printing),
-    PRINT_STATE_PAUSED = static_cast<int>(PrintState::Paused),
-    PRINT_STATE_COMPLETE = static_cast<int>(PrintState::Complete),
-    PRINT_STATE_CANCELLED = static_cast<int>(PrintState::Cancelled),
-    PRINT_STATE_ERROR = static_cast<int>(PrintState::Error)
-} print_state_t;
-
 class PrintStatusPanel : public OverlayBase {
   public:
     /**
      * @brief Construct PrintStatusPanel with injected dependencies
      *
-     * @param printer_state Reference to PrinterState
+     * @param printer_state Reference to helix::PrinterState
      * @param api Pointer to MoonrakerAPI (for pause/cancel commands)
      */
-    PrintStatusPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    PrintStatusPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     ~PrintStatusPanel() override;
 
@@ -266,13 +255,13 @@ class PrintStatusPanel : public OverlayBase {
     // === Injected Dependencies ===
     //
 
-    PrinterState& printer_state_;
+    helix::PrinterState& printer_state_;
     MoonrakerAPI* api_;
     lv_obj_t* parent_screen_ = nullptr;
 
     //
     // === Subjects (owned by this panel) ===
-    // Note: Display filename uses shared print_display_filename from PrinterState
+    // Note: Display filename uses shared print_display_filename from helix::PrinterState
     //       (populated by ActivePrintMediaManager)
     //
 
@@ -467,7 +456,7 @@ class PrintStatusPanel : public OverlayBase {
 
     void on_temperature_changed();
     void on_print_progress_changed(int progress);
-    void on_print_state_changed(PrintJobState state);
+    void on_print_state_changed(helix::PrintJobState state);
     void on_print_filename_changed(const char* filename);
     void on_speed_factor_changed(int speed);
     void on_flow_factor_changed(int flow);
@@ -482,7 +471,7 @@ class PrintStatusPanel : public OverlayBase {
     void on_preprint_remaining_changed(int seconds);
     void on_preprint_elapsed_changed(int seconds);
 
-    // PrinterState observers (ObserverGuard handles cleanup)
+    // helix::PrinterState observers (ObserverGuard handles cleanup)
     /// @brief Temperature observer bundle (nozzle + bed temps)
     helix::ui::TemperatureObserverBundle<PrintStatusPanel> temp_observers_;
     ObserverGuard print_progress_observer_;
@@ -502,7 +491,8 @@ class PrintStatusPanel : public OverlayBase {
     ObserverGuard preprint_elapsed_observer_;
     ObserverGuard exclude_objects_observer_;
     ObserverGuard excluded_objects_version_observer_;
-    ObserverGuard ams_color_observer_; ///< Tracks AMS/Spoolman filament color for gcode viewer
+    ObserverGuard ams_color_observer_;   ///< Tracks AMS/Spoolman filament color for gcode viewer
+    ObserverGuard active_tool_observer_; ///< Refreshes nozzle temp display with tool name prefix
 
     //
     // === Exclude Object Manager ===

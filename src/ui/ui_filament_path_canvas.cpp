@@ -25,6 +25,8 @@
 #include <memory>
 #include <unordered_map>
 
+using namespace helix;
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -109,8 +111,12 @@ struct FilamentPathData {
     bool bypass_active = false;       // External spool bypass mode
     uint32_t bypass_color = 0x888888; // Default gray for bypass filament
 
-    // Toolhead renderer style
+    // Rendering mode
+    bool hub_only = false;             // true = stop rendering at hub (skip downstream)
     bool use_faceted_toolhead = false; // false = Bambu-style, true = faceted red style
+
+    // Buffer fault state (0=healthy, 1=warning/approaching, 2=fault)
+    int buffer_fault_state = 0;
 
     // Heat glow state
     bool heat_active = false;               // true when nozzle is actively heating
@@ -303,7 +309,7 @@ static void segment_anim_cb(void* var, int32_t value) {
     // Defer invalidation to avoid calling during render phase
     // Animation exec callbacks can run during lv_timer_handler() which may overlap with rendering
     // Check lv_obj_is_valid() in case widget is deleted before callback executes
-    ui_async_call(
+    helix::ui::async_call(
         [](void* obj_ptr) {
             auto* obj = static_cast<lv_obj_t*>(obj_ptr);
             if (lv_obj_is_valid(obj)) {
@@ -362,7 +368,7 @@ static void error_pulse_anim_cb(void* var, int32_t value) {
     data->error_pulse_opa = static_cast<lv_opa_t>(value);
     // Defer invalidation to avoid calling during render phase
     // Check lv_obj_is_valid() in case widget is deleted before callback executes
-    ui_async_call(
+    helix::ui::async_call(
         [](void* obj_ptr) {
             auto* obj = static_cast<lv_obj_t*>(obj_ptr);
             if (lv_obj_is_valid(obj)) {
@@ -425,7 +431,7 @@ static void heat_pulse_anim_cb(void* var, int32_t value) {
 
     data->heat_pulse_opa = static_cast<lv_opa_t>(value);
     // Defer invalidation to avoid calling during render phase
-    ui_async_call(
+    helix::ui::async_call(
         [](void* obj_ptr) {
             auto* obj = static_cast<lv_obj_t*>(obj_ptr);
             if (lv_obj_is_valid(obj)) {
@@ -841,8 +847,9 @@ static void filament_path_draw_cb(lv_event_t* e) {
 
     // ========================================================================
     // Draw bypass entry and path (right side, below spool area, direct to output)
+    // Skipped in hub_only mode (bypass is a system-level path)
     // ========================================================================
-    {
+    if (!data->hub_only) {
         int32_t bypass_x = x_off + (int32_t)(width * BYPASS_X_RATIO);
         int32_t bypass_entry_y = y_off + (int32_t)(height * BYPASS_ENTRY_Y_RATIO);
         int32_t bypass_merge_y = y_off + (int32_t)(height * BYPASS_MERGE_Y_RATIO);
@@ -905,22 +912,34 @@ static void filament_path_draw_cb(lv_event_t* e) {
         draw_vertical_line(layer, center_x, merge_y, hub_y - hub_h / 2, hub_line_color,
                            hub_line_width);
 
-        // Hub box - tint background with filament color when filament passes through
+        // Hub box - tint based on buffer fault state or filament color
         lv_color_t hub_bg_tinted = hub_bg;
-        if (hub_has_filament) {
-            // Subtle 33% blend of filament color into hub background
+        lv_color_t hub_border_final = hub_border;
+        if (data->buffer_fault_state == 2) {
+            // Fault detected — red tint
+            hub_bg_tinted = ph_blend(hub_bg, data->color_error, 0.50f);
+            hub_border_final = data->color_error;
+        } else if (data->buffer_fault_state == 1) {
+            // Approaching fault — yellow/warning tint
+            lv_color_t warning = lv_color_hex(0xFFA500);
+            hub_bg_tinted = ph_blend(hub_bg, warning, 0.40f);
+            hub_border_final = warning;
+        } else if (hub_has_filament) {
+            // Healthy — subtle filament color tint
             hub_bg_tinted = ph_blend(hub_bg, active_color, 0.33f);
         }
 
         const char* hub_label = (data->topology == 0) ? "SELECTOR" : "HUB";
-        draw_hub_box(layer, center_x, hub_y, data->hub_width, hub_h, hub_bg_tinted, hub_border,
-                     data->color_text, data->label_font, data->border_radius, hub_label);
+        draw_hub_box(layer, center_x, hub_y, data->hub_width, hub_h, hub_bg_tinted,
+                     hub_border_final, data->color_text, data->label_font, data->border_radius,
+                     hub_label);
     }
 
     // ========================================================================
     // Draw output section (hub to toolhead)
+    // Skipped in hub_only mode — system_path_canvas handles downstream routing
     // ========================================================================
-    {
+    if (!data->hub_only) {
         lv_color_t output_color = idle_color;
         int32_t output_width = line_idle;
 
@@ -952,7 +971,7 @@ static void filament_path_draw_cb(lv_event_t* e) {
     // ========================================================================
     // Draw toolhead section
     // ========================================================================
-    {
+    if (!data->hub_only) {
         lv_color_t toolhead_color = idle_color;
         int32_t toolhead_width = line_idle;
 
@@ -984,7 +1003,7 @@ static void filament_path_draw_cb(lv_event_t* e) {
     // ========================================================================
     // Draw nozzle
     // ========================================================================
-    {
+    if (!data->hub_only) {
         lv_color_t noz_color = nozzle_color;
 
         // Bypass or normal slot active?
@@ -1022,7 +1041,7 @@ static void filament_path_draw_cb(lv_event_t* e) {
     // ========================================================================
     // Draw animated filament tip (during segment transitions)
     // ========================================================================
-    if (is_animating && data->active_slot >= 0) {
+    if (is_animating && data->active_slot >= 0 && !data->hub_only) {
         // Calculate Y positions for each segment (same as above)
         // Map segment to Y position on the path
         auto get_segment_y = [&](PathSegment seg) -> int32_t {
@@ -1239,6 +1258,9 @@ static void filament_path_xml_apply(lv_xml_parser_state_t* state, const char** a
             needs_redraw = true;
         } else if (strcmp(name, "faceted_toolhead") == 0) {
             data->use_faceted_toolhead = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
+            needs_redraw = true;
+        } else if (strcmp(name, "hub_only") == 0) {
+            data->hub_only = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
             needs_redraw = true;
         }
     }
@@ -1499,6 +1521,18 @@ void ui_filament_path_canvas_set_bypass_callback(lv_obj_t* obj, filament_path_by
     }
 }
 
+void ui_filament_path_canvas_set_hub_only(lv_obj_t* obj, bool hub_only) {
+    auto* data = get_data(obj);
+    if (!data)
+        return;
+
+    if (data->hub_only != hub_only) {
+        data->hub_only = hub_only;
+        spdlog::debug("[FilamentPath] Hub-only mode: {}", hub_only ? "on" : "off");
+        lv_obj_invalidate(obj);
+    }
+}
+
 void ui_filament_path_canvas_set_faceted_toolhead(lv_obj_t* obj, bool faceted) {
     auto* data = get_data(obj);
     if (!data)
@@ -1527,6 +1561,18 @@ void ui_filament_path_canvas_set_heat_active(lv_obj_t* obj, bool active) {
             spdlog::debug("[FilamentPath] Heat glow: inactive");
         }
 
+        lv_obj_invalidate(obj);
+    }
+}
+
+void ui_filament_path_canvas_set_buffer_fault_state(lv_obj_t* obj, int state) {
+    auto* data = get_data(obj);
+    if (!data)
+        return;
+
+    if (data->buffer_fault_state != state) {
+        data->buffer_fault_state = state;
+        spdlog::debug("[FilamentPath] Buffer fault state: {}", state);
         lv_obj_invalidate(obj);
     }
 }

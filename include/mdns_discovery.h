@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+namespace helix {
+
 /**
  * @brief Represents a discovered Moonraker printer on the local network
  */
@@ -55,7 +57,7 @@ class IMdnsDiscovery {
  *
  * Threading model:
  * - Discovery runs on a background thread
- * - Callbacks are dispatched to the main LVGL thread via ui_async_call()
+ * - Callbacks are dispatched to the main LVGL thread via helix::ui::async_call()
  * - stop_discovery() blocks until the background thread exits
  *
  * Usage:
@@ -132,3 +134,5 @@ class MdnsDiscovery : public IMdnsDiscovery {
     class Impl;
     std::unique_ptr<Impl> impl_;
 };
+
+} // namespace helix

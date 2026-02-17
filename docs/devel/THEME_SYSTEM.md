@@ -1,5 +1,7 @@
 # Theme System
 
+> **For contributors:** If you're doing layout or styling work, start with the **[UI Contributor Guide](UI_CONTRIBUTOR_GUIDE.md)** instead. This document covers the internal architecture of the theme system — style objects, theme_core C API, and extending the system with new themed widgets.
+
 ## Overview
 
 The reactive theme system enables **live theme switching** (dark/light modes) without recreating widgets. When the user toggles dark mode or previews a theme, all UI elements update instantly.
@@ -7,6 +9,8 @@ The reactive theme system enables **live theme switching** (dark/light modes) wi
 ### Key Principle
 
 > **DATA in C++, APPEARANCE in XML, Shared Styles connect them.**
+
+> **Note:** The theme system handles colors, spacing tokens, and typography. For structural layout changes across different screen shapes (ultrawide, portrait, tiny), see the [Layout System](LAYOUT_SYSTEM.md) — themes and layouts are independent and any combination works.
 
 - **Data** (C++): Printer state, temperatures, positions
 - **Appearance** (XML): Layout, colors via tokens, spacing via tokens

@@ -4,12 +4,16 @@
 // Receives crash reports from HelixScreen devices and creates GitHub issues.
 //
 // Endpoints:
-//   GET  /           - Health check
-//   POST /v1/report  - Submit a crash report (requires X-API-Key)
+//   GET  /                      - Health check
+//   POST /v1/report             - Submit a crash report (requires X-API-Key)
+//   POST /v1/debug-bundle       - Upload debug bundle (requires X-API-Key)
+//   GET  /v1/debug-bundle/:code - Retrieve debug bundle (requires X-Admin-Key)
 //
 // Secrets (configure via `wrangler secret put`):
 //   INGEST_API_KEY  - API key baked into HelixScreen binaries
 //   GITHUB_TOKEN    - GitHub PAT with repo scope
+//   ADMIN_API_KEY   - Admin API key for retrieving debug bundles
+//   RESEND_API_KEY  - Resend API key for email notifications
 
 export default {
   async fetch(request, env) {
@@ -35,6 +39,16 @@ export default {
     // Crash report ingestion
     if (url.pathname === "/v1/report" && request.method === "POST") {
       return handleCrashReport(request, env);
+    }
+
+    // Debug bundle upload
+    if (url.pathname === "/v1/debug-bundle" && request.method === "POST") {
+      return handleDebugBundleUpload(request, env);
+    }
+
+    // Debug bundle retrieval
+    if (url.pathname.startsWith("/v1/debug-bundle/") && request.method === "GET") {
+      return handleDebugBundleRetrieve(request, env, url);
     }
 
     return jsonResponse(404, { error: "Not found" });
@@ -102,7 +116,11 @@ function validateRequiredFields(body, fields) {
  * Build a markdown issue body from the crash report and create it via GitHub API.
  */
 async function createGitHubIssue(env, report) {
-  const title = `Crash: ${report.signal_name} in v${report.app_version}`;
+  // Include fault type in title when available (e.g., "SEGV_MAPERR at 0x00000000")
+  let title = `Crash: ${report.signal_name} in v${report.app_version}`;
+  if (report.fault_code_name && report.fault_addr) {
+    title = `Crash: ${report.signal_name} (${report.fault_code_name} at ${report.fault_addr}) in v${report.app_version}`;
+  }
   const body = formatIssueBody(report);
 
   const response = await fetch(
@@ -147,6 +165,24 @@ function formatIssueBody(r) {
 | **Uptime** | ${uptime} |
 | **Timestamp** | ${timestamp} |
 `;
+
+  // Fault info (Phase 2)
+  if (r.fault_code_name && r.fault_addr) {
+    md += `| **Fault** | ${r.fault_code_name} at ${r.fault_addr} |\n`;
+  }
+
+  // Register state (Phase 2)
+  if (r.registers) {
+    md += `\n## Registers
+
+| Register | Value |
+|----------|-------|
+`;
+    if (r.registers.pc) md += `| **PC** | ${r.registers.pc} |\n`;
+    if (r.registers.sp) md += `| **SP** | ${r.registers.sp} |\n`;
+    if (r.registers.lr) md += `| **LR** | ${r.registers.lr} |\n`;
+    if (r.registers.bp) md += `| **BP** | ${r.registers.bp} |\n`;
+  }
 
   // System info section (all fields optional)
   if (r.platform || r.display_backend || r.ram_mb || r.cpu_info || r.printer_model || r.klipper_version) {
@@ -193,6 +229,203 @@ ${r.log_tail.join("\n")}
 }
 
 /**
+ * Generate a random share code using an unambiguous character set.
+ * Excludes I, O, 0, 1 to avoid confusion when reading codes aloud.
+ */
+function generateShareCode(length = 8) {
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const values = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(values, (v) => charset[v % charset.length]).join("");
+}
+
+/**
+ * Handle an incoming debug bundle upload.
+ * Validates the API key and payload, stores in R2, returns a share code.
+ */
+async function handleDebugBundleUpload(request, env) {
+  // --- Authentication ---
+  const apiKey = request.headers.get("X-API-Key");
+  if (!apiKey || apiKey !== env.INGEST_API_KEY) {
+    return jsonResponse(401, { error: "Unauthorized: invalid or missing API key" });
+  }
+
+  // --- Rate limiting (per client IP) ---
+  const clientIP = request.headers.get("CF-Connecting-IP") || "unknown";
+  const { success } = await env.DEBUG_BUNDLE_LIMITER.limit({ key: clientIP });
+  if (!success) {
+    return jsonResponse(429, { error: "Rate limit exceeded — try again later" });
+  }
+
+  // --- Read and validate body ---
+  const body = await request.arrayBuffer();
+  if (!body || body.byteLength === 0) {
+    return jsonResponse(400, { error: "Empty body" });
+  }
+
+  const maxSize = 500 * 1024; // 500KB
+  if (body.byteLength > maxSize) {
+    return jsonResponse(413, { error: "Payload too large (max 500KB)" });
+  }
+
+  // --- Store in R2 with a share code ---
+  const shareCode = generateShareCode();
+  await env.DEBUG_BUNDLES.put(shareCode, body, {
+    httpMetadata: {
+      contentType: "application/json",
+      contentEncoding: "gzip",
+    },
+  });
+
+  // --- Send email notification (best-effort, don't fail the upload) ---
+  try {
+    const metadata = await extractBundleMetadata(body);
+    await sendBundleNotification(env, shareCode, clientIP, metadata);
+  } catch (err) {
+    console.error("Failed to send bundle notification:", err.message);
+  }
+
+  return jsonResponse(201, { share_code: shareCode });
+}
+
+/**
+ * Retrieve a debug bundle by share code.
+ * Requires admin API key for access.
+ */
+async function handleDebugBundleRetrieve(request, env, url) {
+  // --- Authentication (admin key) ---
+  const adminKey = request.headers.get("X-Admin-Key");
+  if (!adminKey || adminKey !== env.ADMIN_API_KEY) {
+    return jsonResponse(401, { error: "Unauthorized: invalid or missing admin key" });
+  }
+
+  // --- Extract share code from URL ---
+  const code = url.pathname.split("/").pop();
+  if (!code) {
+    return jsonResponse(400, { error: "Missing share code" });
+  }
+
+  // --- Retrieve from R2 ---
+  const object = await env.DEBUG_BUNDLES.get(code);
+  if (!object) {
+    return jsonResponse(404, { error: "Debug bundle not found" });
+  }
+
+  return new Response(object.body, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Encoding": "gzip",
+      ...corsHeaders(),
+    },
+  });
+}
+
+/**
+ * Decompress a gzipped ArrayBuffer and extract metadata from the JSON bundle.
+ * Returns an object with version, printer_model, timestamp, etc.
+ */
+async function extractBundleMetadata(gzippedBody) {
+  try {
+    const ds = new DecompressionStream("gzip");
+    const writer = ds.writable.getWriter();
+    writer.write(new Uint8Array(gzippedBody));
+    writer.close();
+
+    const reader = ds.readable.getReader();
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    const text = new TextDecoder().decode(
+      chunks.reduce((acc, chunk) => {
+        const merged = new Uint8Array(acc.length + chunk.length);
+        merged.set(acc);
+        merged.set(chunk, acc.length);
+        return merged;
+      }, new Uint8Array())
+    );
+
+    const json = JSON.parse(text);
+    return {
+      version: json.version || "unknown",
+      printer_model: json.printer_info?.model || "unknown",
+      klipper_version: json.printer_info?.klipper_version || "unknown",
+      platform: json.system_info?.platform || "unknown",
+      timestamp: json.timestamp || new Date().toISOString(),
+    };
+  } catch {
+    return {
+      version: "unknown",
+      printer_model: "unknown",
+      klipper_version: "unknown",
+      platform: "unknown",
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
+/**
+ * Send a notification email via Resend when a debug bundle is uploaded.
+ */
+async function sendBundleNotification(env, shareCode, clientIP, metadata) {
+  if (!env.RESEND_API_KEY) {
+    console.warn("RESEND_API_KEY not set, skipping notification");
+    return;
+  }
+
+  const from = env.EMAIL_FROM || "HelixScreen <noreply@helixscreen.org>";
+  const to = env.NOTIFICATION_EMAIL;
+  if (!to) {
+    console.warn("NOTIFICATION_EMAIL not set, skipping notification");
+    return;
+  }
+
+  const subject = `Debug Bundle: ${shareCode} — ${metadata.printer_model} v${metadata.version}`;
+
+  const html = `
+    <h2>New Debug Bundle Uploaded</h2>
+    <table style="border-collapse: collapse; font-family: monospace;">
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">Share Code</td><td>${shareCode}</td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">Version</td><td>${metadata.version}</td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">Printer</td><td>${metadata.printer_model}</td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">Klipper</td><td>${metadata.klipper_version}</td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">Platform</td><td>${metadata.platform}</td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">Client IP</td><td>${clientIP}</td></tr>
+      <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">Time</td><td>${metadata.timestamp}</td></tr>
+    </table>
+    <p style="margin-top: 16px;">Retrieve with:</p>
+    <pre style="background: #f4f4f4; padding: 8px; border-radius: 4px;">curl --compressed -H "X-Admin-Key: \$HELIX_ADMIN_KEY" https://crash.helixscreen.org/v1/debug-bundle/${shareCode}</pre>
+  `;
+
+  const text = `New Debug Bundle: ${shareCode}
+Version: ${metadata.version}
+Printer: ${metadata.printer_model}
+Klipper: ${metadata.klipper_version}
+Platform: ${metadata.platform}
+IP: ${clientIP}
+Time: ${metadata.timestamp}
+
+Retrieve: curl --compressed -H "X-Admin-Key: $HELIX_ADMIN_KEY" https://crash.helixscreen.org/v1/debug-bundle/${shareCode}`;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ from, to: [to], subject, html, text }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Resend API ${response.status}: ${err}`);
+  }
+}
+
+/**
  * Build a JSON response with CORS headers.
  */
 function jsonResponse(status, data) {
@@ -214,6 +447,6 @@ function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
+    "Access-Control-Allow-Headers": "Content-Type, X-API-Key, X-Admin-Key",
   };
 }

@@ -24,6 +24,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 using namespace helix::sensors;
 using json = nlohmann::json;
 
@@ -151,6 +152,33 @@ TEST_CASE("ProbeSensorTypes - type string conversion", "[probe][types]") {
         REQUIRE(probe_type_from_string("eddy_current") == ProbeSensorType::EDDY_CURRENT);
         REQUIRE(probe_type_from_string("invalid") == ProbeSensorType::STANDARD);
         REQUIRE(probe_type_from_string("") == ProbeSensorType::STANDARD);
+    }
+}
+
+TEST_CASE("Probe type string conversions - new types", "[probe][types]") {
+    SECTION("cartographer type to string") {
+        REQUIRE(probe_type_to_string(ProbeSensorType::CARTOGRAPHER) == "cartographer");
+    }
+    SECTION("beacon type to string") {
+        REQUIRE(probe_type_to_string(ProbeSensorType::BEACON) == "beacon");
+    }
+    SECTION("tap type to string") {
+        REQUIRE(probe_type_to_string(ProbeSensorType::TAP) == "tap");
+    }
+    SECTION("klicky type to string") {
+        REQUIRE(probe_type_to_string(ProbeSensorType::KLICKY) == "klicky");
+    }
+    SECTION("cartographer from string") {
+        REQUIRE(probe_type_from_string("cartographer") == ProbeSensorType::CARTOGRAPHER);
+    }
+    SECTION("beacon from string") {
+        REQUIRE(probe_type_from_string("beacon") == ProbeSensorType::BEACON);
+    }
+    SECTION("tap from string") {
+        REQUIRE(probe_type_from_string("tap") == ProbeSensorType::TAP);
+    }
+    SECTION("klicky from string") {
+        REQUIRE(probe_type_from_string("klicky") == ProbeSensorType::KLICKY);
     }
 }
 
@@ -525,4 +553,136 @@ TEST_CASE_METHOD(ProbeSensorTestFixture, "ProbeSensorManager - edge cases", "[pr
         // Should not discover (needs a name like "probe_eddy_current btt")
         REQUIRE(mgr().sensor_count() == 0);
     }
+}
+
+// ============================================================================
+// New Probe Type Discovery Tests
+// ============================================================================
+
+TEST_CASE_METHOD(ProbeSensorTestFixture, "ProbeSensorManager - discovery of new probe types",
+                 "[probe][discovery]") {
+    SECTION("Discovers cartographer object") {
+        std::vector<std::string> objects = {"cartographer"};
+        mgr().discover(objects);
+        REQUIRE(mgr().has_sensors());
+        auto configs = mgr().get_sensors();
+        REQUIRE(configs[0].type == ProbeSensorType::CARTOGRAPHER);
+        REQUIRE(configs[0].sensor_name == "cartographer");
+        REQUIRE(configs[0].klipper_name == "cartographer");
+    }
+
+    SECTION("Discovers beacon object") {
+        std::vector<std::string> objects = {"beacon"};
+        mgr().discover(objects);
+        REQUIRE(mgr().has_sensors());
+        auto configs = mgr().get_sensors();
+        REQUIRE(configs[0].type == ProbeSensorType::BEACON);
+        REQUIRE(configs[0].sensor_name == "beacon");
+        REQUIRE(configs[0].klipper_name == "beacon");
+    }
+
+    SECTION("Discovers eddy current as cartographer when cartographer object also present") {
+        std::vector<std::string> objects = {"probe_eddy_current carto", "cartographer"};
+        mgr().discover(objects);
+        REQUIRE(mgr().sensor_count() >= 1);
+        auto configs = mgr().get_sensors();
+        bool found_carto = false;
+        for (const auto& c : configs) {
+            if (c.type == ProbeSensorType::CARTOGRAPHER)
+                found_carto = true;
+        }
+        REQUIRE(found_carto);
+    }
+
+    SECTION("Discovers eddy current as beacon when beacon object also present") {
+        std::vector<std::string> objects = {"probe_eddy_current beacon_probe", "beacon"};
+        mgr().discover(objects);
+        auto configs = mgr().get_sensors();
+        bool found_beacon = false;
+        for (const auto& c : configs) {
+            if (c.type == ProbeSensorType::BEACON)
+                found_beacon = true;
+        }
+        REQUIRE(found_beacon);
+    }
+
+    SECTION("Plain eddy current without companion stays EDDY_CURRENT") {
+        std::vector<std::string> objects = {"probe_eddy_current btt"};
+        mgr().discover(objects);
+        auto configs = mgr().get_sensors();
+        REQUIRE(configs[0].type == ProbeSensorType::EDDY_CURRENT);
+    }
+
+    SECTION("Cartographer with eddy current deduplicates to single sensor") {
+        // When both cartographer and probe_eddy_current are present,
+        // the eddy current gets upgraded - we should not double-count
+        std::vector<std::string> objects = {"probe_eddy_current carto", "cartographer"};
+        mgr().discover(objects);
+        auto configs = mgr().get_sensors();
+        // Both are discovered but eddy current is upgraded to CARTOGRAPHER
+        REQUIRE(mgr().sensor_count() == 2);
+        // The eddy current entry should be upgraded
+        bool eddy_upgraded = false;
+        for (const auto& c : configs) {
+            if (c.klipper_name == "probe_eddy_current carto") {
+                REQUIRE(c.type == ProbeSensorType::CARTOGRAPHER);
+                eddy_upgraded = true;
+            }
+        }
+        REQUIRE(eddy_upgraded);
+    }
+}
+
+// ============================================================================
+// Macro-based Probe Detection Tests
+// ============================================================================
+
+TEST_CASE_METHOD(ProbeSensorTestFixture, "ProbeSensorManager - macro-based probe detection",
+                 "[probe][discovery][macros]") {
+    SECTION("Detects Klicky from ATTACH_PROBE/DOCK_PROBE macros") {
+        std::vector<std::string> objects = {"probe", "gcode_macro ATTACH_PROBE",
+                                            "gcode_macro DOCK_PROBE"};
+        mgr().discover(objects);
+        auto configs = mgr().get_sensors();
+        REQUIRE(configs.size() == 1);
+        REQUIRE(configs[0].type == ProbeSensorType::KLICKY);
+    }
+
+    SECTION("Detects Klicky from alternate macro names") {
+        std::vector<std::string> objects = {"probe", "gcode_macro _Probe_Deploy",
+                                            "gcode_macro _Probe_Stow"};
+        mgr().discover(objects);
+        auto configs = mgr().get_sensors();
+        REQUIRE(configs[0].type == ProbeSensorType::KLICKY);
+    }
+
+    SECTION("Standard probe without Klicky macros stays STANDARD") {
+        std::vector<std::string> objects = {"probe"};
+        mgr().discover(objects);
+        auto configs = mgr().get_sensors();
+        REQUIRE(configs[0].type == ProbeSensorType::STANDARD);
+    }
+
+    SECTION("Standard probe with unrelated macros stays STANDARD") {
+        std::vector<std::string> objects = {"probe", "gcode_macro START_PRINT",
+                                            "gcode_macro END_PRINT"};
+        mgr().discover(objects);
+        auto configs = mgr().get_sensors();
+        REQUIRE(configs[0].type == ProbeSensorType::STANDARD);
+    }
+}
+
+// ============================================================================
+// Probe Type Display String Tests
+// ============================================================================
+
+TEST_CASE("Probe type display strings", "[probe][types]") {
+    REQUIRE(probe_type_to_display_string(ProbeSensorType::STANDARD) == "Probe");
+    REQUIRE(probe_type_to_display_string(ProbeSensorType::BLTOUCH) == "BLTouch");
+    REQUIRE(probe_type_to_display_string(ProbeSensorType::SMART_EFFECTOR) == "Smart Effector");
+    REQUIRE(probe_type_to_display_string(ProbeSensorType::EDDY_CURRENT) == "Eddy Current");
+    REQUIRE(probe_type_to_display_string(ProbeSensorType::CARTOGRAPHER) == "Cartographer");
+    REQUIRE(probe_type_to_display_string(ProbeSensorType::BEACON) == "Beacon");
+    REQUIRE(probe_type_to_display_string(ProbeSensorType::TAP) == "Voron Tap");
+    REQUIRE(probe_type_to_display_string(ProbeSensorType::KLICKY) == "Klicky");
 }

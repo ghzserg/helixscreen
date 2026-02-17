@@ -17,6 +17,8 @@
 
 #include <spdlog/spdlog.h>
 
+using namespace helix;
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -1572,23 +1574,23 @@ static void render_2d_heatmap(lv_layer_t* layer, bed_mesh_renderer_t* renderer, 
 // Public API: Render Mode Control
 // ============================================================================
 
-void bed_mesh_renderer_set_render_mode(bed_mesh_renderer_t* renderer, bed_mesh_render_mode_t mode) {
+void bed_mesh_renderer_set_render_mode(bed_mesh_renderer_t* renderer, BedMeshRenderMode mode) {
     if (!renderer)
         return;
     renderer->render_mode = mode;
 
     // If forcing a mode, update the fallback flag immediately
-    if (mode == BED_MESH_RENDER_MODE_FORCE_2D) {
+    if (mode == BedMeshRenderMode::Force2D) {
         renderer->using_2d_fallback = true;
-    } else if (mode == BED_MESH_RENDER_MODE_FORCE_3D) {
+    } else if (mode == BedMeshRenderMode::Force3D) {
         renderer->using_2d_fallback = false;
     }
     // AUTO mode: fallback flag is controlled by evaluate_render_mode()
 }
 
-bed_mesh_render_mode_t bed_mesh_renderer_get_render_mode(bed_mesh_renderer_t* renderer) {
+BedMeshRenderMode bed_mesh_renderer_get_render_mode(bed_mesh_renderer_t* renderer) {
     if (!renderer)
-        return BED_MESH_RENDER_MODE_AUTO;
+        return BedMeshRenderMode::Auto;
     return renderer->render_mode;
 }
 
@@ -1597,11 +1599,11 @@ bool bed_mesh_renderer_is_using_2d(bed_mesh_renderer_t* renderer) {
         return false;
 
     switch (renderer->render_mode) {
-    case BED_MESH_RENDER_MODE_FORCE_2D:
+    case BedMeshRenderMode::Force2D:
         return true;
-    case BED_MESH_RENDER_MODE_FORCE_3D:
+    case BedMeshRenderMode::Force3D:
         return false;
-    case BED_MESH_RENDER_MODE_AUTO:
+    case BedMeshRenderMode::Auto:
     default:
         return renderer->using_2d_fallback;
     }
@@ -1610,7 +1612,7 @@ bool bed_mesh_renderer_is_using_2d(bed_mesh_renderer_t* renderer) {
 void bed_mesh_renderer_evaluate_render_mode(bed_mesh_renderer_t* renderer) {
     if (!renderer)
         return;
-    if (renderer->render_mode != BED_MESH_RENDER_MODE_AUTO) {
+    if (renderer->render_mode != BedMeshRenderMode::Auto) {
         spdlog::debug("[Bed Mesh Renderer] Mode evaluation skipped (mode={}, not AUTO)",
                       static_cast<int>(renderer->render_mode));
         return;

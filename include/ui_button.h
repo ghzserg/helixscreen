@@ -3,6 +3,9 @@
 
 #pragma once
 
+struct _lv_obj_t;
+typedef struct _lv_obj_t lv_obj_t;
+
 /**
  * @file ui_button.h
  * @brief Semantic button widget with variant styles, icons, and auto-contrast
@@ -66,3 +69,13 @@
  * Must be called after lv_xml_init() and after theme is initialized.
  */
 void ui_button_init();
+
+/**
+ * @brief Set the text of a ui_button's label
+ * @param btn The ui_button widget
+ * @param text New label text
+ *
+ * Safe to call on any lv_obj — returns silently if not a ui_button
+ * or if the button has no label (icon-only).
+ */
+void ui_button_set_text(lv_obj_t* btn, const char* text);

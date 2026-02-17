@@ -7,7 +7,6 @@
 #include "ui_emergency_stop.h"
 #include "ui_error_reporting.h"
 #include "ui_fan_control_overlay.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_notification.h"
 #include "ui_notification_manager.h"
@@ -34,6 +33,7 @@
 #include "ui_panel_spoolman.h"
 #include "ui_panel_temp_control.h"
 #include "ui_printer_status_icon.h"
+#include "ui_probe_overlay.h"
 #include "ui_wizard.h"
 
 #include "abort_manager.h"
@@ -51,10 +51,10 @@
 #include "printer_state.h"
 #include "probe_sensor_manager.h"
 #include "settings_manager.h"
-#include "static_panel_registry.h"
-#include "static_subject_registry.h"
 #include "system/telemetry_manager.h"
 #include "temperature_sensor_manager.h"
+#include "timelapse_state.h"
+#include "tool_state.h"
 #include "usb_manager.h"
 #include "width_sensor_manager.h"
 #include "xml_registration.h"
@@ -65,22 +65,6 @@
 
 SubjectInitializer::SubjectInitializer() = default;
 SubjectInitializer::~SubjectInitializer() = default;
-
-bool SubjectInitializer::init_all(const RuntimeConfig& runtime_config) {
-    if (m_initialized) {
-        spdlog::warn("[SubjectInitializer] Already initialized");
-        return false;
-    }
-
-    // Legacy path: init with nullptr API (panels will need inject_api later)
-    spdlog::debug("[SubjectInitializer] Initializing reactive subjects (legacy path)...");
-
-    init_core_and_state();
-    init_panels(nullptr, runtime_config);
-    init_post(runtime_config);
-
-    return true;
-}
 
 void SubjectInitializer::init_core_and_state() {
     spdlog::debug("[SubjectInitializer] Initializing core and state subjects...");
@@ -93,6 +77,11 @@ void SubjectInitializer::init_core_and_state() {
 
     // Phase 3: AMS and filament sensor subjects
     init_ams_subjects();
+
+    // Phase 4: Navigation subjects — MUST register AFTER PrinterState/AmsState
+    // so that in reverse deinit order, NavigationManager cleans up its observers
+    // on PrinterState subjects BEFORE PrinterState deinits those subjects.
+    NavigationManager::instance().init();
 
     spdlog::debug("[SubjectInitializer] Core and state subjects initialized");
 }
@@ -123,10 +112,9 @@ void SubjectInitializer::init_post(const RuntimeConfig& runtime_config) {
 
 void SubjectInitializer::init_core_subjects() {
     spdlog::trace("[SubjectInitializer] Initializing core subjects");
-    app_globals_init_subjects();            // Global subjects (notification subject, etc.)
-    ui_nav_init();                          // Navigation system (icon colors, active panel)
-    ui_printer_status_icon_init_subjects(); // Printer icon state
-    ui_status_bar_init_subjects();          // Notification badge subjects
+    app_globals_init_subjects();                   // Global subjects (notification subject, etc.)
+    PrinterStatusIcon::instance().init_subjects(); // Printer icon state
+    helix::ui::notification_init_subjects();       // Notification badge subjects
 }
 
 void SubjectInitializer::init_printer_state_subjects() {
@@ -134,11 +122,6 @@ void SubjectInitializer::init_printer_state_subjects() {
     // PrinterState must be initialized BEFORE panels that observe its subjects
     // (e.g., HomePanel observes led_state_, extruder_temp_, connection_state_)
     get_printer_state().init_subjects();
-
-    // Register PrinterState cleanup - MUST happen before lv_deinit() to disconnect observers
-    // Calls lv_subject_deinit() on all 60+ subjects across all sub-components
-    StaticSubjectRegistry::instance().register_deinit(
-        "PrinterState", []() { get_printer_state().deinit_subjects(); });
 
     // ActivePrintMediaManager observes print_filename_ and updates print_display_filename_
     // and print_thumbnail_path_. Must be initialized after PrinterState, before panels.
@@ -148,42 +131,32 @@ void SubjectInitializer::init_printer_state_subjects() {
 void SubjectInitializer::init_ams_subjects() {
     spdlog::trace("[SubjectInitializer] Initializing AMS/FilamentSensor subjects");
 
-    // Helper macro: initializes a sensor manager's subjects and registers cleanup.
-    // Takes the fully-qualified class name (e.g., helix::sensors::HumiditySensorManager).
-#define REGISTER_SENSOR_MANAGER(ManagerClass)                                                      \
-    ManagerClass::instance().init_subjects();                                                      \
-    StaticSubjectRegistry::instance().register_deinit(                                             \
-        #ManagerClass, []() { ManagerClass::instance().deinit_subjects(); })
-
     // Initialize AmsState subjects BEFORE panels so XML bindings can find ams_gate_count
     // Note: In mock mode, init_subjects() also creates the mock backend internally
     AmsState::instance().init_subjects(true);
 
-    // Register AmsState cleanup (StaticSubjectRegistry - core state singleton)
-    StaticSubjectRegistry::instance().register_deinit(
-        "AmsState", []() { AmsState::instance().deinit_subjects(); });
+    // Initialize ToolState subjects (tool changer state tracking)
+    helix::ToolState::instance().init_subjects();
 
     // Initialize sensor manager subjects BEFORE panels so XML bindings can work
-    REGISTER_SENSOR_MANAGER(helix::FilamentSensorManager);
-    REGISTER_SENSOR_MANAGER(helix::sensors::HumiditySensorManager);
-    REGISTER_SENSOR_MANAGER(helix::sensors::WidthSensorManager);
-    REGISTER_SENSOR_MANAGER(helix::sensors::ProbeSensorManager);
-    REGISTER_SENSOR_MANAGER(helix::sensors::AccelSensorManager);
-    REGISTER_SENSOR_MANAGER(helix::sensors::ColorSensorManager);
-    REGISTER_SENSOR_MANAGER(helix::sensors::TemperatureSensorManager);
-
-#undef REGISTER_SENSOR_MANAGER
+    // Note: Each manager self-registers cleanup with StaticSubjectRegistry in init_subjects()
+    helix::FilamentSensorManager::instance().init_subjects();
+    helix::sensors::HumiditySensorManager::instance().init_subjects();
+    helix::sensors::WidthSensorManager::instance().init_subjects();
+    helix::sensors::ProbeSensorManager::instance().init_subjects();
+    helix::sensors::AccelSensorManager::instance().init_subjects();
+    helix::sensors::ColorSensorManager::instance().init_subjects();
+    helix::sensors::TemperatureSensorManager::instance().init_subjects();
 }
 
 void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     spdlog::trace("[SubjectInitializer] Initializing panel subjects");
 
     // Basic panels - these use PanelBase which stores API
+    // Cleanup self-registered inside each panel's init_subjects()
     get_global_home_panel().init_subjects();
     if (api)
         get_global_home_panel().set_api(api);
-    StaticPanelRegistry::instance().register_destroy(
-        "HomePanelSubjects", []() { get_global_home_panel().deinit_subjects(); });
 
     // Controls, Filament, Settings panels: deinit handled by destructor
     // (registered with StaticPanelRegistry in their get_global_* functions)
@@ -197,11 +170,6 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     if (api)
         get_global_settings_panel().set_api(api);
 
-    // SettingsManager subjects are initialized by settings_panel.init_subjects() above
-    // Register cleanup here (StaticSubjectRegistry - core state singleton)
-    StaticSubjectRegistry::instance().register_deinit(
-        "SettingsManager", []() { SettingsManager::instance().deinit_subjects(); });
-
     // Advanced panel family
     init_global_advanced_panel(get_printer_state(), api);
     get_global_advanced_panel().init_subjects();
@@ -211,6 +179,9 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
 
     // HistoryDashboardPanel is now lazy-initialized (OverlayBase pattern)
     // HistoryListPanel is now lazy-initialized by HistoryDashboardPanel (OverlayBase pattern)
+
+    // Timelapse state (event-driven, not a panel)
+    helix::TimelapseState::instance().init_subjects();
 
     // Settings overlays
     init_global_timelapse_settings(api);
@@ -236,23 +207,13 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     init_input_shaper_row_handler();
     init_zoffset_row_handler();
     init_zoffset_event_callbacks();
+    init_probe_row_handler();
 
-    // Wizard and keypad - register cleanup with StaticPanelRegistry
+    // Wizard and keypad — cleanup self-registered inside init_subjects()
     ui_wizard_init_subjects();
-    StaticPanelRegistry::instance().register_destroy("WizardSubjects", ui_wizard_deinit_subjects);
-
     ui_keypad_init_subjects();
-    StaticPanelRegistry::instance().register_destroy("KeypadSubjects", ui_keypad_deinit_subjects);
 
-    // Core state subjects cleanup (StaticSubjectRegistry - not panels)
-    StaticSubjectRegistry::instance().register_deinit("AppGlobals", app_globals_deinit_subjects);
-    StaticSubjectRegistry::instance().register_deinit("XmlSubjects", helix::deinit_xml_subjects);
-
-    // UI component subjects cleanup (StaticPanelRegistry - UI components)
-    StaticPanelRegistry::instance().register_destroy("PrinterStatusIconSubjects",
-                                                     ui_printer_status_icon_deinit_subjects);
-    StaticPanelRegistry::instance().register_destroy("StatusBarSubjects",
-                                                     ui_status_bar_deinit_subjects);
+    // PrinterStatusIcon and StatusBar subjects — cleanup self-registered inside init_subjects()
 
     // Panels with API injection at construction
     // Note: PrintSelectPanel registers its own deinit+destroy callback in get_print_select_panel()
@@ -263,8 +224,6 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     if (api)
         m_print_status_panel->set_api(api);
     m_print_status_panel->init_subjects();
-    StaticPanelRegistry::instance().register_destroy(
-        "PrintStatusPanelSubjects", []() { get_global_print_status_panel().deinit_subjects(); });
 
     // Motion panel: deinit handled by destructor
     // (registered with StaticPanelRegistry in their get_global_* functions)
@@ -273,8 +232,6 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
 
     m_bed_mesh_panel = &get_global_bed_mesh_panel();
     m_bed_mesh_panel->init_subjects();
-    StaticPanelRegistry::instance().register_destroy(
-        "BedMeshPanelSubjects", []() { get_global_bed_mesh_panel().deinit_subjects(); });
 
     // Panel initialization via global instances
     // PIDCalibrationPanel: deinit handled by destructor (registered with StaticPanelRegistry)
@@ -293,19 +250,11 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     get_global_filament_panel().set_temp_control_panel(m_temp_control_panel.get());
     get_global_pid_cal_panel().set_temp_control_panel(m_temp_control_panel.get());
 
-    // E-Stop overlay
+    // E-Stop overlay — cleanup self-registered inside init_subjects()
     EmergencyStopOverlay::instance().init_subjects();
-    StaticPanelRegistry::instance().register_destroy(
-        "EmergencyStopSubjects", []() { EmergencyStopOverlay::instance().deinit_subjects(); });
 
-    // AbortManager subjects (for smart print cancellation)
+    // AbortManager subjects — cleanup self-registered inside init_subjects()
     helix::AbortManager::instance().init_subjects();
-    StaticPanelRegistry::instance().register_destroy(
-        "AbortManagerSubjects", []() { helix::AbortManager::instance().deinit_subjects(); });
-
-    // Navigation manager subjects (StaticSubjectRegistry - state manager, not a visual panel)
-    StaticSubjectRegistry::instance().register_deinit(
-        "NavigationManager", []() { NavigationManager::instance().deinit_subjects(); });
 
     // ActivePrintMediaManager needs API for thumbnail loading
     if (api) {

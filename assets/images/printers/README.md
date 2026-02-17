@@ -2,7 +2,7 @@
 
 This directory contains shipped printer images used in the first-run configuration wizard and the Printer Image picker overlay. Users can also add their own custom images (see [Custom Images](#custom-images) below).
 
-## Available Images (12 printers)
+## Available Images (13 printers)
 
 ### Voron Family
 - ✅ `voron-0-2-4-750x930.jpg` - Voron V0.2 (120mm³ build)
@@ -27,6 +27,9 @@ This directory contains shipped printer images used in the first-run configurati
 
 ### FLSUN
 - ✅ `flsun-delta.png` - FLSUN Delta (QQ-S/Super Racer/V400)
+
+### Elegoo
+- ✅ `elegoo-centauri-carbon.png` - Elegoo Centauri Carbon
 
 ## Missing Images (Use Generic Fallback)
 

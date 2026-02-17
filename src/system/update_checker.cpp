@@ -24,12 +24,14 @@
 #include "app_globals.h"
 #include "config.h"
 #include "hv/requests.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "printer_state.h"
 #include "spdlog/spdlog.h"
 #include "version.h"
 
 #include <chrono>
 #include <climits>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
@@ -37,9 +39,17 @@
 #include <sys/statvfs.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
 
 #include "hv/json.hpp"
+
+// Compile-time installer filename from Makefile (-DINSTALLER_FILENAME=...)
+#ifndef INSTALLER_FILENAME
+#define INSTALLER_FILENAME "install.sh"
+#endif
+
+using namespace helix;
 
 using json = nlohmann::json;
 
@@ -243,6 +253,31 @@ bool is_update_available(const std::string& current_version, const std::string& 
 }
 
 /**
+ * @brief Resolve a system tool to an absolute path, falling back to bare name.
+ *
+ * Searches well-known absolute locations before falling back to the bare name
+ * (which relies on $PATH). This is critical for systemd services: they run
+ * with a minimal PATH that may not include /usr/bin or /bin, so bare-name
+ * execvp calls for tar/cp/gunzip silently fail with exit code 127.
+ *
+ * @param name Tool name (e.g., "tar", "cp", "gunzip")
+ * @return Full absolute path if found, bare name as fallback (relies on $PATH)
+ */
+std::string resolve_tool(const std::string& name) {
+    static const char* const SEARCH_DIRS[] = {"/usr/bin", "/bin",           "/usr/sbin",
+                                              "/sbin",    "/usr/local/bin", nullptr};
+    for (int i = 0; SEARCH_DIRS[i]; ++i) {
+        std::string path = std::string(SEARCH_DIRS[i]) + "/" + name;
+        if (access(path.c_str(), X_OK) == 0) {
+            return path;
+        }
+    }
+    spdlog::warn("[UpdateChecker] resolve_tool: '{}' not found in standard paths, using bare name",
+                 name);
+    return name; // fallback: rely on PATH
+}
+
+/**
  * @brief Execute a command safely via fork/exec (no shell interpretation)
  *
  * Avoids command injection by bypassing the shell entirely.
@@ -252,24 +287,43 @@ bool is_update_available(const std::string& current_version, const std::string& 
  * @param args Argument list (argv[0] should be the program name)
  * @return Exit code of the child process, or -1 on fork/exec failure
  */
-int safe_exec(const std::vector<std::string>& args) {
+int safe_exec(const std::vector<std::string>& args, bool capture_stderr = false) {
     if (args.empty()) {
         return -1;
+    }
+
+    // Optionally capture stderr via pipe for error diagnostics
+    int stderr_pipe[2] = {-1, -1};
+    if (capture_stderr) {
+        if (pipe(stderr_pipe) < 0) {
+            capture_stderr = false; // fall back to /dev/null
+        }
     }
 
     pid_t pid = fork();
     if (pid < 0) {
         spdlog::error("[UpdateChecker] fork() failed: {}", strerror(errno));
+        if (capture_stderr) {
+            close(stderr_pipe[0]);
+            close(stderr_pipe[1]);
+        }
         return -1;
     }
 
     if (pid == 0) {
-        // Child process — redirect stdout/stderr to /dev/null
+        // Child process — redirect stdout to /dev/null, stderr to pipe or /dev/null
         int devnull = open("/dev/null", O_WRONLY);
         if (devnull >= 0) {
             dup2(devnull, STDOUT_FILENO);
-            dup2(devnull, STDERR_FILENO);
+            if (!capture_stderr) {
+                dup2(devnull, STDERR_FILENO);
+            }
             close(devnull);
+        }
+        if (capture_stderr) {
+            close(stderr_pipe[0]); // close read end in child
+            dup2(stderr_pipe[1], STDERR_FILENO);
+            close(stderr_pipe[1]);
         }
 
         // Build C-style argv array
@@ -286,17 +340,82 @@ int safe_exec(const std::vector<std::string>& args) {
         _exit(127);
     }
 
-    // Parent — wait for child
+    // Parent — read stderr if capturing, then wait for child
+    std::string stderr_output;
+    if (capture_stderr) {
+        close(stderr_pipe[1]); // close write end in parent
+        char buf[1024];
+        ssize_t n;
+        while ((n = read(stderr_pipe[0], buf, sizeof(buf) - 1)) > 0) {
+            buf[n] = '\0';
+            stderr_output.append(buf, static_cast<size_t>(n));
+            if (stderr_output.size() > 4096)
+                break; // cap captured output
+        }
+        close(stderr_pipe[0]);
+    }
+
     int status = 0;
     if (waitpid(pid, &status, 0) < 0) {
         spdlog::error("[UpdateChecker] waitpid() failed: {}", strerror(errno));
         return -1;
     }
 
-    if (WIFEXITED(status)) {
-        return WEXITSTATUS(status);
+    int exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+
+    // Log captured stderr on failure
+    if (capture_stderr && exit_code != 0 && !stderr_output.empty()) {
+        // Trim trailing whitespace
+        while (!stderr_output.empty() &&
+               (stderr_output.back() == '\n' || stderr_output.back() == '\r')) {
+            stderr_output.pop_back();
+        }
+        spdlog::error("[UpdateChecker] stderr from '{}': {}", args[0], stderr_output);
     }
-    return -1;
+
+    return exit_code;
+}
+
+/**
+ * @brief Extract a single member from a .tar.gz tarball.
+ *
+ * Tries GNU tar xzf first; falls back to cp+gunzip+tar for BusyBox compat.
+ * The fallback avoids gunzip -k (keep-original) which is absent on older BusyBox.
+ *
+ * @param tarball_path  Path to the .tar.gz file
+ * @param extract_dir   Directory to extract into
+ * @param tar_member    Archive member path (e.g., "helixscreen/install.sh")
+ * @return 0 on success, non-zero on failure
+ */
+int extract_tar_member(const std::string& tarball_path, const std::string& extract_dir,
+                       const std::string& tar_member) {
+    const std::string tar_bin = resolve_tool("tar");
+
+    // Try GNU tar first (handles -z natively on most systems)
+    auto ret = safe_exec({tar_bin, "xzf", tarball_path, "-C", extract_dir, tar_member});
+    if (ret == 0) {
+        return 0;
+    }
+
+    // BusyBox tar may not support the -z flag for gzip decompression.
+    // Fallback: copy the tarball and decompress the copy with gunzip -f.
+    // We deliberately avoid gunzip -k (keep-original) because that flag is
+    // absent from older BusyBox gunzip builds (pre-1.30 era), which is exactly
+    // the environment where we need this fallback to succeed.
+    const std::string cp_bin = resolve_tool("cp");
+    const std::string gunzip_bin = resolve_tool("gunzip");
+
+    std::string tmp_copy = extract_dir + "/tmp_copy.tar.gz";
+    if (safe_exec({cp_bin, tarball_path, tmp_copy}) == 0) {
+        if (safe_exec({gunzip_bin, "-f", tmp_copy}) == 0) {
+            std::string tmp_tar = extract_dir + "/tmp_copy.tar";
+            ret = safe_exec({tar_bin, "xf", tmp_tar, "-C", extract_dir, tar_member});
+            std::remove(tmp_tar.c_str());
+        } else {
+            std::remove(tmp_copy.c_str());
+        }
+    }
+    return ret;
 }
 
 } // anonymous namespace
@@ -588,7 +707,7 @@ void UpdateChecker::report_download_status(DownloadStatus status, int progress,
         download_error_ = error;
     }
 
-    ui_queue_update([this, status, progress, text]() {
+    helix::ui::queue_update([this, status, progress, text]() {
         if (subjects_initialized_) {
             lv_subject_set_int(&download_status_subject_, static_cast<int>(status));
             lv_subject_set_int(&download_progress_subject_, progress);
@@ -725,7 +844,7 @@ void UpdateChecker::do_download() {
     report_download_status(DownloadStatus::Verifying, 100, "Verifying download...");
 
     // Verify gzip integrity (fork/exec to avoid shell injection)
-    auto ret = safe_exec({"gunzip", "-t", download_path});
+    auto ret = safe_exec({resolve_tool("gunzip"), "-t", download_path});
     if (ret != 0) {
         spdlog::error("[UpdateChecker] Tarball verification failed");
         std::remove(download_path.c_str());
@@ -780,31 +899,14 @@ bool UpdateChecker::validate_elf_architecture(const std::string& tarball_path) {
     std::string temp_dir = tarball_path + ".validate";
     mkdir(temp_dir.c_str(), 0750);
 
-    // Extract binary from tarball for inspection (safe_exec avoids shell injection)
-    auto ret =
-        safe_exec({"tar", "xzf", tarball_path, "-C", temp_dir, "helixscreen/bin/helix-screen"});
+    const std::string rm_bin = resolve_tool("rm");
+
+    // Extract binary from tarball for inspection
+    auto ret = extract_tar_member(tarball_path, temp_dir, "helixscreen/bin/helix-screen");
     if (ret != 0) {
-        // BusyBox tar may not support -z; decompress first, then extract
-        std::string uncompressed = tarball_path + ".tar";
-        ret = safe_exec({"gunzip", "-k", "-f", tarball_path});
-        if (ret == 0) {
-            // gunzip -k creates tarball_path without .gz → need to find it
-            // Actually gunzip -k keeps original, output is input minus .gz suffix
-            // But our file ends in .tar.gz, so output is .tar
-            std::string tar_path = tarball_path;
-            auto gz_pos = tar_path.rfind(".gz");
-            if (gz_pos != std::string::npos) {
-                tar_path = tar_path.substr(0, gz_pos);
-            }
-            ret =
-                safe_exec({"tar", "xf", tar_path, "-C", temp_dir, "helixscreen/bin/helix-screen"});
-            std::remove(tar_path.c_str()); // Clean up decompressed tarball
-        }
-        if (ret != 0) {
-            spdlog::warn("[UpdateChecker] Could not extract binary for validation, skipping");
-            safe_exec({"rm", "-rf", temp_dir});
-            return true;
-        }
+        spdlog::warn("[UpdateChecker] Could not extract binary for validation, skipping");
+        safe_exec({rm_bin, "-rf", temp_dir});
+        return true;
     }
 
     std::string binary_path = temp_dir + "/helixscreen/bin/helix-screen";
@@ -813,7 +915,7 @@ bool UpdateChecker::validate_elf_architecture(const std::string& tarball_path) {
     FILE* f = fopen(binary_path.c_str(), "rb");
     if (!f) {
         spdlog::warn("[UpdateChecker] Could not open extracted binary for validation");
-        safe_exec({"rm", "-rf", temp_dir});
+        safe_exec({rm_bin, "-rf", temp_dir});
         return true;
     }
 
@@ -822,7 +924,7 @@ bool UpdateChecker::validate_elf_architecture(const std::string& tarball_path) {
     fclose(f);
 
     // Clean up extracted files
-    safe_exec({"rm", "-rf", temp_dir});
+    safe_exec({rm_bin, "-rf", temp_dir});
 
     if (nread < 20) {
         spdlog::error("[UpdateChecker] Binary too small to be valid ELF ({} bytes)", nread);
@@ -869,44 +971,27 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
 
     report_download_status(DownloadStatus::Installing, 100, "Installing update...");
 
-    // Find install.sh — resolve dynamically from exe location first,
-    // then fall back to well-known paths. The installer is placed at
-    // the install root (e.g., /opt/helixscreen/install.sh).
+    // Extract install.sh from the NEW tarball so we always run the version-matched
+    // installer. This prevents failures when the local install.sh is outdated and
+    // missing functions that the new version's main() calls.
     std::string install_script;
+    std::string extracted_dir = tarball_path + ".installer";
+    bool extracted_from_tarball = false;
 
-    // Build search paths dynamically — exe-relative path first so it works
-    // for any install location (Pi: /home/biqu/helixscreen, /home/pi/helixscreen, etc.)
-    std::vector<std::string> search_paths;
+    mkdir(extracted_dir.c_str(), 0750);
 
-    // Try resolving from /proc/self/exe → strip /bin/helix-screen → install root
-    char exe_buf[PATH_MAX] = {};
-    ssize_t exe_len = readlink("/proc/self/exe", exe_buf, sizeof(exe_buf) - 1);
-    if (exe_len > 0) {
-        exe_buf[exe_len] = '\0';
-        std::string exe_dir(exe_buf);
-        auto slash = exe_dir.rfind('/');
-        if (slash != std::string::npos) {
-            exe_dir = exe_dir.substr(0, slash); // strip binary name → bin/
-            if (exe_dir.size() >= 4 && exe_dir.substr(exe_dir.size() - 4) == "/bin") {
-                std::string install_root = exe_dir.substr(0, exe_dir.size() - 4);
-                search_paths.push_back(install_root + "/install.sh");
-            }
-        }
-    }
+    const std::string rm_bin = resolve_tool("rm");
 
-    // Well-known install locations as fallback
-    search_paths.push_back("/opt/helixscreen/install.sh");
-    search_paths.push_back("/root/printer_software/helixscreen/install.sh");
-    search_paths.push_back("/usr/data/helixscreen/install.sh");
-    search_paths.push_back("/home/biqu/helixscreen/install.sh");
-    search_paths.push_back("/home/pi/helixscreen/install.sh");
-    search_paths.push_back("scripts/install.sh"); // development fallback
-
-    for (const auto& path : search_paths) {
-        if (access(path.c_str(), X_OK) == 0) {
-            install_script = path;
-            break;
-        }
+    install_script = extract_installer_from_tarball(tarball_path, extracted_dir);
+    if (!install_script.empty()) {
+        extracted_from_tarball = true;
+        spdlog::info("[UpdateChecker] Using installer extracted from update tarball");
+    } else {
+        // Fall back to local install.sh (best effort for older tarballs without it)
+        spdlog::warn(
+            "[UpdateChecker] Could not extract install.sh from tarball, falling back to local");
+        safe_exec({rm_bin, "-rf", extracted_dir});
+        install_script = find_local_installer();
     }
 
     if (install_script.empty()) {
@@ -916,12 +1001,123 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
         return;
     }
 
+    // Write installer output to a persistent log file so it survives even if this
+    // process is killed mid-install (e.g. stop_service kills the cgroup).
+    std::string install_log = tarball_path + ".install.log";
+
     spdlog::info("[UpdateChecker] Running: {} --local {} --update", install_script, tarball_path);
+    spdlog::debug("[UpdateChecker] install_script exists/executable: access={}",
+                  access(install_script.c_str(), X_OK));
+    spdlog::debug("[UpdateChecker] tarball_path exists/readable:     access={}",
+                  access(tarball_path.c_str(), R_OK));
+    spdlog::debug("[UpdateChecker] extracted_dir: {}", extracted_dir);
+    spdlog::debug("[UpdateChecker] install log:   {}", install_log);
+    {
+        // Log current process context
+        char cwd_buf[PATH_MAX] = {};
+        const char* cwd = getcwd(cwd_buf, sizeof(cwd_buf));
+        spdlog::debug("[UpdateChecker] cwd={} uid={} euid={}", cwd ? cwd : "(error)", getuid(),
+                      geteuid());
+    }
+    {
+        // Log tarball file size
+        struct stat st{};
+        if (stat(tarball_path.c_str(), &st) == 0) {
+            spdlog::debug("[UpdateChecker] tarball size: {} bytes", st.st_size);
+        } else {
+            spdlog::error("[UpdateChecker] stat({}) failed: {}", tarball_path, strerror(errno));
+        }
+    }
 
-    auto ret = safe_exec({install_script, "--local", tarball_path, "--update"});
+    // Fork install.sh with its output redirected to a persistent log file.
+    // Using a file instead of a pipe means we get the full output even if this
+    // process is killed by systemd's stop_service during the install step.
+    int ret = -1;
+    {
+        int log_fd = open(install_log.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0640);
+        if (log_fd < 0) {
+            spdlog::warn("[UpdateChecker] Could not open install log {}: {}", install_log,
+                         strerror(errno));
+        }
 
-    // Clean up tarball regardless of result
+        pid_t pid = fork();
+        if (pid < 0) {
+            spdlog::error("[UpdateChecker] fork() for install failed: {}", strerror(errno));
+            if (log_fd >= 0)
+                close(log_fd);
+        } else if (pid == 0) {
+            // Child: redirect stdout+stderr to log file
+            if (log_fd >= 0) {
+                dup2(log_fd, STDOUT_FILENO);
+                dup2(log_fd, STDERR_FILENO);
+                close(log_fd);
+            }
+            // Use setsid() so install.sh gets its own session and won't be killed
+            // by the SIGTERM that systemd sends to the helix-screen cgroup.
+            setsid();
+            const char* argv[] = {install_script.c_str(), "--local", tarball_path.c_str(),
+                                  "--update", nullptr};
+            execv(install_script.c_str(), const_cast<char**>(argv));
+            _exit(127);
+        } else {
+            // Parent: close our copy of the log fd and wait with timeout
+            if (log_fd >= 0)
+                close(log_fd);
+
+            constexpr int timeout_seconds = 120;
+            int status = 0;
+            bool exited = false;
+
+            for (int elapsed = 0; elapsed < timeout_seconds; ++elapsed) {
+                pid_t result = waitpid(pid, &status, WNOHANG);
+                if (result < 0) {
+                    spdlog::error("[UpdateChecker] waitpid(install) failed: {}", strerror(errno));
+                    break;
+                }
+                if (result > 0) {
+                    exited = true;
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+
+            if (exited) {
+                ret = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+                spdlog::info("[UpdateChecker] install.sh exited with code {}", ret);
+            } else {
+                spdlog::error("[UpdateChecker] install.sh timed out after {}s, killing",
+                              timeout_seconds);
+                kill(pid, SIGKILL);
+                waitpid(pid, nullptr, 0); // reap zombie
+            }
+        }
+
+        // Read back the install log and emit every line through spdlog
+        FILE* lf = fopen(install_log.c_str(), "r");
+        if (lf) {
+            char line[512];
+            spdlog::info("[UpdateChecker] ---- install.sh output ----");
+            while (fgets(line, sizeof(line), lf)) {
+                // Strip trailing newline
+                size_t len = strlen(line);
+                while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+                    line[--len] = '\0';
+                }
+                spdlog::info("[install.sh] {}", line);
+            }
+            spdlog::info("[UpdateChecker] ---- end install.sh output ----");
+            fclose(lf);
+        } else {
+            spdlog::warn("[UpdateChecker] Could not read install log {}", install_log);
+        }
+        std::remove(install_log.c_str());
+    }
+
+    // Clean up tarball and extracted installer regardless of result
     std::remove(tarball_path.c_str());
+    if (extracted_from_tarball) {
+        safe_exec({rm_bin, "-rf", extracted_dir});
+    }
 
     if (ret != 0) {
         spdlog::error("[UpdateChecker] Install script failed with code {}", ret);
@@ -940,6 +1136,68 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
 
     report_download_status(DownloadStatus::Complete, 100,
                            "v" + version + " installed! Restart to apply.");
+}
+
+// ============================================================================
+// Static helpers
+// ============================================================================
+
+std::string UpdateChecker::extract_installer_from_tarball(const std::string& tarball_path,
+                                                          const std::string& extract_dir) {
+    std::string tar_member = std::string("helixscreen/") + INSTALLER_FILENAME;
+
+    auto ext_ret = extract_tar_member(tarball_path, extract_dir, tar_member);
+
+    std::string installer = extract_dir + "/helixscreen/" + INSTALLER_FILENAME;
+    if (ext_ret == 0 && access(installer.c_str(), R_OK) == 0) {
+        chmod(installer.c_str(), 0755);
+        return installer;
+    }
+
+    return "";
+}
+
+std::string
+UpdateChecker::find_local_installer(const std::vector<std::string>& extra_search_paths) {
+    std::vector<std::string> search_paths;
+
+    // Caller-supplied paths first (e.g., exe-relative)
+    for (const auto& p : extra_search_paths) {
+        search_paths.push_back(p);
+    }
+
+    // Try resolving from /proc/self/exe → strip /bin/helix-screen → install root
+    char exe_buf[PATH_MAX] = {};
+    ssize_t exe_len = readlink("/proc/self/exe", exe_buf, sizeof(exe_buf) - 1);
+    if (exe_len > 0) {
+        exe_buf[exe_len] = '\0';
+        std::string exe_dir(exe_buf);
+        auto slash = exe_dir.rfind('/');
+        if (slash != std::string::npos) {
+            exe_dir = exe_dir.substr(0, slash); // strip binary name → bin/
+            if (exe_dir.size() >= 4 && exe_dir.substr(exe_dir.size() - 4) == "/bin") {
+                std::string install_root = exe_dir.substr(0, exe_dir.size() - 4);
+                search_paths.push_back(install_root + "/" + INSTALLER_FILENAME);
+            }
+        }
+    }
+
+    // Well-known install locations as fallback
+    std::string fname = INSTALLER_FILENAME;
+    search_paths.push_back("/opt/helixscreen/" + fname);
+    search_paths.push_back("/root/printer_software/helixscreen/" + fname);
+    search_paths.push_back("/usr/data/helixscreen/" + fname);
+    search_paths.push_back("/home/biqu/helixscreen/" + fname);
+    search_paths.push_back("/home/pi/helixscreen/" + fname);
+    search_paths.push_back("scripts/" + fname); // development fallback
+
+    for (const auto& path : search_paths) {
+        if (access(path.c_str(), X_OK) == 0) {
+            return path;
+        }
+    }
+
+    return "";
 }
 
 // ============================================================================
@@ -982,7 +1240,7 @@ void UpdateChecker::check_for_updates(Callback callback) {
             // Release lock before dispatching (callback may call back into UpdateChecker)
             lock.unlock();
             // Dispatch to LVGL thread
-            ui_queue_update([callback, status, cached]() { callback(status, cached); });
+            helix::ui::queue_update([callback, status, cached]() { callback(status, cached); });
         }
         return;
     }
@@ -1030,7 +1288,7 @@ void UpdateChecker::check_for_updates(Callback callback) {
 
     // Update subjects on LVGL thread (check_for_updates is public, could be called from any thread)
     if (subjects_initialized_) {
-        ui_queue_update([this]() {
+        helix::ui::queue_update([this]() {
             lv_subject_set_int(&checking_subject_, 1);
             lv_subject_set_int(&status_subject_, static_cast<int>(Status::Checking));
             lv_subject_copy_string(&version_text_subject_, "Checking...");
@@ -1159,6 +1417,8 @@ UpdateChecker::UpdateChannel UpdateChecker::get_channel() const {
 std::string UpdateChecker::get_platform_key() {
 #ifdef HELIX_PLATFORM_AD5M
     return "ad5m";
+#elif defined(HELIX_PLATFORM_CC1)
+    return "cc1";
 #elif defined(HELIX_PLATFORM_K1)
     return "k1";
 #elif defined(HELIX_PLATFORM_K2)
@@ -1222,8 +1482,8 @@ void UpdateChecker::dismiss_current_version() {
     spdlog::info("[UpdateChecker] Dismissed version: {}", version);
 
     // Add history-only notification so user can find the update later
-    std::string msg = fmt::format("v{} is available. Tap to update.", version);
-    ui_notification_info_with_action("Update Available", msg.c_str(), "show_update_modal");
+    std::string msg = fmt::format(lv_tr("v{} is available. Tap to update."), version);
+    ui_notification_info_with_action(lv_tr("Update Available"), msg.c_str(), "show_update_modal");
 }
 
 // ============================================================================
@@ -1351,13 +1611,13 @@ static void register_notify_callbacks() {
 void UpdateChecker::show_update_notification() {
     spdlog::info("[UpdateChecker] Show update notification");
     if (!notify_modal_) {
-        notify_modal_ = ui_modal_show("update_notify_modal");
+        notify_modal_ = helix::ui::modal_show("update_notify_modal");
     }
 }
 
 void UpdateChecker::hide_update_notification() {
     if (notify_modal_) {
-        ui_modal_hide(notify_modal_);
+        helix::ui::modal_hide(notify_modal_);
         notify_modal_ = nullptr;
     }
 }
@@ -1672,7 +1932,7 @@ void UpdateChecker::report_result(Status status, std::optional<ReleaseInfo> info
 
     // Dispatch to LVGL thread for subject updates and callback
     spdlog::debug("[UpdateChecker] Dispatching to LVGL thread");
-    ui_queue_update([this, callback, status, info, error]() {
+    helix::ui::queue_update([this, callback, status, info, error]() {
         spdlog::debug("[UpdateChecker] Executing on LVGL thread");
 
         // Update LVGL subjects

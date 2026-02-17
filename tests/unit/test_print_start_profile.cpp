@@ -13,6 +13,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Helper to load default profile (works with or without JSON file)
 // ============================================================================

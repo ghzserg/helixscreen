@@ -186,7 +186,7 @@ void InjectionPointManager::remove_plugin_widgets(const std::string& plugin_id) 
         // Delete the LVGL widget (LVGL handles child cleanup)
         // Use local copy since lv_obj_safe_delete takes ref-to-pointer for auto-null
         lv_obj_t* widget = injected.widget;
-        if (lv_obj_safe_delete(widget)) {
+        if (helix::ui::safe_delete(widget)) {
             spdlog::debug("[InjectionPointManager] Deleted widget '{}' from point '{}'",
                           injected.component_name, injected.injection_point);
         }
@@ -225,7 +225,7 @@ bool InjectionPointManager::remove_widget(lv_obj_t* widget) {
     }
 
     // Delete the widget
-    lv_obj_safe_delete(widget);
+    helix::ui::safe_delete(widget);
 
     std::string component = it->component_name;
     std::string point = it->injection_point;

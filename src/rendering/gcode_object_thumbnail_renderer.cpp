@@ -58,7 +58,7 @@ void GCodeObjectThumbnailRenderer::render_async(const ParsedGCodeFile* gcode, in
                 // ObjectThumbnailSet is freed even if the UI queue is drained on shutdown
                 // before this lambda runs (std::function requires copyable lambdas).
                 auto shared = std::shared_ptr<ObjectThumbnailSet>(result.release());
-                ui_queue_update([cb, shared]() {
+                helix::ui::queue_update([cb, shared]() {
                     cb(std::make_unique<ObjectThumbnailSet>(std::move(*shared)));
                 });
             }

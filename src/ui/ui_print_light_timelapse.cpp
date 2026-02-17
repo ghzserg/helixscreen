@@ -140,7 +140,7 @@ void PrintLightTimelapseControls::handle_timelapse_button() {
                 // Defer UI updates to LVGL thread - API callbacks may be on background thread
                 auto data_ptr = std::make_unique<std::pair<PrintLightTimelapseControls*, bool>>(
                     this, new_state);
-                ui_async_call(
+                helix::ui::async_call(
                     [](void* user_data) {
                         // Wrap raw pointer in unique_ptr for RAII cleanup
                         std::unique_ptr<std::pair<PrintLightTimelapseControls*, bool>> data(

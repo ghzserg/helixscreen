@@ -19,6 +19,8 @@
 #include <cmath>
 #include <cstdlib>
 
+using namespace helix;
+
 // ============================================================================
 // Widget Data
 // ============================================================================
@@ -310,7 +312,7 @@ static void position_anim_cb(void* var, int32_t value) {
     data->current_pos = value;
 
     // Defer invalidation to avoid calling during render phase
-    ui_async_call(
+    helix::ui::async_call(
         [](void* obj_ptr) {
             auto* o = static_cast<lv_obj_t*>(obj_ptr);
             if (lv_obj_is_valid(o)) {
@@ -328,7 +330,7 @@ static void arrow_progress_anim_cb(void* var, int32_t value) {
 
     data->arrow_progress = value;
 
-    ui_async_call(
+    helix::ui::async_call(
         [](void* obj_ptr) {
             auto* o = static_cast<lv_obj_t*>(obj_ptr);
             if (lv_obj_is_valid(o)) {
@@ -346,7 +348,7 @@ static void arrow_opacity_anim_cb(void* var, int32_t value) {
 
     data->arrow_opacity = value;
 
-    ui_async_call(
+    helix::ui::async_call(
         [](void* obj_ptr) {
             auto* o = static_cast<lv_obj_t*>(obj_ptr);
             if (lv_obj_is_valid(o)) {

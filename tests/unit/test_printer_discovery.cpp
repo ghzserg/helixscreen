@@ -398,6 +398,124 @@ TEST_CASE("PrinterDiscovery detects AFC and extracts lane names", "[printer_disc
     }
 }
 
+TEST_CASE("PrinterDiscovery detects new AFC object types", "[printer_discovery][afc]") {
+    PrinterDiscovery hw;
+
+    SECTION("AFC_lane detected and added to afc_lane_names") {
+        json objects = {"AFC", "AFC_lane lane4", "AFC_lane lane5", "AFC_lane lane6",
+                        "AFC_lane lane7"};
+        hw.parse_objects(objects);
+
+        REQUIRE(hw.has_mmu());
+        REQUIRE(hw.mmu_type() == AmsType::AFC);
+        auto lanes = hw.afc_lane_names();
+        REQUIRE(lanes.size() == 4);
+        // Lane names should be just the suffix: "lane4", "lane5", etc.
+        REQUIRE(std::find(lanes.begin(), lanes.end(), "lane4") != lanes.end());
+        REQUIRE(std::find(lanes.begin(), lanes.end(), "lane7") != lanes.end());
+    }
+
+    SECTION("AFC_lane and AFC_stepper both populate afc_lane_names") {
+        json objects = {"AFC",
+                        "AFC_stepper lane0",
+                        "AFC_stepper lane1",
+                        "AFC_stepper lane2",
+                        "AFC_stepper lane3",
+                        "AFC_lane lane4",
+                        "AFC_lane lane5",
+                        "AFC_lane lane6",
+                        "AFC_lane lane7"};
+        hw.parse_objects(objects);
+
+        auto lanes = hw.afc_lane_names();
+        REQUIRE(lanes.size() == 8); // Both types in same vector
+    }
+
+    SECTION("AFC_BoxTurtle detected in afc_unit_object_names") {
+        json objects = {"AFC", "AFC_BoxTurtle Turtle_1"};
+        hw.parse_objects(objects);
+
+        auto units = hw.afc_unit_object_names();
+        REQUIRE(units.size() == 1);
+        REQUIRE(units[0] == "AFC_BoxTurtle Turtle_1"); // Full Klipper object name
+    }
+
+    SECTION("AFC_OpenAMS detected in afc_unit_object_names") {
+        json objects = {"AFC", "AFC_OpenAMS AMS_1", "AFC_OpenAMS AMS_2"};
+        hw.parse_objects(objects);
+
+        auto units = hw.afc_unit_object_names();
+        REQUIRE(units.size() == 2);
+        REQUIRE(units[0] == "AFC_OpenAMS AMS_1");
+        REQUIRE(units[1] == "AFC_OpenAMS AMS_2");
+    }
+
+    SECTION("AFC_buffer detected in afc_buffer_names") {
+        json objects = {"AFC", "AFC_buffer TN", "AFC_buffer TN1", "AFC_buffer TN2",
+                        "AFC_buffer TN3"};
+        hw.parse_objects(objects);
+
+        auto buffers = hw.afc_buffer_names();
+        REQUIRE(buffers.size() == 4);
+        REQUIRE(std::find(buffers.begin(), buffers.end(), "TN") != buffers.end());
+    }
+
+    SECTION("Existing AFC_stepper detection unchanged") {
+        json objects = {"AFC", "AFC_stepper lane1", "AFC_stepper lane2"};
+        hw.parse_objects(objects);
+
+        auto lanes = hw.afc_lane_names();
+        REQUIRE(lanes.size() == 2);
+        REQUIRE(lanes[0] == "lane1"); // sorted
+        REQUIRE(lanes[1] == "lane2");
+    }
+
+    SECTION("Mixed AFC hardware - full J0eB0l setup") {
+        json objects = {"AFC",
+                        "AFC_stepper lane0",
+                        "AFC_stepper lane1",
+                        "AFC_stepper lane2",
+                        "AFC_stepper lane3",
+                        "AFC_lane lane4",
+                        "AFC_lane lane5",
+                        "AFC_lane lane6",
+                        "AFC_lane lane7",
+                        "AFC_lane lane8",
+                        "AFC_lane lane9",
+                        "AFC_lane lane10",
+                        "AFC_lane lane11",
+                        "AFC_BoxTurtle Turtle_1",
+                        "AFC_OpenAMS AMS_1",
+                        "AFC_OpenAMS AMS_2",
+                        "AFC_hub Hub_1",
+                        "AFC_hub Hub_2",
+                        "AFC_hub Hub_3",
+                        "AFC_hub Hub_4",
+                        "AFC_hub Hub_5",
+                        "AFC_hub Hub_6",
+                        "AFC_hub Hub_7",
+                        "AFC_hub Hub_8",
+                        "AFC_buffer TN",
+                        "AFC_buffer TN1",
+                        "AFC_buffer TN2",
+                        "AFC_buffer TN3",
+                        "AFC_extruder extruder",
+                        "AFC_extruder extruder1",
+                        "AFC_extruder extruder2",
+                        "AFC_extruder extruder3",
+                        "AFC_extruder extruder4",
+                        "AFC_extruder extruder5"};
+        hw.parse_objects(objects);
+
+        REQUIRE(hw.has_mmu());
+        REQUIRE(hw.mmu_type() == AmsType::AFC);
+        REQUIRE(hw.afc_lane_names().size() == 12);
+        REQUIRE(hw.afc_unit_object_names().size() == 3);
+        REQUIRE(hw.afc_hub_names().size() == 8);
+        REQUIRE(hw.afc_buffer_names().size() == 4);
+    }
+}
+
 TEST_CASE("PrinterDiscovery detects Happy Hare MMU", "[printer_discovery]") {
     PrinterDiscovery hw;
 

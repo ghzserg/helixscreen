@@ -16,6 +16,8 @@
 
 #include <cstring>
 
+using namespace helix;
+
 /**
  * Size preset bundles for ui_switch
  * Maps semantic size names to dimension values (screen-size-aware)

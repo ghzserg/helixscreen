@@ -5,7 +5,7 @@
 
 #include "ui_error_reporting.h"
 #include "ui_gcode_viewer.h"
-#include "ui_toast.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -193,7 +193,7 @@ void PrintExcludeObjectManager::handle_exclude_confirmed() {
 
     // Show toast with "Undo" action button
     std::string toast_msg = "Excluding \"" + pending_exclude_object_ + "\"...";
-    ui_toast_show_with_action(
+    ToastManager::instance().show_with_action(
         ToastSeverity::WARNING, toast_msg.c_str(), "Undo",
         [](void* user_data) {
             auto* self = static_cast<PrintExcludeObjectManager*>(user_data);
@@ -245,7 +245,7 @@ void PrintExcludeObjectManager::handle_exclude_undo() {
     pending_exclude_object_.clear();
 
     // Show confirmation that undo succeeded
-    ui_toast_show(ToastSeverity::SUCCESS, lv_tr("Exclusion cancelled"), 2000);
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Exclusion cancelled"), 2000);
 }
 
 // ============================================================================
@@ -296,21 +296,22 @@ void PrintExcludeObjectManager::exclude_undo_timer_cb(lv_timer_t* timer) {
                               err.message);
 
                 // UI operations must happen on the main thread
-                ui_queue_update([self, alive, object_name, user_msg = err.user_message()]() {
-                    if (!alive->load()) {
-                        return;
-                    }
-                    NOTIFY_ERROR("Failed to exclude '{}': {}", object_name, user_msg);
+                helix::ui::queue_update(
+                    [self, alive, object_name, user_msg = err.user_message()]() {
+                        if (!alive->load()) {
+                            return;
+                        }
+                        NOTIFY_ERROR("Failed to exclude '{}': {}", object_name, user_msg);
 
-                    // Revert visual state - refresh viewer with only confirmed exclusions
-                    if (self->gcode_viewer_) {
-                        ui_gcode_viewer_set_excluded_objects(self->gcode_viewer_,
-                                                             self->excluded_objects_);
-                        spdlog::debug(
-                            "[PrintExcludeObjectManager] Reverted visual exclusion for '{}'",
-                            object_name);
-                    }
-                });
+                        // Revert visual state - refresh viewer with only confirmed exclusions
+                        if (self->gcode_viewer_) {
+                            ui_gcode_viewer_set_excluded_objects(self->gcode_viewer_,
+                                                                 self->excluded_objects_);
+                            spdlog::debug(
+                                "[PrintExcludeObjectManager] Reverted visual exclusion for '{}'",
+                                object_name);
+                        }
+                    });
             });
     } else {
         spdlog::warn("[PrintExcludeObjectManager] No API available - simulating exclusion");

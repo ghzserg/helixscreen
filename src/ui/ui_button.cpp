@@ -19,6 +19,8 @@
 
 #include <cstring>
 
+using namespace helix;
+
 namespace {
 
 // User data stored on button to track icon/label positions
@@ -288,10 +290,14 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
     }
 
     // Parse text attribute
+    // text="@subject" is handled in apply phase (subject binding) — treat as
+    // empty here for label creation but still set has_text=true for layout.
     const char* text = lv_xml_get_value_of(attrs, "text");
+    bool text_is_subject = (text && text[0] == '@');
     if (!text) {
         text = "";
     }
+    const char* label_text = text_is_subject ? "" : text;
 
     // Parse translation_tag attribute for i18n support
     const char* translation_tag = lv_xml_get_value_of(attrs, "translation_tag");
@@ -324,7 +330,9 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
                                           .icon_on_right = icon_on_right};
 
     bool has_icon = (icon_name && strlen(icon_name) > 0);
-    bool has_text = (text && strlen(text) > 0);
+    const char* bind_text_create = lv_xml_get_value_of(attrs, "bind_text");
+    bool has_text =
+        (text && strlen(text) > 0) || (bind_text_create && strlen(bind_text_create) > 0);
 
     if (has_icon && has_text) {
         if (vertical_layout) {
@@ -338,13 +346,13 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
             if (icon_on_bottom) {
                 // Text first, then icon
                 data->label = lv_label_create(btn);
-                lv_label_set_text(data->label, text);
+                lv_label_set_text(data->label, label_text);
                 data->icon = create_button_icon(btn, icon_name);
             } else {
                 // Icon first (top), then text
                 data->icon = create_button_icon(btn, icon_name);
                 data->label = lv_label_create(btn);
-                lv_label_set_text(data->label, text);
+                lv_label_set_text(data->label, label_text);
             }
             // Use small font for vertical layout labels (matches text_small)
             if (data->label) {
@@ -363,13 +371,13 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
             if (icon_on_right) {
                 // Text first, then icon
                 data->label = lv_label_create(btn);
-                lv_label_set_text(data->label, text);
+                lv_label_set_text(data->label, label_text);
                 data->icon = create_button_icon(btn, icon_name);
             } else {
                 // Icon first (left), then text
                 data->icon = create_button_icon(btn, icon_name);
                 data->label = lv_label_create(btn);
-                lv_label_set_text(data->label, text);
+                lv_label_set_text(data->label, label_text);
             }
         }
     } else if (has_icon) {
@@ -385,7 +393,7 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
             lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                                   LV_FLEX_ALIGN_CENTER);
             data->label = lv_label_create(btn);
-            lv_label_set_text(data->label, text);
+            lv_label_set_text(data->label, label_text);
         } else if (explicit_row) {
             // Text with row layout: set up flex for XML children beside
             lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_ROW);
@@ -393,11 +401,11 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
                                   LV_FLEX_ALIGN_CENTER);
             lv_obj_set_style_pad_column(btn, theme_manager_get_spacing("space_xs"), LV_PART_MAIN);
             data->label = lv_label_create(btn);
-            lv_label_set_text(data->label, text);
+            lv_label_set_text(data->label, label_text);
         } else {
             // Text only without explicit layout: center the label
             data->label = lv_label_create(btn);
-            lv_label_set_text(data->label, text);
+            lv_label_set_text(data->label, label_text);
             lv_obj_center(data->label);
         }
     } else if (explicit_column || explicit_row) {
@@ -532,29 +540,71 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     lv_obj_t* btn = static_cast<lv_obj_t*>(item);
     UiButtonData* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
 
-    // Handle bind_text - bind the internal label to a subject
-    const char* bind_text = lv_xml_get_value_of(attrs, "bind_text");
-    if (bind_text && data && data->magic == UiButtonData::MAGIC) {
-        lv_subject_t* subject = lv_xml_get_subject(&state->scope, bind_text);
+    // Text binding convention:
+    //   text="literal"       → static text (set during create, no action here)
+    //   text="@subject_name" → '@' prefix triggers reactive subject binding
+    //   bind_text="subject"  → LVGL-standard attribute, always a subject (no '@' needed)
+    // Both paths share the same binding logic below.
+
+    // Determine subject name from text="@..." or bind_text="..."
+    const char* subject_name = nullptr;
+    const char* fmt_attr = nullptr;
+    const char* text_val = lv_xml_get_value_of(attrs, "text");
+    const char* bind_text_val = lv_xml_get_value_of(attrs, "bind_text");
+
+    if (bind_text_val && bind_text_val[0] != '\0') {
+        // bind_text is always a subject name (LVGL standard)
+        // Strip '@' prefix if present (for consistency with text="@subject" convention)
+        subject_name = (bind_text_val[0] == '@') ? bind_text_val + 1 : bind_text_val;
+        fmt_attr = lv_xml_get_value_of(attrs, "bind_text-fmt");
+    } else if (text_val && text_val[0] == '@') {
+        // text="@subject" — strip '@' prefix
+        subject_name = text_val + 1;
+        fmt_attr = lv_xml_get_value_of(attrs, "text-fmt");
+    }
+
+    if (subject_name && subject_name[0] != '\0' && data && data->magic == UiButtonData::MAGIC) {
+        if (!data->label) {
+            data->label = lv_label_create(btn);
+            lv_obj_center(data->label);
+        }
+
+        lv_subject_t* subject = lv_xml_get_subject(&state->scope, subject_name);
         if (subject) {
-            // If button has no label yet (text was empty), create one now
-            if (!data->label) {
-                data->label = lv_label_create(btn);
-                lv_obj_center(data->label);
-            }
-            // Get optional format string
-            const char* fmt = lv_xml_get_value_of(attrs, "bind_text-fmt");
-            if (fmt) {
-                fmt = lv_strdup(fmt);
+            if (fmt_attr) {
+                fmt_attr = lv_strdup(fmt_attr);
                 lv_obj_add_event_cb(data->label, lv_event_free_user_data_cb, LV_EVENT_DELETE,
-                                    const_cast<char*>(fmt));
+                                    const_cast<char*>(fmt_attr));
             }
-            lv_label_bind_text(data->label, subject, fmt);
-            // Re-apply contrast after binding updates text
+            lv_label_bind_text(data->label, subject, fmt_attr);
+
+            // When subject changes, LVGL only redraws the label area — the
+            // button background needs a full repaint. Defer invalidation via
+            // lv_async_call so it runs after the observer chain completes
+            // (invalidating mid-observer causes wrong style state).
+            lv_subject_add_observer_obj(
+                subject,
+                [](lv_observer_t* obs, lv_subject_t*) {
+                    lv_obj_t* parent_btn = static_cast<lv_obj_t*>(lv_observer_get_target_obj(obs));
+                    if (parent_btn && lv_obj_is_valid(parent_btn)) {
+                        lv_async_call(
+                            [](void* ud) {
+                                auto* b = static_cast<lv_obj_t*>(ud);
+                                if (lv_obj_is_valid(b)) {
+                                    lv_obj_invalidate(b);
+                                }
+                            },
+                            parent_btn);
+                    }
+                },
+                btn, nullptr);
+
             update_button_text_contrast(btn);
-            spdlog::trace("[ui_button] Bound label to subject '{}'", bind_text);
+            spdlog::trace("[ui_button] Bound label to subject '{}'", subject_name);
         } else {
-            spdlog::warn("[ui_button] Subject '{}' not found for bind_text", bind_text);
+            spdlog::warn("[ui_button] Subject '{}' not found for text binding", subject_name);
+            lv_label_set_text(data->label, subject_name);
+            update_button_text_contrast(btn);
         }
     }
 
@@ -643,4 +693,18 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
 void ui_button_init() {
     lv_xml_register_widget("ui_button", ui_button_create, ui_button_apply);
     spdlog::trace("[ui_button] Registered semantic button widget");
+}
+
+void ui_button_set_text(lv_obj_t* btn, const char* text) {
+    if (!btn || !text) {
+        return;
+    }
+    auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
+    if (!data || data->magic != UiButtonData::MAGIC || !data->label) {
+        return;
+    }
+    lv_label_set_text(data->label, text);
+    // Label invalidation only redraws the label area — force the whole button
+    // to repaint so the background behind the label is consistent
+    lv_obj_invalidate(btn);
 }

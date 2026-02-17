@@ -306,19 +306,16 @@ install_forgex_logged_wrapper() {
         return 1
     fi
 
-    # Check if already wrapped
+    # Always re-write the wrapper to pick up fixes on upgrade
     if [ -L "$logged_bin" ] && [ -f "$logged_real" ]; then
-        log_info "ForgeX logged wrapper already installed"
-        return 0
-    fi
-
-    # Don't wrap if it's already a symlink to something else
-    if [ -L "$logged_bin" ]; then
+        log_info "Updating ForgeX logged wrapper..."
+    elif [ -L "$logged_bin" ]; then
+        # Don't wrap if it's already a symlink to something else
         log_warn "ForgeX logged is already a symlink, skipping wrapper"
         return 1
+    else
+        log_info "Installing ForgeX logged wrapper..."
     fi
-
-    log_info "Installing ForgeX logged wrapper..."
 
     # Create the wrapper script
     cat > "$logged_wrapper" << 'WRAPPER_EOF'
@@ -327,10 +324,9 @@ install_forgex_logged_wrapper() {
 # The logged binary writes directly to /dev/fb0, bypassing screen.sh patches
 
 if [ -f /tmp/helixscreen_active ]; then
-    # Remove --send-to-screen and related args, pass everything else through
-    # Build a clean argument list preserving quoting
+    # Remove --send-to-screen and related args, keep everything else
+    args=""
     skip_next=0
-    set --
     for arg in "$@"; do
         if [ $skip_next -eq 1 ]; then
             skip_next=0
@@ -341,10 +337,10 @@ if [ -f /tmp/helixscreen_active ]; then
             --screen-no-followup) continue ;;
             --screen-level) skip_next=1; continue ;;
             --screen-queue) skip_next=1; continue ;;
-            *) set -- "$@" "$arg" ;;
+            *) args="$args $arg" ;;
         esac
     done
-    exec /opt/config/mod/.bin/exec/logged-real "$@"
+    exec /opt/config/mod/.bin/exec/logged-real $args
 else
     exec /opt/config/mod/.bin/exec/logged-real "$@"
 fi
@@ -352,9 +348,11 @@ WRAPPER_EOF
 
     $SUDO chmod +x "$logged_wrapper"
 
-    # Move original to logged-real and symlink logged to wrapper
-    $SUDO mv "$logged_bin" "$logged_real"
-    $SUDO ln -s "$logged_wrapper" "$logged_bin"
+    # Move original to logged-real and symlink logged to wrapper (skip if already done)
+    if [ ! -L "$logged_bin" ]; then
+        $SUDO mv "$logged_bin" "$logged_real"
+        $SUDO ln -s "$logged_wrapper" "$logged_bin"
+    fi
 
     if [ -L "$logged_bin" ] && [ -f "$logged_real" ]; then
         log_success "ForgeX logged wrapper installed"

@@ -33,6 +33,7 @@
 #include "moonraker_client.h"
 #include "platform_info.h"
 #include "runtime_config.h"
+#include "static_panel_registry.h"
 #include "subject_managed_panel.h"
 #include "theme_manager.h"
 #include "wizard_config_paths.h"
@@ -41,6 +42,8 @@
 #include <spdlog/spdlog.h>
 
 #include <cstdio>
+
+using namespace helix;
 
 // Subject declarations (static/global scope required)
 static lv_subject_t current_step;
@@ -226,6 +229,10 @@ void ui_wizard_init_subjects() {
     UI_MANAGED_SUBJECT_INT(wizard_show_skip, 0, "wizard_show_skip", wizard_subjects_);
 
     wizard_subjects_initialized = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticPanelRegistry::instance().register_destroy("WizardSubjects", ui_wizard_deinit_subjects);
+
     spdlog::debug("[Wizard] Subjects initialized ({} subjects registered)",
                   wizard_subjects_.count());
 }
@@ -251,7 +258,7 @@ void ui_wizard_deinit_subjects() {
     // in lv_deinit() when those widgets are deleted.
     if (wizard_container && lv_is_initialized()) {
         spdlog::debug("[Wizard] Deleting wizard container during deinit");
-        lv_obj_safe_delete(wizard_container);
+        helix::ui::safe_delete(wizard_container);
         current_screen_step = -1;
     }
 
@@ -911,9 +918,11 @@ void ui_wizard_complete() {
     ui_wizard_cleanup_current_screen();
 
     // 3. Delete wizard container (main UI is already created underneath)
+    // SAFETY: Use lv_obj_del_async — the Finish button that triggered this call is a
+    // child of wizard_container. Synchronous delete causes use-after-free (issue #80).
     if (wizard_container) {
-        spdlog::debug("[Wizard] Deleting wizard container");
-        lv_obj_del(wizard_container);
+        spdlog::debug("[Wizard] Deleting wizard container (async)");
+        lv_obj_del_async(wizard_container);
         wizard_container = nullptr;
     }
 

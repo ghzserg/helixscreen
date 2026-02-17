@@ -103,7 +103,6 @@ class TimelapseInstallOverlay : public OverlayBase {
     lv_obj_t* step_progress_ = nullptr;
     lv_obj_t* status_label_ = nullptr;
     lv_obj_t* action_btn_ = nullptr;
-    lv_obj_t* action_btn_label_ = nullptr;
     lv_obj_t* ssh_container_ = nullptr;
 
     Step current_step_ = Step::CHECKING_WEBCAM;

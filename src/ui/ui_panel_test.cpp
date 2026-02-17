@@ -3,7 +3,7 @@
 
 #include "ui_panel_test.h"
 
-#include "ui_keyboard.h"
+#include "ui_keyboard_manager.h"
 
 #include "app_globals.h"
 #include "lv_markdown.h"
@@ -15,6 +15,8 @@
 
 #include <cstdio>
 #include <memory>
+
+using namespace helix;
 
 // ============================================================================
 // CONSTRUCTOR
@@ -56,7 +58,7 @@ void TestPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     // Register keyboard for textarea
     lv_obj_t* keyboard_textarea = lv_obj_find_by_name(panel_, "keyboard_test_textarea");
     if (keyboard_textarea) {
-        ui_keyboard_register_textarea(keyboard_textarea);
+        KeyboardManager::instance().register_textarea(keyboard_textarea);
         spdlog::info("[{}] Registered keyboard for textarea", get_name());
     }
 

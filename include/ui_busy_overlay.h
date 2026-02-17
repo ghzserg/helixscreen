@@ -48,9 +48,9 @@ class BusyOverlay {
      * Only updates if overlay is visible or pending.
      *
      * @note NOT thread-safe! Must be called from the main LVGL thread.
-     *       When calling from HTTP/background threads, use ui_async_call():
+     *       When calling from HTTP/background threads, use helix::ui::async_call():
      *       @code
-     *       ui_async_call([](void* data) {
+     *       helix::ui::async_call([](void* data) {
      *           BusyOverlay::set_progress("Downloading", pct);
      *       }, nullptr);
      *       @endcode

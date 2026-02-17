@@ -6,7 +6,6 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_jog_pad.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_common.h"
 #include "ui_panel_singleton_macros.h"
@@ -27,6 +26,8 @@
 #include <cmath>
 #include <cstring>
 #include <memory>
+
+using namespace helix;
 
 // Forward declaration for unified Z-axis XML event callback
 static void on_motion_z_button(lv_event_t* e);
@@ -108,13 +109,13 @@ void MotionPanel::init_subjects() {
     // Update X position display
     float x = static_cast<float>(helix::units::from_centimm(x_centimm));
     current_x_ = x;
-    helix::fmt::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
+    helix::format::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
     lv_subject_copy_string(&pos_x_subject_, pos_x_buf_);
 
     // Update Y position display
     float y = static_cast<float>(helix::units::from_centimm(y_centimm));
     current_y_ = y;
-    helix::fmt::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
+    helix::format::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
     lv_subject_copy_string(&pos_y_subject_, pos_y_buf_);
 
     // Update Z position display (uses gcode_z_centimm_ and actual_z_centimm_ we just set)
@@ -237,7 +238,7 @@ void MotionPanel::setup_jog_pad() {
     lv_coord_t jog_size = (lv_coord_t)(available_height * 0.80f);
 
     // Delete placeholder container
-    lv_obj_safe_delete(jog_pad_container);
+    helix::ui::safe_delete(jog_pad_container);
 
     // Create jog pad widget
     jog_pad_ = ui_jog_pad_create(left_column);
@@ -279,7 +280,7 @@ void MotionPanel::register_position_observers() {
                 return;
             float x = static_cast<float>(helix::units::from_centimm(centimm));
             self->current_x_ = x;
-            helix::fmt::format_distance_mm(x, 2, self->pos_x_buf_, sizeof(self->pos_x_buf_));
+            helix::format::format_distance_mm(x, 2, self->pos_x_buf_, sizeof(self->pos_x_buf_));
             lv_subject_copy_string(&self->pos_x_subject_, self->pos_x_buf_);
         });
 
@@ -290,7 +291,7 @@ void MotionPanel::register_position_observers() {
                 return;
             float y = static_cast<float>(helix::units::from_centimm(centimm));
             self->current_y_ = y;
-            helix::fmt::format_distance_mm(y, 2, self->pos_y_buf_, sizeof(self->pos_y_buf_));
+            helix::format::format_distance_mm(y, 2, self->pos_y_buf_, sizeof(self->pos_y_buf_));
             lv_subject_copy_string(&self->pos_y_subject_, self->pos_y_buf_);
         });
 
@@ -380,7 +381,7 @@ void MotionPanel::update_z_display() {
         // Special case: compound format not covered by formatter
         snprintf(pos_z_buf_, sizeof(pos_z_buf_), "%.2f [%.2f] mm", gcode_z, actual_z);
     } else {
-        helix::fmt::format_distance_mm(gcode_z, 2, pos_z_buf_, sizeof(pos_z_buf_));
+        helix::format::format_distance_mm(gcode_z, 2, pos_z_buf_, sizeof(pos_z_buf_));
     }
     lv_subject_copy_string(&pos_z_subject_, pos_z_buf_);
 }
@@ -441,7 +442,7 @@ void MotionPanel::handle_z_button(const char* name) {
 // Jog Pad Callbacks
 // ============================================================================
 
-void MotionPanel::jog_pad_jog_cb(jog_direction_t direction, float distance_mm, void* user_data) {
+void MotionPanel::jog_pad_jog_cb(JogDirection direction, float distance_mm, void* user_data) {
     auto* self = static_cast<MotionPanel*>(user_data);
     if (self) {
         self->jog(direction, distance_mm);
@@ -473,49 +474,50 @@ void MotionPanel::set_position(float x, float y, float z) {
         return;
 
     // Update subjects (will automatically update bound UI elements)
-    helix::fmt::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
-    helix::fmt::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
+    helix::format::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
+    helix::format::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
 
     lv_subject_copy_string(&pos_x_subject_, pos_x_buf_);
     lv_subject_copy_string(&pos_y_subject_, pos_y_buf_);
     update_z_display(); // Also copies to pos_z_subject_
 }
 
-void MotionPanel::jog(jog_direction_t direction, float distance_mm) {
+void MotionPanel::jog(JogDirection direction, float distance_mm) {
     const char* dir_names[] = {"N(+Y)",    "S(-Y)",    "E(+X)",    "W(-X)",
                                "NE(+X+Y)", "NW(-X+Y)", "SE(+X-Y)", "SW(-X-Y)"};
 
-    spdlog::debug("[{}] Jog command: {} {:.1f}mm", get_name(), dir_names[direction], distance_mm);
+    spdlog::debug("[{}] Jog command: {} {:.1f}mm", get_name(),
+                  dir_names[static_cast<int>(direction)], distance_mm);
 
     // Calculate dx/dy from direction
     float dx = 0.0f, dy = 0.0f;
 
     switch (direction) {
-    case JOG_DIR_N:
+    case JogDirection::N:
         dy = distance_mm;
         break;
-    case JOG_DIR_S:
+    case JogDirection::S:
         dy = -distance_mm;
         break;
-    case JOG_DIR_E:
+    case JogDirection::E:
         dx = distance_mm;
         break;
-    case JOG_DIR_W:
+    case JogDirection::W:
         dx = -distance_mm;
         break;
-    case JOG_DIR_NE:
+    case JogDirection::NE:
         dx = distance_mm;
         dy = distance_mm;
         break;
-    case JOG_DIR_NW:
+    case JogDirection::NW:
         dx = -distance_mm;
         dy = distance_mm;
         break;
-    case JOG_DIR_SE:
+    case JogDirection::SE:
         dx = distance_mm;
         dy = -distance_mm;
         break;
-    case JOG_DIR_SW:
+    case JogDirection::SW:
         dx = -distance_mm;
         dy = -distance_mm;
         break;

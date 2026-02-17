@@ -133,18 +133,12 @@ void MoonrakerAPI::check_helix_plugin(BoolCallback on_result, ErrorCallback on_e
                 enabled = r.value("enabled", true);
                 version = r.value("version", "1.0.0"); // Old plugins lack version
             }
-            helix_plugin_available_ = enabled;
-            helix_plugin_checked_ = true;
-            helix_plugin_version_ = version;
             spdlog::info("[Moonraker API] helix_print plugin v{} detected (enabled={})", version,
                          enabled);
             on_result(enabled);
         },
         [this, on_result, on_error](const MoonrakerError& err) {
             // Plugin not available (404 or method not found)
-            helix_plugin_available_ = false;
-            helix_plugin_checked_ = true;
-            helix_plugin_version_.clear();
             spdlog::debug("[Moonraker API] helix_print plugin not available: {}", err.message);
             // Don't treat this as an error - just means plugin isn't installed
             on_result(false);

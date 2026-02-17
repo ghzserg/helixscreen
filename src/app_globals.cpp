@@ -20,6 +20,7 @@
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 #include "printer_state.h"
+#include "static_subject_registry.h"
 
 #include <spdlog/spdlog.h>
 
@@ -34,6 +35,8 @@
 // Platform-specific includes for process restart
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h> // fork, execv, usleep
+using namespace helix;
+
 #endif
 
 // Global singleton instances (extern declarations in header, definitions here)
@@ -113,6 +116,11 @@ lv_subject_t& get_notification_subject() {
 static bool g_subjects_initialized = false;
 
 void app_globals_init_subjects() {
+    if (g_subjects_initialized) {
+        spdlog::debug("[App Globals] Subjects already initialized, skipping");
+        return;
+    }
+
     // Initialize notification subject (stores NotificationData pointer)
     // Note: Not using UI_MANAGED_SUBJECT_POINTER because this subject is accessed
     // programmatically via get_notification_subject(), not through XML bindings
@@ -127,9 +135,13 @@ void app_globals_init_subjects() {
     lv_xml_register_subject(nullptr, "show_beta_features", &g_show_beta_features_subject);
 
     // Initialize modal dialog subjects (for modal_dialog.xml binding)
-    ui_modal_init_subjects();
+    helix::ui::modal_init_subjects();
 
     g_subjects_initialized = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticSubjectRegistry::instance().register_deinit("AppGlobals", app_globals_deinit_subjects);
+
     spdlog::trace("[App Globals] Global subjects initialized");
 }
 
@@ -138,7 +150,7 @@ void app_globals_deinit_subjects() {
         return;
     }
     g_subjects.deinit_all();
-    ui_modal_deinit_subjects(); // Clean up modal subjects
+    helix::ui::modal_deinit_subjects(); // Clean up modal subjects
     g_subjects_initialized = false;
     spdlog::debug("[App Globals] Global subjects deinitialized");
 }
@@ -302,6 +314,14 @@ std::string get_helix_cache_dir(const std::string& subdir) {
         std::string path = "/data/helixscreen/cache/" + subdir;
         if (try_create_dir(path)) {
             spdlog::info("[App Globals] Cache dir (AD5M): {}", path);
+            return path;
+        }
+    }
+#elif defined(HELIX_PLATFORM_CC1)
+    {
+        std::string path = "/opt/helixscreen/cache/" + subdir;
+        if (try_create_dir(path)) {
+            spdlog::info("[App Globals] Cache dir (CC1): {}", path);
             return path;
         }
     }

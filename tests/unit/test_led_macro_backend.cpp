@@ -107,14 +107,14 @@ TEST_CASE("MacroBackend: macro with presets", "[led][macro]") {
     helix::led::LedMacroInfo macro;
     macro.display_name = "LED Modes";
     macro.type = helix::led::MacroLedType::PRESET;
-    macro.presets = {{"Party", "LED_PARTY"}, {"Night Light", "LED_NIGHTLIGHT"}};
+    macro.presets = {"LED_PARTY", "LED_NIGHTLIGHT"};
     backend.add_macro(macro);
 
     REQUIRE(backend.macros().size() == 1);
     REQUIRE(backend.macros()[0].type == helix::led::MacroLedType::PRESET);
     REQUIRE(backend.macros()[0].presets.size() == 2);
-    REQUIRE(backend.macros()[0].presets[0].first == "Party");
-    REQUIRE(backend.macros()[0].presets[0].second == "LED_PARTY");
+    REQUIRE(backend.macros()[0].presets[0] == "LED_PARTY");
+    REQUIRE(backend.macros()[0].presets[1] == "LED_NIGHTLIGHT");
 }
 
 TEST_CASE("MacroLedType: ON_OFF type has on/off macros", "[led][macro]") {
@@ -129,6 +129,31 @@ TEST_CASE("MacroLedType: ON_OFF type has on/off macros", "[led][macro]") {
     REQUIRE(!info.off_macro.empty());
     REQUIRE(info.toggle_macro.empty());
     REQUIRE(info.presets.empty());
+}
+
+TEST_CASE("pretty_print_macro: formats macro names for display", "[led][macro]") {
+    using helix::led::pretty_print_macro;
+
+    // Strip LED_ prefix and title-case
+    REQUIRE(pretty_print_macro("LED_PARTY_MODE") == "Party Mode");
+
+    // Strip LIGHT_ prefix
+    REQUIRE(pretty_print_macro("LIGHT_DIM") == "Dim");
+
+    // Strip STATUS_LED_ prefix
+    REQUIRE(pretty_print_macro("STATUS_LED_READY") == "Ready");
+
+    // No prefix to strip
+    REQUIRE(pretty_print_macro("CASELIGHT_ON") == "Caselight On");
+
+    // Already short name
+    REQUIRE(pretty_print_macro("LED_ON") == "On");
+
+    // Single word after prefix
+    REQUIRE(pretty_print_macro("LED_BREATHE") == "Breathe");
+
+    // Empty string
+    REQUIRE(pretty_print_macro("") == "");
 }
 
 TEST_CASE("MacroLedType: TOGGLE type has toggle macro", "[led][macro]") {

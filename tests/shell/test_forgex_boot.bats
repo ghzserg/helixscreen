@@ -187,9 +187,10 @@ EOF
     grep -A25 'uninstall_forgex()' "$WORKTREE_ROOT/scripts/install.sh" | grep -q 'unpatch_forgex_screen_drawing'
 }
 
-@test "bundled install.sh logged wrapper quotes arguments properly" {
-    # The exec line in the active path must use "$@" not unquoted $args
-    sed -n '/WRAPPER_EOF/,/WRAPPER_EOF/p' "$WORKTREE_ROOT/scripts/install.sh" | grep 'exec.*/logged-real' | head -1 | grep -q '"\$@"'
+@test "bundled install.sh logged wrapper uses string accumulation for args" {
+    # The active path must use $args (string accumulation) — the old set-- pattern
+    # was broken because set-- clears positional params before the loop iterates
+    sed -n '/WRAPPER_EOF/,/WRAPPER_EOF/p' "$WORKTREE_ROOT/scripts/install.sh" | grep 'exec.*/logged-real' | head -1 | grep -q '\$args'
 }
 
 @test "uninstall.sh calls unpatch_forgex_screen_drawing" {

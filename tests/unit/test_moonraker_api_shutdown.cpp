@@ -26,6 +26,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Test Fixture - Exposes launch_http_thread for testing
 // ============================================================================

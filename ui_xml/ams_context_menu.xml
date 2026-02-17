@@ -40,13 +40,6 @@
                  style_flex_main_place="start">
         <event_cb trigger="clicked" callback="ams_context_edit_cb"/>
       </ui_button>
-      <!-- Assign Spoolman Button (only shown when Spoolman is available) -->
-      <ui_button name="btn_spoolman"
-                 width="100%" height="#button_height_sm" icon="spoolman" text="Assign Spool" translation_tag="Assign Spool" variant="ghost"
-                 clickable="true" hidden="true" style_flex_main_place="start">
-        <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
-        <event_cb trigger="clicked" callback="ams_context_spoolman_cb"/>
-      </ui_button>
       <!-- Divider before dropdowns -->
       <lv_obj name="dropdown_divider"
               width="100%" height="1" style_bg_color="#text_muted" style_bg_opa="38" style_pad_all="0"

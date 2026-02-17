@@ -7,7 +7,25 @@
         extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_border_width="0"
         style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
     <!-- Header Bar with back button -->
-    <header_bar name="overlay_header" title="Spoolman" title_tag="Spoolman"/>
+    <header_bar name="overlay_header"
+                title="Spoolman" title_tag="Spoolman" hide_action_button="false" action_button_icon="refresh"
+                hide_action_button_text="true" action_button_callback="on_spoolman_refresh_clicked"
+                action_button_bg_color="#elevated_bg" action_button_width="40" action_button_height="40"
+                action_button_radius="9999"
+                hide_action_button_2="false" action_button_2_text="+ Add"
+                action_button_2_callback="on_spoolman_add_spool_clicked"
+                action_button_2_bg_color="#primary"/>
+    <!-- Search Row -->
+    <lv_obj name="search_row"
+            width="100%" height="content" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
+            style_pad_column="#space_md" style_pad_left="#space_lg" style_pad_right="#space_lg"
+            style_pad_top="#space_sm" style_pad_bottom="#space_sm" scrollable="false">
+      <text_input name="search_box"
+                  placeholder_text="Search spools..." placeholder_tag="Search spools..." flex_grow="1" style_min_width="120"
+                  style_max_height="#input_height" show_clear_button="true" clear_callback="on_spoolman_search_clear">
+        <event_cb trigger="value_changed" callback="on_spoolman_search_changed"/>
+      </text_input>
+    </lv_obj>
     <!-- Content Area -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="#space_lg" style_pad_gap="#space_md" scrollable="false"
@@ -33,17 +51,6 @@
         <spinner name="loading_spinner" size="lg"/>
         <text_small name="loading_text" text="Loading spools..." translation_tag="Loading spools..." style_text_align="center"/>
       </centered_column>
-      <!-- Status bar at bottom -->
-      <lv_obj name="status_bar"
-              width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="row"
-              style_flex_main_place="space_between" style_flex_cross_place="center">
-        <!-- Spool count -->
-        <text_small name="spool_count_text" text="" bind_text="spoolman_spool_count"/>
-        <!-- Refresh button -->
-        <ui_button name="refresh_btn" variant="ghost" icon="refresh">
-          <event_cb trigger="clicked" callback="on_spoolman_refresh_clicked"/>
-        </ui_button>
-      </lv_obj>
     </lv_obj>
   </view>
 </component>

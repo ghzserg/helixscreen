@@ -1545,6 +1545,80 @@
       ]
     },
     {
+      "id": "prusawire",
+      "name": "PrusaWire",
+      "manufacturer": "Positron3D",
+      "image": "prusawire.png",
+      "heuristics": [
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "corexz",
+          "confidence": 90,
+          "reason": "CoreXZ kinematics (Prusa-to-Switchwire conversion)"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "adxl345",
+          "confidence": 60,
+          "reason": "ADXL345 accelerometer (input shaper)"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "probe",
+          "confidence": 40,
+          "reason": "Z probe present (SuperPinda or Omron inductive probe)"
+        },
+        {
+          "type": "build_volume_range",
+          "field": "bed_mesh",
+          "min_x": 240,
+          "max_x": 260,
+          "min_y": 200,
+          "max_y": 220,
+          "confidence": 50,
+          "reason": "Build volume ~250x210mm (Prusa i3 frame size)"
+        },
+        {
+          "type": "mcu_match",
+          "field": "mcu",
+          "pattern": "STM32G0B1",
+          "confidence": 60,
+          "reason": "STM32G0B1 MCU (BTT SKR Mini E3 V3)"
+        },
+        {
+          "type": "mcu_match",
+          "field": "mcu",
+          "pattern": "ATmega2560",
+          "confidence": 50,
+          "reason": "ATmega2560 MCU (Einsy RAMBo board)"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "prusawire",
+          "confidence": 99,
+          "reason": "Hostname contains 'prusawire' — definitive match"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "prusa",
+          "confidence": 70,
+          "reason": "Hostname contains 'prusa'"
+        },
+        {
+          "type": "macro_match",
+          "field": "macros",
+          "pattern": "PRUSAWIRE",
+          "confidence": 95,
+          "reason": "PRUSAWIRE macro present — strong indicator"
+        }
+      ]
+    },
+    {
       "id": "qidi_x_max_3",
       "name": "Qidi X-Max 3",
       "manufacturer": "Qidi",

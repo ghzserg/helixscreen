@@ -4,7 +4,7 @@
 #include "ui_panel_notification_history.h"
 
 #include "ui_event_safety.h"
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_notification_manager.h"
 #include "ui_panel_common.h"
 #include "ui_severity_card.h"
@@ -20,6 +20,8 @@
 
 #include <cstring>
 #include <memory>
+
+using namespace helix;
 
 // ============================================================================
 // CONSTRUCTOR
@@ -108,18 +110,8 @@ void NotificationHistoryPanel::refresh() {
         return;
     }
 
-    // Free action string allocations from previous items
-    uint32_t old_child_cnt = lv_obj_get_child_count(overlay_content);
-    for (uint32_t i = 0; i < old_child_cnt; i++) {
-        lv_obj_t* child = lv_obj_get_child(overlay_content, static_cast<int32_t>(i));
-        char* action_str = static_cast<char*>(lv_obj_get_user_data(child));
-        if (action_str) {
-            delete[] action_str;
-            lv_obj_set_user_data(child, nullptr);
-        }
-    }
-
     // Clear existing items from content area
+    // Action strings are freed automatically via LV_EVENT_DELETE callbacks
     lv_obj_clean(overlay_content);
 
     // Update has_entries subject - XML bindings handle visibility reactively
@@ -158,13 +150,15 @@ void NotificationHistoryPanel::refresh() {
         ui_severity_card_finalize(item);
 
         // If entry has an action, make it clickable
+        // Store action string in the event callback's user_data (NOT lv_obj user_data,
+        // which is already used by severity_card for the severity string)
         if (entry.action[0] != '\0') {
-            char* action_copy = new (std::nothrow) char[64];
-            if (action_copy) {
-                strncpy(action_copy, entry.action, 63);
-                action_copy[63] = '\0';
-                lv_obj_set_user_data(item, action_copy);
-                lv_obj_add_event_cb(item, on_item_clicked, LV_EVENT_CLICKED, this);
+            auto* ctx = new (std::nothrow) ClickContext{this, {}};
+            if (ctx) {
+                strncpy(ctx->action, entry.action, sizeof(ctx->action) - 1);
+                ctx->action[sizeof(ctx->action) - 1] = '\0';
+                lv_obj_add_event_cb(item, on_item_clicked, LV_EVENT_CLICKED, ctx);
+                lv_obj_add_event_cb(item, on_item_deleted, LV_EVENT_DELETE, ctx);
                 lv_obj_add_flag(item, LV_OBJ_FLAG_CLICKABLE);
             }
         }
@@ -174,8 +168,8 @@ void NotificationHistoryPanel::refresh() {
     history_.mark_all_read();
 
     // Update status bar - badge count is 0 and bell goes gray (no unread)
-    ui_status_bar_update_notification_count(0);
-    ui_status_bar_update_notification(NotificationStatus::NONE);
+    helix::ui::notification_update_count(0);
+    helix::ui::notification_update(NotificationStatus::NONE);
 
     spdlog::debug("[{}] Refreshed: {} entries displayed", get_name(), entries.size());
 }
@@ -237,13 +231,16 @@ void NotificationHistoryPanel::handle_clear_clicked() {
 
 void NotificationHistoryPanel::on_item_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[NotificationHistoryPanel] on_item_clicked");
-    auto* self = static_cast<NotificationHistoryPanel*>(lv_event_get_user_data(e));
-    auto* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    const char* action = static_cast<const char*>(lv_obj_get_user_data(target));
-    if (self && action && action[0] != '\0') {
-        self->dispatch_action(action);
+    auto* ctx = static_cast<ClickContext*>(lv_event_get_user_data(e));
+    if (ctx && ctx->panel && ctx->action[0] != '\0') {
+        ctx->panel->dispatch_action(ctx->action);
     }
     LVGL_SAFE_EVENT_CB_END();
+}
+
+void NotificationHistoryPanel::on_item_deleted(lv_event_t* e) {
+    auto* ctx = static_cast<ClickContext*>(lv_event_get_user_data(e));
+    delete ctx;
 }
 
 void NotificationHistoryPanel::dispatch_action(const char* action) {
@@ -251,7 +248,7 @@ void NotificationHistoryPanel::dispatch_action(const char* action) {
 
     if (strcmp(action, "show_update_modal") == 0) {
         // Close notification history overlay first, then show update modal
-        ui_nav_go_back();
+        NavigationManager::instance().go_back();
         UpdateChecker::instance().show_update_notification();
     } else {
         spdlog::warn("[{}] Unknown action: {}", get_name(), action);

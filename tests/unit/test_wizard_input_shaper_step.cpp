@@ -26,6 +26,7 @@
 #include "../catch_amalgamated.hpp"
 
 using namespace helix;
+using namespace helix::ui;
 using namespace helix::calibration;
 
 // Helper to get subject by XML name (requires init_subjects(true))

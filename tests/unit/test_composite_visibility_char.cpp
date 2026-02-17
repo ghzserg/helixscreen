@@ -36,6 +36,9 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
+using namespace helix::ui;
+
 // Helper to get subject by XML name (requires init_subjects(true))
 static lv_subject_t* get_subject_by_name(const char* name) {
     return lv_xml_get_subject(NULL, name);

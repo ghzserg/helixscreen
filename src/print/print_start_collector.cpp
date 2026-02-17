@@ -3,7 +3,8 @@
 
 #include "print_start_collector.h"
 
-#include "async_helpers.h"
+#include "ui_update_queue.h"
+
 #include "config.h"
 #include "format_utils.h"
 
@@ -11,6 +12,8 @@
 
 #include <atomic>
 #include <ctime>
+
+using namespace helix;
 
 using json = nlohmann::json;
 
@@ -253,8 +256,8 @@ void PrintStartCollector::check_fallback_completion() {
     }
 
     // Get temperature data for proactive and completion fallback checks
-    int ext_temp = lv_subject_get_int(state_.get_extruder_temp_subject());
-    int ext_target = lv_subject_get_int(state_.get_extruder_target_subject());
+    int ext_temp = lv_subject_get_int(state_.get_active_extruder_temp_subject());
+    int ext_target = lv_subject_get_int(state_.get_active_extruder_target_subject());
     int bed_temp = lv_subject_get_int(state_.get_bed_temp_subject());
     int bed_target = lv_subject_get_int(state_.get_bed_target_subject());
 
@@ -681,7 +684,7 @@ void PrintStartCollector::update_eta_display() {
     }
 
     // Format as "~X min left" or "~X:XX left"
-    std::string text = "~" + helix::fmt::duration_remaining(remaining);
+    std::string text = "~" + helix::format::duration_remaining(remaining);
     state_.set_print_start_time_left(text.c_str());
 
     spdlog::trace("[PrintStartCollector] ETA: {}s remaining (phase={}, elapsed={}s)", remaining,
@@ -747,7 +750,7 @@ void PrintStartCollector::save_prediction_entry() {
     }
 
     // Persist to config (must be on main thread)
-    helix::async::invoke([entries]() {
+    helix::ui::queue_update([entries]() {
         auto* cfg = Config::get_instance();
         if (!cfg) {
             return;

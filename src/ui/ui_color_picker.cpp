@@ -4,6 +4,7 @@
 #include "ui_color_picker.h"
 
 #include "ui_hsv_picker.h"
+#include "ui_modal.h"
 
 #include "color_utils.h"
 #include "theme_manager.h"
@@ -123,6 +124,11 @@ bool ColorPicker::show_with_color(lv_obj_t* parent, uint32_t initial_color) {
 void ColorPicker::on_show() {
     // Get hex input field
     hex_input_ = find_widget("hex_input");
+
+    // Register keyboard for hex input so software keyboard appears on touch
+    if (hex_input_ && dialog_) {
+        helix::ui::modal_register_keyboard(dialog_, hex_input_);
+    }
 
     // Bind name label to subject (save observer for cleanup)
     lv_obj_t* name_label = find_widget("selected_name_label");

@@ -4,7 +4,6 @@
 #include "ui_panel_screws_tilt.h"
 
 #include "ui_fonts.h"
-#include "ui_nav.h"
 #include "ui_nav_manager.h"
 #include "ui_utils.h"
 
@@ -18,6 +17,8 @@
 #include <cmath>
 #include <cstdio>
 #include <memory>
+
+using namespace helix;
 
 // ============================================================================
 // GLOBAL INSTANCE AND ROW CLICK HANDLER
@@ -264,7 +265,7 @@ void ScrewsTiltPanel::show() {
     NavigationManager::instance().register_overlay_instance(overlay_root_, this);
 
     // Push onto navigation stack - on_activate() will be called by NavigationManager
-    ui_nav_push_overlay(overlay_root_);
+    NavigationManager::instance().push_overlay(overlay_root_);
 }
 
 void ScrewsTiltPanel::on_activate() {
@@ -458,7 +459,7 @@ void ScrewsTiltPanel::populate_results(const std::vector<ScrewTiltResult>& resul
 void ScrewsTiltPanel::clear_results() {
     // Clear bed diagram indicators (dynamically positioned)
     for (auto* indicator : screw_indicators_) {
-        lv_obj_safe_delete(indicator);
+        helix::ui::safe_delete(indicator);
     }
     screw_indicators_.clear();
 
@@ -715,7 +716,7 @@ void ScrewsTiltPanel::handle_done_clicked() {
     probe_count_ = 0;
     clear_results();
     set_state(State::IDLE);
-    ui_nav_go_back();
+    NavigationManager::instance().go_back();
 }
 
 void ScrewsTiltPanel::handle_retry_clicked() {

@@ -13,6 +13,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 using helix::PreprintEntry;
 using helix::PreprintPredictor;
 

@@ -5,6 +5,7 @@
 
 #include "ui_observer_guard.h"
 
+#include "json_fwd.h"
 #include "runtime_config.h"
 
 #include <atomic>
@@ -12,13 +13,17 @@
 #include <memory>
 #include <queue>
 
-#include "hv/json.hpp"
-
 // Forward declarations
+namespace helix {
 class Config;
+}
+namespace helix {
 class MoonrakerClient;
+}
 class MoonrakerAPI;
+namespace helix {
 class PrinterState;
+}
 class PrintStartCollector;
 
 // Need full enum definition for inline helper function
@@ -28,13 +33,11 @@ namespace helix {
 class MacroModificationManager;
 }
 
-using json = nlohmann::json;
-
 /**
  * @brief Manages Moonraker client and API lifecycle
  *
  * MoonrakerManager handles:
- * - Creating mock or real MoonrakerClient based on RuntimeConfig
+ * - Creating mock or real helix::MoonrakerClient based on RuntimeConfig
  * - Creating mock or real MoonrakerAPI based on RuntimeConfig
  * - Thread-safe notification queue for WebSocket → main thread handoff
  * - Connection state change handling
@@ -70,7 +73,7 @@ class MoonrakerManager {
      * @param config Application config for timeouts
      * @return true if initialization succeeded
      */
-    bool init(const RuntimeConfig& runtime_config, Config* config);
+    bool init(const RuntimeConfig& runtime_config, helix::Config* config);
 
     /**
      * @brief Shutdown and cleanup
@@ -111,7 +114,7 @@ class MoonrakerManager {
     /**
      * @brief Get the Moonraker client
      */
-    MoonrakerClient* client() const {
+    helix::MoonrakerClient* client() const {
         return m_client.get();
     }
 
@@ -146,12 +149,13 @@ class MoonrakerManager {
      * @param current_progress Current print progress percentage (0-100)
      * @return true if collector should start, false otherwise
      */
-    static inline bool should_start_print_collector(PrintJobState prev_state,
-                                                    PrintJobState new_state, int current_progress) {
+    static inline bool should_start_print_collector(helix::PrintJobState prev_state,
+                                                    helix::PrintJobState new_state,
+                                                    int current_progress) {
         // Only start on TRANSITION to PRINTING from non-printing state
-        bool was_not_printing =
-            (prev_state != PrintJobState::PRINTING && prev_state != PrintJobState::PAUSED);
-        bool is_now_printing = (new_state == PrintJobState::PRINTING);
+        bool was_not_printing = (prev_state != helix::PrintJobState::PRINTING &&
+                                 prev_state != helix::PrintJobState::PAUSED);
+        bool is_now_printing = (new_state == helix::PrintJobState::PRINTING);
 
         if (!was_not_printing || !is_now_printing) {
             return false; // Not a transition to printing
@@ -162,7 +166,7 @@ class MoonrakerManager {
         // with progress > 0, the app started while a print was already running.
         // From COMPLETE/CANCELLED/ERROR → PRINTING, progress is stale from the
         // previous print and should be ignored - this is always a fresh print.
-        if (prev_state == PrintJobState::STANDBY && current_progress > 0) {
+        if (prev_state == helix::PrintJobState::STANDBY && current_progress > 0) {
             return false; // App joined mid-print, skip collector
         }
         return true;
@@ -174,7 +178,7 @@ class MoonrakerManager {
      * Creates the manager for PRINT_START macro analysis and wizard.
      * Call after init() but before connect().
      */
-    void init_macro_analysis(Config* config);
+    void init_macro_analysis(helix::Config* config);
 
     /**
      * @brief Get macro modification manager
@@ -185,12 +189,12 @@ class MoonrakerManager {
   private:
     // Initialization helpers
     void create_client(const RuntimeConfig& runtime_config);
-    void configure_timeouts(Config* config);
+    void configure_timeouts(helix::Config* config);
     void register_callbacks();
     void create_api(const RuntimeConfig& runtime_config);
 
     // Owned resources
-    std::unique_ptr<MoonrakerClient> m_client;
+    std::unique_ptr<helix::MoonrakerClient> m_client;
     std::unique_ptr<MoonrakerAPI> m_api;
 
     // Thread-safe notification queue

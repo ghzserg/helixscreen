@@ -32,6 +32,8 @@
 
 #include "hv/json.hpp" // libhv's nlohmann json (via cpputil/)
 
+namespace helix {
+
 /**
  * @brief Network connection status states
  */
@@ -257,12 +259,45 @@ class PrinterState {
     // Temperature subjects (centidegrees: value * 10 for 0.1C resolution)
     // Example: 205.3C is stored as 2053. Divide by 10 for display.
     // Delegated to PrinterTemperatureState component.
-    lv_subject_t* get_extruder_temp_subject() {
-        return temperature_state_.get_extruder_temp_subject();
+
+    // Active extruder subjects — track whichever extruder is currently active
+    lv_subject_t* get_active_extruder_temp_subject() {
+        return temperature_state_.get_active_extruder_temp_subject();
     }
-    lv_subject_t* get_extruder_target_subject() {
-        return temperature_state_.get_extruder_target_subject();
+    lv_subject_t* get_active_extruder_target_subject() {
+        return temperature_state_.get_active_extruder_target_subject();
     }
+
+    // Multi-extruder discovery
+    void init_extruders(const std::vector<std::string>& heaters) {
+        temperature_state_.init_extruders(heaters);
+    }
+
+    // Per-extruder subject access (returns nullptr if not found)
+    lv_subject_t* get_extruder_temp_subject(const std::string& name) {
+        return temperature_state_.get_extruder_temp_subject(name);
+    }
+    lv_subject_t* get_extruder_target_subject(const std::string& name) {
+        return temperature_state_.get_extruder_target_subject(name);
+    }
+
+    int extruder_count() const {
+        return temperature_state_.extruder_count();
+    }
+
+    const std::string& active_extruder_name() const {
+        return temperature_state_.active_extruder_name();
+    }
+
+    lv_subject_t* get_extruder_version_subject() {
+        return temperature_state_.get_extruder_version_subject();
+    }
+
+    // Direct access to temperature state (for UI enumeration)
+    const helix::PrinterTemperatureState& temperature_state() const {
+        return temperature_state_;
+    }
+
     lv_subject_t* get_bed_temp_subject() {
         return temperature_state_.get_bed_temp_subject();
     }
@@ -423,7 +458,7 @@ class PrinterState {
      *
      * Updates the print_in_progress_ subject so UI observers can react.
      *
-     * Thread-safe: Uses helix::async::invoke() to defer LVGL subject updates
+     * Thread-safe: Uses helix::ui::queue_update() to defer LVGL subject updates
      * to the main thread. Can be safely called from WebSocket callbacks.
      */
     void set_print_in_progress(bool in_progress);
@@ -1618,6 +1653,7 @@ class PrinterState {
     // lv_async_call to defer to these internal methods, ensuring thread safety.
 
     friend class PrinterStateTestAccess;
+    friend class PrinterTemperatureStateTestAccess;
     friend void async_klipper_version_callback(void* user_data);
     friend void async_moonraker_version_callback(void* user_data);
     friend void async_klippy_state_callback(void* user_data);
@@ -1646,3 +1682,5 @@ class PrinterState {
      */
     void update_gcode_modification_visibility();
 };
+
+} // namespace helix

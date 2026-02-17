@@ -22,6 +22,7 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
 // ============================================================================
 // Test Helper: URL Parsing (tests the internal URL parsing logic)
 // ============================================================================

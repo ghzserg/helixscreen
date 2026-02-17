@@ -34,9 +34,15 @@
 
 // Forward declarations - plugins don't need full definitions
 class MoonrakerAPI;
+namespace helix {
 class MoonrakerClient;
+}
+namespace helix {
 class PrinterState;
+}
+namespace helix {
 class Config;
+}
 
 // LVGL types - use typedef form to match LVGL's declaration
 typedef struct _lv_subject_t lv_subject_t;

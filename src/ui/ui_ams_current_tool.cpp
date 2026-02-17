@@ -61,7 +61,7 @@ static void on_clicked(lv_event_t* e) {
     }
     lv_obj_t* panel_obj = ams_panel.get_panel();
     if (panel_obj) {
-        ui_nav_push_overlay(panel_obj);
+        NavigationManager::instance().push_overlay(panel_obj);
     }
 }
 
@@ -89,9 +89,15 @@ static void on_widget_created(lv_obj_t* widget) {
         lv_color_t color = lv_color_hex(static_cast<uint32_t>(color_int));
         lv_obj_set_style_bg_color(data->color_swatch, color, 0);
 
-        // Observe future color changes using factory pattern [L020]
-        data->color_observer = observe_int_sync<AmsCurrentToolData>(
-            color_subject, data.get(), [](AmsCurrentToolData* d, int color_int) {
+        // Capture widget (lv_obj_t*) instead of data pointer to prevent
+        // use-after-free when deferred callback executes after widget deletion.
+        // The registry lookup acts as a validity check. (fixes #83)
+        data->color_observer =
+            observe_int_sync<lv_obj_t>(color_subject, widget, [](lv_obj_t* obj, int color_int) {
+                auto it = s_registry.find(obj);
+                if (it == s_registry.end() || !it->second)
+                    return;
+                auto* d = it->second.get();
                 if (!d->color_swatch)
                     return;
                 lv_color_t color = lv_color_hex(static_cast<uint32_t>(color_int));

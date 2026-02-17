@@ -11,7 +11,9 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class WiFiManager;
+}
 class EthernetManager;
 struct WiFiNetwork;
 
@@ -64,13 +66,12 @@ class WizardWifiStep {
     WizardWifiStep();
     ~WizardWifiStep();
 
-    // Non-copyable
+    // Non-copyable, non-movable (singleton with lv_subject_t members that
+    // contain internal linked lists — moving corrupts observer pointers)
     WizardWifiStep(const WizardWifiStep&) = delete;
     WizardWifiStep& operator=(const WizardWifiStep&) = delete;
-
-    // Movable
-    WizardWifiStep(WizardWifiStep&& other) noexcept;
-    WizardWifiStep& operator=(WizardWifiStep&& other) noexcept;
+    WizardWifiStep(WizardWifiStep&&) = delete;
+    WizardWifiStep& operator=(WizardWifiStep&&) = delete;
 
     /**
      * @brief Initialize reactive subjects
@@ -158,7 +159,7 @@ class WizardWifiStep {
     char wifi_password_modal_ssid_buffer_[64];
 
     // WiFiManager and EthernetManager (shared_ptr for async safety)
-    std::shared_ptr<WiFiManager> wifi_manager_;
+    std::shared_ptr<helix::WiFiManager> wifi_manager_;
     std::unique_ptr<EthernetManager> ethernet_manager_;
 
     // Current network selection for password modal

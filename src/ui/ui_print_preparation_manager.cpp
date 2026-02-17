@@ -176,7 +176,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                 std::shared_ptr<bool> alive_guard;
                 helix::PrintStartAnalysis result;
             };
-            ui_queue_update<MacroAnalysisData>(
+            helix::ui::queue_update<MacroAnalysisData>(
                 std::make_unique<MacroAnalysisData>(MacroAnalysisData{self, alive, analysis}),
                 [](MacroAnalysisData* d) {
                     // Check if manager was destroyed before this callback executed
@@ -203,7 +203,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                 PrintPreparationManager* mgr;
                 std::shared_ptr<bool> alive_guard;
             };
-            ui_queue_update<MacroErrorData>(
+            helix::ui::queue_update<MacroErrorData>(
                 std::make_unique<MacroErrorData>(MacroErrorData{self, alive}),
                 [](MacroErrorData* d) {
                     // Check if manager was destroyed before this callback executed
@@ -448,7 +448,7 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
                 std::string filename;
                 gcode::ScanResult result;
             };
-            ui_queue_update<ScanUpdateData>(
+            helix::ui::queue_update<ScanUpdateData>(
                 std::make_unique<ScanUpdateData>(
                     ScanUpdateData{self, alive, filename, scan_result}),
                 [](ScanUpdateData* d) {
@@ -476,7 +476,7 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
                 PrintPreparationManager* mgr;
                 std::shared_ptr<bool> alive_guard;
             };
-            ui_queue_update<ScanErrorData>(
+            helix::ui::queue_update<ScanErrorData>(
                 std::make_unique<ScanErrorData>(ScanErrorData{self, alive}), [](ScanErrorData* d) {
                     // Check if manager was destroyed before this callback executed
                     if (!d->alive_guard || !*d->alive_guard) {
@@ -1256,7 +1256,7 @@ void PrintPreparationManager::modify_and_print_streaming(
         float pct = (total > 0)
                         ? (100.0f * static_cast<float>(received) / static_cast<float>(total))
                         : 0.0f;
-        ui_async_call(
+        helix::ui::async_call(
             [](void* data) {
                 auto pct_val = static_cast<float>(reinterpret_cast<uintptr_t>(data)) / 100.0f;
                 BusyOverlay::set_progress("Downloading", pct_val);
@@ -1370,7 +1370,7 @@ void PrintPreparationManager::modify_and_print_streaming(
                             std::string original_path;    // Full path for metadata lookup
                             NavigateToStatusCallback navigate_cb;
                         };
-                        ui_queue_update<PrintStartedData>(
+                        helix::ui::queue_update<PrintStartedData>(
                             std::make_unique<PrintStartedData>(PrintStartedData{
                                 display_filename, file_path, on_navigate_to_status}),
                             [](PrintStartedData* d) {
@@ -1396,7 +1396,7 @@ void PrintPreparationManager::modify_and_print_streaming(
                     auto on_print_error = [self, alive,
                                            remote_temp_path](const MoonrakerError& error) {
                         // Hide overlay on error (defer to main thread)
-                        ui_async_call([](void*) { BusyOverlay::hide(); }, nullptr);
+                        helix::ui::async_call([](void*) { BusyOverlay::hide(); }, nullptr);
 
                         NOTIFY_ERROR("Failed to start print: {}", error.message);
                         LOG_ERROR_INTERNAL(
@@ -1453,7 +1453,7 @@ void PrintPreparationManager::modify_and_print_streaming(
                 // Upload error - clean up local file
                 [self, modified_path](const MoonrakerError& error) {
                     // Hide overlay on error (defer to main thread)
-                    ui_async_call([](void*) { BusyOverlay::hide(); }, nullptr);
+                    helix::ui::async_call([](void*) { BusyOverlay::hide(); }, nullptr);
 
                     // Clean up local file even on error (safe - filesystem op)
                     std::error_code ec;
@@ -1471,7 +1471,7 @@ void PrintPreparationManager::modify_and_print_streaming(
                         (total > 0)
                             ? (100.0f * static_cast<float>(sent) / static_cast<float>(total))
                             : 0.0f;
-                    ui_async_call(
+                    helix::ui::async_call(
                         [](void* data) {
                             auto pct_val =
                                 static_cast<float>(reinterpret_cast<uintptr_t>(data)) / 100.0f;
@@ -1483,7 +1483,7 @@ void PrintPreparationManager::modify_and_print_streaming(
         // Download error - clean up partial download
         [self, file_path, local_download_path](const MoonrakerError& error) {
             // Hide overlay on error (defer to main thread)
-            ui_async_call([](void*) { BusyOverlay::hide(); }, nullptr);
+            helix::ui::async_call([](void*) { BusyOverlay::hide(); }, nullptr);
 
             // Clean up partial download if any (safe - filesystem op)
             std::error_code ec;

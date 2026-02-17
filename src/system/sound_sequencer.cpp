@@ -14,6 +14,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+using namespace helix;
+
 SoundSequencer::SoundSequencer(std::shared_ptr<SoundBackend> backend)
     : backend_(std::move(backend)) {}
 

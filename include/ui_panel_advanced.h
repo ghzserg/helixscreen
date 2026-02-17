@@ -42,10 +42,10 @@ class AdvancedPanel : public PanelBase {
     /**
      * @brief Construct AdvancedPanel with injected dependencies
      *
-     * @param printer_state Reference to PrinterState
+     * @param printer_state Reference to helix::PrinterState
      * @param api Pointer to MoonrakerAPI
      */
-    AdvancedPanel(PrinterState& printer_state, MoonrakerAPI* api);
+    AdvancedPanel(helix::PrinterState& printer_state, MoonrakerAPI* api);
 
     ~AdvancedPanel() override = default;
 
@@ -150,7 +150,7 @@ AdvancedPanel& get_global_advanced_panel();
  *
  * Must be called by main.cpp before accessing get_global_advanced_panel().
  *
- * @param printer_state Reference to PrinterState
+ * @param printer_state Reference to helix::PrinterState
  * @param api Pointer to MoonrakerAPI
  */
-void init_global_advanced_panel(PrinterState& printer_state, MoonrakerAPI* api);
+void init_global_advanced_panel(helix::PrinterState& printer_state, MoonrakerAPI* api);

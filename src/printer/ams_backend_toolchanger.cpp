@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <sstream>
 
+using namespace helix;
+
 // ============================================================================
 // Construction / Destruction
 // ============================================================================
@@ -29,7 +31,6 @@ AmsBackendToolChanger::AmsBackendToolChanger(MoonrakerAPI* api, MoonrakerClient*
 
     // Tool changer capabilities
     system_info_.supports_endless_spool = false; // Not applicable
-    system_info_.supports_spoolman = true;       // Can still track spools per-tool
     system_info_.supports_tool_mapping = false;  // Tools ARE the slots
     system_info_.supports_bypass = false;        // No bypass on tool changers
     system_info_.has_hardware_bypass_sensor = false;
@@ -125,6 +126,10 @@ void AmsBackendToolChanger::stop() {
 
     running_ = false;
     spdlog::info("[AMS ToolChanger] Backend stopped");
+}
+
+void AmsBackendToolChanger::release_subscriptions() {
+    subscription_.release();
 }
 
 bool AmsBackendToolChanger::is_running() const {

@@ -15,10 +15,9 @@
 /**
  * @brief Heater type enumeration
  */
-typedef enum {
-    HEATER_NOZZLE, ///< Hotend/nozzle heater
-    HEATER_BED     ///< Heated bed
-} heater_type_t;
+namespace helix {
+enum class HeaterType { Nozzle, Bed };
+} // namespace helix
 
 /**
  * @brief Heater configuration structure
@@ -27,12 +26,12 @@ typedef enum {
  * including display colors, temperature ranges, presets, and keypad ranges.
  */
 typedef struct {
-    heater_type_t type;   ///< Heater type (nozzle or bed)
-    const char* name;     ///< Short name (e.g., "nozzle", "bed")
-    const char* title;    ///< Display title (e.g., "Nozzle Temperature")
-    lv_color_t color;     ///< Theme color for this heater
-    float temp_range_max; ///< Maximum temperature for graph Y-axis
-    int y_axis_increment; ///< Y-axis label increment (e.g., 50°C, 100°C)
+    helix::HeaterType type; ///< Heater type (nozzle or bed)
+    const char* name;       ///< Short name (e.g., "nozzle", "bed")
+    const char* title;      ///< Display title (e.g., "Nozzle Temperature")
+    lv_color_t color;       ///< Theme color for this heater
+    float temp_range_max;   ///< Maximum temperature for graph Y-axis
+    int y_axis_increment;   ///< Y-axis label increment (e.g., 50°C, 100°C)
 
     struct {
         int off;  ///< "Off" preset (0°C)

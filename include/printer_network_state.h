@@ -7,8 +7,12 @@
 
 // Forward declare ConnectionState and KlippyState (defined in moonraker_client.h and
 // printer_state.h)
+namespace helix {
 enum class ConnectionState;
+}
+namespace helix {
 enum class KlippyState;
+}
 
 namespace helix {
 
@@ -61,7 +65,7 @@ class PrinterNetworkState {
      * @brief Set printer connection state (synchronous, must be on UI thread)
      *
      * This is a synchronous setter intended to be called from within
-     * helix::async::invoke() by PrinterState, which handles the async dispatch.
+     * helix::ui::queue_update() by PrinterState, which handles the async dispatch.
      *
      * @param state ConnectionState enum value (0-4)
      * @param message Status message ("Connecting...", "Ready", "Disconnected", etc.)
@@ -79,7 +83,7 @@ class PrinterNetworkState {
      * @brief Set Klipper firmware state (synchronous, must be on UI thread)
      *
      * This is a synchronous setter intended to be called from within
-     * helix::async::invoke() by PrinterState, which handles the async dispatch.
+     * helix::ui::queue_update() by PrinterState, which handles the async dispatch.
      *
      * @param state KlippyState enum value
      */

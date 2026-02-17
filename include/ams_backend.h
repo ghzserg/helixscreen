@@ -16,6 +16,11 @@
 #include "ams_error.h"
 #include "ams_types.h"
 
+class MoonrakerAPI;
+namespace helix {
+class MoonrakerClient;
+}
+
 #include <any>
 #include <functional>
 #include <memory>
@@ -82,6 +87,15 @@ class AmsBackend {
      * Safe to call even if not started.
      */
     virtual void stop() = 0;
+
+    /**
+     * @brief Release subscriptions without unsubscribing
+     *
+     * Use during shutdown when the helix::MoonrakerClient may already be destroyed.
+     * This abandons the subscription rather than trying to call into the client.
+     * Backends that hold SubscriptionGuards should call release() on them.
+     */
+    virtual void release_subscriptions() {}
 
     /**
      * @brief Check if backend is currently running/initialized
@@ -180,6 +194,23 @@ class AmsBackend {
      * @return PathTopology enum value
      */
     [[nodiscard]] virtual PathTopology get_topology() const = 0;
+
+    /**
+     * @brief Get the path topology for a specific unit
+     *
+     * In mixed-topology systems (e.g., Box Turtle + OpenAMS), different units
+     * may have different topologies. This method returns the topology for a
+     * specific unit by index.
+     *
+     * Default implementation falls back to get_topology() for backward compat.
+     *
+     * @param unit_index Index of the unit (0-based)
+     * @return PathTopology for this unit, or system-wide topology if unknown
+     */
+    [[nodiscard]] virtual PathTopology get_unit_topology(int unit_index) const {
+        (void)unit_index;
+        return get_topology();
+    }
 
     /**
      * @brief Get current filament position in the path
@@ -621,6 +652,22 @@ class AmsBackend {
         return false;
     }
 
+    /**
+     * @brief Whether this backend persists spool assignments via firmware
+     *
+     * Backends like Happy Hare (MMU_GATE_MAP/SPOOLID) and AFC (SET_SPOOL_ID)
+     * store spool-to-slot mappings in firmware gcode. For these, ToolState
+     * mirrors firmware state but doesn't need to persist separately.
+     *
+     * Backends without firmware persistence (tool changers, ValgACE) rely on
+     * ToolState's own persistence (Moonraker DB + local JSON).
+     *
+     * @return true if firmware handles spool persistence, false if ToolState should
+     */
+    [[nodiscard]] virtual bool has_firmware_spool_persistence() const {
+        return false;
+    }
+
     // ========================================================================
     // Discovery Configuration (Optional - default implementations are no-ops)
     // ========================================================================
@@ -652,6 +699,18 @@ class AmsBackend {
         (void)tool_names;
     }
 
+    /**
+     * @brief Set filament sensor names from PrinterCapabilities
+     *
+     * Called before start() to provide filament sensor names from printer.objects.list.
+     * AFC backend uses this to detect hardware vs virtual bypass sensor.
+     *
+     * @param sensor_names Sensor names (e.g., "filament_switch_sensor virtual_bypass")
+     */
+    virtual void set_discovered_sensors(const std::vector<std::string>& sensor_names) {
+        (void)sensor_names;
+    }
+
     // ========================================================================
     // Factory Method
     // ========================================================================
@@ -666,7 +725,7 @@ class AmsBackend {
      *
      * @param detected_type The detected AMS type from printer discovery
      * @return Unique pointer to backend instance, or nullptr if type is NONE
-     * @deprecated Use create(AmsType, MoonrakerAPI*, MoonrakerClient*) for real backends
+     * @deprecated Use create(AmsType, MoonrakerAPI*, helix::MoonrakerClient*) for real backends
      */
     static std::unique_ptr<AmsBackend> create(AmsType detected_type);
 
@@ -682,11 +741,11 @@ class AmsBackend {
      *
      * @param detected_type The detected AMS type from printer discovery
      * @param api Pointer to MoonrakerAPI for sending commands
-     * @param client Pointer to MoonrakerClient for subscriptions
+     * @param client Pointer to helix::MoonrakerClient for subscriptions
      * @return Unique pointer to backend instance, or nullptr if type is NONE
      */
-    static std::unique_ptr<AmsBackend> create(AmsType detected_type, class MoonrakerAPI* api,
-                                              class MoonrakerClient* client);
+    static std::unique_ptr<AmsBackend> create(AmsType detected_type, MoonrakerAPI* api,
+                                              helix::MoonrakerClient* client);
 
     /**
      * @brief Create mock backend for testing

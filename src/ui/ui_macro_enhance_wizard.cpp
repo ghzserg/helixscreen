@@ -529,7 +529,7 @@ void MacroEnhanceWizard::apply_enhancements() {
                 return;
             }
             auto ctx = std::make_unique<AsyncProgressCtx>(AsyncProgressCtx{guard, this, step});
-            ui_queue_update<AsyncProgressCtx>(std::move(ctx), [](AsyncProgressCtx* c) {
+            helix::ui::queue_update<AsyncProgressCtx>(std::move(ctx), [](AsyncProgressCtx* c) {
                 // Check guard in main thread [SERIOUS-5: Thread safety]
                 auto guard_locked = c->guard.lock();
                 if (guard_locked && *guard_locked && c->wizard->is_visible()) {
@@ -544,7 +544,7 @@ void MacroEnhanceWizard::apply_enhancements() {
             }
             auto ctx = std::make_unique<AsyncSuccessCtx>(
                 AsyncSuccessCtx{guard, this, approved_count, result.backup_filename});
-            ui_queue_update<AsyncSuccessCtx>(std::move(ctx), [](AsyncSuccessCtx* c) {
+            helix::ui::queue_update<AsyncSuccessCtx>(std::move(ctx), [](AsyncSuccessCtx* c) {
                 auto guard_locked = c->guard.lock();
                 if (guard_locked && *guard_locked && c->wizard->is_visible()) {
                     std::string msg = "Successfully enhanced " + std::to_string(c->count) +
@@ -561,7 +561,7 @@ void MacroEnhanceWizard::apply_enhancements() {
             }
             auto ctx =
                 std::make_unique<AsyncErrorCtx>(AsyncErrorCtx{guard, this, err.user_message()});
-            ui_queue_update<AsyncErrorCtx>(std::move(ctx), [](AsyncErrorCtx* c) {
+            helix::ui::queue_update<AsyncErrorCtx>(std::move(ctx), [](AsyncErrorCtx* c) {
                 auto guard_locked = c->guard.lock();
                 if (guard_locked && *guard_locked && c->wizard->is_visible()) {
                     c->wizard->show_error(c->message);

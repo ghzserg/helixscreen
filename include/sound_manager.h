@@ -10,7 +10,11 @@
 #include <string>
 #include <vector>
 
+namespace helix {
 class MoonrakerClient;
+}
+
+namespace helix {
 
 /**
  * @brief Audio feedback manager using the synth engine
@@ -96,3 +100,5 @@ class SoundManager {
     std::string theme_name_ = "default";
     bool initialized_ = false;
 };
+
+} // namespace helix

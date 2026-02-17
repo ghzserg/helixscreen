@@ -144,7 +144,7 @@ class DisplayBackendFbdev : public DisplayBackend {
     CalibrationContext calibration_context_;
 
     /// Whether the detected touch device needs calibration (false for USB HID)
-    bool needs_calibration_ = true;
+    bool needs_calibration_ = false;
 
     /// TTY file descriptor for KDSETMODE console suppression (-1 = not acquired)
     int tty_fd_ = -1;

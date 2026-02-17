@@ -132,69 +132,39 @@ class NotificationManager {
 };
 
 // ============================================================================
-// LEGACY API (forwards to NotificationManager for backward compatibility)
+// FREE FUNCTIONS (in helix::ui namespace)
 // ============================================================================
+
+namespace helix::ui {
 
 /**
  * @brief Register notification event callbacks
- * @deprecated Use NotificationManager::instance().register_callbacks() instead
  */
-void ui_notification_register_callbacks();
+void notification_register_callbacks();
 
 /**
  * @brief Initialize notification subjects for XML reactive bindings
- * @deprecated Use NotificationManager::instance().init_subjects() instead
  */
-void ui_notification_init_subjects();
+void notification_init_subjects();
 
 /**
  * @brief Deinitialize notification subjects for clean shutdown
  */
-void ui_notification_deinit_subjects();
+void notification_deinit_subjects();
 
 /**
  * @brief Initialize the notification system
- * @deprecated Use NotificationManager::instance().init() instead
  */
-void ui_notification_manager_init();
+void notification_manager_init();
 
 /**
  * @brief Update notification severity
- * @deprecated Use NotificationManager::instance().update_notification() instead
  */
-void ui_notification_update(NotificationStatus status);
+void notification_update(NotificationStatus status);
 
 /**
  * @brief Update notification unread count badge
- * @deprecated Use NotificationManager::instance().update_notification_count() instead
  */
-void ui_notification_update_count(size_t count);
+void notification_update_count(size_t count);
 
-// ============================================================================
-// BACKWARD COMPATIBILITY ALIASES
-// These maintain compatibility with existing code using the old names.
-// ============================================================================
-
-inline void ui_status_bar_register_callbacks() {
-    ui_notification_register_callbacks();
-}
-
-inline void ui_status_bar_init_subjects() {
-    ui_notification_init_subjects();
-}
-
-inline void ui_status_bar_deinit_subjects() {
-    ui_notification_deinit_subjects();
-}
-
-inline void ui_status_bar_init() {
-    ui_notification_manager_init();
-}
-
-inline void ui_status_bar_update_notification(NotificationStatus status) {
-    ui_notification_update(status);
-}
-
-inline void ui_status_bar_update_notification_count(size_t count) {
-    ui_notification_update_count(count);
-}
+} // namespace helix::ui

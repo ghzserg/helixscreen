@@ -39,7 +39,7 @@ using MethodHandler =
  * Inherits from MoonrakerClient to provide drop-in replacement compatibility.
  * Overrides discover_printer() to populate test data without WebSocket connection.
  */
-class MoonrakerClientMock : public MoonrakerClient {
+class MoonrakerClientMock : public helix::MoonrakerClient {
   public:
     enum class PrinterType {
         VORON_24,           // Voron 2.4 (CoreXY, chamber heating)
@@ -312,8 +312,8 @@ class MoonrakerClientMock : public MoonrakerClient {
      * @param cb Callback function (not invoked in mock)
      * @return Always returns 0 (success)
      */
-    RequestId send_jsonrpc(const std::string& method, const json& params,
-                           std::function<void(json)> cb) override;
+    helix::RequestId send_jsonrpc(const std::string& method, const json& params,
+                                  std::function<void(json)> cb) override;
 
     /**
      * @brief Simulate JSON-RPC request with success/error callbacks
@@ -328,10 +328,10 @@ class MoonrakerClientMock : public MoonrakerClient {
      * @param silent Silent mode (ignored in mock)
      * @return Always returns 0 (success)
      */
-    RequestId send_jsonrpc(const std::string& method, const json& params,
-                           std::function<void(json)> success_cb,
-                           std::function<void(const MoonrakerError&)> error_cb,
-                           uint32_t timeout_ms = 0, bool silent = false) override;
+    helix::RequestId send_jsonrpc(const std::string& method, const json& params,
+                                  std::function<void(json)> success_cb,
+                                  std::function<void(const MoonrakerError&)> error_cb,
+                                  uint32_t timeout_ms = 0, bool silent = false) override;
 
     /**
      * @brief Simulate G-code script command
@@ -836,7 +836,7 @@ class MoonrakerClientMock : public MoonrakerClient {
      * @brief Generate next mock request ID
      * @return Valid request ID (always > 0)
      */
-    RequestId next_mock_request_id() {
+    helix::RequestId next_mock_request_id() {
         return mock_request_id_counter_.fetch_add(1) + 1;
     }
 
@@ -849,7 +849,7 @@ class MoonrakerClientMock : public MoonrakerClient {
     std::map<std::string, BedMeshProfile> stored_bed_mesh_profiles_; // Actual mesh data per profile
 
     // Mock request ID counter for simulating send_jsonrpc return values
-    std::atomic<RequestId> mock_request_id_counter_{0};
+    std::atomic<helix::RequestId> mock_request_id_counter_{0};
 
     // Temperature simulation state
     std::atomic<double> extruder_temp_{25.0};  // Current temperature

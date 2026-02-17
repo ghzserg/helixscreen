@@ -9,6 +9,8 @@
 
 #include "../catch_amalgamated.hpp"
 
+using namespace helix;
+
 /**
  * @file test_ams_state_spoolman.cpp
  * @brief Unit tests for AmsState Spoolman weight refresh integration

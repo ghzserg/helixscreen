@@ -108,9 +108,12 @@ void* notification_badge_create(lv_xml_parser_state_t* state, const char** attrs
     // Create badge container
     lv_obj_t* badge = lv_obj_create(parent);
 
-    // Default styling - circular badge
-    lv_obj_set_size(badge, 18, 18);
-    lv_obj_set_style_radius(badge, 9, LV_PART_MAIN);
+    // Default styling - circular badge using responsive token
+    int32_t badge_sz = theme_manager_get_spacing("badge_size");
+    if (badge_sz <= 0)
+        badge_sz = 18; // fallback
+    lv_obj_set_size(badge, badge_sz, badge_sz);
+    lv_obj_set_style_radius(badge, badge_sz / 2, LV_PART_MAIN);
     lv_obj_set_style_pad_all(badge, 0, LV_PART_MAIN);
     lv_obj_set_style_border_width(badge, 0, LV_PART_MAIN);
     lv_obj_clear_flag(badge, LV_OBJ_FLAG_SCROLLABLE);

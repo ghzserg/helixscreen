@@ -31,7 +31,7 @@ void MoonrakerAPI::wled_get_strips(RestCallback on_success, ErrorCallback on_err
                 on_success(resp);
             }
         } else {
-            spdlog::warn("[Moonraker API] WLED get_strips failed: {}", resp.error);
+            spdlog::debug("[Moonraker API] WLED get_strips failed: {}", resp.error);
             if (on_error) {
                 on_error(MoonrakerError{MoonrakerErrorType::UNKNOWN, 0, resp.error, "wled"});
             }
@@ -48,7 +48,7 @@ void MoonrakerAPI::wled_get_status(RestCallback on_success, ErrorCallback on_err
                 on_success(resp);
             }
         } else {
-            spdlog::warn("[Moonraker API] WLED get_status failed: {}", resp.error);
+            spdlog::debug("[Moonraker API] WLED get_status failed: {}", resp.error);
             if (on_error) {
                 on_error(MoonrakerError{MoonrakerErrorType::UNKNOWN, 0, resp.error, "wled"});
             }

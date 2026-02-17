@@ -22,6 +22,8 @@
 #include <exception>
 #include <functional>
 
+namespace helix::ui {
+
 /**
  * @brief Safe wrapper for LVGL event callbacks
  *
@@ -31,7 +33,7 @@
  * Usage:
  * @code
  * lv_obj_add_event_cb(btn, [](lv_event_t* e) {
- *     ui_event_safe_call("home_button", [&]() {
+ *     helix::ui::event_safe_call("home_button", [&]() {
  *         auto* client = get_moonraker_client();
  *         if (client) client->send_gcode("G28");
  *     });
@@ -41,7 +43,7 @@
  * @param callback_name Name for logging (e.g., "home_button_clicked")
  * @param handler Function to execute safely
  */
-inline void ui_event_safe_call(const char* callback_name, std::function<void()> handler) {
+inline void event_safe_call(const char* callback_name, std::function<void()> handler) {
     try {
         handler();
     } catch (const std::exception& ex) {
@@ -50,6 +52,8 @@ inline void ui_event_safe_call(const char* callback_name, std::function<void()> 
         spdlog::error("[LVGL Event Safety] Unknown exception in '{}'", callback_name);
     }
 }
+
+} // namespace helix::ui
 
 /**
  * @brief Macro for defining safe LVGL event callbacks
@@ -75,7 +79,7 @@ inline void ui_event_safe_call(const char* callback_name, std::function<void()> 
 #define LVGL_SAFE_EVENT_CB(callback_name, body)                                                    \
     static void callback_name(lv_event_t* e) {                                                     \
         (void)e;                                                                                   \
-        ui_event_safe_call(#callback_name, [&]() body);                                            \
+        helix::ui::event_safe_call(#callback_name, [&]() body);                                    \
     }
 
 /**
@@ -99,7 +103,7 @@ inline void ui_event_safe_call(const char* callback_name, std::function<void()> 
 #define LVGL_SAFE_EVENT_CB_WITH_EVENT(callback_name, event_var, body)                              \
     static void callback_name(lv_event_t* e) {                                                     \
         lv_event_t* event_var = e;                                                                 \
-        ui_event_safe_call(#callback_name, [&]() body);                                            \
+        helix::ui::event_safe_call(#callback_name, [&]() body);                                    \
     }
 
 /**

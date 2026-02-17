@@ -16,6 +16,8 @@
 
 #include <spdlog/spdlog.h>
 
+using namespace helix;
+
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -335,7 +337,7 @@ static void* bed_mesh_xml_create(lv_xml_parser_state_t* state, const char** attr
     data_ptr->renderer = bed_mesh_renderer_create();
     if (!data_ptr->renderer) {
         spdlog::error("[bed_mesh] Failed to create renderer");
-        lv_obj_safe_delete(obj);
+        helix::ui::safe_delete(obj);
         return nullptr; // unique_ptr automatically cleans up
     }
 
@@ -347,7 +349,7 @@ static void* bed_mesh_xml_create(lv_xml_parser_state_t* state, const char** attr
     // Check for forced 2D mode via environment variable (for testing)
     const char* force_2d = std::getenv("HELIX_BED_MESH_2D");
     if (force_2d && std::strcmp(force_2d, "1") == 0) {
-        bed_mesh_renderer_set_render_mode(data_ptr->renderer, BED_MESH_RENDER_MODE_FORCE_2D);
+        bed_mesh_renderer_set_render_mode(data_ptr->renderer, BedMeshRenderMode::Force2D);
         spdlog::info("[bed_mesh] 2D heatmap mode forced via HELIX_BED_MESH_2D=1");
     }
 
@@ -551,14 +553,14 @@ void ui_bed_mesh_evaluate_render_mode(lv_obj_t* widget) {
 /**
  * Get current render mode for display in settings
  */
-bed_mesh_render_mode_t ui_bed_mesh_get_render_mode(lv_obj_t* widget) {
+BedMeshRenderMode ui_bed_mesh_get_render_mode(lv_obj_t* widget) {
     if (!widget) {
-        return BED_MESH_RENDER_MODE_AUTO;
+        return BedMeshRenderMode::Auto;
     }
 
     bed_mesh_widget_data_t* data = (bed_mesh_widget_data_t*)lv_obj_get_user_data(widget);
     if (!data || !data->renderer) {
-        return BED_MESH_RENDER_MODE_AUTO;
+        return BedMeshRenderMode::Auto;
     }
 
     return bed_mesh_renderer_get_render_mode(data->renderer);
@@ -567,7 +569,7 @@ bed_mesh_render_mode_t ui_bed_mesh_get_render_mode(lv_obj_t* widget) {
 /**
  * Set render mode (for settings UI)
  */
-void ui_bed_mesh_set_render_mode(lv_obj_t* widget, bed_mesh_render_mode_t mode) {
+void ui_bed_mesh_set_render_mode(lv_obj_t* widget, BedMeshRenderMode mode) {
     if (!widget) {
         return;
     }

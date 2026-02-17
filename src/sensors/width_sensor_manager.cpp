@@ -7,6 +7,7 @@
 
 #include "format_utils.h"
 #include "spdlog/spdlog.h"
+#include "static_subject_registry.h"
 
 #include <algorithm>
 
@@ -15,15 +16,6 @@
 // not the main LVGL thread. We must defer subject updates to the main thread
 // via ui_async_call to avoid the "Invalidate area not allowed during rendering"
 // assertion.
-
-namespace {
-
-/// @brief Async callback to update subjects on the main LVGL thread
-void async_update_width_subjects_callback(void* /*user_data*/) {
-    helix::sensors::WidthSensorManager::instance().update_subjects_on_main_thread();
-}
-
-} // namespace
 
 namespace helix::sensors {
 
@@ -155,8 +147,9 @@ void WidthSensorManager::update_from_status(const nlohmann::json& status) {
                 spdlog::debug("[WidthSensorManager] sync_mode: updating subjects synchronously");
                 update_subjects();
             } else {
-                spdlog::debug("[WidthSensorManager] async_mode: deferring via ui_async_call");
-                ui_async_call(async_update_width_subjects_callback, nullptr);
+                spdlog::debug("[WidthSensorManager] async_mode: deferring via ui_queue_update");
+                helix::ui::queue_update(
+                    [] { WidthSensorManager::instance().update_subjects_on_main_thread(); });
             }
         }
     }
@@ -253,6 +246,11 @@ void WidthSensorManager::init_subjects() {
                               subjects_);
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticSubjectRegistry::instance().register_deinit(
+        "WidthSensorManager", []() { WidthSensorManager::instance().deinit_subjects(); });
+
     spdlog::trace("[WidthSensorManager] Subjects initialized");
 }
 
@@ -488,9 +486,10 @@ void WidthSensorManager::update_subjects() {
     if (diameter >= 0) {
         // Diameter is stored as mm * 1000, so divide to get mm with 2 decimal places
         float diameter_mm = diameter / 1000.0f;
-        helix::fmt::format_diameter_mm(diameter_mm, diameter_text_buf_, sizeof(diameter_text_buf_));
+        helix::format::format_diameter_mm(diameter_mm, diameter_text_buf_,
+                                          sizeof(diameter_text_buf_));
     } else {
-        snprintf(diameter_text_buf_, sizeof(diameter_text_buf_), "%s", helix::fmt::UNAVAILABLE);
+        snprintf(diameter_text_buf_, sizeof(diameter_text_buf_), "%s", helix::format::UNAVAILABLE);
     }
     lv_subject_copy_string(&diameter_text_, diameter_text_buf_);
 

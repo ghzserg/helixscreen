@@ -17,13 +17,17 @@
 #include "lvgl/src/xml/lv_xml_widget.h"
 #include "lvgl/src/xml/parsers/lv_xml_obj_parser.h"
 #include "observer_factory.h"
+#include "settings_manager.h"
 #include "theme_manager.h"
+#include "ui/ams_drawing_utils.h"
 
 #include <spdlog/spdlog.h>
 
 #include <cstring>
 #include <memory>
 #include <unordered_map>
+
+using namespace helix;
 
 // ============================================================================
 // Per-widget user data (managed via static registry for safe shutdown)
@@ -91,6 +95,9 @@ struct AmsSlotData {
     // Fill level for Spoolman integration (0.0 = empty, 1.0 = full)
     float fill_level = 1.0f;
 
+    // Error/health indicators (dynamic overlays on spool_container)
+    lv_obj_t* error_indicator = nullptr; // Error icon badge at top-right of spool
+
     // Pulsing state - when true, highlight updates are skipped to preserve animation
     bool is_pulsing = false;
 };
@@ -143,21 +150,6 @@ static void unregister_slot_data(lv_obj_t* obj) {
         }
         s_slot_registry.erase(it);
     }
-}
-
-// ============================================================================
-// Color Helpers (for skeuomorphic shading)
-// ============================================================================
-
-/**
- * @brief Darken a color by reducing RGB values
- * Uses direct struct member access since lv_color_t has .red, .green, .blue
- */
-static lv_color_t darken_color(lv_color_t color, uint8_t amount) {
-    uint8_t r = (color.red > amount) ? (color.red - amount) : 0;
-    uint8_t g = (color.green > amount) ? (color.green - amount) : 0;
-    uint8_t b = (color.blue > amount) ? (color.blue - amount) : 0;
-    return lv_color_make(r, g, b);
 }
 
 // ============================================================================
@@ -224,7 +216,7 @@ static void apply_slot_color(AmsSlotData* data, int color_int) {
         lv_obj_set_style_bg_color(data->color_swatch, filament_color, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(data->color_swatch, LV_OPA_COVER, LV_PART_MAIN);
         if (data->spool_outer) {
-            lv_color_t darker = darken_color(filament_color, 50);
+            lv_color_t darker = ams_draw::darken_color(filament_color, 50);
             lv_obj_set_style_bg_color(data->spool_outer, darker, LV_PART_MAIN);
         }
     }
@@ -265,8 +257,7 @@ static void apply_slot_status(AmsSlotData* data, int status_int) {
 
         // Auto-contrast text color based on badge background brightness
         if (data->slot_badge) {
-            int brightness = theme_compute_brightness(badge_bg);
-            lv_color_t text_color = (brightness > 140) ? lv_color_black() : lv_color_white();
+            lv_color_t text_color = theme_manager_get_contrast_text(badge_bg);
             lv_obj_set_style_text_color(data->slot_badge, text_color, LV_PART_MAIN);
         }
     } else {
@@ -377,6 +368,13 @@ static void apply_tool_badge(AmsSlotData* data, int mapped_tool) {
         return;
     }
 
+    // Tool changers: badge is redundant with toolhead label below
+    auto* backend = AmsState::instance().get_backend(0);
+    if (backend && backend->get_type() == AmsType::TOOL_CHANGER) {
+        lv_obj_add_flag(data->tool_badge_bg, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
     if (mapped_tool >= 0) {
         // Tool is mapped - show badge with tool number
         char tool_text[8];
@@ -387,8 +385,7 @@ static void apply_tool_badge(AmsSlotData* data, int mapped_tool) {
         // Auto-contrast text color based on badge background
         if (data->tool_badge) {
             lv_color_t bg = lv_obj_get_style_bg_color(data->tool_badge_bg, LV_PART_MAIN);
-            int brightness = theme_compute_brightness(bg);
-            lv_color_t text_color = (brightness > 140) ? lv_color_black() : lv_color_white();
+            lv_color_t text_color = theme_manager_get_contrast_text(bg);
             lv_obj_set_style_text_color(data->tool_badge, text_color, LV_PART_MAIN);
         }
         spdlog::trace("[AmsSlot] Slot {} tool badge: {}", data->slot_index, tool_text);
@@ -396,6 +393,38 @@ static void apply_tool_badge(AmsSlotData* data, int mapped_tool) {
         // No tool mapped - hide badge
         lv_obj_add_flag(data->tool_badge_bg, LV_OBJ_FLAG_HIDDEN);
         spdlog::trace("[AmsSlot] Slot {} tool badge: hidden", data->slot_index);
+    }
+}
+
+/**
+ * @brief Update error indicator based on SlotInfo.error
+ *
+ * Shows a small colored dot at top-right of spool_container when the slot
+ * has an error. Color varies by severity: red for ERROR, amber for WARNING.
+ * Optionally pulsates when animations are enabled.
+ */
+static void apply_slot_error(AmsSlotData* data, const SlotInfo& slot) {
+    if (!data || !data->error_indicator) {
+        return;
+    }
+
+    if (slot.error.has_value()) {
+        lv_color_t badge_color = ams_draw::severity_color(slot.error->severity);
+        lv_obj_set_style_bg_color(data->error_indicator, badge_color, LV_PART_MAIN);
+        lv_obj_remove_flag(data->error_indicator, LV_OBJ_FLAG_HIDDEN);
+
+        // Start pulsating animation if animations are enabled
+        if (SettingsManager::instance().get_animations_enabled()) {
+            ams_draw::start_pulse(data->error_indicator, badge_color);
+        } else {
+            ams_draw::stop_pulse(data->error_indicator);
+        }
+
+        spdlog::trace("[AmsSlot] Slot {} error indicator: severity={}, msg='{}'", data->slot_index,
+                      static_cast<int>(slot.error->severity), slot.error->message);
+    } else {
+        ams_draw::stop_pulse(data->error_indicator);
+        lv_obj_add_flag(data->error_indicator, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -485,7 +514,8 @@ static void create_spool_visualization(AmsSlotData* data) {
         lv_obj_set_size(outer_ring, spool_size, spool_size);
         lv_obj_align(outer_ring, LV_ALIGN_CENTER, 0, 0);
         lv_obj_set_style_radius(outer_ring, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-        lv_color_t default_darker = darken_color(lv_color_hex(AMS_DEFAULT_SLOT_COLOR), 50);
+        lv_color_t default_darker =
+            ams_draw::darken_color(lv_color_hex(AMS_DEFAULT_SLOT_COLOR), 50);
         lv_obj_set_style_bg_color(outer_ring, default_darker, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(outer_ring, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_border_width(outer_ring, 2, LV_PART_MAIN);
@@ -524,13 +554,33 @@ static void create_spool_visualization(AmsSlotData* data) {
         spdlog::debug("[AmsSlot] Created flat spool rings ({}x{})", spool_size, spool_size);
     }
 
-    // Move badges to front so they render on top of the spool visualization
+    // Create error indicator dot (top-right of spool_container, initially hidden)
+    {
+        lv_obj_t* err = lv_obj_create(data->spool_container);
+        lv_obj_set_size(err, 14, 14);
+        lv_obj_set_style_radius(err, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(err, theme_manager_get_color("danger"), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(err, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_border_width(err, 0, LV_PART_MAIN);
+        lv_obj_set_align(err, LV_ALIGN_TOP_RIGHT);
+        lv_obj_set_style_translate_x(err, -2, LV_PART_MAIN);
+        lv_obj_set_style_translate_y(err, 2, LV_PART_MAIN);
+        lv_obj_remove_flag(err, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(err, LV_OBJ_FLAG_EVENT_BUBBLE);
+        lv_obj_add_flag(err, LV_OBJ_FLAG_HIDDEN);
+        data->error_indicator = err;
+    }
+
+    // Move badges and indicators to front so they render on top of the spool visualization
     // (badges are created by XML before spool canvas/rings are added in C++)
     if (data->status_badge_bg) {
         lv_obj_move_to_index(data->status_badge_bg, -1); // -1 = move to end (front)
     }
     if (data->tool_badge_bg) {
         lv_obj_move_to_index(data->tool_badge_bg, -1);
+    }
+    if (data->error_indicator) {
+        lv_obj_move_to_index(data->error_indicator, -1);
     }
 }
 
@@ -582,35 +632,48 @@ static void setup_slot_observers(AmsSlotData* data) {
     using helix::ui::observe_int_sync;
     AmsState& state = AmsState::instance();
 
-    // Get per-slot subjects
-    lv_subject_t* color_subject = state.get_slot_color_subject(data->slot_index);
-    lv_subject_t* status_subject = state.get_slot_status_subject(data->slot_index);
+    // Get per-slot subjects (using active backend for multi-backend systems)
+    int backend_idx = state.active_backend_index();
+    lv_subject_t* color_subject = state.get_slot_color_subject(backend_idx, data->slot_index);
+    lv_subject_t* status_subject = state.get_slot_status_subject(backend_idx, data->slot_index);
     lv_subject_t* current_slot_subject = state.get_current_slot_subject();
     lv_subject_t* filament_loaded_subject = state.get_filament_loaded_subject();
 
-    // Create observers with factory pattern (RAII cleanup via ObserverGuard)
+    // Capture container (lv_obj_t*) instead of data pointer to prevent
+    // use-after-free when deferred callback executes after widget deletion.
+    // The registry lookup acts as a validity check. (fixes #83)
+    lv_obj_t* obj = data->container;
     if (color_subject) {
         data->color_observer =
-            observe_int_sync<AmsSlotData>(color_subject, data, [](AmsSlotData* d, int color_int) {
-                apply_slot_color(d, color_int);
+            observe_int_sync<lv_obj_t>(color_subject, obj, [](lv_obj_t* o, int color_int) {
+                auto* d = get_slot_data(o);
+                if (d)
+                    apply_slot_color(d, color_int);
             });
     }
     if (status_subject) {
         data->status_observer =
-            observe_int_sync<AmsSlotData>(status_subject, data, [](AmsSlotData* d, int status_int) {
-                apply_slot_status(d, status_int);
+            observe_int_sync<lv_obj_t>(status_subject, obj, [](lv_obj_t* o, int status_int) {
+                auto* d = get_slot_data(o);
+                if (d)
+                    apply_slot_status(d, status_int);
             });
     }
     if (current_slot_subject) {
-        data->current_slot_observer = observe_int_sync<AmsSlotData>(
-            current_slot_subject, data, [](AmsSlotData* d, int current_slot) {
-                apply_current_slot_highlight(d, current_slot);
+        data->current_slot_observer = observe_int_sync<lv_obj_t>(
+            current_slot_subject, obj, [](lv_obj_t* o, int current_slot) {
+                auto* d = get_slot_data(o);
+                if (d)
+                    apply_current_slot_highlight(d, current_slot);
             });
     }
     if (filament_loaded_subject) {
         // When filament_loaded changes, re-evaluate highlight using current_slot value
-        data->filament_loaded_observer = observe_int_sync<AmsSlotData>(
-            filament_loaded_subject, data, [](AmsSlotData* d, int /*loaded*/) {
+        data->filament_loaded_observer = observe_int_sync<lv_obj_t>(
+            filament_loaded_subject, obj, [](lv_obj_t* o, int /*loaded*/) {
+                auto* d = get_slot_data(o);
+                if (!d)
+                    return;
                 lv_subject_t* slot_subject = AmsState::instance().get_current_slot_subject();
                 if (slot_subject) {
                     apply_current_slot_highlight(d, lv_subject_get_int(slot_subject));
@@ -636,7 +699,7 @@ static void setup_slot_observers(AmsSlotData* data) {
         apply_current_slot_highlight(data, lv_subject_get_int(current_slot_subject));
     }
 
-    // Update material label and tool badge from backend if available
+    // Update material label, tool badge, error indicator, and buffer health from backend
     AmsBackend* backend = state.get_backend();
     if (backend) {
         SlotInfo slot = backend->get_slot_info(data->slot_index);
@@ -645,6 +708,8 @@ static void setup_slot_observers(AmsSlotData* data) {
         }
         // Update tool badge based on slot's mapped_tool
         apply_tool_badge(data, slot.mapped_tool);
+        // Update error indicator from slot data
+        apply_slot_error(data, slot);
     }
 
     spdlog::trace("[AmsSlot] Created observers for slot {}", data->slot_index);
@@ -834,14 +899,15 @@ void ui_ams_slot_refresh(lv_obj_t* obj) {
     }
 
     AmsState& state = AmsState::instance();
+    int backend_idx = state.active_backend_index();
 
     // Trigger updates with current values (using helper functions instead of callbacks)
-    lv_subject_t* color_subject = state.get_slot_color_subject(data->slot_index);
+    lv_subject_t* color_subject = state.get_slot_color_subject(backend_idx, data->slot_index);
     if (color_subject) {
         apply_slot_color(data, lv_subject_get_int(color_subject));
     }
 
-    lv_subject_t* status_subject = state.get_slot_status_subject(data->slot_index);
+    lv_subject_t* status_subject = state.get_slot_status_subject(backend_idx, data->slot_index);
     if (status_subject) {
         apply_slot_status(data, lv_subject_get_int(status_subject));
     }
@@ -851,7 +917,7 @@ void ui_ams_slot_refresh(lv_obj_t* obj) {
         apply_current_slot_highlight(data, lv_subject_get_int(current_slot_subject));
     }
 
-    // Update material and tool badge from backend
+    // Update material, tool badge, error indicator, and buffer health from backend
     AmsBackend* backend = state.get_backend();
     if (backend) {
         SlotInfo slot = backend->get_slot_info(data->slot_index);
@@ -864,6 +930,8 @@ void ui_ams_slot_refresh(lv_obj_t* obj) {
         }
         // Update tool badge based on slot's mapped_tool
         apply_tool_badge(data, slot.mapped_tool);
+        // Update error indicator from slot data
+        apply_slot_error(data, slot);
     }
 
     spdlog::trace("[AmsSlot] Refreshed slot {}", data->slot_index);

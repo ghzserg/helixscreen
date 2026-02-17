@@ -349,79 +349,22 @@ registry.register_manager("accel", std::make_unique<AccelSensorManager>());
 
 ## Responsive Design Tokens
 
-**Screen breakpoints (height-based, 5-tier):** TINY (≤390), SMALL (391-460), MEDIUM (461-550), LARGE (551-700), XLARGE (>700)
+See **[UI Contributor Guide](UI_CONTRIBUTOR_GUIDE.md)** for the complete responsive token reference (breakpoints, spacing, fonts, component tokens, colors, and how to add new tokens).
 
-_tiny falls back to _small, _xlarge falls back to _large. Core triplet (_small/_medium/_large) is required.
-
-**For theme architecture and rationale, see [ARCHITECTURE.md](ARCHITECTURE.md#custom-helixscreen-theme).**
-
-### Spacing (`#space_*`)
-
-| Token | SMALL | MEDIUM | LARGE |
-|-------|-------|--------|-------|
-| `#space_xxs` | 2px | 3px | 4px |
-| `#space_xs` | 4px | 5px | 6px |
-| `#space_sm` | 6px | 7px | 8px |
-| `#space_md` | 8px | 10px | 12px |
-| `#space_lg` | 12px | 16px | 20px |
-| `#space_xl` | 16px | 20px | 24px |
-
-> TINY uses _small values, XLARGE uses _large values (unless _tiny/_xlarge overrides are defined).
-
-### Typography (`#font_*` or semantic components)
-
-| Token | Component | SMALL | MEDIUM | LARGE |
-|-------|-----------|-------|--------|-------|
-| `#font_heading` | `<text_heading>` | montserrat_20 | montserrat_26 | montserrat_28 |
-| `#font_body` | `<text_body>` | montserrat_14 | montserrat_18 | montserrat_20 |
-| `#font_small` | `<text_small>` | montserrat_12 | montserrat_16 | montserrat_18 |
-
-### Theme Colors (XML)
-
-Define `mycolor_light` + `mycolor_dark` in globals.xml → use as `#mycolor`:
-
-```xml
-<lv_obj style_bg_color="#card_bg"/>  <!-- Auto-selects light/dark variant -->
-```
-
-### Theme Colors (C++ API)
-
+**C++ access patterns:**
 ```cpp
-// ✅ For theme tokens - auto-handles light/dark mode:
-lv_color_t bg = ui_theme_get_color("card_bg");      // Looks up card_bg_light or card_bg_dark
-lv_color_t ok = ui_theme_get_color("success_color");
-lv_color_t err = ui_theme_get_color("error_color");
+// Spacing
+int padding = theme_manager_get_spacing("space_lg");
 
-// ✅ For hex strings only:
-lv_color_t custom = ui_theme_parse_color("#FF4444");  // Parses literal hex
+// Colors — token lookup (handles light/dark)
+lv_color_t bg = theme_manager_get_color("card_bg");
 
-// ❌ WRONG - parse_color does NOT look up tokens:
-// lv_color_t bg = ui_theme_parse_color("#card_bg");  // Parses "card_bg" as hex → garbage!
+// Colors — hex parsing only (NOT for tokens)
+lv_color_t c = theme_manager_parse_hex_color("#FF0000");
 
-// Pre-defined macros for common colors:
-lv_color_t text = UI_COLOR_TEXT_PRIMARY;   // White text
-lv_font_t* font = UI_FONT_SMALL;           // Responsive small font
+// Fonts
+const lv_font_t* font = theme_manager_get_font("font_body");
 ```
-
-**Reference:** See `src/ui_icon.cpp` for semantic color usage pattern.
-
-### Adding Tokens
-
-Add all variants to globals.xml - theme system auto-discovers by suffix:
-- **Colors:** `mycolor_light` + `mycolor_dark` → use as `#mycolor`
-- **Spacing:** `mytoken_small` + `mytoken_medium` + `mytoken_large` → use as `#mytoken`
-
-```xml
-<!-- globals.xml -->
-<px name="keypad_btn_height_small" value="48"/>
-<px name="keypad_btn_height_medium" value="56"/>
-<px name="keypad_btn_height_large" value="72"/>
-
-<!-- Usage - auto-selects based on screen size -->
-<lv_button height="#keypad_btn_height"/>
-```
-
-⚠️ Don't define base names (`space_lg`) in globals.xml - only variants.
 
 ---
 
@@ -651,6 +594,112 @@ class MyModal : public Modal {
 ```
 
 **Header:** `include/ui_modal.h` | **Source:** `src/ui/ui_modal.cpp`
+
+---
+
+## Multi-Extruder & Multi-Tool Access
+
+Quick patterns for working with the multi-extruder and tool abstraction systems.
+
+### Accessing Multi-Extruder Temperatures
+
+```cpp
+#include "printer_state.h"
+
+auto& ps = helix::PrinterState::instance();
+auto& pts = ps.temperature();
+
+// Legacy: first extruder (backward compatible)
+lv_subject_t* temp = pts.get_extruder_temp_subject();     // centidegrees
+lv_subject_t* target = pts.get_extruder_target_subject();
+
+// Per-extruder by Klipper name
+lv_subject_t* t1_temp = pts.get_extruder_temp_subject("extruder1");
+if (t1_temp) {
+    int centi = lv_subject_get_int(t1_temp);   // 2053 = 205.3C
+    float degrees = centi / 10.0f;
+}
+
+// Enumerate all extruders
+for (const auto& [name, info] : pts.extruders()) {
+    spdlog::info("{}: {:.1f}/{:.1f}C",
+        info.display_name, info.temperature, info.target);
+}
+
+// React to extruder list changes
+add_observer(observe_int_async<MyPanel>(
+    pts.get_extruder_version_subject(), this,
+    [](MyPanel* self, int32_t) { self->rebuild_temp_display(); }
+));
+```
+
+### Getting Active Tool Info
+
+```cpp
+#include "tool_state.h"
+
+auto& ts = helix::ToolState::instance();
+const auto* tool = ts.active_tool();
+if (tool) {
+    spdlog::info("Tool: {} extruder: {} fan: {}",
+        tool->name,
+        tool->extruder_name.value_or("none"),
+        tool->fan_name.value_or("none"));
+
+    // Get temperature for this tool's extruder
+    if (tool->extruder_name) {
+        auto* temp = ps.temperature().get_extruder_temp_subject(*tool->extruder_name);
+    }
+}
+```
+
+### Enumerating Tools
+
+```cpp
+auto& ts = helix::ToolState::instance();
+
+for (const auto& tool : ts.tools()) {
+    spdlog::info("T{}: mounted={} active={} detect={}",
+        tool.index, tool.mounted, tool.active,
+        static_cast<int>(tool.detect_state));
+}
+
+// Observe tool changes
+add_observer(observe_int_async<MyPanel>(
+    ts.get_tools_version_subject(), this,
+    [](MyPanel* self, int32_t) { self->rebuild_tool_list(); }
+));
+
+// Hide UI element on single-tool printers (XML)
+// <bind_flag_if_eq subject="tool_count" flag="hidden" ref_value="1"/>
+```
+
+### Multi-Backend AMS Access
+
+```cpp
+#include "ams_state.h"
+
+auto& ams = AmsState::instance();
+
+// Number of filament system backends
+int count = ams.backend_count();
+
+// Access specific backend
+AmsBackend* primary = ams.get_backend(0);
+AmsBackend* secondary = ams.get_backend(1);
+
+// Per-backend slot subjects (for UI binding)
+lv_subject_t* color = ams.get_slot_color_subject(/*backend=*/1, /*slot=*/0);
+lv_subject_t* status = ams.get_slot_status_subject(/*backend=*/1, /*slot=*/0);
+
+// Switch active backend (updates all system-level subjects)
+ams.set_active_backend(1);
+
+// Observe backend count changes
+// <bind_flag_if_gt subject="backend_count" flag="hidden" ref_value="1"/>
+```
+
+**Full docs:** [TOOL_ABSTRACTION.md](TOOL_ABSTRACTION.md), [MULTI_EXTRUDER_TEMPERATURE.md](MULTI_EXTRUDER_TEMPERATURE.md), [FILAMENT_MANAGEMENT.md](FILAMENT_MANAGEMENT.md)
 
 ---
 

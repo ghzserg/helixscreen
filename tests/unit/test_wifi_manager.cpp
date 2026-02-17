@@ -3,12 +3,14 @@
 
 #include "../../include/wifi_manager.h"
 #include "../../lvgl/lvgl.h"
+#include "../ui_test_utils.h"
 
 #include <chrono>
 #include <thread>
 
 #include "../catch_amalgamated.hpp"
-#include "../ui_test_utils.h"
+
+using namespace helix;
 
 /**
  * WiFiManager Unit Tests

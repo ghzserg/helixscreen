@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "json_fwd.h"
 #include "spdlog/spdlog.h"
 
 #include <mutex>
@@ -10,9 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "hv/json.hpp"
-
-using json = nlohmann::json;
+namespace helix {
 
 /**
  * @brief Printing tip data structure
@@ -200,3 +199,5 @@ class TipsManager {
      */
     static TipsManager* get_instance();
 };
+
+} // namespace helix

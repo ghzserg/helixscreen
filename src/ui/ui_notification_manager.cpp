@@ -2,15 +2,18 @@
 
 #include "ui_notification_manager.h"
 
-#include "ui_nav.h"
+#include "ui_nav_manager.h"
 #include "ui_panel_notification_history.h"
 #include "ui_utils.h"
 
 #include "settings_manager.h"
+#include "static_panel_registry.h"
 
 #include <spdlog/spdlog.h>
 
 #include <cstring>
+
+using namespace helix;
 
 // Forward declaration for class-based API
 NotificationHistoryPanel& get_global_notification_history_panel();
@@ -55,7 +58,7 @@ void NotificationManager::notification_history_clicked([[maybe_unused]] lv_event
     }
 
     // Clean up old panel if it exists but is hidden/invalid
-    lv_obj_safe_delete(mgr.notification_panel_obj_);
+    helix::ui::safe_delete(mgr.notification_panel_obj_);
 
     // Now create XML component
     lv_obj_t* panel_obj =
@@ -71,7 +74,7 @@ void NotificationManager::notification_history_clicked([[maybe_unused]] lv_event
     // Setup panel (wires buttons, refreshes list)
     panel.setup(panel_obj, parent);
 
-    ui_nav_push_overlay(panel_obj);
+    NavigationManager::instance().push_overlay(panel_obj);
 }
 
 // ============================================================================
@@ -108,6 +111,11 @@ void NotificationManager::init_subjects() {
                            "notification_severity", subjects_);
 
     subjects_initialized_ = true;
+
+    // Self-register cleanup — ensures deinit runs before lv_deinit()
+    StaticPanelRegistry::instance().register_destroy(
+        "StatusBarSubjects", []() { NotificationManager::instance().deinit_subjects(); });
+
     spdlog::trace("[NotificationManager] Subjects initialized and registered");
 }
 
@@ -229,29 +237,29 @@ void NotificationManager::deinit_subjects() {
 }
 
 // ============================================================================
-// LEGACY API (forwards to NotificationManager)
+// FREE FUNCTIONS (helix::ui namespace)
 // ============================================================================
 
-void ui_notification_register_callbacks() {
+void helix::ui::notification_register_callbacks() {
     NotificationManager::instance().register_callbacks();
 }
 
-void ui_notification_init_subjects() {
+void helix::ui::notification_init_subjects() {
     NotificationManager::instance().init_subjects();
 }
 
-void ui_notification_manager_init() {
+void helix::ui::notification_manager_init() {
     NotificationManager::instance().init();
 }
 
-void ui_notification_update(NotificationStatus status) {
+void helix::ui::notification_update(NotificationStatus status) {
     NotificationManager::instance().update_notification(status);
 }
 
-void ui_notification_update_count(size_t count) {
+void helix::ui::notification_update_count(size_t count) {
     NotificationManager::instance().update_notification_count(count);
 }
 
-void ui_notification_deinit_subjects() {
+void helix::ui::notification_deinit_subjects() {
     NotificationManager::instance().deinit_subjects();
 }
