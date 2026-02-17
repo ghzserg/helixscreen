@@ -26,15 +26,21 @@ using OverlayCloseCallback = std::function<void()>;
  *
  * Order matches app_layout.xml panel children for index-based access.
  */
-typedef enum {
-    UI_PANEL_HOME,         ///< Panel 0: Home
-    UI_PANEL_PRINT_SELECT, ///< Panel 1: Print Select (beneath Home)
-    UI_PANEL_CONTROLS,     ///< Panel 2: Controls
-    UI_PANEL_FILAMENT,     ///< Panel 3: Filament
-    UI_PANEL_SETTINGS,     ///< Panel 4: Settings
-    UI_PANEL_ADVANCED,     ///< Panel 5: Advanced
-    UI_PANEL_COUNT         ///< Total number of panels
-} ui_panel_id_t;
+namespace helix {
+enum class PanelId {
+    Home = 0,    ///< Panel 0: Home
+    PrintSelect, ///< Panel 1: Print Select (beneath Home)
+    Controls,    ///< Panel 2: Controls
+    Filament,    ///< Panel 3: Filament
+    Settings,    ///< Panel 4: Settings
+    Advanced,    ///< Panel 5: Advanced
+    Count        ///< Total number of panels
+};
+} // namespace helix
+using helix::PanelId;
+
+// Legacy aliases for backward compatibility
+constexpr int UI_PANEL_COUNT = static_cast<int>(PanelId::Count);
 
 /**
  * @brief Singleton manager for navigation and panel management
@@ -136,7 +142,7 @@ class NavigationManager {
      *
      * @param panel_id Panel identifier to activate
      */
-    void set_active(ui_panel_id_t panel_id);
+    void set_active(PanelId panel_id);
 
     /**
      * @brief Register C++ panel instance for lifecycle callbacks
@@ -148,7 +154,7 @@ class NavigationManager {
      * @param id Panel identifier
      * @param panel Pointer to PanelBase-derived instance (may be nullptr)
      */
-    void register_panel_instance(ui_panel_id_t id, PanelBase* panel);
+    void register_panel_instance(PanelId id, PanelBase* panel);
 
     /**
      * @brief Activate the initial panel after all panels are registered
@@ -188,7 +194,7 @@ class NavigationManager {
      * @brief Get current active panel
      * @return Currently active panel identifier
      */
-    ui_panel_id_t get_active() const;
+    PanelId get_active() const;
 
     /**
      * @brief Register panel widgets for show/hide management
@@ -292,10 +298,10 @@ class NavigationManager {
     ~NavigationManager(); // Defined in .cpp - sets g_nav_manager_destroyed flag
 
     // Panel ID to name mapping for E-Stop visibility
-    static const char* panel_id_to_name(ui_panel_id_t id);
+    static const char* panel_id_to_name(PanelId id);
 
     // Check if panel requires Moonraker connection
-    static bool panel_requires_connection(ui_panel_id_t panel);
+    static bool panel_requires_connection(PanelId panel);
 
     // Check if printer is connected
     bool is_printer_connected() const;
@@ -329,7 +335,7 @@ class NavigationManager {
 
     // Active panel tracking
     lv_subject_t active_panel_subject_{};
-    ui_panel_id_t active_panel_ = UI_PANEL_HOME;
+    PanelId active_panel_ = PanelId::Home;
 
     // Panel widget tracking for show/hide
     lv_obj_t* panel_widgets_[UI_PANEL_COUNT] = {nullptr};
@@ -424,13 +430,13 @@ void ui_nav_wire_status_icons(lv_obj_t* navbar);
  * @brief Set active panel
  * @deprecated Use NavigationManager::instance().set_active() instead
  */
-void ui_nav_set_active(ui_panel_id_t panel_id);
+void ui_nav_set_active(PanelId panel_id);
 
 /**
  * @brief Get active panel
  * @deprecated Use NavigationManager::instance().get_active() instead
  */
-ui_panel_id_t ui_nav_get_active();
+PanelId ui_nav_get_active();
 
 /**
  * @brief Register panel widgets

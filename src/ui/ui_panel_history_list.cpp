@@ -1190,7 +1190,7 @@ void HistoryListPanel::handle_reprint() {
     ui_nav_go_back(); // Close history dashboard
 
     // Step 2: Switch to Print Select panel
-    ui_nav_set_active(UI_PANEL_PRINT_SELECT);
+    ui_nav_set_active(PanelId::PrintSelect);
 
     // Step 3: Get PrintSelectPanel and navigate to file details
     PrintSelectPanel* print_panel =

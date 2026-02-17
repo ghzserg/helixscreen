@@ -1050,7 +1050,7 @@ bool Application::init_plugins() {
             ToastManager::instance().show_with_action(
                 ToastSeverity::WARNING, toast_msg, "Manage",
                 [](void* /*user_data*/) {
-                    ui_nav_set_active(UI_PANEL_SETTINGS);
+                    ui_nav_set_active(PanelId::Settings);
                     get_global_settings_panel().handle_plugins_clicked();
                 },
                 nullptr, 8000);
@@ -1142,7 +1142,7 @@ bool Application::run_wizard() {
 void Application::create_overlays() {
     // Navigate to initial panel
     if (m_args.initial_panel >= 0) {
-        ui_nav_set_active(static_cast<ui_panel_id_t>(m_args.initial_panel));
+        ui_nav_set_active(static_cast<PanelId>(m_args.initial_panel));
     }
 
     // Create requested overlay panels
@@ -1470,7 +1470,7 @@ void Application::create_overlays() {
     // Handle --select-file flag
     RuntimeConfig* runtime_config = get_runtime_config();
     if (runtime_config->select_file != nullptr) {
-        ui_nav_set_active(UI_PANEL_PRINT_SELECT);
+        ui_nav_set_active(PanelId::PrintSelect);
         auto* print_panel = get_print_select_panel(get_printer_state(), m_moonraker->api());
         if (print_panel) {
             print_panel->set_pending_file_selection(runtime_config->select_file);

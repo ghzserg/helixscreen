@@ -253,9 +253,9 @@ lv_obj_t* TouchCalibrationOverlay::create(lv_obj_t* parent) {
 
         // Create horizontal 3-step progress (no labels, just dots)
         static const ui_step_t steps[] = {
-            {"", UI_STEP_STATE_PENDING},
-            {"", UI_STEP_STATE_PENDING},
-            {"", UI_STEP_STATE_PENDING},
+            {"", StepState::Pending},
+            {"", StepState::Pending},
+            {"", StepState::Pending},
         };
         step_progress_ = ui_step_progress_create(step_container, steps, 3, true, nullptr);
         if (step_progress_) {

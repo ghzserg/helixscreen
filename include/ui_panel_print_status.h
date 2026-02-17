@@ -49,17 +49,6 @@ enum class PrintState {
     Error      ///< Print failed with error
 };
 
-// Legacy C-style enum for backwards compatibility
-typedef enum {
-    PRINT_STATE_IDLE = static_cast<int>(PrintState::Idle),
-    PRINT_STATE_PREPARING = static_cast<int>(PrintState::Preparing),
-    PRINT_STATE_PRINTING = static_cast<int>(PrintState::Printing),
-    PRINT_STATE_PAUSED = static_cast<int>(PrintState::Paused),
-    PRINT_STATE_COMPLETE = static_cast<int>(PrintState::Complete),
-    PRINT_STATE_CANCELLED = static_cast<int>(PrintState::Cancelled),
-    PRINT_STATE_ERROR = static_cast<int>(PrintState::Error)
-} print_state_t;
-
 class PrintStatusPanel : public OverlayBase {
   public:
     /**

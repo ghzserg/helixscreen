@@ -14,7 +14,7 @@
 #include <cmath>
 #include <cstring>
 
-// Distance values in mm (indexed by jog_distance_t enum)
+// Distance values in mm (indexed by JogDistance enum)
 static const float distance_values[] = {0.1f, 1.0f, 10.0f, 100.0f};
 
 // Zone boundary ratios (as fraction of total radius)
@@ -55,11 +55,11 @@ typedef struct {
     void* home_user_data;
 
     // Current distance mode
-    jog_distance_t current_distance;
+    JogDistance current_distance;
 
     // Press state tracking for visual feedback
     bool is_pressed;
-    jog_direction_t pressed_direction;
+    JogDirection pressed_direction;
     bool pressed_is_inner;
     bool pressed_is_home;
 
@@ -124,27 +124,27 @@ static int convert_angle_to_lvgl(int our_angle) {
 }
 
 // Helper: Determine jog direction from angle (8 wedges of 45° each)
-static jog_direction_t angle_to_direction(float angle) {
+static JogDirection angle_to_direction(float angle) {
     // Wedge boundaries (centered on cardinals):
     // N: 337.5-22.5°, NE: 22.5-67.5°, E: 67.5-112.5°, SE: 112.5-157.5°
     // S: 157.5-202.5°, SW: 202.5-247.5°, W: 247.5-292.5°, NW: 292.5-337.5°
 
     if (angle >= 337.5f || angle < 22.5f)
-        return JOG_DIR_N;
+        return JogDirection::N;
     else if (angle >= 22.5f && angle < 67.5f)
-        return JOG_DIR_NE;
+        return JogDirection::NE;
     else if (angle >= 67.5f && angle < 112.5f)
-        return JOG_DIR_E;
+        return JogDirection::E;
     else if (angle >= 112.5f && angle < 157.5f)
-        return JOG_DIR_SE;
+        return JogDirection::SE;
     else if (angle >= 157.5f && angle < 202.5f)
-        return JOG_DIR_S;
+        return JogDirection::S;
     else if (angle >= 202.5f && angle < 247.5f)
-        return JOG_DIR_SW;
+        return JogDirection::SW;
     else if (angle >= 247.5f && angle < 292.5f)
-        return JOG_DIR_W;
+        return JogDirection::W;
     else
-        return JOG_DIR_NW;
+        return JogDirection::NW;
 }
 
 // Custom draw event: Draw two-zone circular jog pad (Bambu Lab style)
@@ -422,7 +422,7 @@ static void jog_pad_draw_cb(lv_event_t* e) {
             // Enum order: N=0, S=1, E=2, W=3, NE=4, NW=5, SE=6, SW=7
             // Angle mapping: N=0°, NE=45°, E=90°, SE=135°, S=180°, SW=225°, W=270°, NW=315°
             int direction_angles[] = {0, 180, 90, 270, 45, 315, 135, 225};
-            int our_wedge_center = direction_angles[state->pressed_direction];
+            int our_wedge_center = direction_angles[static_cast<int>(state->pressed_direction)];
             int our_wedge_start = our_wedge_center - 22; // 22.5° on each side
             int our_wedge_end = our_wedge_center + 23;   // Total 45° wedge
 
@@ -575,7 +575,7 @@ static void jog_pad_click_cb(lv_event_t* e) {
 
     // Determine direction from angle
     float angle = calculate_angle(dx, dy);
-    jog_direction_t direction = angle_to_direction(angle);
+    JogDirection direction = angle_to_direction(angle);
 
     // Zone boundary: inner ring (25-60%) = 1mm, outer ring (60-100%) = 10mm
     float inner_boundary = radius * INNER_ZONE_BOUNDARY_RATIO;
@@ -583,14 +583,16 @@ static void jog_pad_click_cb(lv_event_t* e) {
 
     if (distance < inner_boundary) {
         // Inner zone - small movements (0.1mm or 1mm based on selector)
-        jog_dist = (state->current_distance <= JOG_DIST_1MM)
-                       ? distance_values[state->current_distance]
-                       : distance_values[JOG_DIST_1MM];
+        jog_dist =
+            (static_cast<int>(state->current_distance) <= static_cast<int>(JogDistance::Dist1mm))
+                ? distance_values[static_cast<int>(state->current_distance)]
+                : distance_values[static_cast<int>(JogDistance::Dist1mm)];
     } else {
         // Outer zone - large movements (10mm or 100mm based on selector)
-        jog_dist = (state->current_distance >= JOG_DIST_10MM)
-                       ? distance_values[state->current_distance]
-                       : distance_values[JOG_DIST_10MM];
+        jog_dist =
+            (static_cast<int>(state->current_distance) >= static_cast<int>(JogDistance::Dist10mm))
+                ? distance_values[static_cast<int>(state->current_distance)]
+                : distance_values[static_cast<int>(JogDistance::Dist10mm)];
     }
 
     if (state->jog_callback) {
@@ -599,7 +601,7 @@ static void jog_pad_click_cb(lv_event_t* e) {
 
     const char* dir_names[] = {"N(+Y)",    "S(-Y)",    "E(+X)",    "W(-X)",
                                "NE(+X+Y)", "NW(-X+Y)", "SE(+X-Y)", "SW(-X-Y)"};
-    spdlog::debug("[JogPad] Jog: {} {:.1f}mm", dir_names[direction], jog_dist);
+    spdlog::debug("[JogPad] Jog: {} {:.1f}mm", dir_names[static_cast<int>(direction)], jog_dist);
 }
 
 // Cleanup callback: Free allocated state
@@ -629,7 +631,7 @@ lv_obj_t* ui_jog_pad_create(lv_obj_t* parent) {
     jog_pad_state_t* state = state_ptr.get();
 
     // Initialize state
-    state->current_distance = JOG_DIST_1MM;
+    state->current_distance = JogDistance::Dist1mm;
 
     // Load colors from component scope (tries "motion_panel" first, falls back to defaults)
     load_colors(state, "motion_panel");
@@ -672,16 +674,16 @@ void ui_jog_pad_set_home_callback(lv_obj_t* obj, jog_pad_home_cb_t cb, void* use
     }
 }
 
-void ui_jog_pad_set_distance(lv_obj_t* obj, jog_distance_t distance) {
+void ui_jog_pad_set_distance(lv_obj_t* obj, JogDistance distance) {
     jog_pad_state_t* state = get_state(obj);
-    if (state && distance >= 0 && distance <= 3) {
+    if (state && static_cast<int>(distance) >= 0 && static_cast<int>(distance) <= 3) {
         state->current_distance = distance;
     }
 }
 
-jog_distance_t ui_jog_pad_get_distance(lv_obj_t* obj) {
+JogDistance ui_jog_pad_get_distance(lv_obj_t* obj) {
     jog_pad_state_t* state = get_state(obj);
-    return state ? state->current_distance : JOG_DIST_1MM;
+    return state ? state->current_distance : JogDistance::Dist1mm;
 }
 
 void ui_jog_pad_refresh_colors(lv_obj_t* obj) {

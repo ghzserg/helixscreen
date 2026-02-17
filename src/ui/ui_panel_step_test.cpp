@@ -14,17 +14,17 @@
 #include <memory>
 
 // Step definitions for vertical progress (retract wizard)
-static const ui_step_t VERTICAL_STEPS[] = {{"Nozzle heating", UI_STEP_STATE_COMPLETED},
-                                           {"Prepare to retract", UI_STEP_STATE_ACTIVE},
-                                           {"Retracting", UI_STEP_STATE_PENDING},
-                                           {"Retract done", UI_STEP_STATE_PENDING}};
+static const ui_step_t VERTICAL_STEPS[] = {{"Nozzle heating", StepState::Completed},
+                                           {"Prepare to retract", StepState::Active},
+                                           {"Retracting", StepState::Pending},
+                                           {"Retract done", StepState::Pending}};
 static const int VERTICAL_STEP_COUNT = sizeof(VERTICAL_STEPS) / sizeof(VERTICAL_STEPS[0]);
 
 // Step definitions for horizontal progress (leveling wizard)
-static const ui_step_t HORIZONTAL_STEPS[] = {{"Homing", UI_STEP_STATE_COMPLETED},
-                                             {"Leveling", UI_STEP_STATE_ACTIVE},
-                                             {"Vibration test", UI_STEP_STATE_PENDING},
-                                             {"Completed", UI_STEP_STATE_PENDING}};
+static const ui_step_t HORIZONTAL_STEPS[] = {{"Homing", StepState::Completed},
+                                             {"Leveling", StepState::Active},
+                                             {"Vibration test", StepState::Pending},
+                                             {"Completed", StepState::Pending}};
 static const int HORIZONTAL_STEP_COUNT = sizeof(HORIZONTAL_STEPS) / sizeof(HORIZONTAL_STEPS[0]);
 
 // ============================================================================

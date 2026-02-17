@@ -109,12 +109,10 @@ lv_obj_t* TimelapseInstallOverlay::create(lv_obj_t* parent) {
     // Create step progress widget programmatically (dynamic content)
     lv_obj_t* step_container = lv_obj_find_by_name(overlay_root_, "step_container");
     if (step_container) {
-        ui_step_t steps[] = {{"Checking webcam", UI_STEP_STATE_PENDING},
-                             {"Checking plugin", UI_STEP_STATE_PENDING},
-                             {"Install plugin", UI_STEP_STATE_PENDING},
-                             {"Configure Moonraker", UI_STEP_STATE_PENDING},
-                             {"Restart Moonraker", UI_STEP_STATE_PENDING},
-                             {"Verify", UI_STEP_STATE_PENDING}};
+        ui_step_t steps[] = {
+            {"Checking webcam", StepState::Pending},   {"Checking plugin", StepState::Pending},
+            {"Install plugin", StepState::Pending},    {"Configure Moonraker", StepState::Pending},
+            {"Restart Moonraker", StepState::Pending}, {"Verify", StepState::Pending}};
         step_progress_ = ui_step_progress_create(step_container, steps, STEP_COUNT, false, nullptr);
     }
 

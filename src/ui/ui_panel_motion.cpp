@@ -441,7 +441,7 @@ void MotionPanel::handle_z_button(const char* name) {
 // Jog Pad Callbacks
 // ============================================================================
 
-void MotionPanel::jog_pad_jog_cb(jog_direction_t direction, float distance_mm, void* user_data) {
+void MotionPanel::jog_pad_jog_cb(JogDirection direction, float distance_mm, void* user_data) {
     auto* self = static_cast<MotionPanel*>(user_data);
     if (self) {
         self->jog(direction, distance_mm);
@@ -481,41 +481,42 @@ void MotionPanel::set_position(float x, float y, float z) {
     update_z_display(); // Also copies to pos_z_subject_
 }
 
-void MotionPanel::jog(jog_direction_t direction, float distance_mm) {
+void MotionPanel::jog(JogDirection direction, float distance_mm) {
     const char* dir_names[] = {"N(+Y)",    "S(-Y)",    "E(+X)",    "W(-X)",
                                "NE(+X+Y)", "NW(-X+Y)", "SE(+X-Y)", "SW(-X-Y)"};
 
-    spdlog::debug("[{}] Jog command: {} {:.1f}mm", get_name(), dir_names[direction], distance_mm);
+    spdlog::debug("[{}] Jog command: {} {:.1f}mm", get_name(),
+                  dir_names[static_cast<int>(direction)], distance_mm);
 
     // Calculate dx/dy from direction
     float dx = 0.0f, dy = 0.0f;
 
     switch (direction) {
-    case JOG_DIR_N:
+    case JogDirection::N:
         dy = distance_mm;
         break;
-    case JOG_DIR_S:
+    case JogDirection::S:
         dy = -distance_mm;
         break;
-    case JOG_DIR_E:
+    case JogDirection::E:
         dx = distance_mm;
         break;
-    case JOG_DIR_W:
+    case JogDirection::W:
         dx = -distance_mm;
         break;
-    case JOG_DIR_NE:
+    case JogDirection::NE:
         dx = distance_mm;
         dy = distance_mm;
         break;
-    case JOG_DIR_NW:
+    case JogDirection::NW:
         dx = -distance_mm;
         dy = distance_mm;
         break;
-    case JOG_DIR_SE:
+    case JogDirection::SE:
         dx = distance_mm;
         dy = -distance_mm;
         break;
-    case JOG_DIR_SW:
+    case JogDirection::SW:
         dx = -distance_mm;
         dy = -distance_mm;
         break;

@@ -312,7 +312,7 @@ void HomePanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     detect_network_type();
 
     // Start signal polling timer if on WiFi
-    if (!signal_poll_timer_ && current_network_ == NETWORK_WIFI) {
+    if (!signal_poll_timer_ && current_network_ == NetworkType::Wifi) {
         signal_poll_timer_ = lv_timer_create(signal_poll_timer_cb, SIGNAL_POLL_INTERVAL_MS, this);
         spdlog::debug("[{}] Started signal polling timer ({}ms)", get_name(),
                       SIGNAL_POLL_INTERVAL_MS);
@@ -360,7 +360,7 @@ void HomePanel::on_activate() {
     detect_network_type();
 
     // Start signal polling timer when panel becomes visible (only for WiFi)
-    if (!signal_poll_timer_ && current_network_ == NETWORK_WIFI) {
+    if (!signal_poll_timer_ && current_network_ == NetworkType::Wifi) {
         signal_poll_timer_ = lv_timer_create(signal_poll_timer_cb, SIGNAL_POLL_INTERVAL_MS, this);
         spdlog::debug("[{}] Started signal polling timer ({}ms interval)", get_name(),
                       SIGNAL_POLL_INTERVAL_MS);
@@ -524,7 +524,7 @@ void HomePanel::detect_network_type() {
         if (eth_info.connected) {
             spdlog::debug("[{}] Detected Ethernet connection on {} ({})", get_name(),
                           eth_info.interface, eth_info.ip_address);
-            set_network(NETWORK_ETHERNET);
+            set_network(NetworkType::Ethernet);
             return;
         }
     }
@@ -533,13 +533,13 @@ void HomePanel::detect_network_type() {
     if (wifi_manager_ && wifi_manager_->is_connected()) {
         spdlog::info("[{}] Detected WiFi connection ({})", get_name(),
                      wifi_manager_->get_connected_ssid());
-        set_network(NETWORK_WIFI);
+        set_network(NetworkType::Wifi);
         return;
     }
 
     // Neither connected
     spdlog::info("[{}] No network connection detected", get_name());
-    set_network(NETWORK_DISCONNECTED);
+    set_network(NetworkType::Disconnected);
 }
 
 void HomePanel::handle_light_toggle() {
@@ -619,7 +619,7 @@ void HomePanel::handle_print_card_clicked() {
     } else {
         // No print in progress - navigate to print select panel
         spdlog::info("[{}] Print card clicked - navigating to print select panel", get_name());
-        ui_nav_set_active(UI_PANEL_PRINT_SELECT);
+        ui_nav_set_active(PanelId::PrintSelect);
     }
 }
 
@@ -687,7 +687,7 @@ void HomePanel::handle_printer_status_clicked() {
     spdlog::info("[{}] Printer status icon clicked - navigating to advanced settings", get_name());
 
     // Navigate to advanced settings panel
-    ui_nav_set_active(UI_PANEL_ADVANCED);
+    ui_nav_set_active(PanelId::Advanced);
 }
 
 void HomePanel::handle_network_clicked() {
@@ -1057,18 +1057,18 @@ void HomePanel::update(const char* status_text, int temp) {
     spdlog::debug("[{}] Updated temp_text subject to: {}", get_name(), buf);
 }
 
-void HomePanel::set_network(network_type_t type) {
+void HomePanel::set_network(NetworkType type) {
     current_network_ = type;
 
     // Update label text
     switch (type) {
-    case NETWORK_WIFI:
+    case NetworkType::Wifi:
         lv_subject_copy_string(&network_label_subject_, "WiFi");
         break;
-    case NETWORK_ETHERNET:
+    case NetworkType::Ethernet:
         lv_subject_copy_string(&network_label_subject_, "Ethernet");
         break;
-    case NETWORK_DISCONNECTED:
+    case NetworkType::Disconnected:
         lv_subject_copy_string(&network_label_subject_, "Disconnected");
         break;
     }
@@ -1089,12 +1089,12 @@ int HomePanel::compute_network_icon_state() {
     // 4 = WiFi strength 4 (>75%, accent variant)
     // 5 = Ethernet connected (accent variant)
 
-    if (current_network_ == NETWORK_DISCONNECTED) {
+    if (current_network_ == NetworkType::Disconnected) {
         spdlog::trace("[{}] Network disconnected -> state 0", get_name());
         return 0;
     }
 
-    if (current_network_ == NETWORK_ETHERNET) {
+    if (current_network_ == NetworkType::Ethernet) {
         spdlog::trace("[{}] Network ethernet -> state 5", get_name());
         return 5;
     }
@@ -1135,7 +1135,7 @@ void HomePanel::update_network_icon_state() {
 
 void HomePanel::signal_poll_timer_cb(lv_timer_t* timer) {
     auto* self = static_cast<HomePanel*>(lv_timer_get_user_data(timer));
-    if (self && self->current_network_ == NETWORK_WIFI) {
+    if (self && self->current_network_ == NetworkType::Wifi) {
         self->update_network_icon_state();
     }
 }
@@ -1340,7 +1340,7 @@ void HomePanel::show_idle_runout_modal() {
     // Configure callbacks for the modal buttons
     runout_modal_.set_on_load_filament([this]() {
         spdlog::info("[{}] User chose to load filament (idle)", get_name());
-        ui_nav_set_active(UI_PANEL_FILAMENT);
+        ui_nav_set_active(PanelId::Filament);
     });
 
     runout_modal_.set_on_resume([]() {

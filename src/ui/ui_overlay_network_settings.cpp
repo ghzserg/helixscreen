@@ -852,9 +852,9 @@ void NetworkSettingsOverlay::handle_test_network_clicked() {
     // 1. Local connection - network config found (gateway IP known)
     // 2. Gateway - can reach router (gateway ping succeeds)
     // 3. Internet access - can reach internet (8.8.8.8 ping)
-    ui_step_t steps[] = {{"Local connection", UI_STEP_STATE_PENDING},
-                         {"Gateway", UI_STEP_STATE_PENDING},
-                         {"Internet access", UI_STEP_STATE_PENDING}};
+    ui_step_t steps[] = {{"Local connection", StepState::Pending},
+                         {"Gateway", StepState::Pending},
+                         {"Internet access", StepState::Pending}};
 
     step_widget_ = ui_step_progress_create(step_container, steps, 3, false, "network_test");
     if (!step_widget_) {

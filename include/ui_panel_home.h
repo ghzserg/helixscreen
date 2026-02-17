@@ -31,7 +31,10 @@ enum class PrintJobState : int;
  */
 
 // Network connection types
-typedef enum { NETWORK_WIFI, NETWORK_ETHERNET, NETWORK_DISCONNECTED } network_type_t;
+namespace helix {
+enum class NetworkType { Wifi, Ethernet, Disconnected };
+} // namespace helix
+using helix::NetworkType;
 
 class HomePanel : public PanelBase {
   public:
@@ -63,7 +66,7 @@ class HomePanel : public PanelBase {
     void update(const char* status_text, int temp);
 
     /** @brief Set network status display */
-    void set_network(network_type_t type);
+    void set_network(NetworkType type);
 
     /** @brief Set light state (on=gold, off=grey) */
     void set_light(bool is_on);
@@ -118,7 +121,7 @@ class HomePanel : public PanelBase {
 
     bool light_on_ = false;
     bool light_long_pressed_ = false; // Suppress click after long-press
-    network_type_t current_network_ = NETWORK_WIFI;
+    NetworkType current_network_ = NetworkType::Wifi;
     PrintingTip current_tip_;
     PrintingTip pending_tip_; // Tip waiting to be displayed after fade-out
     // configured_leds_ removed - read LedController::selected_strips() lazily

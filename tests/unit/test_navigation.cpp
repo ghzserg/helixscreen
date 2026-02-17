@@ -34,59 +34,59 @@ class NavigationTestFixture {
 
 TEST_CASE_METHOD(NavigationTestFixture, "Navigation initialization", "[core][navigation]") {
     SECTION("Default active panel is HOME") {
-        REQUIRE(ui_nav_get_active() == UI_PANEL_HOME);
+        REQUIRE(ui_nav_get_active() == PanelId::Home);
     }
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "Panel switching", "[core][navigation]") {
     SECTION("Switch to CONTROLS panel") {
-        ui_nav_set_active(UI_PANEL_CONTROLS);
-        REQUIRE(ui_nav_get_active() == UI_PANEL_CONTROLS);
+        ui_nav_set_active(PanelId::Controls);
+        REQUIRE(ui_nav_get_active() == PanelId::Controls);
     }
 
     SECTION("Switch to FILAMENT panel") {
-        ui_nav_set_active(UI_PANEL_FILAMENT);
-        REQUIRE(ui_nav_get_active() == UI_PANEL_FILAMENT);
+        ui_nav_set_active(PanelId::Filament);
+        REQUIRE(ui_nav_get_active() == PanelId::Filament);
     }
 
     SECTION("Switch to SETTINGS panel") {
-        ui_nav_set_active(UI_PANEL_SETTINGS);
-        REQUIRE(ui_nav_get_active() == UI_PANEL_SETTINGS);
+        ui_nav_set_active(PanelId::Settings);
+        REQUIRE(ui_nav_get_active() == PanelId::Settings);
     }
 
     SECTION("Switch to ADVANCED panel") {
-        ui_nav_set_active(UI_PANEL_ADVANCED);
-        REQUIRE(ui_nav_get_active() == UI_PANEL_ADVANCED);
+        ui_nav_set_active(PanelId::Advanced);
+        REQUIRE(ui_nav_get_active() == PanelId::Advanced);
     }
 
     SECTION("Switch back to HOME panel") {
-        ui_nav_set_active(UI_PANEL_CONTROLS);
-        ui_nav_set_active(UI_PANEL_HOME);
-        REQUIRE(ui_nav_get_active() == UI_PANEL_HOME);
+        ui_nav_set_active(PanelId::Controls);
+        ui_nav_set_active(PanelId::Home);
+        REQUIRE(ui_nav_get_active() == PanelId::Home);
     }
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "Invalid panel handling", "[core][navigation]") {
     SECTION("Setting invalid panel ID does not change active panel") {
-        ui_panel_id_t original = ui_nav_get_active();
-        ui_nav_set_active((ui_panel_id_t)99); // Invalid panel ID
+        PanelId original = ui_nav_get_active();
+        ui_nav_set_active((PanelId)99); // Invalid panel ID
         REQUIRE(ui_nav_get_active() == original);
     }
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "Repeated panel selection", "[core][navigation]") {
     SECTION("Setting same panel multiple times is safe") {
-        ui_nav_set_active(UI_PANEL_CONTROLS);
-        ui_nav_set_active(UI_PANEL_CONTROLS);
-        ui_nav_set_active(UI_PANEL_CONTROLS);
-        REQUIRE(ui_nav_get_active() == UI_PANEL_CONTROLS);
+        ui_nav_set_active(PanelId::Controls);
+        ui_nav_set_active(PanelId::Controls);
+        ui_nav_set_active(PanelId::Controls);
+        REQUIRE(ui_nav_get_active() == PanelId::Controls);
     }
 }
 
 TEST_CASE_METHOD(NavigationTestFixture, "All panels are accessible", "[core][navigation]") {
     for (int i = 0; i < UI_PANEL_COUNT; i++) {
-        ui_nav_set_active((ui_panel_id_t)i);
-        REQUIRE(ui_nav_get_active() == (ui_panel_id_t)i);
+        ui_nav_set_active((PanelId)i);
+        REQUIRE(ui_nav_get_active() == (PanelId)i);
     }
 }
 
@@ -176,7 +176,7 @@ class NavbarIconTestFixture : public LVGLUITestFixture {
      * @brief Set active panel
      */
     void set_active_panel(int panel_id) {
-        ui_nav_set_active(static_cast<ui_panel_id_t>(panel_id));
+        ui_nav_set_active(static_cast<PanelId>(panel_id));
     }
 
     lv_obj_t* navbar_ = nullptr;
@@ -188,7 +188,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture, "Navbar: Only one icon visible per butto
 
     SECTION("Enabled + On Home: shows inactive icons") {
         set_nav_buttons_enabled(true);
-        set_active_panel(UI_PANEL_HOME); // Not on controls or filament
+        set_active_panel(PanelId::Home); // Not on controls or filament
 
         // Controls button: inactive should be visible, others hidden
         REQUIRE(is_visible("nav_icon_controls_inactive"));
@@ -203,7 +203,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture, "Navbar: Only one icon visible per butto
 
     SECTION("Enabled + On Controls: shows active icon") {
         set_nav_buttons_enabled(true);
-        set_active_panel(UI_PANEL_CONTROLS);
+        set_active_panel(PanelId::Controls);
 
         // Controls button: active should be visible
         REQUIRE(is_visible("nav_icon_controls_active"));
@@ -213,7 +213,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture, "Navbar: Only one icon visible per butto
 
     SECTION("Disabled: shows only disabled icon") {
         set_nav_buttons_enabled(false);
-        set_active_panel(UI_PANEL_HOME);
+        set_active_panel(PanelId::Home);
 
         // Controls button: only disabled should be visible
         REQUIRE(is_visible("nav_icon_controls_disabled"));
@@ -234,7 +234,7 @@ TEST_CASE_METHOD(NavbarIconTestFixture, "Navbar: State transitions work correctl
     SECTION("Transition: Enabled -> Disabled -> Enabled") {
         // Start enabled
         set_nav_buttons_enabled(true);
-        set_active_panel(UI_PANEL_HOME);
+        set_active_panel(PanelId::Home);
 
         REQUIRE(is_visible("nav_icon_controls_inactive"));
         REQUIRE(is_hidden("nav_icon_controls_disabled"));
@@ -252,18 +252,18 @@ TEST_CASE_METHOD(NavbarIconTestFixture, "Navbar: State transitions work correctl
 
     SECTION("Transition: Panel switch while enabled") {
         set_nav_buttons_enabled(true);
-        set_active_panel(UI_PANEL_HOME);
+        set_active_panel(PanelId::Home);
 
         REQUIRE(is_visible("nav_icon_controls_inactive"));
         REQUIRE(is_hidden("nav_icon_controls_active"));
 
         // Switch to controls panel
-        set_active_panel(UI_PANEL_CONTROLS);
+        set_active_panel(PanelId::Controls);
         REQUIRE(is_hidden("nav_icon_controls_inactive"));
         REQUIRE(is_visible("nav_icon_controls_active"));
 
         // Switch back to home
-        set_active_panel(UI_PANEL_HOME);
+        set_active_panel(PanelId::Home);
         REQUIRE(is_visible("nav_icon_controls_inactive"));
         REQUIRE(is_hidden("nav_icon_controls_active"));
     }

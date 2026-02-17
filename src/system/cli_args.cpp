@@ -26,19 +26,19 @@ std::string g_log_file_cli; // CLI override for log file path
 
 namespace helix {
 
-std::optional<ui_panel_id_t> panel_name_to_id(const char* name) {
+std::optional<PanelId> panel_name_to_id(const char* name) {
     if (strcmp(name, "home") == 0)
-        return UI_PANEL_HOME;
+        return PanelId::Home;
     if (strcmp(name, "controls") == 0)
-        return UI_PANEL_CONTROLS;
+        return PanelId::Controls;
     if (strcmp(name, "filament") == 0)
-        return UI_PANEL_FILAMENT;
+        return PanelId::Filament;
     if (strcmp(name, "settings") == 0)
-        return UI_PANEL_SETTINGS;
+        return PanelId::Settings;
     if (strcmp(name, "advanced") == 0)
-        return UI_PANEL_ADVANCED;
+        return PanelId::Advanced;
     if (strcmp(name, "print-select") == 0 || strcmp(name, "print_select") == 0)
-        return UI_PANEL_PRINT_SELECT;
+        return PanelId::PrintSelect;
     return std::nullopt;
 }
 
@@ -193,32 +193,32 @@ static bool parse_panel_arg(const char* panel_arg, CliArgs& args) {
 
     // Check for overlay panels first (these set flags)
     if (strcmp(panel_arg, "motion") == 0) {
-        args.initial_panel = UI_PANEL_CONTROLS;
+        args.initial_panel = static_cast<int>(PanelId::Controls);
         args.overlays.motion = true;
     } else if (strcmp(panel_arg, "nozzle-temp") == 0) {
-        args.initial_panel = UI_PANEL_CONTROLS;
+        args.initial_panel = static_cast<int>(PanelId::Controls);
         args.overlays.nozzle_temp = true;
     } else if (strcmp(panel_arg, "bed-temp") == 0) {
-        args.initial_panel = UI_PANEL_CONTROLS;
+        args.initial_panel = static_cast<int>(PanelId::Controls);
         args.overlays.bed_temp = true;
     } else if (strcmp(panel_arg, "fan") == 0) {
-        args.initial_panel = UI_PANEL_CONTROLS;
+        args.initial_panel = static_cast<int>(PanelId::Controls);
         args.overlays.fan = true;
     } else if (strcmp(panel_arg, "led") == 0 || strcmp(panel_arg, "led-control") == 0) {
-        args.initial_panel = UI_PANEL_HOME;
+        args.initial_panel = static_cast<int>(PanelId::Home);
         args.overlays.led = true;
     } else if (strcmp(panel_arg, "print-status") == 0 || strcmp(panel_arg, "printing") == 0) {
         args.overlays.print_status = true;
     } else if (strcmp(panel_arg, "print-select-list") == 0 ||
                strcmp(panel_arg, "print_select_list") == 0) {
         // Print select panel in LIST view
-        args.initial_panel = UI_PANEL_PRINT_SELECT;
+        args.initial_panel = static_cast<int>(PanelId::PrintSelect);
         args.overlays.print_select_list = true;
         get_runtime_config()->print_select_list_mode = true;
     } else if (strcmp(panel_arg, "print-detail") == 0 || strcmp(panel_arg, "file-detail") == 0 ||
                strcmp(panel_arg, "print-file-detail") == 0) {
         // Print file detail overlay
-        args.initial_panel = UI_PANEL_PRINT_SELECT;
+        args.initial_panel = static_cast<int>(PanelId::PrintSelect);
         args.overlays.file_detail = true;
     } else if (strcmp(panel_arg, "step-test") == 0 || strcmp(panel_arg, "step_test") == 0) {
         args.overlays.step_test = true;
@@ -254,32 +254,32 @@ static bool parse_panel_arg(const char* panel_arg, CliArgs& args) {
                strcmp(panel_arg, "wizard_ams_identify") == 0) {
         args.overlays.wizard_ams_identify = true;
     } else if (strcmp(panel_arg, "theme") == 0 || strcmp(panel_arg, "theme-preview") == 0) {
-        args.initial_panel = UI_PANEL_SETTINGS;
+        args.initial_panel = static_cast<int>(PanelId::Settings);
         args.overlays.theme = true;
     } else if (strcmp(panel_arg, "edit-theme") == 0 || strcmp(panel_arg, "theme-edit") == 0) {
-        args.initial_panel = UI_PANEL_SETTINGS;
+        args.initial_panel = static_cast<int>(PanelId::Settings);
         args.overlays.theme_edit = true;
     }
     // Settings overlays (for screenshot automation)
     else if (strcmp(panel_arg, "display") == 0 || strcmp(panel_arg, "display-settings") == 0) {
-        args.initial_panel = UI_PANEL_SETTINGS;
+        args.initial_panel = static_cast<int>(PanelId::Settings);
         args.overlays.display_settings = true;
     } else if (strcmp(panel_arg, "sensors") == 0 || strcmp(panel_arg, "sensor-settings") == 0) {
-        args.initial_panel = UI_PANEL_SETTINGS;
+        args.initial_panel = static_cast<int>(PanelId::Settings);
         args.overlays.sensor_settings = true;
     } else if (strcmp(panel_arg, "touch-cal") == 0 || strcmp(panel_arg, "touch-calibration") == 0) {
-        args.initial_panel = UI_PANEL_SETTINGS;
+        args.initial_panel = static_cast<int>(PanelId::Settings);
         args.overlays.touch_calibration = true;
     } else if (strcmp(panel_arg, "hardware-health") == 0 || strcmp(panel_arg, "hardware") == 0) {
-        args.initial_panel = UI_PANEL_SETTINGS;
+        args.initial_panel = static_cast<int>(PanelId::Settings);
         args.overlays.hardware_health = true;
     } else if (strcmp(panel_arg, "network") == 0 || strcmp(panel_arg, "network-settings") == 0) {
-        args.initial_panel = UI_PANEL_SETTINGS;
+        args.initial_panel = static_cast<int>(PanelId::Settings);
         args.overlays.network_settings = true;
     }
     // Advanced overlays
     else if (strcmp(panel_arg, "macros") == 0) {
-        args.initial_panel = UI_PANEL_ADVANCED;
+        args.initial_panel = static_cast<int>(PanelId::Advanced);
         args.overlays.macros = true;
     } else if (strcmp(panel_arg, "print-tune") == 0 || strcmp(panel_arg, "tune") == 0) {
         args.overlays.print_status = true; // Needs print running
@@ -288,7 +288,7 @@ static bool parse_panel_arg(const char* panel_arg, CliArgs& args) {
         // Try base panel lookup
         auto panel_id = panel_name_to_id(panel_arg);
         if (panel_id) {
-            args.initial_panel = *panel_id;
+            args.initial_panel = static_cast<int>(*panel_id);
         } else {
             printf("Unknown panel: %s\n", panel_arg);
             printf("Available panels: home, controls, motion, nozzle-temp, bed-temp, "
@@ -718,14 +718,14 @@ bool parse_cli_args(int argc, char** argv, CliArgs& args, int& screen_width, int
             const char* panel_arg = argv[i];
             args.panel_requested = true;
             if (strcmp(panel_arg, "motion") == 0) {
-                args.initial_panel = UI_PANEL_CONTROLS;
+                args.initial_panel = static_cast<int>(PanelId::Controls);
                 args.overlays.motion = true;
             } else if (strcmp(panel_arg, "step-test") == 0 || strcmp(panel_arg, "step_test") == 0) {
                 args.overlays.step_test = true;
             } else {
                 auto panel_id = panel_name_to_id(panel_arg);
                 if (panel_id) {
-                    args.initial_panel = *panel_id;
+                    args.initial_panel = static_cast<int>(*panel_id);
                 } else {
                     printf("Unknown argument: %s\n", argv[i]);
                     printf("Use --help for usage information\n");

@@ -15,8 +15,8 @@
 
 // Internal widget data stored in user_data
 typedef struct {
-    char** label_buffers;    // String storage for labels
-    ui_step_state_t* states; // Current state for each step
+    char** label_buffers; // String storage for labels
+    StepState* states;    // Current state for each step
     int step_count;
     bool horizontal;
 } step_progress_data_t;
@@ -86,7 +86,7 @@ static void init_step_progress_colors(const char* scope_name) {
 /**
  * Apply state-based styling to a step item's indicator and label
  */
-static void apply_step_styling(lv_obj_t* step_item, ui_step_state_t state) {
+static void apply_step_styling(lv_obj_t* step_item, StepState state) {
     if (!step_item)
         return;
 
@@ -107,15 +107,15 @@ static void apply_step_styling(lv_obj_t* step_item, ui_step_state_t state) {
     lv_opa_t fill_opa;
 
     switch (state) {
-    case UI_STEP_STATE_PENDING:
+    case StepState::Pending:
         color = color_pending;
         fill_opa = LV_OPA_COVER; // Filled gray circle
         break;
-    case UI_STEP_STATE_ACTIVE:
+    case StepState::Active:
         color = color_active;
         fill_opa = LV_OPA_COVER; // Filled red circle
         break;
-    case UI_STEP_STATE_COMPLETED:
+    case StepState::Completed:
         color = color_completed;
         fill_opa = LV_OPA_COVER; // Fully filled circle (255)
         break;
@@ -133,7 +133,7 @@ static void apply_step_styling(lv_obj_t* step_item, ui_step_state_t state) {
     }
 
     // Toggle step number and checkmark visibility, and set number color
-    if (state == UI_STEP_STATE_COMPLETED) {
+    if (state == StepState::Completed) {
         // Completed: hide step number, show checkmark
         if (step_number)
             lv_obj_add_flag(step_number, LV_OBJ_FLAG_HIDDEN);
@@ -145,7 +145,7 @@ static void apply_step_styling(lv_obj_t* step_item, ui_step_state_t state) {
             lv_obj_clear_flag(step_number, LV_OBJ_FLAG_HIDDEN);
             // Use theme-aware number colors
             lv_color_t number_color =
-                (state == UI_STEP_STATE_PENDING) ? color_number_pending : color_number_active;
+                (state == StepState::Pending) ? color_number_pending : color_number_active;
             lv_obj_set_style_text_color(step_number, number_color, 0);
         }
         if (checkmark)
@@ -162,7 +162,7 @@ static void apply_step_styling(lv_obj_t* step_item, ui_step_state_t state) {
 
     // Apply label styling (slightly larger for active, smaller for inactive)
     if (label) {
-        if (state == UI_STEP_STATE_ACTIVE) {
+        if (state == StepState::Active) {
             lv_obj_set_style_text_font(label, theme_manager_get_font("font_body"), 0);
             lv_obj_set_style_text_color(label, color_label_active, 0); // Theme-aware active color
         } else {
@@ -194,7 +194,7 @@ static void step_progress_delete_cb(lv_event_t* e) {
         }
 
         if (data->states) {
-            lvgl_unique_ptr<ui_step_state_t> states(data->states);
+            lvgl_unique_ptr<StepState> states(data->states);
         }
         // data itself automatically freed via ~unique_ptr()
     }
@@ -223,7 +223,7 @@ lv_obj_t* ui_step_progress_create(lv_obj_t* parent, const ui_step_t* steps, int 
 
     // Allocate arrays using RAII
     auto label_buffers_ptr = lvgl_make_unique_array<char*>(static_cast<size_t>(step_count));
-    auto states_ptr = lvgl_make_unique_array<ui_step_state_t>(static_cast<size_t>(step_count));
+    auto states_ptr = lvgl_make_unique_array<StepState>(static_cast<size_t>(step_count));
 
     if (!label_buffers_ptr || !states_ptr) {
         spdlog::error("[Step Progress] Failed to allocate step data arrays");
@@ -404,7 +404,7 @@ lv_obj_t* ui_step_progress_create(lv_obj_t* parent, const ui_step_t* steps, int 
                 lv_obj_set_style_radius(connector, 0, 0);
                 // Connector color: green only for COMPLETED steps, gray for all others
                 lv_color_t connector_color =
-                    (steps[i].state == UI_STEP_STATE_COMPLETED) ? color_completed : color_pending;
+                    (steps[i].state == StepState::Completed) ? color_completed : color_pending;
                 lv_obj_set_style_bg_color(connector, connector_color, 0);
 
                 spdlog::debug("[Step Progress] Connector {} at ({}, {}) h={}", i, 8, connector_y,
@@ -475,7 +475,7 @@ lv_obj_t* ui_step_progress_create(lv_obj_t* parent, const ui_step_t* steps, int 
 
                 // Connector color: green only for COMPLETED steps, gray for all others
                 lv_color_t connector_color =
-                    (steps[i].state == UI_STEP_STATE_COMPLETED) ? color_completed : color_pending;
+                    (steps[i].state == StepState::Completed) ? color_completed : color_pending;
                 lv_obj_set_style_bg_color(connector, connector_color, 0);
 
                 spdlog::debug(
@@ -503,15 +503,15 @@ void ui_step_progress_set_current(lv_obj_t* widget, int step_index) {
 
     // Mark all previous steps as completed
     for (int i = 0; i < step_index; i++) {
-        data->states[i] = UI_STEP_STATE_COMPLETED;
+        data->states[i] = StepState::Completed;
     }
 
     // Mark current step as active
-    data->states[step_index] = UI_STEP_STATE_ACTIVE;
+    data->states[step_index] = StepState::Active;
 
     // Mark remaining steps as pending
     for (int i = step_index + 1; i < data->step_count; i++) {
-        data->states[i] = UI_STEP_STATE_PENDING;
+        data->states[i] = StepState::Pending;
     }
 
     // Update styling for all steps and horizontal connectors
@@ -532,7 +532,7 @@ void ui_step_progress_set_current(lv_obj_t* widget, int step_index) {
         // FROM
         else if (data->horizontal && connector_index < data->step_count - 1) {
             // Connector N connects FROM step N (using step N's state for color)
-            lv_color_t connector_color = (data->states[connector_index] == UI_STEP_STATE_COMPLETED)
+            lv_color_t connector_color = (data->states[connector_index] == StepState::Completed)
                                              ? color_completed
                                              : color_pending;
             lv_obj_set_style_bg_color(child, connector_color, 0);
@@ -551,12 +551,12 @@ void ui_step_progress_set_completed(lv_obj_t* widget, int step_index) {
         return;
     }
 
-    data->states[step_index] = UI_STEP_STATE_COMPLETED;
+    data->states[step_index] = StepState::Completed;
 
     // Update styling
     lv_obj_t* step_item = lv_obj_get_child(widget, step_index);
     if (step_item) {
-        apply_step_styling(step_item, UI_STEP_STATE_COMPLETED);
+        apply_step_styling(step_item, StepState::Completed);
     }
 }
 
