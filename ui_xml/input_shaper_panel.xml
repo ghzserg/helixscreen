@@ -528,7 +528,7 @@
         </lv_obj>
         </lv_obj> <!-- end scrollable results area -->
         <!-- Save button — pinned to bottom -->
-        <ui_button name="btn_save" width="100%" height="56" variant="primary" icon="check" text="Save" translation_tag="Save"
+        <ui_button name="btn_save" width="100%" height="#button_height" variant="primary" icon="check" text="Save" translation_tag="Save"
                    style_margin_top="#space_md">
           <event_cb trigger="clicked" callback="input_shaper_save_cb"/>
         </ui_button>

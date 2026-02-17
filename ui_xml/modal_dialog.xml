@@ -11,7 +11,7 @@
   </api>
   <!-- Dialog card (backdrop created programmatically) -->
   <view name="modal_dialog"
-        extends="ui_dialog" width="70%" height="content" align="center" flex_flow="column" style_flex_main_place="start"
+        extends="ui_dialog" width="70%" height="content" style_max_height="90%" align="center" flex_flow="column" style_flex_main_place="start"
         style_pad_gap="0">
     <!-- Header row with icon + title -->
     <lv_obj width="100%"
@@ -35,7 +35,7 @@
     <!-- Message content area (scrollable for long content) -->
     <!-- Max height ensures long content scrolls instead of making dialog huge -->
     <lv_obj name="content_container"
-            width="100%" height="content" style_min_height="60" style_max_height="300" style_pad_left="#space_lg"
+            width="100%" height="0" flex_grow="1" style_min_height="60" style_max_height="300" style_pad_left="#space_lg"
             style_pad_right="#space_lg" style_pad_top="0" style_pad_bottom="#space_lg" scrollable="true"
             scroll_snap_y="none">
       <text_body name="dialog_message" width="100%" text="$message" translation_tag="$message_tag" style_text_align="left" long_mode="wrap"/>

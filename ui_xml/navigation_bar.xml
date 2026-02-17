@@ -4,7 +4,7 @@
 <component>
   <consts>
     <!-- Nav bar width per breakpoint (selected by horizontal resolution in C++) -->
-    <px name="nav_width_tiny" value="64"/>
+    <px name="nav_width_tiny" value="54"/>
     <px name="nav_width_small" value="76"/>
     <px name="nav_width_medium" value="94"/>
     <px name="nav_width_large" value="120"/>

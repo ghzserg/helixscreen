@@ -47,7 +47,7 @@
       </lv_obj>
 
       <!-- View toggle button (icon-only, compact) -->
-      <ui_button name="view_toggle_btn" height="content" icon="list" variant="ghost">
+      <ui_button name="view_toggle_btn" height="#button_height_sm" icon="list" variant="ghost">
         <event_cb trigger="clicked" callback="on_print_select_view_toggle"/>
       </ui_button>
     </lv_obj>

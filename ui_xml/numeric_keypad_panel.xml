@@ -6,11 +6,13 @@
   <consts>
     <!-- Numeric keypad overlay - button heights, panel width, display area -->
     <!-- keypad_btn_height: Touch-friendly button heights -->
+    <px name="keypad_btn_height_tiny" value="36"/>
     <px name="keypad_btn_height_small" value="52"/>
     <px name="keypad_btn_height_medium" value="68"/>
     <px name="keypad_btn_height_large" value="84"/>
 
     <!-- keypad_width: Panel width (right-aligned overlay) -->
+    <px name="keypad_width_tiny" value="180"/>
     <px name="keypad_width_small" value="280"/>
     <px name="keypad_width_medium" value="340"/>
     <px name="keypad_width_large" value="400"/>

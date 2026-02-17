@@ -15,6 +15,13 @@
     <style name="indicator_homed" bg_color="#success"/>
     <style name="indicator_unhomed" bg_color="#text_muted"/>
   </styles>
+  <consts>
+    <!-- Status text visibility (hidden on tiny screens, visible on others) -->
+    <string name="status_text_hidden_tiny" value="true"/>
+    <string name="status_text_hidden_small" value="false"/>
+    <string name="status_text_hidden_medium" value="false"/>
+    <string name="status_text_hidden_large" value="false"/>
+  </consts>
   <!-- Main container: 3+2 layout (3 cards top, 2 cards bottom) -->
   <!-- NOTE: Using explicit heights (55%) instead of flex-grow to work around LVGL bug
        where hidden objects affect flex-grow space calculation -->
@@ -116,12 +123,12 @@
           <ui_card name="card_temperatures"
                    height="100%" flex_grow="1" flex_flow="column" style_flex_main_place="start"
                    style_flex_cross_place="center" style_radius="#border_radius" style_pad_all="#space_sm"
-                   scrollable="false" clickable="true">
+                   scrollable="true" clickable="true">
             <event_cb trigger="clicked" callback="on_controls_temperatures"/>
             <lv_obj width="100%"
                     height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
                     style_pad_gap="#space_sm" scrollable="false">
-              <icon src="heater" size="sm" variant="primary"/>
+              <icon src="thermometer" size="sm" variant="primary"/>
               <text_small text="Temperatures"
                           translation_tag="Temperatures" style_translate_y="2" style_text_color="#text"/>
             </lv_obj>
@@ -150,7 +157,7 @@
             </lv_obj>
             <text_small name="nozzle_status"
                         width="100%" bind_text="controls_nozzle_status" style_text_color="#text"
-                        style_text_align="right"/>
+                        style_text_align="right" hidden="#status_text_hidden"/>
             <!-- Bed section (clickable) -->
             <lv_obj name="btn_bed_temp"
                     width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
@@ -175,7 +182,8 @@
               </lv_obj>
             </lv_obj>
             <text_small name="bed_status"
-                        width="100%" bind_text="controls_bed_status" style_text_color="#text" style_text_align="right"/>
+                        width="100%" bind_text="controls_bed_status" style_text_color="#text"
+                        style_text_align="right" hidden="#status_text_hidden"/>
             <!-- Chamber section (visible only if printer has chamber sensor) -->
             <lv_obj name="chamber_section"
                     width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
@@ -195,7 +203,7 @@
           <ui_card name="card_cooling"
                    height="100%" flex_grow="1" flex_flow="column" style_flex_main_place="start"
                    style_flex_cross_place="center" style_radius="#border_radius" style_pad_all="#space_sm"
-                   scrollable="false" clickable="true">
+                   scrollable="true" clickable="true">
             <event_cb trigger="clicked" callback="on_controls_cooling"/>
             <lv_obj width="100%"
                     height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
