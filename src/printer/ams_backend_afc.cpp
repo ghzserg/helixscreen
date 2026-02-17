@@ -987,7 +987,8 @@ void AmsBackendAfc::parse_afc_buffer(const std::string& buffer_name, const nlohm
     spdlog::trace("[AMS AFC] Buffer {}: fault_detect={} dist={} state={}", buffer_name,
                   health.fault_detection_enabled, health.distance_to_fault, health.state);
 
-    // Map buffer health to its lanes
+    // Store buffer health at unit level (buffer sits between hub and toolhead, not per-lane)
+    // Find which unit this buffer belongs to by checking its lane list
     if (data.contains("lanes") && data["lanes"].is_array()) {
         for (const auto& lane_json : data["lanes"]) {
             if (!lane_json.is_string()) {
@@ -999,34 +1000,13 @@ void AmsBackendAfc::parse_afc_buffer(const std::string& buffer_name, const nlohm
                 continue;
             }
 
-            SlotInfo* slot = system_info_.get_slot_global(it->second);
-            if (!slot) {
-                continue;
-            }
-
-            slot->buffer_health = health;
-
-            // Create WARNING SlotError when buffer fault is detected
-            // (distance_to_fault > 0 AND fault detection is enabled)
-            if (health.fault_detection_enabled && health.distance_to_fault > 0.0f) {
-                // Only set buffer fault warning if slot doesn't already have an error
-                if (!slot->error.has_value()) {
-                    SlotError err;
-                    err.message = fmt::format("Buffer {} fault approaching ({:.1f}mm)", buffer_name,
-                                              health.distance_to_fault);
-                    err.severity = SlotError::WARNING;
-                    slot->error = err;
-                    spdlog::debug("[AMS AFC] Buffer {} fault warning on lane {} (slot {})",
-                                  buffer_name, lane_name, it->second);
-                }
-            } else {
-                // Clear buffer fault warning when fault condition resolves
-                // Only clear WARNING-level errors from buffer faults, not lane errors
-                if (slot->error.has_value() && slot->error->severity == SlotError::WARNING) {
-                    slot->error.reset();
-                    spdlog::debug("[AMS AFC] Buffer {} fault warning cleared on lane {} (slot {})",
-                                  buffer_name, lane_name, it->second);
-                }
+            // Find the unit containing this lane and set buffer health on the unit
+            AmsUnit* unit = system_info_.get_unit_for_slot(it->second);
+            if (unit) {
+                unit->buffer_health = health;
+                spdlog::debug("[AMS AFC] Buffer {} health set on unit {} (via lane {})",
+                              buffer_name, unit->unit_index, lane_name);
+                break; // One buffer per unit — set once and done
             }
         }
     }

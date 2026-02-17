@@ -64,7 +64,6 @@ TEST_CASE("SlotInfo with no error", "[ams][error_state]") {
     slot.status = SlotStatus::AVAILABLE;
 
     REQUIRE_FALSE(slot.error.has_value());
-    REQUIRE_FALSE(slot.buffer_health.has_value());
 }
 
 TEST_CASE("SlotInfo with error", "[ams][error_state]") {
@@ -82,20 +81,20 @@ TEST_CASE("SlotInfo with error", "[ams][error_state]") {
     REQUIRE(slot.error->severity == SlotError::ERROR);
 }
 
-TEST_CASE("SlotInfo with buffer health", "[ams][error_state]") {
-    SlotInfo slot;
-    slot.slot_index = 0;
+TEST_CASE("AmsUnit with buffer health", "[ams][error_state]") {
+    AmsUnit unit;
+    unit.unit_index = 0;
 
     BufferHealth health;
     health.fault_detection_enabled = true;
     health.distance_to_fault = 10.0f;
     health.state = "Trailing";
-    slot.buffer_health = health;
+    unit.buffer_health = health;
 
-    REQUIRE(slot.buffer_health.has_value());
-    REQUIRE(slot.buffer_health->fault_detection_enabled == true);
-    REQUIRE(slot.buffer_health->distance_to_fault == Catch::Approx(10.0f));
-    REQUIRE(slot.buffer_health->state == "Trailing");
+    REQUIRE(unit.buffer_health.has_value());
+    REQUIRE(unit.buffer_health->fault_detection_enabled == true);
+    REQUIRE(unit.buffer_health->distance_to_fault == Catch::Approx(10.0f));
+    REQUIRE(unit.buffer_health->state == "Trailing");
 }
 
 TEST_CASE("SlotInfo error can be cleared", "[ams][error_state]") {
@@ -366,17 +365,15 @@ TEST_CASE("AFC lane error: only errored lane gets error, not others", "[ams][afc
 }
 
 // ============================================================================
-// Task 3: AFC Backend — Buffer Health Parsing
+// Task 3: AFC Backend — Buffer Health Parsing (unit-level)
 // ============================================================================
 
-TEST_CASE("AFC buffer health: parsed from buffer update", "[ams][afc][buffer_health]") {
+TEST_CASE("AFC buffer health: parsed to unit level from buffer update",
+          "[ams][afc][buffer_health]") {
     AfcErrorStateHelper helper;
     helper.initialize_test_lanes_with_slots(4);
-
-    // Set up buffer names and lane mapping
     helper.set_buffer_names({"Turtle_1"});
 
-    // Feed buffer data with lane mapping
     nlohmann::json buffer_data;
     buffer_data["fault_detection_enabled"] = true;
     buffer_data["distance_to_fault"] = 25.5f;
@@ -384,45 +381,16 @@ TEST_CASE("AFC buffer health: parsed from buffer update", "[ams][afc][buffer_hea
     buffer_data["lanes"] = nlohmann::json::array({"lane1", "lane2", "lane3", "lane4"});
     helper.feed_afc_buffer("Turtle_1", buffer_data);
 
-    // All 4 lanes should have buffer health
-    for (int i = 0; i < 4; ++i) {
-        const auto* slot = helper.get_slot(i);
-        REQUIRE(slot != nullptr);
-        REQUIRE(slot->buffer_health.has_value());
-        REQUIRE(slot->buffer_health->fault_detection_enabled == true);
-        REQUIRE(slot->buffer_health->distance_to_fault == Catch::Approx(25.5f));
-        REQUIRE(slot->buffer_health->state == "Advancing");
-    }
-}
+    // Buffer health should be set on the unit, not per-slot
+    const auto& info = helper.get_system_info();
+    REQUIRE(info.units.size() == 1);
+    REQUIRE(info.units[0].buffer_health.has_value());
+    REQUIRE(info.units[0].buffer_health->fault_detection_enabled == true);
+    REQUIRE(info.units[0].buffer_health->distance_to_fault == Catch::Approx(25.5f));
+    REQUIRE(info.units[0].buffer_health->state == "Advancing");
 
-TEST_CASE("AFC buffer health: buffer fault creates WARNING SlotError",
-          "[ams][afc][buffer_health]") {
-    AfcErrorStateHelper helper;
-    helper.initialize_test_lanes_with_slots(4);
-    helper.set_buffer_names({"Turtle_1"});
-
-    // Feed buffer with fault detected (distance > 0 means fault proximity)
-    nlohmann::json buffer_data;
-    buffer_data["fault_detection_enabled"] = true;
-    buffer_data["distance_to_fault"] = 5.0f; // Close to fault
-    buffer_data["state"] = "Trailing";
-    buffer_data["lanes"] = nlohmann::json::array({"lane1", "lane2"});
-    helper.feed_afc_buffer("Turtle_1", buffer_data);
-
-    // Lanes mapped to this buffer should get WARNING error
-    const auto* slot0 = helper.get_slot(0);
-    REQUIRE(slot0 != nullptr);
-    REQUIRE(slot0->error.has_value());
-    REQUIRE(slot0->error->severity == SlotError::WARNING);
-
-    const auto* slot1 = helper.get_slot(1);
-    REQUIRE(slot1 != nullptr);
-    REQUIRE(slot1->error.has_value());
-    REQUIRE(slot1->error->severity == SlotError::WARNING);
-
-    // Lanes NOT mapped to this buffer should NOT have error
-    REQUIRE_FALSE(helper.get_slot(2)->error.has_value());
-    REQUIRE_FALSE(helper.get_slot(3)->error.has_value());
+    // Slots should NOT have buffer health (it's unit-level now)
+    REQUIRE_FALSE(helper.get_slot(0)->error.has_value());
 }
 
 TEST_CASE("AFC buffer health: no fault when distance_to_fault is 0", "[ams][afc][buffer_health]") {
@@ -432,38 +400,17 @@ TEST_CASE("AFC buffer health: no fault when distance_to_fault is 0", "[ams][afc]
 
     nlohmann::json buffer_data;
     buffer_data["fault_detection_enabled"] = true;
-    buffer_data["distance_to_fault"] = 0.0f; // No fault
+    buffer_data["distance_to_fault"] = 0.0f;
     buffer_data["state"] = "Advancing";
     buffer_data["lanes"] = nlohmann::json::array({"lane1", "lane2"});
     helper.feed_afc_buffer("Turtle_1", buffer_data);
 
-    // Buffer health should be populated
-    REQUIRE(helper.get_slot(0)->buffer_health.has_value());
-
-    // But no error (distance_to_fault == 0 means no fault)
-    REQUIRE_FALSE(helper.get_slot(0)->error.has_value());
+    const auto& info = helper.get_system_info();
+    REQUIRE(info.units[0].buffer_health.has_value());
+    REQUIRE(info.units[0].buffer_health->distance_to_fault == Catch::Approx(0.0f));
 }
 
-TEST_CASE("AFC buffer health: maps to correct lanes only", "[ams][afc][buffer_health]") {
-    AfcErrorStateHelper helper;
-    helper.initialize_test_lanes_with_slots(4);
-    helper.set_buffer_names({"Turtle_1"});
-
-    nlohmann::json buffer_data;
-    buffer_data["fault_detection_enabled"] = false;
-    buffer_data["distance_to_fault"] = 0.0f;
-    buffer_data["state"] = "Idle";
-    buffer_data["lanes"] = nlohmann::json::array({"lane1", "lane3"});
-    helper.feed_afc_buffer("Turtle_1", buffer_data);
-
-    // Only lane1 (idx 0) and lane3 (idx 2) should have buffer health
-    REQUIRE(helper.get_slot(0)->buffer_health.has_value());
-    REQUIRE_FALSE(helper.get_slot(1)->buffer_health.has_value());
-    REQUIRE(helper.get_slot(2)->buffer_health.has_value());
-    REQUIRE_FALSE(helper.get_slot(3)->buffer_health.has_value());
-}
-
-TEST_CASE("AFC buffer health: fault_detection_enabled false suppresses fault warning",
+TEST_CASE("AFC buffer health: fault_detection_enabled false stored on unit",
           "[ams][afc][buffer_health]") {
     AfcErrorStateHelper helper;
     helper.initialize_test_lanes_with_slots(4);
@@ -471,72 +418,14 @@ TEST_CASE("AFC buffer health: fault_detection_enabled false suppresses fault war
 
     nlohmann::json buffer_data;
     buffer_data["fault_detection_enabled"] = false;
-    buffer_data["distance_to_fault"] = 5.0f; // Would be a fault, but detection disabled
+    buffer_data["distance_to_fault"] = 5.0f;
     buffer_data["state"] = "Trailing";
     buffer_data["lanes"] = nlohmann::json::array({"lane1"});
     helper.feed_afc_buffer("Turtle_1", buffer_data);
 
-    // Buffer health populated
-    REQUIRE(helper.get_slot(0)->buffer_health.has_value());
-    // But no error since fault detection is disabled
-    REQUIRE_FALSE(helper.get_slot(0)->error.has_value());
-}
-
-TEST_CASE("AFC buffer health: fault warning cleared when buffer recovers",
-          "[ams][afc][buffer_health]") {
-    AfcErrorStateHelper helper;
-    helper.initialize_test_lanes_with_slots(4);
-    helper.set_buffer_names({"Turtle_1"});
-
-    // First, create a fault condition
-    nlohmann::json fault_data;
-    fault_data["fault_detection_enabled"] = true;
-    fault_data["distance_to_fault"] = 5.0f;
-    fault_data["state"] = "Trailing";
-    fault_data["lanes"] = nlohmann::json::array({"lane1"});
-    helper.feed_afc_buffer("Turtle_1", fault_data);
-
-    REQUIRE(helper.get_slot(0)->error.has_value());
-    REQUIRE(helper.get_slot(0)->error->severity == SlotError::WARNING);
-
-    // Buffer recovers (distance_to_fault → 0)
-    nlohmann::json recovered_data;
-    recovered_data["fault_detection_enabled"] = true;
-    recovered_data["distance_to_fault"] = 0.0f;
-    recovered_data["state"] = "Advancing";
-    recovered_data["lanes"] = nlohmann::json::array({"lane1"});
-    helper.feed_afc_buffer("Turtle_1", recovered_data);
-
-    // WARNING should be cleared
-    REQUIRE_FALSE(helper.get_slot(0)->error.has_value());
-    // Buffer health still populated
-    REQUIRE(helper.get_slot(0)->buffer_health.has_value());
-    REQUIRE(helper.get_slot(0)->buffer_health->state == "Advancing");
-}
-
-TEST_CASE("AFC buffer health: recovery does not clear lane ERROR", "[ams][afc][buffer_health]") {
-    AfcErrorStateHelper helper;
-    helper.initialize_test_lanes_with_slots(4);
-    helper.set_buffer_names({"Turtle_1"});
-
-    // Set a lane-level ERROR on slot 0
-    auto* slot = helper.get_slot_mut(0);
-    SlotError lane_err;
-    lane_err.message = "Lane error";
-    lane_err.severity = SlotError::ERROR;
-    slot->error = lane_err;
-
-    // Buffer recovers (would clear WARNING, but should NOT clear ERROR)
-    nlohmann::json recovered_data;
-    recovered_data["fault_detection_enabled"] = true;
-    recovered_data["distance_to_fault"] = 0.0f;
-    recovered_data["state"] = "Advancing";
-    recovered_data["lanes"] = nlohmann::json::array({"lane1"});
-    helper.feed_afc_buffer("Turtle_1", recovered_data);
-
-    // Lane ERROR should still be there (only WARNINGs get cleared by buffer recovery)
-    REQUIRE(helper.get_slot(0)->error.has_value());
-    REQUIRE(helper.get_slot(0)->error->severity == SlotError::ERROR);
+    const auto& info = helper.get_system_info();
+    REQUIRE(info.units[0].buffer_health.has_value());
+    REQUIRE(info.units[0].buffer_health->fault_detection_enabled == false);
 }
 
 // ============================================================================

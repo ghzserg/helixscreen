@@ -234,6 +234,20 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
         }
     }
 
+    // Set buffer fault state on hub (AFC TurtleNeck buffer health)
+    // unit_index == -1 means single-unit view (use unit 0)
+    int buffer_fault = 0; // 0=healthy, 1=warning, 2=fault
+    int effective_unit = (unit_index >= 0) ? unit_index : 0;
+    if (effective_unit < static_cast<int>(info.units.size())) {
+        const auto& unit = info.units[effective_unit];
+        if (unit.buffer_health.has_value() && unit.buffer_health->fault_detection_enabled) {
+            if (unit.buffer_health->distance_to_fault > 0.0f) {
+                buffer_fault = 1; // Approaching fault — yellow tint
+            }
+        }
+    }
+    ui_filament_path_canvas_set_buffer_fault_state(canvas, buffer_fault);
+
     ui_filament_path_canvas_refresh(canvas);
 
     spdlog::debug("[AmsDetail] Path canvas configured: slots={}, unit={}, hub_only={}", slot_count,

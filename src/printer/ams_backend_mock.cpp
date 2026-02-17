@@ -749,15 +749,41 @@ void AmsBackendMock::set_slot_error(int slot_index, std::optional<SlotError> err
     }
 }
 
-void AmsBackendMock::set_slot_buffer_health(int slot_index, std::optional<BufferHealth> health) {
+void AmsBackendMock::set_unit_buffer_health(int unit_index, std::optional<BufferHealth> health) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    auto* slot = system_info_.get_slot_global(slot_index);
-    if (slot) {
-        slot->buffer_health = std::move(health);
-        spdlog::debug("[AmsBackendMock] Slot {} buffer health {}", slot_index,
-                      slot->buffer_health.has_value() ? "set" : "cleared");
+    if (unit_index >= 0 && unit_index < static_cast<int>(system_info_.units.size())) {
+        system_info_.units[unit_index].buffer_health = std::move(health);
+        spdlog::debug("[AmsBackendMock] Unit {} buffer health {}", unit_index,
+                      system_info_.units[unit_index].buffer_health.has_value() ? "set" : "cleared");
     }
+}
+
+void AmsBackendMock::inject_mock_errors() {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    for (auto& unit : system_info_.units) {
+        // Add a lane ERROR on the last slot of each unit
+        if (!unit.slots.empty()) {
+            auto& last_slot = unit.slots.back();
+            SlotError err;
+            err.message = fmt::format("Lane {} load failed", last_slot.slot_index + 1);
+            err.severity = SlotError::ERROR;
+            last_slot.error = err;
+        }
+
+        // Add buffer health approaching fault on unit 0 (AFC only — TurtleNeck buffer)
+        if (afc_mode_ && unit.unit_index == 0) {
+            BufferHealth health;
+            health.fault_detection_enabled = true;
+            health.state = "Trailing";
+            health.distance_to_fault = 12.5f;
+            unit.buffer_health = health;
+        }
+    }
+
+    spdlog::info("[AmsBackendMock] Injected mock error states on {} units",
+                 system_info_.units.size());
 }
 
 void AmsBackendMock::set_has_hardware_bypass_sensor(bool has_sensor) {
@@ -1138,28 +1164,7 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             slot.mapped_tool = 3;
             slot.total_weight_g = 1000.0f;
             slot.remaining_weight_g = 200.0f;
-            SlotError err;
-            err.message = "Lane 4 load failed";
-            err.severity = SlotError::ERROR;
-            slot.error = err;
             unit.slots.push_back(slot);
-        }
-
-        // Pre-populate buffer health for all lanes (AFC has TurtleNeck buffers)
-        for (auto& slot : unit.slots) {
-            BufferHealth health;
-            health.fault_detection_enabled = true;
-            health.state = "Advancing";
-            // Lane 3 (index 2): approaching fault (warning visualization)
-            if (slot.slot_index == 2) {
-                health.distance_to_fault = 12.5f;
-                // Also add a WARNING-level error for the approaching fault
-                SlotError warn;
-                warn.message = "Buffer fault approaching (12.5mm)";
-                warn.severity = SlotError::WARNING;
-                slot.error = warn;
-            }
-            slot.buffer_health = health;
         }
 
         system_info_.units.push_back(unit);
@@ -1292,6 +1297,7 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
                 }
                 unit.slots.push_back(slot);
             }
+
             system_info_.units.push_back(unit);
         }
 

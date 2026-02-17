@@ -17,6 +17,7 @@
 #include "lvgl/src/xml/lv_xml_widget.h"
 #include "lvgl/src/xml/parsers/lv_xml_obj_parser.h"
 #include "observer_factory.h"
+#include "settings_manager.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -94,8 +95,7 @@ struct AmsSlotData {
     float fill_level = 1.0f;
 
     // Error/health indicators (dynamic overlays on spool_container)
-    lv_obj_t* error_indicator = nullptr;   // Error icon badge at top-right of spool
-    lv_obj_t* buffer_health_dot = nullptr; // Buffer health dot below spool
+    lv_obj_t* error_indicator = nullptr; // Error icon badge at top-right of spool
 
     // Pulsing state - when true, highlight updates are skipped to preserve animation
     bool is_pulsing = false;
@@ -412,11 +412,93 @@ static void apply_tool_badge(AmsSlotData* data, int mapped_tool) {
     }
 }
 
+// Error dot pulse animation constants
+// Scale values are in 1/256 units (256 = 100%)
+static constexpr int32_t ERROR_DOT_SCALE_MIN = 180; // ~70%
+static constexpr int32_t ERROR_DOT_SCALE_MAX = 256; // 100%
+// Saturation pulse: 0 = desaturated (washed out), 255 = full vivid base color
+static constexpr int32_t ERROR_DOT_SAT_MIN = 80;  // Washed out but recognizable
+static constexpr int32_t ERROR_DOT_SAT_MAX = 255; // Full vivid color
+static constexpr uint32_t ERROR_DOT_PULSE_MS = 800;
+
+// Animation callback: pulsate error dot scale + shadow glow
+static void error_dot_scale_anim_cb(void* var, int32_t value) {
+    auto* obj = static_cast<lv_obj_t*>(var);
+    lv_obj_set_style_transform_scale(obj, value, LV_PART_MAIN);
+    // Shadow grows as dot grows for glow effect (0 at min scale, 8 at max)
+    int32_t range = ERROR_DOT_SCALE_MAX - ERROR_DOT_SCALE_MIN;
+    int32_t progress = value - ERROR_DOT_SCALE_MIN; // 0..range
+    int32_t shadow = progress * 8 / range;
+    lv_obj_set_style_shadow_width(obj, shadow, LV_PART_MAIN);
+    lv_opa_t shadow_opa = static_cast<lv_opa_t>(progress * 180 / range);
+    lv_obj_set_style_shadow_opa(obj, shadow_opa, LV_PART_MAIN);
+}
+
+// Animation callback: pulsate error dot saturation
+// value = saturation level (0..255). Blends base color toward its luminance gray.
+static void error_dot_color_anim_cb(void* var, int32_t value) {
+    auto* obj = static_cast<lv_obj_t*>(var);
+    lv_color_t base = lv_obj_get_style_border_color(obj, LV_PART_MAIN);
+
+    // Compute perceptual luminance gray for this color
+    uint8_t gray = static_cast<uint8_t>((base.red * 77 + base.green * 150 + base.blue * 29) >> 8);
+    lv_color_t gray_color = lv_color_make(gray, gray, gray);
+
+    // Mix: at value=255 → pure base, at value=0 → pure gray
+    lv_color_t result = lv_color_mix(base, gray_color, static_cast<lv_opa_t>(value));
+    lv_obj_set_style_bg_color(obj, result, LV_PART_MAIN);
+}
+
+static void start_error_dot_pulse(lv_obj_t* dot, lv_color_t base_color) {
+    // Store the base color in border_color so the anim callback can read it
+    lv_obj_set_style_border_color(dot, base_color, LV_PART_MAIN);
+    lv_obj_set_style_shadow_color(dot, base_color, LV_PART_MAIN);
+
+    // Set transform pivot to center (hardcoded — dot is 14x14)
+    lv_obj_set_style_transform_pivot_x(dot, 7, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(dot, 7, LV_PART_MAIN);
+
+    // Scale pulse: shrink and grow from center
+    lv_anim_t scale_anim;
+    lv_anim_init(&scale_anim);
+    lv_anim_set_var(&scale_anim, dot);
+    lv_anim_set_values(&scale_anim, ERROR_DOT_SCALE_MAX, ERROR_DOT_SCALE_MIN);
+    lv_anim_set_time(&scale_anim, ERROR_DOT_PULSE_MS);
+    lv_anim_set_playback_time(&scale_anim, ERROR_DOT_PULSE_MS);
+    lv_anim_set_repeat_count(&scale_anim, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&scale_anim, lv_anim_path_ease_in_out);
+    lv_anim_set_exec_cb(&scale_anim, error_dot_scale_anim_cb);
+    lv_anim_start(&scale_anim);
+
+    // Saturation pulse: desaturated when big, vivid when small
+    lv_anim_t color_anim;
+    lv_anim_init(&color_anim);
+    lv_anim_set_var(&color_anim, dot);
+    lv_anim_set_values(&color_anim, ERROR_DOT_SAT_MAX, ERROR_DOT_SAT_MIN);
+    lv_anim_set_time(&color_anim, ERROR_DOT_PULSE_MS);
+    lv_anim_set_playback_time(&color_anim, ERROR_DOT_PULSE_MS);
+    lv_anim_set_repeat_count(&color_anim, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&color_anim, lv_anim_path_ease_in_out);
+    lv_anim_set_exec_cb(&color_anim, error_dot_color_anim_cb);
+    lv_anim_start(&color_anim);
+}
+
+static void stop_error_dot_pulse(lv_obj_t* dot) {
+    lv_anim_delete(dot, error_dot_scale_anim_cb);
+    lv_anim_delete(dot, error_dot_color_anim_cb);
+    // Restore defaults
+    lv_obj_set_style_transform_scale(dot, 256, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(dot, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_opa(dot, LV_OPA_TRANSP, LV_PART_MAIN);
+}
+
 /**
  * @brief Update error indicator based on SlotInfo.error
  *
  * Shows a small colored dot at top-right of spool_container when the slot
  * has an error. Color varies by severity: red for ERROR, amber for WARNING.
+ * Optionally pulsates when animations are enabled.
  */
 static void apply_slot_error(AmsSlotData* data, const SlotInfo& slot) {
     if (!data || !data->error_indicator) {
@@ -434,42 +516,19 @@ static void apply_slot_error(AmsSlotData* data, const SlotInfo& slot) {
         }
         lv_obj_set_style_bg_color(data->error_indicator, badge_color, LV_PART_MAIN);
         lv_obj_remove_flag(data->error_indicator, LV_OBJ_FLAG_HIDDEN);
+
+        // Start pulsating animation if animations are enabled
+        if (SettingsManager::instance().get_animations_enabled()) {
+            start_error_dot_pulse(data->error_indicator, badge_color);
+        } else {
+            stop_error_dot_pulse(data->error_indicator);
+        }
+
         spdlog::trace("[AmsSlot] Slot {} error indicator: severity={}, msg='{}'", data->slot_index,
                       static_cast<int>(slot.error->severity), slot.error->message);
     } else {
+        stop_error_dot_pulse(data->error_indicator);
         lv_obj_add_flag(data->error_indicator, LV_OBJ_FLAG_HIDDEN);
-    }
-}
-
-/**
- * @brief Update buffer health dot based on SlotInfo.buffer_health
- *
- * Shows a small colored dot below the spool for AFC systems with fault detection.
- * Green = healthy, yellow = approaching fault, red = fault detected.
- */
-static void apply_buffer_health(AmsSlotData* data, const SlotInfo& slot) {
-    if (!data || !data->buffer_health_dot) {
-        return;
-    }
-
-    if (slot.buffer_health.has_value() && slot.buffer_health->fault_detection_enabled) {
-        lv_color_t dot_color;
-        if (slot.buffer_health->distance_to_fault < 0.01f) {
-            // No fault proximity — healthy
-            dot_color = theme_manager_get_color("success");
-        } else if (slot.error.has_value()) {
-            // Has error — fault detected
-            dot_color = theme_manager_get_color("danger");
-        } else {
-            // Approaching fault but no error yet
-            dot_color = theme_manager_get_color("warning");
-        }
-        lv_obj_set_style_bg_color(data->buffer_health_dot, dot_color, LV_PART_MAIN);
-        lv_obj_remove_flag(data->buffer_health_dot, LV_OBJ_FLAG_HIDDEN);
-        spdlog::trace("[AmsSlot] Slot {} buffer health: dist={:.1f}, state='{}'", data->slot_index,
-                      slot.buffer_health->distance_to_fault, slot.buffer_health->state);
-    } else {
-        lv_obj_add_flag(data->buffer_health_dot, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -607,28 +666,12 @@ static void create_spool_visualization(AmsSlotData* data) {
         lv_obj_set_style_bg_opa(err, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_border_width(err, 0, LV_PART_MAIN);
         lv_obj_set_align(err, LV_ALIGN_TOP_RIGHT);
-        lv_obj_set_style_translate_x(err, 2, LV_PART_MAIN);
-        lv_obj_set_style_translate_y(err, -2, LV_PART_MAIN);
+        lv_obj_set_style_translate_x(err, -2, LV_PART_MAIN);
+        lv_obj_set_style_translate_y(err, 2, LV_PART_MAIN);
         lv_obj_remove_flag(err, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(err, LV_OBJ_FLAG_EVENT_BUBBLE);
         lv_obj_add_flag(err, LV_OBJ_FLAG_HIDDEN);
         data->error_indicator = err;
-    }
-
-    // Create buffer health dot (bottom-center of spool_container, initially hidden)
-    {
-        lv_obj_t* dot = lv_obj_create(data->spool_container);
-        lv_obj_set_size(dot, 8, 8);
-        lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(dot, theme_manager_get_color("success"), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_style_border_width(dot, 0, LV_PART_MAIN);
-        lv_obj_set_align(dot, LV_ALIGN_BOTTOM_MID);
-        lv_obj_set_style_translate_y(dot, -2, LV_PART_MAIN);
-        lv_obj_remove_flag(dot, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(dot, LV_OBJ_FLAG_EVENT_BUBBLE);
-        lv_obj_add_flag(dot, LV_OBJ_FLAG_HIDDEN);
-        data->buffer_health_dot = dot;
     }
 
     // Move badges and indicators to front so they render on top of the spool visualization
@@ -641,9 +684,6 @@ static void create_spool_visualization(AmsSlotData* data) {
     }
     if (data->error_indicator) {
         lv_obj_move_to_index(data->error_indicator, -1);
-    }
-    if (data->buffer_health_dot) {
-        lv_obj_move_to_index(data->buffer_health_dot, -1);
     }
 }
 
@@ -771,9 +811,8 @@ static void setup_slot_observers(AmsSlotData* data) {
         }
         // Update tool badge based on slot's mapped_tool
         apply_tool_badge(data, slot.mapped_tool);
-        // Update error indicator and buffer health from slot data
+        // Update error indicator from slot data
         apply_slot_error(data, slot);
-        apply_buffer_health(data, slot);
     }
 
     spdlog::trace("[AmsSlot] Created observers for slot {}", data->slot_index);
@@ -994,9 +1033,8 @@ void ui_ams_slot_refresh(lv_obj_t* obj) {
         }
         // Update tool badge based on slot's mapped_tool
         apply_tool_badge(data, slot.mapped_tool);
-        // Update error indicator and buffer health from slot data
+        // Update error indicator from slot data
         apply_slot_error(data, slot);
-        apply_buffer_health(data, slot);
     }
 
     spdlog::trace("[AmsSlot] Refreshed slot {}", data->slot_index);

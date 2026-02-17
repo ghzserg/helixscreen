@@ -68,6 +68,72 @@ static constexpr int32_t STATUS_LINE_HEIGHT_PX = 3;
 /// Gap between bar and status line
 static constexpr int32_t STATUS_LINE_GAP_PX = 2;
 
+// Error badge pulse animation (shared constants with ui_ams_slot.cpp)
+static constexpr int32_t BADGE_SCALE_MIN = 180; // ~70%
+static constexpr int32_t BADGE_SCALE_MAX = 256; // 100%
+static constexpr int32_t BADGE_SAT_MIN = 80;    // Washed out
+static constexpr int32_t BADGE_SAT_MAX = 255;   // Full vivid
+static constexpr uint32_t BADGE_PULSE_MS = 800;
+
+static void badge_scale_anim_cb(void* var, int32_t value) {
+    auto* obj = static_cast<lv_obj_t*>(var);
+    lv_obj_set_style_transform_scale(obj, value, LV_PART_MAIN);
+    int32_t range = BADGE_SCALE_MAX - BADGE_SCALE_MIN;
+    int32_t progress = value - BADGE_SCALE_MIN;
+    int32_t shadow = progress * 6 / range;
+    lv_obj_set_style_shadow_width(obj, shadow, LV_PART_MAIN);
+    lv_opa_t shadow_opa = static_cast<lv_opa_t>(progress * 150 / range);
+    lv_obj_set_style_shadow_opa(obj, shadow_opa, LV_PART_MAIN);
+}
+
+static void badge_color_anim_cb(void* var, int32_t value) {
+    auto* obj = static_cast<lv_obj_t*>(var);
+    lv_color_t base = lv_obj_get_style_border_color(obj, LV_PART_MAIN);
+    uint8_t gray = static_cast<uint8_t>((base.red * 77 + base.green * 150 + base.blue * 29) >> 8);
+    lv_color_t gray_color = lv_color_make(gray, gray, gray);
+    lv_color_t result = lv_color_mix(base, gray_color, static_cast<lv_opa_t>(value));
+    lv_obj_set_style_bg_color(obj, result, LV_PART_MAIN);
+}
+
+static void start_badge_pulse(lv_obj_t* dot, lv_color_t base_color) {
+    lv_obj_set_style_border_color(dot, base_color, LV_PART_MAIN);
+    lv_obj_set_style_shadow_color(dot, base_color, LV_PART_MAIN);
+    int32_t w = lv_obj_get_width(dot);
+    int32_t h = lv_obj_get_height(dot);
+    lv_obj_set_style_transform_pivot_x(dot, w / 2, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(dot, h / 2, LV_PART_MAIN);
+
+    lv_anim_t sa;
+    lv_anim_init(&sa);
+    lv_anim_set_var(&sa, dot);
+    lv_anim_set_values(&sa, BADGE_SCALE_MAX, BADGE_SCALE_MIN);
+    lv_anim_set_time(&sa, BADGE_PULSE_MS);
+    lv_anim_set_playback_time(&sa, BADGE_PULSE_MS);
+    lv_anim_set_repeat_count(&sa, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&sa, lv_anim_path_ease_in_out);
+    lv_anim_set_exec_cb(&sa, badge_scale_anim_cb);
+    lv_anim_start(&sa);
+
+    lv_anim_t ca;
+    lv_anim_init(&ca);
+    lv_anim_set_var(&ca, dot);
+    lv_anim_set_values(&ca, BADGE_SAT_MAX, BADGE_SAT_MIN);
+    lv_anim_set_time(&ca, BADGE_PULSE_MS);
+    lv_anim_set_playback_time(&ca, BADGE_PULSE_MS);
+    lv_anim_set_repeat_count(&ca, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&ca, lv_anim_path_ease_in_out);
+    lv_anim_set_exec_cb(&ca, badge_color_anim_cb);
+    lv_anim_start(&ca);
+}
+
+static void stop_badge_pulse(lv_obj_t* dot) {
+    lv_anim_delete(dot, badge_scale_anim_cb);
+    lv_anim_delete(dot, badge_color_anim_cb);
+    lv_obj_set_style_transform_scale(dot, 256, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(dot, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_opa(dot, LV_OPA_TRANSP, LV_PART_MAIN);
+}
+
 // Global instance pointer for XML callback access
 static std::atomic<AmsOverviewPanel*> g_overview_panel_instance{nullptr};
 
@@ -394,6 +460,9 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info) {
                                              : theme_manager_get_color("warning");
                 lv_obj_set_style_bg_color(badge, badge_color, LV_PART_MAIN);
                 lv_obj_remove_flag(badge, LV_OBJ_FLAG_HIDDEN);
+                if (SettingsManager::instance().get_animations_enabled()) {
+                    start_badge_pulse(badge, badge_color);
+                }
             } else {
                 lv_obj_add_flag(badge, LV_OBJ_FLAG_HIDDEN);
             }
@@ -434,7 +503,13 @@ void AmsOverviewPanel::update_unit_card(UnitCard& card, const AmsUnit& unit, int
                                          : theme_manager_get_color("warning");
             lv_obj_set_style_bg_color(card.error_badge, badge_color, LV_PART_MAIN);
             lv_obj_remove_flag(card.error_badge, LV_OBJ_FLAG_HIDDEN);
+            if (SettingsManager::instance().get_animations_enabled()) {
+                start_badge_pulse(card.error_badge, badge_color);
+            } else {
+                stop_badge_pulse(card.error_badge);
+            }
         } else {
+            stop_badge_pulse(card.error_badge);
             lv_obj_add_flag(card.error_badge, LV_OBJ_FLAG_HIDDEN);
         }
     }
@@ -493,9 +568,17 @@ void AmsOverviewPanel::create_mini_bars(UnitCard& card, const AmsUnit& unit, int
         lv_obj_set_style_radius(bar_bg, MINI_BAR_RADIUS_PX, LV_PART_MAIN);
         lv_obj_set_style_pad_all(bar_bg, 0, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(bar_bg, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_border_width(bar_bg, 1, LV_PART_MAIN);
-        lv_obj_set_style_border_color(bar_bg, theme_manager_get_color("text_muted"), LV_PART_MAIN);
-        lv_obj_set_style_border_opa(bar_bg, is_present ? LV_OPA_50 : LV_OPA_20, LV_PART_MAIN);
+        if (is_loaded && !has_error) {
+            // Loaded slot: wider, brighter border to highlight active filament
+            lv_obj_set_style_border_width(bar_bg, 2, LV_PART_MAIN);
+            lv_obj_set_style_border_color(bar_bg, theme_manager_get_color("text"), LV_PART_MAIN);
+            lv_obj_set_style_border_opa(bar_bg, LV_OPA_80, LV_PART_MAIN);
+        } else {
+            lv_obj_set_style_border_width(bar_bg, 1, LV_PART_MAIN);
+            lv_obj_set_style_border_color(bar_bg, theme_manager_get_color("text_muted"),
+                                          LV_PART_MAIN);
+            lv_obj_set_style_border_opa(bar_bg, is_present ? LV_OPA_50 : LV_OPA_20, LV_PART_MAIN);
+        }
 
         // Fill portion (colored, anchored to bottom)
         if (is_present) {
@@ -542,11 +625,8 @@ void AmsOverviewPanel::create_mini_bars(UnitCard& card, const AmsUnit& unit, int
             }
             lv_obj_set_style_bg_color(status_line, error_color, LV_PART_MAIN);
             lv_obj_set_style_bg_opa(status_line, LV_OPA_COVER, LV_PART_MAIN);
-        } else if (is_loaded) {
-            lv_obj_set_style_bg_color(status_line, theme_manager_get_color("success"),
-                                      LV_PART_MAIN);
-            lv_obj_set_style_bg_opa(status_line, LV_OPA_COVER, LV_PART_MAIN);
         } else {
+            // Loaded state shown via brighter border on bar_bg, no status line needed
             lv_obj_add_flag(status_line, LV_OBJ_FLAG_HIDDEN);
         }
     }

@@ -46,6 +46,13 @@ static std::unique_ptr<AmsBackendMock> create_mock_with_features(int gate_count)
         spdlog::info("[AMS Backend] Mock multi-unit mode enabled via HELIX_MOCK_MULTI_UNIT");
     }
 
+    // Inject mock error states for visual testing (slot errors + buffer fault)
+    const char* errors_env = std::getenv("HELIX_MOCK_AMS_ERRORS");
+    if (errors_env && std::string(errors_env) == "1") {
+        mock->inject_mock_errors();
+        spdlog::info("[AMS Backend] Mock error states injected via HELIX_MOCK_AMS_ERRORS");
+    }
+
     // Enable mock dryer if requested via environment variable
     // Note: Dryer is typically not applicable for tool changers, but allow override
     const char* dryer_env = std::getenv("HELIX_MOCK_DRYER");

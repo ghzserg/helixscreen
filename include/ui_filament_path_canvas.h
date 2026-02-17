@@ -280,6 +280,19 @@ void ui_filament_path_canvas_set_faceted_toolhead(lv_obj_t* obj, bool faceted);
  */
 void ui_filament_path_canvas_set_heat_active(lv_obj_t* obj, bool active);
 
+/**
+ * @brief Set buffer fault state for hub tinting
+ *
+ * Tints the hub box based on buffer health:
+ *   0 = no fault (normal filament color tint)
+ *   1 = approaching fault (yellow tint)
+ *   2 = fault detected (red tint)
+ *
+ * @param obj The filament_path_canvas widget
+ * @param state Buffer fault state (0=healthy, 1=warning, 2=fault)
+ */
+void ui_filament_path_canvas_set_buffer_fault_state(lv_obj_t* obj, int state);
+
 #ifdef __cplusplus
 }
 #endif

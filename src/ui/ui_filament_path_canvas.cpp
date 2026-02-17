@@ -115,6 +115,9 @@ struct FilamentPathData {
     bool hub_only = false;             // true = stop rendering at hub (skip downstream)
     bool use_faceted_toolhead = false; // false = Bambu-style, true = faceted red style
 
+    // Buffer fault state (0=healthy, 1=warning/approaching, 2=fault)
+    int buffer_fault_state = 0;
+
     // Heat glow state
     bool heat_active = false;               // true when nozzle is actively heating
     bool heat_pulse_active = false;         // Animation running
@@ -909,16 +912,27 @@ static void filament_path_draw_cb(lv_event_t* e) {
         draw_vertical_line(layer, center_x, merge_y, hub_y - hub_h / 2, hub_line_color,
                            hub_line_width);
 
-        // Hub box - tint background with filament color when filament passes through
+        // Hub box - tint based on buffer fault state or filament color
         lv_color_t hub_bg_tinted = hub_bg;
-        if (hub_has_filament) {
-            // Subtle 33% blend of filament color into hub background
+        lv_color_t hub_border_final = hub_border;
+        if (data->buffer_fault_state == 2) {
+            // Fault detected — red tint
+            hub_bg_tinted = ph_blend(hub_bg, data->color_error, 0.50f);
+            hub_border_final = data->color_error;
+        } else if (data->buffer_fault_state == 1) {
+            // Approaching fault — yellow/warning tint
+            lv_color_t warning = lv_color_hex(0xFFA500);
+            hub_bg_tinted = ph_blend(hub_bg, warning, 0.40f);
+            hub_border_final = warning;
+        } else if (hub_has_filament) {
+            // Healthy — subtle filament color tint
             hub_bg_tinted = ph_blend(hub_bg, active_color, 0.33f);
         }
 
         const char* hub_label = (data->topology == 0) ? "SELECTOR" : "HUB";
-        draw_hub_box(layer, center_x, hub_y, data->hub_width, hub_h, hub_bg_tinted, hub_border,
-                     data->color_text, data->label_font, data->border_radius, hub_label);
+        draw_hub_box(layer, center_x, hub_y, data->hub_width, hub_h, hub_bg_tinted,
+                     hub_border_final, data->color_text, data->label_font, data->border_radius,
+                     hub_label);
     }
 
     // ========================================================================
@@ -1547,6 +1561,18 @@ void ui_filament_path_canvas_set_heat_active(lv_obj_t* obj, bool active) {
             spdlog::debug("[FilamentPath] Heat glow: inactive");
         }
 
+        lv_obj_invalidate(obj);
+    }
+}
+
+void ui_filament_path_canvas_set_buffer_fault_state(lv_obj_t* obj, int state) {
+    auto* data = get_data(obj);
+    if (!data)
+        return;
+
+    if (data->buffer_fault_state != state) {
+        data->buffer_fault_state = state;
+        spdlog::debug("[FilamentPath] Buffer fault state: {}", state);
         lv_obj_invalidate(obj);
     }
 }

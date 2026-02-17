@@ -147,11 +147,19 @@ class AmsBackendMock : public AmsBackend {
     void set_slot_error(int slot_index, std::optional<SlotError> error);
 
     /**
-     * @brief Set per-slot buffer health (for testing buffer health visualization)
-     * @param slot_index Slot to modify
+     * @brief Set unit-level buffer health (for testing hub buffer visualization)
+     * @param unit_index Unit to modify
      * @param health Buffer health to set, or nullopt to clear
      */
-    void set_slot_buffer_health(int slot_index, std::optional<BufferHealth> health);
+    void set_unit_buffer_health(int unit_index, std::optional<BufferHealth> health);
+
+    /**
+     * @brief Inject error states for visual testing (HELIX_MOCK_AMS_ERRORS=1)
+     *
+     * Adds lane errors and buffer fault warnings to existing units for
+     * testing error visualization (slot error dots, hub tint, overview badges).
+     */
+    void inject_mock_errors();
 
     /**
      * @brief Set whether this mock simulates a hardware bypass sensor

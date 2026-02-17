@@ -565,9 +565,8 @@ struct SlotInfo {
     // Endless spool support (Happy Hare)
     int endless_spool_group = -1; ///< Endless spool group (-1=not grouped)
 
-    // Error and health state
-    std::optional<SlotError> error;            ///< Per-slot error state (nullopt = no error)
-    std::optional<BufferHealth> buffer_health; ///< AFC buffer health (nullopt = no buffer data)
+    // Error state
+    std::optional<SlotError> error; ///< Per-slot error state (nullopt = no error)
 
     /**
      * @brief Get remaining percentage
@@ -622,6 +621,9 @@ struct AmsUnit {
     // Hub/combiner sensor (AFC Box Turtle, Night Owl, etc.)
     bool has_hub_sensor = false;       ///< Unit has a hub/combiner sensor
     bool hub_sensor_triggered = false; ///< Filament detected at this unit's hub
+
+    // Buffer health (AFC TurtleNeck — one buffer per unit, sits between hub and toolhead)
+    std::optional<BufferHealth> buffer_health; ///< Buffer fault state (nullopt = no buffer data)
 
     /**
      * @brief Check if any slot in this unit has an error
