@@ -66,8 +66,8 @@
           <!-- Vendor + Material row (side by side) -->
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_sm" scrollable="false">
-            <!-- Vendor dropdown -->
-            <lv_obj flex_grow="1"
+            <!-- Vendor dropdown (wider - vendor names are longer) -->
+            <lv_obj flex_grow="3"
                     height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xxs" scrollable="false">
               <text_small text="Vendor" translation_tag="Vendor"/>
               <lv_dropdown name="vendor_dropdown"
@@ -76,7 +76,7 @@
               </lv_dropdown>
             </lv_obj>
             <!-- Material dropdown -->
-            <lv_obj flex_grow="1"
+            <lv_obj flex_grow="2"
                     height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xxs" scrollable="false">
               <text_small text="Material" translation_tag="Material"/>
               <lv_dropdown name="material_dropdown"

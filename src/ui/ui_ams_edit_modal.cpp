@@ -138,7 +138,8 @@ bool AmsEditModal::show_for_slot(lv_obj_t* parent, int slot_index, const SlotInf
         switch_to_form();
     }
 
-    spdlog::info("[AmsEditModal] Shown for slot {}", slot_index);
+    spdlog::info("[AmsEditModal] Shown for slot {} (spoolman_id={}, brand={}, material={})",
+                 slot_index, initial_info.spoolman_id, initial_info.brand, initial_info.material);
     return true;
 }
 

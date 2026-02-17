@@ -1069,10 +1069,13 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             slot.slot_index = 0;
             slot.global_index = 0;
             slot.material = "ASA";
+            slot.brand = "Bambu Lab";
             slot.color_rgb = 0x000000;
             slot.color_name = "Black";
             slot.status = SlotStatus::LOADED;
             slot.mapped_tool = 0;
+            slot.spoolman_id = 1;
+            slot.spool_name = "Black ASA";
             slot.total_weight_g = 1000.0f;
             slot.remaining_weight_g = 750.0f;
             auto mat_info = filament::find_material("ASA");
@@ -1084,16 +1087,19 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             unit.slots.push_back(slot);
         }
 
-        // Lane 2: PLA, loaded
+        // Lane 2: PLA, available
         {
             SlotInfo slot;
             slot.slot_index = 1;
             slot.global_index = 1;
             slot.material = "PLA";
+            slot.brand = "Polymaker";
             slot.color_rgb = 0xFF0000;
             slot.color_name = "Red";
             slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = 1;
+            slot.spoolman_id = 2;
+            slot.spool_name = "Red PLA";
             slot.total_weight_g = 1000.0f;
             slot.remaining_weight_g = 900.0f;
             auto mat_info = filament::find_material("PLA");
@@ -1105,16 +1111,19 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             unit.slots.push_back(slot);
         }
 
-        // Lane 3: PETG, loaded
+        // Lane 3: PETG, available
         {
             SlotInfo slot;
             slot.slot_index = 2;
             slot.global_index = 2;
             slot.material = "PETG";
+            slot.brand = "eSUN";
             slot.color_rgb = 0x00FF00;
             slot.color_name = "Green";
             slot.status = SlotStatus::AVAILABLE;
             slot.mapped_tool = 2;
+            slot.spoolman_id = 3;
+            slot.spool_name = "Green PETG";
             slot.total_weight_g = 1000.0f;
             slot.remaining_weight_g = 500.0f;
             auto mat_info = filament::find_material("PETG");
@@ -1132,6 +1141,7 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
             slot.slot_index = 3;
             slot.global_index = 3;
             slot.material = "TPU";
+            slot.brand = "eSUN";
             slot.color_rgb = 0xFF6600;
             slot.color_name = "Orange";
             slot.status = SlotStatus::AVAILABLE;
@@ -1264,12 +1274,13 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
                 uint32_t color;
                 const char* name;
                 const char* material;
+                const char* brand;
                 SlotStatus status;
             } slots[] = {
-                {0x000000, "Black", "ASA", SlotStatus::LOADED},
-                {0xFF0000, "Red", "PLA", SlotStatus::AVAILABLE},
-                {0x00FF00, "Green", "PETG", SlotStatus::AVAILABLE},
-                {0xFFFFFF, "White", "PLA", SlotStatus::EMPTY},
+                {0x000000, "Black", "ASA", "Bambu Lab", SlotStatus::LOADED},
+                {0xFF0000, "Red", "PLA", "Polymaker", SlotStatus::AVAILABLE},
+                {0x00FF00, "Green", "PETG", "eSUN", SlotStatus::AVAILABLE},
+                {0xFFFFFF, "White", "PLA", "Overture", SlotStatus::EMPTY},
             };
 
             for (int i = 0; i < 4; i++) {
@@ -1277,6 +1288,7 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
                 slot.slot_index = i;
                 slot.global_index = i;
                 slot.material = slots[i].material;
+                slot.brand = slots[i].brand;
                 slot.color_rgb = slots[i].color;
                 slot.color_name = slots[i].name;
                 slot.status = slots[i].status;
@@ -1314,10 +1326,11 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
                 uint32_t color;
                 const char* name;
                 const char* material;
+                const char* brand;
                 SlotStatus status;
             } slots[] = {
-                {0x1E88E5, "Blue", "PETG", SlotStatus::AVAILABLE},
-                {0xFDD835, "Yellow", "ABS", SlotStatus::AVAILABLE},
+                {0x1E88E5, "Blue", "PETG", "Prusa", SlotStatus::AVAILABLE},
+                {0xFDD835, "Yellow", "ABS", "Bambu Lab", SlotStatus::AVAILABLE},
             };
 
             for (int i = 0; i < 2; i++) {
@@ -1325,6 +1338,7 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
                 slot.slot_index = i;
                 slot.global_index = 4 + i;
                 slot.material = slots[i].material;
+                slot.brand = slots[i].brand;
                 slot.color_rgb = slots[i].color;
                 slot.color_name = slots[i].name;
                 slot.status = slots[i].status;
