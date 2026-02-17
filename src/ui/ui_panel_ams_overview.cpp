@@ -28,6 +28,7 @@
 #include "settings_manager.h"
 #include "static_panel_registry.h"
 #include "theme_manager.h"
+#include "ui/ams_drawing_utils.h"
 
 #include <spdlog/spdlog.h>
 
@@ -62,88 +63,8 @@ static constexpr int32_t DETAIL_ZOOM_SCALE_MIN = 64;
 /// Zoom animation end scale (100% = 256/256)
 static constexpr int32_t DETAIL_ZOOM_SCALE_MAX = 256;
 
-/// Height of status indicator line below each bar
-static constexpr int32_t STATUS_LINE_HEIGHT_PX = 3;
-
-/// Gap between bar and status line
-static constexpr int32_t STATUS_LINE_GAP_PX = 2;
-
-// Error badge pulse animation (shared constants with ui_ams_slot.cpp)
-static constexpr int32_t BADGE_SCALE_MIN = 180; // ~70%
-static constexpr int32_t BADGE_SCALE_MAX = 256; // 100%
-static constexpr int32_t BADGE_SAT_MIN = 80;    // Washed out
-static constexpr int32_t BADGE_SAT_MAX = 255;   // Full vivid
-static constexpr uint32_t BADGE_PULSE_MS = 800;
-
-static void badge_scale_anim_cb(void* var, int32_t value) {
-    auto* obj = static_cast<lv_obj_t*>(var);
-    lv_obj_set_style_transform_scale(obj, value, LV_PART_MAIN);
-    int32_t range = BADGE_SCALE_MAX - BADGE_SCALE_MIN;
-    int32_t progress = value - BADGE_SCALE_MIN;
-    int32_t shadow = progress * 6 / range;
-    lv_obj_set_style_shadow_width(obj, shadow, LV_PART_MAIN);
-    lv_opa_t shadow_opa = static_cast<lv_opa_t>(progress * 150 / range);
-    lv_obj_set_style_shadow_opa(obj, shadow_opa, LV_PART_MAIN);
-}
-
-static void badge_color_anim_cb(void* var, int32_t value) {
-    auto* obj = static_cast<lv_obj_t*>(var);
-    lv_color_t base = lv_obj_get_style_border_color(obj, LV_PART_MAIN);
-    uint8_t gray = static_cast<uint8_t>((base.red * 77 + base.green * 150 + base.blue * 29) >> 8);
-    lv_color_t gray_color = lv_color_make(gray, gray, gray);
-    lv_color_t result = lv_color_mix(base, gray_color, static_cast<lv_opa_t>(value));
-    lv_obj_set_style_bg_color(obj, result, LV_PART_MAIN);
-}
-
-static void start_badge_pulse(lv_obj_t* dot, lv_color_t base_color) {
-    lv_obj_set_style_border_color(dot, base_color, LV_PART_MAIN);
-    lv_obj_set_style_shadow_color(dot, base_color, LV_PART_MAIN);
-    int32_t w = lv_obj_get_width(dot);
-    int32_t h = lv_obj_get_height(dot);
-    lv_obj_set_style_transform_pivot_x(dot, w / 2, LV_PART_MAIN);
-    lv_obj_set_style_transform_pivot_y(dot, h / 2, LV_PART_MAIN);
-
-    lv_anim_t sa;
-    lv_anim_init(&sa);
-    lv_anim_set_var(&sa, dot);
-    lv_anim_set_values(&sa, BADGE_SCALE_MAX, BADGE_SCALE_MIN);
-    lv_anim_set_time(&sa, BADGE_PULSE_MS);
-    lv_anim_set_playback_time(&sa, BADGE_PULSE_MS);
-    lv_anim_set_repeat_count(&sa, LV_ANIM_REPEAT_INFINITE);
-    lv_anim_set_path_cb(&sa, lv_anim_path_ease_in_out);
-    lv_anim_set_exec_cb(&sa, badge_scale_anim_cb);
-    lv_anim_start(&sa);
-
-    lv_anim_t ca;
-    lv_anim_init(&ca);
-    lv_anim_set_var(&ca, dot);
-    lv_anim_set_values(&ca, BADGE_SAT_MAX, BADGE_SAT_MIN);
-    lv_anim_set_time(&ca, BADGE_PULSE_MS);
-    lv_anim_set_playback_time(&ca, BADGE_PULSE_MS);
-    lv_anim_set_repeat_count(&ca, LV_ANIM_REPEAT_INFINITE);
-    lv_anim_set_path_cb(&ca, lv_anim_path_ease_in_out);
-    lv_anim_set_exec_cb(&ca, badge_color_anim_cb);
-    lv_anim_start(&ca);
-}
-
-static void stop_badge_pulse(lv_obj_t* dot) {
-    lv_anim_delete(dot, badge_scale_anim_cb);
-    lv_anim_delete(dot, badge_color_anim_cb);
-    lv_obj_set_style_transform_scale(dot, 256, LV_PART_MAIN);
-    lv_obj_set_style_shadow_width(dot, 0, LV_PART_MAIN);
-    lv_obj_set_style_shadow_opa(dot, LV_OPA_TRANSP, LV_PART_MAIN);
-}
-
 // Global instance pointer for XML callback access
 static std::atomic<AmsOverviewPanel*> g_overview_panel_instance{nullptr};
-
-/// Get a display name for a unit, falling back to "Unit N" (1-based)
-static std::string get_unit_display_name(const AmsUnit& unit, int unit_index) {
-    if (!unit.name.empty()) {
-        return unit.name;
-    }
-    return "Unit " + std::to_string(unit_index + 1);
-}
 
 /// Set a label to "N slots" text, with null-safety
 static void set_slot_count_label(lv_obj_t* label, int slot_count) {
@@ -153,17 +74,6 @@ static void set_slot_count_label(lv_obj_t* label, int slot_count) {
     char buf[16];
     snprintf(buf, sizeof(buf), "%d slots", slot_count);
     lv_label_set_text(label, buf);
-}
-
-/// Get the worst error severity across all slots in a unit
-static SlotError::Severity get_worst_unit_severity(const AmsUnit& unit) {
-    SlotError::Severity worst = SlotError::INFO;
-    for (const auto& slot : unit.slots) {
-        if (slot.error.has_value() && slot.error->severity > worst) {
-            worst = slot.error->severity;
-        }
-    }
-    return worst;
 }
 
 // ============================================================================
@@ -413,23 +323,11 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info) {
         uc.slot_count_label = lv_obj_find_by_name(uc.card, "slot_count");
 
         // Set logo image based on AMS system type
-        if (uc.logo_image) {
-            // Try unit name first (e.g., "Box Turtle 1", "Night Owl"),
-            // fall back to system type name (e.g., "AFC", "Happy Hare")
-            const char* logo_path = AmsState::get_logo_path(unit.name);
-            if (!logo_path || !logo_path[0]) {
-                logo_path = AmsState::get_logo_path(info.type_name);
-            }
-            if (logo_path && logo_path[0]) {
-                lv_image_set_src(uc.logo_image, logo_path);
-            } else {
-                lv_obj_add_flag(uc.logo_image, LV_OBJ_FLAG_HIDDEN);
-            }
-        }
+        ams_draw::apply_logo(uc.logo_image, unit, info);
 
         // Set dynamic content only — unit name and slot count vary per unit
         if (uc.name_label) {
-            lv_label_set_text(uc.name_label, get_unit_display_name(unit, i).c_str());
+            lv_label_set_text(uc.name_label, ams_draw::get_unit_display_name(unit, i).c_str());
         }
 
         set_slot_count_label(uc.slot_count_label, unit.slot_count);
@@ -438,34 +336,15 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info) {
         create_mini_bars(uc, unit, current_slot);
 
         // Create error badge (top-right of card, initially hidden)
-        {
-            lv_obj_t* badge = lv_obj_create(uc.card);
-            lv_obj_set_size(badge, 12, 12);
-            lv_obj_set_style_radius(badge, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-            lv_obj_set_style_bg_opa(badge, LV_OPA_COVER, LV_PART_MAIN);
-            lv_obj_set_style_border_width(badge, 0, LV_PART_MAIN);
-            lv_obj_set_align(badge, LV_ALIGN_TOP_RIGHT);
-            lv_obj_set_style_translate_x(badge, -4, LV_PART_MAIN);
-            lv_obj_set_style_translate_y(badge, 4, LV_PART_MAIN);
-            lv_obj_remove_flag(badge, LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_add_flag(badge, LV_OBJ_FLAG_EVENT_BUBBLE);
-            lv_obj_add_flag(badge, LV_OBJ_FLAG_IGNORE_LAYOUT);
-            uc.error_badge = badge;
+        uc.error_badge = ams_draw::create_error_badge(uc.card, 12);
+        lv_obj_set_align(uc.error_badge, LV_ALIGN_TOP_RIGHT);
+        lv_obj_set_style_translate_x(uc.error_badge, -4, LV_PART_MAIN);
+        lv_obj_set_style_translate_y(uc.error_badge, 4, LV_PART_MAIN);
 
-            // Show/hide based on unit error state
-            if (unit.has_any_error()) {
-                auto worst = get_worst_unit_severity(unit);
-                lv_color_t badge_color = (worst >= SlotError::ERROR)
-                                             ? theme_manager_get_color("danger")
-                                             : theme_manager_get_color("warning");
-                lv_obj_set_style_bg_color(badge, badge_color, LV_PART_MAIN);
-                lv_obj_remove_flag(badge, LV_OBJ_FLAG_HIDDEN);
-                if (SettingsManager::instance().get_animations_enabled()) {
-                    start_badge_pulse(badge, badge_color);
-                }
-            } else {
-                lv_obj_add_flag(badge, LV_OBJ_FLAG_HIDDEN);
-            }
+        {
+            bool animate = SettingsManager::instance().get_animations_enabled();
+            auto worst = ams_draw::worst_unit_severity(unit);
+            ams_draw::update_error_badge(uc.error_badge, unit.has_any_error(), worst, animate);
         }
 
         unit_cards_.push_back(uc);
@@ -482,7 +361,8 @@ void AmsOverviewPanel::update_unit_card(UnitCard& card, const AmsUnit& unit, int
 
     // Update name label
     if (card.name_label) {
-        lv_label_set_text(card.name_label, get_unit_display_name(unit, card.unit_index).c_str());
+        lv_label_set_text(card.name_label,
+                          ams_draw::get_unit_display_name(unit, card.unit_index).c_str());
     }
 
     // Rebuild mini bars (slot colors/status may have changed)
@@ -496,22 +376,9 @@ void AmsOverviewPanel::update_unit_card(UnitCard& card, const AmsUnit& unit, int
 
     // Update error badge visibility and color
     if (card.error_badge) {
-        if (unit.has_any_error()) {
-            auto worst = get_worst_unit_severity(unit);
-            lv_color_t badge_color = (worst >= SlotError::ERROR)
-                                         ? theme_manager_get_color("danger")
-                                         : theme_manager_get_color("warning");
-            lv_obj_set_style_bg_color(card.error_badge, badge_color, LV_PART_MAIN);
-            lv_obj_remove_flag(card.error_badge, LV_OBJ_FLAG_HIDDEN);
-            if (SettingsManager::instance().get_animations_enabled()) {
-                start_badge_pulse(card.error_badge, badge_color);
-            } else {
-                stop_badge_pulse(card.error_badge);
-            }
-        } else {
-            stop_badge_pulse(card.error_badge);
-            lv_obj_add_flag(card.error_badge, LV_OBJ_FLAG_HIDDEN);
-        }
+        bool animate = SettingsManager::instance().get_animations_enabled();
+        auto worst = ams_draw::worst_unit_severity(unit);
+        ams_draw::update_error_badge(card.error_badge, unit.has_any_error(), worst, animate);
     }
 }
 
@@ -526,109 +393,32 @@ void AmsOverviewPanel::create_mini_bars(UnitCard& card, const AmsUnit& unit, int
     }
 
     // Calculate bar width to fit within bars_container
-    // Force layout to get actual container width, then divide among slots
     lv_obj_update_layout(card.bars_container);
     int32_t container_width = lv_obj_get_content_width(card.bars_container);
     if (container_width <= 0) {
         container_width = 80; // Fallback if layout not yet calculated
     }
     int32_t gap = theme_manager_get_spacing("space_xxs");
-    int32_t total_gaps = (slot_count > 1) ? (slot_count - 1) * gap : 0;
-    int32_t bar_width = (container_width - total_gaps) / std::max(1, slot_count);
-    bar_width = std::clamp(bar_width, MINI_BAR_MIN_WIDTH_PX, MINI_BAR_MAX_WIDTH_PX);
+    int32_t bar_width = ams_draw::calc_bar_width(container_width, slot_count, gap,
+                                                 MINI_BAR_MIN_WIDTH_PX, MINI_BAR_MAX_WIDTH_PX);
 
     for (int s = 0; s < slot_count; ++s) {
         const SlotInfo& slot = unit.slots[s];
         int global_idx = unit.first_slot_global_index + s;
         bool is_loaded = (global_idx == current_slot);
-        bool is_present =
-            (slot.status == SlotStatus::AVAILABLE || slot.status == SlotStatus::LOADED ||
-             slot.status == SlotStatus::FROM_BUFFER);
-        bool has_error = (slot.status == SlotStatus::BLOCKED || slot.error.has_value());
 
-        // Slot column container (bar + status line)
-        lv_obj_t* slot_col = lv_obj_create(card.bars_container);
-        lv_obj_remove_flag(slot_col, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(slot_col, LV_OBJ_FLAG_EVENT_BUBBLE);
-        lv_obj_set_size(slot_col, bar_width,
-                        MINI_BAR_HEIGHT_PX + STATUS_LINE_HEIGHT_PX + STATUS_LINE_GAP_PX);
-        lv_obj_set_flex_flow(slot_col, LV_FLEX_FLOW_COLUMN);
-        lv_obj_set_flex_align(slot_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-                              LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_all(slot_col, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_row(slot_col, STATUS_LINE_GAP_PX, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(slot_col, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_border_width(slot_col, 0, LV_PART_MAIN);
+        auto col = ams_draw::create_slot_column(card.bars_container, bar_width, MINI_BAR_HEIGHT_PX,
+                                                MINI_BAR_RADIUS_PX);
 
-        // Bar background (outline container)
-        lv_obj_t* bar_bg = lv_obj_create(slot_col);
-        lv_obj_remove_flag(bar_bg, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(bar_bg, LV_OBJ_FLAG_EVENT_BUBBLE);
-        lv_obj_set_size(bar_bg, bar_width, MINI_BAR_HEIGHT_PX);
-        lv_obj_set_style_radius(bar_bg, MINI_BAR_RADIUS_PX, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(bar_bg, 0, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(bar_bg, LV_OPA_TRANSP, LV_PART_MAIN);
-        if (is_loaded && !has_error) {
-            // Loaded slot: wider, brighter border to highlight active filament
-            lv_obj_set_style_border_width(bar_bg, 2, LV_PART_MAIN);
-            lv_obj_set_style_border_color(bar_bg, theme_manager_get_color("text"), LV_PART_MAIN);
-            lv_obj_set_style_border_opa(bar_bg, LV_OPA_80, LV_PART_MAIN);
-        } else {
-            lv_obj_set_style_border_width(bar_bg, 1, LV_PART_MAIN);
-            lv_obj_set_style_border_color(bar_bg, theme_manager_get_color("text_muted"),
-                                          LV_PART_MAIN);
-            lv_obj_set_style_border_opa(bar_bg, is_present ? LV_OPA_50 : LV_OPA_20, LV_PART_MAIN);
-        }
+        ams_draw::BarStyleParams params;
+        params.color_rgb = slot.color_rgb;
+        params.fill_pct = ams_draw::fill_percent_from_slot(slot);
+        params.is_present = slot.is_present();
+        params.is_loaded = is_loaded;
+        params.has_error = (slot.status == SlotStatus::BLOCKED || slot.error.has_value());
+        params.severity = slot.error.has_value() ? slot.error->severity : SlotError::INFO;
 
-        // Fill portion (colored, anchored to bottom)
-        if (is_present) {
-            lv_obj_t* bar_fill = lv_obj_create(bar_bg);
-            lv_obj_remove_flag(bar_fill, LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_add_flag(bar_fill, LV_OBJ_FLAG_EVENT_BUBBLE);
-            lv_obj_set_width(bar_fill, LV_PCT(100));
-            lv_obj_set_style_border_width(bar_fill, 0, LV_PART_MAIN);
-            lv_obj_set_style_pad_all(bar_fill, 0, LV_PART_MAIN);
-            lv_obj_set_style_radius(bar_fill, MINI_BAR_RADIUS_PX, LV_PART_MAIN);
-
-            // Color gradient (lighter at top, darker at bottom)
-            lv_color_t base_color = lv_color_hex(slot.color_rgb);
-            lv_color_t light_color = lv_color_make(std::min(255, base_color.red + 50),
-                                                   std::min(255, base_color.green + 50),
-                                                   std::min(255, base_color.blue + 50));
-            lv_obj_set_style_bg_color(bar_fill, light_color, LV_PART_MAIN);
-            lv_obj_set_style_bg_grad_color(bar_fill, base_color, LV_PART_MAIN);
-            lv_obj_set_style_bg_grad_dir(bar_fill, LV_GRAD_DIR_VER, LV_PART_MAIN);
-            lv_obj_set_style_bg_opa(bar_fill, LV_OPA_COVER, LV_PART_MAIN);
-
-            // Fill height based on weight percentage (default 100% if unknown)
-            float pct = slot.get_remaining_percent();
-            int fill_pct = (pct >= 0) ? static_cast<int>(pct) : 100;
-            fill_pct = std::clamp(fill_pct, 5, 100); // Minimum 5% so bar is visible
-            lv_obj_set_height(bar_fill, LV_PCT(fill_pct));
-            lv_obj_align(bar_fill, LV_ALIGN_BOTTOM_MID, 0, 0);
-        }
-
-        // Status line below bar (green=loaded, red=error)
-        lv_obj_t* status_line = lv_obj_create(slot_col);
-        lv_obj_remove_flag(status_line, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(status_line, LV_OBJ_FLAG_EVENT_BUBBLE);
-        lv_obj_set_size(status_line, bar_width, STATUS_LINE_HEIGHT_PX);
-        lv_obj_set_style_border_width(status_line, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(status_line, 0, LV_PART_MAIN);
-        lv_obj_set_style_radius(status_line, MINI_BAR_RADIUS_PX / 2, LV_PART_MAIN);
-
-        if (has_error) {
-            // Use severity-appropriate color: red for ERROR, amber for WARNING
-            lv_color_t error_color = theme_manager_get_color("danger");
-            if (slot.error.has_value() && slot.error->severity == SlotError::WARNING) {
-                error_color = theme_manager_get_color("warning");
-            }
-            lv_obj_set_style_bg_color(status_line, error_color, LV_PART_MAIN);
-            lv_obj_set_style_bg_opa(status_line, LV_OPA_COVER, LV_PART_MAIN);
-        } else {
-            // Loaded state shown via brighter border on bar_bg, no status line needed
-            lv_obj_add_flag(status_line, LV_OBJ_FLAG_HIDDEN);
-        }
+        ams_draw::style_slot_bar(col, params, MINI_BAR_RADIUS_PX);
     }
 }
 
@@ -925,23 +715,12 @@ void AmsOverviewPanel::show_overview() {
 void AmsOverviewPanel::update_detail_header(const AmsUnit& unit, const AmsSystemInfo& info) {
     // Update logo
     lv_obj_t* logo = lv_obj_find_by_name(panel_, "detail_logo");
-    if (logo) {
-        const char* logo_path = AmsState::get_logo_path(unit.name);
-        if (!logo_path || !logo_path[0]) {
-            logo_path = AmsState::get_logo_path(info.type_name);
-        }
-        if (logo_path && logo_path[0]) {
-            lv_image_set_src(logo, logo_path);
-            lv_obj_remove_flag(logo, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(logo, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
+    ams_draw::apply_logo(logo, unit, info);
 
     // Update name
     lv_obj_t* name = lv_obj_find_by_name(panel_, "detail_unit_name");
     if (name) {
-        lv_label_set_text(name, get_unit_display_name(unit, detail_unit_index_).c_str());
+        lv_label_set_text(name, ams_draw::get_unit_display_name(unit, detail_unit_index_).c_str());
     }
 }
 
