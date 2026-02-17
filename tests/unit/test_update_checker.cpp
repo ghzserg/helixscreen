@@ -1120,3 +1120,181 @@ TEST_CASE("Tarball installer extraction creates correct structure", "[update_che
 
     remove_dir(tmp);
 }
+
+// ============================================================================
+// extract_installer_from_tarball tests
+//
+// These tests exercise the actual production code path that was silently broken
+// by the gunzip -k incompatibility on older BusyBox. They call
+// UpdateChecker::extract_installer_from_tarball() directly to verify the logic
+// that do_install() depends on.
+// ============================================================================
+
+namespace {
+
+// Resolve path to tests/fixtures/update/ using __FILE__ so tests work regardless
+// of the CWD the test binary is run from.
+std::string get_update_fixture_dir() {
+    std::string src = __FILE__; // absolute path to this .cpp file
+    auto pos = src.rfind("/tests/unit/");
+    if (pos == std::string::npos)
+        return "";
+    return src.substr(0, pos) + "/tests/fixtures/update/";
+}
+
+} // namespace
+
+TEST_CASE("extract_installer_from_tarball: tarball with install.sh",
+          "[update_checker][installer][do_install]") {
+    auto tmp = make_temp_dir("helix_extract_test");
+    REQUIRE(!tmp.empty());
+
+    SECTION("extracts installer from a well-formed release tarball") {
+        // Build a minimal release tarball: helixscreen/install.sh
+        std::string inner = tmp + "/helixscreen";
+        mkdir(inner.c_str(), 0755);
+        create_file(inner + "/install.sh", "#!/bin/sh\nexit 0\n", true);
+
+        std::string tarball = tmp + "/release.tar.gz";
+        std::string cmd =
+            "cd " + tmp + " && COPYFILE_DISABLE=1 tar czf release.tar.gz helixscreen/install.sh";
+        REQUIRE(std::system(cmd.c_str()) == 0);
+
+        std::string extract_dir = tmp + "/extracted";
+        mkdir(extract_dir.c_str(), 0750);
+
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, extract_dir);
+
+        REQUIRE(!result.empty());
+        REQUIRE(result.find("install.sh") != std::string::npos);
+        REQUIRE(access(result.c_str(), X_OK) == 0); // must be executable after extraction
+    }
+
+    SECTION("returns empty when install.sh is absent from tarball") {
+        // Tarball with only the binary — no install.sh (replicates the CC1 packaging bug)
+        std::string inner = tmp + "/helixscreen/bin";
+        std::string mkdircmd = "mkdir -p " + inner;
+        std::system(mkdircmd.c_str());
+        create_file(inner + "/helix-screen", "fake-binary", false);
+
+        std::string tarball = tmp + "/no-installer.tar.gz";
+        std::string cmd = "cd " + tmp +
+                          " && COPYFILE_DISABLE=1 tar czf no-installer.tar.gz"
+                          " helixscreen/bin/helix-screen";
+        REQUIRE(std::system(cmd.c_str()) == 0);
+
+        std::string extract_dir = tmp + "/extracted2";
+        mkdir(extract_dir.c_str(), 0750);
+
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, extract_dir);
+        REQUIRE(result.empty()); // no installer → empty, triggers find_local_installer fallback
+    }
+
+    SECTION("returns empty when tarball does not exist") {
+        std::string extract_dir = tmp + "/extracted3";
+        mkdir(extract_dir.c_str(), 0750);
+
+        auto result =
+            UpdateChecker::extract_installer_from_tarball(tmp + "/nonexistent.tar.gz", extract_dir);
+        REQUIRE(result.empty());
+    }
+
+    SECTION("extracted installer is chmod +x regardless of permissions in archive") {
+        std::string inner = tmp + "/helixscreen";
+        mkdir(inner.c_str(), 0755);
+        // Create install.sh without +x — extract_installer_from_tarball must chmod it
+        create_file(inner + "/install.sh", "#!/bin/sh\nexit 0\n", false);
+
+        std::string tarball = tmp + "/no-exec.tar.gz";
+        std::string cmd =
+            "cd " + tmp + " && COPYFILE_DISABLE=1 tar czf no-exec.tar.gz helixscreen/install.sh";
+        REQUIRE(std::system(cmd.c_str()) == 0);
+
+        std::string extract_dir = tmp + "/extracted4";
+        mkdir(extract_dir.c_str(), 0750);
+
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, extract_dir);
+        REQUIRE(!result.empty());
+        REQUIRE(access(result.c_str(), X_OK) == 0); // function must have chmod +x'd it
+    }
+
+    remove_dir(tmp);
+}
+
+TEST_CASE("extract_installer_from_tarball: committed fixture tarballs",
+          "[update_checker][installer][do_install]") {
+    std::string fixture_dir = get_update_fixture_dir();
+    REQUIRE(!fixture_dir.empty());
+
+    SECTION("fixture WITH install.sh extracts successfully") {
+        std::string tarball = fixture_dir + "helixscreen-pi-v99.0.0-test.tar.gz";
+        if (access(tarball.c_str(), R_OK) != 0) {
+            FAIL("Fixture file missing: " + tarball);
+        }
+
+        auto tmp = make_temp_dir("helix_fixture_ok");
+        REQUIRE(!tmp.empty());
+
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, tmp);
+        REQUIRE(!result.empty());
+        REQUIRE(access(result.c_str(), X_OK) == 0);
+
+        remove_dir(tmp);
+    }
+
+    SECTION("fixture WITHOUT install.sh returns empty (replicates CC1 packaging bug)") {
+        std::string tarball = fixture_dir + "helixscreen-pi-v99.0.0-no-installer.tar.gz";
+        if (access(tarball.c_str(), R_OK) != 0) {
+            FAIL("Fixture file missing: " + tarball);
+        }
+
+        auto tmp = make_temp_dir("helix_fixture_noinst");
+        REQUIRE(!tmp.empty());
+
+        // This is the exact failure mode CC1 users hit before the packaging fix:
+        // tarball exists, install.sh is missing, do_install falls back to
+        // find_local_installer() which returns "" on a fresh device → "Installer not found"
+        auto result = UpdateChecker::extract_installer_from_tarball(tarball, tmp);
+        REQUIRE(result.empty());
+
+        remove_dir(tmp);
+    }
+}
+
+TEST_CASE("extract_installer_from_tarball: works with empty PATH (systemd regression)",
+          "[update_checker][installer][do_install][path]") {
+    // Regression test for the Pi "Installer not found" bug:
+    // systemd services run with a minimal PATH that may not include /usr/bin or /bin.
+    // extract_installer_from_tarball must use absolute tool paths (via resolve_tool),
+    // not bare names that depend on $PATH. If it uses bare names, execvp("tar", ...)
+    // exits 127 → extraction fails → "Installer not found".
+
+    std::string fixture_dir = get_update_fixture_dir();
+    REQUIRE(!fixture_dir.empty());
+
+    std::string tarball = fixture_dir + "helixscreen-pi-v99.0.0-test.tar.gz";
+    if (access(tarball.c_str(), R_OK) != 0) {
+        FAIL("Fixture file missing: " + tarball);
+    }
+
+    auto tmp = make_temp_dir("helix_path_test");
+    REQUIRE(!tmp.empty());
+
+    // Save and clear PATH to simulate a minimal systemd environment
+    const char* original_path = std::getenv("PATH");
+    setenv("PATH", "", 1); // empty PATH — bare execvp("tar",...) would fail
+
+    auto result = UpdateChecker::extract_installer_from_tarball(tarball, tmp);
+
+    // Restore PATH before assertions (even if they fail)
+    if (original_path) {
+        setenv("PATH", original_path, 1);
+    } else {
+        unsetenv("PATH");
+    }
+
+    remove_dir(tmp);
+
+    // Must succeed: resolve_tool() finds tar/cp/gunzip via absolute paths
+    REQUIRE(!result.empty());
+}

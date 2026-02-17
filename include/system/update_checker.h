@@ -206,6 +206,19 @@ class UpdateChecker {
     static std::string
     find_local_installer(const std::vector<std::string>& extra_search_paths = {});
 
+    /**
+     * @brief Extract install.sh from a release tarball into a directory
+     * @param tarball_path Path to the .tar.gz release tarball
+     * @param extract_dir  Directory to extract into (helixscreen/ subdir created inside it)
+     * @return Path to the extracted installer (chmod +x applied), or empty string on failure
+     *
+     * Tries GNU tar xzf first; falls back to cp+gunzip+tar for BusyBox compatibility.
+     * The fallback avoids gunzip -k (keep-original) which is absent on older BusyBox builds.
+     * Exposed as public static for unit testing.
+     */
+    static std::string extract_installer_from_tarball(const std::string& tarball_path,
+                                                      const std::string& extract_dir);
+
     /** @brief Check if a version is dismissed (user chose to ignore) */
     bool is_version_dismissed(const std::string& version) const;
 
