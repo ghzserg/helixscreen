@@ -603,7 +603,7 @@ void SpoolWizardOverlay::on_creation_success(const SpoolInfo& spool) {
     set_creating(false);
 
     // Show success toast
-    ToastManager::instance().show(ToastSeverity::SUCCESS, "Spool created successfully");
+    ToastManager::instance().show(ToastSeverity::SUCCESS, lv_tr("Spool created successfully"));
 
     // Refresh the spool list in SpoolmanPanel
     if (completion_callback_) {
@@ -943,11 +943,11 @@ void SpoolWizardOverlay::populate_vendor_list() {
         lv_obj_t* source_label = lv_obj_find_by_name(row, "vendor_source");
         if (source_label) {
             if (vendor.from_server && vendor.from_database) {
-                lv_label_set_text(source_label, "Both");
+                lv_label_set_text(source_label, lv_tr("Both"));
             } else if (vendor.from_server) {
-                lv_label_set_text(source_label, "Spoolman");
+                lv_label_set_text(source_label, lv_tr("Spoolman"));
             } else {
-                lv_label_set_text(source_label, "Database");
+                lv_label_set_text(source_label, lv_tr("Database"));
             }
         }
     }
@@ -1040,7 +1040,7 @@ void SpoolWizardOverlay::on_wizard_confirm_create_vendor(lv_event_t* /*e*/) {
     for (const auto& v : wiz.all_vendors_) {
         if (to_lower(v.name) == name_lower) {
             spdlog::warn("[SpoolWizard] Duplicate vendor name: '{}'", name);
-            ToastManager::instance().show(ToastSeverity::WARNING, "Vendor already exists");
+            ToastManager::instance().show(ToastSeverity::WARNING, lv_tr("Vendor already exists"));
             return;
         }
     }
@@ -1738,7 +1738,7 @@ void SpoolWizardOverlay::on_wizard_confirm_create_filament(lv_event_t* /*e*/) {
         if (to_lower(f.material) == mat_lower && to_lower(f.name) == name_lower) {
             spdlog::warn("[SpoolWizard] Duplicate filament: {} '{}'", wiz.new_filament_material_,
                          wiz.new_filament_name_);
-            ToastManager::instance().show(ToastSeverity::WARNING, "Filament already exists");
+            ToastManager::instance().show(ToastSeverity::WARNING, lv_tr("Filament already exists"));
             return;
         }
     }

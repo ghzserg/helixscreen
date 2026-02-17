@@ -376,11 +376,11 @@ lv_obj_t* ExcludeObjectsListOverlay::create_object_row(lv_obj_t* parent, const s
     lv_obj_add_flag(status_label, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     if (is_excluded) {
-        lv_label_set_text(status_label, "Excluded");
+        lv_label_set_text(status_label, lv_tr("Excluded"));
         lv_obj_set_style_text_color(label, theme_manager_get_color("text_muted"), 0);
         lv_obj_set_style_opa(row, 150, 0); // Reduced opacity for excluded
     } else if (is_current) {
-        lv_label_set_text(status_label, "Printing");
+        lv_label_set_text(status_label, lv_tr("Printing"));
         lv_obj_set_style_text_color(status_label, theme_manager_get_color("success"), 0);
     } else {
         lv_label_set_text(status_label, "");

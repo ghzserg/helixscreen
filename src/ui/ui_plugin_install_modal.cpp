@@ -198,7 +198,7 @@ void PluginInstallModal::show_result_state(bool success, const std::string& mess
                                            LV_PART_MAIN);
         }
         if (result_title) {
-            lv_label_set_text(result_title, "Success!");
+            lv_label_set_text(result_title, lv_tr("Success!"));
         }
     } else {
         if (result_icon) {
@@ -207,7 +207,7 @@ void PluginInstallModal::show_result_state(bool success, const std::string& mess
                                            LV_PART_MAIN);
         }
         if (result_title) {
-            lv_label_set_text(result_title, "Installation Failed");
+            lv_label_set_text(result_title, lv_tr("Installation Failed"));
         }
     }
 
@@ -287,10 +287,10 @@ void PluginInstallModal::on_copy_clicked() {
 
     if (copy_feedback_) {
         if (result == 0) {
-            lv_label_set_text(copy_feedback_, "Copied to clipboard!");
+            lv_label_set_text(copy_feedback_, lv_tr("Copied to clipboard!"));
             spdlog::debug("[Plugin Install] Command copied successfully");
         } else {
-            lv_label_set_text(copy_feedback_, "Copy failed - use SSH manually");
+            lv_label_set_text(copy_feedback_, lv_tr("Copy failed - use SSH manually"));
             spdlog::warn("[Plugin Install] SDL clipboard failed: {}", SDL_GetError());
         }
         lv_obj_remove_flag(copy_feedback_, LV_OBJ_FLAG_HIDDEN);
@@ -298,7 +298,7 @@ void PluginInstallModal::on_copy_clicked() {
 #else
     // No clipboard support on framebuffer displays
     if (copy_feedback_) {
-        lv_label_set_text(copy_feedback_, "Clipboard unavailable - use SSH");
+        lv_label_set_text(copy_feedback_, lv_tr("Clipboard unavailable - use SSH"));
         lv_obj_remove_flag(copy_feedback_, LV_OBJ_FLAG_HIDDEN);
     }
     spdlog::info("[Plugin Install] Clipboard not available on this platform");

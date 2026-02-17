@@ -491,7 +491,7 @@ void SettingsManager::set_display_dim_sec(int seconds) {
         Config* cfg = Config::get_instance();
         cfg->set<int>("/display/sleep_sec", seconds);
         cfg->save();
-        ToastManager::instance().show(ToastSeverity::INFO, "Sleep timeout adjusted", 2000);
+        ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Sleep timeout adjusted"), 2000);
     }
 
     spdlog::debug("[SettingsManager] Display dim set to {}s", seconds);

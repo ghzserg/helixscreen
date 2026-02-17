@@ -882,12 +882,13 @@ void SettingsPanel::handle_debug_bundle_clicked() {
 
 void SettingsPanel::handle_discord_clicked() {
     spdlog::info("[SettingsPanel] Discord clicked");
-    ToastManager::instance().show(ToastSeverity::INFO, "Join us at discord.gg/helixscreen", 5000);
+    ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Join us at discord.gg/helixscreen"),
+                                  5000);
 }
 
 void SettingsPanel::handle_docs_clicked() {
     spdlog::info("[SettingsPanel] Documentation clicked");
-    ToastManager::instance().show(ToastSeverity::INFO, "Visit docs.helixscreen.org", 5000);
+    ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Visit docs.helixscreen.org"), 5000);
 }
 
 void SettingsPanel::handle_sound_settings_clicked() {

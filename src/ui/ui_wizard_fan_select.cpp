@@ -101,7 +101,7 @@ static void update_next_button_state() {
             if (valid) {
                 lv_obj_add_flag(status_text, LV_OBJ_FLAG_HIDDEN);
             } else {
-                lv_label_set_text(status_text, "Each fan can only be selected once");
+                lv_label_set_text(status_text, lv_tr("Each fan can only be selected once"));
                 lv_obj_remove_flag(status_text, LV_OBJ_FLAG_HIDDEN);
             }
         }

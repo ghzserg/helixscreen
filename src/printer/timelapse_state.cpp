@@ -121,8 +121,8 @@ void TimelapseState::handle_timelapse_event(const nlohmann::json& event) {
             });
 
             last_notified_progress_ = -1;
-            ToastManager::instance().show(ToastSeverity::SUCCESS, "Timelapse rendered successfully",
-                                          5000);
+            ToastManager::instance().show(ToastSeverity::SUCCESS,
+                                          lv_tr("Timelapse rendered successfully"), 5000);
 
             spdlog::info("[TimelapseState] Render complete: {}", filename);
 

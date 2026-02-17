@@ -260,7 +260,7 @@ void FanDial::update_speed_label(int percent) {
         return;
 
     if (percent == 0) {
-        lv_label_set_text(speed_label_, "Off");
+        lv_label_set_text(speed_label_, lv_tr("Off"));
     } else {
         char buf[8];
         helix::format::format_percent(percent, buf, sizeof(buf));
