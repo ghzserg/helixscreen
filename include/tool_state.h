@@ -41,6 +41,12 @@ struct ToolInfo {
     int backend_index = -1; ///< Which AMS backend feeds this tool (-1 = direct drive)
     int backend_slot = -1;  ///< Fixed slot in that backend (-1 = any/dynamic)
 
+    // Spoolman spool assignment (persisted per-tool)
+    int spoolman_id = 0;           ///< Spoolman spool ID (0=not tracked)
+    std::string spool_name;        ///< Display name from Spoolman
+    float remaining_weight_g = -1; ///< Remaining weight in grams (-1=unknown)
+    float total_weight_g = -1;     ///< Total spool weight in grams (-1=unknown)
+
     [[nodiscard]] std::string effective_heater() const {
         if (heater_name)
             return *heater_name;
@@ -91,6 +97,27 @@ class ToolState {
     /// Returns tool name (e.g. "T0") for the given extruder name, or empty if not found.
     [[nodiscard]] std::string tool_name_for_extruder(const std::string& extruder_name) const;
 
+    /// Assign a Spoolman spool to a tool. Persists to local JSON + Moonraker DB.
+    void assign_spool(int tool_index, int spoolman_id, const std::string& spool_name = "",
+                      float remaining_g = -1, float total_g = -1);
+
+    /// Clear spool assignment for a tool
+    void clear_spool(int tool_index);
+
+    /// Load persisted spool assignments (Moonraker DB → local JSON → empty)
+    void load_spool_assignments(MoonrakerAPI* api);
+
+    /// Save all spool assignments (local JSON + Moonraker DB fire-and-forget)
+    void save_spool_assignments(MoonrakerAPI* api);
+
+    /// Save spool assignments only if data has changed since last save
+    void save_spool_assignments_if_dirty(MoonrakerAPI* api);
+
+    /// Set the config directory for local JSON persistence (default: "config")
+    void set_config_dir(const std::string& dir) {
+        config_dir_ = dir;
+    }
+
     lv_subject_t* get_active_tool_subject() {
         return &active_tool_;
     }
@@ -119,6 +146,20 @@ class ToolState {
 
     std::vector<ToolInfo> tools_;
     int active_tool_index_ = 0;
+    std::string config_dir_ = "config"; ///< Directory for local JSON persistence
+    bool spool_dirty_ = false;          ///< True when spool data changed since last save
+
+    /// Save spool assignments to local JSON file
+    void save_spool_json() const;
+
+    /// Load spool assignments from local JSON file. Returns true on success.
+    bool load_spool_json();
+
+    /// Build JSON representation of current spool assignments
+    [[nodiscard]] nlohmann::json spool_assignments_to_json() const;
+
+    /// Apply spool assignments from JSON
+    void apply_spool_assignments(const nlohmann::json& data);
 };
 
 } // namespace helix

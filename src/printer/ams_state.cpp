@@ -26,6 +26,7 @@
 #include "runtime_config.h"
 #include "state/subject_macros.h"
 #include "static_subject_registry.h"
+#include "tool_state.h"
 
 #include <spdlog/spdlog.h>
 
@@ -700,6 +701,21 @@ void AmsState::sync_from_backend() {
         }
     }
 
+    // Sync spool assignments to ToolState for slots with mapped tools
+    for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+        const SlotInfo* slot = info.get_slot_global(i);
+        if (slot && slot->mapped_tool >= 0 && slot->spoolman_id > 0) {
+            ToolState::instance().assign_spool(slot->mapped_tool, slot->spoolman_id,
+                                               slot->spool_name, slot->remaining_weight_g,
+                                               slot->total_weight_g);
+        }
+    }
+
+    // For backends without firmware persistence, save after sync
+    if (!backend->has_firmware_spool_persistence()) {
+        ToolState::instance().save_spool_assignments_if_dirty(get_moonraker_api());
+    }
+
     // Clear remaining slot subjects
     for (int i = info.total_slots; i < MAX_SLOTS; ++i) {
         lv_subject_set_int(&slot_colors_[i], static_cast<int>(AMS_DEFAULT_SLOT_COLOR));
@@ -737,6 +753,15 @@ void AmsState::update_slot(int slot_index) {
         lv_subject_set_int(&slot_colors_[slot_index], static_cast<int>(slot.color_rgb));
         lv_subject_set_int(&slot_statuses_[slot_index], static_cast<int>(slot.status));
         bump_slots_version();
+
+        // Sync spool to ToolState if this slot maps to a tool
+        if (slot.mapped_tool >= 0 && slot.spoolman_id > 0) {
+            ToolState::instance().assign_spool(slot.mapped_tool, slot.spoolman_id, slot.spool_name,
+                                               slot.remaining_weight_g, slot.total_weight_g);
+            if (!backend->has_firmware_spool_persistence()) {
+                ToolState::instance().save_spool_assignments(get_moonraker_api());
+            }
+        }
 
         spdlog::trace("[AMS State] Updated slot {} - color=0x{:06X}, status={}", slot_index,
                       slot.color_rgb, slot_status_to_string(slot.status));

@@ -327,7 +327,7 @@ class AmsPanel : public PanelBase {
 
     // === UI Module Helpers (internal, show modals with callbacks) ===
 
-    void show_context_menu(int slot_index, lv_obj_t* near_widget);
+    void show_context_menu(int slot_index, lv_obj_t* near_widget, lv_point_t click_pt);
     void show_slot_edit_popup(int slot_index, lv_obj_t* near_widget);
     void show_spoolman_picker(int slot_index);
     void show_edit_modal(int slot_index);
@@ -335,7 +335,7 @@ class AmsPanel : public PanelBase {
 
     // === Action Handlers (public for XML event callbacks) ===
   public:
-    void handle_slot_tap(int slot_index);
+    void handle_slot_tap(int slot_index, lv_point_t click_pt);
     void handle_unload();
     void handle_reset();
     void handle_bypass_toggle();

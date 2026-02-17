@@ -30,6 +30,17 @@ export interface CrashesData {
   avg_uptime_sec: number
 }
 
+export interface CrashListData {
+  crashes: {
+    timestamp: string
+    device_id: string
+    version: string
+    signal: string
+    platform: string
+    uptime_sec: number
+  }[]
+}
+
 export interface ReleasesData {
   versions: {
     version: string
@@ -77,6 +88,10 @@ export const api = {
 
   getCrashes(range: string): Promise<CrashesData> {
     return apiFetch(`/v1/dashboard/crashes?range=${range}`)
+  },
+
+  getCrashList(range: string, limit = 50): Promise<CrashListData> {
+    return apiFetch(`/v1/dashboard/crash-list?range=${range}&limit=${limit}`)
   },
 
   getReleases(versions: string[]): Promise<ReleasesData> {

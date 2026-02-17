@@ -5,18 +5,36 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.2] - 2026-02-16
+## [0.10.2] - 2026-02-17
+
+This release significantly improves multi-tool printer support with per-tool spool persistence and an extruder selector for filament management, decouples Spoolman from AMS backends for cleaner architecture, and fixes several crash bugs and installer issues.
 
 ### Added
+- Extruder selector dropdown for multi-tool printers in filament management
+- Per-tool spool persistence decoupled from AMS backends
+- Crash analytics dashboard with crash list view
+- Load base and platform metadata in crash telemetry events
 - Filament type tracking in print outcome telemetry events
 - Discord notifications on successful releases
 
 ### Fixed
+- Use-after-free during toast notification replacement (fixes #98)
+- Dangling pointer after external modal deletion in AMS dryer dialog (fixes #97)
 - Crash from null font pointer in AMS mini status overflow label (fixes #90, #91)
+- Unsafe move operators corrupting lv_subject_t linked lists in setup wizard
+- OTA updater "Installer not found" regression from systemd PATH resolution
+- ELF architecture validation for K1/MIPS platform
+- Static-linked OpenSSL for pi32 with post-install ldd verification
+- AMS context menu positioning and ghost button borders
+- Hidden tray and redundant tool badges for tool changers
+- AMS bypass, dryer, reset, and settings visibility for tool changers
+- Click-through on nozzle icon component
 - Navigation bar buttons not filling available width, with lingering focus rings
 
 ### Changed
+- Spoolman integration decoupled from AMS backends into standalone architecture
 - Nozzle icon extracted into reusable component with consolidated tool badge logic
+- Codebase migrated to `helix::` namespace with modernized enum classes
 - Telemetry worker updated to support schema v2 nested fields
 
 ## [0.10.1] - 2026-02-16

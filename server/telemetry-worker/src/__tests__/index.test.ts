@@ -832,6 +832,58 @@ describe("mapEventToDataPoint", () => {
     expect(dp.doubles).toHaveLength(8);
   });
 
+  it("maps crash event with flat app_version field (schema v2)", () => {
+    const event = {
+      event: "crash",
+      device_id: "dev-crash",
+      app_version: "0.9.9",
+      signal_name: "SIGSEGV",
+      app_platform: "pi",
+      uptime_sec: 325,
+      signal_number: 11,
+    };
+    const dp = mapEventToDataPoint(event);
+    expect(dp.indexes).toEqual(["crash"]);
+    expect(dp.blobs![1]).toBe("0.9.9");
+    expect(dp.blobs![2]).toBe("SIGSEGV");
+    expect(dp.blobs![3]).toBe("pi");
+    expect(dp.doubles![0]).toBe(325);
+  });
+
+  it("maps session event with nested app object (schema v2)", () => {
+    const event = {
+      event: "session",
+      device_id: "dev-nested",
+      app: { version: "0.9.10", platform: "pi", display: "800x480" },
+    };
+    const dp = mapEventToDataPoint(event);
+    expect(dp.blobs![1]).toBe("0.9.10");
+    expect(dp.blobs![2]).toBe("pi");
+  });
+
+  it("prefers nested app.version over flat app_version", () => {
+    const event = {
+      event: "crash",
+      device_id: "dev-both",
+      app: { version: "nested" },
+      app_version: "flat",
+      signal_name: "SIGABRT",
+    };
+    const dp = mapEventToDataPoint(event);
+    expect(dp.blobs![1]).toBe("nested");
+  });
+
+  it("maps print_outcome with flat app_version", () => {
+    const event = {
+      event: "print_outcome",
+      device_id: "dev-print",
+      outcome: "success",
+      app_version: "0.10.0",
+    };
+    const dp = mapEventToDataPoint(event);
+    expect(dp.blobs![3]).toBe("0.10.0");
+  });
+
   it("handles missing optional fields with defaults", () => {
     const event = {
       event: "session",
@@ -1041,8 +1093,8 @@ describe("Dashboard endpoints", () => {
   describe("GET /v1/dashboard/crashes", () => {
     it("returns crash data with rate calculation", async () => {
       mockExecuteQuery
-        .mockResolvedValueOnce({ data: [{ version: "0.9.19", crash_count: 5 }] })
-        .mockResolvedValueOnce({ data: [{ version: "0.9.19", session_count: 100 }] })
+        .mockResolvedValueOnce({ data: [{ ver: "0.9.19", crash_count: 5 }] })
+        .mockResolvedValueOnce({ data: [{ ver: "0.9.19", session_count: 100 }] })
         .mockResolvedValueOnce({ data: [{ signal: "SIGSEGV", count: 10 }] })
         .mockResolvedValueOnce({ data: [{ avg_uptime_sec: 7200 }] });
 
@@ -1061,7 +1113,7 @@ describe("Dashboard endpoints", () => {
 
     it("handles version with crashes but no sessions", async () => {
       mockExecuteQuery
-        .mockResolvedValueOnce({ data: [{ version: "0.9.18", crash_count: 3 }] })
+        .mockResolvedValueOnce({ data: [{ ver: "0.9.18", crash_count: 3 }] })
         .mockResolvedValueOnce({ data: [] }) // no session data for this version
         .mockResolvedValueOnce({ data: [] })
         .mockResolvedValueOnce({ data: [{ avg_uptime_sec: 0 }] });
@@ -1077,16 +1129,87 @@ describe("Dashboard endpoints", () => {
     });
   });
 
+  // -- GET /v1/dashboard/crash-list --
+
+  describe("GET /v1/dashboard/crash-list", () => {
+    it("returns crash list with correct shape", async () => {
+      mockExecuteQuery.mockResolvedValueOnce({
+        data: [
+          {
+            timestamp: "2026-02-10T17:17:03Z",
+            device_id: "dev-abc123",
+            ver: "0.9.9",
+            sig: "SIGSEGV",
+            platform: "pi",
+            uptime_sec: 325,
+          },
+          {
+            timestamp: "2026-02-10T15:00:00Z",
+            device_id: "dev-def456",
+            ver: "0.9.8",
+            sig: "SIGABRT",
+            platform: "pi",
+            uptime_sec: 7200,
+          },
+        ],
+      });
+
+      const res = await worker.fetch(
+        dashboardRequest("/v1/dashboard/crash-list?range=30d&limit=10"),
+        env,
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.crashes).toHaveLength(2);
+      expect(data.crashes[0]).toEqual({
+        timestamp: "2026-02-10T17:17:03Z",
+        device_id: "dev-abc123",
+        version: "0.9.9",
+        signal: "SIGSEGV",
+        platform: "pi",
+        uptime_sec: 325,
+      });
+    });
+
+    it("handles empty crash list", async () => {
+      mockExecuteQuery.mockResolvedValueOnce({ data: [] });
+
+      const res = await worker.fetch(
+        dashboardRequest("/v1/dashboard/crash-list"),
+        env,
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.crashes).toEqual([]);
+    });
+
+    it("clamps limit to 1-200 range", async () => {
+      mockExecuteQuery.mockResolvedValue({ data: [] });
+
+      // Default limit (no param)
+      await worker.fetch(dashboardRequest("/v1/dashboard/crash-list"), env);
+      const firstCall = mockExecuteQuery.mock.calls[0][1] as string;
+      expect(firstCall).toContain("LIMIT 50");
+
+      mockExecuteQuery.mockClear();
+
+      // Over 200 gets clamped
+      await worker.fetch(dashboardRequest("/v1/dashboard/crash-list?limit=500"), env);
+      const secondCall = mockExecuteQuery.mock.calls[0][1] as string;
+      expect(secondCall).toContain("LIMIT 200");
+    });
+  });
+
   // -- GET /v1/dashboard/releases --
 
   describe("GET /v1/dashboard/releases", () => {
     it("returns release comparison data", async () => {
       mockExecuteQuery
         .mockResolvedValueOnce({
-          data: [{ version: "0.9.19", total_sessions: 200, total_crashes: 4, active_devices: 50 }],
+          data: [{ ver: "0.9.19", total_sessions: 200, total_crashes: 4, active_devices: 50 }],
         })
         .mockResolvedValueOnce({
-          data: [{ version: "0.9.19", print_successes: 88, print_total: 100 }],
+          data: [{ ver: "0.9.19", print_successes: 88, print_total: 100 }],
         });
 
       const res = await worker.fetch(

@@ -9,6 +9,7 @@ import {
   adoptionQueries,
   printsQueries,
   crashesQueries,
+  crashListQuery,
   releasesQueries,
   type QueryConfig,
 } from "./queries";
@@ -350,6 +351,37 @@ export default {
               count: r.count,
             })),
             avg_uptime_sec: uptimeData.data?.[0]?.avg_uptime_sec ?? 0,
+          });
+        }
+
+        // GET /v1/dashboard/crash-list?range=30d&limit=50
+        if (url.pathname === "/v1/dashboard/crash-list") {
+          const limit = Math.max(1, Math.min(
+            parseInt(url.searchParams.get("limit") ?? "50", 10) || 50,
+            200,
+          ));
+          const sql = crashListQuery(days, limit);
+          const result = await executeQuery(queryConfig, sql);
+          const data = result as {
+            data: Array<{
+              timestamp: string;
+              device_id: string;
+              ver: string;
+              sig: string;
+              platform: string;
+              uptime_sec: number;
+            }>;
+          };
+
+          return json({
+            crashes: (data.data ?? []).map((r) => ({
+              timestamp: r.timestamp,
+              device_id: r.device_id,
+              version: r.ver,
+              signal: r.sig,
+              platform: r.platform,
+              uptime_sec: r.uptime_sec,
+            })),
           });
         }
 

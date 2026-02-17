@@ -128,8 +128,8 @@ error_handler() {
     # If we backed up config and install failed, try to restore state
     if [ -n "$BACKUP_CONFIG" ] && [ -f "$BACKUP_CONFIG" ]; then
         log_info "Restoring backed up configuration..."
-        if $SUDO mkdir -p "${INSTALL_DIR}/config" 2>/dev/null; then
-            if $SUDO cp "$BACKUP_CONFIG" "${INSTALL_DIR}/config/helixconfig.json" 2>/dev/null; then
+        if $(file_sudo "${INSTALL_DIR}") mkdir -p "${INSTALL_DIR}/config" 2>/dev/null; then
+            if $(file_sudo "${INSTALL_DIR}/config") cp "$BACKUP_CONFIG" "${INSTALL_DIR}/config/helixconfig.json" 2>/dev/null; then
                 log_success "Configuration restored"
             else
                 log_warn "Could not restore config. Backup saved at: $BACKUP_CONFIG"
@@ -721,6 +721,7 @@ install_runtime_deps() {
 
     # Required libraries for DRM display and libinput
     # Note: GPU libs (libgles2, libegl1, libgbm1) not needed - using software rendering
+    # Note: OpenSSL is statically linked for Pi builds, no runtime libssl needed
     local deps="libdrm2 libinput10"
     local missing=""
 
@@ -891,6 +892,78 @@ Moonraker is running but not responding on http://127.0.0.1:7125."
         *)
             log_error "Installation cancelled."
             exit 1
+            ;;
+    esac
+}
+
+# Verify the installed binary can find all shared libraries
+# Runs ldd on the binary and checks for "not found" entries.
+# If libssl.so.1.1 is missing (Bullseye→Bookworm upgrade), tries to install compat package.
+# Called after extraction, before starting the service.
+# Requires: INSTALL_DIR
+verify_binary_deps() {
+    local platform=$1
+    local binary="${INSTALL_DIR}/bin/helix-screen"
+
+    # Only relevant for platforms with dynamic linking and ldd
+    if ! command -v ldd >/dev/null 2>&1; then
+        return 0
+    fi
+
+    # Binary must exist
+    if [ ! -f "$binary" ]; then
+        log_warn "Binary not found at $binary, skipping dependency check"
+        return 0
+    fi
+
+    # Check for missing shared libraries
+    local missing_libs
+    missing_libs=$(ldd "$binary" 2>/dev/null | grep "not found" || true)
+
+    if [ -z "$missing_libs" ]; then
+        log_success "All shared library dependencies satisfied"
+        return 0
+    fi
+
+    log_warn "Missing shared libraries detected:"
+    echo "$missing_libs" | while IFS= read -r line; do
+        log_warn "  $line"
+    done
+
+    # Try to fix known issues on Pi
+    case "$platform" in
+        pi|pi32)
+            # libssl.so.1.1 missing = Bookworm system with Bullseye-era binary
+            if echo "$missing_libs" | grep -q "libssl.so.1.1"; then
+                log_info "libssl.so.1.1 not found (common after Debian Bullseye→Bookworm upgrade)"
+                # Try installing the compat package if available
+                if apt-cache show libssl1.1 >/dev/null 2>&1; then
+                    log_info "Installing libssl1.1 compatibility package..."
+                    $SUDO apt-get install -y --no-install-recommends libssl1.1
+                else
+                    log_error "libssl1.1 package not available in your repositories."
+                    log_error "This binary was built against OpenSSL 1.1 but your system has OpenSSL 3."
+                    log_error "Please update HelixScreen to the latest version which includes OpenSSL statically."
+                    exit 1
+                fi
+            fi
+
+            # Re-check after attempted fixes
+            missing_libs=$(ldd "$binary" 2>/dev/null | grep "not found" || true)
+            if [ -n "$missing_libs" ]; then
+                log_error "Could not resolve all missing libraries:"
+                echo "$missing_libs" | while IFS= read -r line; do
+                    log_error "  $line"
+                done
+                log_error "The binary may not start correctly."
+                log_error "Please report this issue at https://github.com/prestonbrown/helixscreen/issues"
+                exit 1
+            fi
+            log_success "All shared library dependencies resolved"
+            ;;
+        *)
+            # Non-Pi platforms: just warn, don't block
+            log_warn "Some libraries are missing. The binary may not start correctly."
             ;;
     esac
 }
@@ -1337,7 +1410,7 @@ record_disabled_service() {
 
     # Ensure config directory exists
     if [ -n "${INSTALL_DIR:-}" ] && [ ! -d "${INSTALL_DIR}/config" ]; then
-        $SUDO mkdir -p "${INSTALL_DIR}/config"
+        $(file_sudo "${INSTALL_DIR}") mkdir -p "${INSTALL_DIR}/config"
     fi
 
     # Don't duplicate entries
@@ -1345,7 +1418,7 @@ record_disabled_service() {
         return 0
     fi
 
-    echo "$entry" | $SUDO tee -a "$state_file" >/dev/null
+    echo "$entry" | $(file_sudo "${INSTALL_DIR}/config") tee -a "$state_file" >/dev/null
 }
 
 # Stop ForgeX-specific competing UIs (stock FlashForge firmware UI)
@@ -1748,8 +1821,26 @@ use_local_tarball() {
     # The extract_release function looks for ${TMP_DIR}/helixscreen.tar.gz
     local dest="${TMP_DIR}/helixscreen.tar.gz"
     if [ "$src" != "$dest" ]; then
-        # Use symlink if possible, otherwise copy
-        ln -sf "$src" "$dest" 2>/dev/null || cp "$src" "$dest"
+        # Resolve to absolute path so a symlink created in $TMP_DIR doesn't
+        # become dangling if the user passed a relative path.
+        # (BusyBox readlink may not support -f, so try realpath first.)
+        local abs_src
+        abs_src=$(realpath "$src" 2>/dev/null)
+        [ -n "$abs_src" ] || abs_src=$(readlink -f "$src" 2>/dev/null)
+        [ -n "$abs_src" ] || abs_src="$src"
+
+        # Prefer a symlink to avoid copying large files on constrained devices,
+        # but *verify* the staged tarball is readable. Fall back to copying.
+        if ln -sf "$abs_src" "$dest" 2>/dev/null && [ -r "$dest" ]; then
+            : # symlink OK
+        elif cp "$abs_src" "$dest" 2>/dev/null && [ -r "$dest" ]; then
+            : # copy OK
+        else
+            log_error "Failed to stage tarball at $dest"
+            log_error "Source: $abs_src"
+            log_error "Check that the source file exists and the temp directory is writable."
+            exit 1
+        fi
     fi
 
     local size
@@ -1808,10 +1899,15 @@ validate_binary_architecture() {
     # Determine expected values based on platform
     local expected_class expected_machine_lo expected_desc
     case "$platform" in
-        ad5m|k1|pi32)
+        ad5m|pi32)
             expected_class="01"
             expected_machine_lo="28"
             expected_desc="ARM 32-bit (armv7l)"
+            ;;
+        k1)
+            expected_class="01"
+            expected_machine_lo="08"
+            expected_desc="MIPS 32-bit (mipsel)"
             ;;
         pi)
             expected_class="02"
@@ -1827,6 +1923,8 @@ validate_binary_architecture() {
     local actual_desc
     if [ "$elf_class" = "01" ] && [ "$machine_lo" = "28" ]; then
         actual_desc="ARM 32-bit (armv7l)"
+    elif [ "$elf_class" = "01" ] && [ "$machine_lo" = "08" ]; then
+        actual_desc="MIPS 32-bit (mipsel)"
     elif [ "$elf_class" = "02" ] && [ "$machine_lo" = "b7" ]; then
         actual_desc="AARCH64 64-bit"
     else
@@ -2932,6 +3030,9 @@ main() {
     fix_install_ownership
     install_service "$platform"
     install_platform_hooks
+
+    # Verify all shared library dependencies are satisfied before starting
+    verify_binary_deps "$platform"
 
     # Create platform cache directory
     case "$platform" in

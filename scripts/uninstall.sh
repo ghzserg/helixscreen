@@ -121,8 +121,8 @@ error_handler() {
     # If we backed up config and install failed, try to restore state
     if [ -n "$BACKUP_CONFIG" ] && [ -f "$BACKUP_CONFIG" ]; then
         log_info "Restoring backed up configuration..."
-        if $SUDO mkdir -p "${INSTALL_DIR}/config" 2>/dev/null; then
-            if $SUDO cp "$BACKUP_CONFIG" "${INSTALL_DIR}/config/helixconfig.json" 2>/dev/null; then
+        if $(file_sudo "${INSTALL_DIR}") mkdir -p "${INSTALL_DIR}/config" 2>/dev/null; then
+            if $(file_sudo "${INSTALL_DIR}/config") cp "$BACKUP_CONFIG" "${INSTALL_DIR}/config/helixconfig.json" 2>/dev/null; then
                 log_success "Configuration restored"
             else
                 log_warn "Could not restore config. Backup saved at: $BACKUP_CONFIG"
@@ -714,6 +714,7 @@ install_runtime_deps() {
 
     # Required libraries for DRM display and libinput
     # Note: GPU libs (libgles2, libegl1, libgbm1) not needed - using software rendering
+    # Note: OpenSSL is statically linked for Pi builds, no runtime libssl needed
     local deps="libdrm2 libinput10"
     local missing=""
 
@@ -884,6 +885,78 @@ Moonraker is running but not responding on http://127.0.0.1:7125."
         *)
             log_error "Installation cancelled."
             exit 1
+            ;;
+    esac
+}
+
+# Verify the installed binary can find all shared libraries
+# Runs ldd on the binary and checks for "not found" entries.
+# If libssl.so.1.1 is missing (Bullseye→Bookworm upgrade), tries to install compat package.
+# Called after extraction, before starting the service.
+# Requires: INSTALL_DIR
+verify_binary_deps() {
+    local platform=$1
+    local binary="${INSTALL_DIR}/bin/helix-screen"
+
+    # Only relevant for platforms with dynamic linking and ldd
+    if ! command -v ldd >/dev/null 2>&1; then
+        return 0
+    fi
+
+    # Binary must exist
+    if [ ! -f "$binary" ]; then
+        log_warn "Binary not found at $binary, skipping dependency check"
+        return 0
+    fi
+
+    # Check for missing shared libraries
+    local missing_libs
+    missing_libs=$(ldd "$binary" 2>/dev/null | grep "not found" || true)
+
+    if [ -z "$missing_libs" ]; then
+        log_success "All shared library dependencies satisfied"
+        return 0
+    fi
+
+    log_warn "Missing shared libraries detected:"
+    echo "$missing_libs" | while IFS= read -r line; do
+        log_warn "  $line"
+    done
+
+    # Try to fix known issues on Pi
+    case "$platform" in
+        pi|pi32)
+            # libssl.so.1.1 missing = Bookworm system with Bullseye-era binary
+            if echo "$missing_libs" | grep -q "libssl.so.1.1"; then
+                log_info "libssl.so.1.1 not found (common after Debian Bullseye→Bookworm upgrade)"
+                # Try installing the compat package if available
+                if apt-cache show libssl1.1 >/dev/null 2>&1; then
+                    log_info "Installing libssl1.1 compatibility package..."
+                    $SUDO apt-get install -y --no-install-recommends libssl1.1
+                else
+                    log_error "libssl1.1 package not available in your repositories."
+                    log_error "This binary was built against OpenSSL 1.1 but your system has OpenSSL 3."
+                    log_error "Please update HelixScreen to the latest version which includes OpenSSL statically."
+                    exit 1
+                fi
+            fi
+
+            # Re-check after attempted fixes
+            missing_libs=$(ldd "$binary" 2>/dev/null | grep "not found" || true)
+            if [ -n "$missing_libs" ]; then
+                log_error "Could not resolve all missing libraries:"
+                echo "$missing_libs" | while IFS= read -r line; do
+                    log_error "  $line"
+                done
+                log_error "The binary may not start correctly."
+                log_error "Please report this issue at https://github.com/prestonbrown/helixscreen/issues"
+                exit 1
+            fi
+            log_success "All shared library dependencies resolved"
+            ;;
+        *)
+            # Non-Pi platforms: just warn, don't block
+            log_warn "Some libraries are missing. The binary may not start correctly."
             ;;
     esac
 }

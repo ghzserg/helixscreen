@@ -90,6 +90,11 @@ create_fake_arm32_elf() {
     create_fake_elf "$1" "01" "28"
 }
 
+# Create a fake MIPS 32-bit ELF binary (little-endian, e_machine=0x08)
+create_fake_mips_elf() {
+    create_fake_elf "$1" "01" "08"
+}
+
 # Create a fake AARCH64 64-bit ELF binary
 create_fake_aarch64_elf() {
     create_fake_elf "$1" "02" "b7"

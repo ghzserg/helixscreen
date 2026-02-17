@@ -159,6 +159,8 @@ void configure_button_danger(lv_style_t* s, const ThemePalette& p) {
 void configure_button_ghost(lv_style_t* s, const ThemePalette& p) {
     (void)p;
     lv_style_set_bg_opa(s, LV_OPA_0);
+    lv_style_set_border_width(s, 0);
+    lv_style_set_shadow_opa(s, LV_OPA_0);
 }
 
 void configure_button_outline(lv_style_t* s, const ThemePalette& p) {

@@ -1493,11 +1493,18 @@ void AmsPanel::on_slot_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[AmsPanel] on_slot_clicked");
     auto* self = static_cast<AmsPanel*>(lv_event_get_user_data(e));
     if (self) {
+        // Capture click point from the input device while event is still active
+        lv_point_t click_pt = {0, 0};
+        lv_indev_t* indev = lv_indev_active();
+        if (indev) {
+            lv_indev_get_point(indev, &click_pt);
+        }
+
         // Use current_target (widget callback was registered on) not target (originally clicked
         // child)
         lv_obj_t* slot = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
         auto slot_index = static_cast<int>(reinterpret_cast<intptr_t>(lv_obj_get_user_data(slot)));
-        self->handle_slot_tap(slot_index);
+        self->handle_slot_tap(slot_index, click_pt);
     }
     LVGL_SAFE_EVENT_CB_END();
 }
@@ -1588,7 +1595,7 @@ void AmsPanel::on_path_state_changed(lv_observer_t* observer, lv_subject_t* /*su
 // Action Handlers
 // ============================================================================
 
-void AmsPanel::handle_slot_tap(int slot_index) {
+void AmsPanel::handle_slot_tap(int slot_index, lv_point_t click_pt) {
     spdlog::info("[{}] Slot {} tapped", get_name(), slot_index);
 
     // Validate slot index against configured slot count
@@ -1601,7 +1608,7 @@ void AmsPanel::handle_slot_tap(int slot_index) {
 
     // Show context menu near the tapped slot
     if (slot_index >= 0 && slot_index < MAX_VISIBLE_SLOTS && slot_widgets_[slot_index]) {
-        show_context_menu(slot_index, slot_widgets_[slot_index]);
+        show_context_menu(slot_index, slot_widgets_[slot_index], click_pt);
     }
 }
 
@@ -1684,7 +1691,7 @@ void AmsPanel::handle_bypass_toggle() {
 // Context Menu Management (delegates to helix::ui::AmsContextMenu)
 // ============================================================================
 
-void AmsPanel::show_context_menu(int slot_index, lv_obj_t* near_widget) {
+void AmsPanel::show_context_menu(int slot_index, lv_obj_t* near_widget, lv_point_t click_pt) {
     if (!parent_screen_ || !near_widget) {
         return;
     }
@@ -1752,7 +1759,8 @@ void AmsPanel::show_context_menu(int slot_index, lv_obj_t* near_widget) {
         is_loaded = (slot_info.status == SlotStatus::LOADED);
     }
 
-    // Show the menu near the slot widget
+    // Position menu near the click point, then show
+    context_menu_->set_click_point(click_pt);
     context_menu_->show_near_widget(parent_screen_, slot_index, near_widget, is_loaded);
 }
 

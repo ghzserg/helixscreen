@@ -271,11 +271,13 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Notify Discord
-      if: success() && secrets.DISCORD_WEBHOOK_URL != ''
+      if: success()
       continue-on-error: true
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: |
+        [ -z "$DISCORD_WEBHOOK_URL" ] && { echo "No webhook configured, skipping"; exit 0; }
+
         VERSION="${GITHUB_REF_NAME}"
         RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
 

@@ -140,6 +140,21 @@ export function crashesQueries(days: number): string[] {
   ];
 }
 
+export function crashListQuery(days: number, limit: number): string {
+  const dataset = "helixscreen_telemetry";
+  return `SELECT
+    timestamp,
+    blob1 as device_id,
+    blob2 as ver,
+    blob3 as sig,
+    blob4 as platform,
+    double1 as uptime_sec
+  FROM ${dataset}
+  WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'crash'
+  ORDER BY timestamp DESC
+  LIMIT ${limit}`;
+}
+
 export function releasesQueries(versions: string[]): string[] {
   const dataset = "helixscreen_telemetry";
   // Clean version strings — strip 'v' prefix if present for matching

@@ -23,7 +23,7 @@ record_disabled_service() {
 
     # Ensure config directory exists
     if [ -n "${INSTALL_DIR:-}" ] && [ ! -d "${INSTALL_DIR}/config" ]; then
-        $SUDO mkdir -p "${INSTALL_DIR}/config"
+        $(file_sudo "${INSTALL_DIR}") mkdir -p "${INSTALL_DIR}/config"
     fi
 
     # Don't duplicate entries
@@ -31,7 +31,7 @@ record_disabled_service() {
         return 0
     fi
 
-    echo "$entry" | $SUDO tee -a "$state_file" >/dev/null
+    echo "$entry" | $(file_sudo "${INSTALL_DIR}/config") tee -a "$state_file" >/dev/null
 }
 
 # Stop ForgeX-specific competing UIs (stock FlashForge firmware UI)

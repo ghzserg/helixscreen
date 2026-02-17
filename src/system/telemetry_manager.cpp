@@ -720,11 +720,14 @@ void TelemetryManager::check_previous_crash() {
     // Copy crash-specific fields (signal info, backtrace, register state)
     for (const char* key :
          {"signal", "signal_name", "app_version", "uptime_sec", "backtrace", "fault_addr",
-          "fault_code", "fault_code_name", "reg_pc", "reg_sp", "reg_lr", "reg_bp"}) {
+          "fault_code", "fault_code_name", "reg_pc", "reg_sp", "reg_lr", "reg_bp", "load_base"}) {
         if (crash_data.contains(key)) {
             event[key] = crash_data[key];
         }
     }
+
+    // Add platform (not in crash file — determined at runtime)
+    event["app_platform"] = UpdateChecker::get_platform_key();
 
     // Only enqueue if telemetry is enabled (respect user opt-in)
     if (enabled_.load()) {

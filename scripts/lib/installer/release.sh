@@ -301,8 +301,26 @@ use_local_tarball() {
     # The extract_release function looks for ${TMP_DIR}/helixscreen.tar.gz
     local dest="${TMP_DIR}/helixscreen.tar.gz"
     if [ "$src" != "$dest" ]; then
-        # Use symlink if possible, otherwise copy
-        ln -sf "$src" "$dest" 2>/dev/null || cp "$src" "$dest"
+        # Resolve to absolute path so a symlink created in $TMP_DIR doesn't
+        # become dangling if the user passed a relative path.
+        # (BusyBox readlink may not support -f, so try realpath first.)
+        local abs_src
+        abs_src=$(realpath "$src" 2>/dev/null)
+        [ -n "$abs_src" ] || abs_src=$(readlink -f "$src" 2>/dev/null)
+        [ -n "$abs_src" ] || abs_src="$src"
+
+        # Prefer a symlink to avoid copying large files on constrained devices,
+        # but *verify* the staged tarball is readable. Fall back to copying.
+        if ln -sf "$abs_src" "$dest" 2>/dev/null && [ -r "$dest" ]; then
+            : # symlink OK
+        elif cp "$abs_src" "$dest" 2>/dev/null && [ -r "$dest" ]; then
+            : # copy OK
+        else
+            log_error "Failed to stage tarball at $dest"
+            log_error "Source: $abs_src"
+            log_error "Check that the source file exists and the temp directory is writable."
+            exit 1
+        fi
     fi
 
     local size
@@ -361,10 +379,15 @@ validate_binary_architecture() {
     # Determine expected values based on platform
     local expected_class expected_machine_lo expected_desc
     case "$platform" in
-        ad5m|k1|pi32)
+        ad5m|pi32)
             expected_class="01"
             expected_machine_lo="28"
             expected_desc="ARM 32-bit (armv7l)"
+            ;;
+        k1)
+            expected_class="01"
+            expected_machine_lo="08"
+            expected_desc="MIPS 32-bit (mipsel)"
             ;;
         pi)
             expected_class="02"
@@ -380,6 +403,8 @@ validate_binary_architecture() {
     local actual_desc
     if [ "$elf_class" = "01" ] && [ "$machine_lo" = "28" ]; then
         actual_desc="ARM 32-bit (armv7l)"
+    elif [ "$elf_class" = "01" ] && [ "$machine_lo" = "08" ]; then
+        actual_desc="MIPS 32-bit (mipsel)"
     elif [ "$elf_class" = "02" ] && [ "$machine_lo" = "b7" ]; then
         actual_desc="AARCH64 64-bit"
     else

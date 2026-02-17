@@ -11,6 +11,8 @@
 
 #include "tool_state.h"
 
+#include "ui_update_queue.h"
+
 #include "ams_state.h"
 #include "moonraker_api.h"
 #include "printer_discovery.h"
@@ -22,6 +24,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
 
 namespace helix {
 
@@ -365,6 +369,220 @@ void ToolState::request_tool_change(int tool_index, MoonrakerAPI* api,
         [on_error](const MoonrakerError& error) {
             if (on_error)
                 on_error(error.user_message());
+        });
+}
+
+// ============================================================================
+// Spool assignment persistence
+// ============================================================================
+
+static constexpr const char* SPOOL_JSON_FILENAME = "tool_spools.json";
+static constexpr const char* MOONRAKER_DB_NAMESPACE = "helix-screen";
+static constexpr const char* MOONRAKER_DB_KEY = "tool_spool_assignments";
+
+void ToolState::assign_spool(int tool_index, int spoolman_id, const std::string& spool_name,
+                             float remaining_g, float total_g) {
+    if (tool_index < 0 || tool_index >= static_cast<int>(tools_.size())) {
+        spdlog::warn("[ToolState] assign_spool: invalid tool index {}", tool_index);
+        return;
+    }
+
+    auto& tool = tools_[tool_index];
+
+    // Skip if nothing changed (avoids unnecessary saves from frequent syncs)
+    if (tool.spoolman_id == spoolman_id && tool.spool_name == spool_name &&
+        tool.remaining_weight_g == remaining_g && tool.total_weight_g == total_g) {
+        return;
+    }
+
+    tool.spoolman_id = spoolman_id;
+    tool.spool_name = spool_name;
+    tool.remaining_weight_g = remaining_g;
+    tool.total_weight_g = total_g;
+    spool_dirty_ = true;
+
+    spdlog::info("[ToolState] Assigned spool {} ({}) to tool {}", spoolman_id, spool_name,
+                 tool_index);
+
+    // Bump version so UI observers update
+    if (subjects_initialized_) {
+        int version = lv_subject_get_int(&tools_version_) + 1;
+        lv_subject_set_int(&tools_version_, version);
+    }
+}
+
+void ToolState::clear_spool(int tool_index) {
+    if (tool_index < 0 || tool_index >= static_cast<int>(tools_.size())) {
+        spdlog::warn("[ToolState] clear_spool: invalid tool index {}", tool_index);
+        return;
+    }
+
+    auto& tool = tools_[tool_index];
+
+    // Skip if already cleared
+    if (tool.spoolman_id == 0) {
+        return;
+    }
+
+    tool.spoolman_id = 0;
+    tool.spool_name.clear();
+    tool.remaining_weight_g = -1;
+    tool.total_weight_g = -1;
+    spool_dirty_ = true;
+
+    spdlog::info("[ToolState] Cleared spool assignment for tool {}", tool_index);
+
+    if (subjects_initialized_) {
+        int version = lv_subject_get_int(&tools_version_) + 1;
+        lv_subject_set_int(&tools_version_, version);
+    }
+}
+
+nlohmann::json ToolState::spool_assignments_to_json() const {
+    nlohmann::json result = nlohmann::json::object();
+
+    for (const auto& tool : tools_) {
+        if (tool.spoolman_id <= 0)
+            continue;
+
+        nlohmann::json entry;
+        entry["spoolman_id"] = tool.spoolman_id;
+        entry["spool_name"] = tool.spool_name;
+        if (tool.remaining_weight_g >= 0)
+            entry["remaining_weight_g"] = tool.remaining_weight_g;
+        if (tool.total_weight_g >= 0)
+            entry["total_weight_g"] = tool.total_weight_g;
+
+        result[std::to_string(tool.index)] = entry;
+    }
+
+    return result;
+}
+
+void ToolState::apply_spool_assignments(const nlohmann::json& data) {
+    if (!data.is_object()) {
+        spdlog::warn("[ToolState] apply_spool_assignments: expected JSON object");
+        return;
+    }
+
+    for (auto& tool : tools_) {
+        auto key = std::to_string(tool.index);
+        if (!data.contains(key) || !data[key].is_object()) {
+            continue;
+        }
+
+        const auto& entry = data[key];
+        tool.spoolman_id = entry.value("spoolman_id", 0);
+        tool.spool_name = entry.value("spool_name", std::string{});
+        tool.remaining_weight_g = entry.value("remaining_weight_g", -1.0f);
+        tool.total_weight_g = entry.value("total_weight_g", -1.0f);
+
+        if (tool.spoolman_id > 0) {
+            spdlog::debug("[ToolState] Loaded spool {} ({}) for tool {}", tool.spoolman_id,
+                          tool.spool_name, tool.index);
+        }
+    }
+}
+
+void ToolState::save_spool_json() const {
+    namespace fs = std::filesystem;
+
+    auto json_data = spool_assignments_to_json();
+    auto path = fs::path(config_dir_) / SPOOL_JSON_FILENAME;
+
+    try {
+        // Ensure directory exists
+        fs::create_directories(config_dir_);
+
+        std::ofstream ofs(path);
+        if (!ofs.is_open()) {
+            spdlog::warn("[ToolState] Failed to open {} for writing", path.string());
+            return;
+        }
+        ofs << json_data.dump(2);
+        spdlog::debug("[ToolState] Saved spool assignments to {}", path.string());
+    } catch (const std::exception& e) {
+        spdlog::warn("[ToolState] Error saving spool JSON: {}", e.what());
+    }
+}
+
+bool ToolState::load_spool_json() {
+    namespace fs = std::filesystem;
+
+    auto path = fs::path(config_dir_) / SPOOL_JSON_FILENAME;
+
+    if (!fs::exists(path)) {
+        spdlog::debug("[ToolState] No spool JSON file at {}", path.string());
+        return false;
+    }
+
+    try {
+        std::ifstream ifs(path);
+        if (!ifs.is_open()) {
+            spdlog::warn("[ToolState] Failed to open {}", path.string());
+            return false;
+        }
+
+        auto data = nlohmann::json::parse(ifs);
+        apply_spool_assignments(data);
+        spdlog::info("[ToolState] Loaded spool assignments from {}", path.string());
+        return true;
+    } catch (const std::exception& e) {
+        spdlog::warn("[ToolState] Error loading spool JSON: {}", e.what());
+        return false;
+    }
+}
+
+void ToolState::save_spool_assignments_if_dirty(MoonrakerAPI* api) {
+    if (!spool_dirty_) {
+        return;
+    }
+    save_spool_assignments(api);
+}
+
+void ToolState::save_spool_assignments(MoonrakerAPI* api) {
+    // Always save to local JSON (fast, reliable)
+    save_spool_json();
+    spool_dirty_ = false;
+
+    // Fire-and-forget to Moonraker DB (async, best-effort)
+    if (api) {
+        auto json_data = spool_assignments_to_json();
+        api->database_post_item(
+            MOONRAKER_DB_NAMESPACE, MOONRAKER_DB_KEY, json_data,
+            []() { spdlog::debug("[ToolState] Spool assignments saved to Moonraker DB"); },
+            [](const MoonrakerError& err) {
+                spdlog::warn("[ToolState] Failed to save to Moonraker DB: {}", err.user_message());
+            });
+    }
+}
+
+void ToolState::load_spool_assignments(MoonrakerAPI* api) {
+    if (!api) {
+        // No API — try local JSON only
+        load_spool_json();
+        return;
+    }
+
+    // Try Moonraker DB first. Callbacks fire from WebSocket thread,
+    // so we marshal back to UI thread via queue_update().
+    api->database_get_item(
+        MOONRAKER_DB_NAMESPACE, MOONRAKER_DB_KEY,
+        [this](const nlohmann::json& data) {
+            // Copy data for thread-safe transfer to UI thread
+            auto data_copy = std::make_unique<nlohmann::json>(data);
+            helix::ui::queue_update<nlohmann::json>(
+                std::move(data_copy), [this](nlohmann::json* d) {
+                    apply_spool_assignments(*d);
+                    save_spool_json();
+                    spdlog::info("[ToolState] Loaded spool assignments from Moonraker DB");
+                });
+        },
+        [this](const MoonrakerError& err) {
+            spdlog::debug("[ToolState] Moonraker DB load failed ({}), trying local JSON",
+                          err.user_message());
+            helix::ui::queue_update<int>(std::make_unique<int>(0),
+                                         [this](int*) { load_spool_json(); });
         });
 }
 

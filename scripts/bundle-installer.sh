@@ -329,6 +329,9 @@ main() {
     install_service "$platform"
     install_platform_hooks
 
+    # Verify all shared library dependencies are satisfied before starting
+    verify_binary_deps "$platform"
+
     # Create platform cache directory
     case "$platform" in
         ad5m)

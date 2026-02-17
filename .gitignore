@@ -128,3 +128,4 @@ config/helixconfig.json.voronv2
 .telemetry-data/
 .env.telemetry
 config/crash_report.txt
+config/tool_spools.json

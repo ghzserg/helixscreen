@@ -53,23 +53,22 @@
     grep -A2 '^symbols:' Makefile | grep -q '$(TARGET).sym'
 }
 
-@test "release.yml builds generate symbol maps for all platforms" {
+@test "release.yml build matrix includes all platforms" {
     local yml=".github/workflows/release.yml"
     [ -f "$yml" ]
 
-    # Symbol extraction is handled by the 'all' build target (all → strip → symbols)
-    # Verify each platform uploads its .sym file from the build output
+    # Verify the build matrix includes all expected platforms
     for platform in pi pi32 ad5m k1 k2; do
-        grep -q "build/${platform}/bin/helix-screen.sym" "$yml"
+        grep -q "platform: ${platform}" "$yml"
     done
 }
 
-@test "release.yml uploads symbol artifacts for all platforms" {
+@test "release.yml uploads symbol artifacts via matrix" {
     local yml=".github/workflows/release.yml"
 
-    for platform in pi pi32 ad5m k1 k2; do
-        grep -q "name: symbols-${platform}" "$yml"
-    done
+    # Symbol upload uses matrix.platform variable, not literal platform names
+    grep -q 'name: symbols-\${{ matrix.platform }}' "$yml"
+    grep -q 'helix-screen.sym' "$yml"
 }
 
 @test "release.yml uploads symbol maps to R2" {
