@@ -187,7 +187,7 @@ void SoundSettingsOverlay::init_volume_slider() {
         lv_slider_set_value(slider, volume, LV_ANIM_OFF);
 
         // Update volume value label
-        helix::fmt::format_percent(volume, volume_value_buf_, sizeof(volume_value_buf_));
+        helix::format::format_percent(volume, volume_value_buf_, sizeof(volume_value_buf_));
         lv_subject_copy_string(&volume_value_subject_, volume_value_buf_);
 
         // Play test beep on release so user hears the new volume level
@@ -262,7 +262,7 @@ void SoundSettingsOverlay::handle_volume_changed(int value) {
     SettingsManager::instance().set_volume(value);
 
     // Update value label subject
-    helix::fmt::format_percent(value, volume_value_buf_, sizeof(volume_value_buf_));
+    helix::format::format_percent(value, volume_value_buf_, sizeof(volume_value_buf_));
     lv_subject_copy_string(&volume_value_subject_, volume_value_buf_);
 
     // Update value label widget directly

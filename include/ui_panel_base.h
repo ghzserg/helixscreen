@@ -22,7 +22,10 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class PrinterState;
+}
+using helix::PrinterState;
 class MoonrakerAPI;
 
 // Include for SubjectManager (needed for deinit_subjects_base)

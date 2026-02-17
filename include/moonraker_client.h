@@ -83,6 +83,9 @@ using helix::INVALID_SUBSCRIPTION_ID;
 using helix::RequestId;
 using helix::SubscriptionId;
 
+namespace helix {
+using ::json; // Make global json alias visible in this namespace
+
 /**
  * @brief Connection state for Moonraker WebSocket
  */
@@ -696,3 +699,7 @@ class MoonrakerClient : public hv::WebSocketClient {
     // return nullptr, preventing callbacks from accessing destroyed members.
     std::shared_ptr<bool> lifetime_guard_ = std::make_shared<bool>(true);
 };
+
+} // namespace helix
+using helix::ConnectionState;
+using helix::MoonrakerClient;

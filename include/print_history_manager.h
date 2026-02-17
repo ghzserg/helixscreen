@@ -12,7 +12,10 @@
 #include <vector>
 
 class MoonrakerAPI;
+namespace helix {
 class MoonrakerClient;
+}
+using helix::MoonrakerClient;
 
 /**
  * @brief Per-filename aggregated print history stats

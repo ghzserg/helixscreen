@@ -932,8 +932,8 @@ void InputShaperPanel::populate_current_config(const InputShaperConfig& config) 
         lv_subject_copy_string(&is_current_x_type_, is_current_x_type_buf_);
 
         // X frequency
-        helix::fmt::format_frequency_hz(config.shaper_freq_x, is_current_x_freq_buf_,
-                                        sizeof(is_current_x_freq_buf_));
+        helix::format::format_frequency_hz(config.shaper_freq_x, is_current_x_freq_buf_,
+                                           sizeof(is_current_x_freq_buf_));
         lv_subject_copy_string(&is_current_x_freq_, is_current_x_freq_buf_);
 
         // Uppercase Y type
@@ -944,8 +944,8 @@ void InputShaperPanel::populate_current_config(const InputShaperConfig& config) 
         lv_subject_copy_string(&is_current_y_type_, is_current_y_type_buf_);
 
         // Y frequency
-        helix::fmt::format_frequency_hz(config.shaper_freq_y, is_current_y_freq_buf_,
-                                        sizeof(is_current_y_freq_buf_));
+        helix::format::format_frequency_hz(config.shaper_freq_y, is_current_y_freq_buf_,
+                                           sizeof(is_current_y_freq_buf_));
         lv_subject_copy_string(&is_current_y_freq_, is_current_y_freq_buf_);
 
         // Max accel - leave empty for now (populated from results in Chunk 3)
@@ -1033,7 +1033,7 @@ void InputShaperPanel::populate_axis_result(char axis, const InputShaperResult& 
 
     // Format frequency
     char freq_buf[16];
-    helix::fmt::format_frequency_hz(result.shaper_freq, freq_buf, sizeof(freq_buf));
+    helix::format::format_frequency_hz(result.shaper_freq, freq_buf, sizeof(freq_buf));
 
     if (axis == 'X') {
         lv_subject_set_int(&is_results_has_x_, 1);
@@ -1098,7 +1098,7 @@ void InputShaperPanel::populate_axis_result(char axis, const InputShaperResult& 
             lv_subject_copy_string(&cmp[i].type, cmp[i].type_buf);
 
             // Frequency
-            helix::fmt::format_frequency_hz(opt.frequency, cmp[i].freq_buf, CMP_VALUE_BUF);
+            helix::format::format_frequency_hz(opt.frequency, cmp[i].freq_buf, CMP_VALUE_BUF);
             lv_subject_copy_string(&cmp[i].freq, cmp[i].freq_buf);
 
             // Vibration with quality description

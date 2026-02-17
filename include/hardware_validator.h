@@ -21,7 +21,10 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class Config;
+}
+using helix::Config;
 
 namespace helix {
 class PrinterDiscovery;

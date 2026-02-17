@@ -136,7 +136,7 @@ static void show_rich_completion_modal(PrintJobState state, const char* filename
     // Update duration
     lv_obj_t* duration_label = lv_obj_find_by_name(dialog, "duration_label");
     if (duration_label) {
-        std::string duration_str = fmt::duration_padded(duration_secs) + " " + lv_tr("elapsed");
+        std::string duration_str = format::duration_padded(duration_secs) + " " + lv_tr("elapsed");
         lv_label_set_text(duration_label, duration_str.c_str());
     }
 
@@ -145,7 +145,7 @@ static void show_rich_completion_modal(PrintJobState state, const char* filename
     if (estimate_stat) {
         if (estimated_secs > 0) {
             std::string est_str =
-                std::string(lv_tr("est")) + " " + fmt::duration_padded(estimated_secs);
+                std::string(lv_tr("est")) + " " + format::duration_padded(estimated_secs);
             lv_obj_t* estimate_label = lv_obj_find_by_name(dialog, "estimate_label");
             if (estimate_label) {
                 lv_label_set_text(estimate_label, est_str.c_str());
@@ -168,8 +168,8 @@ static void show_rich_completion_modal(PrintJobState state, const char* filename
     lv_obj_t* filament_stat = lv_obj_find_by_name(dialog, "filament_stat");
     if (filament_stat) {
         if (filament_mm > 0) {
-            std::string fil_str =
-                fmt::format_filament_length(static_cast<double>(filament_mm)) + " " + lv_tr("used");
+            std::string fil_str = format::format_filament_length(static_cast<double>(filament_mm)) +
+                                  " " + lv_tr("used");
             lv_obj_t* filament_label = lv_obj_find_by_name(dialog, "filament_label");
             if (filament_label) {
                 lv_label_set_text(filament_label, fil_str.c_str());

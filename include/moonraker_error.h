@@ -140,7 +140,7 @@ struct MoonrakerError {
         MoonrakerError err;
         err.type = MoonrakerErrorType::TIMEOUT;
         err.method = method_name;
-        err.message = "Request timed out after " + helix::fmt::duration(timeout_ms / 1000);
+        err.message = "Request timed out after " + helix::format::duration(timeout_ms / 1000);
         return err;
     }
 

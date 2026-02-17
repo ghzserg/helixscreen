@@ -7,8 +7,12 @@
 
 // Forward declare ConnectionState and KlippyState (defined in moonraker_client.h and
 // printer_state.h)
+namespace helix {
 enum class ConnectionState;
+}
+namespace helix {
 enum class KlippyState;
+}
 
 namespace helix {
 

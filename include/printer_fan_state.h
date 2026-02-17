@@ -11,7 +11,10 @@
 
 #include "hv/json.hpp"
 
+namespace helix {
 class Config;
+}
+using helix::Config;
 
 namespace helix {
 

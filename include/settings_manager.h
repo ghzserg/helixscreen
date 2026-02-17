@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 
+namespace helix {
 class MoonrakerClient;
 
 /** @brief Print completion notification mode (Off=0, Notification=1, Alert=2) */
@@ -826,3 +827,9 @@ class SettingsManager {
     bool subjects_initialized_ = false;
     bool restart_pending_ = false;
 };
+
+} // namespace helix
+using helix::CompletionAlertMode;
+using helix::SettingsManager;
+using helix::TimeFormat;
+using helix::ZMovementStyle;

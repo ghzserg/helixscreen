@@ -9,10 +9,16 @@
 #include <string>
 
 // Forward declarations
+namespace helix {
 class MoonrakerClient;
+}
+using helix::MoonrakerClient;
 class MoonrakerAPI;
 class MoonrakerManager;
+namespace helix {
 class PrinterState;
+}
+using helix::PrinterState;
 class PrintHistoryManager;
 class TemperatureHistoryManager;
 

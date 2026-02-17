@@ -16,6 +16,12 @@
 #include "ams_error.h"
 #include "ams_types.h"
 
+class MoonrakerAPI;
+namespace helix {
+class MoonrakerClient;
+}
+using helix::MoonrakerClient;
+
 #include <any>
 #include <functional>
 #include <memory>
@@ -694,8 +700,8 @@ class AmsBackend {
      * @param client Pointer to MoonrakerClient for subscriptions
      * @return Unique pointer to backend instance, or nullptr if type is NONE
      */
-    static std::unique_ptr<AmsBackend> create(AmsType detected_type, class MoonrakerAPI* api,
-                                              class MoonrakerClient* client);
+    static std::unique_ptr<AmsBackend> create(AmsType detected_type, MoonrakerAPI* api,
+                                              MoonrakerClient* client);
 
     /**
      * @brief Create mock backend for testing

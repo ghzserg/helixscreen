@@ -499,7 +499,7 @@ void ControlsPanel::update_nozzle_label() {
 }
 
 void ControlsPanel::update_nozzle_temp_display() {
-    auto result = helix::fmt::heater_display(cached_extruder_temp_, cached_extruder_target_);
+    auto result = helix::format::heater_display(cached_extruder_temp_, cached_extruder_target_);
 
     std::snprintf(nozzle_temp_buf_, sizeof(nozzle_temp_buf_), "%s", result.temp.c_str());
     lv_subject_copy_string(&nozzle_temp_subject_, nozzle_temp_buf_);
@@ -511,7 +511,7 @@ void ControlsPanel::update_nozzle_temp_display() {
 }
 
 void ControlsPanel::update_bed_temp_display() {
-    auto result = helix::fmt::heater_display(cached_bed_temp_, cached_bed_target_);
+    auto result = helix::format::heater_display(cached_bed_temp_, cached_bed_target_);
 
     std::snprintf(bed_temp_buf_, sizeof(bed_temp_buf_), "%s", result.temp.c_str());
     lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
@@ -537,7 +537,7 @@ void ControlsPanel::update_fan_display() {
                       : 0;
 
     if (fan_pct > 0) {
-        helix::fmt::format_percent(fan_pct, fan_speed_buf_, sizeof(fan_speed_buf_));
+        helix::format::format_percent(fan_pct, fan_speed_buf_, sizeof(fan_speed_buf_));
     } else {
         std::snprintf(fan_speed_buf_, sizeof(fan_speed_buf_), "Off");
     }
@@ -667,7 +667,7 @@ void ControlsPanel::populate_secondary_fans() {
         // Speed percentage label - right-aligned
         char speed_buf[16];
         if (fan->speed_percent > 0) {
-            helix::fmt::format_percent(fan->speed_percent, speed_buf, sizeof(speed_buf));
+            helix::format::format_percent(fan->speed_percent, speed_buf, sizeof(speed_buf));
         } else {
             std::snprintf(speed_buf, sizeof(speed_buf), "Off");
         }
@@ -1200,7 +1200,7 @@ void ControlsPanel::update_speed_display() {
     if (auto* speed_subj = printer_state_.get_speed_factor_subject()) {
         speed_pct = lv_subject_get_int(speed_subj);
     }
-    helix::fmt::format_percent(speed_pct, speed_override_buf_, sizeof(speed_override_buf_));
+    helix::format::format_percent(speed_pct, speed_override_buf_, sizeof(speed_override_buf_));
     lv_subject_copy_string(&speed_override_subject_, speed_override_buf_);
 }
 
@@ -1209,7 +1209,7 @@ void ControlsPanel::update_flow_display() {
     int flow_pct = 100;
     // Note: PrinterState may need a get_extrude_factor_subject() method
     // For now, we'll initialize to 100% and update when that's available
-    helix::fmt::format_percent(flow_pct, flow_override_buf_, sizeof(flow_override_buf_));
+    helix::format::format_percent(flow_pct, flow_override_buf_, sizeof(flow_override_buf_));
     lv_subject_copy_string(&flow_override_subject_, flow_override_buf_);
 }
 
@@ -1282,8 +1282,8 @@ void ControlsPanel::handle_flow_up() {
             };
             auto ctx = std::make_unique<Ctx>(Ctx{this, new_flow});
             helix::ui::queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
-                helix::fmt::format_percent(c->flow, c->panel->flow_override_buf_,
-                                           sizeof(c->panel->flow_override_buf_));
+                helix::format::format_percent(c->flow, c->panel->flow_override_buf_,
+                                              sizeof(c->panel->flow_override_buf_));
                 lv_subject_copy_string(&c->panel->flow_override_subject_,
                                        c->panel->flow_override_buf_);
             });
@@ -1316,8 +1316,8 @@ void ControlsPanel::handle_flow_down() {
             };
             auto ctx = std::make_unique<Ctx>(Ctx{this, new_flow});
             helix::ui::queue_update<Ctx>(std::move(ctx), [](Ctx* c) {
-                helix::fmt::format_percent(c->flow, c->panel->flow_override_buf_,
-                                           sizeof(c->panel->flow_override_buf_));
+                helix::format::format_percent(c->flow, c->panel->flow_override_buf_,
+                                              sizeof(c->panel->flow_override_buf_));
                 lv_subject_copy_string(&c->panel->flow_override_subject_,
                                        c->panel->flow_override_buf_);
             });
@@ -1339,7 +1339,7 @@ void ControlsPanel::handle_fan_slider_changed(int value) {
 
     // Optimistic update - show new value immediately without waiting for Moonraker
     if (value > 0) {
-        helix::fmt::format_percent(value, fan_speed_buf_, sizeof(fan_speed_buf_));
+        helix::format::format_percent(value, fan_speed_buf_, sizeof(fan_speed_buf_));
     } else {
         std::snprintf(fan_speed_buf_, sizeof(fan_speed_buf_), "Off");
     }
@@ -1525,7 +1525,7 @@ void ControlsPanel::update_secondary_fan_speed(const std::string& object_name, i
         if (row.object_name == object_name && row.speed_label && lv_obj_is_valid(row.speed_label)) {
             char speed_buf[16];
             if (speed_pct > 0) {
-                helix::fmt::format_percent(speed_pct, speed_buf, sizeof(speed_buf));
+                helix::format::format_percent(speed_pct, speed_buf, sizeof(speed_buf));
             } else {
                 std::snprintf(speed_buf, sizeof(speed_buf), "Off");
             }

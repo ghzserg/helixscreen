@@ -13,7 +13,10 @@
 
 // Forward declarations
 class MoonrakerAPI;
+namespace helix {
 class MoonrakerClient;
+}
+using helix::MoonrakerClient;
 
 /**
  * @file ams_backend_valgace.h

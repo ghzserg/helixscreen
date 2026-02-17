@@ -8,7 +8,7 @@
 
 #include "../catch_amalgamated.hpp"
 
-using namespace helix::fmt;
+using namespace helix::format;
 
 // =============================================================================
 // UNAVAILABLE constant

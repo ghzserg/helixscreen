@@ -584,7 +584,7 @@ void PrintStatusPanel::cleanup() {
 // ============================================================================
 
 void PrintStatusPanel::format_time(int seconds, char* buf, size_t buf_size) {
-    std::string formatted = helix::fmt::duration_padded(seconds);
+    std::string formatted = helix::format::duration_padded(seconds);
     std::snprintf(buf, buf_size, "%s", formatted.c_str());
 }
 
@@ -748,7 +748,8 @@ void PrintStatusPanel::update_all_displays() {
     }
 
     // Progress text
-    helix::fmt::format_percent(current_progress_, progress_text_buf_, sizeof(progress_text_buf_));
+    helix::format::format_percent(current_progress_, progress_text_buf_,
+                                  sizeof(progress_text_buf_));
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 
     // Layer text (prefix with ~ when estimated from progress)
@@ -761,8 +762,9 @@ void PrintStatusPanel::update_all_displays() {
     // Filament used text
     int filament_mm = lv_subject_get_int(get_printer_state().get_print_filament_used_subject());
     if (filament_mm > 0) {
-        std::string fil_str = helix::fmt::format_filament_length(static_cast<double>(filament_mm)) +
-                              " " + lv_tr("used");
+        std::string fil_str =
+            helix::format::format_filament_length(static_cast<double>(filament_mm)) + " " +
+            lv_tr("used");
         std::strncpy(filament_used_text_buf_, fil_str.c_str(), sizeof(filament_used_text_buf_) - 1);
         filament_used_text_buf_[sizeof(filament_used_text_buf_) - 1] = '\0';
     } else {
@@ -791,20 +793,20 @@ void PrintStatusPanel::update_all_displays() {
     lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
 
     // Heater status text (Off / Heating... / Ready)
-    auto nozzle_heater = helix::fmt::heater_display(nozzle_current_, nozzle_target_);
+    auto nozzle_heater = helix::format::heater_display(nozzle_current_, nozzle_target_);
     std::snprintf(nozzle_status_buf_, sizeof(nozzle_status_buf_), "%s",
                   nozzle_heater.status.c_str());
     lv_subject_copy_string(&nozzle_status_subject_, nozzle_status_buf_);
 
-    auto bed_heater = helix::fmt::heater_display(bed_current_, bed_target_);
+    auto bed_heater = helix::format::heater_display(bed_current_, bed_target_);
     std::snprintf(bed_status_buf_, sizeof(bed_status_buf_), "%s", bed_heater.status.c_str());
     lv_subject_copy_string(&bed_status_subject_, bed_status_buf_);
 
     // Speeds
-    helix::fmt::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
+    helix::format::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
     lv_subject_copy_string(&speed_subject_, speed_buf_);
 
-    helix::fmt::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
+    helix::format::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
     lv_subject_copy_string(&flow_subject_, flow_buf_);
 
     // Update pause button icon and label based on state
@@ -1139,12 +1141,12 @@ void PrintStatusPanel::on_temperature_changed() {
                             bed_temp_buf_, sizeof(bed_temp_buf_));
     lv_subject_copy_string(&bed_temp_subject_, bed_temp_buf_);
 
-    auto nozzle_heater = helix::fmt::heater_display(nozzle_current_, nozzle_target_);
+    auto nozzle_heater = helix::format::heater_display(nozzle_current_, nozzle_target_);
     std::snprintf(nozzle_status_buf_, sizeof(nozzle_status_buf_), "%s",
                   nozzle_heater.status.c_str());
     lv_subject_copy_string(&nozzle_status_subject_, nozzle_status_buf_);
 
-    auto bed_heater = helix::fmt::heater_display(bed_current_, bed_target_);
+    auto bed_heater = helix::format::heater_display(bed_current_, bed_target_);
     std::snprintf(bed_status_buf_, sizeof(bed_status_buf_), "%s", bed_heater.status.c_str());
     lv_subject_copy_string(&bed_status_subject_, bed_status_buf_);
 
@@ -1174,7 +1176,8 @@ void PrintStatusPanel::on_print_progress_changed(int progress) {
     }
 
     // Update progress text
-    helix::fmt::format_percent(current_progress_, progress_text_buf_, sizeof(progress_text_buf_));
+    helix::format::format_percent(current_progress_, progress_text_buf_,
+                                  sizeof(progress_text_buf_));
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 
     // Update progress bar with smooth animation (300ms ease-out) if animations enabled
@@ -1188,8 +1191,9 @@ void PrintStatusPanel::on_print_progress_changed(int progress) {
     // Update filament used text (evolves during active printing)
     int filament_mm = lv_subject_get_int(get_printer_state().get_print_filament_used_subject());
     if (filament_mm > 0) {
-        std::string fil_str = helix::fmt::format_filament_length(static_cast<double>(filament_mm)) +
-                              " " + lv_tr("used");
+        std::string fil_str =
+            helix::format::format_filament_length(static_cast<double>(filament_mm)) + " " +
+            lv_tr("used");
         std::strncpy(filament_used_text_buf_, fil_str.c_str(), sizeof(filament_used_text_buf_) - 1);
         filament_used_text_buf_[sizeof(filament_used_text_buf_) - 1] = '\0';
     } else {
@@ -1398,7 +1402,7 @@ void PrintStatusPanel::on_print_filename_changed(const char* filename) {
 void PrintStatusPanel::on_speed_factor_changed(int speed) {
     speed_percent_ = speed;
     if (subjects_initialized_) {
-        helix::fmt::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
+        helix::format::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
         lv_subject_copy_string(&speed_subject_, speed_buf_);
     }
     spdlog::trace("[{}] Speed factor updated: {}%", get_name(), speed);
@@ -1407,7 +1411,7 @@ void PrintStatusPanel::on_speed_factor_changed(int speed) {
 void PrintStatusPanel::on_flow_factor_changed(int flow) {
     flow_percent_ = flow;
     if (subjects_initialized_) {
-        helix::fmt::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
+        helix::format::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
         lv_subject_copy_string(&flow_subject_, flow_buf_);
     }
     spdlog::trace("[{}] Flow factor updated: {}%", get_name(), flow);
@@ -2210,7 +2214,8 @@ void PrintStatusPanel::set_progress(int percent) {
         current_progress_ = 100;
     if (!subjects_initialized_)
         return;
-    helix::fmt::format_percent(current_progress_, progress_text_buf_, sizeof(progress_text_buf_));
+    helix::format::format_percent(current_progress_, progress_text_buf_,
+                                  sizeof(progress_text_buf_));
     lv_subject_copy_string(&progress_text_subject_, progress_text_buf_);
 }
 
@@ -2244,9 +2249,9 @@ void PrintStatusPanel::set_speeds(int speed_pct, int flow_pct) {
     flow_percent_ = flow_pct;
     if (!subjects_initialized_)
         return;
-    helix::fmt::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
+    helix::format::format_percent(speed_percent_, speed_buf_, sizeof(speed_buf_));
     lv_subject_copy_string(&speed_subject_, speed_buf_);
-    helix::fmt::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
+    helix::format::format_percent(flow_percent_, flow_buf_, sizeof(flow_buf_));
     lv_subject_copy_string(&flow_subject_, flow_buf_);
 }
 

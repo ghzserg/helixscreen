@@ -486,9 +486,10 @@ void WidthSensorManager::update_subjects() {
     if (diameter >= 0) {
         // Diameter is stored as mm * 1000, so divide to get mm with 2 decimal places
         float diameter_mm = diameter / 1000.0f;
-        helix::fmt::format_diameter_mm(diameter_mm, diameter_text_buf_, sizeof(diameter_text_buf_));
+        helix::format::format_diameter_mm(diameter_mm, diameter_text_buf_,
+                                          sizeof(diameter_text_buf_));
     } else {
-        snprintf(diameter_text_buf_, sizeof(diameter_text_buf_), "%s", helix::fmt::UNAVAILABLE);
+        snprintf(diameter_text_buf_, sizeof(diameter_text_buf_), "%s", helix::format::UNAVAILABLE);
     }
     lv_subject_copy_string(&diameter_text_, diameter_text_buf_);
 

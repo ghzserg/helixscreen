@@ -13,7 +13,10 @@
 #include <memory>
 
 // Forward declarations
+namespace helix {
 class Config;
+}
+using helix::Config;
 namespace helix::plugin {
 class PluginManager;
 }

@@ -202,7 +202,7 @@ void FanControlOverlay::populate_fans() {
                 lv_obj_t* speed_label = lv_obj_find_by_name(card, "speed_label");
                 if (speed_label) {
                     char speed_str[16];
-                    helix::fmt::format_percent(fan.speed_percent, speed_str, sizeof(speed_str));
+                    helix::format::format_percent(fan.speed_percent, speed_str, sizeof(speed_str));
                     lv_label_set_text(speed_label, speed_str);
                 }
 
@@ -240,7 +240,7 @@ void FanControlOverlay::update_fan_speeds() {
                 // Update speed label
                 if (card_info.speed_label) {
                     char speed_str[16];
-                    helix::fmt::format_percent(fan.speed_percent, speed_str, sizeof(speed_str));
+                    helix::format::format_percent(fan.speed_percent, speed_str, sizeof(speed_str));
                     lv_label_set_text(card_info.speed_label, speed_str);
                 }
                 // Update arc indicator

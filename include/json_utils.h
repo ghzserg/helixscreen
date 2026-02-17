@@ -7,7 +7,7 @@
 
 #include "hv/json.hpp"
 
-namespace helix::json {
+namespace helix::json_util {
 
 /// Safely extract a string from a JSON field that may be null.
 /// nlohmann .value("key", "") throws type_error.302 when the field is JSON null.
@@ -80,4 +80,4 @@ inline double safe_double(const nlohmann::json& j, const char* key, double def =
     return def;
 }
 
-} // namespace helix::json
+} // namespace helix::json_util

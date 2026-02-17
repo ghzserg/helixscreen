@@ -183,8 +183,8 @@ void SpoolmanListView::configure_row(lv_obj_t* row, const SpoolInfo& spool, int 
     lv_obj_t* percent_label = lv_obj_find_by_name(row, "percent_text");
     if (percent_label) {
         char percent_buf[16];
-        helix::fmt::format_percent(static_cast<int>(spool.remaining_percent()), percent_buf,
-                                   sizeof(percent_buf));
+        helix::format::format_percent(static_cast<int>(spool.remaining_percent()), percent_buf,
+                                      sizeof(percent_buf));
         lv_label_set_text(percent_label, percent_buf);
     }
 

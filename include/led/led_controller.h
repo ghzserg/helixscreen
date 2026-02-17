@@ -12,7 +12,10 @@
 #include "hv/json.hpp"
 
 class MoonrakerAPI;
+namespace helix {
 class MoonrakerClient;
+}
+using helix::MoonrakerClient;
 
 namespace helix {
 class PrinterDiscovery;

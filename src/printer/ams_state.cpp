@@ -839,7 +839,7 @@ void AmsState::sync_dryer_from_backend() {
 
         // Format time remaining text
         if (dryer.active && dryer.remaining_min > 0) {
-            std::string time_str = helix::fmt::duration_remaining(dryer.remaining_min * 60);
+            std::string time_str = helix::format::duration_remaining(dryer.remaining_min * 60);
             std::strncpy(dryer_time_text_buf_, time_str.c_str(), sizeof(dryer_time_text_buf_) - 1);
             dryer_time_text_buf_[sizeof(dryer_time_text_buf_) - 1] = '\0';
         } else {
@@ -1037,7 +1037,7 @@ void AmsState::update_modal_text_subjects() {
     lv_subject_copy_string(&dryer_modal_temp_text_, dryer_modal_temp_text_buf_);
 
     // Format duration using utility (e.g., "4h", "30m", "4h 30m")
-    std::string duration = helix::fmt::duration(modal_duration_min_ * 60);
+    std::string duration = helix::format::duration(modal_duration_min_ * 60);
     snprintf(dryer_modal_duration_text_buf_, sizeof(dryer_modal_duration_text_buf_), "%s",
              duration.c_str());
     lv_subject_copy_string(&dryer_modal_duration_text_, dryer_modal_duration_text_buf_);

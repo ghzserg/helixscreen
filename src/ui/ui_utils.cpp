@@ -98,7 +98,7 @@ std::string resolve_gcode_filename(const std::string& path) {
 // ============================================================================
 
 std::string format_print_time(int minutes) {
-    return helix::fmt::duration_from_minutes(minutes);
+    return helix::format::duration_from_minutes(minutes);
 }
 
 std::string format_filament_weight(float grams) {
@@ -115,7 +115,7 @@ std::string format_filament_weight(float grams) {
 
 std::string format_layer_count(uint32_t layer_count) {
     if (layer_count == 0) {
-        return helix::fmt::UNAVAILABLE;
+        return helix::format::UNAVAILABLE;
     }
     char buf[32];
     if (layer_count == 1) {
@@ -128,7 +128,7 @@ std::string format_layer_count(uint32_t layer_count) {
 
 std::string format_print_height(double height_mm) {
     if (height_mm <= 0.0) {
-        return helix::fmt::UNAVAILABLE;
+        return helix::format::UNAVAILABLE;
     }
     char buf[32];
     if (height_mm < 1.0) {
@@ -167,7 +167,7 @@ const char* get_time_format_string() {
 
 std::string format_time(const struct tm* tm_info) {
     if (!tm_info) {
-        return helix::fmt::UNAVAILABLE;
+        return helix::format::UNAVAILABLE;
     }
 
     char buf[16];

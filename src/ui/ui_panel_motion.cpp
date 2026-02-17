@@ -108,13 +108,13 @@ void MotionPanel::init_subjects() {
     // Update X position display
     float x = static_cast<float>(helix::units::from_centimm(x_centimm));
     current_x_ = x;
-    helix::fmt::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
+    helix::format::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
     lv_subject_copy_string(&pos_x_subject_, pos_x_buf_);
 
     // Update Y position display
     float y = static_cast<float>(helix::units::from_centimm(y_centimm));
     current_y_ = y;
-    helix::fmt::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
+    helix::format::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
     lv_subject_copy_string(&pos_y_subject_, pos_y_buf_);
 
     // Update Z position display (uses gcode_z_centimm_ and actual_z_centimm_ we just set)
@@ -279,7 +279,7 @@ void MotionPanel::register_position_observers() {
                 return;
             float x = static_cast<float>(helix::units::from_centimm(centimm));
             self->current_x_ = x;
-            helix::fmt::format_distance_mm(x, 2, self->pos_x_buf_, sizeof(self->pos_x_buf_));
+            helix::format::format_distance_mm(x, 2, self->pos_x_buf_, sizeof(self->pos_x_buf_));
             lv_subject_copy_string(&self->pos_x_subject_, self->pos_x_buf_);
         });
 
@@ -290,7 +290,7 @@ void MotionPanel::register_position_observers() {
                 return;
             float y = static_cast<float>(helix::units::from_centimm(centimm));
             self->current_y_ = y;
-            helix::fmt::format_distance_mm(y, 2, self->pos_y_buf_, sizeof(self->pos_y_buf_));
+            helix::format::format_distance_mm(y, 2, self->pos_y_buf_, sizeof(self->pos_y_buf_));
             lv_subject_copy_string(&self->pos_y_subject_, self->pos_y_buf_);
         });
 
@@ -380,7 +380,7 @@ void MotionPanel::update_z_display() {
         // Special case: compound format not covered by formatter
         snprintf(pos_z_buf_, sizeof(pos_z_buf_), "%.2f [%.2f] mm", gcode_z, actual_z);
     } else {
-        helix::fmt::format_distance_mm(gcode_z, 2, pos_z_buf_, sizeof(pos_z_buf_));
+        helix::format::format_distance_mm(gcode_z, 2, pos_z_buf_, sizeof(pos_z_buf_));
     }
     lv_subject_copy_string(&pos_z_subject_, pos_z_buf_);
 }
@@ -473,8 +473,8 @@ void MotionPanel::set_position(float x, float y, float z) {
         return;
 
     // Update subjects (will automatically update bound UI elements)
-    helix::fmt::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
-    helix::fmt::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
+    helix::format::format_distance_mm(x, 2, pos_x_buf_, sizeof(pos_x_buf_));
+    helix::format::format_distance_mm(y, 2, pos_y_buf_, sizeof(pos_y_buf_));
 
     lv_subject_copy_string(&pos_x_subject_, pos_x_buf_);
     lv_subject_copy_string(&pos_y_subject_, pos_y_buf_);

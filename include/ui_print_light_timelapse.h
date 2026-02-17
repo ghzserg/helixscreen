@@ -12,7 +12,10 @@
 
 // Forward declarations
 class MoonrakerAPI;
+namespace helix {
 class PrinterState;
+}
+using helix::PrinterState;
 
 /**
  * @file ui_print_light_timelapse.h

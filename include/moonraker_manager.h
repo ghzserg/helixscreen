@@ -14,10 +14,19 @@
 #include <queue>
 
 // Forward declarations
+namespace helix {
 class Config;
+}
+using helix::Config;
+namespace helix {
 class MoonrakerClient;
+}
+using helix::MoonrakerClient;
 class MoonrakerAPI;
+namespace helix {
 class PrinterState;
+}
+using helix::PrinterState;
 class PrintStartCollector;
 
 // Need full enum definition for inline helper function

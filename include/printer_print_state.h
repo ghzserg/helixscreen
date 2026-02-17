@@ -10,9 +10,15 @@
 #include "hv/json.hpp"
 
 // Forward declaration - enums are defined in printer_state.h
+namespace helix {
 enum class PrintJobState;
+}
+namespace helix {
 enum class PrintOutcome;
+}
+namespace helix {
 enum class PrintStartPhase;
+}
 
 namespace helix {
 

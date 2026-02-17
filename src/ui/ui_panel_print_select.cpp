@@ -970,7 +970,8 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     // Format layer height (e.g., "0.24 mm")
     char layer_height_buf[32];
     if (layer_height > 0.0) {
-        helix::fmt::format_distance_mm(layer_height, 2, layer_height_buf, sizeof(layer_height_buf));
+        helix::format::format_distance_mm(layer_height, 2, layer_height_buf,
+                                          sizeof(layer_height_buf));
     } else {
         snprintf(layer_height_buf, sizeof(layer_height_buf), "-");
     }

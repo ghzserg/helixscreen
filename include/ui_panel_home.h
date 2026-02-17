@@ -21,7 +21,10 @@ class WiFiManager;
 }
 class EthernetManager;
 class TempControlPanel;
-enum class PrintJobState : int;
+namespace helix {
+enum class PrintJobState;
+}
+using helix::PrintJobState;
 
 /**
  * @brief Home panel - Main dashboard showing printer status and quick actions

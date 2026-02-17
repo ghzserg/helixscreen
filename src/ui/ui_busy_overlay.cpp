@@ -172,7 +172,7 @@ void BusyOverlay::show(const std::string& initial_text, uint32_t grace_period_ms
 void BusyOverlay::set_progress(const std::string& operation, float percent) {
     // Format: "Operation... XX%"
     char percent_buf[12];
-    helix::fmt::format_percent_float(percent, 0, percent_buf, sizeof(percent_buf));
+    helix::format::format_percent_float(percent, 0, percent_buf, sizeof(percent_buf));
     char buf[128];
     snprintf(buf, sizeof(buf), "%s... %s", operation.c_str(), percent_buf);
 

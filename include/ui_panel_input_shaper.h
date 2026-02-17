@@ -18,7 +18,10 @@
 #include <string>
 #include <vector>
 
+namespace helix {
 class MoonrakerClient;
+}
+using helix::MoonrakerClient;
 class MoonrakerAPI;
 
 /**

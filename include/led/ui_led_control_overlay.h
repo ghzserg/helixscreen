@@ -8,7 +8,10 @@
 #include "overlay_base.h"
 #include "subject_managed_panel.h"
 
+namespace helix {
 class PrinterState;
+}
+using helix::PrinterState;
 class MoonrakerAPI;
 
 namespace helix::led {

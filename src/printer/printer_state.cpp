@@ -45,6 +45,8 @@
 // PrintJobState Free Functions
 // ============================================================================
 
+namespace helix {
+
 PrintJobState parse_print_job_state(const char* state_str) {
     if (!state_str) {
         return PrintJobState::STANDBY;
@@ -88,6 +90,8 @@ const char* print_job_state_to_string(PrintJobState state) {
         return "Unknown";
     }
 }
+
+} // namespace helix
 
 // ============================================================================
 // PrinterState Implementation

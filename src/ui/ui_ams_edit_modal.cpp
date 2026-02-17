@@ -449,7 +449,7 @@ void AmsEditModal::update_ui() {
     }
 
     // Update remaining percentage label via subject
-    helix::fmt::format_percent(remaining_pct, remaining_pct_buf_, sizeof(remaining_pct_buf_));
+    helix::format::format_percent(remaining_pct, remaining_pct_buf_, sizeof(remaining_pct_buf_));
     lv_subject_copy_string(&remaining_pct_subject_, remaining_pct_buf_);
 
     // Update progress bar fill width (shown in view mode)
@@ -649,7 +649,7 @@ void AmsEditModal::handle_remaining_changed(int percent) {
     }
 
     // Update the percentage label via subject
-    helix::fmt::format_percent(percent, remaining_pct_buf_, sizeof(remaining_pct_buf_));
+    helix::format::format_percent(percent, remaining_pct_buf_, sizeof(remaining_pct_buf_));
     lv_subject_copy_string(&remaining_pct_subject_, remaining_pct_buf_);
 
     // Update slot info remaining weight based on percentage
@@ -713,8 +713,8 @@ void AmsEditModal::handle_remaining_cancel() {
     }
 
     // Revert the percentage label via subject
-    helix::fmt::format_percent(remaining_pre_edit_pct_, remaining_pct_buf_,
-                               sizeof(remaining_pct_buf_));
+    helix::format::format_percent(remaining_pre_edit_pct_, remaining_pct_buf_,
+                                  sizeof(remaining_pct_buf_));
     lv_subject_copy_string(&remaining_pct_subject_, remaining_pct_buf_);
 
     // Revert the remaining weight in working_info_

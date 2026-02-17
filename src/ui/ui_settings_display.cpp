@@ -195,8 +195,8 @@ void DisplaySettingsOverlay::init_brightness_controls() {
         lv_slider_set_value(brightness_slider, brightness, LV_ANIM_OFF);
 
         // Update subject (label binding happens in XML)
-        helix::fmt::format_percent(brightness, brightness_value_buf_,
-                                   sizeof(brightness_value_buf_));
+        helix::format::format_percent(brightness, brightness_value_buf_,
+                                      sizeof(brightness_value_buf_));
         lv_subject_copy_string(&brightness_value_subject_, brightness_value_buf_);
 
         spdlog::debug("[{}] Brightness initialized to {}%", get_name(), brightness);
@@ -340,7 +340,7 @@ void DisplaySettingsOverlay::handle_brightness_changed(int value) {
     SettingsManager::instance().set_brightness(value);
 
     // Update subject (label binding happens in XML)
-    helix::fmt::format_percent(value, brightness_value_buf_, sizeof(brightness_value_buf_));
+    helix::format::format_percent(value, brightness_value_buf_, sizeof(brightness_value_buf_));
     lv_subject_copy_string(&brightness_value_subject_, brightness_value_buf_);
 }
 

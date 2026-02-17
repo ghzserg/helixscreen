@@ -768,7 +768,7 @@ void SettingsPanel::fetch_print_hours() {
 
     api_->get_history_totals(
         [this](const PrintHistoryTotals& totals) {
-            std::string formatted = helix::fmt::duration(static_cast<int>(totals.total_time));
+            std::string formatted = helix::format::duration(static_cast<int>(totals.total_time));
             helix::ui::queue_update([this, formatted]() {
                 if (subjects_initialized_) {
                     lv_subject_copy_string(&print_hours_value_subject_, formatted.c_str());

@@ -447,7 +447,7 @@ void HistoryDashboardPanel::update_statistics(const std::vector<PrintHistoryJob>
 // ============================================================================
 
 std::string HistoryDashboardPanel::format_duration(double seconds) {
-    return helix::fmt::duration(static_cast<int>(seconds));
+    return helix::format::duration(static_cast<int>(seconds));
 }
 
 std::string HistoryDashboardPanel::format_filament(double mm) {

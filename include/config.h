@@ -17,6 +17,8 @@
 
 #include <string>
 
+namespace helix {
+
 /**
  * @brief Configuration for a user-customizable macro button
  *
@@ -261,3 +263,8 @@ class Config {
      */
     static Config* get_instance();
 };
+
+} // namespace helix
+using helix::Config;
+using helix::CURRENT_CONFIG_VERSION;
+using helix::MacroConfig;

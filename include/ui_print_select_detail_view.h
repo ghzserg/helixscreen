@@ -17,7 +17,10 @@
 
 // Forward declarations
 class MoonrakerAPI;
+namespace helix {
 class PrinterState;
+}
+using helix::PrinterState;
 
 namespace helix::ui {
 

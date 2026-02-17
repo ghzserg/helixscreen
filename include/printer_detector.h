@@ -8,7 +8,10 @@
 #include <vector>
 
 // Forward declarations for auto_detect_and_save()
+namespace helix {
 class Config;
+}
+using helix::Config;
 namespace helix {
 class PrinterDiscovery;
 }

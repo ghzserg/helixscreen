@@ -534,11 +534,11 @@ void HumiditySensorManager::update_subjects() {
 
     // Update text subject: format as "45%" or "—" if unavailable
     if (chamber_humidity >= 0) {
-        helix::fmt::format_humidity(chamber_humidity, chamber_humidity_text_buf_,
-                                    sizeof(chamber_humidity_text_buf_));
+        helix::format::format_humidity(chamber_humidity, chamber_humidity_text_buf_,
+                                       sizeof(chamber_humidity_text_buf_));
     } else {
         snprintf(chamber_humidity_text_buf_, sizeof(chamber_humidity_text_buf_), "%s",
-                 helix::fmt::UNAVAILABLE);
+                 helix::format::UNAVAILABLE);
     }
     lv_subject_copy_string(&chamber_humidity_text_, chamber_humidity_text_buf_);
 

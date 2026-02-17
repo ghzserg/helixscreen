@@ -32,6 +32,8 @@
 
 #include "hv/json.hpp" // libhv's nlohmann json (via cpputil/)
 
+namespace helix {
+
 /**
  * @brief Network connection status states
  */
@@ -1680,3 +1682,15 @@ class PrinterState {
      */
     void update_gcode_modification_visibility();
 };
+
+} // namespace helix
+using helix::KlippyState;
+using helix::NetworkStatus;
+using helix::parse_print_job_state;
+using helix::print_job_state_to_string;
+using helix::PrinterState;
+using helix::PrinterStatus;
+using helix::PrintJobState;
+using helix::PrintOutcome;
+using helix::PrintStartPhase;
+using helix::ZOffsetCalibrationStrategy;

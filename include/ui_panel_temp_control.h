@@ -18,7 +18,10 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class PrinterState;
+}
+using helix::PrinterState;
 class MoonrakerAPI;
 class TempControlPanel;
 

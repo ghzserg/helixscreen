@@ -61,7 +61,7 @@ HomePanel::HomePanel(PrinterState& printer_state, MoonrakerAPI* api)
     : PanelBase(printer_state, api) {
     // Initialize buffer contents with default values
     std::strcpy(status_buffer_, "Welcome to HelixScreen");
-    std::snprintf(temp_buffer_, sizeof(temp_buffer_), "%s°C", helix::fmt::UNAVAILABLE);
+    std::snprintf(temp_buffer_, sizeof(temp_buffer_), "%s°C", helix::format::UNAVAILABLE);
     std::strcpy(network_label_buffer_, "WiFi");
 
     // Subscribe to PrinterState subjects (ObserverGuard handles cleanup)
@@ -856,7 +856,7 @@ void HomePanel::on_extruder_temp_changed(int temp_centi) {
 
     // Format temperature for display and update the string subject
     // Guard: Observer callback fires during constructor before init_subjects()
-    helix::fmt::format_temp(temp_deg, temp_buffer_, sizeof(temp_buffer_));
+    helix::format::format_temp(temp_deg, temp_buffer_, sizeof(temp_buffer_));
     if (subjects_initialized_) {
         lv_subject_copy_string(&temp_subject_, temp_buffer_);
     }
@@ -1054,7 +1054,7 @@ void HomePanel::update(const char* status_text, int temp) {
     }
 
     char buf[32];
-    helix::fmt::format_temp(temp, buf, sizeof(buf));
+    helix::format::format_temp(temp, buf, sizeof(buf));
     lv_subject_copy_string(&temp_subject_, buf);
     spdlog::debug("[{}] Updated temp_text subject to: {}", get_name(), buf);
 }

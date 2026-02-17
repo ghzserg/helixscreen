@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cstdio>
 
-namespace helix::fmt {
+namespace helix::format {
 
 // =============================================================================
 // Percentage Formatting
@@ -306,4 +306,4 @@ HeaterDisplayResult heater_display(int current_centi, int target_centi) {
     return result;
 }
 
-} // namespace helix::fmt
+} // namespace helix::format

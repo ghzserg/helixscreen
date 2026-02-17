@@ -681,17 +681,17 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
     // Display raw Z values in stats (what Klipper actually measured)
     std::snprintf(max_label_buf_, sizeof(max_label_buf_), "Max [%.1f, %.1f]", max_x, max_y);
     lv_subject_copy_string(&bed_mesh_max_label_, max_label_buf_);
-    helix::fmt::format_distance_mm(max_z, 3, max_value_buf_, sizeof(max_value_buf_));
+    helix::format::format_distance_mm(max_z, 3, max_value_buf_, sizeof(max_value_buf_));
     lv_subject_copy_string(&bed_mesh_max_value_, max_value_buf_);
 
     std::snprintf(min_label_buf_, sizeof(min_label_buf_), "Min [%.1f, %.1f]", min_x, min_y);
     lv_subject_copy_string(&bed_mesh_min_label_, min_label_buf_);
-    helix::fmt::format_distance_mm(min_z, 3, min_value_buf_, sizeof(min_value_buf_));
+    helix::format::format_distance_mm(min_z, 3, min_value_buf_, sizeof(min_value_buf_));
     lv_subject_copy_string(&bed_mesh_min_value_, min_value_buf_);
 
     // Variance (range) is the same whether normalized or not
     float variance = max_z - min_z;
-    helix::fmt::format_distance_mm(variance, 3, variance_buf_, sizeof(variance_buf_));
+    helix::format::format_distance_mm(variance, 3, variance_buf_, sizeof(variance_buf_));
     lv_subject_copy_string(&bed_mesh_variance_, variance_buf_);
 
     // Cache mesh bounds
