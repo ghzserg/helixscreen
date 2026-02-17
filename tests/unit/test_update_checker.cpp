@@ -1259,3 +1259,41 @@ TEST_CASE("extract_installer_from_tarball: committed fixture tarballs",
         remove_dir(tmp);
     }
 }
+
+TEST_CASE("extract_installer_from_tarball: works with empty PATH (systemd regression)",
+          "[update_checker][installer][do_install][path]") {
+    // Regression test for the Pi "Installer not found" bug:
+    // systemd services run with a minimal PATH that may not include /usr/bin or /bin.
+    // extract_installer_from_tarball must use absolute tool paths (via resolve_tool),
+    // not bare names that depend on $PATH. If it uses bare names, execvp("tar", ...)
+    // exits 127 → extraction fails → "Installer not found".
+
+    std::string fixture_dir = get_update_fixture_dir();
+    REQUIRE(!fixture_dir.empty());
+
+    std::string tarball = fixture_dir + "helixscreen-pi-v99.0.0-test.tar.gz";
+    if (access(tarball.c_str(), R_OK) != 0) {
+        FAIL("Fixture file missing: " + tarball);
+    }
+
+    auto tmp = make_temp_dir("helix_path_test");
+    REQUIRE(!tmp.empty());
+
+    // Save and clear PATH to simulate a minimal systemd environment
+    const char* original_path = std::getenv("PATH");
+    setenv("PATH", "", 1); // empty PATH — bare execvp("tar",...) would fail
+
+    auto result = UpdateChecker::extract_installer_from_tarball(tarball, tmp);
+
+    // Restore PATH before assertions (even if they fail)
+    if (original_path) {
+        setenv("PATH", original_path, 1);
+    } else {
+        unsetenv("PATH");
+    }
+
+    remove_dir(tmp);
+
+    // Must succeed: resolve_tool() finds tar/cp/gunzip via absolute paths
+    REQUIRE(!result.empty());
+}
