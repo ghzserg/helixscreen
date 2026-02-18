@@ -960,25 +960,33 @@ void AmsState::sync_current_loaded_from_backend() {
             lv_subject_copy_string(&current_material_text_, label.c_str());
         }
 
-        // Set slot label with unit name (e.g., "Box Turtle 1 · Slot 1")
+        // Set slot label with unit name
         {
             AmsSystemInfo sys = backend->get_system_info();
-            const char* unit_name = nullptr;
-            int local_slot = slot_index + 1; // 1-based default
-            for (const auto& unit : sys.units) {
-                if (slot_index >= unit.first_slot_global_index &&
-                    slot_index < unit.first_slot_global_index + unit.slot_count) {
-                    unit_name = unit.name.c_str();
-                    local_slot = slot_index - unit.first_slot_global_index + 1;
-                    break;
-                }
-            }
-            if (unit_name && sys.units.size() > 1) {
-                snprintf(current_slot_text_buf_, sizeof(current_slot_text_buf_),
-                         "Current: %s · Slot %d", unit_name, local_slot);
+
+            if (is_tool_changer(sys.type) && sys.units.empty()) {
+                // Pure tool changer with no AMS units — show tool index (0-based)
+                snprintf(current_slot_text_buf_, sizeof(current_slot_text_buf_), "Current: Tool %d",
+                         slot_index);
             } else {
-                snprintf(current_slot_text_buf_, sizeof(current_slot_text_buf_), "Current: Slot %d",
-                         local_slot);
+                const char* unit_name = nullptr;
+                int local_slot = slot_index + 1; // 1-based default
+                for (const auto& unit : sys.units) {
+                    if (slot_index >= unit.first_slot_global_index &&
+                        slot_index < unit.first_slot_global_index + unit.slot_count) {
+                        unit_name = unit.name.c_str();
+                        local_slot = slot_index - unit.first_slot_global_index + 1;
+                        break;
+                    }
+                }
+                if (unit_name && sys.units.size() > 1) {
+                    // Multi-unit: break across two lines for readability
+                    snprintf(current_slot_text_buf_, sizeof(current_slot_text_buf_),
+                             "Current: %s\nSlot %d", unit_name, local_slot);
+                } else {
+                    snprintf(current_slot_text_buf_, sizeof(current_slot_text_buf_),
+                             "Current: Slot %d", local_slot);
+                }
             }
             lv_subject_copy_string(&current_slot_text_, current_slot_text_buf_);
         }
