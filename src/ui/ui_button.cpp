@@ -84,8 +84,8 @@ static const lv_font_t* get_button_icon_font() {
 static bool is_mdi_icon_font(const lv_font_t* font) {
     if (!font)
         return false;
-    return font == &mdi_icons_14 || font == &mdi_icons_16 || font == &mdi_icons_24 || font == &mdi_icons_32 ||
-           font == &mdi_icons_48 || font == &mdi_icons_64;
+    return font == &mdi_icons_14 || font == &mdi_icons_16 || font == &mdi_icons_24 ||
+           font == &mdi_icons_32 || font == &mdi_icons_48 || font == &mdi_icons_64;
 }
 
 /**
