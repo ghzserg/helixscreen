@@ -73,7 +73,7 @@ RUN wget -q "https://toolchains.bootlin.com/downloads/releases/toolchains/armv7-
 # Bootlin's musl toolchain doesn't include zlib, so we build it from source.
 WORKDIR /tmp
 RUN export PATH="/opt/arm-musl-toolchain/bin:$PATH" && \
-    wget -q https://zlib.net/zlib-1.3.2.tar.gz && \
+    wget -q https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz && \
     tar xzf zlib-1.3.2.tar.gz && \
     cd zlib-1.3.2 && \
     CHOST=arm-buildroot-linux-musleabihf ./configure --static \
