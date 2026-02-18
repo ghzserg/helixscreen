@@ -31,11 +31,16 @@ HelixScreen is a touchscreen interface for Klipper 3D printers. It connects to y
 
 **Supported with auto-detection:**
 - QIDI printers — detection heuristics and print start profile included
-- Snapmaker U1 — cross-compile target with 480x320 display support
 
 **Binaries available but untested:**
 - Creality K1 series (K1, K1C, K1 Max) — requires [Simple AF](https://github.com/pellcorp/creality) community firmware
 - Creality K2 series (K2, K2 Pro, K2 Plus) — stock firmware has Moonraker on port 4408, no community firmware needed
+- Snapmaker U1 — cross-compile target with 480x320 display support exists but has not been tested on hardware
+
+**Active testing underway:**
+- SOVOL SV06 — uses Klipper on a Raspberry Pi; install with the [MainsailOS instructions](#raspberry-pi--mainsailos-installation)
+- SOVOL SV08 — uses Klipper on a Raspberry Pi; install with the [MainsailOS instructions](#raspberry-pi--mainsailos-installation)
+- Elegoo Centauri Carbon 1 — dedicated build target (`cc1`); prebuilt binaries included in releases but no installer support yet (manual deployment only)
 
 **Should work but not yet tested:**
 - Other Voron models

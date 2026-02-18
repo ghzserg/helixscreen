@@ -14,6 +14,7 @@ This guide walks you through installing HelixScreen on your 3D printer's touchsc
 - [Adventurer 5M Installation](#adventurer-5m-installation)
 - [Creality K1 Installation](#creality-k1-series-simple-af)
 - [Creality K2 Series (Untested)](#creality-k2-series-untested)
+- [Elegoo Centauri Carbon 1 (Testing)](#elegoo-centauri-carbon-1-testing)
 - [First Boot & Setup Wizard](#first-boot--setup-wizard)
 - [Display Configuration](#display-configuration)
 - [Starting on Boot](#starting-on-boot)
@@ -53,6 +54,8 @@ After installation, the setup wizard will guide you through initial configuratio
 ## Prerequisites
 
 ### MainsailOS (Raspberry Pi)
+
+This covers any Klipper printer with a Raspberry Pi running MainsailOS (or similar), including SOVOL SV06, SOVOL SV08, Voron, RatRig, and other printers where Klipper runs on a separate Pi.
 
 - **Hardware:**
   - Raspberry Pi 3, 4, or 5 (Pi 3 is minimum, Pi 4/5 recommended)
@@ -171,6 +174,27 @@ On uninstall, GuppyScreen is restored.
 - See `docs/printer-research/CREALITY_K2_PLUS_RESEARCH.md` for full research and open questions
 
 **If you want to help test**, run the diagnostic commands in the research doc (Section 13) and report back via [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues).
+
+### Elegoo Centauri Carbon 1 (Testing)
+
+> **Active testing is underway on this platform.** Prebuilt binaries are included in releases, but there is no installer script support yet — manual deployment only.
+
+- **Hardware:**
+  - Elegoo Centauri Carbon 1
+  - Stock touchscreen display
+  - Network connection
+
+- **Software:**
+  - Klipper + Moonraker running on the printer
+  - SSH access to the printer
+
+**Current status:**
+- Build target: `make cc1-docker` produces a static armv7-a binary
+- Deploy targets exist: `make deploy-cc1 CC1_HOST=<ip>`
+- Prebuilt `cc1` binaries are included in GitHub releases
+- No installer script support yet — manual deployment only
+
+**If you're testing on this printer**, please report your results via [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues) or [Discord](https://discord.gg/rZ9dB74V).
 
 ---
 

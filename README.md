@@ -141,7 +141,7 @@ Beta status. Core features are stable and improving with each release. Suitable 
 More features, way less resource usage (~10MB RAM vs ~50MB for KlipperScreen), and actively developed. See the [comparison table](#why-helixscreen).
 
 **Which printers are supported?**
-Any Klipper + Moonraker printer. Tested on Voron 2.4, Voron 0.2, Doron Velta, RatRig V-Core, FlashForge Adventurer 5M Pro, and QIDI printers. Snapmaker U1 support included. Both 64-bit and 32-bit Raspberry Pi OS are supported. Creality K1 and K2 series binaries are available but untested. The wizard auto-discovers your printer's capabilities.
+Any Klipper + Moonraker printer. Tested on Voron 2.4, Voron 0.2, Doron Velta, RatRig V-Core, FlashForge Adventurer 5M Pro, and QIDI printers. Active testing underway on SOVOL SV06, SOVOL SV08 (both use the Pi build), and Elegoo Centauri Carbon 1 (dedicated `cc1` build). Snapmaker U1 cross-compile target exists but is untested. Both 64-bit and 32-bit Raspberry Pi OS are supported. Creality K1 and K2 series binaries are available but untested. The wizard auto-discovers your printer's capabilities.
 
 **What screen sizes are supported?**
 800×480, 1024×600, and 1920×480 (ultrawide) are fully supported with auto-detecting layout system. Display rotation (0/90/180/270) is supported. Smaller displays like 480×320 (Snapmaker U1) are a work-in-progress.
