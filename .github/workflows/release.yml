@@ -137,12 +137,88 @@ jobs:
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
 
   # ============================================================================
+  # Build Android APKs (runs in parallel with embedded platform builds)
+  # ============================================================================
+  build-android:
+    name: Build (Android)
+    needs: [validate-shell]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 17
+
+    - name: Install Android NDK
+      run: |
+        yes | sudo ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;29.0.14206865" || true
+
+    - name: Cache Gradle
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: gradle-${{ hashFiles('android/**/*.gradle', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+        restore-keys: |
+          gradle-
+
+    - name: Build Android APKs (release)
+      working-directory: android
+      env:
+        ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
+        ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      run: ./gradlew assembleRelease
+
+    - name: Extract version
+      id: version
+      run: |
+        VERSION="${GITHUB_REF_NAME#v}"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Rename APKs
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        APK_DIR="android/app/build/outputs/apk/release"
+        mkdir -p release-apks
+
+        # Rename ABI-split APKs to our naming convention
+        for apk in "$APK_DIR"/*.apk; do
+          filename=$(basename "$apk")
+          case "$filename" in
+            *arm64-v8a*) cp "$apk" "release-apks/helixscreen-android-arm64-v${VERSION}.apk" ;;
+            *x86_64*)    cp "$apk" "release-apks/helixscreen-android-x86_64-v${VERSION}.apk" ;;
+            *universal*) cp "$apk" "release-apks/helixscreen-android-universal-v${VERSION}.apk" ;;
+          esac
+        done
+
+        echo "Android APKs:"
+        ls -lh release-apks/
+
+    - name: Upload Android artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-android
+        path: release-apks/*.apk
+        retention-days: 7
+
+  # ============================================================================
   # Create GitHub Release with all artifacts
   # ============================================================================
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [build-platforms]
+    needs: [build-platforms, build-android]
     permissions:
       contents: write  # Required to create releases
 
@@ -160,6 +236,7 @@ jobs:
         mkdir -p release-files
         find artifacts -name '*.tar.gz' -exec mv {} release-files/ \;
         find artifacts -name '*.zip' -exec mv {} release-files/ \;
+        find artifacts -name '*.apk' -exec mv {} release-files/ \;
         # Include install.sh so users can download it directly from the release
         cp scripts/install.sh release-files/
         echo "Release files:"
@@ -247,10 +324,18 @@ jobs:
         ./helix-screen
         ```
 
+        ### Android (Experimental)
+        Download the APK for your device architecture:
+        - **arm64**: `helixscreen-android-arm64-${{ steps.version.outputs.version }}.apk` (most Android phones/tablets)
+        - **x86_64**: `helixscreen-android-x86_64-${{ steps.version.outputs.version }}.apk` (emulators, Chromebooks)
+        - **universal**: `helixscreen-android-universal-${{ steps.version.outputs.version }}.apk` (all architectures)
+
+        Sideload via `adb install` or download directly on device.
+
         ## Checksums
 
         ```
-        $(cd release-files && sha256sum *.tar.gz *.zip)
+        $(cd release-files && sha256sum *.tar.gz *.zip *.apk 2>/dev/null)
         ```
         EOF
         fi
@@ -265,6 +350,7 @@ jobs:
         files: |
           release-files/*.tar.gz
           release-files/*.zip
+          release-files/*.apk
           release-files/install.sh
         fail_on_unmatched_files: true
       env:

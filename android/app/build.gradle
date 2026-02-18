@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+// Read version from project root VERSION.txt to stay in sync with embedded builds
+def versionFile = file("../../VERSION.txt")
+def helix_version = versionFile.text.trim()
+def versionParts = helix_version.split("\\.")
+def vMajor = versionParts[0].toInteger()
+def vMinor = versionParts[1].toInteger()
+def vPatch = versionParts[2].replaceAll("-.*", "").toInteger()
+
 android {
     namespace "org.helixscreen.app"
     compileSdkVersion 34
@@ -9,8 +17,8 @@ android {
         applicationId "org.helixscreen.app"
         minSdkVersion 28
         targetSdkVersion 34
-        versionCode 1
-        versionName "1.0.0"
+        versionCode vMajor * 10000 + vMinor * 100 + vPatch  // 0.10.4 → 1004
+        versionName helix_version
 
         externalNativeBuild {
             cmake {
@@ -20,10 +28,32 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            def ks = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig signingConfigs.release.storeFile ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            shrinkResources false
+        }
+    }
+
+    splits {
+        abi {
+            enable true
+            reset()
+            include "arm64-v8a", "x86_64"
+            universalApk true
         }
     }
 
