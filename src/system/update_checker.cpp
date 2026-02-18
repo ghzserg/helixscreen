@@ -1052,8 +1052,13 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
                 dup2(log_fd, STDERR_FILENO);
                 close(log_fd);
             }
-            // Use setsid() so install.sh gets its own session and won't be killed
-            // by the SIGTERM that systemd sends to the helix-screen cgroup.
+            // setsid() gives install.sh its own session so it isn't killed by
+            // SIGTERM propagation via the process group.  Note: this does NOT
+            // escape the systemd cgroup — install.sh therefore must not rely on
+            // surviving a `systemctl stop helixscreen` mid-install.  The script
+            // handles this by deferring the service stop to a final
+            // `systemctl restart` that systemd completes even if install.sh is
+            // killed during the stop phase (see scripts/install.sh main()).
             setsid();
             const char* argv[] = {install_script.c_str(), "--local", tarball_path.c_str(),
                                   "--update", nullptr};

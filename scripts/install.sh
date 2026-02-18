@@ -3012,12 +3012,15 @@ main() {
         clean_old_installation "$platform"
     fi
 
-    # Stop existing service if updating
-    if [ "$update_mode" = true ]; then
-        if [ ! -d "$INSTALL_DIR" ]; then
-            log_warn "No existing installation found. Performing fresh install."
-        fi
-        stop_service
+    # In update mode, do NOT stop the service before installing.
+    # On Linux, directory renames (the Phase 4/5 swap in extract_release) succeed
+    # even while the service is running — the old binary keeps its open file
+    # descriptors via inodes; the new binary is started by the restart below.
+    # Stopping first would kill the cgroup that install.sh is running in
+    # (setsid() escapes the process group but NOT the systemd cgroup), so
+    # install.sh would never reach start_service.
+    if [ "$update_mode" = true ] && [ ! -d "$INSTALL_DIR" ]; then
+        log_warn "No existing installation found. Performing fresh install."
     fi
 
     # Download and install (or use local tarball)
@@ -3050,12 +3053,27 @@ main() {
     # Configure Moonraker update_manager (Pi only - enables web UI updates)
     configure_moonraker_updates "$platform"
 
-    # Start service
-    start_service
+    # Start (or restart) service.
+    # In update mode on systemd: do all cleanup first (last chance before the
+    # cgroup is torn down), then issue 'systemctl restart'. The restart is an
+    # atomic systemd operation — once the D-Bus message is sent, systemd will
+    # stop the old instance (which may kill this script via cgroup cleanup) and
+    # then start the new binary regardless of whether we survive the stop phase.
     cleanup_old_install
-
-    # Cleanup on success
     cleanup_on_success
+    if [ "$update_mode" = true ] && [ "$INIT_SYSTEM" = "systemd" ]; then
+        log_info "Restarting HelixScreen service with new version..."
+        $SUDO systemctl restart "$SERVICE_NAME" || true
+        # We may be killed here when systemd tears down the old cgroup.
+        # That is expected — systemd still completes the start of the new binary.
+    else
+        # Fresh install, or update on non-systemd (SysV): stop before start.
+        # On SysV there is no cgroup kill so stop_service is safe here.
+        if [ "$update_mode" = true ]; then
+            stop_service
+        fi
+        start_service
+    fi
 
     echo ""
     echo "${GREEN}${BOLD}========================================${NC}"
