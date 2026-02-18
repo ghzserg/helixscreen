@@ -379,7 +379,7 @@ std::string DisplayBackendFbdev::auto_detect_touch_device() const {
     }
 
     // Priority 2: Config file override
-    Config* cfg = Config::get_instance();
+    helix::Config* cfg = helix::Config::get_instance();
     auto device_override = cfg->get<std::string>("/input/touch_device", "");
     if (!device_override.empty()) {
         spdlog::info("[Fbdev Backend] Using touch device from config: {}", device_override);
