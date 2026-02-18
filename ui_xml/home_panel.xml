@@ -157,6 +157,11 @@
                     style_bg_color="#screen_bg" style_radius="4"/>
             <!-- Progress percentage -->
             <text_small bind_text="print_progress_text"/>
+            <!-- Klipper display message (M117) - only visible when non-empty -->
+            <text_small name="display_message" bind_text="display_message" variant="muted"
+                        width="100%" style_text_align="center" long_mode="dot" hidden="true">
+              <bind_flag_if_eq subject="display_message_visible" flag="hidden" ref_value="0"/>
+            </text_small>
           </lv_obj>
         </lv_obj>
       </ui_card>
@@ -318,7 +323,7 @@
           </divider_vertical>
 
           <!-- AMS status indicator - visibility bound to ams_slot_count subject -->
-          <lv_obj height="100%" flex_grow="1" style_pad_all="0">
+          <lv_obj height="#button_height" flex_grow="1" style_pad_all="0">
             <bind_flag_if_eq subject="ams_slot_count" flag="hidden" ref_value="0"/>
             <!-- ams_mini_status auto-binds to AmsState and handles its own click -->
             <ams_mini_status/>

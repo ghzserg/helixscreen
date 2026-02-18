@@ -117,6 +117,47 @@ TEST_CASE("Display message: initializes empty", "[print][display_message]") {
 }
 
 // ============================================================================
+// Visibility Subject
+// ============================================================================
+
+TEST_CASE("Display message: visibility subject tracks non-empty state",
+          "[print][display_message]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(false);
+
+    SECTION("visible=0 initially") {
+        REQUIRE(lv_subject_get_int(state.get_display_message_visible_subject()) == 0);
+    }
+
+    SECTION("visible=1 when message set") {
+        json status = {{"display_status", {{"message", "Heating..."}}}};
+        state.update_from_status(status);
+        REQUIRE(lv_subject_get_int(state.get_display_message_visible_subject()) == 1);
+    }
+
+    SECTION("visible=0 when message cleared with null") {
+        json set = {{"display_status", {{"message", "Hello"}}}};
+        state.update_from_status(set);
+        REQUIRE(lv_subject_get_int(state.get_display_message_visible_subject()) == 1);
+
+        json clear = {{"display_status", {{"message", nullptr}}}};
+        state.update_from_status(clear);
+        REQUIRE(lv_subject_get_int(state.get_display_message_visible_subject()) == 0);
+    }
+
+    SECTION("visible=0 when message cleared with empty string") {
+        json set = {{"display_status", {{"message", "Hello"}}}};
+        state.update_from_status(set);
+
+        json clear = {{"display_status", {{"message", ""}}}};
+        state.update_from_status(clear);
+        REQUIRE(lv_subject_get_int(state.get_display_message_visible_subject()) == 0);
+    }
+}
+
+// ============================================================================
 // Long Message Handling
 // ============================================================================
 
