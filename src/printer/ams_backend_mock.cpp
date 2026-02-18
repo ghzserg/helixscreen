@@ -182,25 +182,21 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
 }
 
 AmsBackendMock::~AmsBackendMock() {
-    // Signal shutdown and wait for any running operation thread to finish
-    // Using atomic flag - safe without mutex
+    // Signal shutdown and wait for all threads to finish
     shutdown_requested_ = true;
     dryer_stop_requested_ = true;
     shutdown_cv_.notify_all();
     wait_for_operation_thread();
 
-    // Stop scenario thread if running (deferred loading/bypass from start())
-    if (scenario_thread_running_.exchange(false)) {
-        if (scenario_thread_.joinable()) {
-            scenario_thread_.join();
-        }
+    // Always join if joinable — the atomic flags are unreliable here because
+    // threads clear them before exiting, but the thread object remains joinable.
+    // Destroying a joinable std::thread calls std::terminate().
+    if (scenario_thread_.joinable()) {
+        scenario_thread_.join();
     }
 
-    // Stop dryer thread if running - use atomic exchange to prevent double-join
-    if (dryer_thread_running_.exchange(false)) {
-        if (dryer_thread_.joinable()) {
-            dryer_thread_.join();
-        }
+    if (dryer_thread_.joinable()) {
+        dryer_thread_.join();
     }
 
     // Don't call stop() - it would try to lock the mutex which may be invalid
