@@ -162,7 +162,7 @@ static void ui_switch_xml_apply(lv_xml_parser_state_t* state, const char** attrs
     }
 
     // PASS 1: Extract size preset AND explicit dimension overrides
-    SwitchSizePreset preset;
+    SwitchSizePreset preset{};
     bool preset_found = false;
     int32_t explicit_width = -1;
     int32_t explicit_height = -1;
