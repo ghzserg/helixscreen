@@ -1422,10 +1422,17 @@ void AmsPanel::on_path_slot_clicked(int slot_index, void* user_data) {
         return;
     }
 
-    // Check if backend is busy
+    // Check if backend is busy (lockout during in-flight tool changes)
     AmsSystemInfo info = backend->get_system_info();
     if (info.action != AmsAction::IDLE && info.action != AmsAction::ERROR) {
-        NOTIFY_WARNING("AMS is busy: {}", ams_action_to_string(info.action));
+        spdlog::debug("[AmsPanel] Ignoring path click - backend busy: {}",
+                      ams_action_to_string(info.action));
+        return;
+    }
+
+    // Ignore click on the already-active tool
+    if (info.current_slot >= 0 && info.current_slot == slot_index) {
+        spdlog::debug("[AmsPanel] Ignoring path click - tool {} already active", slot_index);
         return;
     }
 
@@ -1455,7 +1462,7 @@ void AmsPanel::on_path_slot_clicked(int slot_index, void* user_data) {
             }
         }
     } else {
-        // Fresh load - nothing currently loaded or same slot
+        // Fresh load - no tool currently loaded
         self->start_operation(StepOperationType::LOAD_FRESH, slot_index);
         error = backend->load_filament(slot_index);
     }
@@ -1903,6 +1910,18 @@ int AmsPanel::get_load_temp_for_slot(int slot_index) {
 void AmsPanel::handle_load_with_preheat(int slot_index) {
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend) {
+        return;
+    }
+
+    // Tool changers: just send T{n} — Klipper's toolchange macro handles
+    // heating, parking, docking, etc. No step progress or preheat needed.
+    if (backend->get_type() == AmsType::TOOL_CHANGER) {
+        AmsSystemInfo info = backend->get_system_info();
+        if (info.current_slot >= 0 && info.current_slot == slot_index) {
+            spdlog::debug("[AmsPanel] Tool {} already active, ignoring load", slot_index);
+            return;
+        }
+        backend->load_filament(slot_index);
         return;
     }
 

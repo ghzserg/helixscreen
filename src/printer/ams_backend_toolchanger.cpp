@@ -532,12 +532,17 @@ AmsError AmsBackendToolChanger::change_tool(int tool_number) {
         }
     }
 
-    // Send SELECT_TOOL command (klipper-toolchanger command)
-    std::ostringstream cmd;
-    cmd << "SELECT_TOOL TOOL=" << tool_name;
+    // Set action immediately to prevent race window where a second click
+    // could arrive before Klipper's status update changes the action
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        system_info_.action = AmsAction::SELECTING;
+    }
+    emit_event(EVENT_STATE_CHANGED);
 
+    // Send T{n} gcode — standard tool select, works with any toolchanger implementation
     spdlog::info("[AMS ToolChanger] Mounting tool {} ({})", tool_number, tool_name);
-    return execute_gcode(cmd.str());
+    return execute_gcode(tool_name);
 }
 
 // ============================================================================

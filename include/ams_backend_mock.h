@@ -444,9 +444,9 @@ class AmsBackendMock : public AmsBackend {
     std::atomic<bool> running_{false}; ///< Backend running state
     EventCallback event_callback_;     ///< Registered event handler
 
-    AmsSystemInfo system_info_;    ///< Simulated system state
-    int operation_delay_ms_ = 500; ///< Simulated operation delay
-    bool realistic_mode_ = false;  ///< Enable multi-phase operations (HEATING→LOADING→CHECKING)
+    AmsSystemInfo system_info_;     ///< Simulated system state
+    int operation_delay_ms_ = 1000; ///< Simulated operation delay
+    bool realistic_mode_ = false;   ///< Enable multi-phase operations (HEATING→LOADING→CHECKING)
 
     // Path visualization state
     PathTopology topology_ = PathTopology::HUB;        ///< Simulated topology (default hub for AFC)
