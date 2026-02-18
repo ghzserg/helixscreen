@@ -4,9 +4,7 @@
 <component>
   <!-- Component-local constants -->
   <consts>
-    <!-- Column widths for two-column layout (right column shrunk for more spool space) -->
-    <percentage name="left_col_width" value="70%"/>
-    <percentage name="right_col_width" value="28%"/>
+    <!-- Right column 28% with 180px cap; left column takes remaining space via flex_grow -->
   </consts>
   <!-- Overlay panel - right-aligned, uses standard large width -->
   <view name="ams_panel"
@@ -22,7 +20,7 @@
       <!-- LEFT COLUMN: AMS Unit Visualization                               -->
       <!-- ================================================================== -->
       <lv_obj name="left_column"
-              width="#left_col_width" height="100%" style_pad_all="0" scrollable="false" flex_flow="column"
+              width="0" flex_grow="1" height="100%" style_pad_all="0" scrollable="false" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_xs">
         <!-- Backend selector (hidden by default, shown when multiple backends present) -->
         <lv_obj name="backend_selector_row" width="100%" height="content"
@@ -92,7 +90,7 @@
       <!-- RIGHT COLUMN: Status & Controls                                   -->
       <!-- ================================================================== -->
       <lv_obj name="right_column"
-              width="#right_col_width" height="100%" style_pad_all="0" scrollable="false" flex_flow="column"
+              width="28%" style_max_width="200" height="100%" style_pad_all="0" scrollable="false" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
         <!-- Currently Loaded Section Header (e.g., "Current: Slot 1") -->
         <text_small width="100%" bind_text="ams_current_slot_text"/>
