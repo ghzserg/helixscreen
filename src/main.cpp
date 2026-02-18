@@ -13,6 +13,13 @@
 
 #include "application.h"
 
+// SDL2 redefines main → SDL_main via this header.
+// On Android, the SDL Java activity loads libmain.so and calls SDL_main().
+// Without this include, the symbol is missing and the app crashes on launch.
+#ifdef HELIX_PLATFORM_ANDROID
+#include <SDL.h>
+#endif
+
 int main(int argc, char** argv) {
     Application app;
     return app.run(argc, argv);

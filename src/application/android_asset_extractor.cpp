@@ -69,10 +69,123 @@ AssetExtractionResult extract_assets_if_needed(const std::string& source_dir,
 #include "helix_version.h"
 
 #include <SDL.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 #include <cstdlib>
+#include <jni.h>
+#include <vector>
+
+// Get AAssetManager from the Android Activity via JNI
+static AAssetManager* get_asset_manager() {
+    JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+    if (!env || !activity) {
+        spdlog::error("[AndroidAssets] Failed to get JNI env or activity");
+        return nullptr;
+    }
+
+    jclass activity_class = env->GetObjectClass(activity);
+    jmethodID get_assets =
+        env->GetMethodID(activity_class, "getAssets", "()Landroid/content/res/AssetManager;");
+    jobject java_asset_mgr = env->CallObjectMethod(activity, get_assets);
+
+    env->DeleteLocalRef(activity_class);
+    env->DeleteLocalRef(activity);
+
+    if (!java_asset_mgr) {
+        spdlog::error("[AndroidAssets] Failed to get AssetManager from activity");
+        return nullptr;
+    }
+
+    AAssetManager* mgr = AAssetManager_fromJava(env, java_asset_mgr);
+    env->DeleteLocalRef(java_asset_mgr);
+    return mgr;
+}
+
+// Recursively extract all files from an APK asset directory to the filesystem
+static int extract_asset_dir(AAssetManager* mgr, const std::string& asset_path,
+                             const std::string& target_path) {
+    int count = 0;
+
+    // Create target directory
+    std::error_code ec;
+    fs::create_directories(target_path, ec);
+    if (ec) {
+        spdlog::error("[AndroidAssets] Failed to create dir '{}': {}", target_path, ec.message());
+        return -1;
+    }
+
+    AAssetDir* dir = AAssetManager_openDir(mgr, asset_path.c_str());
+    if (!dir) {
+        spdlog::error("[AndroidAssets] Failed to open asset dir '{}'", asset_path);
+        return -1;
+    }
+
+    // List and copy all files in this directory
+    const char* filename;
+    while ((filename = AAssetDir_getNextFileName(dir)) != nullptr) {
+        std::string asset_file =
+            asset_path.empty() ? std::string(filename) : asset_path + "/" + filename;
+        std::string target_file = target_path + "/" + filename;
+
+        AAsset* asset = AAssetManager_open(mgr, asset_file.c_str(), AASSET_MODE_STREAMING);
+        if (!asset) {
+            spdlog::warn("[AndroidAssets] Could not open asset '{}'", asset_file);
+            continue;
+        }
+
+        off_t size = AAsset_getLength(asset);
+        std::vector<char> buf(size);
+        int bytes_read = AAsset_read(asset, buf.data(), size);
+        AAsset_close(asset);
+
+        if (bytes_read != size) {
+            spdlog::warn("[AndroidAssets] Short read for '{}': {} of {}", asset_file, bytes_read,
+                         size);
+            continue;
+        }
+
+        std::ofstream ofs(target_file, std::ios::binary | std::ios::trunc);
+        if (!ofs) {
+            spdlog::warn("[AndroidAssets] Could not write '{}'", target_file);
+            continue;
+        }
+        ofs.write(buf.data(), size);
+        count++;
+    }
+
+    AAssetDir_close(dir);
+    return count;
+}
+
+// Recursively extract a known directory tree from APK assets.
+// AAssetDir only lists files (not subdirs), so we need to know the subdirectory
+// names in advance. For ui_xml/ we have a known structure: ui_xml/components/.
+static int extract_known_tree(AAssetManager* mgr, const std::string& asset_root,
+                              const std::string& target_root,
+                              const std::vector<std::string>& subdirs) {
+    int total = 0;
+
+    // Extract files from root directory
+    int n = extract_asset_dir(mgr, asset_root, target_root);
+    if (n < 0)
+        return -1;
+    total += n;
+
+    // Extract each known subdirectory
+    for (const auto& sub : subdirs) {
+        std::string asset_sub = asset_root + "/" + sub;
+        std::string target_sub = target_root + "/" + sub;
+        n = extract_asset_dir(mgr, asset_sub, target_sub);
+        if (n >= 0) {
+            total += n;
+        }
+    }
+
+    return total;
+}
 
 void android_extract_assets_if_needed() {
-    // Get Android internal storage path via SDL
     const char* internal_path = SDL_AndroidGetInternalStoragePath();
     if (!internal_path) {
         spdlog::error("[AndroidAssets] Could not get internal storage path from SDL");
@@ -82,29 +195,70 @@ void android_extract_assets_if_needed() {
     std::string target_dir = std::string(internal_path) + "/data";
     spdlog::info("[AndroidAssets] Target directory: {}", target_dir);
 
-    // On Android, assets are bundled in the APK and accessed via SDL_RWops.
-    // For MVP, we use SDL_AndroidGetInternalStoragePath() as our data root.
-    // The Gradle copyAssets task puts ui_xml/, assets/, config/ into the APK
-    // assets directory. Android's AssetManager can read them, but LVGL and
-    // our code expect filesystem paths. So we extract to internal storage.
-    //
-    // For the initial MVP, assets are extracted by the Gradle build task into
-    // the APK's assets/ directory. We need to copy them from there to the
-    // filesystem using SDL's Android file I/O.
-    //
-    // TODO: Implement SDL-based APK asset reading for full extraction.
-    // For now, set HELIX_DATA_DIR to the internal storage path where
-    // the app can find pre-deployed assets.
-
-    auto result = extract_assets_if_needed(
-        target_dir + "/source", // Placeholder — full APK extraction needs SDL_RWops
-        target_dir, helix_version());
-
-    if (result == AssetExtractionResult::FAILED) {
-        spdlog::warn("[AndroidAssets] Asset extraction failed, app may not have UI resources");
+    // Check version marker to skip extraction if already current
+    fs::path version_file = fs::path(target_dir) / "VERSION";
+    std::string current_version = helix_version();
+    if (fs::exists(version_file)) {
+        std::ifstream ifs(version_file);
+        std::string existing;
+        std::getline(ifs, existing);
+        if (existing == current_version) {
+            spdlog::info("[AndroidAssets] Assets already at version {}, skipping", current_version);
+            setenv("HELIX_DATA_DIR", target_dir.c_str(), 1);
+            return;
+        }
+        spdlog::info("[AndroidAssets] Version mismatch: have '{}', need '{}'", existing,
+                     current_version);
     }
 
-    // Set HELIX_DATA_DIR so ensure_project_root_cwd() finds it
+    AAssetManager* mgr = get_asset_manager();
+    if (!mgr) {
+        spdlog::error("[AndroidAssets] Could not get AAssetManager, app will lack UI resources");
+        setenv("HELIX_DATA_DIR", target_dir.c_str(), 1);
+        return;
+    }
+
+    // Extract the three asset trees from the APK.
+    // AAssetDir_getNextFileName() only returns files, not subdirectories,
+    // so we enumerate known subdirectory structure explicitly.
+    int total = 0;
+
+    // ui_xml/ tree
+    int n = extract_known_tree(mgr, "ui_xml", target_dir + "/ui_xml",
+                               {"components", "translations", "ultrawide"});
+    if (n > 0)
+        total += n;
+    spdlog::info("[AndroidAssets] Extracted {} files from ui_xml/", n);
+
+    // assets/ tree (images has subdirs: ams, flags, printers)
+    n = extract_known_tree(
+        mgr, "assets", target_dir + "/assets",
+        {"fonts", "images", "images/ams", "images/flags", "images/printers", "test_gcodes"});
+    if (n > 0)
+        total += n;
+    spdlog::info("[AndroidAssets] Extracted {} files from assets/", n);
+
+    // config/ tree
+    n = extract_known_tree(mgr, "config", target_dir + "/config",
+                           {"platform", "presets", "print_start_profiles", "printer_database.d",
+                            "sounds", "themes", "themes/defaults"});
+    if (n > 0)
+        total += n;
+    spdlog::info("[AndroidAssets] Extracted {} files from config/", n);
+
+    spdlog::info("[AndroidAssets] Total: {} files extracted to '{}'", total, target_dir);
+
+    // Write version marker
+    {
+        std::error_code ec;
+        fs::create_directories(target_dir, ec);
+        std::ofstream ofs(version_file, std::ios::trunc);
+        if (ofs) {
+            ofs << current_version;
+        }
+    }
+
+    // Set HELIX_DATA_DIR so ensure_project_root_cwd() chdir's here
     setenv("HELIX_DATA_DIR", target_dir.c_str(), 1);
     spdlog::info("[AndroidAssets] Set HELIX_DATA_DIR={}", target_dir);
 }

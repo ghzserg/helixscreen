@@ -143,6 +143,7 @@ target_compile_options(main PRIVATE
 
 # Link everything
 find_library(log-lib log)
+find_library(z-lib z)
 target_link_libraries(main
     SDL2
     lvgl
@@ -150,5 +151,6 @@ target_link_libraries(main
     hv_static
     tinygl
     ${log-lib}
+    ${z-lib}
     android
 )

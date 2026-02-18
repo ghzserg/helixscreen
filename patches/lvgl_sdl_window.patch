@@ -1,8 +1,19 @@
 diff --git a/src/drivers/sdl/lv_sdl_window.c b/src/drivers/sdl/lv_sdl_window.c
-index fe19304d3..6a26a5b84 100644
+index fe19304d3..fcfebf844 100644
 --- a/src/drivers/sdl/lv_sdl_window.c
 +++ b/src/drivers/sdl/lv_sdl_window.c
-@@ -174,7 +174,13 @@ void lv_sdl_window_set_zoom(lv_display_t * disp, float zoom)
+@@ -33,6 +33,10 @@
+ #define SDL_MAIN_HANDLED /*To fix SDL's "undefined reference to WinMain" issue*/
+ #include "lv_sdl_private.h"
+ 
++#ifdef __ANDROID__
++    #include <android/log.h>
++#endif
++
+ #if LV_COLOR_DEPTH == 1 && LV_SDL_RENDER_MODE != LV_DISPLAY_RENDER_MODE_PARTIAL
+     #error SDL LV_COLOR_DEPTH 1 requires LV_SDL_RENDER_MODE LV_DISPLAY_RENDER_MODE_PARTIAL
+ #endif
+@@ -174,7 +178,13 @@ void lv_sdl_window_set_zoom(lv_display_t * disp, float zoom)
  
  float lv_sdl_window_get_zoom(lv_display_t * disp)
  {
@@ -16,7 +27,26 @@ index fe19304d3..6a26a5b84 100644
      return dsc->zoom;
  }
  
-@@ -373,9 +379,10 @@ static void sdl_event_handler(lv_timer_t * t)
+@@ -358,12 +368,18 @@ static void sdl_event_handler(lv_timer_t * t)
+                     window_update(disp);
+                     break;
+                 case SDL_WINDOWEVENT_RESIZED:
++#ifdef __ANDROID__
++                    /* On Android, SDL_RenderSetLogicalSize handles scaling.
++                     * Don't let native surface resizes change LVGL's logical resolution. */
++                    lv_refr_now(disp);
++#else
+                     dsc->ignore_size_chg = 1;
+                     int32_t hres = (int32_t)((float)(event.window.data1) / dsc->zoom);
+                     int32_t vres = (int32_t)((float)(event.window.data2) / dsc->zoom);
+                     lv_display_set_resolution(disp, hres, vres);
+                     dsc->ignore_size_chg = 0;
+                     lv_refr_now(disp);
++#endif
+                     break;
+                 case SDL_WINDOWEVENT_CLOSE:
+                     lv_display_delete(disp);
+@@ -373,9 +389,10 @@ static void sdl_event_handler(lv_timer_t * t)
              }
          }
          if(event.type == SDL_QUIT) {
@@ -30,7 +60,16 @@ index fe19304d3..6a26a5b84 100644
  #if LV_SDL_DIRECT_EXIT
              exit(0);
  #endif
-@@ -395,10 +402,60 @@ static void window_create(lv_display_t * disp)
+@@ -392,15 +409,120 @@ static void window_create(lv_display_t * disp)
+ #if LV_SDL_FULLSCREEN
+     flag |= SDL_WINDOW_FULLSCREEN;
+ #endif
++#ifdef __ANDROID__
++    /* On Android, always use fullscreen desktop mode so the SDL window
++     * matches the native surface size. Without this, the EGL surface
++     * gets invalidated when Android resizes it, causing EGL_BAD_SURFACE. */
++    flag |= SDL_WINDOW_FULLSCREEN_DESKTOP;
++#endif
  
      int32_t hor_res = (int32_t)((float)(disp->hor_res) * dsc->zoom);
      int32_t ver_res = (int32_t)((float)(disp->ver_res) * dsc->zoom);
@@ -92,4 +131,66 @@ index fe19304d3..6a26a5b84 100644
 +
      dsc->renderer = SDL_CreateRenderer(dsc->window, -1,
                                         LV_SDL_ACCELERATED ? SDL_RENDERER_ACCELERATED : SDL_RENDERER_SOFTWARE);
++
++#ifdef __ANDROID__
++    /* On Android with FULLSCREEN_DESKTOP, the window is at the native surface
++     * size (e.g. 2272x954). We want LVGL to render at a logical resolution
++     * that preserves the aspect ratio but targets ~480px height for readable UI.
++     * SDL_RenderSetLogicalSize handles upscaling and touch coordinate mapping. */
++    {
++        int actual_w = 0, actual_h = 0;
++
++        /* Try multiple methods to get the real native display size.
++         * SDL_GetRendererOutputSize may return the requested (logical) size
++         * early in the lifecycle, so also try SDL_GetCurrentDisplayMode. */
++        SDL_GetRendererOutputSize(dsc->renderer, &actual_w, &actual_h);
++        __android_log_print(ANDROID_LOG_INFO, "HelixSDL",
++            "renderer output=%dx%d, requested=%dx%d", actual_w, actual_h, hor_res, ver_res);
++
++        if(actual_w <= hor_res && actual_h <= ver_res) {
++            SDL_DisplayMode mode;
++            if(SDL_GetCurrentDisplayMode(0, &mode) == 0) {
++                actual_w = mode.w;
++                actual_h = mode.h;
++            }
++            __android_log_print(ANDROID_LOG_INFO, "HelixSDL",
++                "display mode=%dx%d", actual_w, actual_h);
++        }
++
++        if(actual_w > hor_res && actual_h > ver_res) {
++            int32_t target_h = 480;
++            float scale = (float)actual_h / (float)target_h;
++            int32_t logical_w = (int32_t)((float)actual_w / scale);
++            int32_t logical_h = target_h;
++
++            SDL_RenderSetLogicalSize(dsc->renderer, logical_w, logical_h);
++
++            hor_res = logical_w;
++            ver_res = logical_h;
++            lv_display_set_resolution(disp, logical_w, logical_h);
++
++            __android_log_print(ANDROID_LOG_INFO, "HelixSDL",
++                "scaling: native %dx%d -> logical %dx%d (%.1fx)",
++                actual_w, actual_h, logical_w, logical_h, scale);
++        } else {
++            __android_log_print(ANDROID_LOG_WARN, "HelixSDL",
++                "no scaling: actual=%dx%d <= requested=%dx%d",
++                actual_w, actual_h, hor_res, ver_res);
++        }
++    }
++#endif
++
  #if LV_USE_DRAW_SDL == 0
+     texture_resize(disp);
+ 
+@@ -409,8 +531,10 @@ static void window_create(lv_display_t * disp)
+     if(dsc->fb2) lv_memset(dsc->fb2, 0xff, hor_res * ver_res * px_size);
+ 
+ #endif /*LV_USE_DRAW_SDL == 0*/
++#ifndef __ANDROID__
+     /*Some platforms (e.g. Emscripten) seem to require setting the size again */
+     SDL_SetWindowSize(dsc->window, hor_res, ver_res);
++#endif
+ #if LV_USE_DRAW_SDL == 0
+     texture_resize(disp);
+ #endif /*LV_USE_DRAW_SDL == 0*/
