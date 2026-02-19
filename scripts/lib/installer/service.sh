@@ -58,8 +58,40 @@ install_service_systemd() {
         exit 1
     fi
 
+    # Install update watcher (restarts helixscreen after Moonraker web-type update)
+    # Workaround for mainsail-crew/mainsail#2444: type: web lacks managed_services
+    install_update_watcher_systemd
+
     CLEANUP_SERVICE=true
     log_success "Installed systemd service"
+}
+
+# Install systemd path unit that restarts helixscreen after Moonraker extracts an update
+install_update_watcher_systemd() {
+    local path_src="${INSTALL_DIR}/config/helixscreen-update.path"
+    local svc_src="${INSTALL_DIR}/config/helixscreen-update.service"
+    local path_dest="/etc/systemd/system/helixscreen-update.path"
+    local svc_dest="/etc/systemd/system/helixscreen-update.service"
+
+    if [ ! -f "$path_src" ] || [ ! -f "$svc_src" ]; then
+        log_info "Update watcher units not found, skipping"
+        return 0
+    fi
+
+    local install_dir="${INSTALL_DIR:-/opt/helixscreen}"
+
+    $SUDO cp "$path_src" "$path_dest"
+    $SUDO cp "$svc_src" "$svc_dest"
+
+    # Template the install directory path
+    $SUDO sed -i "s|@@INSTALL_DIR@@|${install_dir}|g" "$path_dest" 2>/dev/null || \
+    $SUDO sed -i '' "s|@@INSTALL_DIR@@|${install_dir}|g" "$path_dest" 2>/dev/null || true
+
+    $SUDO systemctl daemon-reload
+    $SUDO systemctl enable helixscreen-update.path 2>/dev/null || true
+    $SUDO systemctl start helixscreen-update.path 2>/dev/null || true
+
+    log_info "Installed update watcher (helixscreen-update.path)"
 }
 
 # Install SysV init script

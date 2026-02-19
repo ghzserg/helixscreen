@@ -56,12 +56,14 @@ generate_update_manager_config() {
 
 # HelixScreen Update Manager
 # Added by HelixScreen installer - enables one-click updates from Mainsail/Fluidd
+# NOTE: type: web is used instead of type: zip as a workaround for
+# mainsail-crew/mainsail#2444 (zip type always shows UP-TO-DATE).
+# A systemd path unit handles service restart after Moonraker extracts the update.
 [update_manager helixscreen]
-type: zip
+type: web
 channel: stable
 repo: prestonbrown/helixscreen
 path: ${INSTALL_DIR}
-managed_services: helixscreen
 persistent_files:
     config/helixconfig.json
     config/.disabled_services
@@ -99,31 +101,43 @@ has_old_git_repo_section() {
     return 1
 }
 
-# Migrate old git_repo section to zip
+# Check if moonraker.conf has old zip-style helixscreen section
 # Args: $1 = moonraker.conf path
-migrate_git_repo_to_zip() {
+# Returns: 0 if old zip section found, 1 if not
+has_old_zip_section() {
+    local conf="$1"
+    if grep -q '^\[update_manager helixscreen\]' "$conf" 2>/dev/null; then
+        awk '/^\[update_manager helixscreen\]/{found=1; next} found && /^\[/{exit} found && /^type:/{print; exit}' "$conf" | grep -q 'zip'
+        return $?
+    fi
+    return 1
+}
+
+# Migrate old section (git_repo or zip) to type: web
+# Args: $1 = moonraker.conf path
+migrate_to_web_type() {
     local conf="$1"
 
-    log_info "Migrating update_manager from git_repo to zip..."
+    log_info "Migrating update_manager to type: web..."
 
     # Remove old section
     remove_update_manager_section "$conf" 2>/dev/null || true
 
-    # Add new zip section
+    # Add new web section
     add_update_manager_section "$conf"
 
-    # Clean up old sparse clone directory if it exists
+    # Clean up old sparse clone directory if it exists (from git_repo era)
     local old_repo_dir="${INSTALL_DIR}-repo"
     if [ -d "$old_repo_dir" ]; then
         log_info "Removing old updater repo at $old_repo_dir..."
         $SUDO rm -rf "$old_repo_dir"
     fi
 
-    log_success "Migrated to type: zip update manager"
+    log_success "Migrated to type: web update manager"
 }
 
 # Write release_info.json if not already present
-# Moonraker type:zip needs this file to detect installed version
+# Moonraker type:web needs this file to detect installed version
 write_release_info() {
     local release_info="${INSTALL_DIR}/release_info.json"
 
@@ -228,9 +242,10 @@ configure_moonraker_updates() {
         return 0
     fi
 
-    # Migrate old git_repo config to zip
-    if has_old_git_repo_section "$conf"; then
-        migrate_git_repo_to_zip "$conf"
+    # Migrate old git_repo or zip config to type: web
+    # (type: zip shows perpetual UP-TO-DATE in Mainsail — see mainsail-crew/mainsail#2444)
+    if has_old_git_repo_section "$conf" || has_old_zip_section "$conf"; then
+        migrate_to_web_type "$conf"
         ensure_moonraker_asvc "$conf"
         restart_moonraker
         return 0

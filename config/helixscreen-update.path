@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# systemd path unit — watches for HelixScreen updates
+#
+# When Moonraker (type: web) extracts a new release zip it deletes the
+# entire install directory and recreates it.  This path unit detects the
+# new release_info.json and triggers helixscreen-update.service to restart
+# HelixScreen after a short delay.
+#
+# We use BOTH PathExists and PathChanged because Moonraker's extraction
+# does shutil.rmtree(path) → path.mkdir() → extract.  The rmtree
+# invalidates any inotify watch on the old inode (PathChanged alone would
+# never fire).  PathExists re-arms after the oneshot service completes and
+# catches the file reappearing at a new inode.  PathChanged is kept as a
+# belt-and-suspenders catch for in-place updates.
+#
+# Workaround for mainsail-crew/mainsail#2444: Mainsail's Update Manager
+# doesn't support type: zip semver comparison, so we use type: web which
+# lacks managed_services support. This path unit replaces that.
+
+[Unit]
+Description=Watch for HelixScreen version changes
+
+[Path]
+PathExists=@@INSTALL_DIR@@/release_info.json
+PathChanged=@@INSTALL_DIR@@/release_info.json
+
+[Install]
+WantedBy=multi-user.target

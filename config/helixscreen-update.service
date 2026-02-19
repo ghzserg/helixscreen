@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# systemd service — restart HelixScreen after Moonraker update
+#
+# Triggered by helixscreen-update.path when release_info.json changes.
+# Waits 10 seconds for Moonraker to finish extracting all files before
+# restarting the service.
+#
+# Workaround for mainsail-crew/mainsail#2444.
+
+[Unit]
+Description=Restart HelixScreen after update
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 10
+ExecStart=/bin/systemctl restart helixscreen
