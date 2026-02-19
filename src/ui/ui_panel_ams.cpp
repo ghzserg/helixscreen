@@ -1258,58 +1258,9 @@ void AmsPanel::update_action_display(AmsAction action) {
 }
 
 void AmsPanel::update_current_slot_highlight(int slot_index) {
-    // Check if this is an actual slot change (for pulse animation)
-    bool slot_changed = (slot_index != last_highlighted_slot_);
-
-    // Remove highlight from all slots (set border opacity to 0)
-    for (int i = 0; i < MAX_VISIBLE_SLOTS; ++i) {
-        if (slot_widgets_[i]) {
-            // Cancel any running animation on this slot
-            if (slot_changed) {
-                lv_anim_delete(slot_widgets_[i], nullptr);
-            }
-            lv_obj_remove_state(slot_widgets_[i], LV_STATE_CHECKED);
-            lv_obj_set_style_border_opa(slot_widgets_[i], LV_OPA_0, 0);
-        }
-    }
-
-    // Add highlight to current slot (show border)
-    if (slot_index >= 0 && slot_index < MAX_VISIBLE_SLOTS && slot_widgets_[slot_index]) {
-        lv_obj_add_state(slot_widgets_[slot_index], LV_STATE_CHECKED);
-
-        // Pulse animation when slot changes (bright -> normal opacity)
-        if (slot_changed && SettingsManager::instance().get_animations_enabled()) {
-            // Start with bright border
-            lv_obj_set_style_border_opa(slot_widgets_[slot_index], LV_OPA_COVER, 0);
-
-            // Animate from bright (255) to normal (100% = 255, so we go to ~60%)
-            constexpr int32_t PULSE_START_OPA = 255;
-            constexpr int32_t PULSE_END_OPA = 153; // ~60% opacity for subtle sustained highlight
-            constexpr uint32_t PULSE_DURATION_MS = 400;
-
-            lv_anim_t pulse_anim;
-            lv_anim_init(&pulse_anim);
-            lv_anim_set_var(&pulse_anim, slot_widgets_[slot_index]);
-            lv_anim_set_values(&pulse_anim, PULSE_START_OPA, PULSE_END_OPA);
-            lv_anim_set_duration(&pulse_anim, PULSE_DURATION_MS);
-            lv_anim_set_path_cb(&pulse_anim, lv_anim_path_ease_out);
-            lv_anim_set_exec_cb(&pulse_anim, [](void* obj, int32_t value) {
-                lv_obj_set_style_border_opa(static_cast<lv_obj_t*>(obj),
-                                            static_cast<lv_opa_t>(value), 0);
-            });
-            lv_anim_start(&pulse_anim);
-
-            spdlog::debug("[AmsPanel] Started pulse animation on slot {}", slot_index);
-        } else {
-            // No animation - just set final opacity
-            lv_obj_set_style_border_opa(slot_widgets_[slot_index], LV_OPA_100, 0);
-        }
-    }
-
-    // Track for next call
-    last_highlighted_slot_ = slot_index;
-
-    // Update the "Currently Loaded" card in the right column
+    // NOTE: Visual highlight (border + glow) on spool_container is fully handled
+    // by slot-level observers in ui_ams_slot.cpp (apply_current_slot_highlight).
+    // This method just updates the "Currently Loaded" info card in the right column.
     update_current_loaded_display(slot_index);
 }
 

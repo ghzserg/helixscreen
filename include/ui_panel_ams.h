@@ -142,11 +142,9 @@ class AmsPanel : public PanelBase {
 
     // === Dynamic Slot State ===
 
-    int scoped_unit_index_ = -1;     ///< Unit scope: -1 = all units, >=0 = specific unit
-    int current_slot_count_ = 0;     ///< Number of slots currently created
-    lv_obj_t* slot_grid_ = nullptr;  ///< Container for dynamically created slots
-    int last_highlighted_slot_ = -1; ///< Previously highlighted slot (for pulse animation)
-
+    int scoped_unit_index_ = -1;    ///< Unit scope: -1 = all units, >=0 = specific unit
+    int current_slot_count_ = 0;    ///< Number of slots currently created
+    lv_obj_t* slot_grid_ = nullptr; ///< Container for dynamically created slots
     // === Preheat State for Filament Loading ===
 
     int pending_load_slot_ = -1;                  ///< Slot awaiting preheat completion (-1 = none)
