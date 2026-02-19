@@ -1216,8 +1216,8 @@ void MoonrakerClient::continue_discovery(std::function<void()> on_complete,
                         get_printer_state().set_power_device_count(device_count);
                     },
                     [](const MoonrakerError& err) {
-                        spdlog::warn("[Moonraker Client] Power device detection failed: {}",
-                                     err.message);
+                        spdlog::debug("[Moonraker Client] Power device detection failed: {}",
+                                      err.message);
                         get_printer_state().set_power_device_count(0);
                     },
                     0,     // default timeout
