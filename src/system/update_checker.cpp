@@ -1200,13 +1200,21 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
 
     report_download_status(DownloadStatus::Complete, 100, "v" + version + " installed! Restarting...");
 
-    // Trigger self-restart: exit(0) causes the watchdog to restart helix-screen
+    // Trigger self-restart: _exit(0) causes the watchdog to restart helix-screen
     // with the newly installed binary ("Normal exit (code 0) — restart silently").
     // install.sh skips systemctl restart under NoNewPrivileges, so we own the restart.
+    //
+    // _exit() not exit(): calling exit() from a background thread races with
+    // destructors on other threads (LVGL loop, WebSocket threads) and causes
+    // SIGSEGV (code 139). The watchdog treats that as a crash, shows the recovery
+    // dialog, and Config::init() recreates helixconfig.json from defaults — wiping
+    // dev_url and channel settings. _exit() terminates immediately at the OS level
+    // with no C++ cleanup, so exit code 0 reaches the watchdog cleanly.
     std::thread([] {
         std::this_thread::sleep_for(std::chrono::seconds(3));
         spdlog::info("[UpdateChecker] Restarting to apply update");
-        ::exit(0);
+        spdlog::default_logger()->flush();
+        ::_exit(0);
     }).detach();
 }
 
