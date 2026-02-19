@@ -339,19 +339,31 @@ void ToolState::request_tool_change(int tool_index, MoonrakerAPI* api,
         return;
     }
 
-    // Try AMS backend first (handles toolchangers, AFC, Happy Hare, etc.)
+    // Try AMS backend if it manages this tool (AFC, Happy Hare, etc.)
+    // Skip the backend if it has no slots configured (e.g., AFC module loaded but no hardware)
+    // or if this tool isn't in the backend's tool-to-slot map.
     auto* backend = AmsState::instance().get_backend();
     if (backend) {
-        spdlog::info("[ToolState] Requesting tool change to T{} via AMS backend", tool_index);
-        auto result = backend->change_tool(tool_index);
-        if (result) {
-            if (on_success)
-                on_success();
-        } else {
-            if (on_error)
-                on_error(::fmt::format("Backend tool change failed: {}", result.user_msg));
+        AmsSystemInfo info = backend->get_system_info();
+        bool backend_manages_tool = info.total_slots > 0 &&
+                                    tool_index < static_cast<int>(info.tool_to_slot_map.size()) &&
+                                    info.tool_to_slot_map[tool_index] >= 0;
+
+        if (backend_manages_tool) {
+            spdlog::info("[ToolState] Requesting tool change to T{} via AMS backend", tool_index);
+            auto result = backend->change_tool(tool_index);
+            if (result) {
+                if (on_success)
+                    on_success();
+            } else {
+                if (on_error)
+                    on_error(::fmt::format("Backend tool change failed: {}", result.user_msg));
+            }
+            return;
         }
-        return;
+
+        spdlog::debug("[ToolState] AMS backend present but doesn't manage T{}, using direct gcode",
+                      tool_index);
     }
 
     // Fallback: ACTIVATE_EXTRUDER for simple multi-extruder setups
