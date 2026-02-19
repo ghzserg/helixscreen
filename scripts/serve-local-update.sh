@@ -166,12 +166,14 @@ if [[ $CONFIGURE_PI -eq 1 ]]; then
     ssh "${PI_USER}@${PI_HOST}" "python3 -c \"
 import json, os, re
 
-# Write dev channel + dev_url into settings.json
-path = os.path.expanduser('~/helixscreen/config/settings.json')
-data = {}
-if os.path.exists(path):
-    with open(path) as f:
-        data = json.load(f)
+# Write dev channel + dev_url into helixconfig.json (read by Config::get_instance())
+path = os.path.expanduser('~/helixscreen/config/helixconfig.json')
+if not os.path.exists(path):
+    print('  ERROR: helixconfig.json not found at', path)
+    print('  Run the HelixScreen setup wizard first, then re-run --configure-pi.')
+    raise SystemExit(1)
+with open(path) as f:
+    data = json.load(f)
 data.setdefault('update', {})
 data['update']['channel'] = 2
 data['update']['dev_url'] = '${BASE_URL}/'
@@ -215,7 +217,7 @@ print('  HELIX_DEBUG=1  (debug logging enabled in', env_path + ')')
     echo "[serve-local-update] Restarting helix-screen on ${PI_USER}@${PI_HOST} ..."
     ssh "${PI_USER}@${PI_HOST}" "sudo systemctl restart helixscreen"
     echo "[serve-local-update] helix-screen restarted."
-    echo "  To revert: remove update/dev_url from ~/helixscreen/config/settings.json on the Pi."
+    echo "  To revert: remove update/dev_url from ~/helixscreen/config/helixconfig.json on the Pi."
     echo ""
 fi
 
