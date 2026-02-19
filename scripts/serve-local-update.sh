@@ -6,43 +6,57 @@
 #
 # OVERVIEW
 # --------
-# Builds a Pi package, generates a manifest.json with a fixed high test
+# Builds a platform package, generates a manifest.json with a fixed high test
 # version (99.0.0) guaranteed to be newer than any real install, and serves
 # both over HTTP. The running helix-screen binary sees the manifest version
 # as newer than itself and triggers the full self-update path without
 # touching VERSION.txt.
 #
 # The test version is always 99.0.0 so the manifest is always seen as newer
-# regardless of what version is currently installed on the Pi. Use --no-bump
-# to serve the exact VERSION.txt version instead.
+# regardless of what version is currently installed on the device. Use
+# --no-bump to serve the exact VERSION.txt version instead.
+#
+# Supported platforms (mirrors the *-docker Makefile targets):
+#   pi            Raspberry Pi 64-bit aarch64  (default)
+#   pi32          Raspberry Pi 32-bit armhf
+#   ad5m          FlashForge Adventurer 5M (armv7-a)
+#   cc1           Centauri Carbon 1 (armv7-a)
+#   k1            Creality K1
+#   k1-dynamic    Creality K1 (dynamic linking)
+#   k2            Creality K2
+#   snapmaker-u1  Snapmaker U1
 #
 # QUICK START
 # -----------
-#   # 1. Set your Pi's address (once, add to ~/.zshrc or ~/.bashrc):
+#   # 1. Set your device's address (once, add to ~/.zshrc or ~/.bashrc):
 #   export HELIX_TEST_PI_USER=pi
 #   export HELIX_TEST_PI_HOST=helixscreen.local   # or an IP address
 #
-#   # 2. First time only — configure the Pi to use dev channel:
+#   # 2. First time only — configure the device to use dev channel:
 #   ./scripts/serve-local-update.sh --configure-pi
 #
 #   # 3. Every subsequent test iteration:
-#   ./scripts/serve-local-update.sh
+#   ./scripts/serve-local-update.sh [--platform PLATFORM]
 #
 #   helix-screen will check the manifest, see a newer version, download
 #   the tarball, run install.sh, and restart itself.
 #
 # ENVIRONMENT VARIABLES
 # ---------------------
-#   HELIX_TEST_PI_HOST   Pi hostname or IP  (default: helixscreen.local)
-#   HELIX_TEST_PI_USER   Pi SSH username    (default: pi)
+#   HELIX_TEST_PI_HOST   Device hostname or IP  (default: helixscreen.local)
+#   HELIX_TEST_PI_USER   Device SSH username    (default: pi)
 #
 # OPTIONS
 # -------
-#   --configure-pi   SSH into the Pi, write dev channel + dev_url into
-#                    ~/helixscreen/config/settings.json, enable HELIX_DEBUG=1
+#   --platform PLATFORM  Target platform to build and serve (default: pi).
+#                        See platform list above.
+#   --configure-pi   SSH into the device, write dev channel + dev_url into
+#                    ~/helixscreen/config/helixconfig.json, enable HELIX_DEBUG=1
 #                    in helixscreen.env for debug logging, and restart the
-#                    helixscreen service. Run once per Pi (or after a factory
-#                    reset). Requires passwordless sudo + SSH key access.
+#                    helixscreen service. Run once per device (or after a
+#                    factory reset). Requires passwordless sudo + SSH key access.
+#                    Note: uses Pi paths (~/helixscreen/). For other platforms
+#                    configure helixconfig.json manually.
 #   --no-bump        Serve the exact version from VERSION.txt instead of
 #                    99.0.0. Useful if you manually set a higher version.
 #   --no-build       Skip compile + package. Patches install.sh from the repo
@@ -52,8 +66,8 @@
 #
 # DEPENDENCIES
 # ------------
-#   - Docker (for pi-docker cross-compilation target)
-#   - python3 (for the HTTP server and Pi settings.json patch)
+#   - Docker (for *-docker cross-compilation targets)
+#   - python3 (for the HTTP server and device helixconfig.json patch)
 #   - ssh + ssh-agent or ~/.ssh/config with key for $HELIX_TEST_PI_USER@$HELIX_TEST_PI_HOST
 #   - rsync (used by package.sh)
 #
@@ -61,10 +75,11 @@
 # -----
 #   - The bumped version is only used for the tarball filename and manifest.
 #     VERSION.txt is never modified.
-#   - After install the Pi binary still reports VERSION.txt's version (< 99.0.0),
-#     so the next run will again offer an update — intentional for iteration.
-#   - To reset the Pi back to the stable channel, re-run --configure-pi
-#     after removing the dev_url key, or delete settings.json on the Pi.
+#   - After install the device binary still reports VERSION.txt's version
+#     (< 99.0.0), so the next run will again offer an update — intentional
+#     for iteration.
+#   - To reset the device back to the stable channel, re-run --configure-pi
+#     after removing the dev_url key, or delete helixconfig.json on the device.
 
 set -euo pipefail
 
@@ -78,6 +93,7 @@ PORT=8765
 BUILD=1
 BUMP=1
 CONFIGURE_PI=0
+PLATFORM=pi
 
 # ── Args ──────────────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -85,6 +101,7 @@ while [[ $# -gt 0 ]]; do
         --configure-pi) CONFIGURE_PI=1; shift ;;
         --no-build)     BUILD=0; shift ;;
         --no-bump)      BUMP=0; shift ;;
+        --platform)     PLATFORM=$2; shift 2 ;;
         --port)         PORT=$2; shift 2 ;;
         --help|-h)
             sed -n '2,/^set -/p' "$0" | grep '^#' | sed 's/^# \?//'
@@ -109,7 +126,7 @@ fi
 # bare version numbers (e.g. "99.0.0") to avoid "vv99.0.0" in the installer.
 VERSION_BARE="${TEST_VERSION}"
 VERSION="v${TEST_VERSION}"
-TARBALL_NAME="helixscreen-pi-${VERSION}.tar.gz"
+TARBALL_NAME="helixscreen-${PLATFORM}-${VERSION}.tar.gz"
 TARBALL_PATH="$PROJECT_DIR/dist/$TARBALL_NAME"
 
 # ── Local IP ──────────────────────────────────────────────────────────────────
@@ -121,11 +138,12 @@ BASE_URL="http://${LOCAL_IP}:${PORT}"
 echo ""
 echo "  serve-local-update"
 echo "  ══════════════════"
+echo "  Platform     : $PLATFORM"
 echo "  Base version : $BASE_VERSION  (VERSION.txt — unchanged)"
 echo "  Test version : $TEST_VERSION  $([ $BUMP -eq 1 ] && echo "(fixed high — always newer than installed)" || echo "(no bump)")"
 echo "  Tarball      : $TARBALL_NAME"
 echo "  Serving at   : $BASE_URL"
-echo "  Pi target    : ${PI_USER}@${PI_HOST}"
+echo "  Device       : ${PI_USER}@${PI_HOST}"
 echo ""
 
 # ── Git pull ──────────────────────────────────────────────────────────────────
@@ -147,11 +165,11 @@ echo ""
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 if [[ $BUILD -eq 1 ]]; then
-    echo "[serve-local-update] Compiling pi binary (docker)..."
-    make -C "$PROJECT_DIR" pi-docker
+    echo "[serve-local-update] Compiling ${PLATFORM} binary (docker)..."
+    make -C "$PROJECT_DIR" "${PLATFORM}-docker"
     echo ""
     echo "[serve-local-update] Packaging..."
-    "$SCRIPT_DIR/package.sh" pi --version "$VERSION"
+    "$SCRIPT_DIR/package.sh" "${PLATFORM}" --version "$VERSION"
     echo ""
 fi
 
@@ -160,7 +178,7 @@ if [[ ! -f "$TARBALL_PATH" ]]; then
     echo ""
     echo "  Expected: $TARBALL_PATH"
     echo "  Either run without --no-build, or build manually:"
-    echo "    scripts/package.sh pi --version $VERSION"
+    echo "    scripts/package.sh ${PLATFORM} --version $VERSION"
     exit 1
 fi
 
@@ -184,7 +202,7 @@ cat > "$MANIFEST_PATH" <<EOF
   "version": "${VERSION_BARE}",
   "channel": "dev",
   "assets": {
-    "pi": {
+    "${PLATFORM}": {
       "filename": "${TARBALL_NAME}",
       "url": "${BASE_URL}/${TARBALL_NAME}"
     }
@@ -261,7 +279,7 @@ echo "  ────────────────────────
 echo "  Manifest : ${BASE_URL}/manifest.json"
 echo "  Tarball  : ${BASE_URL}/${TARBALL_NAME}"
 echo ""
-echo "  Pi expects (set via --configure-pi if not already done):"
+echo "  Device expects (set via --configure-pi if not already done):"
 echo "    update/channel  = 2"
 echo "    update/dev_url  = \"${BASE_URL}/\""
 echo ""
