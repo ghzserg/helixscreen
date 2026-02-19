@@ -160,6 +160,8 @@ struct UnitToolLayout {
     int first_physical_tool = 0; ///< Physical nozzle position for this unit
     int tool_count = 0;          ///< Number of physical nozzles (1 for HUB, N for PARALLEL)
     int min_virtual_tool = -1;   ///< Minimum mapped_tool value (for labeling)
+    int hub_tool_label =
+        -1; ///< Override label for HUB units (from extruder index, -1 = use min_virtual_tool)
 };
 
 /**

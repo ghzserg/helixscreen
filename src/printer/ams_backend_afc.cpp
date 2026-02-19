@@ -269,8 +269,17 @@ PathTopology AmsBackendAfc::get_topology() const {
 
 PathTopology AmsBackendAfc::get_unit_topology(int unit_index) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    if (unit_index >= 0 && unit_index < static_cast<int>(unit_infos_.size())) {
-        return unit_infos_[unit_index].topology;
+    // unit_infos_ is in AFC JSON order, system_info_.units is alphabetically sorted.
+    // Must match by name, not by index.
+    if (unit_index >= 0 && unit_index < static_cast<int>(system_info_.units.size())) {
+        const auto& unit_name = system_info_.units[unit_index].name;
+        for (const auto& ui : unit_infos_) {
+            std::string display_name = ui.type + " " + ui.name;
+            if (display_name == unit_name) {
+                return ui.topology;
+            }
+        }
+        return system_info_.units[unit_index].topology;
     }
     return get_topology(); // Fallback to system-wide topology
 }
@@ -1036,23 +1045,30 @@ void AmsBackendAfc::parse_afc_hub(const std::string& hub_name, const nlohmann::j
         //    where hub names differ from unit names).
         // 2. Fallback: match hub name directly against unit.name (works when
         //    hub names match unit names, e.g., standard Box Turtle "Turtle_1").
+        // unit_infos_ is in AFC JSON order, system_info_.units is alphabetically sorted.
+        // Must find the matching system_info_ unit by name, not by paired index.
         bool found = false;
-        for (size_t ui = 0; ui < unit_infos_.size() && ui < system_info_.units.size(); ++ui) {
-            const auto& uinfo = unit_infos_[ui];
+        for (const auto& uinfo : unit_infos_) {
             bool owns_hub =
                 std::find(uinfo.hubs.begin(), uinfo.hubs.end(), hub_name) != uinfo.hubs.end();
             if (owns_hub) {
-                system_info_.units[ui].has_hub_sensor = true;
-                // Any hub triggered in this unit means filament is at/past hub
-                bool any_triggered = false;
-                for (const auto& h : uinfo.hubs) {
-                    auto it = hub_sensors_.find(h);
-                    if (it != hub_sensors_.end() && it->second) {
-                        any_triggered = true;
+                // Find the corresponding system_info_ unit by name
+                std::string display_name = uinfo.type + " " + uinfo.name;
+                for (auto& sys_unit : system_info_.units) {
+                    if (sys_unit.name == display_name) {
+                        sys_unit.has_hub_sensor = true;
+                        bool any_triggered = false;
+                        for (const auto& h : uinfo.hubs) {
+                            auto it = hub_sensors_.find(h);
+                            if (it != hub_sensors_.end() && it->second) {
+                                any_triggered = true;
+                                break;
+                            }
+                        }
+                        sys_unit.hub_sensor_triggered = any_triggered;
                         break;
                     }
                 }
-                system_info_.units[ui].hub_sensor_triggered = any_triggered;
                 found = true;
                 break;
             }
@@ -1250,9 +1266,27 @@ void AmsBackendAfc::reorganize_units_from_unit_info() {
         if (lanes_initialized_) {
             reorganize_units_from_map();
 
-            // Set per-unit topology on AmsUnit structs from unit_infos_
-            for (size_t i = 0; i < unit_infos_.size() && i < system_info_.units.size(); ++i) {
-                system_info_.units[i].topology = unit_infos_[i].topology;
+            // Set per-unit topology on AmsUnit structs from unit_infos_.
+            // unit_infos_ is in AFC JSON order, system_info_.units is alphabetically sorted.
+            // Must match by name, not by index.
+            for (const auto& ui : unit_infos_) {
+                std::string display_name = ui.type + " " + ui.name;
+                for (auto& sys_unit : system_info_.units) {
+                    if (sys_unit.name == display_name) {
+                        sys_unit.topology = ui.topology;
+                        // For HUB units, derive physical tool label from extruder name
+                        if (ui.topology == PathTopology::HUB && ui.extruders.size() == 1) {
+                            const auto& ext_name = ui.extruders[0];
+                            size_t pos = ext_name.find_last_not_of("0123456789");
+                            if (pos != std::string::npos && pos + 1 < ext_name.size()) {
+                                sys_unit.hub_tool_label = std::stoi(ext_name.substr(pos + 1));
+                            } else if (ext_name == "extruder") {
+                                sys_unit.hub_tool_label = 0;
+                            }
+                        }
+                        break;
+                    }
+                }
             }
 
             spdlog::debug("[AMS AFC] Reorganized {} units from unit-level objects",

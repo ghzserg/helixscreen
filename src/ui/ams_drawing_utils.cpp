@@ -362,6 +362,7 @@ SystemToolLayout compute_system_tool_layout(const AmsSystemInfo& info, const Ams
 
         UnitToolLayout utl;
         utl.min_virtual_tool = min_tool;
+        utl.hub_tool_label = unit.hub_tool_label;
 
         if (topo != PathTopology::PARALLEL) {
             // HUB/LINEAR: all lanes converge to a single physical nozzle.
@@ -408,12 +409,16 @@ SystemToolLayout compute_system_tool_layout(const AmsSystemInfo& info, const Ams
     // Build physical→virtual label map
     result.physical_to_virtual_label.resize(total_physical, -1);
     for (const auto& utl : result.units) {
-        // For each physical nozzle this unit owns, set the label to min_virtual_tool
-        // (for HUB: the one nozzle; for PARALLEL: each gets min_virtual + offset)
+        // For each physical nozzle this unit owns, set the label.
+        // HUB units with hub_tool_label: use that (derived from extruder name).
+        // Otherwise: use min_virtual_tool (+ offset for PARALLEL).
         for (int t = 0; t < utl.tool_count; ++t) {
             int phys = utl.first_physical_tool + t;
             if (phys < total_physical) {
-                if (utl.min_virtual_tool >= 0) {
+                if (utl.hub_tool_label >= 0 && utl.tool_count == 1) {
+                    // HUB unit with explicit label from extruder name
+                    result.physical_to_virtual_label[phys] = utl.hub_tool_label;
+                } else if (utl.min_virtual_tool >= 0) {
                     result.physical_to_virtual_label[phys] = utl.min_virtual_tool + t;
                 } else {
                     result.physical_to_virtual_label[phys] = phys;

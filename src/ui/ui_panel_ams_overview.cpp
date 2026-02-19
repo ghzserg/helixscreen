@@ -515,11 +515,20 @@ void AmsOverviewPanel::refresh_system_path(const AmsSystemInfo& info, int curren
     ui_system_path_canvas_set_active_tool(system_path_, active_tool);
     ui_system_path_canvas_set_current_tool(system_path_, info.current_tool);
 
-    // Set virtual tool labels for badge display
+    // Set virtual tool labels for badge display.
+    // For HUB units with an active slot, override the static hub_tool_label with the
+    // actual virtual tool number (e.g., show "T6" when AMS_1 slot 3 is loaded, not "T4").
     if (!tool_layout.physical_to_virtual_label.empty()) {
-        ui_system_path_canvas_set_tool_virtual_numbers(
-            system_path_, tool_layout.physical_to_virtual_label.data(),
-            static_cast<int>(tool_layout.physical_to_virtual_label.size()));
+        auto labels = tool_layout.physical_to_virtual_label; // mutable copy
+        if (active_tool >= 0 && active_tool < static_cast<int>(labels.size()) &&
+            current_slot >= 0) {
+            const SlotInfo* active_slot_info = info.get_slot_global(current_slot);
+            if (active_slot_info && active_slot_info->mapped_tool >= 0) {
+                labels[active_tool] = active_slot_info->mapped_tool;
+            }
+        }
+        ui_system_path_canvas_set_tool_virtual_numbers(system_path_, labels.data(),
+                                                       static_cast<int>(labels.size()));
     }
 
     // Set toolhead sensor state

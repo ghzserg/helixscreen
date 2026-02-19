@@ -78,17 +78,17 @@ TEST_CASE("SystemToolLayout: user's exact mixed setup", "[ams][tool_layout]") {
     CHECK(layout.total_physical_tools == 6);
     REQUIRE(layout.units.size() == 3);
 
-    // Unit 0: Box Turtle (HUB) → 1 nozzle
+    // Unit 0: Box Turtle (PARALLEL) → 4 nozzles
     CHECK(layout.units[0].first_physical_tool == 0);
-    CHECK(layout.units[0].tool_count == 1);
+    CHECK(layout.units[0].tool_count == 4);
 
-    // Unit 1: OpenAMS_1 (HUB) → 1 nozzle
-    CHECK(layout.units[1].first_physical_tool == 1);
+    // Unit 1: AMS_1 (HUB) → 1 nozzle
+    CHECK(layout.units[1].first_physical_tool == 4);
     CHECK(layout.units[1].tool_count == 1);
 
-    // Unit 2: OpenAMS_2 (PARALLEL) → 4 nozzles
-    CHECK(layout.units[2].first_physical_tool == 2);
-    CHECK(layout.units[2].tool_count == 4);
+    // Unit 2: AMS_2 (HUB) → 1 nozzle
+    CHECK(layout.units[2].first_physical_tool == 5);
+    CHECK(layout.units[2].tool_count == 1);
 }
 
 // ============================================================================
@@ -107,11 +107,11 @@ TEST_CASE("SystemToolLayout: mock mixed topology", "[ams][tool_layout]") {
     CHECK(layout.total_physical_tools == 6);
     REQUIRE(layout.units.size() == 3);
 
-    // HUB units: 1 tool each
-    CHECK(layout.units[0].tool_count == 1);
-    CHECK(layout.units[1].tool_count == 1);
     // PARALLEL unit: 4 tools
-    CHECK(layout.units[2].tool_count == 4);
+    CHECK(layout.units[0].tool_count == 4);
+    // HUB units: 1 tool each
+    CHECK(layout.units[1].tool_count == 1);
+    CHECK(layout.units[2].tool_count == 1);
 }
 
 // ============================================================================
@@ -342,24 +342,173 @@ TEST_CASE("SystemToolLayout: mixed setup active tool mapping", "[ams][tool_layou
 
     auto layout = compute_system_tool_layout(info, &backend);
 
-    // BT virtual tools 0-3 → physical 0 (single HUB nozzle)
+    // BT virtual tools 0-3 → physical 0-3 (PARALLEL, each maps to own nozzle)
     for (int v = 0; v < 4; ++v) {
         auto it = layout.virtual_to_physical.find(v);
         REQUIRE(it != layout.virtual_to_physical.end());
-        CHECK(it->second == 0);
+        CHECK(it->second == v);
     }
 
-    // AMS_1 virtual tools 4-7 → physical 1 (single HUB nozzle)
+    // AMS_1 virtual tools 4-7 → physical 4 (single HUB nozzle)
     for (int v = 4; v < 8; ++v) {
         auto it = layout.virtual_to_physical.find(v);
         REQUIRE(it != layout.virtual_to_physical.end());
-        CHECK(it->second == 1);
+        CHECK(it->second == 4);
     }
 
-    // AMS_2 virtual tools 8-11 → physical 2-5 (PARALLEL, 4 nozzles)
+    // AMS_2 virtual tools 8-11 → physical 5 (single HUB nozzle)
     for (int v = 8; v < 12; ++v) {
         auto it = layout.virtual_to_physical.find(v);
         REQUIRE(it != layout.virtual_to_physical.end());
-        CHECK(it->second == 2 + (v - 8));
+        CHECK(it->second == 5);
     }
+}
+
+// ============================================================================
+// hub_tool_label overrides min_virtual_tool for labels
+// ============================================================================
+
+TEST_CASE("SystemToolLayout: hub_tool_label overrides min_virtual_tool for labels",
+          "[ams][tool_layout]") {
+    AmsSystemInfo info;
+    info.type = AmsType::AFC;
+
+    AmsUnit unit;
+    unit.unit_index = 0;
+    unit.slot_count = 4;
+    unit.first_slot_global_index = 0;
+    unit.topology = PathTopology::HUB;
+    unit.hub_tool_label = 4;
+    for (int s = 0; s < 4; ++s) {
+        SlotInfo slot;
+        slot.slot_index = s;
+        slot.global_index = s;
+        slot.mapped_tool = 4 + s;
+        unit.slots.push_back(slot);
+    }
+    info.units.push_back(unit);
+    info.total_slots = 4;
+
+    auto layout = compute_system_tool_layout(info, nullptr);
+
+    CHECK(layout.total_physical_tools == 1);
+    REQUIRE(layout.physical_to_virtual_label.size() == 1);
+    CHECK(layout.physical_to_virtual_label[0] == 4);
+}
+
+// ============================================================================
+// hub_tool_label maps to physical nozzle
+// ============================================================================
+
+TEST_CASE("SystemToolLayout: hub_tool_label used for display label not virtual mapping",
+          "[ams][tool_layout]") {
+    // hub_tool_label affects physical_to_virtual_label (display) but NOT virtual_to_physical
+    // (to avoid conflicts when hub_tool_label overlaps another unit's virtual tool range)
+    AmsSystemInfo info;
+    info.type = AmsType::AFC;
+
+    AmsUnit unit;
+    unit.unit_index = 0;
+    unit.slot_count = 4;
+    unit.first_slot_global_index = 0;
+    unit.topology = PathTopology::HUB;
+    unit.hub_tool_label = 5;
+    for (int s = 0; s < 4; ++s) {
+        SlotInfo slot;
+        slot.slot_index = s;
+        slot.global_index = s;
+        slot.mapped_tool = 8 + s;
+        unit.slots.push_back(slot);
+    }
+    info.units.push_back(unit);
+    info.total_slots = 4;
+
+    auto layout = compute_system_tool_layout(info, nullptr);
+
+    CHECK(layout.total_physical_tools == 1);
+    // Virtual tools 8-11 map to physical 0
+    for (int v = 8; v <= 11; ++v) {
+        CHECK(layout.virtual_to_physical[v] == 0);
+    }
+    // hub_tool_label=5 should NOT be in virtual_to_physical (would conflict with other units)
+    CHECK(layout.virtual_to_physical.find(5) == layout.virtual_to_physical.end());
+    // But it SHOULD be used for the display label
+    REQUIRE(layout.physical_to_virtual_label.size() == 1);
+    CHECK(layout.physical_to_virtual_label[0] == 5);
+}
+
+// ============================================================================
+// Mixed setup correct labels with hub_tool_label
+// ============================================================================
+
+TEST_CASE("SystemToolLayout: mixed setup correct labels with hub_tool_label",
+          "[ams][tool_layout]") {
+    AmsSystemInfo info;
+    info.type = AmsType::AFC;
+
+    // Unit 0: PARALLEL with 4 tools
+    {
+        AmsUnit unit;
+        unit.unit_index = 0;
+        unit.slot_count = 4;
+        unit.first_slot_global_index = 0;
+        unit.topology = PathTopology::PARALLEL;
+        for (int s = 0; s < 4; ++s) {
+            SlotInfo slot;
+            slot.slot_index = s;
+            slot.global_index = s;
+            slot.mapped_tool = s;
+            unit.slots.push_back(slot);
+        }
+        info.units.push_back(unit);
+    }
+
+    // Unit 1: HUB with hub_tool_label=4
+    {
+        AmsUnit unit;
+        unit.unit_index = 1;
+        unit.slot_count = 4;
+        unit.first_slot_global_index = 4;
+        unit.topology = PathTopology::HUB;
+        unit.hub_tool_label = 4;
+        for (int s = 0; s < 4; ++s) {
+            SlotInfo slot;
+            slot.slot_index = s;
+            slot.global_index = 4 + s;
+            slot.mapped_tool = 4 + s;
+            unit.slots.push_back(slot);
+        }
+        info.units.push_back(unit);
+    }
+
+    // Unit 2: HUB with hub_tool_label=5
+    {
+        AmsUnit unit;
+        unit.unit_index = 2;
+        unit.slot_count = 4;
+        unit.first_slot_global_index = 8;
+        unit.topology = PathTopology::HUB;
+        unit.hub_tool_label = 5;
+        for (int s = 0; s < 4; ++s) {
+            SlotInfo slot;
+            slot.slot_index = s;
+            slot.global_index = 8 + s;
+            slot.mapped_tool = 8 + s;
+            unit.slots.push_back(slot);
+        }
+        info.units.push_back(unit);
+    }
+
+    info.total_slots = 12;
+
+    auto layout = compute_system_tool_layout(info, nullptr);
+
+    CHECK(layout.total_physical_tools == 6);
+    REQUIRE(layout.physical_to_virtual_label.size() == 6);
+    CHECK(layout.physical_to_virtual_label[0] == 0);
+    CHECK(layout.physical_to_virtual_label[1] == 1);
+    CHECK(layout.physical_to_virtual_label[2] == 2);
+    CHECK(layout.physical_to_virtual_label[3] == 3);
+    CHECK(layout.physical_to_virtual_label[4] == 4);
+    CHECK(layout.physical_to_virtual_label[5] == 5);
 }

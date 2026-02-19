@@ -11,9 +11,9 @@
  * @brief Unit tests for mixed topology mock backend (HELIX_MOCK_AMS=mixed)
  *
  * Simulates J0eB0l's real hardware: 6-tool toolchanger with mixed AFC hardware.
- * - Unit 0: Box Turtle (4 lanes, HUB, merger/combiner hub, buffers, hub sensor)
+ * - Unit 0: Box Turtle (4 lanes, PARALLEL, 4 extruders, buffers, no hub sensor)
  * - Unit 1: OpenAMS (4 lanes, HUB, 4:1 lane->tool T4-T7, no buffers, hub sensor)
- * - Unit 2: OpenAMS (4 lanes, PARALLEL, 1:1 lane->tool T8-T11, no buffers, hub sensor)
+ * - Unit 2: OpenAMS (4 lanes, HUB, 4:1 lane->tool T8-T11, no buffers, hub sensor)
  */
 
 TEST_CASE("Mixed topology mock creates 3 units", "[ams][mock][mixed]") {
@@ -30,7 +30,7 @@ TEST_CASE("Mixed topology mock creates 3 units", "[ams][mock][mixed]") {
     CHECK(info.units[2].name == "AMS_2");
 }
 
-TEST_CASE("Mixed topology unit 0 is Box Turtle with HUB topology", "[ams][mock][mixed]") {
+TEST_CASE("Mixed topology unit 0 is Box Turtle with PARALLEL topology", "[ams][mock][mixed]") {
     AmsBackendMock backend(4);
     backend.set_mixed_topology_mode(true);
 
@@ -39,18 +39,17 @@ TEST_CASE("Mixed topology unit 0 is Box Turtle with HUB topology", "[ams][mock][
 
     CHECK(unit0.slot_count == 4);
     CHECK(unit0.first_slot_global_index == 0);
-    CHECK(unit0.has_hub_sensor == true);
+    CHECK(unit0.has_hub_sensor == false);
 
     // Buffer health should be set for Box Turtle (has TurtleNeck buffers)
     CHECK(unit0.buffer_health.has_value());
 
-    // Per-unit topology: Box Turtle uses HUB (merger/combiner hub)
-    CHECK(backend.get_unit_topology(0) == PathTopology::HUB);
-    CHECK(unit0.topology == PathTopology::HUB);
+    // Per-unit topology: Box Turtle uses PARALLEL (4 extruders)
+    CHECK(backend.get_unit_topology(0) == PathTopology::PARALLEL);
+    CHECK(unit0.topology == PathTopology::PARALLEL);
 }
 
-TEST_CASE("Mixed topology unit 1 is OpenAMS HUB, unit 2 is OpenAMS PARALLEL",
-          "[ams][mock][mixed]") {
+TEST_CASE("Mixed topology unit 1 is OpenAMS HUB, unit 2 is OpenAMS HUB", "[ams][mock][mixed]") {
     AmsBackendMock backend(4);
     backend.set_mixed_topology_mode(true);
 
@@ -64,13 +63,13 @@ TEST_CASE("Mixed topology unit 1 is OpenAMS HUB, unit 2 is OpenAMS PARALLEL",
     CHECK(backend.get_unit_topology(1) == PathTopology::HUB);
     CHECK(unit1.topology == PathTopology::HUB);
 
-    // Unit 2: OpenAMS (PARALLEL)
+    // Unit 2: OpenAMS (HUB)
     const auto& unit2 = info.units[2];
     CHECK(unit2.slot_count == 4);
     CHECK(unit2.first_slot_global_index == 8);
     CHECK(unit2.has_hub_sensor == true);
-    CHECK(backend.get_unit_topology(2) == PathTopology::PARALLEL);
-    CHECK(unit2.topology == PathTopology::PARALLEL);
+    CHECK(backend.get_unit_topology(2) == PathTopology::HUB);
+    CHECK(unit2.topology == PathTopology::HUB);
 }
 
 TEST_CASE("Mixed topology lane-to-tool mapping", "[ams][mock][mixed]") {
@@ -139,9 +138,9 @@ TEST_CASE("Mixed topology get_topology returns HUB as default", "[ams][mock][mix
     CHECK(backend.get_topology() == PathTopology::HUB);
 
     // Per-unit topology is accessed via get_unit_topology()
-    CHECK(backend.get_unit_topology(0) == PathTopology::HUB);
+    CHECK(backend.get_unit_topology(0) == PathTopology::PARALLEL);
     CHECK(backend.get_unit_topology(1) == PathTopology::HUB);
-    CHECK(backend.get_unit_topology(2) == PathTopology::PARALLEL);
+    CHECK(backend.get_unit_topology(2) == PathTopology::HUB);
 
     // Out-of-range falls back to system topology
     CHECK(backend.get_unit_topology(99) == PathTopology::HUB);
@@ -257,26 +256,26 @@ TEST_CASE("Tool count: mixed topology with unique per-lane mapped_tool",
     std::vector<int> counts, firsts;
     compute_tool_counts(info, backend, counts, firsts);
 
-    // Box Turtle: HUB — 1 tool (merger/combiner hub)
-    CHECK(counts[0] == 1);
+    // Box Turtle: PARALLEL — 4 tools (T0-T3)
+    CHECK(counts[0] == 4);
     CHECK(firsts[0] == 0);
 
     // OpenAMS 1: HUB — must be 1 tool despite mapped_tool {4,5,6,7}
     CHECK(counts[1] == 1);
 
-    // OpenAMS 2: PARALLEL — 4 tools (T8-T11)
-    CHECK(counts[2] == 4);
+    // OpenAMS 2: HUB — 1 tool despite mapped_tool {8,9,10,11}
+    CHECK(counts[2] == 1);
 
-    // Total physical tools: 1 (BT) + 1 (AMS_1) + 4 (AMS_2) = 6
+    // Total physical tools: 4 (BT) + 1 (AMS_1) + 1 (AMS_2) = 6
     CHECK(counts[0] + counts[1] + counts[2] == 6);
 
     // NOTE: This test uses the OLD compute_tool_counts() helper (defined above),
     // which is no longer the production algorithm. The production code uses
     // compute_system_tool_layout() from ams_drawing_utils.h, which is tested
     // exactly in test_ams_system_tool_layout.cpp (total == 6).
-    // The old algorithm produces total=12 here (the original bug), so we just
-    // verify per-unit counts are correct — the total is tested properly elsewhere.
-    // CHECK(total < 12) would fail with the old algorithm — that's expected.
+    // The old algorithm produces total=9 here (BT PARALLEL max=3+1=4, AMS_1 HUB
+    // first=4+1=5, AMS_2 HUB first=8+1=9), so we just verify per-unit counts
+    // are correct — the total is tested properly elsewhere.
 }
 
 TEST_CASE("Tool count: HUB unit with wrong 1:1 mapped_tool defaults",
@@ -307,15 +306,17 @@ TEST_CASE("Tool count: HUB unit with wrong 1:1 mapped_tool defaults",
     int total = compute_tool_counts(info, backend, counts, firsts);
 
     // Even with wrong mapped_tool, HUB units should still count as 1 tool each
-    CHECK(counts[0] == 1); // Box Turtle: HUB, forced to 1
+    CHECK(counts[0] == 4); // Box Turtle: PARALLEL, 4 tools
     CHECK(counts[1] == 1); // OpenAMS 1: HUB, forced to 1
-    CHECK(counts[2] == 4); // OpenAMS 2: PARALLEL, 4 tools
+    CHECK(counts[2] == 1); // OpenAMS 2: HUB, forced to 1
 
     // Total is driven by max(first_tool + tool_count) across units.
-    // AMS_2 (PARALLEL) with mapped_tool={8,9,10,11}: first=8, max=11, count=4 → total=12.
+    // BT (PARALLEL) with mapped_tool={0,1,2,3}: first=0, max=3 → total=4.
+    // AMS_1 (HUB) first=4, count=1 → total=max(4, 5)=5.
+    // AMS_2 (HUB) first=8, count=1 → total=max(5, 9)=9.
     // Key invariant: HUB units don't inflate count beyond 1 each.
-    CHECK(total == 12);
-    // Physical tool sum: 1 (BT) + 1 (AMS_1) + 4 (AMS_2) = 6
+    CHECK(total == 9);
+    // Physical tool sum: 4 (BT) + 1 (AMS_1) + 1 (AMS_2) = 6
     CHECK(counts[0] + counts[1] + counts[2] == 6);
 }
 
@@ -427,12 +428,12 @@ TEST_CASE("Tool count: mixed topology HUB units with overlapping mapped_tool",
     std::vector<int> counts, firsts;
     int total = compute_tool_counts(info, backend, counts, firsts);
 
+    // Box Turtle is PARALLEL with mapped_tool {0,1,2,3} → 4 tools
+    CHECK(counts[0] == 4); // Box Turtle: PARALLEL, 4 tools
     // Each HUB unit is still 1 tool, even if they both claim T0
-    CHECK(counts[0] == 1); // Box Turtle: HUB, 1 tool
     CHECK(counts[1] == 1); // AMS_1: HUB, 1 tool
-    // AMS_2 is PARALLEL with all mapped_tool=0 → first=0, max=0, count=1
-    CHECK(counts[2] == 1);
-    // All units map to T0, so total = max(0+1, 0+1, 0+1) = 1
+    CHECK(counts[2] == 1); // AMS_2: HUB, 1 tool
+    // BT PARALLEL max=3 → total=4, HUB units map to T0 → max(4, 0+1, 0+1) = 4
     CHECK(total >= 1);
 }
 
@@ -446,25 +447,25 @@ TEST_CASE("Mixed topology: OpenAMS units have hub sensors", "[ams][mock][mixed][
 
     auto info = backend.get_system_info();
 
-    // Box Turtle: has hub sensor (merger/combiner hub in HUB mode)
-    CHECK(info.units[0].has_hub_sensor == true);
+    // Box Turtle: no hub sensor (PARALLEL mode, no shared hub)
+    CHECK(info.units[0].has_hub_sensor == false);
 
-    // OpenAMS 1 & 2: have hub sensors
+    // OpenAMS 1 & 2: have hub sensors (HUB mode)
     CHECK(info.units[1].has_hub_sensor == true);
     CHECK(info.units[2].has_hub_sensor == true);
 }
 
-TEST_CASE("Mixed topology: Box Turtle has hub sensor in HUB config",
+TEST_CASE("Mixed topology: Box Turtle has no hub sensor in PARALLEL config",
           "[ams][mock][mixed][hub_sensor]") {
-    // Box Turtle in HUB mode uses a merger/combiner hub — has hub sensor.
+    // Box Turtle in PARALLEL mode has no shared hub — no hub sensor.
     AmsBackendMock backend(4);
     backend.set_mixed_topology_mode(true);
 
     auto info = backend.get_system_info();
 
-    CHECK(info.units[0].has_hub_sensor == true);
+    CHECK(info.units[0].has_hub_sensor == false);
     CHECK(info.units[0].hub_sensor_triggered == false);
-    CHECK(info.units[0].topology == PathTopology::HUB);
+    CHECK(info.units[0].topology == PathTopology::PARALLEL);
 }
 
 // ============================================================================
@@ -602,9 +603,9 @@ TEST_CASE("Mixed topology: HUB unit mapped_tool doesn't affect physical tool cou
 //
 // ALL values in this section come from real production data collected from a
 // 6-toolhead toolchanger running:
-//   - AFC_BoxTurtle "Turtle_1" (unit 0, HUB, 4 lanes, TurtleNeck buffers, merger hub)
+//   - AFC_BoxTurtle "Turtle_1" (unit 0, PARALLEL, 4 lanes, TurtleNeck buffers, 4 extruders)
 //   - AFC_OpenAMS "AMS_1" (unit 1, HUB, 4 lanes → extruder4)
-//   - AFC_OpenAMS "AMS_2" (unit 2, PARALLEL, 4 lanes, per-lane routing)
+//   - AFC_OpenAMS "AMS_2" (unit 2, HUB, 4 lanes → extruder5)
 //
 // These values should be TRUSTED as ground truth unless explicitly told
 // otherwise. Each test documents the specific bug it guards against.
@@ -675,34 +676,34 @@ TEST_CASE("Production: AFC reports 1:1 map for HUB units", "[ams][production][re
     std::vector<int> counts, firsts;
     int total = compute_tool_counts(info, backend, counts, firsts);
 
-    // Box Turtle: HUB, 1 tool (merger/combiner hub)
-    CHECK(counts[0] == 1);
+    // Box Turtle: PARALLEL, 4 tools (T0-T3)
+    CHECK(counts[0] == 4);
     CHECK(firsts[0] == 0);
 
     // AMS_1: HUB, must be 1 tool despite map values T4,T5,T6,T7
     CHECK(counts[1] == 1);
 
-    // AMS_2: PARALLEL, 4 tools (T8-T11)
-    CHECK(counts[2] == 4);
+    // AMS_2: HUB, must be 1 tool despite map values T8,T9,T10,T11
+    CHECK(counts[2] == 1);
 
-    // Physical tool count: 1 (BT) + 1 (AMS_1) + 4 (AMS_2) = 6
+    // Physical tool count: 4 (BT) + 1 (AMS_1) + 1 (AMS_2) = 6
     CHECK(counts[0] + counts[1] + counts[2] == 6);
-    // Note: the old compute_tool_counts() total is driven by max(first_tool + count),
-    // which gives 12 here due to AMS_2 PARALLEL with mapped_tool 8-11.
+    // Note: the old compute_tool_counts() total is driven by max(first_tool + count).
+    // BT PARALLEL max=3 → 4, AMS_1 HUB first=4+1=5, AMS_2 HUB first=8+1=9.
     // The production algorithm (compute_system_tool_layout) handles this correctly.
-    // Key: per-unit counts are correct (HUB=1, PARALLEL=4).
-    CHECK(total == 12);
+    // Key: per-unit counts are correct (PARALLEL=4, HUB=1).
+    CHECK(total == 9);
 }
 
 /**
- * Production data: Box Turtle with merger/combiner hub (HUB mode)
+ * Production data: Box Turtle with PARALLEL topology (4 extruders)
  *
- * In HUB mode, all Box Turtle lanes converge through a merger/combiner
- * hub to a single toolhead. The hub sensor monitors filament at the merge point.
+ * In PARALLEL mode, each Box Turtle lane routes to its own extruder.
+ * No shared hub — no hub sensor.
  *
- * Bug guarded: has_hub_sensor must be true for HUB units with merger hub.
+ * Bug guarded: has_hub_sensor must be false for PARALLEL units.
  */
-TEST_CASE("Production: Box Turtle with merger hub", "[ams][production]") {
+TEST_CASE("Production: Box Turtle with PARALLEL topology", "[ams][production]") {
     AmsBackendMock backend(4);
     backend.set_mixed_topology_mode(true);
 
@@ -711,9 +712,9 @@ TEST_CASE("Production: Box Turtle with merger hub", "[ams][production]") {
     // Unit 0 is the Box Turtle
     const auto& bt = info.units[0];
     CHECK(bt.name == "Turtle_1");
-    CHECK(bt.has_hub_sensor == true);
+    CHECK(bt.has_hub_sensor == false);
     CHECK(bt.hub_sensor_triggered == false);
-    CHECK(bt.topology == PathTopology::HUB);
+    CHECK(bt.topology == PathTopology::PARALLEL);
 
     // Each lane maps to a different tool (1:1)
     for (int i = 0; i < 4; ++i) {
@@ -748,10 +749,10 @@ TEST_CASE("Production: OpenAMS per-lane hub naming", "[ams][production]") {
 
     CHECK(info.units[2].has_hub_sensor == true);
     CHECK(info.units[2].name == "AMS_2");
-    CHECK(info.units[2].topology == PathTopology::PARALLEL);
+    CHECK(info.units[2].topology == PathTopology::HUB);
 
-    // Box Turtle has hub sensor (merger/combiner hub in HUB mode)
-    CHECK(info.units[0].has_hub_sensor == true);
+    // Box Turtle has no hub sensor (PARALLEL mode, no shared hub)
+    CHECK(info.units[0].has_hub_sensor == false);
     CHECK(info.units[0].name == "Turtle_1");
 }
 
@@ -822,19 +823,17 @@ TEST_CASE("Production: OpenAMS lanes have null buffer", "[ams][production]") {
 }
 
 /**
- * Production data: AMS_1 shares single extruder (HUB), AMS_2 has per-lane routing (PARALLEL)
+ * Production data: AMS_1 shares single extruder (HUB), AMS_2 shares single extruder (HUB)
  *
  * Real AFC data:
  *   AMS_1: lanes 4-7 all have extruder="extruder4" (HUB topology)
- *   AMS_2: lanes 8-11 have per-lane extruder routing (PARALLEL topology)
+ *   AMS_2: lanes 8-11 all have extruder="extruder5" (HUB topology)
  *
  * HUB topology means multiple filament paths converge to a single toolhead.
- * PARALLEL topology means each lane routes to its own toolhead.
  *
  * Bug guarded: topology must match actual lane-to-extruder routing.
  */
-TEST_CASE("Production: OpenAMS AMS_1 shares extruder, AMS_2 has per-lane routing",
-          "[ams][production]") {
+TEST_CASE("Production: OpenAMS AMS_1 and AMS_2 share extruders (HUB)", "[ams][production]") {
     AmsBackendMock backend(4);
     backend.set_mixed_topology_mode(true);
 
@@ -848,16 +847,17 @@ TEST_CASE("Production: OpenAMS AMS_1 shares extruder, AMS_2 has per-lane routing
         CHECK(slot->mapped_tool == i);
     }
 
-    // AMS_2 slots (8-11): each has its own virtual tool (T8-T11)
+    // AMS_2 slots (8-11): each has its own virtual tool (T8-T11), but all share
+    // one physical extruder (HUB topology).
     for (int i = 8; i < 12; ++i) {
         const auto* slot = info.get_slot_global(i);
         REQUIRE(slot != nullptr);
         CHECK(slot->mapped_tool == i);
     }
 
-    // AMS_1 is HUB, AMS_2 is PARALLEL
+    // AMS_1 is HUB, AMS_2 is HUB
     CHECK(backend.get_unit_topology(1) == PathTopology::HUB);
-    CHECK(backend.get_unit_topology(2) == PathTopology::PARALLEL);
+    CHECK(backend.get_unit_topology(2) == PathTopology::HUB);
 }
 
 /**
@@ -866,8 +866,8 @@ TEST_CASE("Production: OpenAMS AMS_1 shares extruder, AMS_2 has per-lane routing
  * With production map values (T0-T3 for BT, T4-T7 for AMS_1, T8-T11 for AMS_2),
  * the total physical tools should be 6:
  *   4 from Box Turtle (PARALLEL, 1 per lane)
- *   1 from AMS_1 (HUB, all lanes → extruder4)
- *   1 from AMS_2 (HUB, all lanes → extruder5)
+ *   1 from AMS_1 (HUB, all lanes -> extruder4)
+ *   1 from AMS_2 (HUB, all lanes -> extruder5)
  *
  * NOT 12 (which is what you'd get treating every AFC map value as a
  * separate physical tool).
@@ -899,17 +899,18 @@ TEST_CASE("Production: mixed topology total tool count is 6", "[ams][production]
     int total_tools = compute_tool_counts(info, backend, counts, firsts);
 
     // Physical tool count per unit
-    CHECK(counts[0] == 1); // Box Turtle: HUB, 1 nozzle
+    CHECK(counts[0] == 4); // Box Turtle: PARALLEL, 4 nozzles
     CHECK(counts[1] == 1); // AMS_1: HUB, 1 nozzle
-    CHECK(counts[2] == 4); // AMS_2: PARALLEL, 4 nozzles
+    CHECK(counts[2] == 1); // AMS_2: HUB, 1 nozzle
 
     // Sum of physical tools is 6
     int physical_tools = counts[0] + counts[1] + counts[2];
     CHECK(physical_tools == 6);
 
-    // Note: old algorithm total is driven by max(first_tool + count) = 12
-    // due to AMS_2 PARALLEL mapped_tool 8-11. Per-unit counts are what matter.
-    CHECK(total_tools == 12);
+    // Note: old algorithm total is driven by max(first_tool + count).
+    // BT PARALLEL max=3 → 4, AMS_1 HUB first=4+1=5, AMS_2 HUB first=8+1=9.
+    // Per-unit counts are what matter.
+    CHECK(total_tools == 9);
 }
 
 /**
