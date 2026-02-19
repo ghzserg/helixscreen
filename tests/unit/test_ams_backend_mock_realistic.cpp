@@ -85,7 +85,7 @@ TEST_CASE("AmsBackendMock realistic mode load operation phases",
         }
     });
 
-    SECTION("load shows HEATING then LOADING then CHECKING sequence") {
+    SECTION("load shows HEATING then LOADING then IDLE sequence") {
         // Start with slot 1 (slot 0 is pre-loaded in mock)
         auto result = backend.unload_filament();
         REQUIRE(result);
@@ -101,13 +101,13 @@ TEST_CASE("AmsBackendMock realistic mode load operation phases",
         // Wait for operation to complete (with 1000x speedup: ~12ms total)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        // Verify phase sequence
-        REQUIRE(observed_actions.size() >= 3);
+        // Verify phase sequence: HEATING → LOADING → IDLE
+        // (CHECKING is only used in recovery, not normal load)
+        REQUIRE(observed_actions.size() >= 2);
 
-        // Find the HEATING -> LOADING -> CHECKING sequence
         bool found_heating = false;
         bool found_loading_after_heating = false;
-        bool found_checking_after_loading = false;
+        bool found_idle_after_loading = false;
 
         for (size_t i = 0; i < observed_actions.size(); ++i) {
             if (observed_actions[i] == AmsAction::HEATING) {
@@ -116,14 +116,14 @@ TEST_CASE("AmsBackendMock realistic mode load operation phases",
             if (found_heating && observed_actions[i] == AmsAction::LOADING) {
                 found_loading_after_heating = true;
             }
-            if (found_loading_after_heating && observed_actions[i] == AmsAction::CHECKING) {
-                found_checking_after_loading = true;
+            if (found_loading_after_heating && observed_actions[i] == AmsAction::IDLE) {
+                found_idle_after_loading = true;
             }
         }
 
         CHECK(found_heating);
         CHECK(found_loading_after_heating);
-        CHECK(found_checking_after_loading);
+        CHECK(found_idle_after_loading);
     }
 
     backend.stop();

@@ -40,9 +40,9 @@
                  style_flex_main_place="start" hidden="true">
         <event_cb trigger="clicked" callback="ams_context_reset_lane_cb"/>
       </ui_button>
-      <!-- Edit Button -->
+      <!-- Spool Info Button -->
       <ui_button name="btn_edit"
-                 width="100%" height="#button_height_sm" icon="tune" text="Edit" translation_tag="Edit" variant="ghost" clickable="true"
+                 width="100%" height="#button_height_sm" icon="tune" text="Spool Info" translation_tag="Spool Info" variant="ghost" clickable="true"
                  style_flex_main_place="start">
         <event_cb trigger="clicked" callback="ams_context_edit_cb"/>
       </ui_button>
@@ -56,7 +56,7 @@
               flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false"
               hidden="true">
         <text_small text="Tool" translation_tag="Tool"/>
-        <lv_dropdown name="tool_dropdown" width="80" height="32" style_radius="#border_radius" style_border_width="0">
+        <lv_dropdown name="tool_dropdown" width="110" height="32" style_radius="#border_radius" style_border_width="0">
           <event_cb trigger="value_changed" callback="ams_context_tool_changed_cb"/>
         </lv_dropdown>
       </lv_obj>
@@ -66,7 +66,7 @@
               flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false"
               hidden="true">
         <text_small text="Backup" translation_tag="Backup"/>
-        <lv_dropdown name="backup_dropdown" width="80" height="32" style_radius="#border_radius" style_border_width="0">
+        <lv_dropdown name="backup_dropdown" width="110" height="32" style_radius="#border_radius" style_border_width="0">
           <event_cb trigger="value_changed" callback="ams_context_backup_changed_cb"/>
         </lv_dropdown>
       </lv_obj>

@@ -612,8 +612,8 @@ namespace {
 /**
  * @brief Replicate the AFC backend's slot status derivation logic
  *
- * Mirrors the logic at ams_backend_afc.cpp:916-935 so we can test
- * status derivation in isolation without a Moonraker connection.
+ * Mirrors the status derivation logic in ams_backend_afc.cpp so we can
+ * test it in isolation without a Moonraker connection.
  *
  * @param tool_loaded  Whether the tool_loaded field is true
  * @param status_str   The "status" string from AFC lane data
@@ -623,9 +623,11 @@ namespace {
  */
 SlotStatus derive_slot_status(bool tool_loaded, const std::string& status_str, bool prep_sensor,
                               bool load_sensor) {
-    if (tool_loaded || status_str == "Loaded" || status_str == "Tooled") {
+    // AFC "Loaded" status means hub-loaded, not toolhead-loaded.
+    // Only tool_loaded == true means filament is at the extruder.
+    if (tool_loaded || status_str == "Tooled") {
         return SlotStatus::LOADED;
-    } else if (status_str == "Ready" || prep_sensor || load_sensor) {
+    } else if (status_str == "Loaded" || status_str == "Ready" || prep_sensor || load_sensor) {
         return SlotStatus::AVAILABLE;
     } else if (status_str == "None" || status_str.empty()) {
         return SlotStatus::EMPTY;
@@ -769,17 +771,17 @@ TEST_CASE("Production: OpenAMS 'Tooled' status maps to LOADED", "[ams][productio
     // Production lane0: status="Loaded", tool_loaded=true → LOADED
     CHECK(derive_slot_status(true, "Loaded", true, true) == SlotStatus::LOADED);
 
-    // "Loaded" without tool_loaded flag → still LOADED (status string wins)
-    CHECK(derive_slot_status(false, "Loaded", false, false) == SlotStatus::LOADED);
+    // AFC "Loaded" means hub-loaded, not toolhead → AVAILABLE (not LOADED)
+    CHECK(derive_slot_status(false, "Loaded", false, false) == SlotStatus::AVAILABLE);
 
     // Production lane5: status="None", all sensors false → EMPTY
     CHECK(derive_slot_status(false, "None", false, false) == SlotStatus::EMPTY);
 
-    // Production lane6: status="Loaded", tool_loaded=false, prep=true, load=true → LOADED
-    CHECK(derive_slot_status(false, "Loaded", true, true) == SlotStatus::LOADED);
+    // Production lane6: status="Loaded", tool_loaded=false, prep=true, load=true → AVAILABLE
+    CHECK(derive_slot_status(false, "Loaded", true, true) == SlotStatus::AVAILABLE);
 
-    // Production lane7: status="Loaded", tool_loaded=false, prep=true, load=true → LOADED
-    CHECK(derive_slot_status(false, "Loaded", true, true) == SlotStatus::LOADED);
+    // Production lane7: status="Loaded", tool_loaded=false, prep=true, load=true → AVAILABLE
+    CHECK(derive_slot_status(false, "Loaded", true, true) == SlotStatus::AVAILABLE);
 
     // "Ready" with sensors → AVAILABLE
     CHECK(derive_slot_status(false, "Ready", true, true) == SlotStatus::AVAILABLE);

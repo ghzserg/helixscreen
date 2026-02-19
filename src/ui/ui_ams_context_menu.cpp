@@ -211,6 +211,14 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
         }
     }
 
+    // Disable Spool Info button when slot is empty (no filament data to show)
+    if (!slot_has_filament) {
+        lv_obj_t* btn_edit = lv_obj_find_by_name(menu_obj, "btn_edit");
+        if (btn_edit) {
+            lv_obj_add_state(btn_edit, LV_STATE_DISABLED);
+        }
+    }
+
     // Update the slot header text (1-based for user display)
     lv_obj_t* slot_header = lv_obj_find_by_name(menu_obj, "slot_header");
     if (slot_header) {

@@ -834,15 +834,14 @@ TEST_CASE("Mock backend device actions in tool changer mode",
     backend.set_tool_changer_mode(true);
     REQUIRE(backend.start());
 
-    SECTION("tool changer mode still has device action interface") {
-        // The mock should still have device actions even in tool changer mode
-        // (unlike the real ToolChanger backend which returns empty)
+    SECTION("tool changer mode has no device actions") {
+        // Tool changers have no AMS-style device settings —
+        // set_tool_changer_mode() correctly clears them
         auto sections = backend.get_device_sections();
         auto actions = backend.get_device_actions();
 
-        // Mock maintains its configured actions regardless of mode
-        CHECK_FALSE(sections.empty());
-        CHECK_FALSE(actions.empty());
+        CHECK(sections.empty());
+        CHECK(actions.empty());
     }
 
     SECTION("can clear device actions in tool changer mode") {

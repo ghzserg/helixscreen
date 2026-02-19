@@ -932,9 +932,11 @@ void AmsBackendAfc::parse_afc_stepper(const std::string& lane_name, const nlohma
         status_str = data["status"].get<std::string>();
     }
 
-    if (tool_loaded || status_str == "Loaded" || status_str == "Tooled") {
+    // AFC "Loaded" status means hub-loaded, not toolhead-loaded.
+    // Only tool_loaded == true means filament is at the extruder.
+    if (tool_loaded || status_str == "Tooled") {
         slot->status = SlotStatus::LOADED;
-    } else if (status_str == "Ready" || sensors.prep || sensors.load) {
+    } else if (status_str == "Loaded" || status_str == "Ready" || sensors.prep || sensors.load) {
         slot->status = SlotStatus::AVAILABLE;
     } else if (status_str == "None" || status_str.empty()) {
         slot->status = SlotStatus::EMPTY;
@@ -945,20 +947,8 @@ void AmsBackendAfc::parse_afc_stepper(const std::string& lane_name, const nlohma
     // Populate or clear per-slot error based on lane status
     if (status_str == "Error") {
         SlotError err;
-        // Use system message text if available, otherwise default
-        if (!last_seen_message_.empty()) {
-            err.message = last_seen_message_;
-        } else {
-            err.message = "Lane error";
-        }
-        // Map severity from system message type
-        if (last_message_type_ == "error") {
-            err.severity = SlotError::ERROR;
-        } else if (last_message_type_ == "warning") {
-            err.severity = SlotError::WARNING;
-        } else {
-            err.severity = SlotError::ERROR; // Default to ERROR for lane errors
-        }
+        err.message = last_seen_message_.empty() ? "Lane error" : last_seen_message_;
+        err.severity = (last_message_type_ == "warning") ? SlotError::WARNING : SlotError::ERROR;
         slot->error = err;
         spdlog::debug("[AMS AFC] Lane {} (slot {}): error state - {}", lane_name, slot_index,
                       err.message);

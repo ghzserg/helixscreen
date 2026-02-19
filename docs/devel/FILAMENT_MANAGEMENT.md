@@ -397,14 +397,15 @@ Status values observed in production and their mapping to `SlotStatus`:
 
 | AFC Status | `tool_loaded` | Meaning | SlotStatus |
 |------------|---------------|---------|------------|
-| `"Tooled"` | true | Actively loaded in toolhead (OpenAMS) | LOADED |
-| `"Loaded"` | true/false | Filament loaded to hub | LOADED |
+| `"Tooled"` | any | Actively loaded in toolhead (OpenAMS) | LOADED |
+| `"Loaded"` | true | Filament loaded to toolhead | LOADED |
+| `"Loaded"` | false | Filament loaded to hub (not toolhead) | AVAILABLE |
 | `"Ready"` | false | Filament present, sensors triggered | AVAILABLE |
 | `"None"` | false | No filament, no sensors | EMPTY |
 | `"Error"` | any | Lane error | AVAILABLE + SlotError |
 | `""` (empty) | false | No data yet | EMPTY |
 
-Note: `"Tooled"` is specific to OpenAMS (`AFC_lane` objects). Standard Box Turtle uses `"Loaded"` with `tool_loaded: true`. The `tool_loaded` boolean is authoritative — if true, the lane is LOADED regardless of the status string.
+**Critical**: AFC's `"Loaded"` status means hub-loaded, NOT toolhead-loaded. The `tool_loaded` boolean is the authoritative indicator of toolhead presence. Only `tool_loaded: true` or `status: "Tooled"` maps to `SlotStatus::LOADED`. The `"Loaded"` status string alone (with `tool_loaded: false`) maps to `AVAILABLE`.
 
 ### Other AFC Lane Fields
 
@@ -708,9 +709,10 @@ The `AmsContextMenu` (`ui_ams_context_menu.h`) provides per-slot operations:
 
 | Action | Description | Availability |
 |--------|-------------|------------|
-| **Load** | Load filament from this slot | When slot has filament (status != EMPTY) |
+| **Load** | Load filament from this slot | When slot has filament and not at toolhead |
 | **Unload** | Unload filament from extruder | When filament is loaded to extruder |
-| **Edit** | Edit slot properties (color, material, brand) | Always |
+| **Eject** | Eject filament from hub back to spool (AFC only) | When hub-loaded but not at toolhead, and backend supports lane eject |
+| **Spool Info** | View/edit slot properties (color, material, brand) | When slot has filament |
 | **Spoolman** | Assign a Spoolman spool to this slot | Always |
 
 The context menu also includes inline dropdowns for:
@@ -812,7 +814,7 @@ HELIX_MOCK_AMS_REALISTIC=1 ./build/bin/helix-screen --test
 
 Enables multi-phase operation simulation with realistic timing:
 
-- **Load**: HEATING -> LOADING (segment animation) -> CHECKING -> IDLE
+- **Load**: HEATING -> LOADING (segment animation) -> IDLE
 - **Unload**: HEATING -> CUTTING -> UNLOADING (animation) -> IDLE
 - Timing respects `--sim-speed` flag with +/-20-30% variance
 
