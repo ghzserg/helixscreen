@@ -924,7 +924,7 @@ void AmsBackendAfc::parse_afc_stepper(const std::string& lane_name, const nlohma
         status_str = data["status"].get<std::string>();
     }
 
-    if (tool_loaded || status_str == "Loaded") {
+    if (tool_loaded || status_str == "Loaded" || status_str == "Tooled") {
         slot->status = SlotStatus::LOADED;
     } else if (status_str == "Ready" || sensors.prep || sensors.load) {
         slot->status = SlotStatus::AVAILABLE;
