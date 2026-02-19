@@ -236,6 +236,16 @@ class AmsBackendHappyHare : public AmsBackend {
      */
     AmsError validate_slot_index(int gate_index) const;
 
+    /**
+     * @brief Query configfile.settings.mmu to determine tip method
+     *
+     * Reads form_tip_macro from Happy Hare config via Moonraker.
+     * If macro name contains "cut", sets TipMethod::CUT (e.g., _MMU_CUT_TIP).
+     * Otherwise sets TipMethod::TIP_FORM (e.g., _MMU_FORM_TIP).
+     * Called once during start().
+     */
+    void query_tip_method_from_config();
+
     // Dependencies
     MoonrakerAPI* api_;              ///< For sending G-code commands
     helix::MoonrakerClient* client_; ///< For subscribing to updates

@@ -35,6 +35,9 @@ AmsBackendHappyHare::AmsBackendHappyHare(MoonrakerAPI* api, MoonrakerClient* cli
     system_info_.supports_bypass = true;
     // Happy Hare bypass is always positional (selector moves to bypass position), never a sensor
     system_info_.has_hardware_bypass_sensor = false;
+    // Default to TIP_FORM — Happy Hare's default macro is _MMU_FORM_TIP.
+    // Overridden by query_tip_method_from_config() once configfile response arrives.
+    system_info_.tip_method = TipMethod::TIP_FORM;
 
     spdlog::debug("[AMS HappyHare] Backend created");
 }
@@ -93,6 +96,11 @@ AmsError AmsBackendHappyHare::start() {
     if (should_emit) {
         emit_event(EVENT_STATE_CHANGED);
     }
+
+    // Query configfile to determine tip method (cutter vs tip-forming).
+    // Happy Hare determines this from form_tip_macro: if it contains "cut",
+    // it's a cutter system; otherwise it's tip-forming or none.
+    query_tip_method_from_config();
 
     return AmsErrorHelper::success();
 }
@@ -531,6 +539,72 @@ void AmsBackendHappyHare::initialize_gates(int gate_count) {
     }
 
     gates_initialized_ = true;
+}
+
+void AmsBackendHappyHare::query_tip_method_from_config() {
+    if (!client_) {
+        return;
+    }
+
+    // Query configfile.settings.mmu to read form_tip_macro.
+    // Happy Hare uses the same logic internally: if the macro name contains "cut",
+    // it's a cutter system (e.g., _MMU_CUT_TIP). Otherwise it's tip-forming.
+    nlohmann::json params = {{"objects", nlohmann::json::object({{"configfile", {"settings"}}})}};
+
+    client_->send_jsonrpc(
+        "printer.objects.query", params,
+        [this](nlohmann::json response) {
+            try {
+                const auto& settings = response["result"]["status"]["configfile"]["settings"];
+
+                if (!settings.contains("mmu") || !settings["mmu"].is_object()) {
+                    spdlog::debug("[AMS HappyHare] No mmu section in configfile settings");
+                    return;
+                }
+
+                const auto& mmu_cfg = settings["mmu"];
+                TipMethod method = TipMethod::NONE;
+
+                if (mmu_cfg.contains("form_tip_macro") && mmu_cfg["form_tip_macro"].is_string()) {
+                    std::string macro = mmu_cfg["form_tip_macro"].get<std::string>();
+
+                    // Convert to lowercase for comparison (same as Happy Hare)
+                    std::string lower_macro = macro;
+                    for (auto& c : lower_macro) {
+                        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    }
+
+                    if (lower_macro.find("cut") != std::string::npos) {
+                        method = TipMethod::CUT;
+                    } else {
+                        method = TipMethod::TIP_FORM;
+                    }
+
+                    spdlog::info("[AMS HappyHare] Tip method from config: {} (form_tip_macro={})",
+                                 tip_method_to_string(method), macro);
+                } else {
+                    // No form_tip_macro configured — default to tip-forming
+                    // (Happy Hare default macro is _MMU_FORM_TIP, not a cutter)
+                    method = TipMethod::TIP_FORM;
+                    spdlog::info(
+                        "[AMS HappyHare] No form_tip_macro in config, defaulting to TIP_FORM");
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    system_info_.tip_method = method;
+                }
+
+                emit_event(EVENT_STATE_CHANGED);
+            } catch (const nlohmann::json::exception& e) {
+                spdlog::warn("[AMS HappyHare] Failed to parse configfile for tip method: {}",
+                             e.what());
+            }
+        },
+        [](const MoonrakerError& err) {
+            spdlog::warn("[AMS HappyHare] Failed to query configfile for tip method: {}",
+                         err.message);
+        });
 }
 
 // ============================================================================
