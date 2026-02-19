@@ -6,6 +6,7 @@
 #include "ui_error_reporting.h"
 #include "ui_update_queue.h"
 
+#include "ams_state.h"
 #include "app_constants.h"
 #include "app_globals.h"
 #include "config.h"
@@ -581,14 +582,22 @@ void FilamentSensorManager::update_from_status(const json& status) {
                 notif.old_state = old_state;
                 notif.new_state = state;
                 notif.role = sensor.role;
-                // Suppress toasts during startup grace period and wizard setup
-                notif.should_toast = !within_grace_period && !is_wizard_active() &&
+                // Suppress toasts during startup grace period, wizard setup,
+                // and active AMS filament operations (load/unload moves filament
+                // past sensors intentionally, generating spurious triggers)
+                bool ams_active = AmsState::instance().is_filament_operation_active();
+                notif.should_toast = !within_grace_period && !is_wizard_active() && !ams_active &&
                                      master_enabled_ && sensor.enabled &&
                                      sensor.role != FilamentSensorRole::NONE;
                 if (within_grace_period && master_enabled_ && sensor.enabled &&
                     sensor.role != FilamentSensorRole::NONE) {
                     spdlog::debug("[FilamentSensorManager] Suppressing startup toast for {}",
                                   sensor.sensor_name);
+                } else if (ams_active && master_enabled_ && sensor.enabled &&
+                           sensor.role != FilamentSensorRole::NONE) {
+                    spdlog::debug(
+                        "[FilamentSensorManager] Suppressing toast during AMS operation for {}",
+                        sensor.sensor_name);
                 }
                 notifications.push_back(notif);
             }

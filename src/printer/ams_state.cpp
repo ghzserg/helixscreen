@@ -897,6 +897,22 @@ void AmsState::set_action(AmsAction action) {
     spdlog::debug("[AMS State] Action set: {}", ams_action_to_string(action));
 }
 
+bool AmsState::is_filament_operation_active() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    auto action = static_cast<AmsAction>(lv_subject_get_int(&ams_action_));
+    // Only suppress during states that actively move filament past sensors.
+    // Heating, tip forming, cutting, and purging are stationary — a sensor
+    // change in those states would indicate a real problem.
+    switch (action) {
+    case AmsAction::LOADING:
+    case AmsAction::UNLOADING:
+    case AmsAction::SELECTING:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void AmsState::sync_current_loaded_from_backend() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 

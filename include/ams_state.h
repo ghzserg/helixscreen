@@ -691,6 +691,16 @@ class AmsState {
      */
     void set_action(AmsAction action);
 
+    /**
+     * @brief Check if a filament operation (load/unload) is currently active
+     *
+     * Used by FilamentSensorManager to suppress spurious sensor toasts while
+     * filament is being intentionally moved through sensors.
+     *
+     * @return true if AMS is actively loading, unloading, or performing related ops
+     */
+    bool is_filament_operation_active();
+
     // ========================================================================
     // Spoolman Weight Polling
     // ========================================================================

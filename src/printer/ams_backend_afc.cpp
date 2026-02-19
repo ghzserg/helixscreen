@@ -586,16 +586,24 @@ void AmsBackendAfc::parse_afc_state(const nlohmann::json& afc_data) {
                     emit_event(EVENT_ERROR, msg_text);
                 }
 
-                // Determine if an AFC action:prompt is currently active
-                // If so, suppress the toast (user already sees the modal) but
-                // still add to notification history
+                // Suppress toasts when:
+                // 1. AFC action:prompt modal is already showing (user sees it)
+                // 2. Filament operation is active (load/unload generates noise)
                 bool afc_prompt_active = helix::ActionPromptManager::is_showing() &&
                                          helix::ActionPromptManager::current_prompt_name().find(
                                              "AFC") != std::string::npos;
+                // Only suppress during states that actively move filament.
+                // Heating, tip forming, cutting, purging are stationary —
+                // a sensor change there indicates a real problem.
+                bool operation_active = system_info_.action == AmsAction::LOADING ||
+                                        system_info_.action == AmsAction::UNLOADING ||
+                                        system_info_.action == AmsAction::SELECTING;
+                bool suppress_toast = afc_prompt_active || operation_active;
 
-                if (afc_prompt_active) {
-                    // Notification history only (no toast) - user already has the modal
-                    spdlog::debug("[AMS AFC] Toast suppressed (AFC prompt active): {}", msg_text);
+                if (suppress_toast) {
+                    // Notification history only (no toast) - operation in progress
+                    spdlog::debug("[AMS AFC] Toast suppressed (prompt={}, op={}): {}",
+                                  afc_prompt_active, operation_active, msg_text);
                     ui_notification_info_with_action("AFC", msg_text.c_str(), "afc_message");
                 } else {
                     // Show toast based on message type
