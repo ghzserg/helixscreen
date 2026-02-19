@@ -578,6 +578,15 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     bool cancel_print_internal();
 
     /**
+     * @brief Execute emergency stop (internal implementation)
+     *
+     * Zeros all heater targets and fan speeds, sets print state to error,
+     * and transitions klippy state to SHUTDOWN. Called by both the
+     * printer.emergency_stop JSON-RPC handler and M112 G-code.
+     */
+    void emergency_stop_internal();
+
+    /**
      * @brief Toggle filament runout state for simulation
      *
      * Toggles the filament_detected state on the primary runout sensor and

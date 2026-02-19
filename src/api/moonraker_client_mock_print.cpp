@@ -131,15 +131,10 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
 
     // printer.emergency_stop - Execute emergency stop (M112)
     registry["printer.emergency_stop"] =
-        []([[maybe_unused]] MoonrakerClientMock* self, [[maybe_unused]] const json& params,
+        [](MoonrakerClientMock* self, [[maybe_unused]] const json& params,
            std::function<void(json)> success_cb,
            [[maybe_unused]] std::function<void(const MoonrakerError&)> error_cb) -> bool {
-        spdlog::warn("[MoonrakerClientMock] Emergency stop executed!");
-
-        // Set klippy state to SHUTDOWN (must defer to main thread)
-        helix::ui::async_call(
-            [](void*) { get_printer_state().set_klippy_state_sync(KlippyState::SHUTDOWN); },
-            nullptr);
+        self->emergency_stop_internal();
 
         if (success_cb) {
             success_cb(json::object());
