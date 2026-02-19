@@ -143,6 +143,19 @@ static void rebuild_bars(AmsMiniStatusData* data) {
     if (!data || !data->bars_container)
         return;
 
+    // Guard: ensure overflow label has a valid font before any layout calculation.
+    // A NULL font causes SEGV in lv_font_set_kerning during lv_obj_update_layout.
+    if (data->overflow_label) {
+        const lv_font_t* cur_font = lv_obj_get_style_text_font(data->overflow_label, LV_PART_MAIN);
+        if (!cur_font) {
+            spdlog::error("[AmsMiniStatus] NULL font on overflow label — applying fallback");
+            const lv_font_t* fallback = theme_manager_get_font("font_xs");
+            if (!fallback)
+                fallback = &noto_sans_12;
+            lv_obj_set_style_text_font(data->overflow_label, fallback, LV_PART_MAIN);
+        }
+    }
+
     int visible_count = std::min(data->slot_count, data->max_visible);
     int overflow_count = data->slot_count - visible_count;
 
