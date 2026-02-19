@@ -71,6 +71,8 @@ struct SystemPathData {
     int current_tool = -1;                   // Virtual tool number (slot-based, for label)
     int tool_virtual_number[MAX_TOOLS] = {}; // Virtual tool labels per physical nozzle
     bool has_virtual_numbers = false;        // When false, raw physical index is used for labels
+    char tool_labels[MAX_TOOLS][8] = {};     // Pre-formatted "Tn" strings for deferred draw
+    char current_tool_label[8] = {};         // Pre-formatted label for single-nozzle mode
 
     // Theme-derived colors (cached)
     lv_color_t color_idle;
@@ -249,20 +251,23 @@ static lv_color_t sp_blend(lv_color_t c1, lv_color_t c2, float factor) {
  * @param cx Center X of the nozzle above
  * @param nozzle_y Center Y of the nozzle
  * @param nozzle_scale Scale of the nozzle icon (determines vertical offset)
- * @param tool_num Tool number to display (0 = "T0", etc.)
+ * @param label Pre-formatted label string (must remain valid through draw cycle)
  * @param font Label font
  * @param bg_color Badge background color
  * @param text_color Badge text color
  */
 static void draw_tool_badge(lv_layer_t* layer, int32_t cx, int32_t nozzle_y, int32_t nozzle_scale,
-                            int tool_num, const lv_font_t* font, lv_color_t bg_color,
+                            const char* label, const lv_font_t* font, lv_color_t bg_color,
                             lv_color_t text_color) {
-    // Static buffer — lv_draw_label defers rendering, stack buffer would be freed
-    static char tool_label[16];
-    snprintf(tool_label, sizeof(tool_label), "T%d", tool_num);
+    if (!label || !label[0] || !font)
+        return;
+
+    const char* tool_label = label;
 
     int32_t font_h = lv_font_get_line_height(font);
-    int32_t badge_w = 24;
+    int32_t label_len = (int32_t)strlen(tool_label);
+    // Approximate width: ~60% of font height per character for small labels
+    int32_t badge_w = LV_MAX(24, label_len * (font_h * 3 / 5) + 6);
     int32_t badge_h = font_h + 4;
     int32_t badge_top = nozzle_y + nozzle_scale * 4 + 6;
     int32_t badge_left = cx - badge_w / 2;
@@ -462,13 +467,10 @@ static void system_path_draw_cb(lv_event_t* e) {
             lv_color_t noz_color = is_active_tool ? active_color_lv : nozzle_color;
             draw_nozzle_bambu(layer, tool_x, tools_y, noz_color, small_scale);
 
-            // Tool badge below nozzle — use virtual number if available
-            if (data->label_font) {
-                int label_num = (data->has_virtual_numbers && t < SystemPathData::MAX_TOOLS)
-                                    ? data->tool_virtual_number[t]
-                                    : t;
-                draw_tool_badge(layer, tool_x, tools_y, small_scale, label_num, data->label_font,
-                                data->color_idle,
+            // Tool badge below nozzle — use pre-formatted label from data
+            if (data->label_font && t < SystemPathData::MAX_TOOLS) {
+                draw_tool_badge(layer, tool_x, tools_y, small_scale, data->tool_labels[t],
+                                data->label_font, data->color_idle,
                                 is_active_tool ? active_color_lv : data->color_text);
             }
         }
@@ -614,8 +616,9 @@ static void system_path_draw_cb(lv_event_t* e) {
             // Virtual tool badge beneath nozzle — only when multiple slots feed one toolhead
             if (data->total_tools <= 1 && data->current_tool >= 0 && data->label_font) {
                 lv_color_t badge_text = (unit_active || bp_active) ? noz_color : data->color_text;
-                draw_tool_badge(layer, center_x, nozzle_y, data->extruder_scale, data->current_tool,
-                                data->label_font, data->color_idle, badge_text);
+                draw_tool_badge(layer, center_x, nozzle_y, data->extruder_scale,
+                                data->current_tool_label, data->label_font, data->color_idle,
+                                badge_text);
             }
 
             if (data->status_text[0] && data->label_font) {
@@ -878,6 +881,11 @@ void ui_system_path_canvas_set_total_tools(lv_obj_t* obj, int total_tools) {
     auto* data = get_data(obj);
     if (data) {
         data->total_tools = LV_CLAMP(total_tools, 0, SystemPathData::MAX_TOOLS);
+        if (!data->has_virtual_numbers) {
+            for (int i = 0; i < data->total_tools; ++i) {
+                snprintf(data->tool_labels[i], sizeof(data->tool_labels[i]), "T%d", i);
+            }
+        }
         lv_obj_invalidate(obj);
     }
 }
@@ -894,6 +902,11 @@ void ui_system_path_canvas_set_current_tool(lv_obj_t* obj, int tool_index) {
     auto* data = get_data(obj);
     if (data) {
         data->current_tool = tool_index;
+        if (tool_index >= 0) {
+            snprintf(data->current_tool_label, sizeof(data->current_tool_label), "T%d", tool_index);
+        } else {
+            data->current_tool_label[0] = '\0';
+        }
         lv_obj_invalidate(obj);
     }
 }
@@ -904,10 +917,12 @@ void ui_system_path_canvas_set_tool_virtual_numbers(lv_obj_t* obj, const int* nu
         int n = LV_MIN(count, SystemPathData::MAX_TOOLS);
         for (int i = 0; i < n; ++i) {
             data->tool_virtual_number[i] = numbers[i];
+            snprintf(data->tool_labels[i], sizeof(data->tool_labels[i]), "T%d", numbers[i]);
         }
         // Clear remaining entries
         for (int i = n; i < SystemPathData::MAX_TOOLS; ++i) {
             data->tool_virtual_number[i] = i;
+            snprintf(data->tool_labels[i], sizeof(data->tool_labels[i]), "T%d", i);
         }
         data->has_virtual_numbers = (n > 0);
         lv_obj_invalidate(obj);
