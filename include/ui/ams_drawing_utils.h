@@ -6,6 +6,10 @@
 #include "lvgl/lvgl.h"
 
 #include <string>
+#include <unordered_map>
+#include <vector>
+
+class AmsBackend; // Forward declaration for compute_system_tool_layout()
 
 /**
  * @brief Shared AMS drawing utilities
@@ -144,5 +148,52 @@ void apply_logo(lv_obj_t* image, const AmsUnit& unit, const AmsSystemInfo& info)
 
 /** Apply logo to image widget: try type name -> hide */
 void apply_logo(lv_obj_t* image, const std::string& type_name);
+
+// ============================================================================
+// System Tool Layout (physical nozzle mapping for mixed topologies)
+// ============================================================================
+
+/**
+ * @brief Per-unit tool layout result
+ */
+struct UnitToolLayout {
+    int first_physical_tool = 0; ///< Physical nozzle position for this unit
+    int tool_count = 0;          ///< Number of physical nozzles (1 for HUB, N for PARALLEL)
+    int min_virtual_tool = -1;   ///< Minimum mapped_tool value (for labeling)
+};
+
+/**
+ * @brief System-wide tool layout result
+ *
+ * Maps AFC virtual tool numbers to sequential physical nozzle positions.
+ * HUB units always get 1 physical nozzle regardless of per-lane mapped_tool values.
+ * PARALLEL units get 1 nozzle per lane.
+ */
+struct SystemToolLayout {
+    std::vector<UnitToolLayout> units;
+    int total_physical_tools = 0;
+
+    /// Map AFC virtual tool number -> physical nozzle index (for active tool highlighting)
+    std::unordered_map<int, int> virtual_to_physical;
+
+    /// Map physical nozzle index -> virtual tool label number (for badge labels)
+    std::vector<int> physical_to_virtual_label;
+};
+
+/**
+ * @brief Compute physical tool layout from AMS system info
+ *
+ * Assigns sequential physical nozzle positions to each unit:
+ * - HUB/LINEAR units: always 1 physical nozzle, regardless of mapped_tool values
+ * - PARALLEL units: 1 physical nozzle per slot
+ *
+ * Builds virtual-to-physical mapping so active tool highlighting works correctly
+ * even when AFC assigns unique virtual tool numbers to each HUB lane.
+ *
+ * @param info AMS system info with units and slot data
+ * @param backend Backend for per-unit topology queries (nullable, falls back to unit.topology)
+ * @return SystemToolLayout with physical positions and virtual mappings
+ */
+SystemToolLayout compute_system_tool_layout(const AmsSystemInfo& info, const AmsBackend* backend);
 
 } // namespace ams_draw

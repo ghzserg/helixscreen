@@ -148,15 +148,19 @@ void AmsOverviewPanel::init_subjects() {
         // Overview panel reuses existing AMS subjects (slots_version, etc.)
         AmsState::instance().init_subjects(true);
 
-        // Observe slots_version to auto-refresh when slot data changes
+        // Observe slots_version to auto-refresh when slot data changes.
+        // In detail mode, per-slot observers handle visual updates (color, pulse,
+        // highlight) automatically — we only need to react to structural changes
+        // (slot count changed) or refresh the overview cards.
         slots_version_observer_ = ObserverGuard(
             AmsState::instance().get_slots_version_subject(),
             [](lv_observer_t* observer, lv_subject_t* /*subject*/) {
                 auto* self = static_cast<AmsOverviewPanel*>(lv_observer_get_user_data(observer));
                 if (self && self->panel_) {
                     if (self->detail_unit_index_ >= 0) {
-                        // In detail mode — refresh the detail slot view
-                        self->show_unit_detail(self->detail_unit_index_);
+                        // In detail mode — only rebuild slots if count changed.
+                        // Per-slot observers drive all visual state (color, pulse, etc.)
+                        self->refresh_detail_if_needed();
                     } else {
                         self->refresh_units();
                     }
@@ -472,77 +476,51 @@ void AmsOverviewPanel::refresh_system_path(const AmsSystemInfo& info, int curren
     bool bypass_active = info.supports_bypass && (current_slot == -2);
     ui_system_path_canvas_set_bypass(system_path_, info.supports_bypass, bypass_active, 0x888888);
 
-    // Set per-unit hub sensor states and per-unit topology/tool routing
+    // Compute physical tool layout (handles HUB units with unique per-lane mapped_tools)
     auto* backend = AmsState::instance().get_backend();
-    int total_tools = 0;
-    int active_tool = -1;
+    auto tool_layout = ams_draw::compute_system_tool_layout(info, backend);
 
+    // Set per-unit hub sensor states, topology, and tool routing
     for (int i = 0; i < unit_count && i < static_cast<int>(info.units.size()); ++i) {
         const auto& unit = info.units[i];
         ui_system_path_canvas_set_unit_hub_sensor(system_path_, i, unit.has_hub_sensor,
                                                   unit.hub_sensor_triggered);
 
-        // Per-unit topology
         PathTopology topo = unit.topology;
         if (backend) {
             topo = backend->get_unit_topology(i);
         }
         ui_system_path_canvas_set_unit_topology(system_path_, i, static_cast<int>(topo));
 
-        // Per-unit tool routing: derive tool count and first tool from slot mapped_tool data
-        int first_tool = -1;
-        int max_tool = -1;
-        for (const auto& slot : unit.slots) {
-            if (slot.mapped_tool >= 0) {
-                if (first_tool < 0 || slot.mapped_tool < first_tool) {
-                    first_tool = slot.mapped_tool;
-                }
-                if (slot.mapped_tool > max_tool) {
-                    max_tool = slot.mapped_tool;
-                }
-            }
-        }
-
-        int unit_tool_count = 0;
-        if (topo != PathTopology::PARALLEL) {
-            // HUB/LINEAR: all slots in this unit converge to a single toolhead
-            unit_tool_count = 1;
-            if (first_tool < 0) {
-                first_tool = total_tools; // Assign next available tool index
-            }
-        } else if (first_tool >= 0) {
-            // PARALLEL: each slot maps to a different tool (tool_count = distinct tools)
-            unit_tool_count = max_tool - first_tool + 1;
-        } else if (!unit.slots.empty()) {
-            // PARALLEL fallback: no mapped_tool data, use slot count
-            first_tool = total_tools;
-            unit_tool_count = static_cast<int>(unit.slots.size());
-        }
-
-        ui_system_path_canvas_set_unit_tools(system_path_, i, unit_tool_count,
-                                             first_tool >= 0 ? first_tool : total_tools);
-
-        // Track active tool from current slot
-        if (current_slot >= 0 && i == active_unit) {
-            const SlotInfo* active_slot = info.get_slot_global(current_slot);
-            if (active_slot && active_slot->mapped_tool >= 0) {
-                active_tool = active_slot->mapped_tool;
-            }
-        }
-
-        // Accumulate total tool count
-        // For PARALLEL with mapped_tool data: use max tool index (tools may overlap/share)
-        // For HUB or no mapped_tool: add unit_tool_count sequentially
-        if (topo == PathTopology::PARALLEL && max_tool >= 0) {
-            total_tools = std::max(total_tools, max_tool + 1);
-        } else {
-            total_tools = std::max(total_tools, first_tool + unit_tool_count);
+        if (i < static_cast<int>(tool_layout.units.size())) {
+            const auto& utl = tool_layout.units[i];
+            ui_system_path_canvas_set_unit_tools(system_path_, i, utl.tool_count,
+                                                 utl.first_physical_tool);
         }
     }
 
-    ui_system_path_canvas_set_total_tools(system_path_, total_tools);
+    // Translate active slot's virtual tool number to physical nozzle index
+    int active_tool = -1;
+    if (current_slot >= 0) {
+        const SlotInfo* active_slot = info.get_slot_global(current_slot);
+        if (active_slot && active_slot->mapped_tool >= 0) {
+            auto it = tool_layout.virtual_to_physical.find(active_slot->mapped_tool);
+            if (it != tool_layout.virtual_to_physical.end()) {
+                active_tool = it->second;
+            }
+        }
+    }
+
+    ui_system_path_canvas_set_total_tools(system_path_, tool_layout.total_physical_tools);
     ui_system_path_canvas_set_active_tool(system_path_, active_tool);
     ui_system_path_canvas_set_current_tool(system_path_, info.current_tool);
+
+    // Set virtual tool labels for badge display
+    if (!tool_layout.physical_to_virtual_label.empty()) {
+        ui_system_path_canvas_set_tool_virtual_numbers(
+            system_path_, tool_layout.physical_to_virtual_label.data(),
+            static_cast<int>(tool_layout.physical_to_virtual_label.size()));
+    }
 
     // Set toolhead sensor state
     {
@@ -619,6 +597,32 @@ void AmsOverviewPanel::on_detail_slot_clicked(lv_event_t* e) {
 // ============================================================================
 // Detail View (inline unit zoom)
 // ============================================================================
+
+void AmsOverviewPanel::refresh_detail_if_needed() {
+    if (detail_unit_index_ < 0 || !panel_)
+        return;
+
+    auto* backend = AmsState::instance().get_backend();
+    if (!backend)
+        return;
+
+    AmsSystemInfo info = backend->get_system_info();
+    if (detail_unit_index_ >= static_cast<int>(info.units.size()))
+        return;
+
+    const AmsUnit& unit = info.units[detail_unit_index_];
+    int new_slot_count = static_cast<int>(unit.slots.size());
+
+    if (new_slot_count != detail_slot_count_) {
+        // Structural change — rebuild slots (no animation restart)
+        spdlog::debug("[{}] Detail slot count changed {} -> {}, rebuilding", get_name(),
+                      detail_slot_count_, new_slot_count);
+        create_detail_slots(unit);
+        setup_detail_path_canvas(unit, info);
+        update_detail_header(unit, info);
+    }
+    // Otherwise: per-slot observers handle all visual updates (color, pulse, etc.)
+}
 
 void AmsOverviewPanel::show_unit_detail(int unit_index) {
     if (!panel_ || !detail_container_ || !cards_row_)

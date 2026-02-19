@@ -2,6 +2,7 @@
 
 #include "ui/ams_drawing_utils.h"
 
+#include "ams_backend.h"
 #include "ams_state.h"
 #include "theme_manager.h"
 
@@ -326,6 +327,102 @@ void apply_logo(lv_obj_t* image, const std::string& type_name) {
     } else {
         lv_obj_add_flag(image, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+// ============================================================================
+// System Tool Layout
+// ============================================================================
+
+SystemToolLayout compute_system_tool_layout(const AmsSystemInfo& info, const AmsBackend* backend) {
+    SystemToolLayout result;
+    int total_physical = 0;
+
+    for (int i = 0; i < static_cast<int>(info.units.size()); ++i) {
+        const auto& unit = info.units[i];
+
+        // Determine topology — prefer backend query, fall back to unit struct
+        PathTopology topo = unit.topology;
+        if (backend) {
+            topo = backend->get_unit_topology(i);
+        }
+
+        // Find min/max mapped_tool across slots in this unit
+        int min_tool = -1;
+        int max_tool = -1;
+        for (const auto& slot : unit.slots) {
+            if (slot.mapped_tool >= 0) {
+                if (min_tool < 0 || slot.mapped_tool < min_tool) {
+                    min_tool = slot.mapped_tool;
+                }
+                if (max_tool < 0 || slot.mapped_tool > max_tool) {
+                    max_tool = slot.mapped_tool;
+                }
+            }
+        }
+
+        UnitToolLayout utl;
+        utl.min_virtual_tool = min_tool;
+
+        if (topo != PathTopology::PARALLEL) {
+            // HUB/LINEAR: all lanes converge to a single physical nozzle.
+            // Always assign sequentially — ignore mapped_tool for positioning.
+            utl.first_physical_tool = total_physical;
+            utl.tool_count = 1;
+
+            // Map all virtual tool numbers from this unit to this single physical nozzle
+            for (const auto& slot : unit.slots) {
+                if (slot.mapped_tool >= 0) {
+                    result.virtual_to_physical[slot.mapped_tool] = total_physical;
+                }
+            }
+
+            total_physical += 1;
+        } else if (min_tool >= 0) {
+            // PARALLEL: each lane maps to its own physical nozzle
+            int physical_first = total_physical;
+            int lane_count = max_tool - min_tool + 1;
+            utl.first_physical_tool = physical_first;
+            utl.tool_count = lane_count;
+
+            // Map each virtual tool to sequential physical position
+            for (const auto& slot : unit.slots) {
+                if (slot.mapped_tool >= 0) {
+                    int rank = slot.mapped_tool - min_tool;
+                    result.virtual_to_physical[slot.mapped_tool] = physical_first + rank;
+                }
+            }
+
+            total_physical += lane_count;
+        } else if (!unit.slots.empty()) {
+            // PARALLEL fallback: no mapped_tool data, use slot count
+            utl.first_physical_tool = total_physical;
+            utl.tool_count = static_cast<int>(unit.slots.size());
+            total_physical += utl.tool_count;
+        }
+
+        result.units.push_back(utl);
+    }
+
+    result.total_physical_tools = total_physical;
+
+    // Build physical→virtual label map
+    result.physical_to_virtual_label.resize(total_physical, -1);
+    for (const auto& utl : result.units) {
+        // For each physical nozzle this unit owns, set the label to min_virtual_tool
+        // (for HUB: the one nozzle; for PARALLEL: each gets min_virtual + offset)
+        for (int t = 0; t < utl.tool_count; ++t) {
+            int phys = utl.first_physical_tool + t;
+            if (phys < total_physical) {
+                if (utl.min_virtual_tool >= 0) {
+                    result.physical_to_virtual_label[phys] = utl.min_virtual_tool + t;
+                } else {
+                    result.physical_to_virtual_label[phys] = phys;
+                }
+            }
+        }
+    }
+
+    return result;
 }
 
 } // namespace ams_draw

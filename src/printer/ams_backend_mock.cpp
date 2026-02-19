@@ -1580,7 +1580,11 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
         }
 
         // ================================================================
-        // Unit 1: "AMS_1" (OpenAMS) — 4 lanes, HUB, all share T4
+        // Unit 1: "AMS_1" (OpenAMS) — 4 lanes, HUB, unique virtual tools
+        //
+        // Real AFC behavior: each lane gets its own virtual tool number
+        // (T4-T7), but all lanes share a single physical extruder
+        // (extruder4). The HUB topology tells the UI to draw 1 nozzle.
         // ================================================================
         {
             AmsUnit unit;
@@ -1618,7 +1622,7 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
                 slot.color_rgb = ams1_slots[i].color;
                 slot.color_name = ams1_slots[i].name;
                 slot.status = ams1_slots[i].status;
-                slot.mapped_tool = 4; // All lanes share T4
+                slot.mapped_tool = 4 + i; // Real AFC: unique virtual tool per lane
                 slot.spoolman_id = 310 + i;
                 slot.total_weight_g = 1000.0f;
                 slot.remaining_weight_g = 1000.0f - i * 150.0f;
@@ -1635,7 +1639,9 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
         }
 
         // ================================================================
-        // Unit 2: "AMS_2" (OpenAMS) — 4 lanes, HUB, all share T5
+        // Unit 2: "AMS_2" (OpenAMS) — 4 lanes, HUB, unique virtual tools
+        //
+        // Same as AMS_1: each lane gets T8-T11, all share extruder5.
         // ================================================================
         {
             AmsUnit unit;
@@ -1673,7 +1679,7 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
                 slot.color_rgb = ams2_slots[i].color;
                 slot.color_name = ams2_slots[i].name;
                 slot.status = ams2_slots[i].status;
-                slot.mapped_tool = 5; // All lanes share T5
+                slot.mapped_tool = 8 + i; // Real AFC: unique virtual tool per lane
                 slot.spoolman_id = 320 + i;
                 slot.total_weight_g = 1000.0f;
                 slot.remaining_weight_g = 1000.0f - i * 100.0f;
@@ -1689,10 +1695,10 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
             system_info_.units.push_back(unit);
         }
 
-        // Tool-to-slot mapping: 6 tools
-        // T0->slot0, T1->slot1, T2->slot2, T3->slot3 (BT, 1:1)
-        // T4->slot4 (first slot of OpenAMS 1), T5->slot8 (first slot of OpenAMS 2)
-        system_info_.tool_to_slot_map = {0, 1, 2, 3, 4, 8};
+        // Tool-to-slot mapping: 12 virtual tools (AFC assigns 1:1 virtual→lane)
+        // T0->slot0, T1->slot1, ..., T11->slot11
+        // The UI uses compute_system_tool_layout() to derive 6 physical nozzles
+        system_info_.tool_to_slot_map = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 
         // Start with slot 0 loaded
         system_info_.current_slot = 0;

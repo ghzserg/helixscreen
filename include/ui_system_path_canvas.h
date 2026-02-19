@@ -197,6 +197,19 @@ void ui_system_path_canvas_set_active_tool(lv_obj_t* obj, int tool_index);
 void ui_system_path_canvas_set_current_tool(lv_obj_t* obj, int tool_index);
 
 /**
+ * @brief Set virtual tool numbers for badge labels
+ *
+ * Maps physical nozzle positions to AFC virtual tool numbers for display.
+ * When set, tool badges show the virtual number (e.g., "T4") instead of
+ * the physical position index (e.g., "T1").
+ *
+ * @param obj The system_path_canvas widget
+ * @param numbers Array of virtual tool numbers (one per physical tool)
+ * @param count Number of entries in the array
+ */
+void ui_system_path_canvas_set_tool_virtual_numbers(lv_obj_t* obj, const int* numbers, int count);
+
+/**
  * @brief Force redraw of the path visualization
  *
  * @param obj The system_path_canvas widget

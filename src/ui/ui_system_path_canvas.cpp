@@ -63,12 +63,14 @@ struct SystemPathData {
     bool toolhead_sensor_triggered = false; // Filament detected at toolhead
 
     // Per-unit tool routing (mixed topology support)
-    int unit_tool_count[MAX_UNITS] = {}; // Tools per unit (BT=4, OpenAMS=1)
-    int unit_first_tool[MAX_UNITS] = {}; // First tool index for this unit
-    int unit_topology[MAX_UNITS] = {};   // 0=LINEAR, 1=HUB, 2=PARALLEL
-    int total_tools = 0;                 // Total tool count across all units
-    int active_tool = -1;                // Currently active tool (-1=none)
-    int current_tool = -1;               // Virtual tool number (slot-based, for label)
+    int unit_tool_count[MAX_UNITS] = {};     // Tools per unit (BT=4, OpenAMS=1)
+    int unit_first_tool[MAX_UNITS] = {};     // First tool index for this unit
+    int unit_topology[MAX_UNITS] = {};       // 0=LINEAR, 1=HUB, 2=PARALLEL
+    int total_tools = 0;                     // Total tool count across all units
+    int active_tool = -1;                    // Currently active tool (-1=none)
+    int current_tool = -1;                   // Virtual tool number (slot-based, for label)
+    int tool_virtual_number[MAX_TOOLS] = {}; // Virtual tool labels per physical nozzle
+    bool has_virtual_numbers = false;        // When false, raw physical index is used for labels
 
     // Theme-derived colors (cached)
     lv_color_t color_idle;
@@ -460,9 +462,12 @@ static void system_path_draw_cb(lv_event_t* e) {
             lv_color_t noz_color = is_active_tool ? active_color_lv : nozzle_color;
             draw_nozzle_bambu(layer, tool_x, tools_y, noz_color, small_scale);
 
-            // Tool badge (T0, T1, etc.) below nozzle
+            // Tool badge below nozzle — use virtual number if available
             if (data->label_font) {
-                draw_tool_badge(layer, tool_x, tools_y, small_scale, t, data->label_font,
+                int label_num = (data->has_virtual_numbers && t < SystemPathData::MAX_TOOLS)
+                                    ? data->tool_virtual_number[t]
+                                    : t;
+                draw_tool_badge(layer, tool_x, tools_y, small_scale, label_num, data->label_font,
                                 data->color_idle,
                                 is_active_tool ? active_color_lv : data->color_text);
             }
@@ -889,6 +894,22 @@ void ui_system_path_canvas_set_current_tool(lv_obj_t* obj, int tool_index) {
     auto* data = get_data(obj);
     if (data) {
         data->current_tool = tool_index;
+        lv_obj_invalidate(obj);
+    }
+}
+
+void ui_system_path_canvas_set_tool_virtual_numbers(lv_obj_t* obj, const int* numbers, int count) {
+    auto* data = get_data(obj);
+    if (data) {
+        int n = LV_MIN(count, SystemPathData::MAX_TOOLS);
+        for (int i = 0; i < n; ++i) {
+            data->tool_virtual_number[i] = numbers[i];
+        }
+        // Clear remaining entries
+        for (int i = n; i < SystemPathData::MAX_TOOLS; ++i) {
+            data->tool_virtual_number[i] = i;
+        }
+        data->has_virtual_numbers = (n > 0);
         lv_obj_invalidate(obj);
     }
 }

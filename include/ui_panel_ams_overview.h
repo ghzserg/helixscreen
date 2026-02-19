@@ -111,6 +111,7 @@ class AmsOverviewPanel : public PanelBase {
     void refresh_system_path(const AmsSystemInfo& info, int current_slot);
 
     // === Detail View Helpers ===
+    void refresh_detail_if_needed(); ///< Lightweight refresh — only rebuilds on structural change
     void create_detail_slots(const AmsUnit& unit);
     void destroy_detail_slots();
     void setup_detail_path_canvas(const AmsUnit& unit, const AmsSystemInfo& info);

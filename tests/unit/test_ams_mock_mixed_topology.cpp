@@ -85,30 +85,27 @@ TEST_CASE("Mixed topology lane-to-tool mapping", "[ams][mock][mixed]") {
         CHECK(slot->mapped_tool == i);
     }
 
-    // OpenAMS 1 slots 4-7 all map to T4 (4:1)
+    // OpenAMS 1 slots 4-7: real AFC assigns unique virtual tools T4-T7
+    // (all share one physical extruder, but AFC's map field gives each lane its own number)
     for (int i = 4; i < 8; ++i) {
         const auto* slot = info.get_slot_global(i);
         REQUIRE(slot != nullptr);
-        CHECK(slot->mapped_tool == 4);
+        CHECK(slot->mapped_tool == i); // T4, T5, T6, T7
     }
 
-    // OpenAMS 2 slots 8-11 all map to T5 (4:1)
+    // OpenAMS 2 slots 8-11: real AFC assigns T8-T11
     for (int i = 8; i < 12; ++i) {
         const auto* slot = info.get_slot_global(i);
         REQUIRE(slot != nullptr);
-        CHECK(slot->mapped_tool == 5);
+        CHECK(slot->mapped_tool == i); // T8, T9, T10, T11
     }
 
-    // tool_to_slot_map should have 6 entries (T0-T5)
-    REQUIRE(info.tool_to_slot_map.size() == 6);
-    // T0->slot0, T1->slot1, T2->slot2, T3->slot3
-    CHECK(info.tool_to_slot_map[0] == 0);
-    CHECK(info.tool_to_slot_map[1] == 1);
-    CHECK(info.tool_to_slot_map[2] == 2);
-    CHECK(info.tool_to_slot_map[3] == 3);
-    // T4->slot4 (first slot of OpenAMS 1), T5->slot8 (first slot of OpenAMS 2)
-    CHECK(info.tool_to_slot_map[4] == 4);
-    CHECK(info.tool_to_slot_map[5] == 8);
+    // tool_to_slot_map: 12 virtual tools (1:1 AFC mapping)
+    // UI uses compute_system_tool_layout() to derive 6 physical nozzles
+    REQUIRE(info.tool_to_slot_map.size() == 12);
+    for (int i = 0; i < 12; ++i) {
+        CHECK(info.tool_to_slot_map[i] == i);
+    }
 }
 
 TEST_CASE("Mixed topology Box Turtle slots have buffers", "[ams][mock][mixed]") {
@@ -249,29 +246,36 @@ int compute_tool_counts(const AmsSystemInfo& info, const AmsBackend& backend,
 
 } // namespace
 
-TEST_CASE("Tool count: mixed topology with correct mapped_tool", "[ams][tool_count][mixed]") {
-    // This is the "happy path" — mock has correct 4:1 mapping for HUB units
+TEST_CASE("Tool count: mixed topology with unique per-lane mapped_tool",
+          "[ams][tool_count][mixed]") {
+    // Mock now matches real AFC: each lane gets unique virtual tool number
     AmsBackendMock backend(4);
     backend.set_mixed_topology_mode(true);
 
     auto info = backend.get_system_info();
     std::vector<int> counts, firsts;
-    int total = compute_tool_counts(info, backend, counts, firsts);
+    compute_tool_counts(info, backend, counts, firsts);
 
     // Box Turtle: 4 tools (T0-T3), PARALLEL
     CHECK(counts[0] == 4);
     CHECK(firsts[0] == 0);
 
-    // OpenAMS 1: 1 tool (T4), HUB — all 4 slots share T4
+    // OpenAMS 1: HUB — must be 1 tool despite mapped_tool {4,5,6,7}
     CHECK(counts[1] == 1);
-    CHECK(firsts[1] == 4);
 
-    // OpenAMS 2: 1 tool (T5), HUB — all 4 slots share T5
+    // OpenAMS 2: HUB — must be 1 tool despite mapped_tool {8,9,10,11}
     CHECK(counts[2] == 1);
-    CHECK(firsts[2] == 5);
 
-    // Total: 6 tools (T0-T5)
-    CHECK(total == 6);
+    // Each HUB unit contributes 1 physical tool
+    CHECK(counts[0] + counts[1] + counts[2] == 6);
+
+    // NOTE: This test uses the OLD compute_tool_counts() helper (defined above),
+    // which is no longer the production algorithm. The production code uses
+    // compute_system_tool_layout() from ams_drawing_utils.h, which is tested
+    // exactly in test_ams_system_tool_layout.cpp (total == 6).
+    // The old algorithm produces total=12 here (the original bug), so we just
+    // verify per-unit counts are correct — the total is tested properly elsewhere.
+    // CHECK(total < 12) would fail with the old algorithm — that's expected.
 }
 
 TEST_CASE("Tool count: HUB unit with wrong 1:1 mapped_tool defaults",
@@ -836,24 +840,20 @@ TEST_CASE("Production: OpenAMS all lanes share single extruder", "[ams][producti
 
     auto info = backend.get_system_info();
 
-    // All AMS_1 slots (4-7) should map to the same tool
-    int ams1_tool = info.get_slot_global(4)->mapped_tool;
-    for (int i = 5; i < 8; ++i) {
+    // AMS_1 slots (4-7): each has its own virtual tool (T4-T7), but all share
+    // one physical extruder (HUB topology). This matches real AFC behavior.
+    for (int i = 4; i < 8; ++i) {
         const auto* slot = info.get_slot_global(i);
         REQUIRE(slot != nullptr);
-        CHECK(slot->mapped_tool == ams1_tool);
+        CHECK(slot->mapped_tool == i);
     }
 
-    // All AMS_2 slots (8-11) should map to the same tool
-    int ams2_tool = info.get_slot_global(8)->mapped_tool;
-    for (int i = 9; i < 12; ++i) {
+    // AMS_2 slots (8-11): each has its own virtual tool (T8-T11)
+    for (int i = 8; i < 12; ++i) {
         const auto* slot = info.get_slot_global(i);
         REQUIRE(slot != nullptr);
-        CHECK(slot->mapped_tool == ams2_tool);
+        CHECK(slot->mapped_tool == i);
     }
-
-    // The two OpenAMS units map to different tools
-    CHECK(ams1_tool != ams2_tool);
 
     // Both must be HUB topology
     CHECK(backend.get_unit_topology(1) == PathTopology::HUB);
