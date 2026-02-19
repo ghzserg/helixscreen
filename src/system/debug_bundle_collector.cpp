@@ -7,6 +7,7 @@
 #include "app_globals.h"
 #include "helix_version.h"
 #include "hv/requests.h"
+#include "moonraker_api.h"
 #include "platform_capabilities.h"
 #include "printer_state.h"
 #include "system/update_checker.h"
@@ -55,6 +56,7 @@ json DebugBundleCollector::collect(const BundleOptions& options) {
     }
 
     bundle["settings"] = collect_sanitized_settings();
+    bundle["moonraker"] = collect_moonraker_info();
 
     if (options.include_klipper_logs) {
         auto klipper_log = collect_klipper_log_tail();
@@ -345,6 +347,89 @@ json DebugBundleCollector::collect_sanitized_settings() {
     }
 
     return json::object();
+}
+
+// =============================================================================
+// Moonraker REST collection
+// =============================================================================
+
+std::string DebugBundleCollector::get_moonraker_url() {
+    auto* api = get_moonraker_api();
+    if (!api)
+        return {};
+    return api->get_http_base_url();
+}
+
+json DebugBundleCollector::moonraker_get(const std::string& base_url, const std::string& endpoint,
+                                         int timeout_sec) {
+    if (base_url.empty()) {
+        return json{{"error", "Moonraker not connected"}};
+    }
+
+    std::string url = base_url;
+    if (!endpoint.empty() && endpoint[0] != '/')
+        url += "/";
+    url += endpoint;
+
+    try {
+        auto req = std::make_shared<HttpRequest>();
+        req->method = HTTP_GET;
+        req->url = url;
+        req->timeout = timeout_sec;
+
+        auto resp = requests::request(req);
+        if (!resp) {
+            return json{{"error", "No response from " + endpoint}};
+        }
+
+        int status = static_cast<int>(resp->status_code);
+        if (status < 200 || status >= 300) {
+            return json{{"error", "HTTP " + std::to_string(status) + " from " + endpoint}};
+        }
+
+        return json::parse(resp->body);
+    } catch (const json::parse_error& e) {
+        return json{{"error", "JSON parse error from " + endpoint + ": " + e.what()}};
+    } catch (const std::exception& e) {
+        return json{{"error", std::string("Exception: ") + e.what()}};
+    }
+}
+
+json DebugBundleCollector::collect_moonraker_info() {
+    json mr;
+    std::string base_url = get_moonraker_url();
+
+    if (base_url.empty()) {
+        spdlog::debug("[DebugBundle] Moonraker not connected, skipping moonraker info");
+        mr["server_info"] = json{{"error", "Not connected"}};
+        mr["printer_info"] = json{{"error", "Not connected"}};
+        mr["system_info"] = json{{"error", "Not connected"}};
+        mr["printer_state"] = json{{"error", "Not connected"}};
+        mr["config"] = json{{"error", "Not connected"}};
+        return mr;
+    }
+
+    spdlog::info("[DebugBundle] Collecting Moonraker info from {}", base_url);
+
+    // Server info — version, components, klippy state
+    mr["server_info"] = sanitize_json(moonraker_get(base_url, "/server/info"));
+
+    // Printer info — hostname, klipper version, state
+    mr["printer_info"] = sanitize_json(moonraker_get(base_url, "/printer/info"));
+
+    // System info — OS, CPU, memory, network (heavy sanitization for MACs/IPs)
+    mr["system_info"] = sanitize_json(moonraker_get(base_url, "/machine/system_info"));
+
+    // Current printer state — temps, positions, fans, print progress
+    mr["printer_state"] = sanitize_json(
+        moonraker_get(base_url, "/printer/objects/query"
+                                "?heater_bed&extruder&print_stats&toolhead&motion_report"
+                                "&fan&display_status&virtual_sdcard"));
+
+    // Full Moonraker config — heavily sanitized
+    mr["config"] = sanitize_json(moonraker_get(base_url, "/server/config"));
+
+    return mr;
 }
 
 // =============================================================================

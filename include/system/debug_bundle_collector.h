@@ -40,6 +40,9 @@ class DebugBundleCollector {
     static std::string collect_klipper_log_tail(int num_lines = 500);
     static std::string collect_moonraker_log_tail(int num_lines = 200);
 
+    /// Collect Moonraker state via REST (server info, printer state, config)
+    static nlohmann::json collect_moonraker_info();
+
     /// Sanitize a string value for PII patterns (emails, credentials, webhooks, tokens, MACs)
     static std::string sanitize_value(const std::string& value);
 
@@ -52,6 +55,13 @@ class DebugBundleCollector {
 
     /// Recursively strip sensitive keys from JSON
     static nlohmann::json sanitize_json(const nlohmann::json& input);
+
+    /// Blocking HTTP GET to a Moonraker endpoint, returns parsed JSON or error object
+    static nlohmann::json moonraker_get(const std::string& base_url, const std::string& endpoint,
+                                        int timeout_sec = 10);
+
+    /// Get the Moonraker HTTP base URL (from MoonrakerAPI if connected)
+    static std::string get_moonraker_url();
 
     /// Check if a key name matches a sensitive pattern
     static bool is_sensitive_key(const std::string& key);

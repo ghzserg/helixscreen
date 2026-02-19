@@ -247,3 +247,27 @@ TEST_CASE("DebugBundleCollector: sanitize_value redacts MAC addresses",
     REQUIRE(result.find("aa:bb:cc:dd:ee:ff") == std::string::npos);
     REQUIRE(result.find("[REDACTED_MAC]") != std::string::npos);
 }
+
+// ============================================================================
+// collect_moonraker_info() tests [debug-bundle][moonraker]
+// ============================================================================
+
+TEST_CASE("DebugBundleCollector: collect_moonraker_info returns object with expected keys",
+          "[debug-bundle][moonraker]") {
+    // When not connected, should return an object with error sub-keys (not crash)
+    json mr = helix::DebugBundleCollector::collect_moonraker_info();
+    REQUIRE(mr.is_object());
+
+    // Should always have these keys, even if errored
+    REQUIRE(mr.contains("server_info"));
+    REQUIRE(mr.contains("printer_info"));
+    REQUIRE(mr.contains("system_info"));
+    REQUIRE(mr.contains("printer_state"));
+    REQUIRE(mr.contains("config"));
+}
+
+TEST_CASE("DebugBundleCollector: collect includes moonraker section", "[debug-bundle][moonraker]") {
+    json bundle = helix::DebugBundleCollector::collect();
+    REQUIRE(bundle.contains("moonraker"));
+    REQUIRE(bundle["moonraker"].is_object());
+}
