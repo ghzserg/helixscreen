@@ -130,11 +130,18 @@ echo ""
 
 # ── Git pull ──────────────────────────────────────────────────────────────────
 echo "[serve-local-update] Pulling latest changes..."
+_SCRIPT_REV_BEFORE=$(git -C "$PROJECT_DIR" rev-parse HEAD:scripts/serve-local-update.sh 2>/dev/null || echo "")
 if ! git -C "$PROJECT_DIR" pull --ff-only; then
     echo ""
     echo "ERROR: git pull failed (conflicts or diverged history)."
     echo "  Resolve conflicts, then re-run."
     exit 1
+fi
+_SCRIPT_REV_AFTER=$(git -C "$PROJECT_DIR" rev-parse HEAD:scripts/serve-local-update.sh 2>/dev/null || echo "")
+if [[ "$_SCRIPT_REV_BEFORE" != "$_SCRIPT_REV_AFTER" ]]; then
+    echo "[serve-local-update] Script updated — restarting with new version..."
+    echo ""
+    exec "$SCRIPT_DIR/serve-local-update.sh" "$@"
 fi
 echo ""
 
