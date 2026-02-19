@@ -592,6 +592,32 @@ AmsError AmsBackendMock::cancel() {
     return AmsErrorHelper::success();
 }
 
+AmsError AmsBackendMock::reset_lane(int slot_index) {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        if (slot_index < 0 || slot_index >= system_info_.total_slots) {
+            return AmsErrorHelper::invalid_slot(slot_index, system_info_.total_slots - 1);
+        }
+
+        auto* slot = system_info_.get_slot_global(slot_index);
+        if (!slot) {
+            return AmsErrorHelper::invalid_slot(slot_index, system_info_.total_slots - 1);
+        }
+
+        // Clear error state and return slot to normal
+        slot->error = std::nullopt;
+        if (slot->status == SlotStatus::BLOCKED) {
+            slot->status = SlotStatus::AVAILABLE;
+        }
+
+        spdlog::info("[AmsBackendMock] Reset lane {} - cleared error state", slot_index);
+    }
+
+    emit_event(EVENT_STATE_CHANGED);
+    return AmsErrorHelper::success();
+}
+
 AmsError AmsBackendMock::set_slot_info(int slot_index, const SlotInfo& info, bool /*persist*/) {
     {
         std::lock_guard<std::mutex> lock(mutex_);

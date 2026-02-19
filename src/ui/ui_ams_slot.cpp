@@ -18,6 +18,7 @@
 #include "lvgl/src/xml/parsers/lv_xml_obj_parser.h"
 #include "observer_factory.h"
 #include "settings_manager.h"
+#include "static_subject_registry.h"
 #include "theme_manager.h"
 #include "ui/ams_drawing_utils.h"
 
@@ -80,19 +81,6 @@ struct AmsSlotData {
     lv_obj_t* tool_badge = nullptr;      // Tool badge label (T0, T1, etc.)
     lv_obj_t* container = nullptr;       // The ams_slot widget itself
 
-    // Subjects and buffers for declarative text binding
-    lv_subject_t material_subject;
-    char material_buf[16] = {0};
-    lv_observer_t* material_observer = nullptr;
-
-    lv_subject_t slot_badge_subject;
-    char slot_badge_buf[8] = {0};
-    lv_observer_t* slot_badge_observer = nullptr;
-
-    lv_subject_t tool_badge_subject;
-    char tool_badge_buf[8] = {0};
-    lv_observer_t* tool_badge_observer = nullptr;
-
     // Fill level for Spoolman integration (0.0 = empty, 1.0 = full)
     float fill_level = 1.0f;
 
@@ -130,19 +118,10 @@ static void register_slot_data(lv_obj_t* obj, AmsSlotData* data) {
 static void unregister_slot_data(lv_obj_t* obj) {
     auto it = s_slot_registry.find(obj);
     if (it != s_slot_registry.end()) {
-        // Take ownership with unique_ptr for automatic cleanup
         std::unique_ptr<AmsSlotData> data(it->second);
         if (data) {
-            // Deinitialize subjects to properly remove all attached observers.
-            // lv_subject_deinit() removes observers from the subject side, which
-            // also removes their unsubscribe_on_delete_cb from child widgets.
-            // Safe because we own these subjects.
-            lv_subject_deinit(&data->material_subject);
-            lv_subject_deinit(&data->slot_badge_subject);
-            lv_subject_deinit(&data->tool_badge_subject);
-
             // Release ObserverGuard observers before delete to prevent destructors
-            // from calling lv_observer_remove() on destroyed subjects
+            // from calling lv_observer_remove() on already-destroyed subjects
             data->color_observer.release();
             data->status_observer.release();
             data->current_slot_observer.release();
@@ -151,6 +130,31 @@ static void unregister_slot_data(lv_obj_t* obj) {
         }
         s_slot_registry.erase(it);
     }
+}
+
+/**
+ * @brief Pre-deinit cleanup: release all slot data while widgets are still alive.
+ *
+ * Called via StaticSubjectRegistry BEFORE lv_deinit(). Releases ObserverGuards
+ * while global subjects are still valid. After this, the DELETE events fired
+ * during lv_deinit() find nothing in the registry and are no-ops.
+ */
+static void cleanup_all_slot_data() {
+    for (auto& [obj, data] : s_slot_registry) {
+        if (!data)
+            continue;
+
+        // Release ObserverGuards while global subjects are still alive
+        data->color_observer.release();
+        data->status_observer.release();
+        data->current_slot_observer.release();
+        data->filament_loaded_observer.release();
+        data->action_observer.release();
+
+        delete data;
+    }
+    s_slot_registry.clear();
+    spdlog::debug("[AmsSlot] Pre-deinit cleanup: all slot data released");
 }
 
 // ============================================================================
@@ -420,7 +424,7 @@ static void apply_tool_badge(AmsSlotData* data, int mapped_tool) {
         // Tool is mapped - show badge with tool number
         char tool_text[8];
         snprintf(tool_text, sizeof(tool_text), "T%d", mapped_tool);
-        lv_subject_copy_string(&data->tool_badge_subject, tool_text);
+        lv_label_set_text(data->tool_badge, tool_text);
         lv_obj_remove_flag(data->tool_badge_bg, LV_OBJ_FLAG_HIDDEN);
 
         // Auto-contrast text color based on badge background
@@ -626,41 +630,6 @@ static void create_spool_visualization(AmsSlotData* data) {
 }
 
 /**
- * @brief Set up text bindings for labels created by XML
- *
- * Initializes subjects and binds them to XML-created labels.
- */
-static void setup_text_bindings(AmsSlotData* data) {
-    if (!data) {
-        return;
-    }
-
-    // Initialize and bind material subject
-    if (data->material_label) {
-        lv_subject_init_string(&data->material_subject, data->material_buf, nullptr,
-                               sizeof(data->material_buf), "--");
-        data->material_observer =
-            lv_label_bind_text(data->material_label, &data->material_subject, "%s");
-    }
-
-    // Initialize and bind slot badge subject
-    if (data->slot_badge) {
-        lv_subject_init_string(&data->slot_badge_subject, data->slot_badge_buf, nullptr,
-                               sizeof(data->slot_badge_buf), "?");
-        data->slot_badge_observer =
-            lv_label_bind_text(data->slot_badge, &data->slot_badge_subject, "%s");
-    }
-
-    // Initialize and bind tool badge subject
-    if (data->tool_badge) {
-        lv_subject_init_string(&data->tool_badge_subject, data->tool_badge_buf, nullptr,
-                               sizeof(data->tool_badge_buf), "");
-        data->tool_badge_observer =
-            lv_label_bind_text(data->tool_badge, &data->tool_badge_subject, "%s");
-    }
-}
-
-/**
  * @brief Setup observers for a given slot index
  * Uses observer factory pattern for type-safe lambda observers
  */
@@ -739,7 +708,7 @@ static void setup_slot_observers(AmsSlotData* data) {
     if (data->slot_badge) {
         char badge_text[16];
         snprintf(badge_text, sizeof(badge_text), "%d", data->slot_index + 1);
-        lv_subject_copy_string(&data->slot_badge_subject, badge_text);
+        lv_label_set_text(data->slot_badge, badge_text);
     }
 
     // Trigger initial updates from current subject values
@@ -753,12 +722,13 @@ static void setup_slot_observers(AmsSlotData* data) {
         apply_current_slot_highlight(data, lv_subject_get_int(current_slot_subject));
     }
 
-    // Update material label, tool badge, error indicator, and buffer health from backend
+    // Update material label, tool badge, error indicator from backend
     AmsBackend* backend = state.get_backend();
     if (backend) {
         SlotInfo slot = backend->get_slot_info(data->slot_index);
-        if (!slot.material.empty()) {
-            lv_subject_copy_string(&data->material_subject, slot.material.c_str());
+        if (data->material_label) {
+            lv_label_set_text(data->material_label,
+                              slot.material.empty() ? "--" : slot.material.c_str());
         }
         // Update tool badge based on slot's mapped_tool
         apply_tool_badge(data, slot.mapped_tool);
@@ -816,8 +786,13 @@ static void* ams_slot_xml_create(lv_xml_parser_state_t* state, const char** attr
     // Create spool visualization (stays in C++)
     create_spool_visualization(data);
 
-    // Set up text bindings for XML-created labels
-    setup_text_bindings(data);
+    // Set initial text on labels (direct imperative updates, no subject indirection)
+    if (data->material_label) {
+        lv_label_set_text(data->material_label, "--");
+    }
+    if (data->slot_badge) {
+        lv_label_set_text(data->slot_badge, "?");
+    }
 
     // Register for cleanup
     register_slot_data(obj, data_ptr.release());
@@ -900,6 +875,11 @@ void ui_ams_slot_register(void) {
 
     // Register the custom widget (uses the XML template + adds dynamic behavior)
     lv_xml_register_widget("ams_slot", ams_slot_xml_create, ams_slot_xml_apply);
+
+    // Self-register cleanup — ensures slot data is released before lv_deinit()
+    // so that lv_subject_deinit() can safely remove observers from live widgets
+    StaticSubjectRegistry::instance().register_deinit("AmsSlotWidgets", cleanup_all_slot_data);
+
     spdlog::info("[AmsSlot] Registered ams_slot widget with XML system");
 }
 
@@ -971,16 +951,13 @@ void ui_ams_slot_refresh(lv_obj_t* obj) {
         apply_current_slot_highlight(data, lv_subject_get_int(current_slot_subject));
     }
 
-    // Update material, tool badge, error indicator, and buffer health from backend
+    // Update material, tool badge, error indicator from backend
     AmsBackend* backend = state.get_backend();
     if (backend) {
         SlotInfo slot = backend->get_slot_info(data->slot_index);
         if (data->material_label) {
-            if (!slot.material.empty()) {
-                lv_subject_copy_string(&data->material_subject, slot.material.c_str());
-            } else {
-                lv_subject_copy_string(&data->material_subject, "--");
-            }
+            lv_label_set_text(data->material_label,
+                              slot.material.empty() ? "--" : slot.material.c_str());
         }
         // Update tool badge based on slot's mapped_tool
         apply_tool_badge(data, slot.mapped_tool);

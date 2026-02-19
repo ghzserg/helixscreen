@@ -68,6 +68,10 @@ class AmsBackendMock : public AmsBackend {
     AmsError recover() override;
     AmsError reset() override;
     AmsError cancel() override;
+    AmsError reset_lane(int slot_index) override;
+    [[nodiscard]] bool supports_lane_reset() const override {
+        return true;
+    }
 
     // Configuration
     AmsError set_slot_info(int slot_index, const SlotInfo& info, bool persist = true) override;
