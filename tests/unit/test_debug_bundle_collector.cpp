@@ -182,12 +182,14 @@ TEST_CASE("DebugBundleCollector: collect_printer_info() returns valid JSON", "[d
 // Klipper/Moonraker stubs [debug-bundle]
 // ============================================================================
 
-TEST_CASE("DebugBundleCollector: klipper log tail stub returns empty", "[debug-bundle]") {
+TEST_CASE("DebugBundleCollector: klipper log tail returns empty when not connected",
+          "[debug-bundle]") {
     std::string log = helix::DebugBundleCollector::collect_klipper_log_tail();
     REQUIRE(log.empty());
 }
 
-TEST_CASE("DebugBundleCollector: moonraker log tail stub returns empty", "[debug-bundle]") {
+TEST_CASE("DebugBundleCollector: moonraker log tail returns empty when not connected",
+          "[debug-bundle]") {
     std::string log = helix::DebugBundleCollector::collect_moonraker_log_tail();
     REQUIRE(log.empty());
 }

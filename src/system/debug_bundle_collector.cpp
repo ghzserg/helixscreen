@@ -433,17 +433,93 @@ json DebugBundleCollector::collect_moonraker_info() {
 }
 
 // =============================================================================
-// Klipper / Moonraker log tails (stub - Moonraker HTTP fetch TBD)
+// Klipper / Moonraker log tails
 // =============================================================================
 
-std::string DebugBundleCollector::collect_klipper_log_tail(int /*num_lines*/) {
-    // TODO: Fetch from Moonraker HTTP API: GET /server/files/klippy.log
-    return {};
+std::string DebugBundleCollector::collect_klipper_log_tail(int num_lines) {
+    std::string base_url = get_moonraker_url();
+    if (base_url.empty())
+        return {};
+
+    try {
+        auto req = std::make_shared<HttpRequest>();
+        req->method = HTTP_GET;
+        req->url = base_url + "/server/files/klippy.log";
+        req->timeout = 15;
+
+        auto resp = requests::request(req);
+        if (!resp || resp->status_code < 200 || resp->status_code >= 300) {
+            spdlog::debug("[DebugBundle] Failed to fetch klippy.log");
+            return {};
+        }
+
+        // Take last N lines
+        std::istringstream stream(resp->body);
+        std::deque<std::string> lines;
+        std::string line;
+        while (std::getline(stream, line)) {
+            lines.push_back(std::move(line));
+            if (static_cast<int>(lines.size()) > num_lines) {
+                lines.pop_front();
+            }
+        }
+
+        std::ostringstream result;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            if (i > 0)
+                result << '\n';
+            // Sanitize each line for PII
+            result << sanitize_value(lines[i]);
+        }
+
+        spdlog::debug("[DebugBundle] Fetched {} klipper log lines", lines.size());
+        return result.str();
+    } catch (const std::exception& e) {
+        spdlog::debug("[DebugBundle] Exception fetching klippy.log: {}", e.what());
+        return {};
+    }
 }
 
-std::string DebugBundleCollector::collect_moonraker_log_tail(int /*num_lines*/) {
-    // TODO: Fetch from Moonraker HTTP API: GET /server/files/moonraker.log
-    return {};
+std::string DebugBundleCollector::collect_moonraker_log_tail(int num_lines) {
+    std::string base_url = get_moonraker_url();
+    if (base_url.empty())
+        return {};
+
+    try {
+        auto req = std::make_shared<HttpRequest>();
+        req->method = HTTP_GET;
+        req->url = base_url + "/server/files/moonraker.log";
+        req->timeout = 15;
+
+        auto resp = requests::request(req);
+        if (!resp || resp->status_code < 200 || resp->status_code >= 300) {
+            spdlog::debug("[DebugBundle] Failed to fetch moonraker.log");
+            return {};
+        }
+
+        std::istringstream stream(resp->body);
+        std::deque<std::string> lines;
+        std::string line;
+        while (std::getline(stream, line)) {
+            lines.push_back(std::move(line));
+            if (static_cast<int>(lines.size()) > num_lines) {
+                lines.pop_front();
+            }
+        }
+
+        std::ostringstream result;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            if (i > 0)
+                result << '\n';
+            result << sanitize_value(lines[i]);
+        }
+
+        spdlog::debug("[DebugBundle] Fetched {} moonraker log lines", lines.size());
+        return result.str();
+    } catch (const std::exception& e) {
+        spdlog::debug("[DebugBundle] Exception fetching moonraker.log: {}", e.what());
+        return {};
+    }
 }
 
 // =============================================================================
