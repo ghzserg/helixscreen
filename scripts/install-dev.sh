@@ -223,6 +223,9 @@ main() {
     extract_release "$platform"
     install_service "$platform"
 
+    # Install udev/polkit rules for non-root operation (backlight, Wi-Fi)
+    install_permission_rules "$platform"
+
     # Configure Moonraker update_manager (Pi only - enables web UI updates)
     configure_moonraker_updates "$platform"
 

@@ -655,6 +655,67 @@ check_permissions() {
     fi
 }
 
+# Install system permission rules for non-root operation
+# - udev rule: backlight brightness write access for video group
+# - polkit rule: NetworkManager access for service user
+# Only installed on platforms that run as non-root (Pi, generic Linux)
+install_permission_rules() {
+    local platform=$1
+    local helix_user="${KLIPPER_USER:-root}"
+
+    # Skip for platforms that run as root (AD5M, K1) or if user is root
+    if [ "$platform" = "ad5m" ] || [ "$platform" = "k1" ] || [ "$helix_user" = "root" ]; then
+        log_info "Skipping permission rules (running as root)"
+        return 0
+    fi
+
+    # --- Backlight udev rule ---
+    local udev_src="${INSTALL_DIR}/config/99-helixscreen-backlight.rules"
+    local udev_dest="/etc/udev/rules.d/99-helixscreen-backlight.rules"
+
+    if [ -f "$udev_src" ] && [ -d /etc/udev/rules.d ]; then
+        $SUDO cp "$udev_src" "$udev_dest"
+        # Trigger udev to apply immediately for any existing backlight devices
+        $SUDO udevadm trigger --subsystem-match=backlight 2>/dev/null || true
+        log_info "Installed backlight udev rule"
+    fi
+
+    # --- NetworkManager polkit rule ---
+    local pkla_src="${INSTALL_DIR}/config/helixscreen-network.pkla"
+
+    if [ -f "$pkla_src" ] && command -v nmcli >/dev/null 2>&1; then
+        # polkit JavaScript rules for newer polkit (Debian 12+, polkit >= 0.106)
+        local rules_dir="/etc/polkit-1/rules.d"
+        # polkit local authority (.pkla) for older polkit (Debian 11 and similar)
+        local pkla_dir="/etc/polkit-1/localauthority/50-local.d"
+
+        if [ -d "$rules_dir" ]; then
+            # JavaScript rules format (newer polkit, Debian 12+)
+            local rules_dest="${rules_dir}/50-helixscreen-network.rules"
+            $SUDO tee "$rules_dest" > /dev/null << POLKIT_EOF
+// Installed by HelixScreen — allow service user to manage NetworkManager
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0 &&
+        subject.user === "${helix_user}") {
+        return polkit.Result.YES;
+    }
+});
+POLKIT_EOF
+            log_info "Installed NetworkManager polkit rule (.rules)"
+        elif [ -d "$pkla_dir" ]; then
+            # .pkla format (pklocalauthority, Debian 11 and older)
+            local pkla_dest="${pkla_dir}/helixscreen-network.pkla"
+            $SUDO cp "$pkla_src" "$pkla_dest"
+            # Template the user
+            $SUDO sed -i "s|@@HELIX_USER@@|${helix_user}|g" "$pkla_dest" 2>/dev/null || \
+            $SUDO sed -i '' "s|@@HELIX_USER@@|${helix_user}|g" "$pkla_dest" 2>/dev/null || true
+            log_info "Installed NetworkManager polkit rule (.pkla)"
+        else
+            log_warn "polkit rules directory not found — Wi-Fi may not work as non-root"
+        fi
+    fi
+}
+
 # ============================================
 # Module: requirements.sh
 # ============================================
@@ -1736,6 +1797,10 @@ uninstall() {
         $SUDO systemctl disable helixscreen-update.path 2>/dev/null || true
         $SUDO rm -f /etc/systemd/system/helixscreen-update.path
         $SUDO rm -f /etc/systemd/system/helixscreen-update.service
+        # Remove permission rules (udev, polkit)
+        $SUDO rm -f /etc/udev/rules.d/99-helixscreen-backlight.rules
+        $SUDO rm -f /etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
+        $SUDO rm -f /etc/polkit-1/rules.d/50-helixscreen-network.rules
         $SUDO systemctl daemon-reload
     else
         # Stop and remove SysV init scripts (check all possible locations)
@@ -1927,6 +1992,10 @@ clean_old_installation() {
     $SUDO systemctl disable helixscreen-update.path 2>/dev/null || true
     $SUDO rm -f /etc/systemd/system/helixscreen-update.path
     $SUDO rm -f /etc/systemd/system/helixscreen-update.service
+    # Remove permission rules (udev, polkit)
+    $SUDO rm -f /etc/udev/rules.d/99-helixscreen-backlight.rules
+    $SUDO rm -f /etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
+    $SUDO rm -f /etc/polkit-1/rules.d/50-helixscreen-network.rules
     $SUDO systemctl daemon-reload 2>/dev/null || true
 
     log_success "Old installation cleaned"

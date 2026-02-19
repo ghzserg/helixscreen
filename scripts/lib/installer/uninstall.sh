@@ -59,6 +59,10 @@ uninstall() {
         $SUDO systemctl disable helixscreen-update.path 2>/dev/null || true
         $SUDO rm -f /etc/systemd/system/helixscreen-update.path
         $SUDO rm -f /etc/systemd/system/helixscreen-update.service
+        # Remove permission rules (udev, polkit)
+        $SUDO rm -f /etc/udev/rules.d/99-helixscreen-backlight.rules
+        $SUDO rm -f /etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
+        $SUDO rm -f /etc/polkit-1/rules.d/50-helixscreen-network.rules
         $SUDO systemctl daemon-reload
     else
         # Stop and remove SysV init scripts (check all possible locations)
@@ -250,6 +254,10 @@ clean_old_installation() {
     $SUDO systemctl disable helixscreen-update.path 2>/dev/null || true
     $SUDO rm -f /etc/systemd/system/helixscreen-update.path
     $SUDO rm -f /etc/systemd/system/helixscreen-update.service
+    # Remove permission rules (udev, polkit)
+    $SUDO rm -f /etc/udev/rules.d/99-helixscreen-backlight.rules
+    $SUDO rm -f /etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
+    $SUDO rm -f /etc/polkit-1/rules.d/50-helixscreen-network.rules
     $SUDO systemctl daemon-reload 2>/dev/null || true
 
     log_success "Old installation cleaned"

@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# udev rule: grant video group write access to backlight brightness
+# Installed by HelixScreen for non-root service operation
+ACTION=="add|change", SUBSYSTEM=="backlight", RUN+="/bin/chmod g+w /sys%p/brightness", RUN+="/bin/chgrp video /sys%p/brightness"
