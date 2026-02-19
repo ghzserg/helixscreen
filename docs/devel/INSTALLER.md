@@ -149,6 +149,39 @@ The `extract_release()` function in `release.sh` implements a safe upgrade path:
 5. Restore user config from backup
 6. If step 4 fails, automatically roll back from `.old`
 
+### `NoNewPrivileges` and Self-Update on Pi (systemd)
+
+When helix-screen performs a **self-update** (user presses "Check for Updates", the binary downloads a new tarball and spawns `install.sh`), the installer runs as a subprocess of the helix-screen systemd service.
+
+The Pi systemd unit includes:
+
+```ini
+[Service]
+NoNewPrivileges=true
+```
+
+This is a hardening flag that prevents any process in the service's cgroup — including child processes — from gaining new privileges. Concretely: **`sudo` is completely non-functional** inside `install.sh` when spawned by helix-screen.
+
+**Affected operations and how they are handled:**
+
+| Operation | Old behavior | Fixed behavior |
+|-----------|-------------|----------------|
+| `fix_install_ownership()` — chown files to klipper user | `sudo chown` → fatal exit | Warns and continues; not critical for self-update |
+| Remove stale `$INSTALL_DIR.old` | `sudo rm -rf` | Try plain `rm -rf` first; fall back to timestamped name (`*.old.TIMESTAMP`) |
+| Cleanup `.old*` dirs post-install | `sudo rm -rf` | Try plain `rm -rf` first; warn and skip if blocked |
+
+**Root-owned `.old` directory** — a common scenario after a manual root-level install leaves behind a root-owned `helixscreen.old/`. The `pi` user cannot remove it even with `sudo` blocked by `NoNewPrivileges`. The installer detects this and creates a timestamped fallback (`helixscreen.old.1234567890`). A one-time manual cleanup is needed on the Pi:
+
+```bash
+# Diagnose: find files not owned by the current user
+find ~/helixscreen* ! -user "$(id -un)" 2>/dev/null
+
+# Fix: remove root-owned stale backup
+sudo rm -rf ~/helixscreen.old
+```
+
+**Design principle:** Under `NoNewPrivileges`, the installer must complete the core swap (`mv old → .old`, `mv new → INSTALL_DIR`, restore config) without `sudo`. Anything that requires `sudo` must be either non-fatal or deferred to a manual step.
+
 ---
 
 ## Platform-Specific Installation
@@ -595,3 +628,22 @@ chmod +x /etc/init.d/S80klipperscreen
 ```bash
 cp -r /opt/helixscreen/scripts/kiauh/helixscreen ~/kiauh/kiauh/extensions/
 ```
+
+### "sudo: The 'no new privileges' flag is set, which prevents sudo from running as root"
+
+**Cause**: The helix-screen systemd service has `NoNewPrivileges=true`. When a self-update is triggered from the UI, `install.sh` runs as a child of the service and inherits this restriction — `sudo` is fully non-functional.
+
+**What this affects:**
+- Chowning files to the klipper user (non-fatal, a warning is logged)
+- Removing a root-owned stale `helixscreen.old` backup from a prior manual install
+
+**Fix for root-owned stale backup:** Manually clean it up on the Pi before or after an update:
+```bash
+# Check what's root-owned
+find ~/helixscreen* ! -user "$(id -un)" 2>/dev/null
+
+# Remove it
+sudo rm -rf ~/helixscreen.old
+```
+
+The installer handles this gracefully: if it cannot remove the stale `.old` directory, it renames the new backup to `helixscreen.old.TIMESTAMP` so the atomic swap can still proceed.
