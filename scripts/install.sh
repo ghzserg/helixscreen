@@ -2071,21 +2071,20 @@ extract_release() {
             log_info "Backed up existing helixscreen.env"
         fi
 
-        # Remove stale .old backup from any previous install attempt.
-        # Try without sudo first (works when running as service user under NoNewPrivileges).
-        if [ -d "${INSTALL_DIR}.old" ]; then
+        # Choose backup dir name for atomic swap.
+        # Prefer INSTALL_DIR.old; if it exists and can't be removed (e.g. root-owned
+        # under NoNewPrivileges), fall back to a timestamped name so the swap succeeds.
+        INSTALL_BACKUP="${INSTALL_DIR}.old"
+        if [ -d "$INSTALL_BACKUP" ]; then
             log_info "Removing stale backup from previous install..."
-            if ! rm -rf "${INSTALL_DIR}.old" 2>/dev/null; then
-                if ! $SUDO rm -rf "${INSTALL_DIR}.old" 2>/dev/null; then
-                    log_error "Failed to remove stale backup at ${INSTALL_DIR}.old"
-                    rm -rf "$extract_dir"
-                    exit 1
-                fi
+            if ! rm -rf "$INSTALL_BACKUP" 2>/dev/null && ! $SUDO rm -rf "$INSTALL_BACKUP" 2>/dev/null; then
+                INSTALL_BACKUP="${INSTALL_DIR}.old.$(date +%s)"
+                log_warn "Could not remove stale .old dir (root-owned?); using $INSTALL_BACKUP instead"
             fi
         fi
 
-        # Atomic swap: move old install to .old backup
-        if ! $(file_sudo "${INSTALL_DIR}") mv "${INSTALL_DIR}" "${INSTALL_DIR}.old"; then
+        # Atomic swap: move old install to backup
+        if ! $(file_sudo "${INSTALL_DIR}") mv "${INSTALL_DIR}" "$INSTALL_BACKUP"; then
             log_error "Failed to backup existing installation."
             rm -rf "$extract_dir"
             exit 1
@@ -2097,15 +2096,15 @@ extract_release() {
     if ! $(file_sudo "$(dirname "${INSTALL_DIR}")") mv "${new_install}" "${INSTALL_DIR}"; then
         log_error "Failed to install new release."
         # ROLLBACK: restore old installation
-        if [ -d "${INSTALL_DIR}.old" ]; then
+        if [ -d "${INSTALL_BACKUP:-}" ]; then
             log_warn "Rolling back to previous installation..."
             # Remove partial new install that may block the rollback mv
             [ -d "${INSTALL_DIR}" ] && $SUDO rm -rf "${INSTALL_DIR}"
-            if $SUDO mv "${INSTALL_DIR}.old" "${INSTALL_DIR}"; then
+            if $SUDO mv "$INSTALL_BACKUP" "${INSTALL_DIR}"; then
                 log_warn "Rollback complete. Previous installation restored."
             else
-                log_error "CRITICAL: Rollback failed! Previous install at ${INSTALL_DIR}.old"
-                log_error "Manually restore with: mv ${INSTALL_DIR}.old ${INSTALL_DIR}"
+                log_error "CRITICAL: Rollback failed! Previous install at $INSTALL_BACKUP"
+                log_error "Manually restore with: mv $INSTALL_BACKUP ${INSTALL_DIR}"
             fi
         fi
         rm -rf "$extract_dir"
@@ -2136,10 +2135,13 @@ extract_release() {
 
 # Remove backup of previous installation (call after service starts successfully)
 cleanup_old_install() {
-    if [ -d "${INSTALL_DIR}.old" ]; then
-        $SUDO rm -rf "${INSTALL_DIR}.old" || true
-        log_info "Cleaned up previous installation backup"
-    fi
+    # Clean both the standard .old and any timestamped fallback backups
+    for _backup in "${INSTALL_DIR}.old" "${INSTALL_DIR}.old."*; do
+        if [ -d "$_backup" ]; then
+            rm -rf "$_backup" 2>/dev/null || $SUDO rm -rf "$_backup" || true
+            log_info "Cleaned up previous installation backup: $_backup"
+        fi
+    done
 }
 
 # ============================================
