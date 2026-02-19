@@ -2130,6 +2130,17 @@ cleanup_old_install() {
 
 #
 # SERVICE_NAME is defined in common.sh
+
+# Returns true if this process is running under the NoNewPrivileges systemd constraint.
+# When helix-screen self-updates, it spawns install.sh as a child process.  The
+# helixscreen.service unit has NoNewPrivileges=true, so ALL sudo calls in install.sh
+# will fail.  Callers use this to skip operations that require root (service file
+# copy, daemon-reload, systemctl start) and instead let update_checker.cpp restart
+# the process via exit(0), which the watchdog treats as "restart silently".
+_has_no_new_privs() {
+    [ -r /proc/self/status ] && grep -q '^NoNewPrivs:[[:space:]]*1' /proc/self/status 2>/dev/null
+}
+
 # Install service (dispatcher)
 # Calls install_service_systemd or install_service_sysv based on INIT_SYSTEM
 install_service() {
@@ -2152,6 +2163,20 @@ install_service_systemd() {
     if [ ! -f "$service_src" ]; then
         log_error "Service file not found: $service_src"
         log_error "The release package may be incomplete."
+        exit 1
+    fi
+
+    # Under NoNewPrivileges (self-update spawned by helix-screen), sudo is blocked and
+    # /etc/systemd/system/ is read-only in the service's mount namespace.  The service
+    # is already installed and correct — skip reinstall.  The process restart is handled
+    # by update_checker.cpp calling exit(0) after install.sh succeeds.
+    if _has_no_new_privs; then
+        if [ -f "$service_dest" ]; then
+            log_info "Skipping service reinstall (NoNewPrivileges; already installed)"
+            CLEANUP_SERVICE=true
+            return 0
+        fi
+        log_error "Service not installed and NoNewPrivileges prevents installation"
         exit 1
     fi
 
@@ -2218,6 +2243,14 @@ start_service() {
 # Start service (systemd)
 start_service_systemd() {
     log_info "Enabling and starting HelixScreen (systemd)..."
+
+    # Under NoNewPrivileges, systemctl is blocked.  The restart is handled by
+    # update_checker.cpp: it calls exit(0) after we return, which the watchdog
+    # treats as "normal exit — restart silently".
+    if _has_no_new_privs; then
+        log_info "Skipping service start (NoNewPrivileges; restart via watchdog)"
+        return 0
+    fi
 
     if ! $SUDO systemctl enable "$SERVICE_NAME"; then
         log_error "Failed to enable ${SERVICE_NAME} service."

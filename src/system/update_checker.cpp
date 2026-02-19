@@ -1198,8 +1198,16 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
         version = cached_info_ ? cached_info_->version : "unknown";
     }
 
-    report_download_status(DownloadStatus::Complete, 100,
-                           "v" + version + " installed! Restart to apply.");
+    report_download_status(DownloadStatus::Complete, 100, "v" + version + " installed! Restarting...");
+
+    // Trigger self-restart: exit(0) causes the watchdog to restart helix-screen
+    // with the newly installed binary ("Normal exit (code 0) — restart silently").
+    // install.sh skips systemctl restart under NoNewPrivileges, so we own the restart.
+    std::thread([] {
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        spdlog::info("[UpdateChecker] Restarting to apply update");
+        ::exit(0);
+    }).detach();
 }
 
 // ============================================================================
