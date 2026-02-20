@@ -10,7 +10,6 @@
 #include "moonraker_client.h"
 #include "slot_registry.h"
 
-#include <array>
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -193,7 +192,7 @@ class AmsBackendAfc : public AmsBackend {
      * Sends SET_RUNOUT G-code to configure which lane will be used as backup
      * when the specified lane runs out of filament.
      *
-     * @param slot_index Source lane (0 to lane_names_.size()-1)
+     * @param slot_index Source lane (0 to slots_.slot_count()-1)
      * @param backup_slot Backup lane (-1 to disable)
      * @return AmsError with result
      */
@@ -442,20 +441,10 @@ class AmsBackendAfc : public AmsBackend {
     void reorganize_units_from_map();
 
     /**
-     * @brief Get lane name for a slot index
-     *
-     * AFC uses lane names (e.g., "lane1", "lane2") instead of numeric indices.
-     *
-     * @param slot_index Slot/lane index (0-based)
-     * @return Lane name or empty string if invalid
-     */
-    std::string get_lane_name(int slot_index) const;
-
-    /**
      * @brief Compute filament segment from sensor states (no locking)
      *
      * Internal helper called from locked contexts to avoid deadlock.
-     * Uses lane_sensors_[], hub_sensors_, tool_start_sensor_, tool_end_sensor_.
+     * Uses slots_ sensors, hub_sensors_, tool_start_sensor_, tool_end_sensor_.
      *
      * @return PathSegment indicating filament position
      */
@@ -520,15 +509,14 @@ class AmsBackendAfc : public AmsBackend {
     SubscriptionGuard subscription_;     ///< RAII subscription (auto-unsubscribes)
 
     // Cached AFC state
-    AmsSystemInfo system_info_;           ///< Current system state
-    bool lanes_initialized_{false};       ///< Have we received lane data yet?
-    std::vector<std::string> lane_names_; ///< Ordered list of lane names
+    AmsSystemInfo system_info_; ///< Current system state
 
-    // Unified slot registry (parallel-run alongside legacy structures)
+    // Unified slot registry — single source of truth for all slot-indexed state
     helix::printer::SlotRegistry slots_;
 
-    // Lane name to slot index mapping
-    std::unordered_map<std::string, int> lane_name_to_index_;
+    // Pre-init storage for lane names from PrinterCapabilities discovery.
+    // Consumed by initialize_lanes() then cleared; after init use slots_.name_of().
+    std::vector<std::string> discovered_lane_names_;
 
     // Unit-to-lane mapping (populated from AFC unit data)
     // Key: unit name, Value: lane names belonging to that unit
@@ -537,17 +525,6 @@ class AmsBackendAfc : public AmsBackend {
     // Version detection
     std::string afc_version_{"unknown"}; ///< Detected AFC version (e.g., "1.0.0")
     bool has_lane_data_db_{false};       ///< v1.0.32+ has lane_data in Moonraker DB
-
-    // Per-lane sensor state (from AFC_stepper objects)
-    struct LaneSensors {
-        bool prep = false;           ///< Prep sensor triggered
-        bool load = false;           ///< Load sensor triggered
-        bool loaded_to_hub = false;  ///< Filament reached hub
-        std::string buffer_status;   ///< Buffer state (e.g., "Advancing")
-        std::string filament_status; ///< Filament readiness (e.g., "Ready", "Not Ready")
-        float dist_hub = 0.0f;       ///< Distance to hub in mm
-    };
-    std::array<LaneSensors, 16> lane_sensors_{}; ///< Sensor state for each lane
 
     // Hub and toolhead sensors (from AFC_hub and AFC_extruder objects)
     std::unordered_map<std::string, bool> hub_sensors_; ///< Per-hub sensor state, keyed by hub name
@@ -583,10 +560,6 @@ class AmsBackendAfc : public AmsBackend {
 
     // Path visualization state
     PathSegment error_segment_{PathSegment::NONE}; ///< Inferred error location
-
-    // Endless spool configuration
-    std::vector<helix::printer::EndlessSpoolConfig>
-        endless_spool_configs_; ///< Per-lane backup config
 
     // helix::Config file managers (lazy-loaded on first device action access)
     std::unique_ptr<AfcConfigManager> afc_config_;        ///< AFC/AFC.cfg

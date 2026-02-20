@@ -61,9 +61,8 @@ class AmsBackendAfcMultiExtruderHelper : public AmsBackendAfc {
 
     // Initialize lanes and slots for testing
     void initialize_test_lanes_with_slots(int count) {
-        lane_names_.clear();
-        lane_name_to_index_.clear();
         system_info_.units.clear();
+        std::vector<std::string> names;
 
         AmsUnit unit;
         unit.unit_index = 0;
@@ -73,8 +72,7 @@ class AmsBackendAfcMultiExtruderHelper : public AmsBackendAfc {
 
         for (int i = 0; i < count; ++i) {
             std::string name = "lane" + std::to_string(i + 1);
-            lane_names_.push_back(name);
-            lane_name_to_index_[name] = i;
+            names.push_back(name);
 
             SlotInfo slot;
             slot.slot_index = i;
@@ -87,7 +85,6 @@ class AmsBackendAfcMultiExtruderHelper : public AmsBackendAfc {
 
         system_info_.units.push_back(unit);
         system_info_.total_slots = count;
-        lanes_initialized_ = true;
 
         // Initialize tool-to-slot mapping
         system_info_.tool_to_slot_map.clear();
@@ -95,16 +92,7 @@ class AmsBackendAfcMultiExtruderHelper : public AmsBackendAfc {
             system_info_.tool_to_slot_map.push_back(i);
         }
 
-        // Initialize endless spool configs
-        endless_spool_configs_.clear();
-        for (int i = 0; i < count; ++i) {
-            helix::printer::EndlessSpoolConfig config;
-            config.slot_index = i;
-            config.backup_slot = -1;
-            endless_spool_configs_.push_back(config);
-        }
-        // Initialize registry alongside legacy structures
-        slots_.initialize("Box Turtle 1", lane_names_);
+        slots_.initialize("Box Turtle 1", names);
     }
 
     // Set discovered lanes (delegates to base)

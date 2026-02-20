@@ -89,14 +89,19 @@ class AmsBackendAfcMultiUnitHelper : public AmsBackendAfc {
         return system_info_;
     }
 
-    /// Access lane_names for assertions
-    const std::vector<std::string>& get_lane_names() const {
-        return lane_names_;
+    /// Get slot count from registry
+    int get_slot_count() const {
+        return slots_.slot_count();
+    }
+
+    /// Get slot name from registry
+    std::string get_slot_name(int index) const {
+        return slots_.name_of(index);
     }
 
     /// Check if lanes have been initialized
     bool are_lanes_initialized() const {
-        return lanes_initialized_;
+        return slots_.is_initialized();
     }
 
     /// Set discovered lanes (delegates to base)

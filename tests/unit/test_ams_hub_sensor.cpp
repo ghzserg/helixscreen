@@ -18,9 +18,8 @@ class HubSensorTestHelper : public AmsBackendAfc {
 
     // Lane/hub setup
     void initialize_test_lanes_with_slots(int count) {
-        lane_names_.clear();
-        lane_name_to_index_.clear();
         system_info_.units.clear();
+        std::vector<std::string> names;
 
         AmsUnit unit;
         unit.unit_index = 0;
@@ -30,8 +29,7 @@ class HubSensorTestHelper : public AmsBackendAfc {
 
         for (int i = 0; i < count; ++i) {
             std::string name = "lane" + std::to_string(i + 1);
-            lane_names_.push_back(name);
-            lane_name_to_index_[name] = i;
+            names.push_back(name);
 
             SlotInfo slot;
             slot.slot_index = i;
@@ -44,9 +42,7 @@ class HubSensorTestHelper : public AmsBackendAfc {
 
         system_info_.units.push_back(unit);
         system_info_.total_slots = count;
-        lanes_initialized_ = true;
-        // Initialize registry alongside legacy structures
-        slots_.initialize("Turtle_1", lane_names_);
+        slots_.initialize("Turtle_1", names);
     }
 
     void set_discovered_hubs(const std::vector<std::string>& hubs) {
@@ -95,8 +91,8 @@ class HubSensorTestHelper : public AmsBackendAfc {
     }
 
     void initialize_lanes_from_discovery() {
-        if (!lane_names_.empty() && !lanes_initialized_) {
-            initialize_lanes(lane_names_);
+        if (!discovered_lane_names_.empty() && !slots_.is_initialized()) {
+            initialize_lanes(discovered_lane_names_);
         }
     }
 

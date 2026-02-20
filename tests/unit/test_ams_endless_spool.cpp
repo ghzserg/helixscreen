@@ -226,6 +226,7 @@ class AmsBackendAfcEndlessSpoolHelper : public AmsBackendAfc {
     void initialize_test_lanes(int count) {
         system_info_.units.clear();
         system_info_.total_slots = count;
+        std::vector<std::string> names;
 
         AmsUnit unit;
         unit.unit_index = 0;
@@ -234,6 +235,9 @@ class AmsBackendAfcEndlessSpoolHelper : public AmsBackendAfc {
         unit.first_slot_global_index = 0;
 
         for (int i = 0; i < count; ++i) {
+            std::string name = "lane" + std::to_string(i + 1);
+            names.push_back(name);
+
             SlotInfo slot;
             slot.slot_index = i;
             slot.global_index = i;
@@ -243,22 +247,7 @@ class AmsBackendAfcEndlessSpoolHelper : public AmsBackendAfc {
         }
 
         system_info_.units.push_back(unit);
-        lane_names_.clear();
-        lane_name_to_index_.clear();
-        endless_spool_configs_.clear();
-        for (int i = 0; i < count; ++i) {
-            std::string name = "lane" + std::to_string(i + 1);
-            lane_names_.push_back(name);
-            lane_name_to_index_[name] = i;
-
-            // Initialize endless spool config for each lane
-            helix::printer::EndlessSpoolConfig config;
-            config.slot_index = i;
-            config.backup_slot = -1;
-            endless_spool_configs_.push_back(config);
-        }
-        // Initialize registry alongside legacy structures
-        slots_.initialize("AFC Test Unit", lane_names_);
+        slots_.initialize("AFC Test Unit", names);
     }
 
     // G-code capture for verification

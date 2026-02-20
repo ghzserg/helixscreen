@@ -180,9 +180,8 @@ class AfcErrorStateHelper : public AmsBackendAfc {
     AfcErrorStateHelper() : AmsBackendAfc(nullptr, nullptr) {}
 
     void initialize_test_lanes_with_slots(int count) {
-        lane_names_.clear();
-        lane_name_to_index_.clear();
         system_info_.units.clear();
+        std::vector<std::string> names;
 
         AmsUnit unit;
         unit.unit_index = 0;
@@ -192,8 +191,7 @@ class AfcErrorStateHelper : public AmsBackendAfc {
 
         for (int i = 0; i < count; ++i) {
             std::string name = "lane" + std::to_string(i + 1);
-            lane_names_.push_back(name);
-            lane_name_to_index_[name] = i;
+            names.push_back(name);
 
             SlotInfo slot;
             slot.slot_index = i;
@@ -206,14 +204,7 @@ class AfcErrorStateHelper : public AmsBackendAfc {
 
         system_info_.units.push_back(unit);
         system_info_.total_slots = count;
-        lanes_initialized_ = true;
-        // Initialize registry alongside legacy structures
-        slots_.initialize("Box Turtle 1", lane_names_);
-
-        // Initialize lane sensors
-        for (int i = 0; i < 16; ++i) {
-            lane_sensors_[i] = LaneSensors{};
-        }
+        slots_.initialize("Box Turtle 1", names);
     }
 
     void feed_status_update(const nlohmann::json& params_inner) {

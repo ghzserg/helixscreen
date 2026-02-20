@@ -38,9 +38,8 @@ class AfcErrorHandlingHelper : public AmsBackendAfc {
   public:
     AfcErrorHandlingHelper() : AmsBackendAfc(nullptr, nullptr) {
         // Initialize some lanes so parse_afc_state works
-        lane_names_ = {"lane1", "lane2", "lane3", "lane4"};
-        lane_name_to_index_ = {{"lane1", 0}, {"lane2", 1}, {"lane3", 2}, {"lane4", 3}};
-        lanes_initialized_ = true;
+        std::vector<std::string> names = {"lane1", "lane2", "lane3", "lane4"};
+        slots_.initialize("AFC Test Unit", names);
     }
 
     // Feed AFC state update with a message object

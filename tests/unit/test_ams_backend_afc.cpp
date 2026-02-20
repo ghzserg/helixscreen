@@ -53,68 +53,38 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
 
     void set_current_lane(const std::string& lane_name) {
         current_lane_name_ = lane_name;
-        // Update lane_name_to_index if not present
-        if (!lane_name.empty() && lane_name_to_index_.count(lane_name) == 0) {
-            int idx = static_cast<int>(lane_names_.size());
-            lane_names_.push_back(lane_name);
-            lane_name_to_index_[lane_name] = idx;
-        }
     }
 
     void initialize_test_lanes(int count) {
-        lane_names_.clear();
-        lane_name_to_index_.clear();
+        std::vector<std::string> names;
         for (int i = 0; i < count; ++i) {
-            std::string name = "lane" + std::to_string(i + 1);
-            lane_names_.push_back(name);
-            lane_name_to_index_[name] = i;
+            names.push_back("lane" + std::to_string(i + 1));
         }
-        // Initialize registry alongside legacy structures
-        slots_.initialize("AFC Test Unit", lane_names_);
-        // Reset lane sensors
-        for (int i = 0; i < 16; ++i) {
-            lane_sensors_[i] = LaneSensors{};
-        }
+        initialize_lanes(names);
     }
 
     // 0-based lane naming: lane0, lane1, ... lane{N-1} (matches real AFC hardware)
     void initialize_test_lanes_zero_based(int count) {
-        lane_names_.clear();
-        lane_name_to_index_.clear();
+        std::vector<std::string> names;
         for (int i = 0; i < count; ++i) {
-            std::string name = "lane" + std::to_string(i);
-            lane_names_.push_back(name);
-            lane_name_to_index_[name] = i;
+            names.push_back("lane" + std::to_string(i));
         }
-        // Initialize registry alongside legacy structures
-        slots_.initialize("AFC Test Unit", lane_names_);
-        for (int i = 0; i < 16; ++i) {
-            lane_sensors_[i] = LaneSensors{};
-        }
+        initialize_lanes(names);
     }
 
     void set_lane_prep_sensor(int lane_index, bool state) {
-        if (lane_index >= 0 && lane_index < 16) {
-            lane_sensors_[lane_index].prep = state;
-        }
         auto* entry = slots_.get_mut(lane_index);
         if (entry)
             entry->sensors.prep = state;
     }
 
     void set_lane_load_sensor(int lane_index, bool state) {
-        if (lane_index >= 0 && lane_index < 16) {
-            lane_sensors_[lane_index].load = state;
-        }
         auto* entry = slots_.get_mut(lane_index);
         if (entry)
             entry->sensors.load = state;
     }
 
     void set_lane_loaded_to_hub(int lane_index, bool state) {
-        if (lane_index >= 0 && lane_index < 16) {
-            lane_sensors_[lane_index].loaded_to_hub = state;
-        }
         auto* entry = slots_.get_mut(lane_index);
         if (entry)
             entry->sensors.loaded_to_hub = state;
@@ -137,8 +107,12 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
     }
 
     // Discovery testing helpers
-    const std::vector<std::string>& get_lane_names() const {
-        return lane_names_;
+    int get_slot_count() const {
+        return slots_.slot_count();
+    }
+
+    std::string get_slot_name(int index) const {
+        return slots_.name_of(index);
     }
 
     const std::vector<std::string>& get_hub_names() const {
@@ -147,16 +121,15 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
 
     void initialize_lanes_from_discovery() {
         // Simulates what start() does when lanes are pre-set via set_discovered_lanes()
-        if (!lane_names_.empty() && !lanes_initialized_) {
-            initialize_lanes(lane_names_);
+        if (!discovered_lane_names_.empty() && !slots_.is_initialized()) {
+            initialize_lanes(discovered_lane_names_);
         }
     }
 
     // Persistence testing helpers
     void initialize_test_lanes_with_slots(int count) {
-        lane_names_.clear();
-        lane_name_to_index_.clear();
         system_info_.units.clear();
+        std::vector<std::string> names;
 
         AmsUnit unit;
         unit.unit_index = 0;
@@ -166,8 +139,7 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
 
         for (int i = 0; i < count; ++i) {
             std::string name = "lane" + std::to_string(i + 1);
-            lane_names_.push_back(name);
-            lane_name_to_index_[name] = i;
+            names.push_back(name);
 
             SlotInfo slot;
             slot.slot_index = i;
@@ -180,9 +152,7 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
 
         system_info_.units.push_back(unit);
         system_info_.total_slots = count;
-        lanes_initialized_ = true;
-        // Initialize registry alongside legacy structures
-        slots_.initialize("Box Turtle 1", lane_names_);
+        slots_.initialize("Box Turtle 1", names);
     }
 
     SlotInfo* get_mutable_slot(int slot_index) {
@@ -192,21 +162,13 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
 
     // Initialize endless spool configs for reset testing
     void initialize_endless_spool_configs(int count) {
-        endless_spool_configs_.clear();
         for (int i = 0; i < count; ++i) {
-            helix::printer::EndlessSpoolConfig config;
-            config.slot_index = i;
-            config.backup_slot = -1;
-            endless_spool_configs_.push_back(config);
             slots_.set_backup(i, -1);
         }
     }
 
     // Set a specific endless spool backup for testing
     void set_endless_spool_config(int slot, int backup) {
-        if (slot >= 0 && slot < static_cast<int>(endless_spool_configs_.size())) {
-            endless_spool_configs_[slot].backup_slot = backup;
-        }
         slots_.set_backup(slot, backup);
     }
 
@@ -318,20 +280,13 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
         return "";
     }
 
-    // Phase 2: Access to extended parsing state (reads from registry)
-    LaneSensors get_lane_sensors(int index) const {
+    // Access to extended parsing state (reads from registry)
+    helix::printer::SlotSensors get_lane_sensors(int index) const {
         const auto* entry = slots_.get(index);
         if (entry) {
-            LaneSensors s;
-            s.prep = entry->sensors.prep;
-            s.load = entry->sensors.load;
-            s.loaded_to_hub = entry->sensors.loaded_to_hub;
-            s.buffer_status = entry->sensors.buffer_status;
-            s.filament_status = entry->sensors.filament_status;
-            s.dist_hub = entry->sensors.dist_hub;
-            return s;
+            return entry->sensors;
         }
-        return lane_sensors_[index]; // fallback to legacy
+        return {};
     }
     bool get_hub_sensor() const {
         // Returns true if any hub sensor is triggered (backward compat)
@@ -642,7 +597,7 @@ TEST_CASE("AFC segment: toolhead sensors take priority over hub", "[ams][afc][se
 
 TEST_CASE("AFC segment: no lanes initialized returns NONE", "[ams][afc][segment][edge]") {
     AmsBackendAfcTestHelper helper;
-    // Don't call initialize_test_lanes - lane_names_ is empty
+    // Don't call initialize_test_lanes - no lanes configured
 
     REQUIRE(helper.test_compute_filament_segment() == PathSegment::NONE);
 }
@@ -711,10 +666,11 @@ TEST_CASE("AFC set_discovered_lanes: sets lane names correctly", "[ams][afc][dis
 
     helper.set_discovered_lanes(lanes, hubs);
 
-    // After setting lanes, they should be accessible
-    REQUIRE(helper.get_lane_names().size() == 4);
-    REQUIRE(helper.get_lane_names()[0] == "lane1");
-    REQUIRE(helper.get_lane_names()[3] == "lane4");
+    // After setting lanes and initializing, they should be accessible via registry
+    helper.initialize_lanes_from_discovery();
+    REQUIRE(helper.get_slot_count() == 4);
+    REQUIRE(helper.get_slot_name(0) == "lane1");
+    REQUIRE(helper.get_slot_name(3) == "lane4");
 }
 
 TEST_CASE("AFC set_discovered_lanes: sets hub names correctly", "[ams][afc][discovery]") {
@@ -743,8 +699,9 @@ TEST_CASE("AFC set_discovered_lanes: empty lanes doesn't overwrite existing",
     std::vector<std::string> new_hubs = {"NewHub"};
     helper.set_discovered_lanes(empty_lanes, new_hubs);
 
-    // Lanes should remain unchanged
-    REQUIRE(helper.get_lane_names().size() == 2);
+    // Lanes should remain unchanged (check via discovery init)
+    helper.initialize_lanes_from_discovery();
+    REQUIRE(helper.get_slot_count() == 2);
     // But hubs should be updated
     REQUIRE(helper.get_hub_names().size() == 1);
     REQUIRE(helper.get_hub_names()[0] == "NewHub");

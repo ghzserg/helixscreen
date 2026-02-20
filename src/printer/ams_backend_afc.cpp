@@ -104,9 +104,10 @@ AmsError AmsBackendAfc::start() {
         // If we have discovered lanes (from PrinterCapabilities), initialize them now.
         // This provides immediate lane data for ALL AFC versions (including < 1.0.32).
         // For v1.0.32+, query_lane_data() may later supplement this with richer data.
-        if (!lane_names_.empty() && !slots_.is_initialized()) {
-            spdlog::info("[AMS AFC] Initializing {} lanes from discovery", lane_names_.size());
-            initialize_lanes(lane_names_);
+        if (!discovered_lane_names_.empty() && !slots_.is_initialized()) {
+            spdlog::info("[AMS AFC] Initializing {} lanes from discovery",
+                         discovered_lane_names_.size());
+            initialize_lanes(discovered_lane_names_);
         }
 
         should_emit = true;
@@ -135,8 +136,8 @@ void AmsBackendAfc::set_discovered_lanes(const std::vector<std::string>& lane_na
     // Store discovered lane and hub names (from printer.objects.list)
     // These will be used as a fallback for AFC versions < 1.0.32
     if (!lane_names.empty()) {
-        lane_names_ = lane_names;
-        spdlog::debug("[AMS AFC] Set {} discovered lanes", lane_names_.size());
+        discovered_lane_names_ = lane_names;
+        spdlog::debug("[AMS AFC] Set {} discovered lanes", discovered_lane_names_.size());
     }
 
     if (!hub_names.empty()) {
@@ -771,8 +772,8 @@ void AmsBackendAfc::parse_afc_state(const nlohmann::json& afc_data) {
         // NOTE: This runs under mutex_ lock (held by handle_status_update caller),
         // so system_info_ modifications are safe from concurrent get_system_info() reads.
         if (!unit_lane_map_.empty()) {
-            if (!slots_.is_initialized() && !lane_names_.empty()) {
-                initialize_lanes(lane_names_);
+            if (!slots_.is_initialized() && !discovered_lane_names_.empty()) {
+                initialize_lanes(discovered_lane_names_);
             }
             if (slots_.is_initialized()) {
                 reorganize_units_from_map();
@@ -1286,8 +1287,8 @@ void AmsBackendAfc::reorganize_units_from_unit_info() {
     }
 
     if (!unit_lane_map_.empty()) {
-        if (!slots_.is_initialized() && !lane_names_.empty()) {
-            initialize_lanes(lane_names_);
+        if (!slots_.is_initialized() && !discovered_lane_names_.empty()) {
+            initialize_lanes(discovered_lane_names_);
         }
         if (slots_.is_initialized()) {
             reorganize_units_from_map();
@@ -1630,15 +1631,11 @@ void AmsBackendAfc::parse_lane_data(const nlohmann::json& lane_data) {
 
 void AmsBackendAfc::initialize_lanes(const std::vector<std::string>& lane_names) {
     int lane_count = static_cast<int>(lane_names.size());
-    lane_names_ = lane_names;
 
-    // Build lane name to index mapping
-    lane_name_to_index_.clear();
-    for (size_t i = 0; i < lane_names_.size(); ++i) {
-        lane_name_to_index_[lane_names_[i]] = static_cast<int>(i);
-    }
+    // Initialize registry (sets is_initialized = true, creates SlotEntry per lane)
+    slots_.initialize("AFC Box Turtle", lane_names);
 
-    // Create a single unit with all lanes (AFC units are typically treated as one logical unit)
+    // Set up system_info_ for non-slot fields (unit-level metadata)
     AmsUnit unit;
     unit.unit_index = 0;
     unit.name = "AFC Box Turtle";
@@ -1650,7 +1647,7 @@ void AmsBackendAfc::initialize_lanes(const std::vector<std::string>& lane_names)
     unit.has_slot_sensors = true;    // AFC has per-lane sensors
     unit.has_hub_sensor = true;      // AFC hubs have filament sensors
 
-    // Initialize gates with defaults
+    // Initialize slots with defaults
     for (int i = 0; i < lane_count; ++i) {
         SlotInfo slot;
         slot.slot_index = i;
@@ -1672,18 +1669,11 @@ void AmsBackendAfc::initialize_lanes(const std::vector<std::string>& lane_names)
         system_info_.tool_to_slot_map.push_back(i);
     }
 
-    // Initialize endless spool configs (no backup by default)
-    endless_spool_configs_.clear();
-    endless_spool_configs_.reserve(lane_count);
-    for (int i = 0; i < lane_count; ++i) {
-        helix::printer::EndlessSpoolConfig config;
-        config.slot_index = i;
-        config.backup_slot = -1; // No backup by default
-        endless_spool_configs_.push_back(config);
-    }
+    // Set up tool mapping in registry
+    slots_.set_tool_map(system_info_.tool_to_slot_map);
 
-    // Initialize registry alongside legacy structures (sets is_initialized = true)
-    slots_.initialize("AFC Box Turtle", lane_names);
+    // Clear pre-init storage now that registry is initialized
+    discovered_lane_names_.clear();
 }
 
 /**
@@ -1705,33 +1695,18 @@ void AmsBackendAfc::reorganize_units_from_map() {
         return;
     }
 
-    // Multi-unit: rebuild units vector with proper lane grouping
-    // Preserve existing slot data (colors, materials, etc.)
+    // Reorganize registry (preserves slot data, handles name→index mapping)
+    std::map<std::string, std::vector<std::string>> sorted_map(unit_lane_map_.begin(),
+                                                               unit_lane_map_.end());
+    slots_.reorganize(sorted_map);
 
-    // Collect all current slot data by lane name for preservation
-    std::unordered_map<std::string, SlotInfo> slot_data_by_lane;
-    for (int i = 0; i < slots_.slot_count(); ++i) {
-        const auto* entry = slots_.get(i);
-        if (entry) {
-            slot_data_by_lane[entry->backend_name] = entry->info;
-        }
-    }
-
-    // Rebuild units - sort unit names for deterministic ordering
-    std::vector<std::string> sorted_unit_names;
-    sorted_unit_names.reserve(unit_lane_map_.size());
-    for (const auto& [name, lanes] : unit_lane_map_) {
-        sorted_unit_names.push_back(name);
-    }
-    std::sort(sorted_unit_names.begin(), sorted_unit_names.end());
-
+    // Rebuild system_info_.units for unit-level metadata (connected, topology,
+    // hub_sensor, buffer_health, hub_tool_label) that the registry doesn't track.
     system_info_.units.clear();
     int global_slot_offset = 0;
     int unit_idx = 0;
 
-    for (const auto& unit_name : sorted_unit_names) {
-        const auto& lanes = unit_lane_map_.at(unit_name);
-
+    for (const auto& [unit_name, lanes] : sorted_map) {
         AmsUnit unit;
         unit.unit_index = unit_idx;
         unit.name = unit_name;
@@ -1740,6 +1715,7 @@ void AmsBackendAfc::reorganize_units_from_map() {
         unit.connected = true;
         unit.has_toolhead_sensor = true;
         unit.has_slot_sensors = true;
+
         // Set hub sensor state — two strategies:
         // 1. Check unit_infos_ for hub lists (OpenAMS: hub names differ from unit names)
         // 2. Fallback: direct name match in hub_sensors_ (hub name == unit name)
@@ -1761,7 +1737,6 @@ void AmsBackendAfc::reorganize_units_from_map() {
             }
         }
         if (!found_via_uinfo) {
-            // Fallback: hub name matches unit name directly
             auto hub_it = hub_sensors_.find(unit_name);
             if (hub_it != hub_sensors_.end()) {
                 unit.has_hub_sensor = true;
@@ -1769,26 +1744,24 @@ void AmsBackendAfc::reorganize_units_from_map() {
             }
         }
 
+        // Populate slots from registry entries (preserves colors, materials, etc.)
         for (int i = 0; i < unit.slot_count; ++i) {
-            SlotInfo slot;
-            slot.slot_index = i;
-            slot.global_index = global_slot_offset + i;
-
-            // Restore preserved slot data if available
-            const std::string& lane_name = lanes[i];
-            auto it = slot_data_by_lane.find(lane_name);
-            if (it != slot_data_by_lane.end()) {
-                slot = it->second;
-                // Fix up indices for new unit layout
+            int gi = global_slot_offset + i;
+            const auto* entry = slots_.get(gi);
+            if (entry) {
+                SlotInfo slot = entry->info;
                 slot.slot_index = i;
-                slot.global_index = global_slot_offset + i;
+                slot.global_index = gi;
+                unit.slots.push_back(slot);
             } else {
+                SlotInfo slot;
+                slot.slot_index = i;
+                slot.global_index = gi;
                 slot.status = SlotStatus::UNKNOWN;
-                slot.mapped_tool = global_slot_offset + i;
+                slot.mapped_tool = gi;
                 slot.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+                unit.slots.push_back(slot);
             }
-
-            unit.slots.push_back(slot);
         }
 
         system_info_.units.push_back(unit);
@@ -1800,20 +1773,6 @@ void AmsBackendAfc::reorganize_units_from_map() {
 
     spdlog::info("[AMS AFC] Reorganized into {} units, {} total slots", system_info_.units.size(),
                  system_info_.total_slots);
-
-    // Reorganize registry alongside legacy structures
-    {
-        std::map<std::string, std::vector<std::string>> sorted_map(unit_lane_map_.begin(),
-                                                                   unit_lane_map_.end());
-        slots_.reorganize(sorted_map);
-    }
-}
-
-std::string AmsBackendAfc::get_lane_name(int slot_index) const {
-    if (slot_index >= 0 && slot_index < static_cast<int>(lane_names_.size())) {
-        return lane_names_[slot_index];
-    }
-    return "";
 }
 
 // ============================================================================
