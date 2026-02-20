@@ -1009,6 +1009,9 @@ void AmsPanel::start_operation(StepOperationType op_type, int target_slot) {
     // Store target for pulse animation
     target_load_slot_ = target_slot;
 
+    // Set pending target slot early so the target slot pulses during preheat
+    AmsState::instance().set_pending_target_slot(target_slot);
+
     // Set ams_action to HEATING immediately - this triggers XML binding to hide buttons
     // (Important for UI-managed preheat where backend hasn't started yet)
     AmsState::instance().set_action(AmsAction::HEATING);
@@ -1830,11 +1833,28 @@ void AmsPanel::handle_load_with_preheat(int slot_index) {
         start_operation(StepOperationType::LOAD_FRESH, slot_index);
     }
 
+    // Helper: initiate load or tool change depending on current state
+    auto do_load_or_swap = [&]() {
+        if (info.current_slot >= 0 && info.current_slot != slot_index) {
+            const SlotInfo* slot_info = info.get_slot_global(slot_index);
+            if (slot_info && slot_info->mapped_tool >= 0) {
+                spdlog::info("[AmsPanel] Preheat path: swapping via tool change T{}",
+                             slot_info->mapped_tool);
+                backend->change_tool(slot_info->mapped_tool);
+            } else {
+                spdlog::info("[AmsPanel] Preheat path: unload first, then load {}", slot_index);
+                backend->unload_filament();
+            }
+        } else {
+            backend->load_filament(slot_index);
+        }
+    };
+
     // If backend handles heating automatically, just call load directly
     // Backend will also handle cooling after load completes
     if (backend->supports_auto_heat_on_load()) {
         ui_initiated_heat_ = false; // Backend manages temp
-        backend->load_filament(slot_index);
+        do_load_or_swap();
         return;
     }
 
@@ -1850,7 +1870,7 @@ void AmsPanel::handle_load_with_preheat(int slot_index) {
     if (current >= (target - TEMP_THRESHOLD)) {
         // Already hot enough - load immediately, no UI-initiated heat
         ui_initiated_heat_ = false;
-        backend->load_filament(slot_index);
+        do_load_or_swap();
         return;
     }
 
@@ -1896,8 +1916,21 @@ void AmsPanel::check_pending_load() {
 
         AmsBackend* backend = AmsState::instance().get_backend();
         if (backend) {
-            spdlog::info("[AmsPanel] Preheat complete, loading slot {}", slot);
-            backend->load_filament(slot);
+            AmsSystemInfo preheat_info = backend->get_system_info();
+            if (preheat_info.current_slot >= 0 && preheat_info.current_slot != slot) {
+                const SlotInfo* slot_info = preheat_info.get_slot_global(slot);
+                if (slot_info && slot_info->mapped_tool >= 0) {
+                    spdlog::info("[AmsPanel] Preheat complete, swapping via tool change T{}",
+                                 slot_info->mapped_tool);
+                    backend->change_tool(slot_info->mapped_tool);
+                } else {
+                    spdlog::info("[AmsPanel] Preheat complete, unloading first then load {}", slot);
+                    backend->unload_filament();
+                }
+            } else {
+                spdlog::info("[AmsPanel] Preheat complete, loading slot {}", slot);
+                backend->load_filament(slot);
+            }
         }
     }
 }

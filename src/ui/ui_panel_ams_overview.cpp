@@ -627,10 +627,12 @@ void AmsOverviewPanel::refresh_detail_if_needed() {
         spdlog::debug("[{}] Detail slot count changed {} -> {}, rebuilding", get_name(),
                       detail_slot_count_, new_slot_count);
         create_detail_slots(unit);
-        setup_detail_path_canvas(unit, info);
         update_detail_header(unit, info);
     }
-    // Otherwise: per-slot observers handle all visual updates (color, pulse, etc.)
+
+    // Always update path canvas — segment/action changes need to propagate
+    // even when slot count hasn't changed (e.g., load/unload animations)
+    setup_detail_path_canvas(unit, info);
 }
 
 void AmsOverviewPanel::show_unit_detail(int unit_index) {
@@ -1059,11 +1061,30 @@ void AmsOverviewPanel::show_detail_context_menu(int slot_index, lv_obj_t* near_w
                         NOTIFY_WARNING("AMS is busy: {}", ams_action_to_string(info.action));
                         return;
                     }
-                }
-                {
-                    AmsError load_err = backend->load_filament(slot);
-                    if (load_err.result != AmsResult::SUCCESS) {
-                        NOTIFY_ERROR("Load failed: {}", load_err.user_msg);
+
+                    AmsError error;
+                    // If filament is already loaded from a DIFFERENT slot, use tool change
+                    // (unload-then-load) so the segment animation plays properly
+                    if (info.current_slot >= 0 && info.current_slot != slot) {
+                        const SlotInfo* slot_info = info.get_slot_global(slot);
+                        if (slot_info && slot_info->mapped_tool >= 0) {
+                            spdlog::info("[AmsOverview] Swapping slot {} -> {} via tool "
+                                         "change T{}",
+                                         info.current_slot, slot, slot_info->mapped_tool);
+                            error = backend->change_tool(slot_info->mapped_tool);
+                        } else {
+                            // Fallback: unload first
+                            spdlog::info("[AmsOverview] Unloading slot {} before loading {}",
+                                         info.current_slot, slot);
+                            error = backend->unload_filament();
+                        }
+                    } else {
+                        spdlog::info("[AmsOverview] Fresh load to slot {} (current_slot={})", slot,
+                                     info.current_slot);
+                        error = backend->load_filament(slot);
+                    }
+                    if (error.result != AmsResult::SUCCESS) {
+                        NOTIFY_ERROR("Load failed: {}", error.user_msg);
                     }
                 }
                 break;
