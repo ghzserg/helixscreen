@@ -64,14 +64,77 @@ void SlotRegistry::initialize_units(
 }
 
 void SlotRegistry::reorganize(
-    const std::map<std::string, std::vector<std::string>>& /*unit_slot_map*/) {
-    // Stub — implemented in a later phase
+    const std::map<std::string, std::vector<std::string>>& unit_slot_map) {
+    // Stash existing slot data by backend_name
+    std::unordered_map<std::string, SlotEntry> stash;
+    for (auto& slot : slots_) {
+        stash[slot.backend_name] = std::move(slot);
+    }
+
+    slots_.clear();
+    units_.clear();
+
+    // std::map iterates in sorted key order (alphabetical unit names)
+    int global_offset = 0;
+    int unit_idx = 0;
+    for (const auto& [unit_name, slot_names] : unit_slot_map) {
+        RegistryUnit reg_unit;
+        reg_unit.name = unit_name;
+        reg_unit.first_slot = global_offset;
+        reg_unit.slot_count = static_cast<int>(slot_names.size());
+        units_.push_back(reg_unit);
+
+        for (int s = 0; s < static_cast<int>(slot_names.size()); ++s) {
+            const auto& name = slot_names[s];
+            auto it = stash.find(name);
+            if (it != stash.end()) {
+                // Preserve existing data, fix up indices
+                SlotEntry entry = std::move(it->second);
+                entry.global_index = global_offset + s;
+                entry.unit_index = unit_idx;
+                entry.info.global_index = global_offset + s;
+                entry.info.slot_index = s;
+                slots_.push_back(std::move(entry));
+            } else {
+                // New slot with defaults
+                SlotEntry entry;
+                entry.global_index = global_offset + s;
+                entry.unit_index = unit_idx;
+                entry.backend_name = name;
+                entry.info.global_index = global_offset + s;
+                entry.info.slot_index = s;
+                slots_.push_back(std::move(entry));
+            }
+        }
+
+        global_offset += static_cast<int>(slot_names.size());
+        ++unit_idx;
+    }
+
+    rebuild_reverse_maps();
+    initialized_ = true;
 }
 
 bool SlotRegistry::matches_layout(
-    const std::map<std::string, std::vector<std::string>>& /*unit_slot_map*/) const {
-    // Stub — implemented in a later phase
-    return false;
+    const std::map<std::string, std::vector<std::string>>& unit_slot_map) const {
+    if (static_cast<int>(unit_slot_map.size()) != static_cast<int>(units_.size()))
+        return false;
+
+    // Both iterate in sorted order (units_ was built from std::map, so already sorted)
+    auto map_it = unit_slot_map.begin();
+    for (int u = 0; u < static_cast<int>(units_.size()); ++u, ++map_it) {
+        const auto& reg_unit = units_[u];
+        if (reg_unit.name != map_it->first)
+            return false;
+        if (reg_unit.slot_count != static_cast<int>(map_it->second.size()))
+            return false;
+
+        for (int s = 0; s < reg_unit.slot_count; ++s) {
+            if (slots_[reg_unit.first_slot + s].backend_name != map_it->second[s])
+                return false;
+        }
+    }
+    return true;
 }
 
 int SlotRegistry::slot_count() const {
