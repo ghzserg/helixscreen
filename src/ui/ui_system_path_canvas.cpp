@@ -161,16 +161,12 @@ static void load_theme_colors(SystemPathData* data) {
 // Drawing Helpers
 // ============================================================================
 
-// Color manipulation helpers
-static lv_color_t sp_darken(lv_color_t c, uint8_t amt) {
-    return lv_color_make(c.red > amt ? c.red - amt : 0, c.green > amt ? c.green - amt : 0,
-                         c.blue > amt ? c.blue - amt : 0);
+// Color manipulation — use shared utilities from ui_spool_drawing.h
+static inline lv_color_t sp_darken(lv_color_t c, uint8_t amt) {
+    return ui_color_darken(c, amt);
 }
-
-static lv_color_t sp_lighten(lv_color_t c, uint8_t amt) {
-    return lv_color_make((c.red + amt > 255) ? 255 : c.red + amt,
-                         (c.green + amt > 255) ? 255 : c.green + amt,
-                         (c.blue + amt > 255) ? 255 : c.blue + amt);
+static inline lv_color_t sp_lighten(lv_color_t c, uint8_t amt) {
+    return ui_color_lighten(c, amt);
 }
 
 static void draw_flat_line(lv_layer_t* layer, int32_t x1, int32_t y1, int32_t x2, int32_t y2,
@@ -1096,6 +1092,7 @@ static void on_system_path_clicked(lv_event_t* e) {
         abs(point.y - data->bypass_spool_y) < box_h) {
         spdlog::debug("[SystemPath] Bypass spool box clicked");
         data->bypass_callback(data->bypass_user_data);
+        return;
     }
 }
 

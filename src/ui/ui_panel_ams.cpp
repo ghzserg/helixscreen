@@ -291,14 +291,16 @@ void AmsPanel::init_subjects() {
     // If callers from background threads are added, those must use ui_queue_update().
     external_spool_observer_ = observe_int_sync<AmsPanel>(
         AmsState::instance().get_external_spool_color_subject(), this,
-        [](AmsPanel* self, int color_int) {
+        [](AmsPanel* self, int /*color_int*/) {
             if (!self->path_canvas_)
                 return;
-            bool has_spool = color_int != 0;
+            // Use full spool info check (not just color != 0) to handle black spools correctly
+            auto ext_spool = AmsState::instance().get_external_spool_info();
+            bool has_spool = ext_spool.has_value();
             ui_filament_path_canvas_set_bypass_has_spool(self->path_canvas_, has_spool);
             if (has_spool) {
-                ui_filament_path_canvas_set_bypass_color(self->path_canvas_,
-                                                         static_cast<uint32_t>(color_int));
+                ui_filament_path_canvas_set_bypass_color(
+                    self->path_canvas_, static_cast<uint32_t>(ext_spool->color_rgb));
             }
         });
 
