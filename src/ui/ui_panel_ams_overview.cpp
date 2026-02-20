@@ -167,6 +167,18 @@ void AmsOverviewPanel::init_subjects() {
                 }
             },
             this);
+
+        // Observe external spool color changes to reactively update bypass display.
+        // NOTE: set_external_spool_info() calls lv_subject_set_int() directly (not via
+        // ui_queue_update) which is safe because all current callers are on the LVGL thread.
+        // If callers from background threads are added, those must use ui_queue_update().
+        using helix::ui::observe_int_sync;
+        external_spool_observer_ = observe_int_sync<AmsOverviewPanel>(
+            AmsState::instance().get_external_spool_color_subject(), this,
+            [](AmsOverviewPanel* self, int /*color_int*/) {
+                // Delegate to existing refresh helper which reads full spool info
+                self->refresh_bypass_display();
+            });
     });
 }
 
@@ -481,6 +493,12 @@ void AmsOverviewPanel::refresh_system_path(const AmsSystemInfo& info, int curren
     }
     ui_system_path_canvas_set_bypass(system_path_, info.supports_bypass, bypass_active,
                                      bypass_color);
+
+    // Set whether an external spool is assigned (controls filled vs hollow spool box)
+    ui_system_path_canvas_set_bypass_has_spool(system_path_, ext_spool.has_value());
+
+    // Register bypass click callback (safe to call repeatedly — just updates the stored cb)
+    ui_system_path_canvas_set_bypass_callback(system_path_, on_bypass_spool_clicked, this);
 
     // Compute physical tool layout (handles HUB units with unique per-lane mapped_tools)
     auto* backend = AmsState::instance().get_backend();
@@ -894,6 +912,7 @@ void AmsOverviewPanel::clear_panel_reference() {
 
     // Clear observer guards before clearing widget pointers
     slots_version_observer_.reset();
+    external_spool_observer_.reset();
 
     // Clear global instance pointer
     g_overview_panel_instance.store(nullptr);
@@ -1156,6 +1175,116 @@ void AmsOverviewPanel::show_detail_context_menu(int slot_index, lv_obj_t* near_w
 
     context_menu_->set_click_point(click_pt);
     context_menu_->show_near_widget(parent_screen_, slot_index, near_widget, is_loaded, backend);
+}
+
+// ============================================================================
+// Bypass Spool Interaction
+// ============================================================================
+
+void AmsOverviewPanel::on_bypass_spool_clicked(void* user_data) {
+    auto* self = static_cast<AmsOverviewPanel*>(user_data);
+    if (self) {
+        self->handle_bypass_click();
+    }
+}
+
+void AmsOverviewPanel::handle_bypass_click() {
+    if (!parent_screen_ || !system_path_) {
+        return;
+    }
+
+    // Capture click point from input device for menu positioning
+    lv_point_t click_pt = {0, 0};
+    lv_indev_t* indev = lv_indev_active();
+    if (indev) {
+        lv_indev_get_point(indev, &click_pt);
+    }
+
+    // Create context menu on first use
+    if (!context_menu_) {
+        context_menu_ = std::make_unique<helix::ui::AmsContextMenu>();
+    }
+
+    // Set callback to handle menu actions for external spool
+    context_menu_->set_action_callback(
+        [this](helix::ui::AmsContextMenu::MenuAction action, int /*slot*/) {
+            switch (action) {
+            case helix::ui::AmsContextMenu::MenuAction::EDIT:
+            case helix::ui::AmsContextMenu::MenuAction::SPOOLMAN:
+                show_edit_modal(-2);
+                break;
+
+            case helix::ui::AmsContextMenu::MenuAction::CLEAR_SPOOL:
+                AmsState::instance().clear_external_spool_info();
+                // bypass display update handled reactively by external_spool_observer_
+                NOTIFY_INFO("External spool cleared");
+                break;
+
+            case helix::ui::AmsContextMenu::MenuAction::CANCELLED:
+            default:
+                break;
+            }
+        });
+
+    // Position menu at click point, show for external spool
+    context_menu_->set_click_point(click_pt);
+    context_menu_->show_for_external_spool(parent_screen_, system_path_);
+}
+
+void AmsOverviewPanel::refresh_bypass_display() {
+    if (!system_path_) {
+        return;
+    }
+
+    auto ext_spool = AmsState::instance().get_external_spool_info();
+    ui_system_path_canvas_set_bypass_has_spool(system_path_, ext_spool.has_value());
+
+    if (ext_spool) {
+        // Preserve current bypass active state, update color from spool
+        auto* backend = AmsState::instance().get_backend();
+        if (backend) {
+            AmsSystemInfo info = backend->get_system_info();
+            int current_slot = lv_subject_get_int(AmsState::instance().get_current_slot_subject());
+            bool bypass_active = info.supports_bypass && (current_slot == -2);
+            ui_system_path_canvas_set_bypass(system_path_, info.supports_bypass, bypass_active,
+                                             ext_spool->color_rgb);
+        }
+    }
+
+    ui_system_path_canvas_refresh(system_path_);
+}
+
+void AmsOverviewPanel::show_edit_modal(int slot_index) {
+    if (!parent_screen_) {
+        spdlog::warn("[{}] Cannot show edit modal - no parent screen", get_name());
+        return;
+    }
+
+    // Create modal on first use (lazy initialization)
+    if (!edit_modal_) {
+        edit_modal_ = std::make_unique<helix::ui::AmsEditModal>();
+    }
+
+    // External spool (bypass/direct) - not managed by backend
+    if (slot_index == -2) {
+        auto ext = AmsState::instance().get_external_spool_info();
+        SlotInfo initial_info = ext.value_or(SlotInfo{});
+        initial_info.slot_index = -2;
+        initial_info.global_index = -2;
+
+        edit_modal_->set_completion_callback([](const helix::ui::AmsEditModal::EditResult& result) {
+            if (result.saved) {
+                AmsState::instance().set_external_spool_info(result.slot_info);
+                // bypass display update handled reactively by external_spool_observer_
+                NOTIFY_INFO("External spool updated");
+            }
+        });
+        edit_modal_->show_for_slot(parent_screen_, -2, initial_info, api_);
+        return;
+    }
+
+    spdlog::warn("[{}] show_edit_modal called with unsupported slot_index={}", get_name(),
+                 slot_index);
 }
 
 // ============================================================================

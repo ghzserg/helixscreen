@@ -285,6 +285,23 @@ void AmsPanel::init_subjects() {
         AmsState::instance().get_backend_count_subject(), this,
         [](AmsPanel* self, int /*count*/) { self->rebuild_backend_selector(); });
 
+    // Observe external spool color changes to reactively update bypass in path canvas.
+    // NOTE: set_external_spool_info() calls lv_subject_set_int() directly (not via
+    // ui_queue_update) which is safe because all current callers are on the LVGL thread.
+    // If callers from background threads are added, those must use ui_queue_update().
+    external_spool_observer_ = observe_int_sync<AmsPanel>(
+        AmsState::instance().get_external_spool_color_subject(), this,
+        [](AmsPanel* self, int color_int) {
+            if (!self->path_canvas_)
+                return;
+            bool has_spool = color_int != 0;
+            ui_filament_path_canvas_set_bypass_has_spool(self->path_canvas_, has_spool);
+            if (has_spool) {
+                ui_filament_path_canvas_set_bypass_color(self->path_canvas_,
+                                                         static_cast<uint32_t>(color_int));
+            }
+        });
+
     // UI module subjects are now encapsulated in their respective classes:
     // - helix::ui::AmsEditModal
     // - helix::ui::AmsColorPicker
@@ -450,6 +467,7 @@ void AmsPanel::clear_panel_reference() {
     path_segment_observer_.reset();
     path_topology_observer_.reset();
     backend_count_observer_.reset();
+    external_spool_observer_.reset();
     // extruder_temp_observer_ intentionally NOT reset - needed for preheat completion
 
     // Don't cancel preheat or clear pending load state when panel closes.
@@ -1343,8 +1361,7 @@ void AmsPanel::handle_bypass_spool_click() {
 
             case helix::ui::AmsContextMenu::MenuAction::CLEAR_SPOOL:
                 AmsState::instance().clear_external_spool_info();
-                update_path_canvas_from_backend();
-                refresh_slots();
+                // bypass display update handled reactively by external_spool_observer_
                 NOTIFY_INFO("External spool cleared");
                 break;
 
@@ -1771,14 +1788,13 @@ void AmsPanel::show_edit_modal(int slot_index) {
         initial_info.slot_index = -2;
         initial_info.global_index = -2;
 
-        edit_modal_->set_completion_callback(
-            [this](const helix::ui::AmsEditModal::EditResult& result) {
-                if (result.saved) {
-                    AmsState::instance().set_external_spool_info(result.slot_info);
-                    update_path_canvas_from_backend();
-                    NOTIFY_INFO("External spool updated");
-                }
-            });
+        edit_modal_->set_completion_callback([](const helix::ui::AmsEditModal::EditResult& result) {
+            if (result.saved) {
+                AmsState::instance().set_external_spool_info(result.slot_info);
+                // bypass display update handled reactively by external_spool_observer_
+                NOTIFY_INFO("External spool updated");
+            }
+        });
         edit_modal_->show_for_slot(parent_screen_, -2, initial_info, api_);
         return;
     }

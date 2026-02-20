@@ -5,6 +5,7 @@
 
 #include "ui_ams_context_menu.h"
 #include "ui_ams_detail.h"
+#include "ui_ams_edit_modal.h"
 #include "ui_observer_guard.h"
 #include "ui_panel_base.h"
 
@@ -103,6 +104,7 @@ class AmsOverviewPanel : public PanelBase {
 
     // === Observers ===
     ObserverGuard slots_version_observer_;
+    ObserverGuard external_spool_observer_; ///< Reactive updates when external spool color changes
 
     // === Setup Helpers ===
     void create_unit_cards(const AmsSystemInfo& info);
@@ -119,9 +121,16 @@ class AmsOverviewPanel : public PanelBase {
 
     // === Slot Interaction ===
     std::unique_ptr<helix::ui::AmsContextMenu> context_menu_; ///< Slot context menu (lazy init)
+    std::unique_ptr<helix::ui::AmsEditModal> edit_modal_;     ///< Edit modal (lazy init)
 
     void handle_detail_slot_tap(int global_slot_index, lv_point_t click_pt);
     void show_detail_context_menu(int slot_index, lv_obj_t* near_widget, lv_point_t click_pt);
+
+    // === Bypass Spool Interaction ===
+    void handle_bypass_click();
+    void refresh_bypass_display();
+    void show_edit_modal(int slot_index);
+    static void on_bypass_spool_clicked(void* user_data);
 
     // === Event Handling ===
     static void on_unit_card_clicked(lv_event_t* e);

@@ -138,8 +138,9 @@ class AmsPanel : public PanelBase {
     ObserverGuard slot_count_observer_;
     ObserverGuard path_segment_observer_;
     ObserverGuard path_topology_observer_;
-    ObserverGuard extruder_temp_observer_; ///< For preheat completion detection
-    ObserverGuard backend_count_observer_; ///< For backend selector visibility
+    ObserverGuard extruder_temp_observer_;  ///< For preheat completion detection
+    ObserverGuard backend_count_observer_;  ///< For backend selector visibility
+    ObserverGuard external_spool_observer_; ///< Reactive updates when external spool color changes
 
     // === Dynamic Slot State ===
 
