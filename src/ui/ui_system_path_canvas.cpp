@@ -4,6 +4,7 @@
 #include "ui_system_path_canvas.h"
 
 #include "ui_fonts.h"
+#include "ui_spool_drawing.h"
 
 #include "lvgl/lvgl.h"
 #include "lvgl/src/xml/lv_xml.h"
@@ -54,6 +55,18 @@ struct SystemPathData {
     bool has_bypass = false;          // Whether to show bypass path
     bool bypass_active = false;       // Whether bypass is the active path (current_slot == -2)
     uint32_t bypass_color = 0x888888; // Color when bypass active
+
+    // Bypass spool state (for spool box rendering)
+    bool bypass_has_spool = false;
+
+    // Bypass click callback
+    system_path_bypass_cb_t bypass_callback = nullptr;
+    void* bypass_user_data = nullptr;
+
+    // Cached bypass spool box position (for click hit-testing)
+    int32_t bypass_spool_x = 0;
+    int32_t bypass_spool_y = 0;
+    int32_t cached_sensor_r = 0;
 
     // Per-unit hub sensor states
     bool unit_hub_triggered[MAX_UNITS] = {};  // Per-unit hub sensor state
@@ -226,12 +239,16 @@ static void draw_line(lv_layer_t* layer, int32_t x1, int32_t y1, int32_t x2, int
     draw_tube_line(layer, x1, y1, x2, y2, color, width);
 }
 
-// Curved tube drawing (bezier approximation) — same approach as filament_path_canvas
-static constexpr int CURVE_SEGMENTS = 10;
+// Curved tube drawing (cubic bezier) — S-curve routing for clean entry angles
+static constexpr int CURVE_SEGMENTS = 16;
 
 // Layer-by-layer curved tube for smooth joints (no visible segment boundaries)
-static void draw_curved_tube(lv_layer_t* layer, int32_t x0, int32_t y0, int32_t cx, int32_t cy,
-                             int32_t x1, int32_t y1, lv_color_t color, int32_t width) {
+// Uses cubic bezier with two control points for S-curve shaping:
+//   CP1 controls departure angle (below start → departs downward)
+//   CP2 controls arrival angle (above end → arrives from above)
+static void draw_curved_tube(lv_layer_t* layer, int32_t x0, int32_t y0, int32_t cx1, int32_t cy1,
+                             int32_t cx2, int32_t cy2, int32_t x1, int32_t y1, lv_color_t color,
+                             int32_t width) {
     struct Pt {
         int32_t x, y;
     };
@@ -240,8 +257,13 @@ static void draw_curved_tube(lv_layer_t* layer, int32_t x0, int32_t y0, int32_t 
     for (int i = 1; i <= CURVE_SEGMENTS; i++) {
         float t = (float)i / CURVE_SEGMENTS;
         float inv = 1.0f - t;
-        pts[i] = {(int32_t)(inv * inv * x0 + 2 * inv * t * cx + t * t * x1),
-                  (int32_t)(inv * inv * y0 + 2 * inv * t * cy + t * t * y1)};
+        // Cubic bezier: P(t) = (1-t)^3*P0 + 3*(1-t)^2*t*C1 + 3*(1-t)*t^2*C2 + t^3*P1
+        float b0 = inv * inv * inv;
+        float b1 = 3.0f * inv * inv * t;
+        float b2 = 3.0f * inv * t * t;
+        float b3 = t * t * t;
+        pts[i] = {(int32_t)(b0 * x0 + b1 * cx1 + b2 * cx2 + b3 * x1),
+                  (int32_t)(b0 * y0 + b1 * cy1 + b2 * cy2 + b3 * y1)};
     }
 
     // All passes use round caps — opaque overdraw at joints is invisible
@@ -285,6 +307,121 @@ static void draw_curved_tube(lv_layer_t* layer, int32_t x0, int32_t y0, int32_t 
         draw_flat_line(layer, pts[i].x + offset_x, pts[i].y + offset_y, pts[i + 1].x + offset_x,
                        pts[i + 1].y + offset_y, hl_color, hl_width);
     }
+}
+
+// ============================================================================
+// Routed Tube Drawing (pipe-style: vertical → arc → horizontal → arc → vertical)
+// ============================================================================
+// Draws a plumbing-style routed path with perfectly vertical entry/exit and
+// smooth quarter-circle arc transitions to a horizontal run.
+
+static constexpr int ARC_STEPS = 8;
+
+struct RoutePt {
+    int32_t x, y;
+};
+
+// Build the point array for a routed path
+static int build_routed_path(RoutePt* pts, int32_t sx, int32_t sy, int32_t ex, int32_t ey,
+                             int32_t horiz_y, int32_t arc_r) {
+    int n = 0;
+
+    if (sx == ex) {
+        pts[n++] = {sx, sy};
+        pts[n++] = {ex, ey};
+        return n;
+    }
+
+    bool going_right = (ex > sx);
+    int32_t dir = going_right ? 1 : -1;
+
+    // Clamp arc radius to available space
+    int32_t horiz_space = going_right ? (ex - sx) : (sx - ex);
+    int32_t vert_space_top = horiz_y - sy;
+    int32_t vert_space_bot = ey - horiz_y;
+    arc_r = LV_MIN(arc_r, horiz_space / 2);
+    arc_r = LV_MIN(arc_r, vert_space_top);
+    arc_r = LV_MIN(arc_r, vert_space_bot);
+    arc_r = LV_MAX(arc_r, 2);
+
+    // Start
+    pts[n++] = {sx, sy};
+
+    // End of first vertical
+    pts[n++] = {sx, horiz_y - arc_r};
+
+    // First arc: vertical → horizontal
+    float cx1 = (float)(sx + dir * arc_r);
+    float cy1 = (float)(horiz_y - arc_r);
+    float a1_start = going_right ? (float)M_PI : 0.0f;
+    float a1_end = (float)(M_PI / 2.0);
+
+    for (int s = 1; s <= ARC_STEPS; s++) {
+        float t = (float)s / ARC_STEPS;
+        float angle = a1_start + t * (a1_end - a1_start);
+        pts[n++] = {(int32_t)(cx1 + arc_r * cosf(angle)), (int32_t)(cy1 + arc_r * sinf(angle))};
+    }
+
+    // End of horizontal (only if there's actual horizontal distance beyond the arcs)
+    int32_t horiz_end_x = ex - dir * arc_r;
+    int32_t horiz_start_x = sx + dir * arc_r;
+    if ((going_right && horiz_end_x > horiz_start_x + 1) ||
+        (!going_right && horiz_end_x < horiz_start_x - 1)) {
+        pts[n++] = {horiz_end_x, horiz_y};
+    }
+
+    // Second arc: horizontal → vertical
+    float cx2 = (float)(ex - dir * arc_r);
+    float cy2 = (float)(horiz_y + arc_r);
+    float a2_start = (float)(3.0 * M_PI / 2.0);
+    float a2_end = going_right ? (float)(2.0 * M_PI) : (float)M_PI;
+
+    for (int s = 1; s <= ARC_STEPS; s++) {
+        float t = (float)s / ARC_STEPS;
+        float angle = a2_start + t * (a2_end - a2_start);
+        pts[n++] = {(int32_t)(cx2 + arc_r * cosf(angle)), (int32_t)(cy2 + arc_r * sinf(angle))};
+    }
+
+    // End
+    pts[n++] = {ex, ey};
+
+    return n;
+}
+
+// Draw 3D tube along a polyline (multi-pass: shadow → body → highlight)
+static void draw_tube_polyline(lv_layer_t* layer, const RoutePt* pts, int count, lv_color_t color,
+                               int32_t width) {
+    if (count < 2)
+        return;
+
+    int32_t shadow_extra = LV_MAX(2, width / 2);
+    lv_color_t shadow_color = sp_darken(color, 35);
+    for (int i = 0; i < count - 1; i++) {
+        draw_flat_line(layer, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y, shadow_color,
+                       width + shadow_extra);
+    }
+
+    for (int i = 0; i < count - 1; i++) {
+        draw_flat_line(layer, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y, color, width);
+    }
+
+    // Highlight: consistent left offset (light from upper-left)
+    int32_t hl_width = LV_MAX(1, width * 2 / 5);
+    lv_color_t hl_color = sp_lighten(color, 44);
+    int32_t hl_off = width / 4 + 1;
+    for (int i = 0; i < count - 1; i++) {
+        draw_flat_line(layer, pts[i].x + hl_off, pts[i].y, pts[i + 1].x + hl_off, pts[i + 1].y,
+                       hl_color, hl_width);
+    }
+}
+
+// Draw a routed tube: vert → arc → horiz → arc → vert
+static void draw_routed_tube(lv_layer_t* layer, int32_t sx, int32_t sy, int32_t ex, int32_t ey,
+                             int32_t horiz_y, int32_t arc_r, lv_color_t color, int32_t width) {
+    constexpr int MAX_PTS = 2 + ARC_STEPS + 1 + ARC_STEPS + 1;
+    RoutePt pts[MAX_PTS];
+    int n = build_routed_path(pts, sx, sy, ex, ey, horiz_y, arc_r);
+    draw_tube_polyline(layer, pts, n, color, width);
 }
 
 // Push-to-connect fitting: shadow/highlight matching tube language
@@ -482,6 +619,7 @@ static void system_path_draw_cb(lv_event_t* e) {
     int32_t line_idle = data->line_width_idle;
     int32_t line_active = data->line_width_active;
     int32_t sensor_r = LV_MAX(5, data->line_width_active);
+    data->cached_sensor_r = sensor_r;
 
     // Shift center_x left when bypass is supported to make room for bypass path on the right
     if (data->has_bypass && !multi_tool) {
@@ -496,104 +634,171 @@ static void system_path_draw_cb(lv_event_t* e) {
         // tool has its own filament path.
         // ====================================================================
 
-        // Draw unit entry lines and per-unit routing
+        // ================================================================
+        // PASS 1: Collect all routed paths across all units globally
+        // ================================================================
+        struct GlobalRoute {
+            int unit_idx;
+            int tool_idx;
+            int32_t start_x;
+            int32_t start_y;
+            int32_t end_x;
+            int32_t end_y;
+            int32_t dist; // absolute horizontal distance (for stagger ordering)
+            bool is_hub;  // HUB topology route (draws hub box after)
+        };
+        GlobalRoute all_routes[SystemPathData::MAX_TOOLS];
+        int total_routes = 0;
+
+        int32_t arc_r = LV_MAX(8, (tools_y - entry_y) / 10);
+
+        // Per-unit hub info for deferred hub box drawing
+        struct HubInfo {
+            int32_t tool_x;
+            int32_t mini_hub_y;
+            int32_t mini_hub_w;
+            int32_t mini_hub_h;
+            lv_color_t hub_bg_color;
+            int first_tool;
+            bool valid;
+        };
+        HubInfo hub_infos[SystemPathData::MAX_UNITS] = {};
+
         for (int i = 0; i < data->unit_count && i < SystemPathData::MAX_UNITS; i++) {
             int32_t unit_x = x_off + data->unit_x_positions[i];
-            bool is_active = (i == data->active_unit);
             int topology = data->unit_topology[i];
             int tool_count = data->unit_tool_count[i];
             int first_tool = data->unit_first_tool[i];
-
-            lv_color_t line_color = is_active ? active_color_lv : idle_color;
-            int32_t line_w = is_active ? line_active : line_idle;
-
-            // Hub sensor dot on the vertical segment
-            bool has_sensor = data->unit_has_hub_sensor[i];
-            int32_t sensor_dot_y = entry_y + (merge_y - entry_y) * 3 / 5;
+            bool is_active = (i == data->active_unit);
 
             if (topology == 2) {
-                // PARALLEL topology (Box Turtle): each lane fans to its own tool
-                // Draw a single entry line from unit card down to merge, then fan out
-                if (has_sensor) {
-                    draw_vertical_line(layer, unit_x, entry_y, sensor_dot_y - sensor_r, line_color,
-                                       line_w);
-                    draw_vertical_line(layer, unit_x, sensor_dot_y + sensor_r, merge_y, line_color,
-                                       line_w);
-                    bool filled = data->unit_hub_triggered[i];
-                    lv_color_t dot_color =
-                        filled ? (is_active ? active_color_lv : idle_color) : idle_color;
-                    draw_sensor_dot(layer, unit_x, sensor_dot_y, dot_color, filled, sensor_r);
-                } else {
-                    draw_vertical_line(layer, unit_x, entry_y, merge_y, line_color, line_w);
-                }
-
-                // Fan out from merge point to each tool position
+                // PARALLEL: one route per tool, spread start positions
+                int32_t spread = LV_MIN(width / 6, tool_count > 1 ? 60 : 0);
                 for (int t = 0; t < tool_count && (first_tool + t) < data->total_tools; ++t) {
                     int tool_idx = first_tool + t;
                     int32_t tool_x = calc_tool_x(tool_idx, data->total_tools, x_off, width);
-                    bool tool_active = is_active && (tool_idx == data->active_tool);
-
-                    lv_color_t fan_color = tool_active ? active_color_lv : idle_color;
-                    int32_t fan_w = tool_active ? line_active : line_idle;
-
-                    {
-                        int32_t ctrl_x = unit_x;
-                        int32_t ctrl_y = merge_y + (tools_y - merge_y) * 7 / 10;
-                        draw_curved_tube(layer, unit_x, merge_y, ctrl_x, ctrl_y, tool_x, tools_y,
-                                         fan_color, fan_w);
+                    int32_t start_x = unit_x;
+                    if (tool_count > 1) {
+                        start_x = unit_x - spread / 2 + (spread * t) / (tool_count - 1);
                     }
+                    int32_t dist = start_x > tool_x ? (start_x - tool_x) : (tool_x - start_x);
+                    all_routes[total_routes++] = {i,      tool_idx, start_x, entry_y,
+                                                  tool_x, tools_y,  dist,    false};
                 }
             } else {
-                // HUB topology (OpenAMS/default): all lanes converge to hub, then to one tool
-                if (has_sensor) {
-                    draw_vertical_line(layer, unit_x, entry_y, sensor_dot_y - sensor_r, line_color,
-                                       line_w);
-                    draw_vertical_line(layer, unit_x, sensor_dot_y + sensor_r, merge_y, line_color,
-                                       line_w);
-                    bool filled = data->unit_hub_triggered[i];
-                    lv_color_t dot_color =
-                        filled ? (is_active ? active_color_lv : idle_color) : idle_color;
-                    draw_sensor_dot(layer, unit_x, sensor_dot_y, dot_color, filled, sensor_r);
-                } else {
-                    draw_vertical_line(layer, unit_x, entry_y, merge_y, line_color, line_w);
-                }
-
-                // Converge to the first (and only) tool for this hub unit
+                // HUB: one route from unit to mini-hub position
                 if (tool_count > 0 && first_tool < data->total_tools) {
                     int32_t tool_x = calc_tool_x(first_tool, data->total_tools, x_off, width);
-
-                    // Draw a small hub box at merge level, centered on tool_x
                     int32_t mini_hub_w = data->hub_width * 2 / 3;
                     int32_t mini_hub_h = hub_h * 2 / 3;
                     int32_t mini_hub_y = merge_y + (tools_y - merge_y) / 3;
+                    int32_t end_y_mh = mini_hub_y - mini_hub_h / 2;
 
+                    // Hub sensor dot — close to AMS card for more routing room below
+                    bool has_sensor = data->unit_has_hub_sensor[i];
+                    lv_color_t line_color = is_active ? active_color_lv : idle_color;
+                    int32_t line_w = is_active ? line_active : line_idle;
+                    int32_t sensor_dot_y = entry_y + (merge_y - entry_y) / 3;
+
+                    if (has_sensor) {
+                        draw_vertical_line(layer, unit_x, entry_y, sensor_dot_y - sensor_r,
+                                           line_color, line_w);
+                        draw_vertical_line(layer, unit_x, sensor_dot_y + sensor_r, merge_y,
+                                           line_color, line_w);
+                        bool filled = data->unit_hub_triggered[i];
+                        lv_color_t dot_color =
+                            filled ? (is_active ? active_color_lv : idle_color) : idle_color;
+                        draw_sensor_dot(layer, unit_x, sensor_dot_y, dot_color, filled, sensor_r);
+                    } else {
+                        draw_vertical_line(layer, unit_x, entry_y, merge_y, line_color, line_w);
+                    }
+
+                    int32_t dist = unit_x > tool_x ? (unit_x - tool_x) : (tool_x - unit_x);
+                    all_routes[total_routes++] = {i,      first_tool, unit_x, merge_y,
+                                                  tool_x, end_y_mh,   dist,   true};
+
+                    // Save hub info for deferred drawing
                     bool hub_has_filament = is_active && data->filament_loaded;
                     lv_color_t mini_hub_bg = hub_bg;
                     if (hub_has_filament) {
                         mini_hub_bg = sp_blend(hub_bg, active_color_lv, 0.33f);
                     }
-
-                    // Curved tube from unit to mini hub
-                    {
-                        int32_t end_y_mh = mini_hub_y - mini_hub_h / 2;
-                        int32_t ctrl_x = unit_x;
-                        int32_t ctrl_y = merge_y + (end_y_mh - merge_y) * 7 / 10;
-                        draw_curved_tube(layer, unit_x, merge_y, ctrl_x, ctrl_y, tool_x, end_y_mh,
-                                         line_color, line_w);
-                    }
-
-                    draw_hub_box(layer, tool_x, mini_hub_y, mini_hub_w, mini_hub_h, mini_hub_bg,
-                                 hub_border, data->color_text, data->label_font,
-                                 data->border_radius, "Hub");
-
-                    // Line from mini hub to tool
-                    bool tool_active = is_active && (first_tool == data->active_tool);
-                    lv_color_t out_color = tool_active ? active_color_lv : idle_color;
-                    int32_t out_w = tool_active ? line_active : line_idle;
-                    draw_vertical_line(layer, tool_x, mini_hub_y + mini_hub_h / 2, tools_y,
-                                       out_color, out_w);
+                    hub_infos[i] = {tool_x,      mini_hub_y, mini_hub_w, mini_hub_h,
+                                    mini_hub_bg, first_tool, true};
                 }
             }
+        }
+
+        // ================================================================
+        // PASS 2: Sort all routes by distance (furthest first = highest Y)
+        // ================================================================
+        for (int a = 0; a < total_routes - 1; ++a) {
+            for (int b = a + 1; b < total_routes; ++b) {
+                if (all_routes[b].dist > all_routes[a].dist) {
+                    GlobalRoute tmp = all_routes[a];
+                    all_routes[a] = all_routes[b];
+                    all_routes[b] = tmp;
+                }
+            }
+        }
+
+        // ================================================================
+        // PASS 3: Draw all routed paths
+        // Each route's horizontal Y is placed proportionally within its own
+        // vertical range. Furthest routes (r=0) get horizontal at 25% down,
+        // closest routes at 75% down. This keeps long-reach lines above
+        // short-reach lines, avoiding crossings.
+        // ================================================================
+        for (int r = 0; r < total_routes; ++r) {
+            auto& route = all_routes[r];
+            bool is_active = (route.unit_idx == data->active_unit);
+            bool tool_active = is_active && (route.tool_idx == data->active_tool);
+
+            lv_color_t route_color = tool_active ? active_color_lv : idle_color;
+            int32_t route_w = tool_active ? line_active : line_idle;
+
+            // For routes that don't need horizontal shift, draw vertical
+            if (route.start_x == route.end_x) {
+                draw_tube_line(layer, route.start_x, route.start_y, route.end_x, route.end_y,
+                               is_active ? active_color_lv : idle_color,
+                               is_active ? line_active : line_idle);
+            } else {
+                // Place horizontal Y within this route's own vertical range
+                // f goes from 0.25 (furthest, r=0) to 0.75 (closest, r=last)
+                float f = 0.25f;
+                if (total_routes > 1) {
+                    f = 0.25f + 0.50f * (float)r / (float)(total_routes - 1);
+                }
+                int32_t route_drop = route.end_y - route.start_y;
+                int32_t horiz_y = route.start_y + (int32_t)(route_drop * f);
+
+                // Ensure room for arcs at both ends
+                horiz_y = LV_CLAMP(horiz_y, route.start_y + arc_r + 2, route.end_y - arc_r - 2);
+
+                draw_routed_tube(layer, route.start_x, route.start_y, route.end_x, route.end_y,
+                                 horiz_y, arc_r, route_color, route_w);
+            }
+        }
+
+        // ================================================================
+        // PASS 4: Draw hub boxes and hub-to-tool verticals (on top of routes)
+        // ================================================================
+        for (int i = 0; i < data->unit_count && i < SystemPathData::MAX_UNITS; i++) {
+            if (!hub_infos[i].valid)
+                continue;
+            auto& hi = hub_infos[i];
+            bool is_active = (i == data->active_unit);
+
+            draw_hub_box(layer, hi.tool_x, hi.mini_hub_y, hi.mini_hub_w, hi.mini_hub_h,
+                         hi.hub_bg_color, hub_border, data->color_text, data->label_font,
+                         data->border_radius, "Hub");
+
+            // Line from mini hub to tool
+            bool tool_active = is_active && (hi.first_tool == data->active_tool);
+            lv_color_t out_color = tool_active ? active_color_lv : idle_color;
+            int32_t out_w = tool_active ? line_active : line_idle;
+            draw_vertical_line(layer, hi.tool_x, hi.mini_hub_y + hi.mini_hub_h / 2, tools_y,
+                               out_color, out_w);
         }
 
         // Draw tool nozzles at the bottom
@@ -658,13 +863,12 @@ static void system_path_draw_cb(lv_event_t* e) {
                 draw_vertical_line(layer, unit_x, entry_y, merge_y, line_color, line_w);
             }
 
-            // Curved tube from unit position at merge_y to hub top
+            // S-curve from unit to hub — CPs at ~86% for vertical ends
             {
                 int32_t end_y_hub = hub_y - hub_h / 2;
-                int32_t ctrl_x = unit_x;
-                int32_t ctrl_y = merge_y + (end_y_hub - merge_y) * 7 / 10;
-                draw_curved_tube(layer, unit_x, merge_y, ctrl_x, ctrl_y, center_x, end_y_hub,
-                                 line_color, line_w);
+                int32_t drop = end_y_hub - merge_y;
+                draw_curved_tube(layer, unit_x, merge_y, unit_x, merge_y + drop * 6 / 7, center_x,
+                                 end_y_hub - drop * 6 / 7, center_x, end_y_hub, line_color, line_w);
             }
         }
 
@@ -680,6 +884,18 @@ static void system_path_draw_cb(lv_event_t* e) {
             int32_t hub_bottom = hub_y + hub_h / 2;
             int32_t bypass_merge_y = hub_bottom + (nozzle_y - hub_bottom) / 3;
 
+            // Draw spool box above merge point
+            int32_t spool_y = bypass_merge_y - sensor_r * 3;
+            lv_color_t spool_color =
+                data->bypass_has_spool ? lv_color_hex(data->bypass_color) : idle_color;
+            ui_draw_spool_box(layer, bypass_x, spool_y, spool_color, data->bypass_has_spool,
+                              sensor_r);
+
+            // Cache position for click hit-testing
+            data->bypass_spool_x = bypass_x;
+            data->bypass_spool_y = spool_y;
+
+            // "Bypass" label above spool box
             if (data->label_font) {
                 lv_draw_label_dsc_t bp_label_dsc;
                 lv_draw_label_dsc_init(&bp_label_dsc);
@@ -690,12 +906,16 @@ static void system_path_draw_cb(lv_event_t* e) {
                 bp_label_dsc.text = "Bypass";
 
                 int32_t font_h = lv_font_get_line_height(data->label_font);
-                int32_t label_top = bypass_merge_y - font_h - 4;
+                int32_t label_top = spool_y - sensor_r * 2 - font_h - 2;
                 lv_area_t bp_label_area = {bypass_x - 30, label_top, bypass_x + 30,
                                            label_top + font_h};
                 lv_draw_label(layer, &bp_label_dsc, &bp_label_area);
             }
 
+            // Vertical line from spool box to merge point
+            draw_line(layer, bypass_x, spool_y + sensor_r * 2, bypass_x, bypass_merge_y, bp_color,
+                      bp_width);
+            // Horizontal line from merge to hub
             draw_line(layer, bypass_x, bypass_merge_y, center_x + sensor_r, bypass_merge_y,
                       bp_color, bp_width);
             draw_sensor_dot(layer, center_x, bypass_merge_y, bp_color, bp_active, sensor_r);
@@ -793,6 +1013,29 @@ static void system_path_draw_cb(lv_event_t* e) {
 // Event Handlers
 // ============================================================================
 
+static void on_system_path_clicked(lv_event_t* e) {
+    lv_obj_t* obj = lv_event_get_target_obj(e);
+    auto* data = get_data(obj);
+    if (!data || !data->bypass_callback || !data->has_bypass)
+        return;
+
+    lv_point_t point;
+    lv_indev_t* indev = lv_indev_active();
+    if (!indev)
+        return;
+    lv_indev_get_point(indev, &point);
+
+    // Hit-test bypass spool box (bypass_spool_x/y are in absolute screen coords)
+    int32_t sr = data->cached_sensor_r;
+    int32_t box_w = sr * 3;
+    int32_t box_h = sr * 4;
+    if (abs(point.x - data->bypass_spool_x) < box_w &&
+        abs(point.y - data->bypass_spool_y) < box_h) {
+        spdlog::debug("[SystemPath] Bypass spool box clicked");
+        data->bypass_callback(data->bypass_user_data);
+    }
+}
+
 static void system_path_delete_cb(lv_event_t* e) {
     lv_obj_t* obj = lv_event_get_target_obj(e);
     auto it = s_registry.find(obj);
@@ -828,11 +1071,12 @@ static void* system_path_xml_create(lv_xml_parser_state_t* state, const char** a
     lv_obj_set_style_border_width(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 0, 0);
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
 
     // Register event handlers
     lv_obj_add_event_cb(obj, system_path_draw_cb, LV_EVENT_DRAW_POST, nullptr);
     lv_obj_add_event_cb(obj, system_path_delete_cb, LV_EVENT_DELETE, nullptr);
+    lv_obj_add_event_cb(obj, on_system_path_clicked, LV_EVENT_CLICKED, nullptr);
 
     spdlog::debug("[SystemPath] Created widget via XML");
     return obj;
@@ -910,11 +1154,12 @@ lv_obj_t* ui_system_path_canvas_create(lv_obj_t* parent) {
     lv_obj_set_style_border_width(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 0, 0);
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
 
     // Register event handlers
     lv_obj_add_event_cb(obj, system_path_draw_cb, LV_EVENT_DRAW_POST, nullptr);
     lv_obj_add_event_cb(obj, system_path_delete_cb, LV_EVENT_DELETE, nullptr);
+    lv_obj_add_event_cb(obj, on_system_path_clicked, LV_EVENT_CLICKED, nullptr);
 
     spdlog::debug("[SystemPath] Created widget programmatically");
     return obj;
@@ -1070,6 +1315,23 @@ void ui_system_path_canvas_set_tool_virtual_numbers(lv_obj_t* obj, const int* nu
         }
         data->has_virtual_numbers = (n > 0);
         lv_obj_invalidate(obj);
+    }
+}
+
+void ui_system_path_canvas_set_bypass_has_spool(lv_obj_t* obj, bool has_spool) {
+    auto* data = get_data(obj);
+    if (data && data->bypass_has_spool != has_spool) {
+        data->bypass_has_spool = has_spool;
+        lv_obj_invalidate(obj);
+    }
+}
+
+void ui_system_path_canvas_set_bypass_callback(lv_obj_t* obj, system_path_bypass_cb_t cb,
+                                               void* user_data) {
+    auto* data = get_data(obj);
+    if (data) {
+        data->bypass_callback = cb;
+        data->bypass_user_data = user_data;
     }
 }
 
