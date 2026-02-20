@@ -610,6 +610,28 @@ void AmsBackendHappyHare::initialize_gates(int gate_count) {
         system_info_.tool_to_slot_map.push_back(i);
     }
 
+    // Initialize SlotRegistry alongside legacy state
+    {
+        std::vector<std::pair<std::string, std::vector<std::string>>> units;
+        int sr_gates_per_unit = gate_count / std::max(1, num_units_);
+        int sr_remainder = gate_count % std::max(1, num_units_);
+        int sr_offset = 0;
+        for (int u = 0; u < num_units_; ++u) {
+            int count = sr_gates_per_unit + (u == num_units_ - 1 ? sr_remainder : 0);
+            std::vector<std::string> names;
+            for (int g = 0; g < count; ++g) {
+                names.push_back(std::to_string(sr_offset + g));
+            }
+            std::string unit_name = "Unit " + std::to_string(u + 1);
+            if (num_units_ == 1) {
+                unit_name = "MMU";
+            }
+            units.push_back({unit_name, names});
+            sr_offset += count;
+        }
+        slots_.initialize_units(units);
+    }
+
     gates_initialized_ = true;
 }
 

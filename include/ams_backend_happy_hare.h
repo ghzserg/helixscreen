@@ -7,6 +7,7 @@
 
 #include "ams_backend.h"
 #include "moonraker_client.h"
+#include "slot_registry.h"
 
 #include <atomic>
 #include <mutex>
@@ -258,9 +259,10 @@ class AmsBackendHappyHare : public AmsBackend {
     SubscriptionGuard subscription_;   ///< RAII subscription (auto-unsubscribes)
 
     // Cached MMU state
-    AmsSystemInfo system_info_;     ///< Current system state
-    bool gates_initialized_{false}; ///< Have we seen gate_status yet?
-    int num_units_{1};              ///< Number of physical units (default 1)
+    AmsSystemInfo system_info_; ///< Current system state (non-slot fields only after migration)
+    helix::printer::SlotRegistry slots_; ///< Single source of truth for per-slot state
+    bool gates_initialized_{false};      ///< Have we seen gate_status yet?
+    int num_units_{1};                   ///< Number of physical units (default 1)
 
     // Path visualization state
     int filament_pos_{0};                          ///< Happy Hare filament_pos value
