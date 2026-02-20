@@ -196,12 +196,16 @@ static void draw_circle(lv_layer_t* layer, int32_t cx, int32_t cy, int32_t radiu
 /// @param cx Center X in screen coordinates
 /// @param cy Center Y in screen coordinates
 /// @param scale Scale factor (design_space / screen_size)
+// Visual center of the Stealthburner polygon data (not exactly 500,500)
+// Measured from bounding box: X=[274,710] midpoint=492, Y=[78,928] midpoint=503
+static constexpr int DESIGN_CENTER_X = 492;
+static constexpr int DESIGN_CENTER_Y = 500;
+
 static void scale_polygon(const lv_point_t* pts_in, int cnt, lv_point_t* pts_out, int32_t cx,
                           int32_t cy, float scale) {
     for (int i = 0; i < cnt; i++) {
-        // 500 is center of 1000x1000 design space
-        pts_out[i].x = cx + (int32_t)((pts_in[i].x - 500) * scale);
-        pts_out[i].y = cy + (int32_t)((pts_in[i].y - 500) * scale);
+        pts_out[i].x = cx + (int32_t)((pts_in[i].x - DESIGN_CENTER_X) * scale);
+        pts_out[i].y = cy + (int32_t)((pts_in[i].y - DESIGN_CENTER_Y) * scale);
     }
 }
 
@@ -481,8 +485,8 @@ void draw_nozzle_faceted(lv_layer_t* layer, int32_t cx, int32_t cy, lv_color_t f
 
     // Bottom circle (fan) - simple filled circle instead of complex polygon
     // Fan center is at (490, 690) in design space with radius ~115
-    int32_t fan_cx = cx + (int32_t)((490 - 500) * scale);
-    int32_t fan_cy = cy + (int32_t)((690 - 500) * scale);
+    int32_t fan_cx = cx + (int32_t)((490 - DESIGN_CENTER_X) * scale);
+    int32_t fan_cy = cy + (int32_t)((690 - DESIGN_CENTER_Y) * scale);
     int32_t fan_radius = (int32_t)(115 * scale);
     draw_circle(layer, fan_cx, fan_cy, fan_radius, dim(lv_color_hex(0x100C0B)), 32);
 
@@ -500,8 +504,8 @@ void draw_nozzle_faceted(lv_layer_t* layer, int32_t cx, int32_t cy, lv_color_t f
     // Position below the Stealthburner body (body bottom is ~Y=898)
     // Y=920 places the tip just below the housing where the nozzle emerges
     // Offset +2px right, -4px up to align with the Stealthburner body's nozzle opening
-    int32_t tip_cx = cx - 1;
-    int32_t nozzle_top_y = cy + (int32_t)((920 - 500) * scale) - 6;
+    int32_t tip_cx = cx;
+    int32_t nozzle_top_y = cy + (int32_t)((920 - DESIGN_CENTER_Y) * scale) - 6;
     int32_t nozzle_height = (int32_t)(40 * scale); // Small tip
     int32_t nozzle_top_width = (int32_t)(60 * scale);
     int32_t nozzle_bottom_width = (int32_t)(20 * scale);
