@@ -259,6 +259,13 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
     }
     ui_filament_path_canvas_set_buffer_fault_state(canvas, buffer_fault);
 
+    // Set external spool color and assignment state
+    auto ext_spool = AmsState::instance().get_external_spool_info();
+    ui_filament_path_canvas_set_bypass_has_spool(canvas, ext_spool.has_value());
+    if (ext_spool.has_value()) {
+        ui_filament_path_canvas_set_bypass_color(canvas, ext_spool->color_rgb);
+    }
+
     ui_filament_path_canvas_refresh(canvas);
 
     spdlog::debug("[AmsDetail] Path canvas configured: slots={}, unit={}, hub_only={}", slot_count,

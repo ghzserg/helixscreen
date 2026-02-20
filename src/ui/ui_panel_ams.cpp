@@ -724,6 +724,9 @@ void AmsPanel::setup_path_canvas() {
     // Set slot click callback (panel-specific)
     ui_filament_path_canvas_set_slot_callback(path_canvas_, on_path_slot_clicked, this);
 
+    // Set bypass spool click callback (opens edit modal for external spool)
+    ui_filament_path_canvas_set_bypass_callback(path_canvas_, on_bypass_spool_clicked, this);
+
     // Configure from backend using shared helper
     ams_detail_setup_path_canvas(path_canvas_, slot_grid_, scoped_unit_index_, false);
 
@@ -1302,6 +1305,18 @@ void AmsPanel::update_current_loaded_display(int slot_index) {
 // Event Callbacks
 // ============================================================================
 
+void AmsPanel::on_bypass_spool_clicked(void* user_data) {
+    auto* self = static_cast<AmsPanel*>(user_data);
+    if (self) {
+        self->handle_bypass_spool_click();
+    }
+}
+
+void AmsPanel::handle_bypass_spool_click() {
+    // Open edit modal for the external spool (slot_index -2 = external/bypass)
+    show_edit_modal(-2);
+}
+
 void AmsPanel::on_path_slot_clicked(int slot_index, void* user_data) {
     auto* self = static_cast<AmsPanel*>(user_data);
     if (!self) {
@@ -1702,15 +1717,34 @@ void AmsPanel::show_edit_modal(int slot_index) {
         return;
     }
 
+    // Create modal on first use (lazy initialization)
+    if (!edit_modal_) {
+        edit_modal_ = std::make_unique<helix::ui::AmsEditModal>();
+    }
+
+    // External spool (bypass/direct) — not managed by backend
+    if (slot_index == -2) {
+        auto ext = AmsState::instance().get_external_spool_info();
+        SlotInfo initial_info = ext.value_or(SlotInfo{});
+        initial_info.slot_index = -2;
+        initial_info.global_index = -2;
+
+        edit_modal_->set_completion_callback(
+            [this](const helix::ui::AmsEditModal::EditResult& result) {
+                if (result.saved) {
+                    AmsState::instance().set_external_spool_info(result.slot_info);
+                    update_path_canvas_from_backend();
+                    NOTIFY_INFO("External spool updated");
+                }
+            });
+        edit_modal_->show_for_slot(parent_screen_, -2, initial_info, api_);
+        return;
+    }
+
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend) {
         NOTIFY_WARNING("AMS not available");
         return;
-    }
-
-    // Create modal on first use (lazy initialization)
-    if (!edit_modal_) {
-        edit_modal_ = std::make_unique<helix::ui::AmsEditModal>();
     }
 
     // Get current slot info
@@ -1783,6 +1817,21 @@ void AmsPanel::show_loading_error_modal() {
 // ============================================================================
 
 int AmsPanel::get_load_temp_for_slot(int slot_index) {
+    // External spool (bypass/direct) — get info from AmsState, not backend
+    if (slot_index == -2) {
+        auto info = AmsState::instance().get_external_spool_info();
+        if (info.has_value()) {
+            if (info->nozzle_temp_min > 0)
+                return info->nozzle_temp_min;
+            if (!info->material.empty()) {
+                auto mat = filament::find_material(info->material);
+                if (mat.has_value())
+                    return mat->nozzle_min;
+            }
+        }
+        return AppConstants::Ams::DEFAULT_LOAD_PREHEAT_TEMP;
+    }
+
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend) {
         return AppConstants::Ams::DEFAULT_LOAD_PREHEAT_TEMP;

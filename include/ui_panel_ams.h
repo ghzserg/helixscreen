@@ -242,9 +242,17 @@ class AmsPanel : public PanelBase {
     static void on_current_slot_changed(lv_observer_t* observer, lv_subject_t* subject);
     static void on_path_state_changed(lv_observer_t* observer, lv_subject_t* subject);
 
-    // === Path Canvas Callback ===
+    // === Path Canvas Callbacks ===
 
     static void on_path_slot_clicked(int slot_index, void* user_data);
+    static void on_bypass_spool_clicked(void* user_data);
+
+    /**
+     * @brief Handle click on bypass spool box in path canvas
+     *
+     * Opens the edit modal for the external spool (slot_index -2).
+     */
+    void handle_bypass_spool_click();
 
     // === Spoolman Integration ===
 
