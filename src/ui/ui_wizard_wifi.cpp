@@ -327,6 +327,16 @@ void WizardWifiStep::populate_network_list(const std::vector<WiFiNetwork>& netwo
         if (is_connected) {
             lv_obj_add_state(item, LV_STATE_CHECKED);
             spdlog::debug("[{}] Marked connected network: {}", get_name(), network.ssid);
+
+            // Update status/IP/MAC display — the initial is_connected() check at
+            // init time can miss pre-existing connections due to NM query timing,
+            // so we also update here when the scan reveals a connected network.
+            std::string status_msg = std::string(get_status_text("connected")) + connected_ssid;
+            update_wifi_status(status_msg.c_str());
+            if (wifi_manager_) {
+                std::string ip = wifi_manager_->get_ip_address();
+                update_wifi_ip(ip.c_str());
+            }
         }
 
         // Store network data for click handler (callback registered via XML event_cb)

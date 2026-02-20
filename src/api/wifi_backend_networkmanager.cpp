@@ -633,7 +633,9 @@ WifiBackend::ConnectionStatus WifiBackendNetworkManager::get_status() {
         return status;
     }
 
-    // nmcli -t -f GENERAL.STATE,GENERAL.CONNECTION device show <iface>
+    // Query GENERAL fields from device show for state, MAC, connection profile.
+    // Note: WIFI.SSID is NOT a valid field for "device show" — it causes the
+    // entire query to fail. The actual SSID must come from "device wifi list".
     std::string dev_info = exec_nmcli("-t -f GENERAL device show " + wifi_interface_);
     if (dev_info.empty()) {
         return status;
@@ -642,7 +644,6 @@ WifiBackend::ConnectionStatus WifiBackendNetworkManager::get_status() {
     // Parse key:value pairs from device show output
     std::istringstream stream(dev_info);
     std::string line;
-    std::string connection_name;
 
     while (std::getline(stream, line)) {
         auto fields = split_nmcli_fields(line);
@@ -654,20 +655,52 @@ WifiBackend::ConnectionStatus WifiBackendNetworkManager::get_status() {
             // State like "100 (connected)" or "30 (disconnected)"
             status.connected = (fields[1].find("connected") != std::string::npos) &&
                                (fields[1].find("disconnected") == std::string::npos);
-        } else if (fields[0] == "GENERAL.CONNECTION") {
-            connection_name = fields[1];
-            if (connection_name != "--") {
-                status.ssid = connection_name;
-            }
         } else if (fields[0] == "GENERAL.HWADDR") {
-            status.mac_address = fields[1];
+            // nmcli doesn't escape colons in MAC addresses even in -t mode,
+            // so split_nmcli_fields splits "2C:CF:67:2B:3C:01" into multiple fields.
+            // Rejoin all fields after the key with ':' to reconstruct the MAC.
+            std::string mac;
+            for (size_t i = 1; i < fields.size(); ++i) {
+                if (!mac.empty())
+                    mac += ':';
+                mac += fields[i];
+            }
+            status.mac_address = mac;
+        } else if (fields[0] == "GENERAL.CONNECTION") {
+            // NM profile name — used as fallback SSID if wifi list lookup fails
+            if (fields[1] != "--") {
+                status.ssid = fields[1];
+            }
         }
     }
 
-    // If connected, get IP address via device show (uses validated wifi_interface_)
+    // If connected, get SSID + signal from wifi list, and IP from device show.
+    // GENERAL.CONNECTION gives the NM profile name which can be "preconfigured"
+    // or other non-SSID values. The wifi list gives the real broadcast SSID.
     if (status.connected) {
-        // Use IP4.ADDRESS from device show instead of connection show
-        // to avoid passing connection_name through the shell
+        // Get actual SSID and signal from the IN-USE network in wifi list
+        std::string wifi_info =
+            exec_nmcli("-t -f IN-USE,SSID,SIGNAL device wifi list ifname " + wifi_interface_);
+        if (!wifi_info.empty()) {
+            std::istringstream wifi_stream(wifi_info);
+            std::string wifi_line;
+            while (std::getline(wifi_stream, wifi_line)) {
+                auto wifi_fields = split_nmcli_fields(wifi_line);
+                if (wifi_fields.size() >= 3 && wifi_fields[0] == "*") {
+                    if (!wifi_fields[1].empty()) {
+                        status.ssid = wifi_fields[1];
+                    }
+                    try {
+                        status.signal_strength =
+                            std::max(0, std::min(100, std::stoi(wifi_fields[2])));
+                    } catch (...) {
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Get IP address from device show (uses validated wifi_interface_)
         std::string ip_info = exec_nmcli("-t -f IP4.ADDRESS device show " + wifi_interface_);
         if (!ip_info.empty()) {
             std::istringstream ip_stream(ip_info);
@@ -683,25 +716,6 @@ WifiBackend::ConnectionStatus WifiBackendNetworkManager::get_status() {
                         ip = ip.substr(0, slash);
                     }
                     status.ip_address = ip;
-                    break;
-                }
-            }
-        }
-
-        // Get signal strength from wifi list (for connected network)
-        std::string signal_info =
-            exec_nmcli("-t -f IN-USE,SIGNAL device wifi list ifname " + wifi_interface_);
-        if (!signal_info.empty()) {
-            std::istringstream sig_stream(signal_info);
-            std::string sig_line;
-            while (std::getline(sig_stream, sig_line)) {
-                auto sig_fields = split_nmcli_fields(sig_line);
-                if (sig_fields.size() >= 2 && sig_fields[0] == "*") {
-                    try {
-                        status.signal_strength =
-                            std::max(0, std::min(100, std::stoi(sig_fields[1])));
-                    } catch (...) {
-                    }
                     break;
                 }
             }
