@@ -279,8 +279,31 @@ void SlotRegistry::set_backup(int global_index, int backup_slot) {
 }
 
 AmsSystemInfo SlotRegistry::build_system_info() const {
-    // Stub — implemented in a later phase
-    return {};
+    AmsSystemInfo info;
+    info.total_slots = slot_count();
+
+    for (int u = 0; u < static_cast<int>(units_.size()); ++u) {
+        const auto& reg_unit = units_[u];
+
+        AmsUnit unit;
+        unit.unit_index = u;
+        unit.name = reg_unit.name;
+        unit.slot_count = reg_unit.slot_count;
+        unit.first_slot_global_index = reg_unit.first_slot;
+
+        for (int s = 0; s < reg_unit.slot_count; ++s) {
+            int gi = reg_unit.first_slot + s;
+            if (is_valid_index(gi)) {
+                unit.slots.push_back(slots_[gi].info);
+            }
+        }
+
+        info.units.push_back(std::move(unit));
+    }
+
+    info.tool_to_slot_map = tool_to_slot_;
+
+    return info;
 }
 
 bool SlotRegistry::is_initialized() const {
