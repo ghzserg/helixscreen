@@ -215,6 +215,16 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
             ui_button_set_text(btn_edit, lv_tr("Spool Info"));
         }
 
+        // Show "Select Spool" if Spoolman is available
+        lv_obj_t* btn_spoolman = lv_obj_find_by_name(menu_obj, "btn_spoolman");
+        if (btn_spoolman) {
+            auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
+            bool has_spoolman = spoolman_subj && lv_subject_get_int(spoolman_subj) == 1;
+            if (has_spoolman) {
+                lv_obj_clear_flag(btn_spoolman, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+
         // No dropdowns for external spool
         return;
     }
@@ -370,6 +380,11 @@ void AmsContextMenu::handle_edit() {
     }
 }
 
+void AmsContextMenu::handle_spoolman() {
+    spdlog::info("[AmsContextMenu] Spoolman select requested for slot {}", get_item_index());
+    dispatch_ams_action(MenuAction::SPOOLMAN);
+}
+
 // ============================================================================
 // Static Callback Registration
 // ============================================================================
@@ -384,6 +399,7 @@ void AmsContextMenu::register_callbacks() {
     lv_xml_register_event_cb(nullptr, "ams_context_unload_cb", on_unload_cb);
     lv_xml_register_event_cb(nullptr, "ams_context_reset_lane_cb", on_reset_lane_cb);
     lv_xml_register_event_cb(nullptr, "ams_context_edit_cb", on_edit_cb);
+    lv_xml_register_event_cb(nullptr, "ams_context_spoolman_cb", on_spoolman_cb);
     lv_xml_register_event_cb(nullptr, "ams_context_tool_changed_cb", on_tool_changed_cb);
     lv_xml_register_event_cb(nullptr, "ams_context_backup_changed_cb", on_backup_changed_cb);
 
@@ -434,6 +450,13 @@ void AmsContextMenu::on_edit_cb(lv_event_t* /*e*/) {
     auto* self = get_active_instance();
     if (self) {
         self->handle_edit();
+    }
+}
+
+void AmsContextMenu::on_spoolman_cb(lv_event_t* /*e*/) {
+    auto* self = get_active_instance();
+    if (self) {
+        self->handle_spoolman();
     }
 }
 

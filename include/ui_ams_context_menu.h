@@ -143,6 +143,7 @@ class AmsContextMenu : public ContextMenu {
     void handle_unload();
     void handle_reset_lane();
     void handle_edit();
+    void handle_spoolman();
     void handle_tool_changed();
     void handle_backup_changed();
 
@@ -167,6 +168,7 @@ class AmsContextMenu : public ContextMenu {
     static void on_unload_cb(lv_event_t* e);
     static void on_reset_lane_cb(lv_event_t* e);
     static void on_edit_cb(lv_event_t* e);
+    static void on_spoolman_cb(lv_event_t* e);
     static void on_tool_changed_cb(lv_event_t* e);
     static void on_backup_changed_cb(lv_event_t* e);
 };

@@ -1337,6 +1337,10 @@ void AmsPanel::handle_bypass_spool_click() {
                 show_edit_modal(-2);
                 break;
 
+            case helix::ui::AmsContextMenu::MenuAction::SPOOLMAN:
+                show_edit_modal(-2);
+                break;
+
             case helix::ui::AmsContextMenu::MenuAction::CLEAR_SPOOL:
                 AmsState::instance().clear_external_spool_info();
                 update_path_canvas_from_backend();
