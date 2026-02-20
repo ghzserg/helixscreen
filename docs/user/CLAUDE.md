@@ -24,7 +24,14 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/motion.md` | Jog pad, homing, distance increments, E-stop |
 | `guide/filament.md` | Extrusion, AMS, Spoolman, dryer control |
 | `guide/calibration.md` | Bed mesh, screws tilt, input shaper, PID |
-| `guide/settings.md` | All settings panels (display, sound, LED, network, sensors) |
+| `guide/settings.md` | Settings hub page with links to sub-pages |
+| `guide/settings/appearance.md` | Language, animations, 3D preview, display settings |
+| `guide/settings/printer.md` | Filament sensors, AMS, Spoolman, LEDs, retraction, macros |
+| `guide/settings/notifications.md` | Sound settings, print completion alerts |
+| `guide/settings/motion.md` | Z movement, machine limits, E-Stop, cancel escalation |
+| `guide/settings/system.md` | Network, host, touch cal, hardware, plugins, telemetry, reset |
+| `guide/settings/help-about.md` | Debug bundles, Discord, docs, version, updates, print hours |
+| `guide/settings/led-settings.md` | LED strip selection, auto-state, macro devices, setup guides |
 | `guide/advanced.md` | Console, macros, power, history, timelapse |
 | `guide/beta-features.md` | Beta activation, feature list, update channels |
 | `guide/tips.md` | Workflow tips, troubleshooting, panel reference |
@@ -41,7 +48,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 ## When Updating User Docs
 
 - New features: Add to the appropriate `guide/*.md` sub-page
-- New settings: Add to `guide/settings.md` and `CONFIGURATION.md`
+- New settings: Add to appropriate `guide/settings/*.md` sub-page and `CONFIGURATION.md`
 - New install methods/platforms: Add to `INSTALL.md`
 - Known issues: Add to `TROUBLESHOOTING.md`
 - After every release: Review all user docs for accuracy
