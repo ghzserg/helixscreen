@@ -155,7 +155,43 @@ void AmsBackendHappyHare::emit_event(const std::string& event, const std::string
 
 AmsSystemInfo AmsBackendHappyHare::get_system_info() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return system_info_;
+
+    if (!slots_.is_initialized()) {
+        return system_info_;
+    }
+
+    // Build slot data from registry, then overlay non-slot metadata
+    auto info = slots_.build_system_info();
+
+    // Copy system-level fields not managed by registry
+    info.type = system_info_.type;
+    info.type_name = system_info_.type_name;
+    info.version = system_info_.version;
+    info.action = system_info_.action;
+    info.operation_detail = system_info_.operation_detail;
+    info.current_slot = system_info_.current_slot;
+    info.current_tool = system_info_.current_tool;
+    info.pending_target_slot = system_info_.pending_target_slot;
+    info.filament_loaded = system_info_.filament_loaded;
+    info.supports_endless_spool = system_info_.supports_endless_spool;
+    info.supports_tool_mapping = system_info_.supports_tool_mapping;
+    info.supports_bypass = system_info_.supports_bypass;
+    info.has_hardware_bypass_sensor = system_info_.has_hardware_bypass_sensor;
+    info.tip_method = system_info_.tip_method;
+    info.supports_purge = system_info_.supports_purge;
+
+    // Copy unit-level metadata not managed by registry
+    for (size_t u = 0; u < info.units.size() && u < system_info_.units.size(); ++u) {
+        info.units[u].connected = system_info_.units[u].connected;
+        info.units[u].has_encoder = system_info_.units[u].has_encoder;
+        info.units[u].has_toolhead_sensor = system_info_.units[u].has_toolhead_sensor;
+        info.units[u].has_slot_sensors = system_info_.units[u].has_slot_sensors;
+        info.units[u].topology = system_info_.units[u].topology;
+        info.units[u].has_hub_sensor = system_info_.units[u].has_hub_sensor;
+        info.units[u].hub_sensor_triggered = system_info_.units[u].hub_sensor_triggered;
+    }
+
+    return info;
 }
 
 AmsType AmsBackendHappyHare::get_type() const {
@@ -165,9 +201,9 @@ AmsType AmsBackendHappyHare::get_type() const {
 SlotInfo AmsBackendHappyHare::get_slot_info(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    const auto* slot = system_info_.get_slot_global(slot_index);
-    if (slot) {
-        return *slot;
+    const auto* entry = slots_.get(slot_index);
+    if (entry) {
+        return entry->info;
     }
 
     // Return empty slot info for invalid index
@@ -217,18 +253,17 @@ PathSegment AmsBackendHappyHare::get_slot_filament_segment(int slot_index) const
     }
 
     // For non-active slots, check pre-gate sensor first for better visualization
-    if (slot_index >= 0 && slot_index < static_cast<int>(gate_sensors_.size())) {
-        const auto& gs = gate_sensors_[slot_index];
-        if (gs.has_pre_gate_sensor && gs.pre_gate_triggered) {
+    const auto* entry = slots_.get(slot_index);
+    if (entry) {
+        if (entry->sensors.has_pre_gate_sensor && entry->sensors.pre_gate_triggered) {
             return PathSegment::PREP; // Filament detected at pre-gate sensor
         }
-    }
 
-    // Fall back to gate_status for slots without pre-gate sensors
-    const SlotInfo* slot = system_info_.get_slot_global(slot_index);
-    if (slot &&
-        (slot->status == SlotStatus::AVAILABLE || slot->status == SlotStatus::FROM_BUFFER)) {
-        return PathSegment::SPOOL; // Filament at spool ready position
+        // Fall back to gate_status for slots without pre-gate sensors
+        if (entry->info.status == SlotStatus::AVAILABLE ||
+            entry->info.status == SlotStatus::FROM_BUFFER) {
+            return PathSegment::SPOOL; // Filament at spool ready position
+        }
     }
 
     return PathSegment::NONE;
@@ -241,10 +276,11 @@ PathSegment AmsBackendHappyHare::infer_error_segment() const {
 
 bool AmsBackendHappyHare::slot_has_prep_sensor(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= static_cast<int>(gate_sensors_.size())) {
+    const auto* entry = slots_.get(slot_index);
+    if (!entry) {
         return false;
     }
-    return gate_sensors_[slot_index].has_pre_gate_sensor;
+    return entry->sensors.has_pre_gate_sensor;
 }
 
 // ============================================================================
@@ -327,15 +363,15 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
             error_segment_ = PathSegment::NONE;
             reason_for_pause_.clear();
 
-            // Clear slot error on the previously errored slot
-            if (errored_slot_ >= 0) {
-                auto* slot = system_info_.get_slot_global(errored_slot_);
-                if (slot) {
-                    slot->error.reset();
-                    spdlog::debug("[AMS HappyHare] Cleared error on slot {}", errored_slot_);
+            // Clear slot errors on all slots (replaces errored_slot_ tracking)
+            for (int i = 0; i < slots_.slot_count(); ++i) {
+                auto* entry = slots_.get_mut(i);
+                if (entry && entry->info.error.has_value()) {
+                    entry->info.error.reset();
+                    spdlog::debug("[AMS HappyHare] Cleared error on slot {}", i);
                 }
-                errored_slot_ = -1;
             }
+            errored_slot_ = -1;
         }
 
         // Set slot error when entering error state
@@ -344,8 +380,8 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
 
             // Set error on current slot (if valid)
             if (system_info_.current_slot >= 0) {
-                auto* slot = system_info_.get_slot_global(system_info_.current_slot);
-                if (slot) {
+                auto* entry = slots_.get_mut(system_info_.current_slot);
+                if (entry) {
                     SlotError err;
                     // Use reason_for_pause if available; fall back to operation_detail
                     if (!reason_for_pause_.empty()) {
@@ -354,7 +390,7 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
                         err.message = action_str;
                     }
                     err.severity = SlotError::ERROR;
-                    slot->error = err;
+                    entry->info.error = err;
                     errored_slot_ = system_info_.current_slot;
                     spdlog::debug("[AMS HappyHare] Error on slot {}: {}", errored_slot_,
                                   err.message);
@@ -412,7 +448,7 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
             initialize_gates(gate_count);
         }
 
-        // Update gate status values using global indices (multi-unit safe)
+        // Update gate status values via SlotRegistry
         for (size_t i = 0; i < gate_status.size(); ++i) {
             if (gate_status[i].is_number_integer()) {
                 int hh_status = gate_status[i].get<int>();
@@ -425,9 +461,9 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
                     status = SlotStatus::LOADED;
                 }
 
-                auto* slot = system_info_.get_slot_global(static_cast<int>(i));
-                if (slot) {
-                    slot->status = status;
+                auto* entry = slots_.get_mut(static_cast<int>(i));
+                if (entry) {
+                    entry->info.status = status;
                 }
             }
         }
@@ -439,9 +475,9 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
         const auto& colors = mmu_data["gate_color_rgb"];
         for (size_t i = 0; i < colors.size(); ++i) {
             if (colors[i].is_number_integer()) {
-                auto* slot = system_info_.get_slot_global(static_cast<int>(i));
-                if (slot) {
-                    slot->color_rgb = static_cast<uint32_t>(colors[i].get<int>());
+                auto* entry = slots_.get_mut(static_cast<int>(i));
+                if (entry) {
+                    entry->info.color_rgb = static_cast<uint32_t>(colors[i].get<int>());
                 }
             }
         }
@@ -453,9 +489,9 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
         const auto& materials = mmu_data["gate_material"];
         for (size_t i = 0; i < materials.size(); ++i) {
             if (materials[i].is_string()) {
-                auto* slot = system_info_.get_slot_global(static_cast<int>(i));
-                if (slot) {
-                    slot->material = materials[i].get<std::string>();
+                auto* entry = slots_.get_mut(static_cast<int>(i));
+                if (entry) {
+                    entry->info.material = materials[i].get<std::string>();
                 }
             }
         }
@@ -464,28 +500,18 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
     // Parse ttg_map (tool-to-gate mapping) if available
     if (mmu_data.contains("ttg_map") && mmu_data["ttg_map"].is_array()) {
         const auto& ttg_map = mmu_data["ttg_map"];
-        system_info_.tool_to_slot_map.clear();
-        system_info_.tool_to_slot_map.reserve(ttg_map.size());
+        std::vector<int> ttg_vec;
+        ttg_vec.reserve(ttg_map.size());
 
         for (const auto& mapping : ttg_map) {
             if (mapping.is_number_integer()) {
-                system_info_.tool_to_slot_map.push_back(mapping.get<int>());
+                ttg_vec.push_back(mapping.get<int>());
             }
         }
 
-        // Update gate mapped_tool references (multi-unit safe)
-        for (auto& unit : system_info_.units) {
-            for (auto& slot : unit.slots) {
-                slot.mapped_tool = -1; // Reset
-            }
-        }
-        for (size_t tool = 0; tool < system_info_.tool_to_slot_map.size(); ++tool) {
-            int slot_idx = system_info_.tool_to_slot_map[tool];
-            auto* slot = system_info_.get_slot_global(slot_idx);
-            if (slot) {
-                slot->mapped_tool = static_cast<int>(tool);
-            }
-        }
+        // Update both legacy and registry tool maps
+        system_info_.tool_to_slot_map = ttg_vec;
+        slots_.set_tool_map(ttg_vec);
     }
 
     // Parse sensors dict: printer.mmu.sensors
@@ -494,6 +520,7 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
     if (mmu_data.contains("sensors") && mmu_data["sensors"].is_object()) {
         const auto& sensors = mmu_data["sensors"];
         const std::string prefix = "mmu_pre_gate_";
+        bool any_sensor = false;
 
         for (auto it = sensors.begin(); it != sensors.end(); ++it) {
             const std::string& key = it.key();
@@ -514,36 +541,33 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
                 continue;
             }
 
-            // Resize gate_sensors_ if needed
-            if (gate_idx >= static_cast<int>(gate_sensors_.size())) {
-                gate_sensors_.resize(gate_idx + 1);
+            auto* entry = slots_.get_mut(gate_idx);
+            if (!entry) {
+                continue;
             }
 
-            gate_sensors_[gate_idx].has_pre_gate_sensor = true;
-            gate_sensors_[gate_idx].pre_gate_triggered =
-                it.value().is_boolean() && it.value().get<bool>();
+            entry->sensors.has_pre_gate_sensor = true;
+            entry->sensors.pre_gate_triggered = it.value().is_boolean() && it.value().get<bool>();
+            any_sensor = true;
 
             spdlog::trace("[AMS HappyHare] Pre-gate sensor {}: present=true, triggered={}",
-                          gate_idx, gate_sensors_[gate_idx].pre_gate_triggered);
+                          gate_idx, entry->sensors.pre_gate_triggered);
         }
 
         // Update has_slot_sensors flag on units based on actual sensor data
-        bool any_sensor =
-            std::any_of(gate_sensors_.begin(), gate_sensors_.end(),
-                        [](const GateSensorState& g) { return g.has_pre_gate_sensor; });
         for (auto& unit : system_info_.units) {
             unit.has_slot_sensors = any_sensor;
         }
     }
 
-    // Parse endless_spool_groups if available (multi-unit safe)
+    // Parse endless_spool_groups if available
     if (mmu_data.contains("endless_spool_groups") && mmu_data["endless_spool_groups"].is_array()) {
         const auto& es_groups = mmu_data["endless_spool_groups"];
         for (size_t i = 0; i < es_groups.size(); ++i) {
             if (es_groups[i].is_number_integer()) {
-                auto* slot = system_info_.get_slot_global(static_cast<int>(i));
-                if (slot) {
-                    slot->endless_spool_group = es_groups[i].get<int>();
+                auto* entry = slots_.get_mut(static_cast<int>(i));
+                if (entry) {
+                    entry->info.endless_spool_group = es_groups[i].get<int>();
                 }
             }
         }
@@ -718,8 +742,9 @@ AmsError AmsBackendHappyHare::check_preconditions() const {
 }
 
 AmsError AmsBackendHappyHare::validate_slot_index(int gate_index) const {
-    if (gate_index < 0 || gate_index >= system_info_.total_slots) {
-        return AmsErrorHelper::invalid_slot(gate_index, system_info_.total_slots - 1);
+    if (!slots_.is_valid_index(gate_index)) {
+        return AmsErrorHelper::invalid_slot(gate_index,
+                                            slots_.slot_count() > 0 ? slots_.slot_count() - 1 : 0);
     }
     return AmsErrorHelper::success();
 }
@@ -763,8 +788,8 @@ AmsError AmsBackendHappyHare::load_filament(int slot_index) {
         }
 
         // Check if slot has filament available
-        const auto* slot = system_info_.get_slot_global(slot_index);
-        if (slot && slot->status == SlotStatus::EMPTY) {
+        const auto* entry = slots_.get(slot_index);
+        if (entry && entry->info.status == SlotStatus::EMPTY) {
             return AmsErrorHelper::slot_not_available(slot_index);
         }
     }
@@ -943,40 +968,44 @@ AmsError AmsBackendHappyHare::set_slot_info(int slot_index, const SlotInfo& info
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
-        if (slot_index < 0 || slot_index >= system_info_.total_slots) {
-            return AmsErrorHelper::invalid_slot(slot_index, system_info_.total_slots - 1);
+        if (!slots_.is_valid_index(slot_index)) {
+            return AmsErrorHelper::invalid_slot(
+                slot_index, slots_.slot_count() > 0 ? slots_.slot_count() - 1 : 0);
         }
 
-        auto* slot = system_info_.get_slot_global(slot_index);
-        if (!slot) {
-            return AmsErrorHelper::invalid_slot(slot_index, system_info_.total_slots - 1);
+        auto* entry = slots_.get_mut(slot_index);
+        if (!entry) {
+            return AmsErrorHelper::invalid_slot(
+                slot_index, slots_.slot_count() > 0 ? slots_.slot_count() - 1 : 0);
         }
+
+        auto& slot = entry->info;
 
         // Capture old spoolman_id BEFORE updating (needed to detect clearing)
-        old_spoolman_id = slot->spoolman_id;
+        old_spoolman_id = slot.spoolman_id;
 
         // Detect whether anything actually changed
-        bool changed =
-            slot->color_name != info.color_name || slot->color_rgb != info.color_rgb ||
-            slot->material != info.material || slot->brand != info.brand ||
-            slot->spoolman_id != info.spoolman_id || slot->spool_name != info.spool_name ||
-            slot->remaining_weight_g != info.remaining_weight_g ||
-            slot->total_weight_g != info.total_weight_g ||
-            slot->nozzle_temp_min != info.nozzle_temp_min ||
-            slot->nozzle_temp_max != info.nozzle_temp_max || slot->bed_temp != info.bed_temp;
+        bool changed = slot.color_name != info.color_name || slot.color_rgb != info.color_rgb ||
+                       slot.material != info.material || slot.brand != info.brand ||
+                       slot.spoolman_id != info.spoolman_id || slot.spool_name != info.spool_name ||
+                       slot.remaining_weight_g != info.remaining_weight_g ||
+                       slot.total_weight_g != info.total_weight_g ||
+                       slot.nozzle_temp_min != info.nozzle_temp_min ||
+                       slot.nozzle_temp_max != info.nozzle_temp_max ||
+                       slot.bed_temp != info.bed_temp;
 
         // Update local state
-        slot->color_name = info.color_name;
-        slot->color_rgb = info.color_rgb;
-        slot->material = info.material;
-        slot->brand = info.brand;
-        slot->spoolman_id = info.spoolman_id;
-        slot->spool_name = info.spool_name;
-        slot->remaining_weight_g = info.remaining_weight_g;
-        slot->total_weight_g = info.total_weight_g;
-        slot->nozzle_temp_min = info.nozzle_temp_min;
-        slot->nozzle_temp_max = info.nozzle_temp_max;
-        slot->bed_temp = info.bed_temp;
+        slot.color_name = info.color_name;
+        slot.color_rgb = info.color_rgb;
+        slot.material = info.material;
+        slot.brand = info.brand;
+        slot.spoolman_id = info.spoolman_id;
+        slot.spool_name = info.spool_name;
+        slot.remaining_weight_g = info.remaining_weight_g;
+        slot.total_weight_g = info.total_weight_g;
+        slot.nozzle_temp_min = info.nozzle_temp_min;
+        slot.nozzle_temp_max = info.nozzle_temp_max;
+        slot.bed_temp = info.bed_temp;
 
         if (changed) {
             spdlog::info("[AMS HappyHare] Updated slot {} info: {} {}", slot_index, info.material,
@@ -1042,8 +1071,9 @@ AmsError AmsBackendHappyHare::set_tool_mapping(int tool_number, int slot_index) 
                             "Invalid tool number", "");
         }
 
-        if (slot_index < 0 || slot_index >= system_info_.total_slots) {
-            return AmsErrorHelper::invalid_slot(slot_index, system_info_.total_slots - 1);
+        if (!slots_.is_valid_index(slot_index)) {
+            return AmsErrorHelper::invalid_slot(
+                slot_index, slots_.slot_count() > 0 ? slots_.slot_count() - 1 : 0);
         }
 
         // Check if another tool already maps to this slot
@@ -1132,36 +1162,35 @@ AmsBackendHappyHare::get_endless_spool_config() const {
 
     std::vector<helix::printer::EndlessSpoolConfig> configs;
 
-    // Need at least one unit with slots
-    if (system_info_.units.empty()) {
+    if (!slots_.is_initialized()) {
         return configs;
     }
 
-    // Iterate through all units/slots and find backup slots based on endless_spool_group
-    for (const auto& unit : system_info_.units) {
-        for (const auto& slot : unit.slots) {
-            helix::printer::EndlessSpoolConfig config;
-            config.slot_index = slot.global_index;
-            config.backup_slot = -1; // Default: no backup
+    // Iterate through all slots and find backup slots based on endless_spool_group
+    for (int i = 0; i < slots_.slot_count(); ++i) {
+        const auto* entry = slots_.get(i);
+        if (!entry) {
+            continue;
+        }
 
-            if (slot.endless_spool_group >= 0) {
-                // Find another slot in the same group (across all units)
-                for (const auto& other_unit : system_info_.units) {
-                    bool found = false;
-                    for (const auto& other : other_unit.slots) {
-                        if (other.global_index != slot.global_index &&
-                            other.endless_spool_group == slot.endless_spool_group) {
-                            config.backup_slot = other.global_index;
-                            found = true;
-                            break; // Use first match
-                        }
-                    }
-                    if (found)
-                        break;
+        helix::printer::EndlessSpoolConfig config;
+        config.slot_index = entry->info.global_index;
+        config.backup_slot = -1; // Default: no backup
+
+        if (entry->info.endless_spool_group >= 0) {
+            // Find another slot in the same group
+            for (int j = 0; j < slots_.slot_count(); ++j) {
+                if (j == i) {
+                    continue;
+                }
+                const auto* other = slots_.get(j);
+                if (other && other->info.endless_spool_group == entry->info.endless_spool_group) {
+                    config.backup_slot = other->info.global_index;
+                    break; // Use first match
                 }
             }
-            configs.push_back(config);
         }
+        configs.push_back(config);
     }
 
     return configs;

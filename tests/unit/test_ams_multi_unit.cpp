@@ -139,9 +139,9 @@ class AmsBackendHHMultiUnitHelper : public AmsBackendHappyHare {
         handle_status_update(notification);
     }
 
-    /// Access system_info for assertions
-    const AmsSystemInfo& get_system_info_ref() const {
-        return system_info_;
+    /// Get system info snapshot for assertions (builds from registry when initialized)
+    AmsSystemInfo get_system_info_snapshot() const {
+        return get_system_info();
     }
 
     /// Override execute_gcode to prevent real API calls
@@ -624,7 +624,7 @@ TEST_CASE("Happy Hare single-unit backward compatibility", "[ams][multi-unit][ha
     mmu_data["action"] = "Idle";
     helper.test_parse_mmu_state(mmu_data);
 
-    const auto& info = helper.get_system_info_ref();
+    auto info = helper.get_system_info_snapshot();
 
     SECTION("creates exactly one unit") {
         REQUIRE(info.units.size() == 1);
@@ -675,7 +675,7 @@ TEST_CASE("Happy Hare multi-unit: num_units with comma-separated num_gates",
     mmu_data["action"] = "Idle";
     helper.test_parse_mmu_state(mmu_data);
 
-    const auto& info = helper.get_system_info_ref();
+    auto info = helper.get_system_info_snapshot();
 
     SECTION("creates two units") {
         REQUIRE(info.units.size() == 2);
@@ -744,7 +744,7 @@ TEST_CASE("Happy Hare multi-unit: uneven gate division", "[ams][multi-unit][happ
     mmu_data["action"] = "Idle";
     helper.test_parse_mmu_state(mmu_data);
 
-    const auto& info = helper.get_system_info_ref();
+    auto info = helper.get_system_info_snapshot();
 
     REQUIRE(info.units.size() == 3);
     REQUIRE(info.units[0].slot_count == 3);
@@ -773,7 +773,7 @@ TEST_CASE("Happy Hare multi-unit: integer num_gates creates single unit",
     mmu_data["action"] = "Idle";
     helper.test_parse_mmu_state(mmu_data);
 
-    const auto& info = helper.get_system_info_ref();
+    auto info = helper.get_system_info_snapshot();
 
     REQUIRE(info.units.size() == 1);
     REQUIRE(info.units[0].slot_count == 4);
@@ -800,7 +800,7 @@ TEST_CASE("Happy Hare multi-unit: three units", "[ams][multi-unit][happy-hare]")
     mmu_data["action"] = "Idle";
     helper.test_parse_mmu_state(mmu_data);
 
-    const auto& info = helper.get_system_info_ref();
+    auto info = helper.get_system_info_snapshot();
 
     REQUIRE(info.units.size() == 3);
     REQUIRE(info.total_slots == 12);

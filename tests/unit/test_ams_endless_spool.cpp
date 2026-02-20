@@ -358,12 +358,29 @@ class AmsBackendHappyHareEndlessSpoolHelper : public AmsBackendHappyHare {
         }
 
         system_info_.units.push_back(unit);
+
+        // Initialize SlotRegistry to match
+        std::vector<std::string> slot_names;
+        for (int i = 0; i < count; ++i) {
+            slot_names.push_back(std::to_string(i));
+        }
+        slots_.initialize("MMU", slot_names);
+        for (int i = 0; i < count; ++i) {
+            auto* entry = slots_.get_mut(i);
+            if (entry) {
+                entry->info.status = SlotStatus::AVAILABLE;
+                entry->info.endless_spool_group = -1;
+            }
+        }
     }
 
     void set_endless_spool_groups(const std::vector<int>& groups) {
-        // Simulate data from printer.mmu.endless_spool_groups
-        for (size_t i = 0; i < groups.size() && i < system_info_.units[0].slots.size(); ++i) {
-            system_info_.units[0].slots[i].endless_spool_group = groups[i];
+        // Simulate data from printer.mmu.endless_spool_groups via registry
+        for (size_t i = 0; i < groups.size(); ++i) {
+            auto* entry = slots_.get_mut(static_cast<int>(i));
+            if (entry) {
+                entry->info.endless_spool_group = groups[i];
+            }
         }
     }
 };

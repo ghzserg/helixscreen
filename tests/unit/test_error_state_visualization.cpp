@@ -453,6 +453,20 @@ class HappyHareErrorStateHelper : public AmsBackendHappyHare {
         system_info_.units.push_back(unit);
         system_info_.total_slots = count;
         gates_initialized_ = true;
+
+        // Initialize SlotRegistry to match
+        std::vector<std::string> slot_names;
+        for (int i = 0; i < count; ++i) {
+            slot_names.push_back(std::to_string(i));
+        }
+        slots_.initialize("MMU", slot_names);
+        for (int i = 0; i < count; ++i) {
+            auto* entry = slots_.get_mut(i);
+            if (entry) {
+                entry->info.status = SlotStatus::AVAILABLE;
+                entry->info.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+            }
+        }
     }
 
     void feed_status_update(const nlohmann::json& params_inner) {
@@ -468,7 +482,8 @@ class HappyHareErrorStateHelper : public AmsBackendHappyHare {
     }
 
     const SlotInfo* get_slot(int idx) const {
-        return system_info_.get_slot_global(idx);
+        const auto* entry = slots_.get(idx);
+        return entry ? &entry->info : nullptr;
     }
 
     AmsAction get_action() const {

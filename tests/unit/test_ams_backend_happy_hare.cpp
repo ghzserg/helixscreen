@@ -52,6 +52,23 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
         for (int i = 0; i < count; ++i) {
             system_info_.tool_to_slot_map.push_back(i);
         }
+
+        // Initialize SlotRegistry to match
+        std::vector<std::string> slot_names;
+        for (int i = 0; i < count; ++i) {
+            slot_names.push_back(std::to_string(i));
+        }
+        slots_.initialize("MMU", slot_names);
+        // Set status to AVAILABLE to match legacy init
+        for (int i = 0; i < count; ++i) {
+            auto* entry = slots_.get_mut(i);
+            if (entry) {
+                entry->info.status = SlotStatus::AVAILABLE;
+                entry->info.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+            }
+        }
+        // Set 1:1 tool map
+        slots_.set_tool_map(system_info_.tool_to_slot_map);
     }
 
     /**
@@ -60,7 +77,8 @@ class AmsBackendHappyHareTestHelper : public AmsBackendHappyHare {
      * @return Pointer to SlotInfo or nullptr
      */
     SlotInfo* get_mutable_slot(int slot_index) {
-        return system_info_.get_slot_global(slot_index);
+        auto* entry = slots_.get_mut(slot_index);
+        return entry ? &entry->info : nullptr;
     }
 
     // G-code capture for persistence tests
