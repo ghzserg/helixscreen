@@ -26,6 +26,7 @@ MoonrakerAPI::MoonrakerAPI(MoonrakerClient& client, PrinterState& state) : clien
     // Create sub-APIs
     history_api_ = std::make_unique<MoonrakerHistoryAPI>(client);
     job_api_ = std::make_unique<MoonrakerJobAPI>(client);
+    motion_api_ = std::make_unique<MoonrakerMotionAPI>(client, safety_limits_);
     spoolman_api_ = std::make_unique<MoonrakerSpoolmanAPI>(client);
     timelapse_api_ = std::make_unique<MoonrakerTimelapseAPI>(client, http_base_url_);
 
@@ -167,59 +168,6 @@ void MoonrakerAPI::notify_build_volume_changed() {
     build_volume_version_counter_++;
     lv_subject_set_int(&build_volume_version_, build_volume_version_counter_);
     spdlog::debug("[MoonrakerAPI] Build volume changed, version={}", build_volume_version_counter_);
-}
-
-// ============================================================================
-// G-code Generation Helpers
-// ============================================================================
-
-std::string MoonrakerAPI::generate_home_gcode(const std::string& axes) {
-    if (axes.empty()) {
-        return "G28"; // Home all axes
-    } else {
-        std::ostringstream gcode;
-        gcode << "G28";
-        for (char axis : axes) {
-            gcode << " " << static_cast<char>(std::toupper(axis));
-        }
-        return gcode.str();
-    }
-}
-
-std::string MoonrakerAPI::generate_move_gcode(char axis, double distance, double feedrate) {
-    if (std::isnan(distance) || std::isinf(distance) || std::isnan(feedrate) ||
-        std::isinf(feedrate)) {
-        spdlog::warn("[Moonraker API] generate_move_gcode: Rejecting G-code generation: "
-                     "invalid value (NaN/Inf)");
-        return "";
-    }
-
-    std::ostringstream gcode;
-    gcode << "G91\n"; // Relative positioning
-    gcode << "G0 " << static_cast<char>(std::toupper(axis)) << distance;
-    if (feedrate > 0) {
-        gcode << " F" << feedrate;
-    }
-    gcode << "\nG90"; // Back to absolute positioning
-    return gcode.str();
-}
-
-std::string MoonrakerAPI::generate_absolute_move_gcode(char axis, double position,
-                                                       double feedrate) {
-    if (std::isnan(position) || std::isinf(position) || std::isnan(feedrate) ||
-        std::isinf(feedrate)) {
-        spdlog::warn("[Moonraker API] generate_absolute_move_gcode: Rejecting G-code generation: "
-                     "invalid value (NaN/Inf)");
-        return "";
-    }
-
-    std::ostringstream gcode;
-    gcode << "G90\n"; // Absolute positioning
-    gcode << "G0 " << static_cast<char>(std::toupper(axis)) << position;
-    if (feedrate > 0) {
-        gcode << " F" << feedrate;
-    }
-    return gcode.str();
 }
 
 // ============================================================================

@@ -234,7 +234,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "set_fan_speed rejects injection in fa
 TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes rejects invalid axis characters",
                  "[api][security][injection]") {
     SECTION("Newline in axes parameter") {
-        api->home_axes(
+        api->motion().home_axes(
             "X\nG28 Z\n", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -246,7 +246,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes rejects invalid axis charac
 
     SECTION("Invalid axis letter") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "XYA", // 'A' is not a valid axis
             [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
@@ -257,7 +257,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes rejects invalid axis charac
 
     SECTION("Semicolon injection") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "X;G28 Z", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -267,7 +267,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes rejects invalid axis charac
 
     SECTION("Space injection") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "X Y", // Spaces not allowed in axes parameter
             [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
@@ -280,7 +280,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes rejects invalid axis charac
 TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis rejects invalid axis characters",
                  "[api][security][injection]") {
     SECTION("Invalid axis character") {
-        api->move_axis(
+        api->motion().move_axis(
             'A', 10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -292,7 +292,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis rejects invalid axis charac
 
     SECTION("Special character as axis") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             '\n', 10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -431,7 +431,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "set_fan_speed validates speed range",
 TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates feedrate range",
                  "[api][security][range]") {
     SECTION("Negative feedrate rejected") {
-        api->move_axis(
+        api->motion().move_axis(
             'X', 10.0, -1000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -443,7 +443,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates feedrate range",
 
     SECTION("Zero feedrate accepted (use default)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 10.0, 0.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -452,7 +452,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates feedrate range",
 
     SECTION("Normal feedrate accepted (3000 mm/min)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -461,7 +461,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates feedrate range",
 
     SECTION("Maximum feedrate accepted (50000 mm/min)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 10.0, 50000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -470,7 +470,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates feedrate range",
 
     SECTION("Over maximum feedrate rejected (100000 mm/min)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 10.0, 100000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -487,7 +487,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates feedrate range",
 TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates distance range",
                  "[api][security][range]") {
     SECTION("Under minimum distance rejected (-2000mm)") {
-        api->move_axis(
+        api->motion().move_axis(
             'X', -2000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -499,7 +499,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates distance range",
 
     SECTION("Minimum distance accepted (-1000mm)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', -1000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -508,7 +508,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates distance range",
 
     SECTION("Normal negative distance accepted (-10mm)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', -10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -517,7 +517,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates distance range",
 
     SECTION("Normal positive distance accepted (10mm)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -526,7 +526,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates distance range",
 
     SECTION("Maximum distance accepted (1000mm)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 1000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -535,7 +535,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates distance range",
 
     SECTION("Over maximum distance rejected (2000mm)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 2000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -552,7 +552,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis validates distance range",
 TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_to_position validates position range",
                  "[api][security][range]") {
     SECTION("Negative position rejected") {
-        api->move_to_position(
+        api->motion().move_to_position(
             'X', -10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -564,7 +564,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_to_position validates position r
 
     SECTION("Zero position accepted") {
         reset_callbacks();
-        api->move_to_position(
+        api->motion().move_to_position(
             'X', 0.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -573,7 +573,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_to_position validates position r
 
     SECTION("Normal position accepted (100mm)") {
         reset_callbacks();
-        api->move_to_position(
+        api->motion().move_to_position(
             'X', 100.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -582,7 +582,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_to_position validates position r
 
     SECTION("Maximum position accepted (1000mm)") {
         reset_callbacks();
-        api->move_to_position(
+        api->motion().move_to_position(
             'X', 1000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -591,7 +591,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_to_position validates position r
 
     SECTION("Over maximum position rejected (2000mm)") {
         reset_callbacks();
-        api->move_to_position(
+        api->motion().move_to_position(
             'X', 2000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -679,7 +679,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "set_fan_speed accepts valid fan names
 TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes accepts valid axis specifications",
                  "[api][security][valid]") {
     SECTION("Single uppercase axis") {
-        api->home_axes(
+        api->motion().home_axes(
             "X", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -688,7 +688,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes accepts valid axis specific
 
     SECTION("Single lowercase axis") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "y", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -697,7 +697,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes accepts valid axis specific
 
     SECTION("Multiple axes uppercase") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "XYZ", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -706,7 +706,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes accepts valid axis specific
 
     SECTION("Multiple axes lowercase") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "xyz", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -715,7 +715,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes accepts valid axis specific
 
     SECTION("Mixed case axes") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "xY", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -724,7 +724,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes accepts valid axis specific
 
     SECTION("Empty axes (home all)") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -735,7 +735,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "home_axes accepts valid axis specific
 TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis accepts valid axis characters",
                  "[api][security][valid]") {
     SECTION("X axis uppercase") {
-        api->move_axis(
+        api->motion().move_axis(
             'X', 10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -744,7 +744,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis accepts valid axis characte
 
     SECTION("Y axis lowercase") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'y', -5.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -753,7 +753,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis accepts valid axis characte
 
     SECTION("Z axis") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'Z', 0.2, 1000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -762,7 +762,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "move_axis accepts valid axis characte
 
     SECTION("E axis (extruder)") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'E', 5.0, 300.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -808,7 +808,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "Validation errors provide descriptive
 
     SECTION("Invalid axis error shows the character") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'A', 10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -818,7 +818,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "Validation errors provide descriptive
 
     SECTION("Distance range error includes limits") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 2000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -850,7 +850,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "Validation errors include method name
 
     SECTION("home_axes method name") {
         reset_callbacks();
-        api->home_axes(
+        api->motion().home_axes(
             "XA", [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -860,7 +860,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "Validation errors include method name
 
     SECTION("move_axis method name") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 2000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -870,7 +870,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "Validation errors include method name
 
     SECTION("move_to_position method name") {
         reset_callbacks();
-        api->move_to_position(
+        api->motion().move_to_position(
             'X', -10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -927,7 +927,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "Validation handles edge cases",
         REQUIRE(error_called);
 
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 1000.00001, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
         REQUIRE(error_called);
@@ -959,7 +959,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "No G-code sent when validation fails"
 
     SECTION("Invalid axis - no RPC call") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'A', 10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -968,7 +968,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "No G-code sent when validation fails"
 
     SECTION("Invalid distance - no RPC call") {
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'X', 2000.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 
@@ -985,7 +985,7 @@ TEST_CASE_METHOD(MoonrakerAPITestFixture, "No G-code sent when validation fails"
 
         // Fail 2: Invalid axis
         reset_callbacks();
-        api->move_axis(
+        api->motion().move_axis(
             'Q', 10.0, 3000.0, [this]() { this->success_callback(); },
             [this](const MoonrakerError& err) { this->error_callback(err); });
 

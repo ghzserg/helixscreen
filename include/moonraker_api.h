@@ -50,6 +50,7 @@
 #include "moonraker_error.h"
 #include "moonraker_history_api.h"
 #include "moonraker_job_api.h"
+#include "moonraker_motion_api.h"
 #include "moonraker_spoolman_api.h"
 #include "moonraker_timelapse_api.h"
 #include "moonraker_types.h"
@@ -235,43 +236,6 @@ class MoonrakerAPI {
      * @param on_error Error callback
      */
     void delete_directory(const std::string& path, bool force, SuccessCallback on_success,
-                          ErrorCallback on_error);
-
-    // ========================================================================
-    // Motion Control Operations
-    // ========================================================================
-
-    /**
-     * @brief Home one or more axes
-     *
-     * @param axes Axes to home (e.g., "XY", "Z", "XYZ", empty for all)
-     * @param on_success Success callback
-     * @param on_error Error callback
-     */
-    void home_axes(const std::string& axes, SuccessCallback on_success, ErrorCallback on_error);
-
-    /**
-     * @brief Move an axis by a relative amount
-     *
-     * @param axis Axis name ('X', 'Y', 'Z', 'E')
-     * @param distance Distance to move in mm
-     * @param feedrate Movement speed in mm/min (0 for default)
-     * @param on_success Success callback
-     * @param on_error Error callback
-     */
-    void move_axis(char axis, double distance, double feedrate, SuccessCallback on_success,
-                   ErrorCallback on_error);
-
-    /**
-     * @brief Set absolute position for an axis
-     *
-     * @param axis Axis name ('X', 'Y', 'Z')
-     * @param position Absolute position in mm
-     * @param feedrate Movement speed in mm/min (0 for default)
-     * @param on_success Success callback
-     * @param on_error Error callback
-     */
-    void move_to_position(char axis, double position, double feedrate, SuccessCallback on_success,
                           ErrorCallback on_error);
 
     // ========================================================================
@@ -1147,6 +1111,18 @@ class MoonrakerAPI {
     }
 
     /**
+     * @brief Get Motion API for axis control operations
+     *
+     * All motion methods (home_axes, move_axis, move_to_position)
+     * are available through this accessor.
+     *
+     * @return Reference to MoonrakerMotionAPI
+     */
+    MoonrakerMotionAPI& motion() {
+        return *motion_api_;
+    }
+
+    /**
      * @brief Get Spoolman API for filament tracking operations
      *
      * All Spoolman methods (get_spoolman_spools, set_active_spool, etc.)
@@ -1263,6 +1239,7 @@ class MoonrakerAPI {
   protected:
     std::unique_ptr<MoonrakerHistoryAPI> history_api_;     ///< Print history API
     std::unique_ptr<MoonrakerJobAPI> job_api_;             ///< Job control API
+    std::unique_ptr<MoonrakerMotionAPI> motion_api_;       ///< Motion control API
     std::unique_ptr<MoonrakerSpoolmanAPI> spoolman_api_;   ///< Spoolman filament tracking API
     std::unique_ptr<MoonrakerTimelapseAPI> timelapse_api_; ///< Timelapse & webcam API
 
@@ -1311,19 +1288,4 @@ class MoonrakerAPI {
      * @brief Parse metadata response from server.files.metadata
      */
     FileMetadata parse_file_metadata(const json& response);
-
-    /**
-     * @brief Generate G-code for homing axes
-     */
-    std::string generate_home_gcode(const std::string& axes);
-
-    /**
-     * @brief Generate G-code for relative movement
-     */
-    std::string generate_move_gcode(char axis, double distance, double feedrate);
-
-    /**
-     * @brief Generate G-code for absolute movement
-     */
-    std::string generate_absolute_move_gcode(char axis, double position, double feedrate);
 };

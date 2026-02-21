@@ -996,7 +996,7 @@ void ControlsPanel::handle_home_all() {
     if (api_) {
         operation_guard_.begin(300000, [] { NOTIFY_WARNING("Homing timed out"); });
         NOTIFY_INFO("Homing all axes...");
-        api_->home_axes(
+        api_->motion().home_axes(
             "XYZ",
             [this]() {
                 helix::ui::async_call(
@@ -1025,7 +1025,7 @@ void ControlsPanel::handle_home_x() {
     if (api_) {
         operation_guard_.begin(300000, [] { NOTIFY_WARNING("Homing timed out"); });
         NOTIFY_INFO("Homing X...");
-        api_->home_axes(
+        api_->motion().home_axes(
             "X",
             [this]() {
                 helix::ui::async_call(
@@ -1054,7 +1054,7 @@ void ControlsPanel::handle_home_y() {
     if (api_) {
         operation_guard_.begin(300000, [] { NOTIFY_WARNING("Homing timed out"); });
         NOTIFY_INFO("Homing Y...");
-        api_->home_axes(
+        api_->motion().home_axes(
             "Y",
             [this]() {
                 helix::ui::async_call(
@@ -1083,7 +1083,7 @@ void ControlsPanel::handle_home_xy() {
     if (api_) {
         operation_guard_.begin(300000, [] { NOTIFY_WARNING("Homing timed out"); });
         NOTIFY_INFO("Homing XY...");
-        api_->home_axes(
+        api_->motion().home_axes(
             "XY",
             [this]() {
                 helix::ui::async_call(
@@ -1112,7 +1112,7 @@ void ControlsPanel::handle_home_z() {
     if (api_) {
         operation_guard_.begin(300000, [] { NOTIFY_WARNING("Homing timed out"); });
         NOTIFY_INFO("Homing Z...");
-        api_->home_axes(
+        api_->motion().home_axes(
             "Z",
             [this]() {
                 helix::ui::async_call(

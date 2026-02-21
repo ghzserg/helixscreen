@@ -18,159 +18,6 @@
 using namespace moonraker_internal;
 
 // ============================================================================
-// Motion Control Operations
-// ============================================================================
-
-void MoonrakerAPI::home_axes(const std::string& axes, SuccessCallback on_success,
-                             ErrorCallback on_error) {
-    // Validate axes string (empty means all, or contains only XYZE)
-    if (!axes.empty()) {
-        for (char axis : axes) {
-            if (!is_valid_axis(axis)) {
-                NOTIFY_ERROR("Invalid axis '{}' in homing command. Must be X, Y, Z, or E.", axis);
-                if (on_error) {
-                    MoonrakerError err;
-                    err.type = MoonrakerErrorType::VALIDATION_ERROR;
-                    err.message = "Invalid axis character (must be X, Y, Z, or E)";
-                    err.method = "home_axes";
-                    on_error(err);
-                }
-                return;
-            }
-        }
-    }
-
-    std::string gcode = generate_home_gcode(axes);
-    spdlog::info("[Moonraker API] Homing axes: {} (G-code: {})", axes.empty() ? "all" : axes,
-                 gcode);
-
-    execute_gcode(gcode, on_success, on_error, HOMING_TIMEOUT_MS);
-}
-
-void MoonrakerAPI::move_axis(char axis, double distance, double feedrate,
-                             SuccessCallback on_success, ErrorCallback on_error) {
-    // Reject NaN/Inf before any G-code generation
-    if (reject_non_finite({distance, feedrate}, "move_axis", on_error)) {
-        return;
-    }
-
-    // Validate axis
-    if (!is_valid_axis(axis)) {
-        NOTIFY_ERROR("Invalid axis '{}'. Must be X, Y, Z, or E.", axis);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid axis: " + std::string(1, axis) + " (must be X, Y, Z, or E)";
-            err.method = "move_axis";
-            on_error(err);
-        }
-        return;
-    }
-
-    // Validate distance is within safety limits
-    if (!is_safe_distance(distance, safety_limits_)) {
-        NOTIFY_ERROR("Move distance {:.1f}mm is too large. Maximum: {:.1f}mm.", std::abs(distance),
-                     safety_limits_.max_relative_distance_mm);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Distance " + std::to_string(distance) + "mm exceeds safety limits (" +
-                          std::to_string(safety_limits_.min_relative_distance_mm) + "-" +
-                          std::to_string(safety_limits_.max_relative_distance_mm) + "mm)";
-            err.method = "move_axis";
-            on_error(err);
-        }
-        return;
-    }
-
-    // Validate feedrate if specified (0 means use default, negative is invalid)
-    if (feedrate != 0 && !is_safe_feedrate(feedrate, safety_limits_)) {
-        NOTIFY_ERROR("Speed {:.0f}mm/min is too fast. Maximum: {:.0f}mm/min.", feedrate,
-                     safety_limits_.max_feedrate_mm_min);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Feedrate " + std::to_string(feedrate) +
-                          "mm/min exceeds safety limits (" +
-                          std::to_string(safety_limits_.min_feedrate_mm_min) + "-" +
-                          std::to_string(safety_limits_.max_feedrate_mm_min) + "mm/min)";
-            err.method = "move_axis";
-            on_error(err);
-        }
-        return;
-    }
-
-    std::string gcode = generate_move_gcode(axis, distance, feedrate);
-    spdlog::info("[Moonraker API] Moving axis {} by {}mm (G-code: {})", axis, distance, gcode);
-
-    execute_gcode(gcode, on_success, on_error);
-}
-
-void MoonrakerAPI::move_to_position(char axis, double position, double feedrate,
-                                    SuccessCallback on_success, ErrorCallback on_error) {
-    // Reject NaN/Inf before any G-code generation
-    if (reject_non_finite({position, feedrate}, "move_to_position", on_error)) {
-        return;
-    }
-
-    // Validate axis
-    if (!is_valid_axis(axis)) {
-        NOTIFY_ERROR("Invalid axis '{}'. Must be X, Y, Z, or E.", axis);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Invalid axis character (must be X, Y, Z, or E)";
-            err.method = "move_to_position";
-            on_error(err);
-        }
-        return;
-    }
-
-    // Validate position is within safety limits
-    if (!is_safe_position(position, safety_limits_)) {
-        NOTIFY_ERROR("Position {:.1f}mm is out of range. Valid: {:.1f}mm to {:.1f}mm.", position,
-                     safety_limits_.min_absolute_position_mm,
-                     safety_limits_.max_absolute_position_mm);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Position " + std::to_string(position) + "mm exceeds safety limits (" +
-                          std::to_string(safety_limits_.min_absolute_position_mm) + "-" +
-                          std::to_string(safety_limits_.max_absolute_position_mm) + "mm)";
-            err.method = "move_to_position";
-            on_error(err);
-        }
-        return;
-    }
-
-    // Validate feedrate if specified (0 means use default, negative is invalid)
-    if (feedrate != 0 && !is_safe_feedrate(feedrate, safety_limits_)) {
-        NOTIFY_ERROR("Speed {:.0f}mm/min is too fast. Maximum: {:.0f}mm/min.", feedrate,
-                     safety_limits_.max_feedrate_mm_min);
-        if (on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "Feedrate " + std::to_string(feedrate) +
-                          "mm/min exceeds safety limits (" +
-                          std::to_string(safety_limits_.min_feedrate_mm_min) + "-" +
-                          std::to_string(safety_limits_.max_feedrate_mm_min) + "mm/min)";
-            err.method = "move_to_position";
-            on_error(err);
-        }
-        return;
-    }
-
-    std::string gcode = generate_absolute_move_gcode(axis, position, feedrate);
-    spdlog::info("[Moonraker API] Moving axis {} to {}mm (G-code: {})", axis, position, gcode);
-
-    execute_gcode(gcode, on_success, on_error);
-}
-
-// ============================================================================
-// Temperature Control Operations
-// ============================================================================
-
-// ============================================================================
 // Temperature Control Operations
 // ============================================================================
 
@@ -481,10 +328,6 @@ std::string annotate_gcode(const std::string& gcode) {
 }
 } // namespace
 
-// ============================================================================
-// System Control Operations
-// ============================================================================
-
 void MoonrakerAPI::execute_gcode(const std::string& gcode, SuccessCallback on_success,
                                  ErrorCallback on_error, uint32_t timeout_ms, bool silent) {
     std::string annotated = annotate_gcode(gcode);
@@ -582,10 +425,6 @@ void MoonrakerAPI::restart_moonraker(SuccessCallback on_success, ErrorCallback o
         },
         on_error);
 }
-
-// ============================================================================
-// Query Operations
-// ============================================================================
 
 // ============================================================================
 // Safety Limits Configuration
@@ -762,7 +601,3 @@ void MoonrakerAPI::update_safety_limits_from_printer(SuccessCallback on_success,
         },
         on_error);
 }
-
-// ============================================================================
-// HTTP File Transfer Operations
-// ============================================================================
