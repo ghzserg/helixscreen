@@ -1017,9 +1017,9 @@ void AmsState::sync_current_loaded_from_backend() {
                     }
                 }
                 if (unit_name && sys.units.size() > 1) {
-                    // Multi-unit: show unit name + global slot number
+                    // Multi-unit: show unit name + slot number on one line
                     snprintf(current_slot_text_buf_, sizeof(current_slot_text_buf_),
-                             "Current: %s\nSlot %d", unit_name, display_slot);
+                             "Current: %s · Slot %d", unit_name, display_slot);
                 } else {
                     snprintf(current_slot_text_buf_, sizeof(current_slot_text_buf_),
                              "Current: Slot %d", display_slot);

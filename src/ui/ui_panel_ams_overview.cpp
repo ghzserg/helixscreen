@@ -508,12 +508,8 @@ void AmsOverviewPanel::refresh_system_path(const AmsSystemInfo& info, int curren
         ui_system_path_canvas_set_toolhead_sensor(system_path_, has_toolhead, toolhead_triggered);
     }
 
-    // Set status text from action detail subject (drawn to left of nozzle)
-    lv_subject_t* action_subject = AmsState::instance().get_ams_action_detail_subject();
-    if (action_subject) {
-        const char* action_text = lv_subject_get_string(action_subject);
-        ui_system_path_canvas_set_status_text(system_path_, action_text);
-    }
+    // Status text now shown in shared sidebar component (ams_sidebar.xml)
+    // No longer drawn on the canvas to avoid duplication
 
     ui_system_path_canvas_refresh(system_path_);
 }
