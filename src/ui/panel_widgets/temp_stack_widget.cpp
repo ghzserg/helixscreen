@@ -8,10 +8,24 @@
 #include "ui_nav_manager.h"
 #include "ui_panel_temp_control.h"
 
+#include "app_globals.h"
 #include "observer_factory.h"
+#include "panel_widget_manager.h"
+#include "panel_widget_registry.h"
 #include "printer_state.h"
 
 #include <spdlog/spdlog.h>
+
+namespace {
+const bool s_registered = [] {
+    helix::register_widget_factory("temp_stack", []() {
+        auto& ps = get_printer_state();
+        auto* tcp = helix::PanelWidgetManager::instance().shared_resource<TempControlPanel>();
+        return std::make_unique<helix::TempStackWidget>(ps, tcp);
+    });
+    return true;
+}();
+} // namespace
 
 using namespace helix;
 

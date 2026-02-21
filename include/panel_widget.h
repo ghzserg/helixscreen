@@ -13,6 +13,10 @@ class PanelWidget {
   public:
     virtual ~PanelWidget() = default;
 
+    /// Called BEFORE lv_xml_create() — create and register any LVGL subjects
+    /// that XML bindings depend on. Default is no-op.
+    virtual void init_subjects() {}
+
     /// Called after XML obj is created. Wire observers, animators, callbacks.
     /// @param widget_obj  The root lv_obj from lv_xml_create()
     /// @param parent_screen  Screen for lazy overlay creation

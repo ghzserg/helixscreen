@@ -9,6 +9,7 @@
 #include "ui_panel_home.h"
 
 #include "ethernet_manager.h"
+#include "panel_widget_registry.h"
 #include "wifi_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -17,6 +18,14 @@
 static constexpr uint32_t SIGNAL_POLL_INTERVAL_MS = 5000;
 
 extern HomePanel& get_global_home_panel();
+
+namespace {
+const bool s_registered = [] {
+    helix::register_widget_factory("network",
+                                   []() { return std::make_unique<helix::NetworkWidget>(); });
+    return true;
+}();
+} // namespace
 
 using namespace helix;
 

@@ -13,12 +13,29 @@
 
 namespace helix {
 
-PanelWidgetConfig::PanelWidgetConfig(Config& config) : config_(config) {}
+PanelWidgetConfig::PanelWidgetConfig(const std::string& panel_id, Config& config)
+    : panel_id_(panel_id), config_(config) {}
 
 void PanelWidgetConfig::load() {
     entries_.clear();
 
-    auto saved = config_.get<json>("/home_widgets", json::array());
+    // Per-panel path: /panel_widgets/<panel_id>
+    std::string panel_path = "/panel_widgets/" + panel_id_;
+    auto saved = config_.get<json>(panel_path, json());
+
+    // Migration: move legacy "home_widgets" to "panel_widgets.home"
+    if (panel_id_ == "home" && (saved.is_null() || !saved.is_array())) {
+        auto legacy = config_.get<json>("/home_widgets", json());
+        if (legacy.is_array() && !legacy.empty()) {
+            spdlog::info("[PanelWidgetConfig] Migrating legacy home_widgets to panel_widgets.home");
+            config_.set<json>(panel_path, legacy);
+            // Remove legacy key
+            config_.get_json("").erase("home_widgets");
+            config_.save();
+            saved = legacy;
+        }
+    }
+
     if (!saved.is_array()) {
         entries_ = build_defaults();
         return;
@@ -33,7 +50,8 @@ void PanelWidgetConfig::load() {
 
         // Validate field types before extraction
         if (!item["id"].is_string() || !item["enabled"].is_boolean()) {
-            spdlog::debug("[PanelWidgetConfig] Skipping malformed widget entry (wrong field types)");
+            spdlog::debug(
+                "[PanelWidgetConfig] Skipping malformed widget entry (wrong field types)");
             continue;
         }
 
@@ -88,7 +106,7 @@ void PanelWidgetConfig::save() {
         }
         widgets_array.push_back(std::move(item));
     }
-    config_.set<json>("/home_widgets", widgets_array);
+    config_.set<json>("/panel_widgets/" + panel_id_, widgets_array);
     config_.save();
 }
 

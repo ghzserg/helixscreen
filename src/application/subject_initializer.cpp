@@ -46,6 +46,7 @@
 #include "humidity_sensor_manager.h"
 #include "led/ui_led_control_overlay.h"
 #include "lvgl/lvgl.h"
+#include "panel_widget_manager.h"
 #include "print_completion.h"
 #include "print_start_navigation.h"
 #include "printer_state.h"
@@ -249,6 +250,13 @@ void SubjectInitializer::init_panel_subjects(MoonrakerAPI* api) {
     get_global_print_status_panel().set_temp_control_panel(m_temp_control_panel.get());
     get_global_filament_panel().set_temp_control_panel(m_temp_control_panel.get());
     get_global_pid_cal_panel().set_temp_control_panel(m_temp_control_panel.get());
+
+    // Register shared resources on PanelWidgetManager for self-registered widget factories
+    helix::PanelWidgetManager::instance().register_shared_resource<TempControlPanel>(
+        m_temp_control_panel.get());
+    if (api) {
+        helix::PanelWidgetManager::instance().register_shared_resource<MoonrakerAPI>(api);
+    }
 
     // E-Stop overlay — cleanup self-registered inside init_subjects()
     EmergencyStopOverlay::instance().init_subjects();

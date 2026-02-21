@@ -11,12 +11,24 @@
 #include "ui_update_queue.h"
 
 #include "moonraker_api.h"
+#include "panel_widget_manager.h"
+#include "panel_widget_registry.h"
 
 #include <spdlog/spdlog.h>
 
 #include <set>
 
 extern HomePanel& get_global_home_panel();
+
+namespace {
+const bool s_registered = [] {
+    helix::register_widget_factory("power", []() {
+        auto* api = helix::PanelWidgetManager::instance().shared_resource<MoonrakerAPI>();
+        return std::make_unique<helix::PowerWidget>(api);
+    });
+    return true;
+}();
+} // namespace
 
 namespace helix {
 

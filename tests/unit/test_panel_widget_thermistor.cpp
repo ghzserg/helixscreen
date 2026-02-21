@@ -26,7 +26,8 @@ class ThermistorConfigFixture {
 
     void setup_with_widgets(const json& widgets_json) {
         config.data = json::object();
-        config.data["home_widgets"] = widgets_json;
+        config.data["panel_widgets"] = json::object();
+        config.data["panel_widgets"]["home"] = widgets_json;
     }
 
     json& get_data() {
@@ -64,7 +65,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
     });
     setup_with_widgets(widgets);
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     // Verify config was loaded
@@ -75,7 +76,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
     // Save and reload
     wc.save();
 
-    PanelWidgetConfig wc2(config);
+    PanelWidgetConfig wc2("home", config);
     wc2.load();
 
     auto cfg2 = wc2.get_widget_config("thermistor");
@@ -88,7 +89,7 @@ TEST_CASE_METHOD(
     "ThermistorWidget: get_widget_config returns empty object for widget without config",
     "[thermistor][panel_widget]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     auto cfg = wc.get_widget_config("power");
@@ -100,7 +101,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
                  "ThermistorWidget: get_widget_config returns empty object for unknown widget",
                  "[thermistor][panel_widget]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     auto cfg = wc.get_widget_config("nonexistent_widget_xyz");
@@ -112,7 +113,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
                  "ThermistorWidget: set_widget_config saves and persists",
                  "[thermistor][panel_widget]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     json sensor_config = {{"sensor", "temperature_sensor chamber"}};
@@ -123,7 +124,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
     REQUIRE(cfg["sensor"].get<std::string>() == "temperature_sensor chamber");
 
     // Verify persisted in underlying JSON
-    auto& saved = get_data()["home_widgets"];
+    auto& saved = get_data()["panel_widgets"]["home"];
     bool found = false;
     for (const auto& item : saved) {
         if (item["id"] == "thermistor" && item.contains("config")) {
@@ -138,12 +139,12 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
                  "ThermistorWidget: config field omitted from JSON when empty",
                  "[thermistor][panel_widget]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
     wc.save();
 
     // No widget should have a "config" key since none was set
-    auto& saved = get_data()["home_widgets"];
+    auto& saved = get_data()["panel_widgets"]["home"];
     for (const auto& item : saved) {
         CAPTURE(item["id"].get<std::string>());
         REQUIRE_FALSE(item.contains("config"));
@@ -161,7 +162,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
     });
     setup_with_widgets(widgets);
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     auto cfg = wc.get_widget_config("thermistor");
@@ -171,7 +172,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
 
     // Round-trip preserves unknown fields
     wc.save();
-    PanelWidgetConfig wc2(config);
+    PanelWidgetConfig wc2("home", config);
     wc2.load();
     auto cfg2 = wc2.get_widget_config("thermistor");
     REQUIRE(cfg2["color"] == "#FF0000");
@@ -182,7 +183,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
                  "ThermistorWidget: set_widget_config on unknown widget is no-op",
                  "[thermistor][panel_widget]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     auto entries_before = wc.entries();
@@ -202,7 +203,7 @@ TEST_CASE_METHOD(helix::ThermistorConfigFixture,
     });
     setup_with_widgets(widgets);
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     // Non-object config should be ignored (returns empty)

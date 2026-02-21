@@ -9,10 +9,14 @@
 #include "ui_panel_home.h"
 #include "ui_utils.h"
 
+#include "app_globals.h"
 #include "display_settings_manager.h"
 #include "led/led_controller.h"
 #include "led/ui_led_control_overlay.h"
+#include "moonraker_api.h"
 #include "observer_factory.h"
+#include "panel_widget_manager.h"
+#include "panel_widget_registry.h"
 #include "printer_state.h"
 #include "settings_manager.h"
 #include "theme_manager.h"
@@ -22,6 +26,17 @@
 #include <algorithm>
 
 extern HomePanel& get_global_home_panel();
+
+namespace {
+const bool s_registered = [] {
+    helix::register_widget_factory("led", []() {
+        auto& ps = get_printer_state();
+        auto* api = helix::PanelWidgetManager::instance().shared_resource<MoonrakerAPI>();
+        return std::make_unique<helix::LedWidget>(ps, api);
+    });
+    return true;
+}();
+} // namespace
 
 namespace helix {
 

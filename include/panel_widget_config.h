@@ -24,7 +24,7 @@ struct PanelWidgetEntry {
 
 class PanelWidgetConfig {
   public:
-    explicit PanelWidgetConfig(Config& config);
+    PanelWidgetConfig(const std::string& panel_id, Config& config);
 
     /// Load widget order from config, merging with registry defaults
     void load();
@@ -53,6 +53,7 @@ class PanelWidgetConfig {
     void set_widget_config(const std::string& id, const nlohmann::json& config);
 
   private:
+    std::string panel_id_;
     Config& config_;
     std::vector<PanelWidgetEntry> entries_;
 

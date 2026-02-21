@@ -32,13 +32,10 @@
 #include "led/ui_led_control_overlay.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
-#include "panel_widget_config.h"
-#include "panel_widget_registry.h"
-#include "panel_widgets/led_widget.h"
+#include "panel_widget_manager.h"
 #include "panel_widgets/network_widget.h"
 #include "panel_widgets/power_widget.h"
 #include "panel_widgets/temp_stack_widget.h"
-#include "panel_widgets/temperature_widget.h"
 #include "panel_widgets/thermistor_widget.h"
 #include "prerendered_images.h"
 #include "printer_detector.h"
@@ -135,7 +132,7 @@ HomePanel::~HomePanel() {
     // Gate observers watch external subjects (capabilities, klippy_state) that may
     // already be freed. Clear unconditionally — deinit_subjects() may have been
     // skipped if subjects_initialized_ was already false from a prior call.
-    widget_gate_observers_.clear();
+    helix::PanelWidgetManager::instance().clear_gate_observers("home");
 
     // Detach active PanelWidget instances
     for (auto& w : active_widgets_) {
@@ -225,23 +222,6 @@ void HomePanel::init_subjects() {
     StaticPanelRegistry::instance().register_destroy(
         "HomePanelSubjects", []() { get_global_home_panel().deinit_subjects(); });
 
-    // Register widget factories for behavioral widgets
-    helix::register_widget_factory("temperature", [this]() {
-        return std::make_unique<helix::TemperatureWidget>(printer_state_, temp_control_panel_);
-    });
-    helix::register_widget_factory(
-        "led", [this]() { return std::make_unique<helix::LedWidget>(printer_state_, api_); });
-    helix::register_widget_factory("power",
-                                   [this]() { return std::make_unique<helix::PowerWidget>(api_); });
-    helix::register_widget_factory("network",
-                                   []() { return std::make_unique<helix::NetworkWidget>(); });
-    helix::register_widget_factory("temp_stack", [this]() {
-        return std::make_unique<helix::TempStackWidget>(printer_state_, temp_control_panel_);
-    });
-    helix::register_widget_factory("thermistor", [this]() {
-        return std::make_unique<helix::ThermistorWidget>(printer_state_);
-    });
-
     spdlog::debug("[{}] Registered subjects and event callbacks", get_name());
 
     // Set initial tip of the day
@@ -254,7 +234,7 @@ void HomePanel::deinit_subjects() {
     }
     // Release gate observers BEFORE subjects are freed — they observe external
     // subjects (capabilities, klippy_state) that may be destroyed during shutdown.
-    widget_gate_observers_.clear();
+    helix::PanelWidgetManager::instance().clear_gate_observers("home");
 
     // SubjectManager handles all lv_subject_deinit() calls via RAII
     subjects_.deinit_all();
@@ -262,53 +242,9 @@ void HomePanel::deinit_subjects() {
     spdlog::debug("[{}] Subjects deinitialized", get_name());
 }
 
-static helix::PanelWidgetConfig& get_widget_config() {
-    static helix::PanelWidgetConfig config(*Config::get_instance());
-    // Always reload to pick up changes from settings overlay
-    config.load();
-    return config;
-}
-
 void HomePanel::setup_widget_gate_observers() {
-    using helix::ui::observe_int_sync;
-    widget_gate_observers_.clear();
-
-    // Collect unique gate subject names from the widget registry
-    std::vector<const char*> gate_names;
-    for (const auto& def : helix::get_all_widget_defs()) {
-        if (def.hardware_gate_subject) {
-            // Avoid duplicates
-            bool found = false;
-            for (const auto* existing : gate_names) {
-                if (std::strcmp(existing, def.hardware_gate_subject) == 0) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                gate_names.push_back(def.hardware_gate_subject);
-            }
-        }
-    }
-
-    // Also observe klippy_state for firmware_restart conditional injection
-    gate_names.push_back("klippy_state");
-
-    for (const auto* name : gate_names) {
-        lv_subject_t* subject = lv_xml_get_subject(nullptr, name);
-        if (!subject) {
-            spdlog::trace("[{}] Gate subject '{}' not registered yet", get_name(), name);
-            continue;
-        }
-
-        widget_gate_observers_.push_back(observe_int_sync<HomePanel>(
-            subject, this, [](HomePanel* self, int /*value*/) { self->populate_widgets(); }));
-
-        spdlog::trace("[{}] Observing gate subject '{}'", get_name(), name);
-    }
-
-    spdlog::debug("[{}] Set up {} widget gate observers", get_name(),
-                  widget_gate_observers_.size());
+    auto& mgr = helix::PanelWidgetManager::instance();
+    mgr.setup_gate_observers("home", [this]() { populate_widgets(); });
 }
 
 void HomePanel::populate_widgets() {
@@ -324,113 +260,10 @@ void HomePanel::populate_widgets() {
     }
     active_widgets_.clear();
 
-    // Clear existing children (for repopulation)
-    lv_obj_clean(container);
+    // Delegate generic widget creation to the manager
+    active_widgets_ = helix::PanelWidgetManager::instance().populate_widgets("home", container);
 
-    auto& widget_config = get_widget_config();
-
-    // Collect enabled + hardware-available widget component names
-    std::vector<std::string> enabled_widgets;
-    for (const auto& entry : widget_config.entries()) {
-        if (!entry.enabled) {
-            continue;
-        }
-
-        // Check hardware gate — skip widgets whose hardware isn't present.
-        // Gates are defined in PanelWidgetDef::hardware_gate_subject and checked
-        // here instead of XML bind_flag_if_eq to avoid orphaned dividers.
-        const auto* def = helix::find_widget_def(entry.id);
-        if (def && def->hardware_gate_subject) {
-            lv_subject_t* gate = lv_xml_get_subject(nullptr, def->hardware_gate_subject);
-            if (gate && lv_subject_get_int(gate) == 0) {
-                continue;
-            }
-        }
-
-        enabled_widgets.push_back("panel_widget_" + entry.id);
-    }
-
-    // If firmware_restart is NOT already in the list (user disabled it),
-    // conditionally inject it as the LAST widget when Klipper is in SHUTDOWN.
-    // This ensures the restart button is always reachable during a shutdown.
-    bool has_firmware_restart = std::find(enabled_widgets.begin(), enabled_widgets.end(),
-                                          "panel_widget_firmware_restart") != enabled_widgets.end();
-    if (!has_firmware_restart) {
-        lv_subject_t* klippy = lv_xml_get_subject(nullptr, "klippy_state");
-        if (klippy && lv_subject_get_int(klippy) == 2) {
-            enabled_widgets.push_back("panel_widget_firmware_restart");
-            spdlog::debug("[{}] Injected firmware_restart (Klipper SHUTDOWN)", get_name());
-        }
-    }
-
-    if (enabled_widgets.empty()) {
-        cache_widget_references();
-        return;
-    }
-
-    // Smart row layout:
-    //   1-4 widgets  → 1 row
-    //   5-8 widgets  → 2 rows, first row has 4
-    //   9-10 widgets → 2 rows, first row has 5
-    size_t total = enabled_widgets.size();
-    size_t first_row_count;
-    if (total <= 4) {
-        first_row_count = total; // Single row
-    } else if (total <= 8) {
-        first_row_count = 4; // 2 rows: 4 + remainder
-    } else {
-        first_row_count = 5; // 2 rows: 5 + remainder
-    }
-
-    auto create_row = [&](size_t start, size_t count) {
-        lv_obj_t* row = lv_obj_create(container);
-        lv_obj_set_width(row, LV_PCT(100));
-        lv_obj_set_flex_grow(row, 1);
-        lv_obj_set_style_pad_all(row, 0, 0);
-        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
-
-        bool first = true;
-        for (size_t i = start; i < start + count && i < enabled_widgets.size(); ++i) {
-            // Add divider between widgets (not before first)
-            if (!first) {
-                const char* div_attrs[] = {"height", "80%", nullptr, nullptr};
-                lv_xml_create(row, "divider_vertical", div_attrs);
-            }
-
-            auto* widget =
-                static_cast<lv_obj_t*>(lv_xml_create(row, enabled_widgets[i].c_str(), nullptr));
-            if (widget) {
-                first = false;
-                spdlog::debug("[{}] Created widget: {}", get_name(), enabled_widgets[i]);
-
-                // If this widget def has a factory, create and attach the PanelWidget instance
-                const std::string widget_id =
-                    enabled_widgets[i].substr(13); // strip "panel_widget_" prefix
-                const auto* def = helix::find_widget_def(widget_id);
-                if (def && def->factory) {
-                    auto hw = def->factory();
-                    if (hw) {
-                        hw->attach(widget, parent_screen_);
-                        active_widgets_.push_back(std::move(hw));
-                    }
-                }
-            } else {
-                spdlog::warn("[{}] Failed to create widget: {}", get_name(), enabled_widgets[i]);
-            }
-        }
-    };
-
-    // Create first row
-    create_row(0, first_row_count);
-
-    // Create second row if needed
-    if (total > first_row_count) {
-        create_row(first_row_count, total - first_row_count);
-    }
-
-    // Re-cache widget references after dynamic creation
+    // HomePanel-specific: cache references for light_icon_, power_icon_, etc.
     cache_widget_references();
 }
 

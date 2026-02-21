@@ -7,9 +7,12 @@
 #include "ui_icon.h"
 #include "ui_temperature_utils.h"
 
+#include "app_globals.h"
 #include "config.h"
-#include "panel_widget_config.h"
 #include "observer_factory.h"
+#include "panel_widget_config.h"
+#include "panel_widget_manager.h"
+#include "panel_widget_registry.h"
 #include "printer_state.h"
 #include "temperature_sensor_manager.h"
 
@@ -17,12 +20,22 @@
 
 #include <cstring>
 
+namespace {
+const bool s_registered = [] {
+    helix::register_widget_factory("thermistor", []() {
+        auto& ps = get_printer_state();
+        return std::make_unique<helix::ThermistorWidget>(ps);
+    });
+    return true;
+}();
+} // namespace
+
 using namespace helix;
 using helix::ui::temperature::centi_to_degrees;
 
 // File-local helper: get the shared PanelWidgetConfig instance
 static helix::PanelWidgetConfig& get_widget_config_ref() {
-    static helix::PanelWidgetConfig config(*Config::get_instance());
+    static helix::PanelWidgetConfig config("home", *Config::get_instance());
     config.load();
     return config;
 }

@@ -207,9 +207,6 @@ class HomePanel : public PanelBase {
     // Active PanelWidget instances (factory-created, lifecycle-managed)
     std::vector<std::unique_ptr<helix::PanelWidget>> active_widgets_;
 
-    // Observers for widget hardware gate subjects — triggers populate_widgets() on change
-    std::vector<ObserverGuard> widget_gate_observers_;
-
     // Print card observers (for showing progress during active print)
     ObserverGuard print_state_observer_;
     ObserverGuard print_progress_observer_;

@@ -24,7 +24,15 @@ class PanelWidgetConfigFixture {
         config.data = json::object();
     }
 
-    void setup_with_widgets(const json& widgets_json) {
+    /// Set up per-panel config under panel_widgets.<panel_id>
+    void setup_with_widgets(const json& widgets_json, const std::string& panel_id = "home") {
+        config.data = json::object();
+        config.data["panel_widgets"] = json::object();
+        config.data["panel_widgets"][panel_id] = widgets_json;
+    }
+
+    /// Set up legacy flat home_widgets key (for migration testing)
+    void setup_with_legacy_widgets(const json& widgets_json) {
         config.data = json::object();
         config.data["home_widgets"] = widgets_json;
     }
@@ -63,7 +71,8 @@ TEST_CASE("PanelWidgetRegistry: unknown ID returns nullptr", "[panel_widget][wid
     REQUIRE(def == nullptr);
 }
 
-TEST_CASE("PanelWidgetRegistry: widget_def_count matches vector size", "[panel_widget][widget_config]") {
+TEST_CASE("PanelWidgetRegistry: widget_def_count matches vector size",
+          "[panel_widget][widget_config]") {
     REQUIRE(widget_def_count() == get_all_widget_defs().size());
 }
 
@@ -75,7 +84,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "PanelWidgetConfig: default config produces all widgets enabled in default order",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     const auto& entries = wc.entries();
@@ -102,7 +111,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     });
     setup_with_widgets(widgets);
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     const auto& entries = wc.entries();
@@ -118,7 +127,6 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     REQUIRE(entries[2].enabled == true);
 
     // Remaining should be appended with their default_enabled value
-    const auto& all_defs = get_all_widget_defs();
     for (size_t i = 3; i < entries.size(); ++i) {
         const auto* def = find_widget_def(entries[i].id);
         REQUIRE(def);
@@ -130,18 +138,19 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
 // Config tests — save produces expected JSON
 // ============================================================================
 
-TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: save produces expected JSON structure",
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: save produces expected JSON structure",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     // Disable one widget for variety
     wc.set_enabled(2, false);
     wc.save();
 
-    // Check the JSON was written to config
-    auto& saved = get_data()["home_widgets"];
+    // Check the JSON was written to config under per-panel path
+    auto& saved = get_data()["panel_widgets"]["home"];
     REQUIRE(saved.is_array());
     REQUIRE(saved.size() == widget_def_count());
 
@@ -167,14 +176,14 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     setup_empty_config();
 
     // First load + customize
-    PanelWidgetConfig wc1(config);
+    PanelWidgetConfig wc1("home", config);
     wc1.load();
     wc1.set_enabled(1, false);
     wc1.reorder(0, 3);
     wc1.save();
 
     // Second load from same config
-    PanelWidgetConfig wc2(config);
+    PanelWidgetConfig wc2("home", config);
     wc2.load();
 
     const auto& e1 = wc1.entries();
@@ -195,7 +204,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "PanelWidgetConfig: reorder moves item from index 2 to index 0",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     std::string moved_id = wc.entries()[2].id;
@@ -210,7 +219,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "PanelWidgetConfig: reorder moves item from index 0 to index 3",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     std::string moved_id = wc.entries()[0].id;
@@ -225,7 +234,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
 TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: reorder same index is no-op",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     auto before = wc.entries();
@@ -241,7 +250,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: reorder same inde
 TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: reorder out of bounds is no-op",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     auto before = wc.entries();
@@ -261,7 +270,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: reorder out of bo
 TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: toggle disable a widget",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     REQUIRE(wc.entries()[0].enabled == true);
@@ -273,7 +282,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: toggle disable a 
 TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: toggle re-enable a widget",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     wc.set_enabled(0, false);
@@ -298,7 +307,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     });
     setup_with_widgets(widgets);
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     // Should have all registry widgets
@@ -332,7 +341,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     });
     setup_with_widgets(widgets);
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     // bogus_widget should be dropped, so total is still widget_def_count
@@ -352,7 +361,7 @@ TEST_CASE_METHOD(
     "PanelWidgetConfig: reset to defaults restores all widgets enabled in default order",
     "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     // Customize
@@ -387,7 +396,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     });
     setup_with_widgets(widgets);
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     REQUIRE(wc.entries().size() == widget_def_count());
@@ -414,7 +423,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "PanelWidgetConfig: is_enabled returns false for unknown ID",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     REQUIRE(wc.is_enabled("nonexistent") == false);
@@ -435,7 +444,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     });
     setup_with_widgets(widgets);
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     // Bad entries skipped, good entries kept, rest appended
@@ -447,11 +456,11 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
 }
 
 TEST_CASE_METHOD(PanelWidgetConfigFixture,
-                 "PanelWidgetConfig: home_widgets key is not an array falls back to defaults",
+                 "PanelWidgetConfig: panel_widgets key is not an array falls back to defaults",
                  "[panel_widget][widget_config]") {
-    get_data()["home_widgets"] = "corrupted";
+    get_data()["panel_widgets"]["home"] = "corrupted";
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     const auto& defs = get_all_widget_defs();
@@ -466,10 +475,11 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
 // Config tests — set_enabled out of bounds
 // ============================================================================
 
-TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: set_enabled out of bounds is a no-op",
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: set_enabled out of bounds is a no-op",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     auto before = wc.entries();
@@ -481,7 +491,8 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: set_enabled out o
 // Registry tests — field completeness
 // ============================================================================
 
-TEST_CASE("PanelWidgetRegistry: all defs have non-null required fields", "[panel_widget][widget_config]") {
+TEST_CASE("PanelWidgetRegistry: all defs have non-null required fields",
+          "[panel_widget][widget_config]") {
     const auto& defs = get_all_widget_defs();
     for (const auto& def : defs) {
         CAPTURE(def.id);
@@ -504,7 +515,8 @@ TEST_CASE("PanelWidgetRegistry: all IDs are non-empty strings", "[panel_widget][
     }
 }
 
-TEST_CASE("PanelWidgetRegistry: can find every registered widget by ID", "[panel_widget][widget_config]") {
+TEST_CASE("PanelWidgetRegistry: can find every registered widget by ID",
+          "[panel_widget][widget_config]") {
     const auto& defs = get_all_widget_defs();
     for (const auto& def : defs) {
         const auto* found = find_widget_def(def.id);
@@ -544,7 +556,7 @@ TEST_CASE("PanelWidgetRegistry: always-available widgets have no gate subject",
 TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: reorder to last position works",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     size_t last = wc.entries().size() - 1;
@@ -557,7 +569,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: reorder to last p
 TEST_CASE_METHOD(PanelWidgetConfigFixture, "PanelWidgetConfig: reorder from last to first works",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     size_t last = wc.entries().size() - 1;
@@ -571,7 +583,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "PanelWidgetConfig: reorder preserves enabled state of moved item",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     wc.set_enabled(3, false);
@@ -586,7 +598,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "PanelWidgetConfig: multiple reorders produce correct final order",
                  "[panel_widget][widget_config]") {
     setup_empty_config();
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     // Capture IDs for first 4
@@ -614,7 +626,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "[panel_widget][widget_config]") {
     setup_empty_config();
 
-    PanelWidgetConfig wc1(config);
+    PanelWidgetConfig wc1("home", config);
     wc1.load();
 
     // Do several operations
@@ -625,7 +637,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     wc1.save();
 
     // Reload
-    PanelWidgetConfig wc2(config);
+    PanelWidgetConfig wc2("home", config);
     wc2.load();
 
     REQUIRE(wc1.entries().size() == wc2.entries().size());
@@ -645,7 +657,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "[panel_widget][widget_config]") {
     setup_with_widgets(json::array());
 
-    PanelWidgetConfig wc(config);
+    PanelWidgetConfig wc("home", config);
     wc.load();
 
     const auto& defs = get_all_widget_defs();
@@ -654,4 +666,178 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
         REQUIRE(wc.entries()[i].id == defs[i].id);
         REQUIRE(wc.entries()[i].enabled == defs[i].default_enabled);
     }
+}
+
+// ============================================================================
+// Per-panel config tests
+// ============================================================================
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: per-panel load/save uses panel_widgets path",
+                 "[panel_widget][widget_config]") {
+    json widgets = json::array({
+        {{"id", "power"}, {"enabled", true}},
+        {{"id", "network"}, {"enabled", false}},
+    });
+    setup_with_widgets(widgets, "home");
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+
+    REQUIRE(wc.entries()[0].id == "power");
+    REQUIRE(wc.entries()[0].enabled == true);
+    REQUIRE(wc.entries()[1].id == "network");
+    REQUIRE(wc.entries()[1].enabled == false);
+
+    // Save and verify it writes to panel_widgets.home
+    wc.save();
+    REQUIRE(get_data().contains("panel_widgets"));
+    REQUIRE(get_data()["panel_widgets"].contains("home"));
+    REQUIRE(get_data()["panel_widgets"]["home"].is_array());
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: non-home panel starts with defaults when no config exists",
+                 "[panel_widget][widget_config]") {
+    setup_empty_config();
+
+    PanelWidgetConfig wc("controls", config);
+    wc.load();
+
+    // Should get defaults from registry
+    const auto& defs = get_all_widget_defs();
+    REQUIRE(wc.entries().size() == defs.size());
+    for (size_t i = 0; i < defs.size(); ++i) {
+        REQUIRE(wc.entries()[i].id == defs[i].id);
+        REQUIRE(wc.entries()[i].enabled == defs[i].default_enabled);
+    }
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: different panels have independent configs",
+                 "[panel_widget][widget_config]") {
+    setup_empty_config();
+
+    // Set up home config
+    PanelWidgetConfig home_wc("home", config);
+    home_wc.load();
+    home_wc.set_enabled(0, false);
+    home_wc.save();
+
+    // Set up controls config (should be independent)
+    PanelWidgetConfig ctrl_wc("controls", config);
+    ctrl_wc.load();
+
+    // Controls should still have defaults (not affected by home's changes)
+    const auto& defs = get_all_widget_defs();
+    REQUIRE(ctrl_wc.entries()[0].enabled == defs[0].default_enabled);
+
+    // Home should have its customization
+    PanelWidgetConfig home_wc2("home", config);
+    home_wc2.load();
+    REQUIRE(home_wc2.entries()[0].enabled == false);
+}
+
+// ============================================================================
+// Migration tests — legacy home_widgets → panel_widgets.home
+// ============================================================================
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: migrates legacy home_widgets to panel_widgets.home",
+                 "[panel_widget][widget_config][migration]") {
+    // Set up old-style flat config
+    json legacy = json::array({
+        {{"id", "power"}, {"enabled", true}},
+        {{"id", "network"}, {"enabled", false}},
+        {{"id", "temperature"}, {"enabled", true}},
+    });
+    setup_with_legacy_widgets(legacy);
+
+    // Verify legacy key exists before migration
+    REQUIRE(get_data().contains("home_widgets"));
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+
+    // Entries should be loaded correctly from migrated data
+    REQUIRE(wc.entries()[0].id == "power");
+    REQUIRE(wc.entries()[0].enabled == true);
+    REQUIRE(wc.entries()[1].id == "network");
+    REQUIRE(wc.entries()[1].enabled == false);
+    REQUIRE(wc.entries()[2].id == "temperature");
+    REQUIRE(wc.entries()[2].enabled == true);
+
+    // Migration should have moved data to new location and removed old key
+    REQUIRE(get_data().contains("panel_widgets"));
+    REQUIRE(get_data()["panel_widgets"].contains("home"));
+    REQUIRE(get_data()["panel_widgets"]["home"].is_array());
+    REQUIRE_FALSE(get_data().contains("home_widgets"));
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: migration does not trigger for non-home panels",
+                 "[panel_widget][widget_config][migration]") {
+    // Set up legacy home_widgets
+    json legacy = json::array({
+        {{"id", "power"}, {"enabled", true}},
+    });
+    setup_with_legacy_widgets(legacy);
+
+    // Loading "controls" should NOT migrate home_widgets
+    PanelWidgetConfig wc("controls", config);
+    wc.load();
+
+    // Legacy key should still exist (untouched)
+    REQUIRE(get_data().contains("home_widgets"));
+
+    // Controls should get defaults
+    const auto& defs = get_all_widget_defs();
+    REQUIRE(wc.entries().size() == defs.size());
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: migration skipped if panel_widgets.home already exists",
+                 "[panel_widget][widget_config][migration]") {
+    // Set up both legacy and new-style config
+    json legacy = json::array({
+        {{"id", "power"}, {"enabled", false}},
+    });
+    json new_style = json::array({
+        {{"id", "network"}, {"enabled", true}},
+        {{"id", "temperature"}, {"enabled", true}},
+    });
+
+    get_data() = json::object();
+    get_data()["home_widgets"] = legacy;
+    get_data()["panel_widgets"] = json::object();
+    get_data()["panel_widgets"]["home"] = new_style;
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+
+    // Should use the new-style config, not the legacy one
+    REQUIRE(wc.entries()[0].id == "network");
+    REQUIRE(wc.entries()[1].id == "temperature");
+
+    // Legacy key should still exist (not removed since no migration happened)
+    REQUIRE(get_data().contains("home_widgets"));
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: migration preserves per-widget config",
+                 "[panel_widget][widget_config][migration]") {
+    json legacy = json::array({
+        {{"id", "temperature"}, {"enabled", true}, {"config", {{"sensor", "extruder"}}}},
+        {{"id", "power"}, {"enabled", true}},
+    });
+    setup_with_legacy_widgets(legacy);
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+
+    // Per-widget config should survive migration
+    REQUIRE(wc.entries()[0].id == "temperature");
+    auto widget_cfg = wc.get_widget_config("temperature");
+    REQUIRE(widget_cfg.contains("sensor"));
+    REQUIRE(widget_cfg["sensor"] == "extruder");
 }
