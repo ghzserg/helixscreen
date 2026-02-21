@@ -6,7 +6,7 @@ This document provides a comprehensive reference for all environment variables u
 
 | Category | Count | Prefix |
 |----------|-------|--------|
-| [Display & Backend](#display--backend-configuration) | 9 | `HELIX_` |
+| [Display & Backend](#display--backend-configuration) | 10 | `HELIX_` |
 | [Touch Calibration](#touch-calibration) | 5 | `HELIX_TOUCH_*` |
 | [G-Code Viewer](#g-code-viewer) | 3 | `HELIX_` |
 | [Bed Mesh](#bed-mesh) | 1 | `HELIX_` |
@@ -15,7 +15,8 @@ This document provides a comprehensive reference for all environment variables u
 | [Calibration](#calibration-auto-start) | 2 | `*_AUTO_START` |
 | [Debugging](#debugging) | 1 | `HELIX_DEBUG_*` |
 | [Deployment](#deployment) | 1 | `HELIX_` |
-| [Logging & Paths](#logging--data-paths) | 3 | `HELIX_` / Standard Unix |
+| [Logging & Startup](#logging--startup) | 2 | `HELIX_` |
+| [Data Paths](#data-paths) | 3 | `HELIX_` / Standard Unix |
 
 ---
 
@@ -134,6 +135,26 @@ HELIX_DISPLAY_ROTATION=180 ./build/bin/helix-screen
 4. Default: `0` (no rotation)
 
 **Note:** Software rotation is only supported on embedded backends (fbdev/DRM). On SDL (desktop dev), rotation is logged as a warning and skipped due to LVGL's DIRECT render mode limitation. Touch input may need recalibration after rotation — use `HELIX_TOUCH_SWAP_AXES=1` or the touch calibration wizard.
+
+### `HELIX_DPI`
+
+Override the display DPI (dots per inch). Useful for screens where spacing looks too large or too small at the auto-detected DPI.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `50` – `500` |
+| **Default** | Auto-detected (LVGL default: `130`) |
+| **File** | `scripts/helix-launcher.sh`, `src/system/cli_args.cpp` |
+
+```bash
+# Force 240 DPI (common for high-density small screens)
+HELIX_DPI=240 ./build/bin/helix-screen
+
+# In helixscreen.env (persistent):
+HELIX_DPI=240
+```
+
+The launcher translates this to `--dpi=<value>` on the CLI. Can also be passed directly: `./build/bin/helix-screen --dpi 240`.
 
 ### `HELIX_SDL_DISPLAY`
 
@@ -697,7 +718,55 @@ $HELIX_DATA_DIR/
 
 ---
 
-## Logging & Data Paths
+## Logging & Startup
+
+### `HELIX_LOG_LEVEL`
+
+Set the log verbosity level. Preferred over the legacy `HELIX_DEBUG` variable.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `trace`, `debug`, `info`, `warn`, `error`, `critical`, `off` |
+| **Default** | `warn` |
+| **File** | `scripts/helix-launcher.sh`, `src/system/cli_args.cpp` |
+
+```bash
+# In helixscreen.env (persistent, recommended for deployed systems):
+HELIX_LOG_LEVEL=debug
+
+# Or inline for one-off debugging:
+HELIX_LOG_LEVEL=trace ./build/bin/helix-screen
+```
+
+The launcher translates this to `--log-level=<value>` on the CLI. Equivalent CLI flags: `-v` (info), `-vv` (debug), `-vvv` (trace), or `--log-level=<level>`.
+
+**Priority order:**
+1. CLI `--log-level` / `-v` flags (highest)
+2. `HELIX_LOG_LEVEL` env var
+3. `HELIX_DEBUG=1` (legacy, maps to debug level)
+4. Config `log_level` in `helixconfig.json`
+5. Default: `warn`
+
+### `HELIX_SKIP_SPLASH`
+
+Skip the splash screen on startup. Useful for debugging startup issues or faster iteration.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `1` (skip) or unset (show splash) |
+| **Default** | Unset (splash shown) |
+| **File** | `scripts/helix-launcher.sh` |
+
+```bash
+# In helixscreen.env:
+HELIX_SKIP_SPLASH=1
+```
+
+The launcher translates this to `--skip-splash` on the CLI.
+
+---
+
+## Data Paths
 
 ### `HELIX_CACHE_DIR`
 
