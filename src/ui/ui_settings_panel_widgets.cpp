@@ -13,10 +13,10 @@
 
 #include "ui_event_safety.h"
 #include "ui_nav_manager.h"
-#include "ui_panel_home.h"
 #include "ui_toast_manager.h"
 
 #include "config.h"
+#include "panel_widget_manager.h"
 #include "static_panel_registry.h"
 #include "theme_manager.h"
 
@@ -125,7 +125,7 @@ void PanelWidgetsOverlay::on_activate() {
     changes_made_ = false;
 
     // Create fresh config instance and populate toggle list
-    widget_config_ = std::make_unique<helix::PanelWidgetConfig>(*Config::get_instance());
+    widget_config_ = std::make_unique<helix::PanelWidgetConfig>("home", *Config::get_instance());
     widget_config_->load();
 
     populate_widget_list();
@@ -141,8 +141,8 @@ void PanelWidgetsOverlay::on_deactivate() {
         spdlog::info("[{}] Saving widget config changes", get_name());
         widget_config_->save();
 
-        // Trigger home panel rebuild so it picks up the new config
-        get_global_home_panel().populate_widgets();
+        // Notify the widget manager so registered panels rebuild
+        helix::PanelWidgetManager::instance().notify_config_changed("home");
     }
 
     widget_config_.reset();
@@ -237,7 +237,7 @@ void PanelWidgetsOverlay::populate_widget_list() {
 }
 
 void PanelWidgetsOverlay::create_widget_row(lv_obj_t* parent, const helix::PanelWidgetEntry& entry,
-                                           const helix::PanelWidgetDef& def, size_t index) {
+                                            const helix::PanelWidgetDef& def, size_t index) {
     // Check hardware gate (if the widget has one)
     bool hw_available = true;
     if (def.hardware_gate_subject) {
