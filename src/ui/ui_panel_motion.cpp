@@ -430,7 +430,7 @@ void MotionPanel::handle_z_button(const char* name) {
         // Z feedrate: 600 mm/min (10 mm/s) - slower for safety
         constexpr double Z_FEEDRATE = 600.0;
 
-        api->move_axis(
+        api->motion().move_axis(
             'Z', distance, Z_FEEDRATE, []() { spdlog::debug("[MotionPanel] Z jog complete"); },
             [](const MoonrakerError& err) {
                 NOTIFY_ERROR("Z jog failed: {}", err.user_message());
@@ -530,7 +530,7 @@ void MotionPanel::jog(JogDirection direction, float distance_mm) {
         constexpr double JOG_FEEDRATE = 6000.0;
 
         if (dx != 0.0f) {
-            api->move_axis(
+            api->motion().move_axis(
                 'X', static_cast<double>(dx), JOG_FEEDRATE,
                 []() { spdlog::debug("[MotionPanel] X jog complete"); },
                 [](const MoonrakerError& err) {
@@ -538,7 +538,7 @@ void MotionPanel::jog(JogDirection direction, float distance_mm) {
                 });
         }
         if (dy != 0.0f) {
-            api->move_axis(
+            api->motion().move_axis(
                 'Y', static_cast<double>(dy), JOG_FEEDRATE,
                 []() { spdlog::debug("[MotionPanel] Y jog complete"); },
                 [](const MoonrakerError& err) {
@@ -561,7 +561,7 @@ void MotionPanel::home(char axis) {
             axes_str = std::string(1, axis);
         }
 
-        api->home_axes(
+        api->motion().home_axes(
             axes_str,
             [axis]() {
                 if (axis == 'A') {
