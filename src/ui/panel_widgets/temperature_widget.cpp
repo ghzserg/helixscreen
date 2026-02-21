@@ -75,6 +75,13 @@ void TemperatureWidget::detach() {
     extruder_temp_observer_.reset();
     extruder_target_observer_.reset();
 
+    // Clean up lazily-created overlay (child of parent_screen_, not widget container)
+    if (nozzle_temp_panel_) {
+        NavigationManager::instance().unregister_overlay_instance(nozzle_temp_panel_);
+        lv_obj_delete(nozzle_temp_panel_);
+        nozzle_temp_panel_ = nullptr;
+    }
+
     if (widget_obj_) {
         lv_obj_set_user_data(widget_obj_, nullptr);
         widget_obj_ = nullptr;

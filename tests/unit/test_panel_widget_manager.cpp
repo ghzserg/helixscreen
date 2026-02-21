@@ -81,7 +81,8 @@ TEST_CASE("PanelWidgetManager populate with null container", "[panel_widget][man
 }
 
 TEST_CASE("Widget factories are self-registered", "[panel_widget][self_registration]") {
-    const char* expected[] = {"temperature", "temp_stack", "led", "power", "network", "thermistor"};
+    const char* expected[] = {"temperature", "temp_stack", "led",      "power",
+                              "network",     "thermistor", "fan_stack"};
     for (const auto* id : expected) {
         INFO("Checking widget factory: " << id);
         const auto* def = helix::find_widget_def(id);

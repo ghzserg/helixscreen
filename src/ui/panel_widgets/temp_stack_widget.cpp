@@ -93,6 +93,18 @@ void TempStackWidget::detach() {
     bed_temp_observer_.reset();
     bed_target_observer_.reset();
 
+    // Clean up lazily-created overlays (children of parent_screen_, not widget container)
+    if (nozzle_temp_panel_) {
+        NavigationManager::instance().unregister_overlay_instance(nozzle_temp_panel_);
+        lv_obj_delete(nozzle_temp_panel_);
+        nozzle_temp_panel_ = nullptr;
+    }
+    if (bed_temp_panel_) {
+        NavigationManager::instance().unregister_overlay_instance(bed_temp_panel_);
+        lv_obj_delete(bed_temp_panel_);
+        bed_temp_panel_ = nullptr;
+    }
+
     if (s_active_instance == this) {
         s_active_instance = nullptr;
     }

@@ -9,7 +9,7 @@
 
 #include "ethernet_manager.h"
 #include "panel_widget_registry.h"
-#include "static_panel_registry.h"
+#include "static_subject_registry.h"
 #include "subject_debug_registry.h"
 #include "wifi_manager.h"
 
@@ -44,8 +44,9 @@ static void network_widget_init_subjects() {
 
     s_subjects_initialized = true;
 
-    // Self-register cleanup with StaticPanelRegistry (co-located with init)
-    StaticPanelRegistry::instance().register_destroy("NetworkWidgetSubjects", []() {
+    // Self-register cleanup with StaticSubjectRegistry (co-located with init)
+    // Subjects must be deinitialized AFTER panels remove their observers (Phase 2)
+    StaticSubjectRegistry::instance().register_deinit("NetworkWidgetSubjects", []() {
         if (s_subjects_initialized && lv_is_initialized()) {
             lv_subject_deinit(&s_network_label_subject);
             lv_subject_deinit(&s_network_icon_state);
