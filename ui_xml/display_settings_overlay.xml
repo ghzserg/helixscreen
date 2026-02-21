@@ -51,7 +51,7 @@
         <!-- Slider with min/max icons -->
         <lv_obj width="100%"
                 height="content" flex_flow="row" style_flex_cross_place="center" style_pad_left="0" style_pad_right="0"
-                style_pad_top="#space_sm" style_pad_bottom="#space_sm" style_pad_gap="#space_sm" scrollable="false">
+                style_pad_top="#space_md" style_pad_bottom="#space_md" style_pad_gap="#space_sm" scrollable="false">
           <icon src="light_off" size="xs" variant="secondary"/>
           <lv_slider name="brightness_slider" flex_grow="1" min_value="10" max_value="100" value="50">
             <event_cb trigger="value_changed" callback="on_brightness_changed"/>
