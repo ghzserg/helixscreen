@@ -28,6 +28,7 @@ bool EthernetBackendLinux::is_ethernet_interface(const std::string& name) {
     // - eth0, eth1, ...           (traditional naming)
     // - eno1, eno2, ...           (onboard, firmware naming)
     // - enp<bus>s<slot>           (PCI bus/slot naming, e.g., enp3s0)
+    // - enP<domain>p<bus>s<slot>  (Rockchip/Orange Pi PCI domain naming)
     // - ens<slot>                 (hot-plug naming, e.g., ens33)
     //
     // Exclude:
@@ -52,10 +53,10 @@ bool EthernetBackendLinux::is_ethernet_interface(const std::string& name) {
         return true;
     }
 
-     // Accept enP* (Orange Pi / Rockchip specific naming)
-    if (name.compare(0, 3, "enP") == 0) { 
-        return true;                      
-    }  
+    // Accept enP* (Orange Pi / Rockchip specific naming)
+    if (name.compare(0, 3, "enP") == 0) {
+        return true;
+    }
 
     // Accept ens* (hot-plug naming)
     if (name.compare(0, 3, "ens") == 0) {
