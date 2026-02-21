@@ -209,7 +209,7 @@ void TimelapseInstallOverlay::step_check_webcam() {
     }
 
     auto alive = alive_guard_;
-    api_->get_webcam_list(
+    api_->timelapse().get_webcam_list(
         [this, alive](const std::vector<WebcamInfo>& webcams) {
             if (!alive || !*alive || !wizard_active_)
                 return;
@@ -253,7 +253,7 @@ void TimelapseInstallOverlay::step_check_plugin() {
         return;
 
     auto alive = alive_guard_;
-    api_->get_timelapse_settings(
+    api_->timelapse().get_timelapse_settings(
         [this, alive](const TimelapseSettings& /*settings*/) {
             if (!alive || !*alive || !wizard_active_)
                 return;
@@ -314,7 +314,7 @@ void TimelapseInstallOverlay::recheck_after_install() {
         return;
 
     auto alive = alive_guard_;
-    api_->get_timelapse_settings(
+    api_->timelapse().get_timelapse_settings(
         [this, alive](const TimelapseSettings& /*settings*/) {
             if (!alive || !*alive || !wizard_active_)
                 return;
@@ -533,7 +533,7 @@ void TimelapseInstallOverlay::step_verify() {
         return;
 
     auto alive = alive_guard_;
-    api_->get_timelapse_settings(
+    api_->timelapse().get_timelapse_settings(
         [this, alive](const TimelapseSettings& /*settings*/) {
             if (!alive || !*alive || !wizard_active_)
                 return;

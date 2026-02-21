@@ -607,9 +607,9 @@ TEST_CASE("CHAR: Z-offset icons for Cartesian/Delta (head moves)",
  *
  * 2. Timelapse Button:
  *    - Initial state: timelapse off, icon = video-off (F0568), label = "Off"
- *    - Toggle on: calls api_->set_timelapse_enabled(true)
+ *    - Toggle on: calls api_->timelapse().set_timelapse_enabled(true)
  *    - On success: icon = video (F0567), label = "On"
- *    - Toggle off: calls api_->set_timelapse_enabled(false)
+ *    - Toggle off: calls api_->timelapse().set_timelapse_enabled(false)
  *    - On success: icon = video-off (F0568), label = "Off"
  *
  * 3. Speed Slider:

@@ -50,6 +50,7 @@
 #include "moonraker_error.h"
 #include "moonraker_history_api.h"
 #include "moonraker_spoolman_api.h"
+#include "moonraker_timelapse_api.h"
 #include "moonraker_types.h"
 #include "print_history_data.h"
 #include "printer_discovery.h"
@@ -95,8 +96,6 @@ class MoonrakerAPI {
     using FileMetadataCallback = std::function<void(const FileMetadata&)>;
     using BoolCallback = std::function<void(bool)>;
     using StringCallback = std::function<void(const std::string&)>;
-    using TimelapseSettingsCallback = std::function<void(const TimelapseSettings&)>;
-    using WebcamListCallback = std::function<void(const std::vector<WebcamInfo>&)>;
     using JsonCallback = std::function<void(const json&)>;
     using RestCallback = std::function<void(const RestResponse&)>;
 
@@ -849,84 +848,6 @@ class MoonrakerAPI {
     bool ensure_http_base_url();
 
     // ========================================================================
-    // Timelapse Operations (Moonraker-Timelapse Plugin)
-    // ========================================================================
-
-    /**
-     * @brief Get current timelapse settings
-     *
-     * Queries the Moonraker-Timelapse plugin for its current configuration.
-     * Only available if has_timelapse capability is detected.
-     *
-     * @param on_success Callback with current settings
-     * @param on_error Error callback
-     */
-    virtual void get_timelapse_settings(TimelapseSettingsCallback on_success,
-                                        ErrorCallback on_error);
-
-    /**
-     * @brief Update timelapse settings
-     *
-     * Configures the Moonraker-Timelapse plugin with new settings.
-     * Changes take effect for the next print.
-     *
-     * @param settings New settings to apply
-     * @param on_success Success callback
-     * @param on_error Error callback
-     */
-    virtual void set_timelapse_settings(const TimelapseSettings& settings,
-                                        SuccessCallback on_success, ErrorCallback on_error);
-
-    /**
-     * @brief Enable or disable timelapse for current/next print
-     *
-     * Convenience method to toggle just the enabled state without
-     * changing other settings.
-     *
-     * @param enabled true to enable, false to disable
-     * @param on_success Success callback
-     * @param on_error Error callback
-     */
-    virtual void set_timelapse_enabled(bool enabled, SuccessCallback on_success,
-                                       ErrorCallback on_error);
-
-    /**
-     * @brief Trigger timelapse video rendering
-     *
-     * Starts the rendering process for captured frames into a video file.
-     * Progress is reported via notify_timelapse_event WebSocket events.
-     */
-    virtual void render_timelapse(SuccessCallback on_success, ErrorCallback on_error);
-
-    /**
-     * @brief Save timelapse frames without rendering
-     *
-     * Saves captured frame files for later processing.
-     */
-    virtual void save_timelapse_frames(SuccessCallback on_success, ErrorCallback on_error);
-
-    /**
-     * @brief Get information about the last captured frame
-     */
-    virtual void get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
-                                     ErrorCallback on_error);
-
-    // ========================================================================
-    // Webcam Operations
-    // ========================================================================
-
-    /**
-     * @brief Get list of configured webcams
-     *
-     * Queries Moonraker for configured webcams. Used to detect if the printer
-     * has a camera, which is a prerequisite for timelapse setup.
-     *
-     * @param on_success Callback with vector of webcam info
-     * @param on_error Error callback
-     */
-    virtual void get_webcam_list(WebcamListCallback on_success, ErrorCallback on_error);
-
-    // ========================================================================
     // Domain Service Operations (Bed Mesh, Object Exclusion)
     // ========================================================================
 
@@ -1278,6 +1199,18 @@ class MoonrakerAPI {
     }
 
     /**
+     * @brief Get Timelapse API for timelapse and webcam operations
+     *
+     * All timelapse methods (get/set settings, render, frames) and
+     * webcam queries are available through this accessor.
+     *
+     * @return Reference to MoonrakerTimelapseAPI
+     */
+    MoonrakerTimelapseAPI& timelapse() {
+        return *timelapse_api_;
+    }
+
+    /**
      * @brief Get Spoolman API for filament tracking operations
      *
      * All Spoolman methods (get_spoolman_spools, set_active_spool, etc.)
@@ -1392,8 +1325,9 @@ class MoonrakerAPI {
     std::vector<MacroInfo> get_user_macros(bool include_system = false) const;
 
   protected:
-    std::unique_ptr<MoonrakerHistoryAPI> history_api_;   ///< Print history API
-    std::unique_ptr<MoonrakerSpoolmanAPI> spoolman_api_; ///< Spoolman filament tracking API
+    std::unique_ptr<MoonrakerHistoryAPI> history_api_;     ///< Print history API
+    std::unique_ptr<MoonrakerSpoolmanAPI> spoolman_api_;   ///< Spoolman filament tracking API
+    std::unique_ptr<MoonrakerTimelapseAPI> timelapse_api_; ///< Timelapse & webcam API
 
   private:
     std::string http_base_url_; ///< HTTP base URL for file transfers

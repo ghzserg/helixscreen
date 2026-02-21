@@ -186,7 +186,7 @@ void TimelapseSettingsOverlay::fetch_settings() {
 
     spdlog::debug("[{}] Fetching timelapse settings from API", get_name());
 
-    api_->get_timelapse_settings(
+    api_->timelapse().get_timelapse_settings(
         [this](const TimelapseSettings& settings) {
             spdlog::info("[{}] Got timelapse settings: enabled={} mode={} fps={} autorender={}",
                          get_name(), settings.enabled, settings.mode, settings.output_framerate,
@@ -240,7 +240,7 @@ void TimelapseSettingsOverlay::save_settings() {
                   get_name(), current_settings_.enabled, current_settings_.mode,
                   current_settings_.output_framerate, current_settings_.autorender);
 
-    api_->set_timelapse_settings(
+    api_->timelapse().set_timelapse_settings(
         current_settings_,
         [this]() { spdlog::info("[{}] Timelapse settings saved successfully", get_name()); },
         [this](const MoonrakerError& error) {
@@ -493,7 +493,7 @@ void TimelapseSettingsOverlay::on_render_now(lv_event_t* e) {
         return;
 
     spdlog::debug("[Timelapse Settings] Render Now clicked");
-    g_timelapse_settings->api_->render_timelapse(
+    g_timelapse_settings->api_->timelapse().render_timelapse(
         []() { spdlog::info("[Timelapse Settings] Render triggered successfully"); },
         [](const MoonrakerError& error) {
             spdlog::error("[Timelapse Settings] Failed to trigger render: {}", error.message);

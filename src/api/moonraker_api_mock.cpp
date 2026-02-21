@@ -34,12 +34,17 @@ MoonrakerAPIMock::MoonrakerAPIMock(MoonrakerClient& client, PrinterState& state)
     : MoonrakerAPI(client, state) {
     spdlog::debug("[MoonrakerAPIMock] Created - HTTP methods will use local test files");
 
-    // Replace base MoonrakerSpoolmanAPI with mock version
+    // Replace base sub-APIs with mock versions
     spoolman_api_ = std::make_unique<MoonrakerSpoolmanAPIMock>(client);
+    timelapse_api_ = std::make_unique<MoonrakerTimelapseAPIMock>(client, get_http_base_url());
 }
 
 MoonrakerSpoolmanAPIMock& MoonrakerAPIMock::spoolman_mock() {
     return static_cast<MoonrakerSpoolmanAPIMock&>(*spoolman_api_);
+}
+
+MoonrakerTimelapseAPIMock& MoonrakerAPIMock::timelapse_mock() {
+    return static_cast<MoonrakerTimelapseAPIMock&>(*timelapse_api_);
 }
 
 // ============================================================================
@@ -1860,24 +1865,29 @@ void MoonrakerSpoolmanAPIMock::consume_filament(float grams, int slot_index) {
 }
 
 // ============================================================================
-// Timelapse Mock Operations
+// MoonrakerTimelapseAPIMock Implementation
 // ============================================================================
 
-void MoonrakerAPIMock::render_timelapse(SuccessCallback on_success, ErrorCallback /*on_error*/) {
+MoonrakerTimelapseAPIMock::MoonrakerTimelapseAPIMock(MoonrakerClient& client,
+                                                     const std::string& http_base_url)
+    : MoonrakerTimelapseAPI(client, http_base_url) {}
+
+void MoonrakerTimelapseAPIMock::render_timelapse(SuccessCallback on_success,
+                                                 ErrorCallback /*on_error*/) {
     spdlog::debug("[MoonrakerAPIMock] render_timelapse (mock)");
     if (on_success)
         on_success();
 }
 
-void MoonrakerAPIMock::save_timelapse_frames(SuccessCallback on_success,
-                                             ErrorCallback /*on_error*/) {
+void MoonrakerTimelapseAPIMock::save_timelapse_frames(SuccessCallback on_success,
+                                                      ErrorCallback /*on_error*/) {
     spdlog::debug("[MoonrakerAPIMock] save_timelapse_frames (mock)");
     if (on_success)
         on_success();
 }
 
-void MoonrakerAPIMock::get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
-                                           ErrorCallback /*on_error*/) {
+void MoonrakerTimelapseAPIMock::get_last_frame_info(
+    std::function<void(const LastFrameInfo&)> on_success, ErrorCallback /*on_error*/) {
     spdlog::debug("[MoonrakerAPIMock] get_last_frame_info (mock)");
     if (on_success) {
         LastFrameInfo info;

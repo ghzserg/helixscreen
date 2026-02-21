@@ -799,7 +799,7 @@ void PrintPreparationManager::start_print(const std::string& filename,
 
     // Enable timelapse recording if requested (Moonraker-Timelapse plugin)
     if (options.timelapse) {
-        api_->set_timelapse_enabled(
+        api_->timelapse().set_timelapse_enabled(
             true,
             []() { spdlog::info("[PrintPreparationManager] Timelapse enabled for this print"); },
             [](const MoonrakerError& err) {

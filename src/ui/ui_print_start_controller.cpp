@@ -161,7 +161,7 @@ void PrintStartController::execute_print_start() {
 
     // Enable timelapse recording if requested (Moonraker-Timelapse plugin)
     if (options.timelapse && api_) {
-        api_->set_timelapse_enabled(
+        api_->timelapse().set_timelapse_enabled(
             true, []() { spdlog::info("[PrintStartController] Timelapse enabled for this print"); },
             [](const MoonrakerError& err) {
                 spdlog::error("[PrintStartController] Failed to enable timelapse: {}", err.message);

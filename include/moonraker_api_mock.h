@@ -215,6 +215,27 @@ class MoonrakerSpoolmanAPIMock : public MoonrakerSpoolmanAPI {
 };
 
 /**
+ * @brief Mock Timelapse API for testing without a real Moonraker connection
+ *
+ * Overrides all MoonrakerTimelapseAPI methods to return mock data.
+ * Render/frame operations are no-ops; settings are not persisted.
+ */
+class MoonrakerTimelapseAPIMock : public MoonrakerTimelapseAPI {
+  public:
+    using SuccessCallback = MoonrakerTimelapseAPI::SuccessCallback;
+    using ErrorCallback = MoonrakerTimelapseAPI::ErrorCallback;
+
+    explicit MoonrakerTimelapseAPIMock(helix::MoonrakerClient& client,
+                                       const std::string& http_base_url);
+    ~MoonrakerTimelapseAPIMock() override = default;
+
+    void render_timelapse(SuccessCallback on_success, ErrorCallback on_error) override;
+    void save_timelapse_frames(SuccessCallback on_success, ErrorCallback on_error) override;
+    void get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
+                             ErrorCallback on_error) override;
+};
+
+/**
  * @brief Mock MoonrakerAPI for testing without real printer connection
  *
  * Overrides HTTP file transfer methods to use local test files instead
@@ -364,15 +385,6 @@ class MoonrakerAPIMock : public MoonrakerAPI {
                             StringCallback on_success, ErrorCallback on_error) override;
 
     // ========================================================================
-    // Overridden Timelapse Methods (mock render/frame operations)
-    // ========================================================================
-
-    void render_timelapse(SuccessCallback on_success, ErrorCallback on_error) override;
-    void save_timelapse_frames(SuccessCallback on_success, ErrorCallback on_error) override;
-    void get_last_frame_info(std::function<void(const LastFrameInfo&)> on_success,
-                             ErrorCallback on_error) override;
-
-    // ========================================================================
     // Overridden Power Device Methods (return mock data)
     // ========================================================================
 
@@ -509,6 +521,13 @@ class MoonrakerAPIMock : public MoonrakerAPI {
      * @return Reference to MoonrakerSpoolmanAPIMock
      */
     MoonrakerSpoolmanAPIMock& spoolman_mock();
+
+    /**
+     * @brief Get the Timelapse mock sub-API for mock-specific helpers
+     *
+     * @return Reference to MoonrakerTimelapseAPIMock
+     */
+    MoonrakerTimelapseAPIMock& timelapse_mock();
 
     // ========================================================================
     // Overridden REST Methods (return mock responses)

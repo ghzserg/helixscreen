@@ -26,6 +26,7 @@ MoonrakerAPI::MoonrakerAPI(MoonrakerClient& client, PrinterState& state) : clien
     // Create sub-APIs
     history_api_ = std::make_unique<MoonrakerHistoryAPI>(client);
     spoolman_api_ = std::make_unique<MoonrakerSpoolmanAPI>(client);
+    timelapse_api_ = std::make_unique<MoonrakerTimelapseAPI>(client, http_base_url_);
 
     // Initialize build_volume_version subject for change notifications
     lv_subject_init_int(&build_volume_version_, 0);

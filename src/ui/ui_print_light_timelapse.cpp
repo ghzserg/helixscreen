@@ -131,7 +131,7 @@ void PrintLightTimelapseControls::handle_timelapse_button() {
     bool new_state = !timelapse_enabled_;
 
     if (api_) {
-        api_->set_timelapse_enabled(
+        api_->timelapse().set_timelapse_enabled(
             new_state,
             [this, new_state]() {
                 spdlog::info("[PrintLightTimelapseControls] Timelapse {} successfully",
