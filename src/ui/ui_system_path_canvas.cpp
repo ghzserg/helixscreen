@@ -12,6 +12,7 @@
 #include "lvgl/src/xml/lv_xml_widget.h"
 #include "lvgl/src/xml/parsers/lv_xml_obj_parser.h"
 #include "nozzle_renderer_bambu.h"
+#include "nozzle_renderer_faceted.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -103,6 +104,9 @@ struct SystemPathData {
     int32_t border_radius = 6;
     int32_t extruder_scale = 10;
     const lv_font_t* label_font = nullptr;
+
+    // Toolhead style
+    bool use_faceted_toolhead = false; // false = Bambu-style, true = Stealthburner/faceted
 };
 
 // Registry of widget data
@@ -867,7 +871,11 @@ static void system_path_draw_cb(lv_event_t* e) {
             bool is_active_tool = (t == data->active_tool) && data->filament_loaded;
 
             lv_color_t noz_color = is_active_tool ? active_color_lv : nozzle_color;
-            draw_nozzle_bambu(layer, tool_x, tools_y, noz_color, small_scale);
+            if (data->use_faceted_toolhead) {
+                draw_nozzle_faceted(layer, tool_x, tools_y, noz_color, small_scale);
+            } else {
+                draw_nozzle_bambu(layer, tool_x, tools_y, noz_color, small_scale);
+            }
 
             // Tool badge below nozzle — use pre-formatted label from data
             if (data->label_font && t < SystemPathData::MAX_TOOLS) {
@@ -1034,7 +1042,11 @@ static void system_path_draw_cb(lv_event_t* e) {
                 noz_color = active_color_lv;
             }
 
-            draw_nozzle_bambu(layer, center_x, nozzle_y, noz_color, data->extruder_scale);
+            if (data->use_faceted_toolhead) {
+                draw_nozzle_faceted(layer, center_x, nozzle_y, noz_color, data->extruder_scale);
+            } else {
+                draw_nozzle_bambu(layer, center_x, nozzle_y, noz_color, data->extruder_scale);
+            }
 
             // Virtual tool badge beneath nozzle — only when multiple slots feed one toolhead
             if (data->total_tools <= 1 && data->current_tool >= 0 && data->label_font) {
@@ -1392,6 +1404,14 @@ void ui_system_path_canvas_set_bypass_callback(lv_obj_t* obj, system_path_bypass
     if (data) {
         data->bypass_callback = cb;
         data->bypass_user_data = user_data;
+    }
+}
+
+void ui_system_path_canvas_set_faceted_toolhead(lv_obj_t* obj, bool faceted) {
+    auto* data = get_data(obj);
+    if (data && data->use_faceted_toolhead != faceted) {
+        data->use_faceted_toolhead = faceted;
+        lv_obj_invalidate(obj);
     }
 }
 
