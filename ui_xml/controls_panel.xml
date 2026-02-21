@@ -150,7 +150,7 @@
             </lv_obj>
             <text_small name="nozzle_status"
                         width="100%" bind_text="controls_nozzle_status" style_text_color="#text"
-                        style_text_align="right"/>
+                        style_text_align="right" hidden="#status_text_hidden"/>
             <!-- Bed section (clickable) -->
             <lv_obj name="btn_bed_temp"
                     width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
@@ -175,7 +175,8 @@
               </lv_obj>
             </lv_obj>
             <text_small name="bed_status"
-                        width="100%" bind_text="controls_bed_status" style_text_color="#text" style_text_align="right"/>
+                        width="100%" bind_text="controls_bed_status" style_text_color="#text" style_text_align="right"
+                        hidden="#status_text_hidden"/>
             <!-- Chamber section (visible only if printer has chamber sensor) -->
             <lv_obj name="chamber_section"
                     width="100%" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
@@ -210,7 +211,8 @@
                        style_radius="#space_md" style_margin_left="#space_md" style_margin_right="#space_sm">
               <event_cb trigger="value_changed" callback="on_controls_fan_slider"/>
             </lv_slider>
-            <text_body name="fan_speed_display" width="80%" bind_text="controls_fan_speed" style_text_align="right"/>
+            <text_body name="fan_speed_display"
+                       width="80%" bind_text="controls_fan_speed" style_text_align="right" hidden="#status_text_hidden"/>
             <!-- Secondary fans list (populated dynamically) -->
             <lv_obj name="secondary_fans_list"
                     width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="column"

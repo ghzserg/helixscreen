@@ -5,7 +5,7 @@
 <!-- Left: 3D mesh visualization with touch drag rotation -->
 <!-- Right: "Current Mesh" stats card + "Profiles" list card -->
 <component>
-  <!-- Component-local constants for mesh visualization colors -->
+  <!-- Component-local constants for mesh visualization colors and responsive sizing -->
   <consts>
     <!-- Mesh visualization gradient -->
     <color name="mesh_low" value="#88c0d0"/>
@@ -14,6 +14,12 @@
     <!-- nord14 - neutral -->
     <color name="mesh_high" value="#bf616a"/>
     <!-- nord11 - hot -->
+
+    <!-- Info column width per breakpoint -->
+    <px name="bed_mesh_info_column_width_tiny" value="180"/>
+    <px name="bed_mesh_info_column_width_small" value="280"/>
+    <px name="bed_mesh_info_column_width_medium" value="280"/>
+    <px name="bed_mesh_info_column_width_large" value="280"/>
   </consts>
   <view name="bed_mesh_panel"
         extends="lv_obj" width="#overlay_panel_width" height="100%" align="right_mid" style_bg_opa="255"
@@ -39,8 +45,8 @@
       </lv_obj>
       <!-- Right: Info column with two cards -->
       <lv_obj name="info_column"
-              width="280" height="100%" flex_flow="column" style_pad_all="0" style_pad_gap="#space_md"
-              scrollable="false">
+              width="#bed_mesh_info_column_width" height="100%" flex_flow="column" style_pad_all="0"
+              style_pad_gap="#space_md" scrollable="false">
         <!-- ============================================================ -->
         <!-- CURRENT MESH CARD -->
         <!-- ============================================================ -->

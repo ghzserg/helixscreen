@@ -267,7 +267,7 @@
         <text_small width="80%"
                     text="Saved to printer configuration." translation_tag="Saved to printer configuration."
                     style_text_align="center" style_text_color="#text_muted"/>
-        <ui_button name="btn_done" width="140" height="56" text="Done" translation_tag="Done">
+        <ui_button name="btn_done" width="140" height="#button_height" text="Done" translation_tag="Done">
           <event_cb trigger="clicked" callback="on_pid_done"/>
         </ui_button>
       </lv_obj>

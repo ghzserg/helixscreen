@@ -18,7 +18,7 @@
     <header_bar name="overlay_header"
                 title="Motion: XYZ" title_tag="Motion: XYZ" hide_action_button="false"
                 action_button_icon="alert_octagon" action_button_bg_color="#danger" action_button_radius="9999"
-                action_button_width="44" action_button_height="44" action_button_pad="0" hide_action_button_text="true"
+                action_button_width="#button_height_sm" action_button_height="#button_height_sm" action_button_pad="0" hide_action_button_text="true"
                 action_button_callback="emergency_stop_clicked"/>
     <!-- Content Area: Two Columns -->
     <lv_obj name="overlay_content"

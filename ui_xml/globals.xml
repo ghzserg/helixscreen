@@ -304,6 +304,18 @@
     <string name="icon_font_xl_large" value="mdi_icons_64"/>
     <!-- NO BASE icon_font_xl - registered at runtime -->
 
+    <!-- ===================================================================== -->
+    <!-- Responsive Visibility Tokens                                          -->
+    <!-- ===================================================================== -->
+    <!-- status_text_hidden: Hide status text label on tiny screens to save space.
+         Used by controls_panel and filament_panel. Shared here to avoid global
+         namespace collisions when both panels load simultaneously. -->
+    <string name="status_text_hidden_tiny" value="true"/>
+    <string name="status_text_hidden_small" value="false"/>
+    <string name="status_text_hidden_medium" value="false"/>
+    <string name="status_text_hidden_large" value="false"/>
+    <!-- NO BASE status_text_hidden - registered at runtime -->
+
     <!-- Step progress colors (wizard steps) -->
     <color name="step_pending" value="#4c566a"/>
     <!-- nord3 -->

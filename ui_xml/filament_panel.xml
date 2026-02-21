@@ -7,6 +7,19 @@
     <style name="purge_btn_selected" bg_color="#primary" bg_opa="255"/>
     <style name="purge_btn_unselected" bg_color="#primary" bg_opa="40"/>
   </styles>
+  <consts>
+    <!-- Temperature card spacing -->
+    <px name="temp_card_spacing_tiny" value="2"/>
+    <px name="temp_card_spacing_small" value="8"/>
+    <px name="temp_card_spacing_medium" value="10"/>
+    <px name="temp_card_spacing_large" value="12"/>
+
+    <!-- Spacing overrides for temperature preset buttons -->
+    <px name="temp_preset_btn_spacing_tiny" value="1"/>
+    <px name="temp_preset_btn_spacing_small" value="6"/>
+    <px name="temp_preset_btn_spacing_medium" value="7"/>
+    <px name="temp_preset_btn_spacing_large" value="8"/>
+  </consts>
   <!-- Filament Management Panel -->
   <!-- Two-column layout: left (temp status + AMS), right (material + operations) -->
   <view name="filament_panel"
@@ -22,7 +35,7 @@
 
         <!-- Temperature Status Card - shows both nozzle and bed -->
         <ui_card name="temp_status_card"
-                 width="100%" style_pad_all="#space_lg"
+                 width="100%" style_pad_all="#space_lg" style_pad_gap="#temp_card_spacing"
                  flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
 
           <!-- Header row with icon -->
@@ -81,7 +94,7 @@
           <lv_obj width="100%"
                   height="content" style_pad_all="0" scrollable="false"
                   flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
-                  style_pad_gap="#space_xs">
+                  style_pad_gap="#space_xs" hidden="#status_text_hidden">
             <icon name="status_icon" src="info" size="xs" variant="secondary"/>
             <text_small name="status_text" bind_text="filament_status"/>
           </lv_obj>
@@ -114,7 +127,7 @@
                 flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                 style_pad_gap="#space_sm"
                 flags="hidden">
-                
+
           <!-- AMS mini status (auto-binds to AmsState, fills width) -->
           <ams_mini_status flex_grow="1"/>
           <!-- Manage Button (shown when single-tool AMS, hidden when multi-tool) -->
@@ -161,14 +174,14 @@
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_gap="#space_md">
             <ui_button name="preset_pla" height="content" flex_grow="1" layout="column"
-                       state_trickle="true" style_pad_ver="#space_sm">
+                       state_trickle="true" style_pad_ver="#space_sm" style_pad_gap="#temp_preset_btn_spacing">
               <event_cb trigger="clicked" callback="on_filament_preset_pla"/>
               <text_body text="PLA" translation_tag="PLA" style_text_color:checked="#text"/>
               <text_small text="210°C / 60°C" translation_tag="210°C / 60°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
             <ui_button name="preset_petg" height="content" flex_grow="1" layout="column"
-                       state_trickle="true" style_pad_ver="#space_sm">
+                       state_trickle="true" style_pad_ver="#space_sm" style_pad_gap="#temp_preset_btn_spacing">
               <event_cb trigger="clicked" callback="on_filament_preset_petg"/>
               <text_body text="PETG" translation_tag="PETG" style_text_color:checked="#text"/>
               <text_small text="240°C / 80°C" translation_tag="240°C / 80°C" style_text_align="center"
@@ -181,14 +194,14 @@
                   flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
                   style_pad_gap="#space_md">
             <ui_button name="preset_abs" height="content" flex_grow="1" layout="column"
-                       state_trickle="true" style_pad_ver="#space_sm">
+                       state_trickle="true" style_pad_ver="#space_sm" style_pad_gap="#temp_preset_btn_spacing">
               <event_cb trigger="clicked" callback="on_filament_preset_abs"/>
               <text_body text="ABS" translation_tag="ABS" style_text_color:checked="#text"/>
               <text_small text="250°C / 100°C" translation_tag="250°C / 100°C" style_text_align="center"
                           style_text_color="#text_muted" style_text_color:checked="#text"/>
             </ui_button>
             <ui_button name="preset_tpu" height="content" flex_grow="1" layout="column"
-                       state_trickle="true" style_pad_ver="#space_sm">
+                       state_trickle="true" style_pad_ver="#space_sm" style_pad_gap="#temp_preset_btn_spacing">
               <event_cb trigger="clicked" callback="on_filament_preset_tpu"/>
               <text_body text="TPU" translation_tag="TPU" style_text_color:checked="#text"/>
               <text_small text="230°C / 50°C" translation_tag="230°C / 50°C" style_text_align="center"
