@@ -411,6 +411,11 @@ class FilamentSensorManager : public helix::sensors::ISensorManager {
     // instead of using lv_async_call(). This avoids LVGL timer dependencies in unit tests.
     bool sync_mode_ = false;
 
+    // Tracks whether we've received the first status update from Moonraker.
+    // Ensures update_subjects() fires on initial status even when sensor state
+    // matches defaults (filament_detected=false), which wouldn't trigger any_changed.
+    bool initial_status_received_ = false;
+
     // Discovery time for suppressing initial state notifications
     // Reset when sensors are discovered (after Moonraker connects), not at app startup
     std::chrono::steady_clock::time_point startup_time_;

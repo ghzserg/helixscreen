@@ -142,6 +142,7 @@ void FilamentSensorManager::discover_sensors(const std::vector<std::string>& kli
 
     // Clear existing sensors but preserve state for reconnection
     sensors_.clear();
+    initial_status_received_ = false;
 
     for (const auto& klipper_name : klipper_sensor_names) {
         std::string sensor_name;
@@ -603,7 +604,13 @@ void FilamentSensorManager::update_from_status(const json& status) {
             }
         }
 
-        if (any_changed) {
+        // Always update subjects on first status (initial_status_received_ handles this)
+        // and on any state change. Without this, subjects stay at -1 ("no sensor")
+        // when the initial Moonraker status matches the default state (filament_detected=false).
+        bool need_subject_update = any_changed || !initial_status_received_;
+        initial_status_received_ = true;
+
+        if (need_subject_update) {
             if (sync_mode_) {
                 // In test mode, update subjects synchronously
                 spdlog::info("[FilamentSensorManager] sync_mode: updating subjects synchronously");

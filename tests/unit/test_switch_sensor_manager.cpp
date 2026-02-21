@@ -47,6 +47,9 @@ class FilamentSensorManagerTestAccess {
         // Enable sync mode for testing (avoids lv_async_call)
         mgr.sync_mode_ = true;
 
+        // Reset initial status tracking (ensures first update_from_status triggers subjects)
+        mgr.initial_status_received_ = false;
+
         // Reset startup time to 10 seconds in the past so the 2-second grace period
         // is already expired in tests (avoids flaky timing-dependent failures)
         mgr.startup_time_ = std::chrono::steady_clock::now() - std::chrono::seconds(10);
@@ -601,6 +604,54 @@ TEST_CASE_METHOD(FilamentSensorTestFixture, "FilamentSensorManager - subject val
         // Filament removed = runout detected
         update_sensor_state("filament_switch_sensor runout", false);
         REQUIRE(lv_subject_get_int(mgr().get_any_runout_subject()) == 1);
+    }
+}
+
+// ============================================================================
+// Initial Status Update Tests
+// ============================================================================
+
+TEST_CASE_METHOD(FilamentSensorTestFixture,
+                 "FilamentSensorManager - first status update always fires subjects",
+                 "[filament][subjects][initial_status]") {
+    discover_test_sensors();
+    mgr().set_sensor_role("filament_switch_sensor runout", FilamentSensorRole::RUNOUT);
+
+    // set_sensor_role() calls update_subjects() internally, which moves subjects
+    // from -1 to 0 (no filament, default state). That's expected.
+    // The bug was: update_from_status() with filament_detected=false (matching default)
+    // would NOT call update_subjects() because no state change was detected.
+    // The fix: always trigger update_subjects() on the first status update.
+
+    SECTION("First update with false (matching default) still updates subjects") {
+        // Subjects should be 0 after role assignment
+        REQUIRE(lv_subject_get_int(mgr().get_runout_detected_subject()) == 0);
+
+        // Simulate what happens on first Moonraker status — sensor reports false
+        // (matching default). Before the fix, this was a no-op because any_changed=false.
+        update_sensor_state("filament_switch_sensor runout", false);
+
+        // Subject should still be 0 (not -1)
+        REQUIRE(lv_subject_get_int(mgr().get_runout_detected_subject()) == 0);
+    }
+
+    SECTION("First update with true correctly sets subject to 1") {
+        update_sensor_state("filament_switch_sensor runout", true);
+        REQUIRE(lv_subject_get_int(mgr().get_runout_detected_subject()) == 1);
+    }
+
+    SECTION("Re-discovery resets initial status tracking") {
+        // First update
+        update_sensor_state("filament_switch_sensor runout", true);
+        REQUIRE(lv_subject_get_int(mgr().get_runout_detected_subject()) == 1);
+
+        // Re-discover (simulates Moonraker reconnect)
+        discover_test_sensors();
+        mgr().set_sensor_role("filament_switch_sensor runout", FilamentSensorRole::RUNOUT);
+
+        // After re-discovery, first status with false should still trigger subjects
+        update_sensor_state("filament_switch_sensor runout", false);
+        REQUIRE(lv_subject_get_int(mgr().get_runout_detected_subject()) == 0);
     }
 }
 
