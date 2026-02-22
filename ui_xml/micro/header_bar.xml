@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <!-- Reusable Header Bar Component - Improved Design v2 -->
+  <!-- Used in modal overlays, sub-screens, and detail views -->
+  <!-- Provides consistent back button + centered title + optional action button -->
+  <!-- Key improvements over v1:
+       - Flat 3-element layout (no nested containers) for true centering
+       - Symmetric padding (left + right) for visual balance
+       - Title uses flex_grow + text_align for perfect centering
+       - Uses text_heading/text_body components for theme consistency
+       - XML-controlled action button visibility via hide_action_button prop
+  -->
+  <!-- API Properties -->
+  <api>
+    <prop name="title" type="string"/>
+    <prop name="title_tag" type="string" default=""/>
+    <!-- Back button callback - defaults to standard navigation go_back -->
+    <prop name="back_button_callback" type="string" default="on_header_back_clicked"/>
+    <!-- Text-based action button (use action_button_text) -->
+    <prop name="action_button_text" type="string" default=""/>
+    <!-- Icon-based action button (use action_button_icon instead of text) -->
+    <prop name="action_button_icon" type="string" default=""/>
+    <!-- Hide the icon in action button (for text-only buttons) -->
+    <prop name="hide_action_button_icon" type="string" default="false"/>
+    <!-- Hide the text label in action button (for icon-only circular buttons) -->
+    <prop name="hide_action_button_text" type="string" default="false"/>
+    <prop name="action_button_icon_color" type="string" default="#text"/>
+    <!-- Styling props for custom action buttons (e.g., E-stop) -->
+    <prop name="action_button_bg_color" type="string" default="#primary"/>
+    <prop name="action_button_radius" type="string" default="#border_radius"/>
+    <!-- Button dimensions - use same value for width/height + radius=9999 for circular buttons -->
+    <prop name="action_button_width" type="string" default="content"/>
+    <prop name="action_button_height" type="string" default="content"/>
+    <prop name="action_button_pad" type="string" default="#space_sm"/>
+    <!-- Use hide_action_button="false" to show the action button -->
+    <prop name="hide_action_button" type="string" default="true"/>
+    <prop name="action_button_callback" type="string" default=""/>
+    <!-- Subject name for reactive disabled state binding (empty = no binding) -->
+    <prop name="action_button_disabled_subject" type="string" default=""/>
+    <!-- Second action button (appears to LEFT of primary action button) -->
+    <prop name="action_button_2_text" type="string" default=""/>
+    <prop name="action_button_2_bg_color" type="string" default="#secondary"/>
+    <prop name="action_button_2_callback" type="string" default=""/>
+    <prop name="hide_action_button_2" type="string" default="true"/>
+  </api>
+  <view extends="lv_obj"
+        width="100%" height="40" style_pad_left="#space_sm" style_pad_right="#space_xl"
+        style_pad_top="0" style_pad_bottom="0" flex_flow="row" style_flex_main_place="space_between"
+        style_flex_track_place="center" style_flex_cross_place="center" scrollable="false">
+    <!-- Back button (fixed width, left-aligned) -->
+    <icon name="back_button" src="back" size="lg" variant="text" align="center" clickable="true">
+      <event_cb trigger="clicked" callback="$back_button_callback"/>
+    </icon>
+    <!-- Title (flexible width, centered) -->
+    <text_heading name="header_title"
+                  text="$title" translation_tag="$title_tag" flex_grow="1" align="center" style_text_align="left" style_pad_left="#space_sm"
+                  scrollable="false"/>
+    <!-- Secondary action button (left of primary, hidden by default) -->
+    <ui_button name="action_button_2"
+               width="content" height="$action_button_height" style_min_width="72"
+               style_bg_color="$action_button_2_bg_color" hidden="$hide_action_button_2" text="$action_button_2_text">
+      <event_cb trigger="clicked" callback="$action_button_2_callback"/>
+    </ui_button>
+    <!-- Primary action button (hidden by default, pass hide_action_button="false" to show) -->
+    <!-- Supports both text (action_button_text) and icon (action_button_icon) modes -->
+    <!-- For icon-only buttons like E-stop, use circular radius and custom bg_color -->
+    <ui_button name="action_button"
+               width="$action_button_width" height="$action_button_height" style_radius="$action_button_radius"
+               style_bg_color="$action_button_bg_color" hidden="$hide_action_button" icon="$action_button_icon"
+               text="$action_button_text">
+      <!-- Reactive disabled state binding (enabled when subject exists and is non-empty) -->
+      <bind_state_if_eq subject="$action_button_disabled_subject" state="disabled" ref_value="1"/>
+      <event_cb trigger="clicked" callback="$action_button_callback"/>
+    </ui_button>
+  </view>
+</component>

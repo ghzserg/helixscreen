@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Reusable Settings Dropdown Row Component -->
+<!-- Creates a setting row with label, optional icon, and dropdown selector -->
+<!-- Usage: <setting_dropdown_row label="Display Sleep" label_tag="Display Sleep" icon="clock"/> -->
+<!-- Note: Options can be set via options prop (use &#10; as separator) or in C++ for dynamic data -->
+<!-- Optional: disabled="subject_name" to dim label and disable dropdown when subject = 1 -->
+<component>
+  <api>
+    <prop name="label" type="string" default="Setting"/>
+    <prop name="label_tag" type="string" default=""/>
+    <prop name="icon" type="string" default=""/>
+    <prop name="description" type="string" default=""/>
+    <prop name="description_tag" type="string" default=""/>
+    <prop name="options" type="string" default=""/>
+    <prop name="callback" type="string" default=""/>
+    <prop name="disabled" type="string" default=""/>
+    <prop name="dropdown_width" type="string" default="33%"/>
+  </api>
+  <!-- Styles for disabled state binding -->
+  <styles>
+    <style name="label_enabled" text_color="#text"/>
+    <style name="label_disabled" text_color="#text_subtle"/>
+  </styles>
+  <view name="dropdown_row"
+        extends="lv_obj" width="100%" height="content" flex_flow="row" style_flex_main_place="start"
+        style_flex_cross_place="center" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md"
+        style_pad_right="#space_md" style_pad_top="#space_xs" style_pad_bottom="#space_xs" style_pad_gap="#space_xs"
+        scrollable="false">
+    <!-- Left side: Optional icon -->
+    <icon name="row_icon" src="$icon" size="sm" variant="secondary"/>
+    <!-- Middle: Label and optional description -->
+    <lv_obj height="content" width="0"
+            style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" flex_grow="1" scrollable="false">
+      <text_body name="label" text="$label" translation_tag="$label_tag" long_mode="wrap" width="100%">
+        <bind_style name="label_enabled" subject="$disabled" ref_value="0"/>
+        <bind_style name="label_disabled" subject="$disabled" ref_value="1"/>
+      </text_body>
+      <!-- Description shown only if provided -->
+      <text_small name="description" text="$description" translation_tag="$description_tag" long_mode="wrap" width="100%"/>
+    </lv_obj>
+    <!-- Right side: Dropdown -->
+    <lv_dropdown name="dropdown"
+                 width="$dropdown_width" height="#input_height" options="$options" style_radius="#border_radius" style_border_width="0">
+      <bind_state_if_eq subject="$disabled" state="disabled" ref_value="1"/>
+      <event_cb trigger="value_changed" callback="$callback"/>
+    </lv_dropdown>
+  </view>
+</component>

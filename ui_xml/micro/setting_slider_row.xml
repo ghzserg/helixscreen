@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Reusable Settings Slider Row Component -->
+<!-- Creates a settings row with label, description, and an inline slider -->
+<!-- Usage: <setting_slider_row label="Scroll Speed" label_tag="Scroll Speed" icon="tune" description="Higher = faster" description_tag="Higher = faster" min="1" max="100" value="50"/> -->
+<!-- Optional: disabled="subject_name" to dim label and disable slider when subject = 1 -->
+<component>
+  <api>
+    <prop name="label" type="string" default="Setting"/>
+    <prop name="label_tag" type="string" default=""/>
+    <prop name="icon" type="string" default=""/>
+    <prop name="description" type="string" default=""/>
+    <prop name="description_tag" type="string" default=""/>
+    <prop name="min" type="string" default="0"/>
+    <prop name="max" type="string" default="100"/>
+    <prop name="value" type="string" default="50"/>
+    <prop name="callback" type="string" default=""/>
+    <prop name="user_data" type="string" default=""/>
+    <prop name="min_icon" type="string" default=""/>
+    <prop name="max_icon" type="string" default=""/>
+    <prop name="disabled" type="string" default=""/>
+  </api>
+  <!-- Styles for disabled state binding -->
+  <styles>
+    <style name="label_enabled" text_color="#text"/>
+    <style name="label_disabled" text_color="#text_subtle"/>
+  </styles>
+  <view name="slider_row"
+        extends="lv_obj" width="100%" height="content" flex_flow="column" style_bg_opa="0" style_border_width="0"
+        style_pad_left="#space_md" style_pad_right="#space_md" style_pad_top="#space_xs" style_pad_bottom="#space_xs"
+        style_pad_gap="#space_xs" scrollable="false">
+    <!-- Top row: Icon, label, value display -->
+    <lv_obj width="100%"
+            height="content" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
+            style_pad_all="0" scrollable="false">
+      <!-- Left side: Icon and label -->
+      <lv_obj height="content"
+              flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm" style_pad_all="0"
+              scrollable="false">
+        <icon name="row_icon" src="$icon" size="sm" variant="secondary"/>
+        <text_body name="label" text="$label" translation_tag="$label_tag">
+          <bind_style name="label_enabled" subject="$disabled" ref_value="0"/>
+          <bind_style name="label_disabled" subject="$disabled" ref_value="1"/>
+        </text_body>
+      </lv_obj>
+      <!-- Right side: Current value (bind to subject when available) -->
+      <text_muted name="value_label" text="$value"/>
+    </lv_obj>
+    <!-- Description (if provided) -->
+    <text_small name="description" text="$description" translation_tag="$description_tag"/>
+    <!-- Slider with optional min/max icons - vertical padding for knob clearance -->
+    <lv_obj width="100%"
+            height="content" flex_flow="row" style_flex_cross_place="center" style_pad_left="0" style_pad_right="0"
+            style_pad_top="#space_xs" style_pad_bottom="#space_xs" style_pad_gap="#space_xs"
+            style_margin_top="0" scrollable="false">
+      <icon name="min_icon" src="$min_icon" size="xs" variant="secondary"/>
+      <lv_slider name="slider" flex_grow="1" min_value="$min" max_value="$max" value="$value">
+        <bind_state_if_eq subject="$disabled" state="disabled" ref_value="1"/>
+        <event_cb trigger="value_changed" callback="$callback" user_data="$user_data"/>
+      </lv_slider>
+      <icon name="max_icon" src="$max_icon" size="xs" variant="secondary"/>
+    </lv_obj>
+  </view>
+</component>

@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Reusable Settings Section Header Component -->
+<!-- Creates a section divider with optional icon and title for settings panel groups -->
+<!-- Usage: <setting_section_header title="APPEARANCE" title_tag="APPEARANCE" icon="light"/> -->
+<component>
+  <api>
+    <prop name="title" type="string" default="Section"/>
+    <prop name="title_tag" type="string" default=""/>
+    <prop name="icon" type="string" default=""/>
+    <prop name="action_button_text" type="string" default=""/>
+    <prop name="action_button_text_tag" type="string" default=""/>
+    <prop name="action_button_icon" type="string" default=""/>
+    <prop name="action_button_callback" type="string" default=""/>
+    <prop name="action_button_bg_color" type="string" default="#primary"/>
+    <prop name="action_button_text_color" type="string" default="#text"/>
+    <prop name="action_button_icon_color" type="string" default="#text"/>
+    <prop name="action_button_radius" type="string" default="#border_radius_small"/>
+    <prop name="action_button_width" type="string" default="content"/>
+    <prop name="action_button_height" type="string" default="#button_height_sm"/>
+    <prop name="action_button_pad" type="string" default="#space_sm"/>
+    <prop name="hide_action_button" type="string" default="true"/>
+    <prop name="hide_action_button_icon" type="string" default="true"/>
+    <prop name="hide_action_button_text" type="string" default="false"/>
+  </api>
+  <view extends="lv_obj"
+        width="100%" height="content" style_bg_opa="0" style_border_width="0" style_pad_left="#space_md"
+        style_pad_right="#space_md" style_pad_top="#space_sm" style_pad_bottom="#space_xxs" flex_flow="column"
+        style_pad_gap="0" scrollable="false">
+    <!-- Section title row with optional icon -->
+    <lv_obj width="100%"
+            height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+            style_flex_main_place="space_between" style_pad_gap="#space_sm" scrollable="false">
+      <lv_obj height="content"
+              style_pad_all="0" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_sm"
+              scrollable="false">
+        <!-- Section icon (only shown if icon prop is set) -->
+        <icon name="section_icon" src="$icon" size="sm" variant="muted"/>
+        <!-- Section title (uppercase style with letter-spacing for hierarchy) -->
+        <text_muted text="$title" translation_tag="$title_tag" style_text_letter_space="1"/>
+      </lv_obj>
+      <ui_button name="section_action_button"
+                 width="$action_button_width" height="$action_button_height" icon="$action_button_icon"
+                 text="$action_button_text" hidden="$hide_action_button">
+        <event_cb trigger="clicked" callback="$action_button_callback"/>
+      </ui_button>
+    </lv_obj>
+    <!-- Subtle divider line below title -->
+    <divider_horizontal style_margin_top="#space_xs"/>
+  </view>
+</component>
