@@ -8,9 +8,8 @@
 #include "abort_manager.h"
 #include "hv/WebSocketClient.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
-
-#include <fmt/format.h>
 
 #include "hv/json.hpp"
 
