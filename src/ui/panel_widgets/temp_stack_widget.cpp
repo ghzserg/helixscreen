@@ -121,6 +121,10 @@ void TempStackWidget::detach() {
         NavigationManager::instance().unregister_overlay_instance(bed_temp_panel_);
         helix::ui::safe_delete(bed_temp_panel_);
     }
+    if (chamber_temp_panel_) {
+        NavigationManager::instance().unregister_overlay_instance(chamber_temp_panel_);
+        helix::ui::safe_delete(chamber_temp_panel_);
+    }
 
     if (s_active_instance == this) {
         s_active_instance = nullptr;
@@ -212,6 +216,36 @@ void TempStackWidget::handle_bed_clicked() {
     }
 }
 
+void TempStackWidget::handle_chamber_clicked() {
+    spdlog::info("[TempStackWidget] Chamber clicked - opening chamber temp panel");
+
+    if (!temp_control_panel_) {
+        spdlog::error("[TempStackWidget] TempControlPanel not initialized");
+        NOTIFY_ERROR("Temperature panel not available");
+        return;
+    }
+
+    if (!chamber_temp_panel_ && parent_screen_) {
+        chamber_temp_panel_ =
+            static_cast<lv_obj_t*>(lv_xml_create(parent_screen_, "chamber_temp_panel", nullptr));
+        if (chamber_temp_panel_) {
+            temp_control_panel_->setup_chamber_panel(chamber_temp_panel_, parent_screen_);
+            NavigationManager::instance().register_overlay_instance(
+                chamber_temp_panel_, temp_control_panel_->get_chamber_lifecycle());
+            lv_obj_add_flag(chamber_temp_panel_, LV_OBJ_FLAG_HIDDEN);
+            spdlog::info("[TempStackWidget] Chamber temp panel created");
+        } else {
+            spdlog::error("[TempStackWidget] Failed to create chamber temp panel");
+            NOTIFY_ERROR("Failed to load temperature panel");
+            return;
+        }
+    }
+
+    if (chamber_temp_panel_) {
+        NavigationManager::instance().push_overlay(chamber_temp_panel_);
+    }
+}
+
 void TempStackWidget::temp_stack_nozzle_cb(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[TempStackWidget] temp_stack_nozzle_cb");
     (void)e;
@@ -226,6 +260,15 @@ void TempStackWidget::temp_stack_bed_cb(lv_event_t* e) {
     (void)e;
     if (s_active_instance) {
         s_active_instance->handle_bed_clicked();
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void TempStackWidget::temp_stack_chamber_cb(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[TempStackWidget] temp_stack_chamber_cb");
+    (void)e;
+    if (s_active_instance) {
+        s_active_instance->handle_chamber_clicked();
     }
     LVGL_SAFE_EVENT_CB_END();
 }

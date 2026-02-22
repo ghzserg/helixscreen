@@ -210,6 +210,11 @@ class PrinterCapabilitiesState {
         return const_cast<lv_subject_t*>(&printer_has_chamber_sensor_);
     }
 
+    /// 1 if printer has active chamber heater (heater_generic chamber)
+    lv_subject_t* get_printer_has_chamber_heater_subject() const {
+        return const_cast<lv_subject_t*>(&printer_has_chamber_heater_);
+    }
+
     /// 1 if printer has screws_tilt_adjust
     lv_subject_t* get_printer_has_screws_tilt_subject() const {
         return const_cast<lv_subject_t*>(&printer_has_screws_tilt_);
@@ -268,6 +273,7 @@ class PrinterCapabilitiesState {
     lv_subject_t printer_has_firmware_retraction_{}; // firmware retraction (G10/G11)
     lv_subject_t printer_bed_moves_{};               // 0=gantry moves on Z, 1=bed moves on Z
     lv_subject_t printer_has_chamber_sensor_{};      // chamber temperature sensor
+    lv_subject_t printer_has_chamber_heater_{};      // active chamber heater (heater_generic)
     lv_subject_t printer_has_screws_tilt_{};         // screws_tilt_adjust
     lv_subject_t printer_has_webcam_{};              // enabled webcam configured
     lv_subject_t printer_has_extra_fans_{};          // extra controllable fans beyond part cooling

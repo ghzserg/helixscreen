@@ -275,11 +275,18 @@ class PrinterState {
     }
 
     // Per-extruder subject access (returns nullptr if not found)
+    // Prefer the overloads with SubjectLifetime when creating observers!
     lv_subject_t* get_extruder_temp_subject(const std::string& name) {
         return temperature_state_.get_extruder_temp_subject(name);
     }
     lv_subject_t* get_extruder_target_subject(const std::string& name) {
         return temperature_state_.get_extruder_target_subject(name);
+    }
+    lv_subject_t* get_extruder_temp_subject(const std::string& name, SubjectLifetime& lifetime) {
+        return temperature_state_.get_extruder_temp_subject(name, lifetime);
+    }
+    lv_subject_t* get_extruder_target_subject(const std::string& name, SubjectLifetime& lifetime) {
+        return temperature_state_.get_extruder_target_subject(name, lifetime);
     }
 
     int extruder_count() const {
@@ -304,6 +311,12 @@ class PrinterState {
     }
     lv_subject_t* get_bed_target_subject() {
         return temperature_state_.get_bed_target_subject();
+    }
+    lv_subject_t* get_chamber_temp_subject() {
+        return temperature_state_.get_chamber_temp_subject();
+    }
+    lv_subject_t* get_chamber_target_subject() {
+        return temperature_state_.get_chamber_target_subject();
     }
 
     // Print progress subjects - delegated to PrinterPrintState component
@@ -746,14 +759,21 @@ class PrinterState {
     }
 
     /**
-     * @brief Get speed subject for a specific fan
+     * @brief Get speed subject for a specific fan (with lifetime token for observer safety)
      *
-     * Returns the per-fan speed subject for reactive UI updates.
-     * Each fan discovered via init_fans() has its own subject.
+     * IMPORTANT: Use this overload when creating observers on the returned subject.
+     * Dynamic fan subjects may be destroyed during reconnection — the lifetime token
+     * prevents use-after-free crashes in ObserverGuard.
      *
      * @param object_name Moonraker object name (e.g., "fan", "heater_fan hotend_fan")
+     * @param[out] lifetime Receives the subject's lifetime token
      * @return Pointer to subject, or nullptr if fan not found
      */
+    lv_subject_t* get_fan_speed_subject(const std::string& object_name, SubjectLifetime& lifetime) {
+        return fan_state_.get_fan_speed_subject(object_name, lifetime);
+    }
+
+    /// Get speed subject without lifetime token (only for non-observer uses like reading values)
     lv_subject_t* get_fan_speed_subject(const std::string& object_name) {
         return fan_state_.get_fan_speed_subject(object_name);
     }
@@ -1332,6 +1352,17 @@ class PrinterState {
      */
     lv_subject_t* get_printer_bed_moves_subject() {
         return capabilities_state_.get_printer_bed_moves_subject();
+    }
+
+    /**
+     * @brief Get printer_has_chamber_heater subject
+     *
+     * Returns 1 if the printer has an active chamber heater (heater_generic chamber),
+     * 0 if chamber is sensor-only or absent. Used by chamber temp overlay to
+     * show/hide preset controls.
+     */
+    lv_subject_t* get_printer_has_chamber_heater_subject() {
+        return capabilities_state_.get_printer_has_chamber_heater_subject();
     }
 
     /**

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "ui_observer_guard.h" // SubjectLifetime
+
 #include "subject_managed_panel.h"
 
 #include <lvgl.h>
@@ -26,6 +28,8 @@ struct ExtruderInfo {
     float target = 0.0f;
     std::unique_ptr<lv_subject_t> temp_subject;   ///< Centidegrees (value * 10)
     std::unique_ptr<lv_subject_t> target_subject; ///< Centidegrees
+    SubjectLifetime temp_lifetime;   ///< Lifetime token for temp_subject (for ObserverGuard safety)
+    SubjectLifetime target_lifetime; ///< Lifetime token for target_subject
 };
 
 /**
@@ -100,8 +104,14 @@ class PrinterTemperatureState {
     }
 
     // Per-extruder subject accessors (returns nullptr if not found)
+    // Prefer the overloads that return SubjectLifetime when creating observers!
     lv_subject_t* get_extruder_temp_subject(const std::string& name);
     lv_subject_t* get_extruder_target_subject(const std::string& name);
+
+    /// Get per-extruder temp subject with lifetime token (use when creating observers)
+    lv_subject_t* get_extruder_temp_subject(const std::string& name, SubjectLifetime& lifetime);
+    /// Get per-extruder target subject with lifetime token (use when creating observers)
+    lv_subject_t* get_extruder_target_subject(const std::string& name, SubjectLifetime& lifetime);
 
     lv_subject_t* get_bed_temp_subject() {
         return &bed_temp_;
@@ -111,6 +121,9 @@ class PrinterTemperatureState {
     }
     lv_subject_t* get_chamber_temp_subject() {
         return &chamber_temp_;
+    }
+    lv_subject_t* get_chamber_target_subject() {
+        return &chamber_target_;
     }
 
     /// Number of tracked extruders
@@ -134,6 +147,21 @@ class PrinterTemperatureState {
      */
     void set_chamber_sensor_name(const std::string& name) {
         chamber_sensor_name_ = name;
+    }
+
+    /**
+     * @brief Set the heater name used to control chamber temperature
+     * @param name Klipper heater name (e.g., "heater_generic chamber")
+     */
+    void set_chamber_heater_name(const std::string& name) {
+        chamber_heater_name_ = name;
+    }
+
+    /**
+     * @brief Get the Klipper heater name for chamber (empty if sensor-only)
+     */
+    const std::string& chamber_heater_name() const {
+        return chamber_heater_name_;
     }
 
     /**
@@ -166,6 +194,7 @@ class PrinterTemperatureState {
     lv_subject_t bed_temp_{};
     lv_subject_t bed_target_{};
     lv_subject_t chamber_temp_{};
+    lv_subject_t chamber_target_{}; ///< 0 when sensor-only, actual target when heater present
 
     // Dynamic per-extruder tracking
     std::unordered_map<std::string, ExtruderInfo> extruders_;
@@ -174,8 +203,10 @@ class PrinterTemperatureState {
     // Active extruder name (defaults to "extruder")
     std::string active_extruder_name_ = "extruder";
 
-    // Chamber sensor configuration
-    std::string chamber_sensor_name_;
+    // Chamber configuration
+    std::string chamber_sensor_name_; ///< Klipper sensor name (e.g., "temperature_sensor chamber")
+    std::string chamber_heater_name_; ///< Klipper heater name (e.g., "heater_generic chamber"),
+                                      ///< empty if sensor-only
 };
 
 } // namespace helix

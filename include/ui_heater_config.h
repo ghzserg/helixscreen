@@ -16,7 +16,8 @@
  * @brief Heater type enumeration
  */
 namespace helix {
-enum class HeaterType { Nozzle, Bed };
+enum class HeaterType { Nozzle = 0, Bed = 1, Chamber = 2 };
+constexpr int HEATER_TYPE_COUNT = 3;
 } // namespace helix
 
 /**

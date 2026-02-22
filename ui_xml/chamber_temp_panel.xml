@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <!-- Chamber Temperature Sub-Screen -->
+  <!-- Temperature control with presets and custom input -->
+  <!-- Component-local constants for theme-aware colors -->
+  <consts>
+    <!-- Chamber temperature graph series color (green) -->
+    <const name="temp_graph_chamber_light" value="#A3BE8C"/>
+    <const name="temp_graph_chamber_dark" value="#B5D1A0"/>
+  </consts>
+  <!-- Uses shared backdrop from navigation system -->
+  <view name="chamber_temp_panel" extends="overlay_panel" title="Chamber Temperature" title_tag="Chamber Temperature">
+    <!-- Content Area: Two Columns -->
+    <lv_obj name="overlay_content"
+            width="100%" flex_grow="1" style_pad_all="#space_lg" scrollable="false" style_border_opa="0" flex_flow="row"
+            style_flex_main_place="space_between">
+      <!-- Left Column (66%): Temperature Graph with Y-axis labels + X-axis time labels -->
+      <lv_obj name="graph_outer_container"
+              width="66%" height="100%" style_pad_all="0" scrollable="false" style_border_opa="0" flex_flow="column"
+              style_pad_gap="0">
+        <!-- Chart area (Y-axis labels and X-axis time labels rendered directly on canvas) -->
+        <lv_obj name="chart_area" width="100%" flex_grow="1" style_pad_all="0" scrollable="false" style_border_opa="0">
+          <!-- Temperature graph widget created programmatically in C++ -->
+        </lv_obj>
+        <!-- X-axis time labels are now rendered directly on the graph canvas via draw callback -->
+      </lv_obj>
+      <!-- Right Column (33%): Controls - simple top-to-bottom flow -->
+      <lv_obj name="right_column"
+              width="33%" height="100%" style_pad_all="0" scrollable="false" style_border_opa="0" flex_flow="column"
+              style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        <!-- Current/Target Temperature Display Card with Icon and Status -->
+        <ui_card name="temp_display_card"
+                 width="100%" height="content" style_radius="0" flex_flow="column" style_flex_main_place="center"
+                 style_pad_gap="#space_xs" style_pad_all="#space_sm">
+          <!-- Horizontal centering row with flex spacers -->
+          <lv_obj width="100%" flex_flow="row" style_pad_all="0" scrollable="false">
+            <!-- Left spacer -->
+            <lv_obj height="1" flex_grow="1" style_pad_all="0" scrollable="false"/>
+            <!-- Content column: left-aligned children -->
+            <lv_obj height="content"
+                    flex_flow="column" style_flex_cross_place="start" style_pad_all="0" style_pad_gap="#space_xs"
+                    scrollable="false">
+              <icon name="chamber_icon" src="fridge_industrial" size="xl" variant="secondary"/>
+              <lv_obj style_pad_all="0"
+                      scrollable="false" flex_flow="column" style_flex_main_place="center"
+                      style_flex_cross_place="start" style_pad_gap="#space_xxs">
+                <text_small text="Current / Target" translation_tag="Current / Target"/>
+                <temp_display name="chamber_temp_display"
+                              size="lg" show_target="true" bind_current="chamber_temp" bind_target="chamber_target"/>
+              </lv_obj>
+              <!-- Status Message -->
+              <text_small name="status_message" bind_text="chamber_status" style_text_align="left"/>
+            </lv_obj>
+            <!-- Right spacer -->
+            <lv_obj height="1" flex_grow="1" style_pad_all="0" scrollable="false"/>
+          </lv_obj>
+        </ui_card>
+        <!-- Spacer to push buttons to bottom -->
+        <lv_obj width="1" flex_grow="1" style_pad_all="0" scrollable="false"/>
+        <!-- Preset buttons: hidden when chamber is sensor-only (no heater) -->
+        <lv_obj name="preset_grid"
+                width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="row_wrap"
+                style_flex_main_place="space_between" style_pad_gap="#space_xs">
+          <bind_flag_if_eq subject="printer_has_chamber_heater" flag="hidden" ref_value="0"/>
+          <ui_button name="preset_off"
+                     width="48%" text="Off" translation_tag="Off" variant="ghost" style_border_width="#border_width"
+                     style_border_color="#border" style_border_opa="255">
+            <event_cb trigger="clicked" callback="on_heater_preset_clicked"/>
+          </ui_button>
+          <ui_button name="preset_pla" width="48%" text="PLA" translation_tag="PLA">
+            <event_cb trigger="clicked" callback="on_heater_preset_clicked"/>
+          </ui_button>
+          <ui_button name="preset_petg" width="48%" text="PETG" translation_tag="PETG">
+            <event_cb trigger="clicked" callback="on_heater_preset_clicked"/>
+          </ui_button>
+          <ui_button name="preset_abs" width="48%" text="ABS" translation_tag="ABS">
+            <event_cb trigger="clicked" callback="on_heater_preset_clicked"/>
+          </ui_button>
+        </lv_obj>
+        <ui_button name="btn_custom" width="100%" text="Custom..." translation_tag="Custom..." variant="secondary">
+          <bind_flag_if_eq subject="printer_has_chamber_heater" flag="hidden" ref_value="0"/>
+          <event_cb trigger="clicked" callback="on_heater_custom_clicked"/>
+        </ui_button>
+      </lv_obj>
+    </lv_obj>
+  </view>
+</component>

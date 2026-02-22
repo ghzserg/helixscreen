@@ -36,6 +36,7 @@ class TempStackWidget : public PanelWidget {
     // Lazy overlay panels
     lv_obj_t* nozzle_temp_panel_ = nullptr;
     lv_obj_t* bed_temp_panel_ = nullptr;
+    lv_obj_t* chamber_temp_panel_ = nullptr;
 
     // Heating icon animators
     HeatingIconAnimator nozzle_animator_;
@@ -62,11 +63,13 @@ class TempStackWidget : public PanelWidget {
 
     void handle_nozzle_clicked();
     void handle_bed_clicked();
+    void handle_chamber_clicked();
 
   public:
     // Public for early XML callback registration (before attach)
     static void temp_stack_nozzle_cb(lv_event_t* e);
     static void temp_stack_bed_cb(lv_event_t* e);
+    static void temp_stack_chamber_cb(lv_event_t* e);
 };
 
 } // namespace helix

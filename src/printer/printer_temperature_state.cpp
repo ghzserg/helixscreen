@@ -44,6 +44,7 @@ void PrinterTemperatureState::init_subjects(bool register_xml) {
     INIT_SUBJECT_INT(bed_temp, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(bed_target, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(chamber_temp, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(chamber_target, 0, subjects_, register_xml);
 
     // Extruder version subject (bumped when extruder list changes)
     INIT_SUBJECT_INT(extruder_version, 0, subjects_, register_xml);
@@ -59,7 +60,14 @@ void PrinterTemperatureState::deinit_subjects() {
 
     spdlog::debug("[PrinterTemperatureState] Deinitializing subjects");
 
-    // Deinit dynamic per-extruder subjects before clearing map
+    // Destroy lifetime tokens FIRST — expires ObserverGuard weak_ptrs so they
+    // won't call lv_observer_remove() on observers freed by lv_subject_deinit().
+    for (auto& [name, info] : extruders_) {
+        info.temp_lifetime.reset();
+        info.target_lifetime.reset();
+    }
+
+    // Now safe to deinit dynamic per-extruder subjects
     for (auto& [name, info] : extruders_) {
         if (info.temp_subject) {
             lv_subject_deinit(info.temp_subject.get());
@@ -89,11 +97,18 @@ void PrinterTemperatureState::register_xml_subjects() {
     lv_xml_register_subject(nullptr, "bed_temp", &bed_temp_);
     lv_xml_register_subject(nullptr, "bed_target", &bed_target_);
     lv_xml_register_subject(nullptr, "chamber_temp", &chamber_temp_);
+    lv_xml_register_subject(nullptr, "chamber_target", &chamber_target_);
     lv_xml_register_subject(nullptr, "extruder_version", &extruder_version_);
 }
 
 void PrinterTemperatureState::init_extruders(const std::vector<std::string>& heaters) {
-    // Deinit existing per-extruder subjects before clearing
+    // Expire lifetime tokens FIRST — invalidates ObserverGuard weak_ptrs
+    for (auto& [name, info] : extruders_) {
+        info.temp_lifetime.reset();
+        info.target_lifetime.reset();
+    }
+
+    // Now safe to deinit existing per-extruder subjects
     for (auto& [name, info] : extruders_) {
         if (info.temp_subject) {
             lv_subject_deinit(info.temp_subject.get());
@@ -132,9 +147,11 @@ void PrinterTemperatureState::init_extruders(const std::vector<std::string>& hea
         // Create heap-allocated subjects (stable across rehash)
         info.temp_subject = std::make_unique<lv_subject_t>();
         lv_subject_init_int(info.temp_subject.get(), 0);
+        info.temp_lifetime = std::make_shared<bool>(true);
 
         info.target_subject = std::make_unique<lv_subject_t>();
         lv_subject_init_int(info.target_subject.get(), 0);
+        info.target_lifetime = std::make_shared<bool>(true);
 
         spdlog::trace("[PrinterTemperatureState] Registered extruder: {} -> \"{}\"", name,
                       info.display_name);
@@ -155,11 +172,33 @@ lv_subject_t* PrinterTemperatureState::get_extruder_temp_subject(const std::stri
     return nullptr;
 }
 
+lv_subject_t* PrinterTemperatureState::get_extruder_temp_subject(const std::string& name,
+                                                                 SubjectLifetime& lifetime) {
+    auto it = extruders_.find(name);
+    if (it != extruders_.end() && it->second.temp_subject) {
+        lifetime = it->second.temp_lifetime;
+        return it->second.temp_subject.get();
+    }
+    lifetime.reset();
+    return nullptr;
+}
+
 lv_subject_t* PrinterTemperatureState::get_extruder_target_subject(const std::string& name) {
     auto it = extruders_.find(name);
     if (it != extruders_.end() && it->second.target_subject) {
         return it->second.target_subject.get();
     }
+    return nullptr;
+}
+
+lv_subject_t* PrinterTemperatureState::get_extruder_target_subject(const std::string& name,
+                                                                   SubjectLifetime& lifetime) {
+    auto it = extruders_.find(name);
+    if (it != extruders_.end() && it->second.target_subject) {
+        lifetime = it->second.target_lifetime;
+        return it->second.target_subject.get();
+    }
+    lifetime.reset();
     return nullptr;
 }
 
@@ -253,15 +292,32 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
         }
     }
 
-    // Update chamber temperature (if configured)
-    if (!chamber_sensor_name_.empty() && status.contains(chamber_sensor_name_)) {
+    // Update chamber temperature from heater or sensor
+    // Prefer heater (has both temp + target), fall back to sensor (temp only)
+    if (!chamber_heater_name_.empty() && status.contains(chamber_heater_name_)) {
+        const auto& chamber = status[chamber_heater_name_];
+
+        if (chamber.contains("temperature") && chamber["temperature"].is_number()) {
+            int temp_centi = helix::units::json_to_centidegrees(chamber, "temperature");
+            lv_subject_set_int(&chamber_temp_, temp_centi);
+            spdlog::trace("[PrinterTemperatureState] Chamber temp (heater): {}.{}C",
+                          temp_centi / 10, temp_centi % 10);
+        }
+
+        if (chamber.contains("target") && chamber["target"].is_number()) {
+            int target_centi = helix::units::json_to_centidegrees(chamber, "target");
+            lv_subject_set_int(&chamber_target_, target_centi);
+            spdlog::trace("[PrinterTemperatureState] Chamber target: {}.{}C", target_centi / 10,
+                          target_centi % 10);
+        }
+    } else if (!chamber_sensor_name_.empty() && status.contains(chamber_sensor_name_)) {
         const auto& chamber = status[chamber_sensor_name_];
 
         if (chamber.contains("temperature") && chamber["temperature"].is_number()) {
             int temp_centi = helix::units::json_to_centidegrees(chamber, "temperature");
             lv_subject_set_int(&chamber_temp_, temp_centi);
-            spdlog::trace("[PrinterTemperatureState] Chamber temp: {}.{}C", temp_centi / 10,
-                          temp_centi % 10);
+            spdlog::trace("[PrinterTemperatureState] Chamber temp (sensor): {}.{}C",
+                          temp_centi / 10, temp_centi % 10);
         }
     }
 }

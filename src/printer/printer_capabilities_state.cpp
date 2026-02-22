@@ -44,6 +44,7 @@ void PrinterCapabilitiesState::init_subjects(bool register_xml) {
     INIT_SUBJECT_INT(printer_has_firmware_retraction, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(printer_bed_moves, 0, subjects_, register_xml); // 0=gantry moves, 1=bed moves
     INIT_SUBJECT_INT(printer_has_chamber_sensor, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(printer_has_chamber_heater, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(printer_has_screws_tilt, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(printer_has_webcam, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(printer_has_extra_fans, 0, subjects_, register_xml);
@@ -98,8 +99,9 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     lv_subject_set_int(&printer_has_firmware_retraction_,
                        hardware.has_firmware_retraction() ? 1 : 0);
 
-    // Chamber temperature sensor capability
+    // Chamber temperature sensor and heater capabilities
     lv_subject_set_int(&printer_has_chamber_sensor_, hardware.has_chamber_sensor() ? 1 : 0);
+    lv_subject_set_int(&printer_has_chamber_heater_, hardware.has_chamber_heater() ? 1 : 0);
 
     // Screws tilt adjust capability
     lv_subject_set_int(&printer_has_screws_tilt_, hardware.has_screws_tilt() ? 1 : 0);

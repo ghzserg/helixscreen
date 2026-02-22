@@ -503,8 +503,9 @@ void PrinterState::set_hardware_internal(const helix::PrinterDiscovery& hardware
         set_kinematics(hardware.kinematics());
     }
 
-    // Tell temperature state which sensor to use for chamber temperature
+    // Tell temperature state which sensor/heater to use for chamber temperature
     temperature_state_.set_chamber_sensor_name(hardware.chamber_sensor_name());
+    temperature_state_.set_chamber_heater_name(hardware.chamber_heater_name());
 
     // Update composite subjects for G-code modification options
     // (visibility depends on both plugin status and capability)

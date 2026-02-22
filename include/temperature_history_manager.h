@@ -31,7 +31,7 @@ struct TempSample {
 /**
  * @brief Heater type classification
  */
-enum class HeaterType { EXTRUDER, BED, CHAMBER };
+enum class TempHistoryHeaterType { EXTRUDER, BED, CHAMBER };
 
 /**
  * @brief Manages temperature history collection for all heaters

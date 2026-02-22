@@ -94,6 +94,7 @@ class PrinterDiscovery {
                 std::string heater_name = name.substr(15); // Remove "heater_generic " prefix
                 if (to_upper(heater_name).find("CHAMBER") != std::string::npos) {
                     has_chamber_heater_ = true;
+                    chamber_heater_name_ = name;
                 }
             }
             // ================================================================
@@ -460,6 +461,7 @@ class PrinterDiscovery {
         has_chamber_heater_ = false;
         has_chamber_sensor_ = false;
         chamber_sensor_name_.clear();
+        chamber_heater_name_.clear();
         has_led_ = false;
         led_effects_.clear();
         has_led_effects_ = false;
@@ -553,6 +555,10 @@ class PrinterDiscovery {
 
     [[nodiscard]] const std::string& chamber_sensor_name() const {
         return chamber_sensor_name_;
+    }
+
+    [[nodiscard]] const std::string& chamber_heater_name() const {
+        return chamber_heater_name_;
     }
 
     [[nodiscard]] bool has_led() const {
@@ -953,6 +959,7 @@ class PrinterDiscovery {
     bool has_chamber_heater_ = false;
     bool has_chamber_sensor_ = false;
     std::string chamber_sensor_name_;
+    std::string chamber_heater_name_;
     bool has_led_ = false;
     std::vector<std::string> led_effects_;
     bool has_led_effects_ = false;
