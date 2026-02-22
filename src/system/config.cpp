@@ -154,6 +154,22 @@ bool migrate_display_config(json& data) {
     return true;
 }
 
+/// Erase a value at a JSON pointer path without triggering deprecated
+/// json_pointer implicit string conversion (nlohmann json 3.11+ deprecation)
+void erase_at_pointer(json& data, const json::json_pointer& ptr) {
+    // Navigate to parent, then erase the leaf key
+    auto ptr_str = ptr.to_string();
+    auto last_slash = ptr_str.rfind('/');
+    if (last_slash == 0) {
+        // Top-level key like "/foo"
+        data.erase(ptr_str.substr(1));
+    } else if (last_slash != std::string::npos) {
+        // Nested key like "/foo/bar" — get parent, erase leaf
+        json::json_pointer parent_ptr(ptr_str.substr(0, last_slash));
+        data[parent_ptr].erase(ptr_str.substr(last_slash + 1));
+    }
+}
+
 /// Migrate config keys from old paths to new paths
 /// @param data JSON config data to migrate (modified in place)
 /// @param migrations Vector of {from_path, to_path} pairs (JSON pointer format)
@@ -174,7 +190,7 @@ bool migrate_config_keys(json& data,
         // Skip if target already exists (don't overwrite)
         if (data.contains(to_ptr)) {
             spdlog::debug("[Config] Migration skipped: {} already exists", to_path);
-            data.erase(from_ptr);
+            erase_at_pointer(data, from_ptr);
             any_migrated = true;
             continue;
         }
@@ -192,7 +208,7 @@ bool migrate_config_keys(json& data,
 
         // Copy value to new location and remove from old
         data[to_ptr] = data[from_ptr];
-        data.erase(from_ptr);
+        erase_at_pointer(data, from_ptr);
         spdlog::info("[Config] Migrated {} -> {}", from_path, to_path);
         any_migrated = true;
     }
