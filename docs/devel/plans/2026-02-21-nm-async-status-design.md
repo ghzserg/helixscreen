@@ -1,7 +1,7 @@
 # NetworkManager Backend: Async Status Polling
 
 **Date**: 2026-02-21
-**Status**: Approved
+**Status**: Implemented
 **Problem**: `WifiBackendNetworkManager::get_status()` makes 2-4 synchronous `popen("nmcli ...")` calls on the main LVGL thread, blocking UI rendering for 100-1000ms per call. Called every 5s from home panel and repeatedly from network settings overlay.
 
 ## Design
