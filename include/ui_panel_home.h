@@ -144,7 +144,11 @@ class HomePanel : public PanelBase {
     helix::PrintingTip pending_tip_; // Tip waiting to be displayed after fade-out
     // configured_leds_ removed - read LedController::selected_strips() lazily
     lv_timer_t* tip_rotation_timer_ = nullptr;
-    lv_obj_t* tip_label_ = nullptr;                     // Cached for fade animation
+    lv_obj_t* tip_label_ = nullptr; // Cached for fade animation
+
+    // Pre-scaled printer image snapshot — eliminates per-frame bilinear scaling
+    lv_draw_buf_t* cached_printer_snapshot_ = nullptr;
+    lv_timer_t* snapshot_timer_ = nullptr;
     bool tip_animating_ = false;                        // Prevents overlapping animations
     lv_timer_t* signal_poll_timer_ = nullptr;           // Polls WiFi signal strength every 5s
     std::shared_ptr<helix::WiFiManager> wifi_manager_;  // For signal strength queries
@@ -162,10 +166,12 @@ class HomePanel : public PanelBase {
     void cache_widget_references();
     void update_tip_of_day();
     void start_tip_fade_transition(const helix::PrintingTip& new_tip);
-    void apply_pending_tip();         // Called when fade-out completes
-    void detect_network_type();       // Detects WiFi vs Ethernet vs disconnected
-    int compute_network_icon_state(); // Maps network type + signal → 0-5
-    void update_network_icon_state(); // Updates the subject
+    void apply_pending_tip();               // Called when fade-out completes
+    void schedule_printer_image_snapshot(); // Deferred snapshot after layout
+    void take_printer_image_snapshot();     // Timer callback: capture pre-scaled image
+    void detect_network_type();             // Detects WiFi vs Ethernet vs disconnected
+    int compute_network_icon_state();       // Maps network type + signal → 0-5
+    void update_network_icon_state();       // Updates the subject
     static void signal_poll_timer_cb(lv_timer_t* timer);
 
     void flash_light_icon();
