@@ -803,6 +803,24 @@
           "pattern": "ender-3-v3",
           "confidence": 95,
           "reason": "Hostname contains 'ender-3-v3'"
+        },
+        {
+          "type": "hostname_exclude",
+          "field": "hostname",
+          "pattern": "v3ke",
+          "reason": "Excluded: hostname suggests V3 KE variant"
+        },
+        {
+          "type": "hostname_exclude",
+          "field": "hostname",
+          "pattern": "v3-ke",
+          "reason": "Excluded: hostname suggests V3 KE variant"
+        },
+        {
+          "type": "hostname_exclude",
+          "field": "hostname",
+          "pattern": "v3_ke",
+          "reason": "Excluded: hostname suggests V3 KE variant"
         }
       ]
     },

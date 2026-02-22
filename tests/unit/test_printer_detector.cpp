@@ -178,15 +178,14 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Detect by hostname - 
 TEST_CASE_METHOD(PrinterDetectorFixture,
                  "PrinterDetector: Detect by hostname - Creality Ender 3 V3 KE",
                  "[printer][hostname_match]") {
-    PrinterHardwareData hardware{
-        .heaters = {"extruder", "heater_bed"},
-        .sensors = {},
-        .fans = {"fan", "heater_fan hotend_fan"},
-        .leds = {},
-        .hostname = "Creality_Ender_3_V3_KE",
-        .printer_objects = {"adxl345"},
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
-        .kinematics = "cartesian"};
+    PrinterHardwareData hardware{.heaters = {"extruder", "heater_bed"},
+                                 .sensors = {},
+                                 .fans = {"fan", "heater_fan hotend_fan"},
+                                 .leds = {},
+                                 .hostname = "Creality_Ender_3_V3_KE",
+                                 .printer_objects = {"adxl345"},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+                                 .kinematics = "cartesian"};
 
     auto result = PrinterDetector::detect(hardware);
 
@@ -198,20 +197,60 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
 TEST_CASE_METHOD(PrinterDetectorFixture,
                  "PrinterDetector: Distinguish Ender-3 V3 KE from Ender-3 V3",
                  "[printer][hostname_match]") {
-    PrinterHardwareData hardware{
-        .heaters = {"extruder", "heater_bed"},
-        .sensors = {},
-        .fans = {"fan", "heater_fan hotend_fan"},
-        .leds = {},
-        .hostname = "creality-ender3-v3-ke",
-        .printer_objects = {"adxl345"},
-        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
-        .kinematics = "cartesian"};
+    PrinterHardwareData hardware{.heaters = {"extruder", "heater_bed"},
+                                 .sensors = {},
+                                 .fans = {"fan", "heater_fan hotend_fan"},
+                                 .leds = {},
+                                 .hostname = "creality-ender3-v3-ke",
+                                 .printer_objects = {"adxl345"},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+                                 .kinematics = "cartesian"};
 
     auto result = PrinterDetector::detect(hardware);
 
     REQUIRE(result.detected());
     REQUIRE(result.type_name == "Creality Ender-3 V3 KE");
+    REQUIRE(result.confidence >= 95);
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: V3 KE hostname does not match V3 (hostname_exclude)",
+                 "[printer][hostname_match][hostname_exclude]") {
+    // "ender-3-v3-ke" contains "ender-3-v3" as a substring, so without
+    // hostname_exclude the V3 non-KE entry would also match at high confidence.
+    // The hostname_exclude heuristic on V3 disqualifies it when "v3-ke" is present.
+    PrinterHardwareData hardware{.heaters = {"extruder", "heater_bed"},
+                                 .sensors = {},
+                                 .fans = {"fan", "heater_fan hotend_fan"},
+                                 .leds = {},
+                                 .hostname = "ender-3-v3-ke",
+                                 .printer_objects = {"adxl345"},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+                                 .kinematics = "cartesian"};
+
+    auto result = PrinterDetector::detect(hardware);
+
+    REQUIRE(result.detected());
+    REQUIRE(result.type_name == "Creality Ender-3 V3 KE");
+    REQUIRE(result.confidence >= 95);
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: V3 hostname without KE still detects V3",
+                 "[printer][hostname_match][hostname_exclude]") {
+    // Ensure the exclusion doesn't break normal V3 detection
+    PrinterHardwareData hardware{.heaters = {"extruder", "heater_bed"},
+                                 .sensors = {},
+                                 .fans = {"fan", "heater_fan hotend_fan"},
+                                 .leds = {},
+                                 .hostname = "ender-3-v3",
+                                 .printer_objects = {"adxl345"},
+                                 .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+                                 .kinematics = "corexy"};
+
+    auto result = PrinterDetector::detect(hardware);
+
+    REQUIRE(result.detected());
+    REQUIRE(result.type_name == "Creality Ender-3 V3");
     REQUIRE(result.confidence >= 95);
 }
 

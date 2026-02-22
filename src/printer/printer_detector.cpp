@@ -345,7 +345,10 @@ bool check_build_volume_range(const BuildVolume& volume, const json& heuristic) 
 // ============================================================================
 
 namespace {
-// Execute a single heuristic and return confidence (0 = no match)
+// Special return value: -1 means "exclude this printer entirely"
+constexpr int HEURISTIC_EXCLUDE = -1;
+
+// Execute a single heuristic and return confidence (0 = no match, -1 = exclude)
 int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware) {
     std::string type = heuristic.value("type", "");
     std::string field = heuristic.value("field", "");
@@ -361,6 +364,13 @@ int execute_heuristic(const json& heuristic, const PrinterHardwareData& hardware
             spdlog::debug("[PrinterDetector] Matched {} pattern '{}' (confidence: {})", type,
                           pattern, confidence);
             return confidence;
+        }
+    } else if (type == "hostname_exclude") {
+        // If hostname matches this pattern, exclude this printer entirely
+        std::string pattern = heuristic.value("pattern", "");
+        if (has_pattern(field_data, pattern)) {
+            spdlog::debug("[PrinterDetector] Excluded by {} pattern '{}'", type, pattern);
+            return HEURISTIC_EXCLUDE;
         }
     } else if (type == "fan_combo") {
         // Multiple patterns must all be present
@@ -525,6 +535,11 @@ PrinterDetectionResult execute_printer_heuristics(const json& printer,
 
     for (const auto& heuristic : printer["heuristics"]) {
         int confidence = execute_heuristic(heuristic, hardware);
+        if (confidence == HEURISTIC_EXCLUDE) {
+            spdlog::debug("[PrinterDetector] {} excluded by heuristic: {}", printer_name,
+                          heuristic.value("reason", ""));
+            return {"", 0, "", 0};
+        }
         if (confidence > 0) {
             matches.push_back({confidence, heuristic.value("reason", "")});
         }
