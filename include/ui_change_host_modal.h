@@ -95,8 +95,8 @@ class ChangeHostModal : public Modal {
     void handle_save();
     void handle_cancel();
     void set_status(const char* icon_name, const char* color_token, const char* text);
-    void on_test_success();
-    void on_test_failure();
+    void on_test_success(lv_obj_t* guard_widget);
+    void on_test_failure(lv_obj_t* guard_widget);
     static void on_input_changed_cb(lv_observer_t* observer, lv_subject_t* subject);
 
     // === Static callback registration ===

@@ -103,9 +103,18 @@ void ChangeHostModal::on_hide() {
     // Clear active instance
     active_instance_ = nullptr;
 
-    // Observers are auto-removed when dialog is destroyed (lv_subject_add_observer_obj)
-    host_ip_observer_ = nullptr;
-    host_port_observer_ = nullptr;
+    // Remove observers NOW rather than relying on auto-removal when dialog
+    // widget is deleted after exit animation. The 150ms animation window
+    // allows subject notifications (from reconnection flood) to fire these
+    // observers on a widget being destroyed, causing heap corruption.
+    if (host_ip_observer_) {
+        lv_observer_remove(host_ip_observer_);
+        host_ip_observer_ = nullptr;
+    }
+    if (host_port_observer_) {
+        lv_observer_remove(host_port_observer_);
+        host_port_observer_ = nullptr;
+    }
 
     spdlog::debug("[ChangeHostModal] on_hide");
 }
@@ -207,22 +216,26 @@ void ChangeHostModal::handle_test_connection() {
     // Construct WebSocket URL
     std::string ws_url = "ws://" + std::string(ip) + ":" + port_clean + "/websocket";
 
+    // Capture dialog widget for widget-safe async callbacks.
+    // We capture it here (on main thread) because the bg thread lambdas
+    // cannot safely read dialog() which may be cleared by hide().
     ChangeHostModal* self = this;
+    lv_obj_t* guard_widget = dialog();
     int result = client->connect(
         ws_url.c_str(),
-        [self, this_generation]() {
+        [self, this_generation, guard_widget]() {
             if (self->test_generation_.load() != this_generation) {
                 spdlog::debug("[ChangeHostModal] Ignoring stale success callback");
                 return;
             }
-            self->on_test_success();
+            self->on_test_success(guard_widget);
         },
-        [self, this_generation]() {
+        [self, this_generation, guard_widget]() {
             if (self->test_generation_.load() != this_generation) {
                 spdlog::debug("[ChangeHostModal] Ignoring stale failure callback");
                 return;
             }
-            self->on_test_failure();
+            self->on_test_failure(guard_widget);
         });
 
     // Disable automatic reconnection for testing
@@ -235,10 +248,13 @@ void ChangeHostModal::handle_test_connection() {
     }
 }
 
-void ChangeHostModal::on_test_success() {
+void ChangeHostModal::on_test_success(lv_obj_t* guard_widget) {
     spdlog::info("[ChangeHostModal] Test connection successful");
 
+    // Use widget-safe async_call: if dialog is destroyed before this fires
+    // (e.g. user cancelled while test was in flight), the callback is skipped.
     helix::ui::async_call(
+        guard_widget,
         [](void* ctx) {
             auto* self = static_cast<ChangeHostModal*>(ctx);
             if (!self->is_visible())
@@ -253,10 +269,11 @@ void ChangeHostModal::on_test_success() {
         this);
 }
 
-void ChangeHostModal::on_test_failure() {
+void ChangeHostModal::on_test_failure(lv_obj_t* guard_widget) {
     spdlog::warn("[ChangeHostModal] Test connection failed");
 
     helix::ui::async_call(
+        guard_widget,
         [](void* ctx) {
             auto* self = static_cast<ChangeHostModal*>(ctx);
             if (!self->is_visible())
@@ -299,12 +316,17 @@ void ChangeHostModal::handle_save() {
         spdlog::info("[ChangeHostModal] Saved new host: {}:{}", ip, port);
     }
 
-    // Close modal
+    // Close modal first — on_hide() removes observers and clears state
     hide();
 
-    // Fire completion callback
+    // Defer the completion callback so the reconnection flood doesn't
+    // overlap with the modal exit animation. Without this, manager->connect()
+    // triggers a burst of subject notifications while the modal's LVGL
+    // widgets are still alive (150ms exit animation) which can cause
+    // heap corruption via stale observer dispatch.
     if (completion_callback_) {
-        completion_callback_(true);
+        auto callback = completion_callback_;
+        helix::ui::queue_update([callback]() { callback(true); });
     }
 }
 
