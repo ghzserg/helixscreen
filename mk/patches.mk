@@ -13,6 +13,7 @@ LVGL_PATCHED_FILES := \
 	src/xml/lv_xml.c \
 	src/xml/lv_xml.h \
 	src/drivers/display/fb/lv_linux_fbdev.c \
+	src/drivers/display/fb/lv_linux_fbdev.h \
 	src/core/lv_refr.c \
 	src/core/lv_observer.c \
 	src/widgets/slider/lv_slider.c \
@@ -120,16 +121,16 @@ $(PATCHES_STAMP): $(PATCH_FILES) $(LVGL_HEAD) $(LIBHV_HEAD)
 	else \
 		echo "$(GREEN)✓ LVGL translate percentage patch already applied$(RESET)"; \
 	fi
-	$(Q)if git -C $(LVGL_DIR) diff --quiet src/drivers/display/fb/lv_linux_fbdev.c 2>/dev/null; then \
-		echo "$(YELLOW)→ Applying LVGL fbdev stride bpp detection patch...$(RESET)"; \
-		if git -C $(LVGL_DIR) apply --check ../../patches/lvgl_fbdev_stride_bpp.patch 2>/dev/null; then \
-			git -C $(LVGL_DIR) apply ../../patches/lvgl_fbdev_stride_bpp.patch && \
-			echo "$(GREEN)✓ Fbdev stride bpp detection patch applied$(RESET)"; \
+	$(Q)if git -C $(LVGL_DIR) diff --quiet src/drivers/display/fb/lv_linux_fbdev.h 2>/dev/null; then \
+		echo "$(YELLOW)→ Applying LVGL fbdev skip-unblank + stride bpp patch...$(RESET)"; \
+		if git -C $(LVGL_DIR) apply --check ../../patches/lvgl_fbdev_skip_unblank.patch 2>/dev/null; then \
+			git -C $(LVGL_DIR) apply ../../patches/lvgl_fbdev_skip_unblank.patch && \
+			echo "$(GREEN)✓ Fbdev skip-unblank + stride bpp patch applied$(RESET)"; \
 		else \
 			echo "$(YELLOW)⚠ Cannot apply patch (already applied or conflicts)$(RESET)"; \
 		fi \
 	else \
-		echo "$(GREEN)✓ LVGL fbdev stride bpp detection patch already applied$(RESET)"; \
+		echo "$(GREEN)✓ LVGL fbdev skip-unblank + stride bpp patch already applied$(RESET)"; \
 	fi
 	$(Q)if git -C $(LVGL_DIR) diff --quiet src/xml/lv_xml.h 2>/dev/null; then \
 		echo "$(YELLOW)→ Applying LVGL XML silent const lookup patch...$(RESET)"; \
