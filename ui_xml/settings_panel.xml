@@ -204,14 +204,6 @@
                         label="Factory Reset" label_tag="Factory Reset" icon="refresh"
                         description="Reset all settings and restart wizard"
                         description_tag="Reset all settings and restart wizard" callback="on_factory_reset_clicked"/>
-    <!-- Install Update (visible only when update available) -->
-    <lv_obj name="container_install_update" width="100%" style_pad_all="0">
-      <bind_flag_if_eq subject="show_update_settings" flag="hidden" ref_value="0"/>
-      <bind_flag_if_not_eq subject="update_status" flag="hidden" ref_value="2"/>
-      <setting_action_row name="row_install_update"
-                          label="Install Update" label_tag="Install Update" icon="download" description=""
-                          description_tag="" callback="on_install_update_clicked"/>
-    </lv_obj>
     <!-- ================================================================== -->
     <!-- HELP & SUPPORT SECTION -->
     <!-- ================================================================== -->
@@ -264,6 +256,14 @@
       <setting_action_row name="row_check_updates"
                           label="Check for Updates" label_tag="Check for Updates" icon="refresh"
                           bind_description="update_version_text" callback="on_check_updates_clicked"/>
+    </lv_obj>
+    <!-- Install Update (visible only when update available) -->
+    <lv_obj name="container_install_update" width="100%" style_pad_all="0">
+      <bind_flag_if_eq subject="show_update_settings" flag="hidden" ref_value="0"/>
+      <bind_flag_if_not_eq subject="update_status" flag="hidden" ref_value="2"/>
+      <setting_action_row name="row_install_update"
+                          label="Install Update" label_tag="Install Update" icon="download" description=""
+                          description_tag="" callback="on_install_update_clicked"/>
     </lv_obj>
     <!-- Klipper Version -->
     <setting_info_row name="row_klipper" label="Klipper" label_tag="Klipper" icon="toy_brick_outline">
