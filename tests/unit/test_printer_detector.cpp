@@ -175,6 +175,46 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Detect by hostname - 
     REQUIRE(result.confidence >= 80);
 }
 
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: Detect by hostname - Creality Ender 3 V3 KE",
+                 "[printer][hostname_match]") {
+    PrinterHardwareData hardware{
+        .heaters = {"extruder", "heater_bed"},
+        .sensors = {},
+        .fans = {"fan", "heater_fan hotend_fan"},
+        .leds = {},
+        .hostname = "Creality_Ender_3_V3_KE",
+        .printer_objects = {"adxl345"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+        .kinematics = "cartesian"};
+
+    auto result = PrinterDetector::detect(hardware);
+
+    REQUIRE(result.detected());
+    REQUIRE(result.type_name == "Creality Ender-3 V3 KE");
+    REQUIRE(result.confidence >= 95);
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: Distinguish Ender-3 V3 KE from Ender-3 V3",
+                 "[printer][hostname_match]") {
+    PrinterHardwareData hardware{
+        .heaters = {"extruder", "heater_bed"},
+        .sensors = {},
+        .fans = {"fan", "heater_fan hotend_fan"},
+        .leds = {},
+        .hostname = "creality-ender3-v3-ke",
+        .printer_objects = {"adxl345"},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z"},
+        .kinematics = "cartesian"};
+
+    auto result = PrinterDetector::detect(hardware);
+
+    REQUIRE(result.detected());
+    REQUIRE(result.type_name == "Creality Ender-3 V3 KE");
+    REQUIRE(result.confidence >= 95);
+}
+
 // ============================================================================
 // Edge Cases
 // ============================================================================

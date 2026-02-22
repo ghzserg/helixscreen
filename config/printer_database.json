@@ -843,6 +843,20 @@
         {
           "type": "hostname_match",
           "field": "hostname",
+          "pattern": "ender3-v3-ke",
+          "confidence": 95,
+          "reason": "Hostname contains 'ender3-v3-ke'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "ender_3_v3_ke",
+          "confidence": 95,
+          "reason": "Hostname contains 'ender_3_v3_ke'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
           "pattern": "ender-3-v3-ke",
           "confidence": 95,
           "reason": "Hostname contains 'ender-3-v3-ke'"
