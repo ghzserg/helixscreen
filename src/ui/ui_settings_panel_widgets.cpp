@@ -22,7 +22,6 @@
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
-
 namespace helix::settings {
 
 // ============================================================================

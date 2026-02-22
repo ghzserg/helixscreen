@@ -28,6 +28,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+extern "C" {
+#if defined(__GNUC__) || defined(__clang__)
+// Optional LVGL extension in some branches/builds; weak symbol allows probing at runtime.
+void lv_linux_fbdev_set_skip_unblank(lv_display_t* disp, bool enabled) __attribute__((weak));
+#else
+void lv_linux_fbdev_set_skip_unblank(lv_display_t* disp, bool enabled);
+#endif
+}
+
 namespace {
 
 /**
@@ -292,10 +301,15 @@ lv_display_t* DisplayBackendFbdev::create_display(int width, int height) {
         return nullptr;
     }
 
-    // Skip FBIOBLANK when splash process owns the framebuffer
+    // Skip FBIOBLANK when splash process owns the framebuffer, if LVGL provides the hook.
     if (splash_active_) {
-        lv_linux_fbdev_set_skip_unblank(display_, true);
-        spdlog::debug("[Fbdev Backend] Splash active — FBIOBLANK skip enabled");
+        if (lv_linux_fbdev_set_skip_unblank != nullptr) {
+            lv_linux_fbdev_set_skip_unblank(display_, true);
+            spdlog::debug("[Fbdev Backend] Splash active — FBIOBLANK skip enabled");
+        } else {
+            spdlog::debug(
+                "[Fbdev Backend] Splash active — LVGL skip_unblank hook unavailable in this build");
+        }
     }
 
     // Set the framebuffer device path (opens /dev/fb0 and mmaps it)
