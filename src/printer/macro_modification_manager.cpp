@@ -322,6 +322,12 @@ bool MacroModificationManager::should_show_notification(
 }
 
 void MacroModificationManager::show_configure_toast() {
+    // Only show print start configuration toast when beta features are enabled
+    if (!Config::get_instance()->is_beta_features_enabled()) {
+        spdlog::debug("[MacroModificationManager] Skipping toast (beta features disabled)");
+        return;
+    }
+
     // Use get_uncontrollable_operations() which excludes HOMING (same as wizard)
     size_t uncontrollable = cached_analysis_.get_uncontrollable_operations().size();
 

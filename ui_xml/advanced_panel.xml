@@ -178,16 +178,16 @@
         <event_cb trigger="clicked" callback="on_configure_print_start"/>
       </setting_action_row>
     </beta_feature>
-    <!-- Phase Tracking Toggle (visible when plugin installed) -->
+    <!-- Phase Tracking Toggle (beta, visible when plugin installed) -->
     <!-- Shows ONLY when value == 1 (installed), hidden otherwise (-1 or 0) -->
-    <lv_obj name="container_phase_tracking" width="100%" style_pad_all="0" scrollable="false">
+    <beta_feature name="container_phase_tracking">
       <bind_flag_if_not_eq subject="helix_plugin_installed" flag="hidden" ref_value="1"/>
       <setting_toggle_row name="row_phase_tracking"
                           label="Phase Tracking" label_tag="Phase Tracking" icon="progress_clock"
                           description="Show detailed print preparation status"
                           description_tag="Show detailed print preparation status" subject="phase_tracking_enabled"
                           callback="on_phase_tracking_changed"/>
-    </lv_obj>
+    </beta_feature>
     <!-- Timelapse Settings (beta) -->
     <beta_feature name="container_timelapse">
       <setting_action_row name="row_timelapse"
