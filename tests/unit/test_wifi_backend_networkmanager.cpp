@@ -438,6 +438,35 @@ TEST_CASE("NM backend: event callback registration", "[network][nm][events]") {
     }
 }
 
+// ============================================================================
+// Status Cache Tests
+// ============================================================================
+
+TEST_CASE("NM backend: get_status returns cached status when not running",
+          "[network][nm][status]") {
+    WifiBackendNetworkManager backend;
+    auto status = backend.get_status();
+    REQUIRE_FALSE(status.connected);
+    REQUIRE(status.signal_strength == 0);
+    REQUIRE(status.ssid.empty());
+    REQUIRE(status.ip_address.empty());
+    REQUIRE(status.mac_address.empty());
+}
+
+TEST_CASE("NM backend: status thread lifecycle", "[network][nm][status]") {
+    SECTION("Status thread not running after construction") {
+        WifiBackendNetworkManager backend;
+        auto status = backend.get_status();
+        REQUIRE_FALSE(status.connected);
+    }
+
+    SECTION("Multiple stop calls safe with status thread") {
+        WifiBackendNetworkManager backend;
+        REQUIRE_NOTHROW(backend.stop());
+        REQUIRE_NOTHROW(backend.stop());
+    }
+}
+
 #else
 // macOS: Provide a placeholder test so the file isn't empty
 TEST_CASE("NM backend: not available on macOS", "[network][nm]") {

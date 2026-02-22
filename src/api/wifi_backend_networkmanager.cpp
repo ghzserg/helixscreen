@@ -64,6 +64,20 @@ WiFiError WifiBackendNetworkManager::start() {
 
     spdlog::info("[WifiBackend] NetworkManager WiFi interface: {}", wifi_interface_);
     running_ = true;
+
+    // Start background status polling thread
+    status_running_ = true;
+    status_thread_ = std::thread(&WifiBackendNetworkManager::status_thread_func, this);
+
+    // Compute 5GHz support once (blocking here is fine — only happens at startup)
+    if (!supports_5ghz_resolved_) {
+        std::string props = exec_nmcli("-t -f WIFI-PROPERTIES device show " + wifi_interface_);
+        supports_5ghz_cached_ = (!props.empty() && (props.find("5GHz") != std::string::npos ||
+                                                    props.find("5 GHz") != std::string::npos));
+        supports_5ghz_resolved_ = true;
+        spdlog::debug("[WifiBackend] NM: 5GHz support: {}", supports_5ghz_cached_);
+    }
+
     return WiFiErrorHelper::success();
 }
 
@@ -77,6 +91,13 @@ void WifiBackendNetworkManager::stop() {
     // Signal threads to cancel
     scan_active_ = false;
     connect_active_ = false;
+
+    // Stop status polling thread
+    status_running_ = false;
+    status_cv_.notify_all();
+    if (status_thread_.joinable()) {
+        status_thread_.join();
+    }
 
     // Join threads (MUST join, not detach - prevents use-after-free)
     if (scan_thread_.joinable()) {
@@ -625,13 +646,14 @@ WiFiError WifiBackendNetworkManager::disconnect_network() {
 // ============================================================================
 
 WifiBackend::ConnectionStatus WifiBackendNetworkManager::get_status() {
+    std::lock_guard<std::mutex> lock(status_mutex_);
+    return cached_status_;
+}
+
+WifiBackend::ConnectionStatus WifiBackendNetworkManager::poll_status_now() {
     ConnectionStatus status = {};
     status.connected = false;
     status.signal_strength = 0;
-
-    if (!running_) {
-        return status;
-    }
 
     // Query GENERAL fields from device show for state, MAC, connection profile.
     // Note: WIFI.SSID is NOT a valid field for "device show" — it causes the
@@ -729,27 +751,47 @@ WifiBackend::ConnectionStatus WifiBackendNetworkManager::get_status() {
 }
 
 bool WifiBackendNetworkManager::supports_5ghz() const {
-    if (!running_ || wifi_interface_.empty()) {
-        return false;
+    return supports_5ghz_cached_;
+}
+
+// ============================================================================
+// Background Status Polling
+// ============================================================================
+
+void WifiBackendNetworkManager::status_thread_func() {
+    spdlog::debug("[WifiBackend] NM: Status polling thread started");
+
+    constexpr auto POLL_INTERVAL = std::chrono::seconds(5);
+
+    while (status_running_) {
+        // Poll nmcli for current status
+        ConnectionStatus fresh_status = {};
+        if (running_) {
+            fresh_status = poll_status_now();
+        }
+
+        // Update cache
+        {
+            std::lock_guard<std::mutex> lock(status_mutex_);
+            cached_status_ = fresh_status;
+        }
+
+        spdlog::trace(
+            "[WifiBackend] NM: Status cache updated (connected={}, ssid='{}', signal={}%)",
+            fresh_status.connected, fresh_status.ssid, fresh_status.signal_strength);
+
+        // Sleep until next poll or wakeup signal
+        {
+            std::unique_lock<std::mutex> lock(status_mutex_);
+            status_cv_.wait_for(lock, POLL_INTERVAL, [this] { return !status_running_.load(); });
+        }
     }
 
-    // Check WiFi capabilities via nmcli
-    // nmcli -t -f WIFI-PROPERTIES device show <iface>
-    // Look for "WIFI-PROPERTIES.FREQ" or similar indicating 5GHz support
-    std::string props = const_cast<WifiBackendNetworkManager*>(this)->exec_nmcli(
-        "-t -f WIFI-PROPERTIES device show " + wifi_interface_);
+    spdlog::debug("[WifiBackend] NM: Status polling thread exiting");
+}
 
-    if (props.empty()) {
-        return false;
-    }
-
-    // Look for 5GHz capability indicator
-    if (props.find("5GHz") != std::string::npos || props.find("5 GHz") != std::string::npos) {
-        return true;
-    }
-
-    // Default to false for embedded targets (same as wpa_supplicant backend)
-    return false;
+void WifiBackendNetworkManager::request_status_refresh() {
+    status_cv_.notify_one();
 }
 
 #endif // !__APPLE__ && !__ANDROID__
