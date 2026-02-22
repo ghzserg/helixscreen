@@ -3,7 +3,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
   <view name="panel_widget_temp_stack" extends="lv_obj"
-        height="100%" flex_grow="1" style_pad_all="0" scrollable="false"
+        height="100%" flex_grow="1" style_pad_all="0"
+        style_pad_left="#space_xxs" style_pad_right="#space_xxs" scrollable="false"
         flex_flow="column" style_flex_main_place="center"
         style_flex_cross_place="center" style_flex_track_place="center">
     <bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
@@ -16,7 +17,7 @@
             clickable="true" event_bubble="false">
       <event_cb trigger="clicked" callback="temp_stack_nozzle_cb"/>
       <nozzle_icon name="temp_stack_nozzle_icon" size="xs" badge_subject=""/>
-      <temp_display size="sm" show_target="false" bind_current="extruder_temp" bind_target="extruder_target"/>
+      <temp_display size="xs" show_target="false" bind_current="extruder_temp" bind_target="extruder_target"/>
     </lv_obj>
 
     <!-- Bed row -->
@@ -27,7 +28,7 @@
             clickable="true" event_bubble="false">
       <event_cb trigger="clicked" callback="temp_stack_bed_cb"/>
       <icon name="temp_stack_bed_icon_glyph" src="radiator" size="xs" variant="secondary"/>
-      <temp_display size="sm" show_target="false" bind_current="bed_temp" bind_target="bed_target"/>
+      <temp_display size="xs" show_target="false" bind_current="bed_temp" bind_target="bed_target"/>
     </lv_obj>
 
     <!-- Chamber row (hidden when no sensor) -->
@@ -37,7 +38,7 @@
             style_flex_track_place="center" style_pad_gap="#space_xs">
       <bind_flag_if_eq subject="printer_has_chamber_sensor" flag="hidden" ref_value="0"/>
       <icon src="fridge_industrial" size="xs" variant="secondary"/>
-      <temp_display size="sm" show_target="false" bind_current="chamber_temp" bind_target="chamber_temp"/>
+      <temp_display size="xs" show_target="false" bind_current="chamber_temp" bind_target="chamber_temp"/>
     </lv_obj>
   </view>
 </component>

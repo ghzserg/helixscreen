@@ -3,7 +3,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
   <view name="panel_widget_ams" extends="lv_obj"
-        height="#button_height_lg" flex_grow="1" style_pad_all="0" scrollable="false">
+        height="#button_height_lg" flex_grow="1" style_pad_all="0"
+        style_pad_left="#space_xxs" style_pad_right="#space_xxs" scrollable="false">
     <!-- Hardware gate (ams_slot_count) checked in C++ populate_widgets() -->
     <ams_mini_status/>
   </view>

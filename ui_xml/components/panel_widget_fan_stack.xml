@@ -3,7 +3,9 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
   <view name="panel_widget_fan_stack"
-        extends="lv_obj" height="100%" flex_grow="1" style_pad_all="0" scrollable="false" flex_flow="column"
+        extends="lv_obj" height="100%" flex_grow="1" style_pad_all="0"
+        style_pad_left="#space_xs" style_pad_right="#space_xs"
+        style_min_width="80" scrollable="false" flex_flow="column"
         style_pad_gap="0" style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center">
     <bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
 
@@ -13,9 +15,9 @@
             style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
             style_pad_gap="#space_xs" clickable="false">
       <icon name="fan_stack_part_icon" src="fan" size="xs" variant="secondary"/>
-      <text_small name="fan_stack_part_name" style_text_opa="178">
+      <text_muted name="fan_stack_part_name" style_text_font="#font_xs">
         Part
-      </text_small>
+      </text_muted>
       <text_small name="fan_stack_part_speed">
         0%
       </text_small>
@@ -27,9 +29,9 @@
             style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
             style_pad_gap="#space_xs" clickable="false">
       <icon name="fan_stack_hotend_icon" src="fan" size="xs" variant="secondary"/>
-      <text_small name="fan_stack_hotend_name" style_text_opa="178">
+      <text_muted name="fan_stack_hotend_name" style_text_font="#font_xs">
         HE
-      </text_small>
+      </text_muted>
       <text_small name="fan_stack_hotend_speed">
         0%
       </text_small>
@@ -41,9 +43,9 @@
             style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
             style_pad_gap="#space_xs" clickable="false" flags="hidden">
       <icon name="fan_stack_aux_icon" src="fan" size="xs" variant="secondary"/>
-      <text_small name="fan_stack_aux_name" style_text_opa="178">
+      <text_muted name="fan_stack_aux_name" style_text_font="#font_xs">
         Aux
-      </text_small>
+      </text_muted>
       <text_small name="fan_stack_aux_speed">
         0%
       </text_small>
