@@ -34,6 +34,7 @@
 #include "ui_panel_temp_control.h"
 #include "ui_printer_status_icon.h"
 #include "ui_probe_overlay.h"
+#include "ui_update_queue.h"
 #include "ui_wizard.h"
 
 #include "abort_manager.h"
@@ -332,12 +333,14 @@ void SubjectInitializer::init_usb_manager(const RuntimeConfig& runtime_config) {
                     spdlog::debug("[USB] Suppressing toast for drive present at startup");
                 }
                 if (panel) {
-                    panel->on_usb_drive_inserted();
+                    // Marshal to main thread — callback fires from UsbBackendMock's
+                    // demo thread, and panel methods touch LVGL widgets
+                    helix::ui::queue_update([panel]() { panel->on_usb_drive_inserted(); });
                 }
             } else if (event == UsbEvent::DRIVE_REMOVED) {
                 NOTIFY_INFO("USB drive removed");
                 if (panel) {
-                    panel->on_usb_drive_removed();
+                    helix::ui::queue_update([panel]() { panel->on_usb_drive_removed(); });
                 }
             }
         });
