@@ -619,6 +619,10 @@ void ControlsPanel::populate_secondary_fans() {
         return;
     }
 
+    // Bump generation counter so any in-flight deferred callbacks from the previous
+    // populate cycle will see a stale generation and skip their widget updates.
+    ++fan_populate_gen_;
+
     // IMPORTANT: Cleanup order matters to avoid dangling pointers:
     // 1. Release observers first - they may reference subjects that were already deinit'd
     //    by PrinterState::init_fans() before it notified fans_version_ observers
@@ -1526,10 +1530,13 @@ void ControlsPanel::subscribe_to_secondary_fan_speeds() {
     using helix::ui::observe_int_sync;
     secondary_fan_observers_.reserve(secondary_fan_rows_.size());
 
+    const uint32_t gen = fan_populate_gen_;
     for (const auto& row : secondary_fan_rows_) {
         if (auto* subject = printer_state_.get_fan_speed_subject(row.object_name)) {
             secondary_fan_observers_.push_back(observe_int_sync<ControlsPanel>(
-                subject, this, [name = row.object_name](ControlsPanel* self, int speed_pct) {
+                subject, this, [name = row.object_name, gen](ControlsPanel* self, int speed_pct) {
+                    if (gen != self->fan_populate_gen_)
+                        return; // stale callback — widgets gone
                     self->update_secondary_fan_speed(name, speed_pct);
                 }));
             spdlog::trace("[{}] Subscribed to speed subject for secondary fan '{}'", get_name(),
@@ -1566,6 +1573,9 @@ void ControlsPanel::populate_secondary_temps() {
     if (!secondary_temps_list_) {
         return;
     }
+
+    // Bump generation counter so stale deferred callbacks skip widget updates
+    ++temp_populate_gen_;
 
     // Cleanup order: observers first, then tracking, then widgets
     for (auto& obs : secondary_temp_observers_) {
@@ -1694,11 +1704,15 @@ void ControlsPanel::subscribe_to_secondary_temp_subjects() {
     using helix::ui::observe_int_sync;
     secondary_temp_observers_.reserve(secondary_temp_rows_.size());
 
+    const uint32_t gen = temp_populate_gen_;
     auto& tsm = helix::sensors::TemperatureSensorManager::instance();
     for (const auto& row : secondary_temp_rows_) {
         if (auto* subject = tsm.get_temp_subject(row.klipper_name)) {
             secondary_temp_observers_.push_back(observe_int_sync<ControlsPanel>(
-                subject, this, [name = row.klipper_name](ControlsPanel* self, int centidegrees) {
+                subject, this,
+                [name = row.klipper_name, gen](ControlsPanel* self, int centidegrees) {
+                    if (gen != self->temp_populate_gen_)
+                        return; // stale callback — widgets gone
                     self->update_secondary_temp(name, centidegrees);
                 }));
             spdlog::trace("[{}] Subscribed to temp subject for sensor '{}'", get_name(),

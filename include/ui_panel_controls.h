@@ -233,6 +233,7 @@ class ControlsPanel : public PanelBase {
     };
     std::vector<SecondaryFanRow> secondary_fan_rows_;    ///< Tracked for reactive updates
     std::vector<ObserverGuard> secondary_fan_observers_; ///< Per-fan speed observers
+    uint32_t fan_populate_gen_ = 0; ///< Incremented on each populate; stale callbacks skip
 
     lv_obj_t* secondary_temps_list_ = nullptr; // Container for dynamic temp sensor rows
 
@@ -243,6 +244,7 @@ class ControlsPanel : public PanelBase {
     };
     std::vector<SecondaryTempRow> secondary_temp_rows_;   ///< Tracked for reactive updates
     std::vector<ObserverGuard> secondary_temp_observers_; ///< Per-sensor temp observers
+    uint32_t temp_populate_gen_ = 0; ///< Incremented on each populate; stale callbacks skip
 
     //
     // === Z-Offset Banner (reactive binding - no widget caching needed) ===
