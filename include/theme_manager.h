@@ -204,7 +204,7 @@ class ThemeManager {
 // and registered at runtime using horizontal breakpoint (see theme_manager.cpp)
 
 // Responsive breakpoints (based on screen height — vertical space is the constraint)
-// Target hardware: 480x320, 480x400, 1920x440, 800x480, 1024x600, 1280x720
+// Target hardware: 480x272, 480x320, 480x400, 1920x440, 800x480, 1024x600, 1280x720
 // 5-tier system: TINY (≤390) → SMALL (391-460) → MEDIUM (461-550) → LARGE (551-700) → XLARGE (>700)
 // _tiny is optional with fallback to _small — only define _tiny where values differ
 // _xlarge is optional with fallback to _large — only define _xlarge where values differ
@@ -225,6 +225,8 @@ enum UiBreakpointIndex : int32_t {
         // height >700 → XLARGE (1280x720+)
 
 // Screen size presets for CLI (-s flag) — named to match responsive breakpoints
+#define UI_SCREEN_MICRO_W 480
+#define UI_SCREEN_MICRO_H 272
 #define UI_SCREEN_TINY_W 480
 #define UI_SCREEN_TINY_H 320
 #define UI_SCREEN_SMALL_W 480

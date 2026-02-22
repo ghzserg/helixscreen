@@ -74,8 +74,13 @@ bool LayoutManager::has_override(const std::string& filename) const {
 LayoutType LayoutManager::detect(int width, int height) const {
     float ratio = static_cast<float>(width) / static_cast<float>(height);
     int max_dim = std::max(width, height);
+    int min_dim = std::min(width, height);
 
     if (max_dim <= 480) {
+        // 480x272 class gets a dedicated layout target (e.g., Ender 3 V3 KE panel).
+        if (min_dim <= 272) {
+            return (width >= height) ? LayoutType::MICRO : LayoutType::MICRO_PORTRAIT;
+        }
         return (width >= height) ? LayoutType::TINY : LayoutType::TINY_PORTRAIT;
     }
     if (ratio > 2.5f) {
@@ -95,6 +100,10 @@ const char* LayoutManager::type_to_name(LayoutType type) {
         return "ultrawide";
     case LayoutType::PORTRAIT:
         return "portrait";
+    case LayoutType::MICRO:
+        return "micro";
+    case LayoutType::MICRO_PORTRAIT:
+        return "micro_portrait";
     case LayoutType::TINY:
         return "tiny";
     case LayoutType::TINY_PORTRAIT:
@@ -110,6 +119,10 @@ LayoutType LayoutManager::name_to_type(const std::string& name) {
         return LayoutType::ULTRAWIDE;
     if (name == "portrait")
         return LayoutType::PORTRAIT;
+    if (name == "micro")
+        return LayoutType::MICRO;
+    if (name == "micro_portrait")
+        return LayoutType::MICRO_PORTRAIT;
     if (name == "tiny")
         return LayoutType::TINY;
     if (name == "tiny_portrait")

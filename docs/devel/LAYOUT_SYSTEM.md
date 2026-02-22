@@ -30,6 +30,8 @@ any theme works with any layout.
 | `standard` | **Complete** | All panels — this is the default UI everyone uses today |
 | `ultrawide` | **Started** | `home_panel.xml` only (initial draft, needs refinement) |
 | `portrait` | Not started | Directory doesn't exist yet |
+| `micro` | Not started | Directory doesn't exist yet |
+| `micro-portrait` | Not started | Directory doesn't exist yet |
 | `tiny` | Not started | Directory doesn't exist yet |
 | `tiny-portrait` | Not started | Directory doesn't exist yet |
 
@@ -42,6 +44,8 @@ When HelixScreen starts up, it detects your screen's aspect ratio and picks a la
 | `standard` | Normal landscape (4:3 to 16:9) | 800x480, 1024x600, 1280x720 |
 | `ultrawide` | Very wide (ratio > 2.5:1) | 1920x480, 1920x400 |
 | `portrait` | Tall/narrow (ratio < 0.8:1) | 480x800, 600x1024 |
+| `micro` | Very small landscape (max dimension ≤ 480 and min dimension ≤ 272) | 480x272 |
+| `micro-portrait` | Very small portrait (max dimension ≤ 480 and min dimension ≤ 272) | 272x480 |
 | `tiny` | Small landscape (max dimension ≤ 480) | 480x320, 320x240 |
 | `tiny-portrait` | Small portrait (max dimension ≤ 480) | 320x480, 240x320 |
 
@@ -68,6 +72,8 @@ ui_xml/
     home_panel.xml         ← Ultrawide home panel (exists, needs work)
 
   portrait/                ← Portrait overrides (doesn't exist yet — create it!)
+  micro/                   ← Micro landscape overrides (doesn't exist yet)
+  micro-portrait/          ← Micro portrait overrides (doesn't exist yet)
   tiny/                    ← Tiny landscape overrides (doesn't exist yet)
   tiny-portrait/           ← Tiny portrait overrides (doesn't exist yet)
 ```
@@ -342,8 +348,8 @@ register_xml("home_panel.xml");
 }
 ```
 
-Valid values: `"auto"` (default), `"standard"`, `"ultrawide"`, `"portrait"`, `"tiny"`,
-`"tiny_portrait"`.
+Valid values: `"auto"` (default), `"standard"`, `"ultrawide"`, `"portrait"`, `"micro"`,
+`"micro_portrait"`, `"tiny"`, `"tiny_portrait"`.
 
 CLI flag `--layout <name>` overrides the config file.
 
@@ -352,7 +358,9 @@ CLI flag `--layout <name>` overrides the config file.
 ```
 ratio = width / height
 
-if (max dimension ≤ 480)
+if (max dimension ≤ 480 and min dimension ≤ 272)
+    → micro (landscape) or micro-portrait (portrait)
+else if (max dimension ≤ 480)
     → tiny (landscape) or tiny-portrait (portrait)
 else if (ratio > 2.5)
     → ultrawide

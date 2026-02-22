@@ -19,9 +19,9 @@ namespace helix {
 
 /**
  * @brief Screen size presets (match responsive breakpoints)
- * TINY=480x320, SMALL=480x400, MEDIUM=800x480, LARGE=1024x600, XLARGE=1280x720
+ * MICRO=480x272, TINY=480x320, SMALL=480x400, MEDIUM=800x480, LARGE=1024x600, XLARGE=1280x720
  */
-enum class ScreenSize { TINY, SMALL, MEDIUM, LARGE, XLARGE };
+enum class ScreenSize { MICRO, TINY, SMALL, MEDIUM, LARGE, XLARGE };
 
 /**
  * @brief Overlay panel flags (grouped for clarity)
@@ -118,8 +118,8 @@ struct CliArgs {
     int rotation = 0; // 0, 90, 180, 270 degrees
 
     // Layout override
-    std::string layout; // --layout: override auto-detected layout ("auto", "standard", "ultrawide",
-                        // etc.)
+    std::string layout; // --layout: override auto-detected layout ("auto", "standard",
+                        // "ultrawide", "portrait", "micro", "tiny", etc.)
 
     // Moonraker override (for testing/development)
     std::string moonraker_url; // --moonraker: override config URL (e.g., ws://192.168.1.112:7125)

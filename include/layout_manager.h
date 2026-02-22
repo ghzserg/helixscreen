@@ -10,6 +10,8 @@ enum class LayoutType {
     STANDARD,     // 4:3 to ~16:9
     ULTRAWIDE,    // >2.5:1 aspect ratio
     PORTRAIT,     // <0.8:1
+    MICRO,        // landscape, 480x272 class
+    MICRO_PORTRAIT, // portrait, 480x272 class
     TINY,         // landscape, max dim <=480
     TINY_PORTRAIT // portrait, max dim <=480
 };
