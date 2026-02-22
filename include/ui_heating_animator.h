@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ui_observer_guard.h"
+
 #include "lvgl/lvgl.h"
 
 /**
@@ -155,9 +157,10 @@ class HeatingIconAnimator {
     lv_color_t get_secondary_color();
 
     /**
-     * @brief Observer for theme/dark mode changes
+     * @brief RAII observer for theme/dark mode changes
+     * ObserverGuard auto-removes the observer on destruction/reset.
      */
-    lv_observer_t* theme_observer_ = nullptr;
+    ObserverGuard theme_observer_;
 
     /**
      * @brief Static callback for theme change observer

@@ -17,20 +17,20 @@ using helix::ui::temperature::centi_to_degrees_f;
 // Gradient colors now use theme tokens: temp_gradient_cold, temp_gradient_warm, temp_gradient_hot
 
 HeatingIconAnimator::~HeatingIconAnimator() {
-    // Cancel pulse animation if running — the callback uses `this` as var,
-    // so it must be cancelled before the instance is freed
-    if (pulse_active_ && lv_is_initialized()) {
-        stop_pulse();
+    if (lv_is_initialized()) {
+        detach();
+    } else {
+        pulse_active_ = false;
+        icon_ = nullptr;
+        // theme_observer_ is an ObserverGuard — its destructor handles cleanup
     }
-    pulse_active_ = false;
-    icon_ = nullptr;
 }
 
 HeatingIconAnimator::HeatingIconAnimator(HeatingIconAnimator&& other) noexcept
     : icon_(other.icon_), state_(other.state_), ambient_temp_(other.ambient_temp_),
       current_temp_(other.current_temp_), target_temp_(other.target_temp_),
       current_color_(other.current_color_), current_opacity_(other.current_opacity_),
-      pulse_active_(other.pulse_active_) {
+      pulse_active_(other.pulse_active_), theme_observer_(std::move(other.theme_observer_)) {
     other.icon_ = nullptr;
     other.pulse_active_ = false;
 }
@@ -46,6 +46,7 @@ HeatingIconAnimator& HeatingIconAnimator::operator=(HeatingIconAnimator&& other)
         current_color_ = other.current_color_;
         current_opacity_ = other.current_opacity_;
         pulse_active_ = other.pulse_active_;
+        theme_observer_ = std::move(other.theme_observer_);
         other.icon_ = nullptr;
         other.pulse_active_ = false;
     }
@@ -62,11 +63,10 @@ void HeatingIconAnimator::attach(lv_obj_t* icon) {
     current_opacity_ = LV_OPA_COVER;
     apply_color();
 
-    // Subscribe to theme changes for automatic color refresh
+    // Subscribe to theme changes — ObserverGuard handles cleanup on detach/destroy
     lv_subject_t* theme_subject = theme_manager_get_changed_subject();
     if (theme_subject) {
-        // Tie observer to icon widget — auto-removed when icon is deleted
-        theme_observer_ = lv_subject_add_observer_obj(theme_subject, theme_change_cb, icon_, this);
+        theme_observer_ = ObserverGuard(theme_subject, theme_change_cb, this);
         spdlog::debug("[HeatingIconAnimator] Attached to icon with theme observer");
     } else {
         spdlog::debug("[HeatingIconAnimator] Attached to icon (no theme subject found)");
@@ -79,10 +79,8 @@ void HeatingIconAnimator::detach() {
     }
     stop_pulse();
 
-    // Theme observer is auto-removed when icon is deleted (lv_subject_add_observer_obj).
-    // Manual lv_observer_remove() would free the observer, but LVGL's delete cascade
-    // would then fire unsubscribe_on_delete_cb on freed memory → crash.
-    theme_observer_ = nullptr;
+    // ObserverGuard::reset() removes the observer from the subject
+    theme_observer_.reset();
     icon_ = nullptr;
     spdlog::debug("[HeatingIconAnimator] Detached");
 }
