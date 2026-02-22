@@ -257,6 +257,8 @@ APP_C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(APP_C_SRCS))
 # Application C++ sources (exclude test binaries, splash binary, and lvgl-demo)
 # Include all subdirectories: ui/, api/, rendering/, printer/, print/, system/, application/
 APP_SRCS := $(filter-out $(SRC_DIR)/test_dynamic_cards.cpp $(SRC_DIR)/test_responsive_theme.cpp $(SRC_DIR)/test_tinygl_triangle.cpp $(SRC_DIR)/test_gcode_geometry.cpp $(SRC_DIR)/test_gcode_analysis.cpp $(SRC_DIR)/test_sdf_reconstruction.cpp $(SRC_DIR)/test_sparse_grid.cpp $(SRC_DIR)/test_partial_extraction.cpp $(SRC_DIR)/test_render_comparison.cpp $(SRC_DIR)/test_network_tester.cpp $(SRC_DIR)/helix_splash.cpp $(SRC_DIR)/helix_watchdog.cpp $(SRC_DIR)/lvgl-demo/main.cpp,$(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/*/*.cpp) $(wildcard $(SRC_DIR)/*/*/*.cpp))
+# Exclude src/tools/ — standalone build tools have their own rules in tools.mk
+APP_SRCS := $(filter-out $(wildcard $(SRC_DIR)/tools/*.cpp),$(APP_SRCS))
 APP_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(APP_SRCS))
 
 # Objective-C++ sources (macOS only - .mm files)
