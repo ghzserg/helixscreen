@@ -78,11 +78,11 @@ bool ChangeHostModal::show_modal(lv_obj_t* parent) {
             helix::ui::modal_register_keyboard(dialog(), port_input);
         }
 
-        // Observe text input changes to invalidate validation when user edits
-        host_ip_observer_ =
-            lv_subject_add_observer_obj(&host_ip_subject_, on_input_changed_cb, dialog(), nullptr);
-        host_port_observer_ = lv_subject_add_observer_obj(&host_port_subject_, on_input_changed_cb,
-                                                          dialog(), nullptr);
+        // Observe text input changes to invalidate validation when user edits.
+        // Using ObserverGuard for RAII cleanup instead of lv_subject_add_observer_obj
+        // which relies on widget deletion timing (unsafe during exit animation).
+        host_ip_observer_ = ObserverGuard(&host_ip_subject_, on_input_changed_cb, nullptr);
+        host_port_observer_ = ObserverGuard(&host_port_subject_, on_input_changed_cb, nullptr);
     }
 
     return result;
@@ -98,7 +98,7 @@ void ChangeHostModal::on_show() {
 
 void ChangeHostModal::on_hide() {
     // Increment generation to invalidate any pending async callbacks
-    ++test_generation_;
+    ++(*test_generation_);
 
     // Clear active instance
     active_instance_ = nullptr;
@@ -107,14 +107,9 @@ void ChangeHostModal::on_hide() {
     // widget is deleted after exit animation. The 150ms animation window
     // allows subject notifications (from reconnection flood) to fire these
     // observers on a widget being destroyed, causing heap corruption.
-    if (host_ip_observer_) {
-        lv_observer_remove(host_ip_observer_);
-        host_ip_observer_ = nullptr;
-    }
-    if (host_port_observer_) {
-        lv_observer_remove(host_port_observer_);
-        host_port_observer_ = nullptr;
-    }
+    // Applying [L073]: reset() because subjects are still alive at this point.
+    host_ip_observer_.reset();
+    host_port_observer_.reset();
 
     spdlog::debug("[ChangeHostModal] on_hide");
 }
@@ -146,6 +141,11 @@ void ChangeHostModal::init_subjects() {
 void ChangeHostModal::deinit_subjects() {
     if (!subjects_initialized_)
         return;
+
+    // Applying [L073]: release() because subjects are about to be destroyed —
+    // calling reset() (which does lv_observer_remove) on a dead subject = crash.
+    host_ip_observer_.release();
+    host_port_observer_.release();
 
     lv_subject_deinit(&host_ip_subject_);
     lv_subject_deinit(&host_port_subject_);
@@ -197,7 +197,7 @@ void ChangeHostModal::handle_test_connection() {
     client->disconnect();
 
     // Increment generation for stale callback detection
-    uint64_t this_generation = ++test_generation_;
+    uint64_t this_generation = ++(*test_generation_);
 
     // Store values for async callback (thread-safe)
     {
@@ -219,19 +219,23 @@ void ChangeHostModal::handle_test_connection() {
     // Capture dialog widget for widget-safe async callbacks.
     // We capture it here (on main thread) because the bg thread lambdas
     // cannot safely read dialog() which may be cleared by hide().
+    //
+    // Capture shared_ptr to generation counter so bg thread can check
+    // staleness without dereferencing 'this' (which may be destroyed).
     ChangeHostModal* self = this;
     lv_obj_t* guard_widget = dialog();
+    auto generation = test_generation_;
     int result = client->connect(
         ws_url.c_str(),
-        [self, this_generation, guard_widget]() {
-            if (self->test_generation_.load() != this_generation) {
+        [self, this_generation, guard_widget, generation]() {
+            if (generation->load() != this_generation) {
                 spdlog::debug("[ChangeHostModal] Ignoring stale success callback");
                 return;
             }
             self->on_test_success(guard_widget);
         },
-        [self, this_generation, guard_widget]() {
-            if (self->test_generation_.load() != this_generation) {
+        [self, this_generation, guard_widget, generation]() {
+            if (generation->load() != this_generation) {
                 spdlog::debug("[ChangeHostModal] Ignoring stale failure callback");
                 return;
             }
@@ -334,7 +338,7 @@ void ChangeHostModal::handle_cancel() {
     spdlog::debug("[ChangeHostModal] Cancel clicked");
 
     // Increment generation to invalidate any pending test callbacks
-    ++test_generation_;
+    ++(*test_generation_);
 
     hide();
 

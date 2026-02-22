@@ -4,9 +4,11 @@
 #pragma once
 
 #include "ui_modal.h"
+#include "ui_observer_guard.h"
 
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 
@@ -76,7 +78,10 @@ class ChangeHostModal : public Modal {
     bool subjects_initialized_ = false;
 
     // === Stale callback protection ===
-    std::atomic<uint64_t> test_generation_{0};
+    // Shared so bg thread lambdas can safely check generation without
+    // dereferencing 'this' (which may be destroyed).
+    std::shared_ptr<std::atomic<uint64_t>> test_generation_ =
+        std::make_shared<std::atomic<uint64_t>>(0);
     std::mutex saved_values_mutex_;
     std::string saved_ip_;
     std::string saved_port_;
@@ -85,8 +90,8 @@ class ChangeHostModal : public Modal {
     CompletionCallback completion_callback_;
 
     // === Input change observers (reset validation on edit) ===
-    lv_observer_t* host_ip_observer_ = nullptr;
-    lv_observer_t* host_port_observer_ = nullptr;
+    ObserverGuard host_ip_observer_;
+    ObserverGuard host_port_observer_;
 
     // === Internal methods ===
     void init_subjects();
