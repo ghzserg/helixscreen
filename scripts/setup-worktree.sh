@@ -33,8 +33,10 @@ usage() {
     echo "  $0 --setup-only feature/i18n   # Just set up existing worktree"
     echo ""
     echo "Strategy:"
+    echo "  - Clones build/obj/ from main tree (APFS copy-on-write — instant, zero disk)"
     echo "  - Symlinks lib/ from main tree (all submodule sources + generated headers)"
     echo "  - Symlinks compiled libraries (libhv.a, libTinyGL.a) and PCH"
+    echo "  - Copies compile_commands.json with rewritten paths for clangd"
     echo "  - Symlinks node_modules and .venv for font/python tools"
     echo "  - Uses .git/info/exclude for clean git status"
 }
@@ -197,9 +199,45 @@ for item in "${LIB_ITEMS[@]}"; do
     fi
 done
 
-# Step 3: Create build directory structure
+# Step 3: Create build directory structure and clone object files
 echo -e "${CYAN}Setting up build directory...${RESET}"
 mkdir -p build/lib build/obj build/bin
+
+# Step 3b: Hardlink object files from main tree
+# This is the big win — avoids recompiling 900+ .o files from scratch.
+# Hardlinks are instant, zero disk cost (same filesystem), and make will
+# only recompile files whose sources diverge in the worktree.
+MAIN_OBJ="$MAIN_TREE/build/obj"
+WORKTREE_OBJ="$WORKTREE_PATH/build/obj"
+if [[ -d "$MAIN_OBJ" ]]; then
+    # Check if obj/ already has content (re-run of setup)
+    OBJ_COUNT=$(find "$WORKTREE_OBJ" -name "*.o" 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$OBJ_COUNT" -gt 10 ]]; then
+        echo -e "  build/obj: ${GREEN}already populated ($OBJ_COUNT objects)${RESET}"
+    else
+        echo -e "${CYAN}Cloning build objects from main tree...${RESET}"
+        # Clone all build artifacts (.o, .d, .ccj) from main tree.
+        # On macOS/APFS: cp -Rc uses clonefile() — instant, zero disk until modified,
+        #   and each side is independent (no risk of worktree clobbering main tree).
+        # On Linux: falls back to regular copy (still faster than recompiling).
+        # Either way, make only recompiles files whose sources diverge in the worktree.
+        CLONE_START=$(date +%s)
+        rm -rf "$WORKTREE_OBJ"
+        cp -Rc "$MAIN_OBJ" "$WORKTREE_OBJ" 2>/dev/null || cp -a "$MAIN_OBJ" "$WORKTREE_OBJ"
+        CLONE_END=$(date +%s)
+        NEW_COUNT=$(find "$WORKTREE_OBJ" -name "*.o" 2>/dev/null | wc -l | tr -d ' ')
+        echo -e "  build/obj: ${GREEN}cloned $NEW_COUNT objects in $((CLONE_END - CLONE_START))s${RESET}"
+    fi
+else
+    echo -e "  build/obj: ${YELLOW}main tree not built yet (will build from scratch)${RESET}"
+fi
+
+# Step 3c: Copy compile_commands.json for clangd support
+if [[ -f "$MAIN_TREE/compile_commands.json" ]]; then
+    # Use sed to rewrite paths from main tree to worktree
+    sed "s|${MAIN_TREE}|${WORKTREE_PATH}|g" "$MAIN_TREE/compile_commands.json" > "$WORKTREE_PATH/compile_commands.json"
+    echo -e "  compile_commands.json: ${GREEN}copied and paths rewritten${RESET}"
+fi
 
 # Step 4: Symlink compiled libraries from main tree
 # These are expensive to build and rarely change
