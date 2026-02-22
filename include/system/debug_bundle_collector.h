@@ -40,6 +40,19 @@ class DebugBundleCollector {
     static std::string collect_klipper_log_tail(int num_lines = 500);
     static std::string collect_moonraker_log_tail(int num_lines = 200);
 
+    /// Read crash_report.txt from config_dir (persists after crash.txt consumed)
+    static std::string collect_crash_report_txt(const std::string& config_dir);
+
+    /// Read crash_history.json from config_dir (past crash submissions)
+    static nlohmann::json collect_crash_history(const std::string& config_dir);
+
+    /// Get double-hashed device ID from telemetry_device.json (for R2 cross-ref)
+    static std::string collect_device_id(const std::string& config_dir);
+
+    /// Read log tail from an explicit ordered list of paths (testable)
+    static std::string collect_log_tail_from_paths(const std::vector<std::string>& paths,
+                                                   int num_lines);
+
     /// Collect Moonraker state via REST (server info, printer state, config)
     static nlohmann::json collect_moonraker_info();
 

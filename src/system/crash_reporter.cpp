@@ -7,6 +7,7 @@
 #include "hv/requests.h"
 #include "platform_capabilities.h"
 #include "system/crash_handler.h"
+#include "system/crash_history.h"
 #include "system/update_checker.h"
 
 #include <spdlog/spdlog.h>
@@ -149,23 +150,23 @@ CrashReporter::CrashReport CrashReporter::collect_report() {
 // =============================================================================
 
 std::string CrashReporter::get_log_tail(int num_lines) {
-    // Try common log locations
+    // Search paths matching logging_init.cpp resolution order
     std::vector<std::string> log_paths = {
         "/var/log/helix-screen.log",
     };
 
-    // Also try XDG data home
     const char* xdg = std::getenv("XDG_DATA_HOME");
     if (xdg && xdg[0] != '\0') {
-        log_paths.push_back(std::string(xdg) + "/helix-screen/helix-screen.log");
+        log_paths.push_back(std::string(xdg) + "/helix-screen/helix.log");
     }
     const char* home = std::getenv("HOME");
     if (home && home[0] != '\0') {
-        log_paths.push_back(std::string(home) + "/.local/share/helix-screen/helix-screen.log");
+        log_paths.push_back(std::string(home) + "/.local/share/helix-screen/helix.log");
     }
+    log_paths.push_back("/tmp/helixscreen.log");
 
     // Also check config dir (for tests)
-    log_paths.push_back(config_dir_ + "/helix-screen.log");
+    log_paths.push_back(config_dir_ + "/helix.log");
 
     for (const auto& path : log_paths) {
         std::ifstream file(path);
@@ -472,6 +473,31 @@ bool CrashReporter::try_auto_send(const CrashReport& report) {
 
         if (resp && status >= 200 && status < 300) {
             spdlog::info("[CrashReporter] Crash report sent to worker (HTTP {})", status);
+
+            // Record in crash history for debug bundle cross-referencing
+            helix::CrashHistoryEntry hist_entry;
+            hist_entry.timestamp = report.timestamp;
+            hist_entry.signal = report.signal;
+            hist_entry.signal_name = report.signal_name;
+            hist_entry.app_version = report.app_version;
+            hist_entry.uptime_sec = report.uptime_sec;
+            hist_entry.fault_addr = report.fault_addr;
+            hist_entry.fault_code_name = report.fault_code_name;
+            hist_entry.sent_via = "crash_reporter";
+
+            // Parse optional GitHub metadata from crash worker response
+            try {
+                json resp_json = json::parse(resp->body);
+                hist_entry.github_issue = resp_json.value("issue_number", 0);
+                hist_entry.github_url = resp_json.value("issue_url", "");
+            } catch (const std::exception&) {
+                // Response not JSON -- record without GitHub info
+            }
+
+            helix::CrashHistory::instance().add_entry(hist_entry);
+            spdlog::debug("[CrashReporter] Recorded crash in history (issue #{})",
+                          hist_entry.github_issue);
+
             return true;
         }
 

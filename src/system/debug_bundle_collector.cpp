@@ -10,6 +10,8 @@
 #include "moonraker_api.h"
 #include "platform_capabilities.h"
 #include "printer_state.h"
+#include "system/crash_history.h"
+#include "system/telemetry_manager.h"
 #include "system/update_checker.h"
 
 #include <spdlog/spdlog.h>
@@ -17,6 +19,7 @@
 #include <algorithm>
 #include <chrono>
 #include <deque>
+#include <filesystem>
 #include <fstream>
 #include <regex>
 #include <sstream>
@@ -72,6 +75,35 @@ json DebugBundleCollector::collect(const BundleOptions& options) {
         }
     } catch (const std::exception& e) {
         spdlog::warn("[DebugBundle] Failed to collect crash.txt: {}", e.what());
+    }
+
+    // Crash data: report text, history, and device ID for R2 cross-referencing
+    try {
+        std::string config_dir = "config";
+        const char* home = std::getenv("HOME");
+        if (home && home[0] != '\0') {
+            std::string home_config = std::string(home) + "/helixscreen/config";
+            if (std::filesystem::exists(home_config)) {
+                config_dir = home_config;
+            }
+        }
+
+        auto crash_report = collect_crash_report_txt(config_dir);
+        if (!crash_report.empty()) {
+            bundle["crash_report"] = crash_report;
+        }
+
+        auto crash_history = CrashHistory::instance().to_json();
+        if (!crash_history.empty()) {
+            bundle["crash_history"] = crash_history;
+        }
+
+        auto device_id = collect_device_id(config_dir);
+        if (!device_id.empty()) {
+            bundle["device_id"] = device_id;
+        }
+    } catch (const std::exception& e) {
+        spdlog::warn("[DebugBundle] Failed to collect crash data: {}", e.what());
     }
 
     try {
@@ -191,52 +223,26 @@ json DebugBundleCollector::collect_printer_info() {
 // =============================================================================
 
 std::string DebugBundleCollector::collect_log_tail(int num_lines) {
+    // Build search paths matching logging_init.cpp resolution order:
+    // 1. /var/log/helix-screen.log (legacy)
+    // 2. XDG_DATA_HOME/helix-screen/helix.log
+    // 3. ~/.local/share/helix-screen/helix.log
+    // 4. /tmp/helixscreen.log (settings default)
     std::vector<std::string> log_paths = {
         "/var/log/helix-screen.log",
     };
 
     const char* xdg = std::getenv("XDG_DATA_HOME");
     if (xdg && xdg[0] != '\0') {
-        log_paths.push_back(std::string(xdg) + "/helix-screen/helix-screen.log");
+        log_paths.push_back(std::string(xdg) + "/helix-screen/helix.log");
     }
     const char* home = std::getenv("HOME");
     if (home && home[0] != '\0') {
-        log_paths.push_back(std::string(home) + "/.local/share/helix-screen/helix-screen.log");
+        log_paths.push_back(std::string(home) + "/.local/share/helix-screen/helix.log");
     }
+    log_paths.push_back("/tmp/helixscreen.log");
 
-    for (const auto& path : log_paths) {
-        std::ifstream file(path);
-        if (!file.good()) {
-            continue;
-        }
-
-        std::deque<std::string> lines;
-        std::string line;
-        while (std::getline(file, line)) {
-            lines.push_back(std::move(line));
-            if (static_cast<int>(lines.size()) > num_lines) {
-                lines.pop_front();
-            }
-        }
-
-        if (lines.empty()) {
-            return {};
-        }
-
-        std::ostringstream result;
-        for (size_t i = 0; i < lines.size(); ++i) {
-            if (i > 0) {
-                result << '\n';
-            }
-            result << lines[i];
-        }
-
-        spdlog::debug("[DebugBundle] Read {} log lines from {}", lines.size(), path);
-        return result.str();
-    }
-
-    spdlog::debug("[DebugBundle] No log file found for log tail");
-    return {};
+    return collect_log_tail_from_paths(log_paths, num_lines);
 }
 
 // =============================================================================
@@ -613,6 +619,131 @@ std::string DebugBundleCollector::collect_moonraker_log_tail(int num_lines) {
     if (base_url.empty())
         return {};
     return fetch_log_tail(base_url, "/server/files/moonraker.log", num_lines);
+}
+
+// =============================================================================
+// Crash report (human-readable, persists after crash.txt consumed)
+// =============================================================================
+
+std::string DebugBundleCollector::collect_crash_report_txt(const std::string& config_dir) {
+    std::string path = config_dir + "/crash_report.txt";
+    try {
+        std::ifstream file(path);
+        if (!file.good()) {
+            return {};
+        }
+
+        std::ostringstream content;
+        content << file.rdbuf();
+        std::string result = content.str();
+
+        if (!result.empty()) {
+            spdlog::debug("[DebugBundle] Read crash_report.txt from {}", path);
+        }
+        return result;
+    } catch (const std::exception& e) {
+        spdlog::debug("[DebugBundle] Failed to read crash_report.txt: {}", e.what());
+        return {};
+    }
+}
+
+// =============================================================================
+// Crash history (past crash submissions from crash_history.json)
+// =============================================================================
+
+json DebugBundleCollector::collect_crash_history(const std::string& config_dir) {
+    std::string path = config_dir + "/crash_history.json";
+    try {
+        std::ifstream file(path);
+        if (!file.good()) {
+            return json::array();
+        }
+
+        json arr = json::parse(file);
+        if (!arr.is_array()) {
+            spdlog::warn("[DebugBundle] crash_history.json is not an array");
+            return json::array();
+        }
+
+        spdlog::debug("[DebugBundle] Read {} crash history entries from {}", arr.size(), path);
+        return arr;
+    } catch (const json::parse_error& e) {
+        spdlog::warn("[DebugBundle] Failed to parse crash_history.json: {}", e.what());
+        return json::array();
+    } catch (const std::exception& e) {
+        spdlog::debug("[DebugBundle] Failed to read crash_history.json: {}", e.what());
+        return json::array();
+    }
+}
+
+// =============================================================================
+// Device ID (double-hashed for R2 cross-referencing)
+// =============================================================================
+
+std::string DebugBundleCollector::collect_device_id(const std::string& config_dir) {
+    std::string path = config_dir + "/telemetry_device.json";
+    try {
+        std::ifstream file(path);
+        if (!file.good()) {
+            return {};
+        }
+
+        json data = json::parse(file);
+        if (!data.contains("uuid") || !data["uuid"].is_string() || !data.contains("salt") ||
+            !data["salt"].is_string()) {
+            spdlog::debug("[DebugBundle] telemetry_device.json missing uuid/salt");
+            return {};
+        }
+
+        std::string uuid = data["uuid"].get<std::string>();
+        std::string salt = data["salt"].get<std::string>();
+
+        // Use the same double-hash as TelemetryManager for consistency
+        return TelemetryManager::hash_device_id(uuid, salt);
+    } catch (const std::exception& e) {
+        spdlog::debug("[DebugBundle] Failed to read device ID: {}", e.what());
+        return {};
+    }
+}
+
+// =============================================================================
+// Log tail from explicit paths (testable, used by collect_log_tail)
+// =============================================================================
+
+std::string DebugBundleCollector::collect_log_tail_from_paths(const std::vector<std::string>& paths,
+                                                              int num_lines) {
+    for (const auto& path : paths) {
+        std::ifstream file(path);
+        if (!file.good()) {
+            continue;
+        }
+
+        std::deque<std::string> lines;
+        std::string line;
+        while (std::getline(file, line)) {
+            lines.push_back(std::move(line));
+            if (static_cast<int>(lines.size()) > num_lines) {
+                lines.pop_front();
+            }
+        }
+
+        if (lines.empty()) {
+            continue;
+        }
+
+        std::ostringstream result;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            if (i > 0) {
+                result << '\n';
+            }
+            result << lines[i];
+        }
+
+        spdlog::debug("[DebugBundle] Read {} log lines from {}", lines.size(), path);
+        return result.str();
+    }
+
+    return {};
 }
 
 // =============================================================================

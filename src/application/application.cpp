@@ -109,6 +109,7 @@
 #include "printer_image_manager.h"
 #include "safety_settings_manager.h"
 #include "system/crash_handler.h"
+#include "system/crash_history.h"
 #include "system/crash_reporter.h"
 #include "system/telemetry_manager.h"
 #include "system/update_checker.h"
@@ -330,6 +331,7 @@ int Application::run(int argc, char** argv) {
         crash_handler::write_mock_crash_file("config/crash.txt");
         spdlog::info("[Application] Wrote mock crash file for testing");
     }
+    helix::CrashHistory::instance().init("config");
     CrashReporter::instance().init("config");
 
     // Initialize TelemetryManager (opt-in, default OFF)
@@ -2277,6 +2279,9 @@ void Application::shutdown() {
 
     // Shutdown TelemetryManager (persists queue, joins send thread)
     TelemetryManager::instance().shutdown();
+
+    // Shutdown CrashHistory
+    helix::CrashHistory::instance().shutdown();
 
     // Shutdown SoundManager (stops sequencer, closes audio backends)
     SoundManager::instance().shutdown();

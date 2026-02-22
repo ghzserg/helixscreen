@@ -369,3 +369,147 @@ TEST_CASE("DebugBundleCollector: sanitize_json handles realistic moonraker confi
     REQUIRE(sanitized["result"]["config"]["update_manager client mainsail"]["repo"] ==
             "mainsail-crew/mainsail");
 }
+
+// ============================================================================
+// collect_crash_report_txt() tests [debug-bundle][crash]
+// ============================================================================
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_crash_report_txt reads existing file",
+                 "[debug-bundle][crash]") {
+    // Write a crash_report.txt in the temp dir
+    write_file("crash_report.txt", "=== HelixScreen Crash Report ===\n\nSignal: 11 (SIGSEGV)\n");
+
+    auto result = helix::DebugBundleCollector::collect_crash_report_txt(temp_dir_.string());
+    REQUIRE_FALSE(result.empty());
+    REQUIRE(result.find("SIGSEGV") != std::string::npos);
+}
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_crash_report_txt returns empty when missing",
+                 "[debug-bundle][crash]") {
+    auto result = helix::DebugBundleCollector::collect_crash_report_txt(temp_dir_.string());
+    REQUIRE(result.empty());
+}
+
+// ============================================================================
+// collect_crash_history() tests [debug-bundle][crash]
+// ============================================================================
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_crash_history reads history file",
+                 "[debug-bundle][crash]") {
+    // Write a crash_history.json
+    json history = json::array();
+    history.push_back({{"timestamp", "2026-02-22T04:00:00Z"},
+                       {"signal", 11},
+                       {"signal_name", "SIGSEGV"},
+                       {"app_version", "0.10.12"},
+                       {"uptime_sec", 3600},
+                       {"github_issue", 142},
+                       {"github_url", "https://github.com/prestonbrown/helixscreen/issues/142"},
+                       {"sent_via", "crash_reporter"}});
+
+    std::ofstream ofs((temp_dir_ / "crash_history.json").string());
+    ofs << history.dump(2);
+    ofs.close();
+
+    auto result = helix::DebugBundleCollector::collect_crash_history(temp_dir_.string());
+    REQUIRE(result.is_array());
+    REQUIRE(result.size() == 1);
+    REQUIRE(result[0]["signal"] == 11);
+    REQUIRE(result[0]["github_issue"] == 142);
+}
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_crash_history returns empty array when missing",
+                 "[debug-bundle][crash]") {
+    auto result = helix::DebugBundleCollector::collect_crash_history(temp_dir_.string());
+    REQUIRE(result.is_array());
+    REQUIRE(result.empty());
+}
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_crash_history handles corrupt file",
+                 "[debug-bundle][crash]") {
+    write_file("crash_history.json", "not valid json {{{{");
+
+    auto result = helix::DebugBundleCollector::collect_crash_history(temp_dir_.string());
+    REQUIRE(result.is_array());
+    REQUIRE(result.empty());
+}
+
+// ============================================================================
+// collect_device_id() tests [debug-bundle]
+// ============================================================================
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_device_id reads from telemetry device file",
+                 "[debug-bundle]") {
+    // Write a telemetry_device.json
+    json device = {{"uuid", "550e8400-e29b-41d4-a716-446655440000"}, {"salt", "random_salt_value"}};
+
+    std::ofstream ofs((temp_dir_ / "telemetry_device.json").string());
+    ofs << device.dump();
+    ofs.close();
+
+    auto result = helix::DebugBundleCollector::collect_device_id(temp_dir_.string());
+    // Should be a hashed device ID (64 char hex), not the raw UUID
+    REQUIRE_FALSE(result.empty());
+    // Must NOT contain the raw UUID
+    REQUIRE(result.find("550e8400") == std::string::npos);
+}
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_device_id returns empty when no device file",
+                 "[debug-bundle]") {
+    auto result = helix::DebugBundleCollector::collect_device_id(temp_dir_.string());
+    REQUIRE(result.empty());
+}
+
+// ============================================================================
+// collect_log_tail() path fixes [debug-bundle][log]
+// ============================================================================
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_log_tail finds helix.log in XDG path",
+                 "[debug-bundle][log]") {
+    // Create an XDG-style log file
+    fs::create_directories(temp_dir_ / "helix-screen");
+    std::ofstream ofs((temp_dir_ / "helix-screen" / "helix.log").string());
+    for (int i = 1; i <= 10; i++) {
+        ofs << "[2026-02-22 12:00:0" << i << "] test log line " << i << "\n";
+    }
+    ofs.close();
+
+    // The collect_log_tail method uses env vars and fixed paths, which we can't
+    // easily override in tests. Instead, test the file-based path resolution
+    // by testing the overload that accepts explicit paths.
+    auto result = helix::DebugBundleCollector::collect_log_tail_from_paths(
+        {(temp_dir_ / "helix-screen" / "helix.log").string()}, 5);
+    REQUIRE_FALSE(result.empty());
+    REQUIRE(result.find("test log line 10") != std::string::npos);
+    REQUIRE(result.find("test log line 6") != std::string::npos);
+    // Line 5 should NOT be in a 5-line tail
+    REQUIRE(result.find("test log line 5") == std::string::npos);
+}
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_log_tail_from_paths tries paths in order",
+                 "[debug-bundle][log]") {
+    // Only write the second path
+    write_file("fallback.log", "fallback line 1\nfallback line 2\n");
+
+    auto result = helix::DebugBundleCollector::collect_log_tail_from_paths(
+        {(temp_dir_ / "nonexistent.log").string(), (temp_dir_ / "fallback.log").string()}, 10);
+    REQUIRE_FALSE(result.empty());
+    REQUIRE(result.find("fallback line 1") != std::string::npos);
+}
+
+TEST_CASE_METHOD(DebugBundleTestFixture,
+                 "DebugBundleCollector: collect_log_tail_from_paths returns empty when all missing",
+                 "[debug-bundle][log]") {
+    auto result = helix::DebugBundleCollector::collect_log_tail_from_paths(
+        {"/nonexistent/a.log", "/nonexistent/b.log"}, 10);
+    REQUIRE(result.empty());
+}
