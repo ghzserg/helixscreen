@@ -11,6 +11,7 @@
 // ============================================================================
 
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <map>
 #include <mutex>
@@ -84,6 +85,17 @@ class WifiBackendNetworkManager : public WifiBackend {
     std::mutex networks_mutex_;
     std::vector<WiFiNetwork> cached_networks_;
 
+    // Background status polling thread
+    std::thread status_thread_;
+    std::mutex status_mutex_;
+    std::condition_variable status_cv_;
+    std::atomic<bool> status_running_{false};
+    ConnectionStatus cached_status_; // Protected by status_mutex_
+
+    // 5GHz support — computed once at start(), never changes
+    bool supports_5ghz_cached_ = false;
+    bool supports_5ghz_resolved_ = false;
+
     // ========================================================================
     // Internal Helpers
     // ========================================================================
@@ -155,6 +167,11 @@ class WifiBackendNetworkManager : public WifiBackend {
     // Thread functions for async operations
     void scan_thread_func();
     void connect_thread_func(std::string ssid, std::string password);
+
+    // Status polling
+    void status_thread_func();
+    ConnectionStatus poll_status_now(); // Actual nmcli calls (background thread only)
+    void request_status_refresh();      // Wake status thread for immediate poll
 };
 
 #endif // __APPLE__
