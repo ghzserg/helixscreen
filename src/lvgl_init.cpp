@@ -6,6 +6,7 @@
 #include "ui_fatal_error.h"
 
 #include "config.h"
+#include "helix-xml/src/xml/lv_xml.h"
 
 #include <spdlog/spdlog.h>
 
@@ -15,6 +16,7 @@ namespace helix {
 
 bool init_lvgl(int width, int height, LvglContext& ctx) {
     lv_init();
+    lv_xml_init();
 
     // Create display backend (auto-detects: DRM → framebuffer → SDL)
     ctx.backend = DisplayBackend::create_auto();
@@ -97,6 +99,7 @@ void deinit_lvgl(LvglContext& ctx) {
     ctx.backend.reset();
     ctx.display = nullptr;
     ctx.pointer = nullptr;
+    lv_xml_deinit();
     lv_deinit();
 }
 

@@ -23,6 +23,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "display_settings_manager.h"
+#include "helix-xml/src/xml/lv_xml.h"
 #include "printer_state.h"
 
 #include <spdlog/spdlog.h>
@@ -88,10 +89,15 @@ bool DisplayManager::init(const Config& config) {
     // Initialize LVGL library
     lv_init();
 
+    // Initialize helix-xml engine (extracted from LVGL 9.5)
+    // Must be called after lv_init() - sets up XML component scopes, widget registry, etc.
+    lv_xml_init();
+
     // Create display backend (auto-detects: DRM → framebuffer → SDL)
     m_backend = DisplayBackend::create_auto();
     if (!m_backend) {
         spdlog::error("[DisplayManager] No display backend available");
+        lv_xml_deinit();
         lv_deinit();
         return false;
     }
@@ -142,6 +148,7 @@ bool DisplayManager::init(const Config& config) {
     if (!m_display) {
         spdlog::error("[DisplayManager] Failed to create display");
         m_backend.reset();
+        lv_xml_deinit();
         lv_deinit();
         return false;
     }
@@ -243,6 +250,7 @@ bool DisplayManager::init(const Config& config) {
                                 suggestions, 30000);
 
             m_backend.reset();
+            lv_xml_deinit();
             lv_deinit();
             return false;
         }
@@ -377,6 +385,9 @@ void DisplayManager::shutdown() {
     SDL_SetEventFilter(nullptr, nullptr);
     lv_sdl_quit();
 #endif
+
+    // Deinitialize helix-xml engine before LVGL (frees component scopes, fonts, etc.)
+    lv_xml_deinit();
 
     // Deinitialize LVGL (guard against static destruction order issues)
     if (lv_is_initialized()) {

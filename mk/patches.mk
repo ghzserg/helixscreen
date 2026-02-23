@@ -38,10 +38,14 @@ PATCH_FILES := $(wildcard patches/*.patch)
 # Note: In regular repos, submodules use .git/modules/<name>/HEAD
 # In worktrees, .git is a file pointing to main repo's .git/worktrees/<name>/
 # So we need to resolve the actual git modules path
+# In Docker/non-git contexts (rsync'd source), these won't exist — that's fine,
+# patches will be re-checked based on patch file changes only.
 GIT_DIR := $(shell git rev-parse --git-dir 2>/dev/null || echo ".git")
 GIT_COMMON_DIR := $(shell git rev-parse --git-common-dir 2>/dev/null || echo ".git")
-LVGL_HEAD := $(GIT_COMMON_DIR)/modules/lvgl/HEAD
-LIBHV_HEAD := $(GIT_COMMON_DIR)/modules/libhv/HEAD
+LVGL_HEAD_CANDIDATE := $(GIT_COMMON_DIR)/modules/lvgl/HEAD
+LIBHV_HEAD_CANDIDATE := $(GIT_COMMON_DIR)/modules/libhv/HEAD
+LVGL_HEAD := $(wildcard $(LVGL_HEAD_CANDIDATE))
+LIBHV_HEAD := $(wildcard $(LIBHV_HEAD_CANDIDATE))
 
 # Reset all patched files in LVGL submodule to upstream state
 reset-patches:

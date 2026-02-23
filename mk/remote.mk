@@ -50,7 +50,7 @@ endif
 remote-sync:
 	@echo "$(CYAN)$(BOLD)Syncing source to $(REMOTE_SSH_TARGET):$(REMOTE_DIR)...$(RESET)"
 	@ssh $(REMOTE_SSH_TARGET) "mkdir -p $(REMOTE_DIR)"
-	rsync -avz --delete \
+	rsync -avz --copy-unsafe-links --delete \
 		--exclude='build/' \
 		--exclude='.git/' \
 		--exclude='*.o' \
