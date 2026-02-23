@@ -616,6 +616,10 @@ void AmsState::sync_backend(int backend_index) {
 
     spdlog::debug("[AMS State] Synced secondary backend {} - slots={}", backend_index,
                   info.total_slots);
+
+    // Re-evaluate "Currently Loaded" display — the active loaded filament may
+    // belong to this secondary backend (e.g., AMS_2 just finished loading).
+    sync_current_loaded_from_backend();
 }
 
 void AmsState::update_slot_for_backend(int backend_index, int slot_index) {
@@ -943,8 +947,7 @@ bool AmsState::is_filament_operation_active() {
 void AmsState::sync_current_loaded_from_backend() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    auto* backend = get_backend(0);
-    if (!backend) {
+    if (backends_.empty()) {
         // No backend - show empty state
         lv_subject_copy_string(&current_material_text_, "---");
         lv_subject_copy_string(&current_slot_text_, "Currently Loaded");
@@ -954,11 +957,52 @@ void AmsState::sync_current_loaded_from_backend() {
         return;
     }
 
-    int slot_index = lv_subject_get_int(&current_slot_);
-    bool filament_loaded = lv_subject_get_int(&filament_loaded_) != 0;
+    // Search ALL backends to find the one with filament loaded.
+    // In multi-backend setups (e.g., AMS_1 + AMS_2), only one backend
+    // will have filament actively loaded at a time.
+    AmsBackend* loaded_backend = nullptr;
+    int slot_index = -1;
+    bool filament_loaded = false;
+
+    for (auto& b : backends_) {
+        if (!b)
+            continue;
+        AmsSystemInfo info = b->get_system_info();
+        if (info.filament_loaded) {
+            loaded_backend = b.get();
+            slot_index = info.current_slot;
+            filament_loaded = true;
+            break;
+        }
+        // Also check bypass on each backend
+        if (info.current_slot == -2 && b->is_bypass_active()) {
+            loaded_backend = b.get();
+            slot_index = -2;
+            break;
+        }
+    }
+
+    // Fallback to primary backend for bypass check if no loaded backend found
+    if (!loaded_backend) {
+        loaded_backend = backends_[0].get();
+        if (loaded_backend) {
+            AmsSystemInfo info = loaded_backend->get_system_info();
+            slot_index = info.current_slot;
+            filament_loaded = info.filament_loaded;
+        }
+    }
+
+    if (!loaded_backend) {
+        lv_subject_copy_string(&current_material_text_, "---");
+        lv_subject_copy_string(&current_slot_text_, "Currently Loaded");
+        lv_subject_copy_string(&current_weight_text_, "");
+        lv_subject_set_int(&current_has_weight_, 0);
+        lv_subject_set_int(&current_color_, 0x505050);
+        return;
+    }
 
     // Check for bypass mode (slot_index == -2)
-    if (slot_index == -2 && backend->is_bypass_active()) {
+    if (slot_index == -2 && loaded_backend->is_bypass_active()) {
         lv_subject_copy_string(&current_slot_text_, "Current: Bypass");
 
         // Show actual spool info if external spool is assigned
@@ -1002,8 +1046,8 @@ void AmsState::sync_current_loaded_from_backend() {
             lv_subject_set_int(&current_color_, 0x888888);
         }
     } else if (slot_index >= 0 && filament_loaded) {
-        // Filament is loaded - show slot info
-        SlotInfo slot_info = backend->get_slot_info(slot_index);
+        // Filament is loaded - show slot info from the backend that has it loaded
+        SlotInfo slot_info = loaded_backend->get_slot_info(slot_index);
 
         // Sync Spoolman active spool when slot with spoolman_id is loaded
         if (api_ && slot_info.spoolman_id > 0 &&
@@ -1043,7 +1087,7 @@ void AmsState::sync_current_loaded_from_backend() {
 
         // Set slot label with unit name
         {
-            AmsSystemInfo sys = backend->get_system_info();
+            AmsSystemInfo sys = loaded_backend->get_system_info();
 
             if (is_tool_changer(sys.type) && sys.units.empty()) {
                 // Pure tool changer with no AMS units — show tool index (0-based)
