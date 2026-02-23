@@ -17,8 +17,10 @@
 using helix::ui::get_time_format_string;
 
 // Helper: Find series metadata by ID
+// Returns nullptr if graph, chart, or series is invalid (protects against use-after-free
+// when chart LVGL widget is destroyed but ui_temp_graph_t struct survives)
 static ui_temp_series_meta_t* find_series(ui_temp_graph_t* graph, int series_id) {
-    if (!graph || series_id < 0 || series_id >= UI_TEMP_GRAPH_MAX_SERIES) {
+    if (!graph || !graph->chart || series_id < 0 || series_id >= UI_TEMP_GRAPH_MAX_SERIES) {
         return nullptr;
     }
 
@@ -86,6 +88,17 @@ static void chart_resize_cb(lv_event_t* e) {
     ui_temp_graph_t* graph = static_cast<ui_temp_graph_t*>(lv_obj_get_user_data(chart));
     if (graph) {
         update_all_cursor_positions(graph);
+    }
+}
+
+// Event callback: Null out graph->chart when the LVGL chart widget is destroyed.
+// Prevents use-after-free when parent widget deletion cascades to the chart
+// but the ui_temp_graph_t struct (and temp_graphs registrations) survive.
+static void chart_delete_cb(lv_event_t* e) {
+    auto* graph = static_cast<ui_temp_graph_t*>(lv_event_get_user_data(e));
+    if (graph) {
+        spdlog::debug("[TempGraph] Chart widget deleted, nulling graph->chart");
+        graph->chart = nullptr;
     }
 }
 
@@ -686,6 +699,9 @@ ui_temp_graph_t* ui_temp_graph_create(lv_obj_t* parent) {
     // Store graph pointer in chart user data for retrieval
     lv_obj_set_user_data(graph->chart, graph);
 
+    // Register delete callback to null out graph->chart on widget destruction
+    lv_obj_add_event_cb(graph->chart, chart_delete_cb, LV_EVENT_DELETE, graph);
+
     // Register resize callback to recalculate value-based cursor positions
     lv_obj_add_event_cb(graph->chart, chart_resize_cb, LV_EVENT_SIZE_CHANGED, nullptr);
 
@@ -721,17 +737,19 @@ void ui_temp_graph_destroy(ui_temp_graph_t* graph) {
     // Transfer ownership to RAII wrapper - automatic cleanup
     std::unique_ptr<ui_temp_graph_t> graph_ptr(graph);
 
-    // Remove all series (cursors will be cleaned up automatically)
-    for (int i = 0; i < graph_ptr->series_count; i++) {
-        if (graph_ptr->series_meta[i].chart_series) {
-            lv_chart_remove_series(graph_ptr->chart, graph_ptr->series_meta[i].chart_series);
-        }
-    }
-
-    // Delete chart widget — theme observer is auto-removed via lv_subject_add_observer_obj.
-    // Manual lv_observer_remove() would free the observer, but LVGL's child-delete
-    // cascade would then fire unsubscribe_on_delete_cb on freed memory → crash.
+    // Only clean up series and chart if chart widget still exists.
+    // Chart may already be deleted by LVGL parent cascade (chart_delete_cb nulls graph->chart).
     if (graph_ptr->chart) {
+        // Remove all series (cursors will be cleaned up automatically)
+        for (int i = 0; i < graph_ptr->series_count; i++) {
+            if (graph_ptr->series_meta[i].chart_series) {
+                lv_chart_remove_series(graph_ptr->chart, graph_ptr->series_meta[i].chart_series);
+            }
+        }
+
+        // Delete chart widget — theme observer is auto-removed via lv_subject_add_observer_obj.
+        // Manual lv_observer_remove() would free the observer, but LVGL's child-delete
+        // cascade would then fire unsubscribe_on_delete_cb on freed memory → crash.
         lv_obj_del(graph_ptr->chart);
     }
 
@@ -739,15 +757,15 @@ void ui_temp_graph_destroy(ui_temp_graph_t* graph) {
     spdlog::trace("[TempGraph] Destroyed");
 }
 
-// Get underlying chart widget
+// Get underlying chart widget (nullptr if graph or chart was destroyed)
 lv_obj_t* ui_temp_graph_get_chart(ui_temp_graph_t* graph) {
-    return graph ? graph->chart : nullptr;
+    return (graph && graph->chart) ? graph->chart : nullptr;
 }
 
 // Add a new temperature series
 int ui_temp_graph_add_series(ui_temp_graph_t* graph, const char* name, lv_color_t color) {
-    if (!graph || !name) {
-        spdlog::error("[TempGraph] NULL graph or name");
+    if (!graph || !graph->chart || !name) {
+        spdlog::error("[TempGraph] NULL graph, chart, or name");
         return -1;
     }
 
@@ -953,7 +971,7 @@ void ui_temp_graph_set_series_data(ui_temp_graph_t* graph, int series_id, const 
 
 // Clear all data
 void ui_temp_graph_clear(ui_temp_graph_t* graph) {
-    if (!graph)
+    if (!graph || !graph->chart)
         return;
 
     for (int i = 0; i < graph->series_count; i++) {
@@ -1034,7 +1052,7 @@ void ui_temp_graph_show_target(ui_temp_graph_t* graph, int series_id, bool show)
 
 // Set Y-axis temperature range
 void ui_temp_graph_set_temp_range(ui_temp_graph_t* graph, float min, float max) {
-    if (!graph || min >= max) {
+    if (!graph || !graph->chart || min >= max) {
         spdlog::error("[TempGraph] Invalid temperature range");
         return;
     }
@@ -1053,7 +1071,7 @@ void ui_temp_graph_set_temp_range(ui_temp_graph_t* graph, float min, float max) 
 
 // Set point count
 void ui_temp_graph_set_point_count(ui_temp_graph_t* graph, int count) {
-    if (!graph || count <= 0) {
+    if (!graph || !graph->chart || count <= 0) {
         spdlog::error("[TempGraph] Invalid point count");
         return;
     }
@@ -1084,7 +1102,7 @@ void ui_temp_graph_set_series_gradient(ui_temp_graph_t* graph, int series_id, lv
 
 // Set Y-axis label configuration
 void ui_temp_graph_set_y_axis(ui_temp_graph_t* graph, float increment, bool show) {
-    if (!graph) {
+    if (!graph || !graph->chart) {
         spdlog::error("[TempGraph] NULL graph in set_y_axis");
         return;
     }
@@ -1100,7 +1118,7 @@ void ui_temp_graph_set_y_axis(ui_temp_graph_t* graph, float increment, bool show
 
 // Set axis label font size
 void ui_temp_graph_set_axis_size(ui_temp_graph_t* graph, const char* size) {
-    if (!graph) {
+    if (!graph || !graph->chart) {
         spdlog::error("[TempGraph] NULL graph in set_axis_size");
         return;
     }
