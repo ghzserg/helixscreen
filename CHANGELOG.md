@@ -5,6 +5,25 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-02-22
+
+### Added
+- Panel widgets dim when Moonraker is disconnected or Klippy is not ready
+- AMS slot bars resize responsively based on home panel row density
+- Bypass spool widget and filament path topology support for AMS systems
+- Happy Hare v4 parsing with full v3 backwards compatibility
+
+### Fixed
+- AMS "Currently Loaded" display now shows the correct filament in multi-backend setups (e.g., AMS_2 load no longer snaps to AMS_1 state)
+- Use-after-free crash on AMS overview back-navigation
+- Use-after-free crash when temperature graph chart widget is destroyed
+- Bypass path and toggle hidden for tool changers (not applicable)
+- Watchdog uses fork-based reboot fallback for crash dialog reliability
+- Auto-restart after update install instead of showing unnecessary restart dialog
+
+### Changed
+- Filament page: purge button separated from extrude, operations layout reorganized
+
 ## [0.11.0] - 2026-02-22
 
 A feature-rich release — fan speeds are now a first-class widget with spinning animations and density-aware labels, chamber temperature gets its own full control panel, and the Printer Manager overlay is available to everyone (no longer gated behind beta). Under the hood, dynamic observer lifetime safety prevents use-after-free crashes, and the MoonrakerClient has been decomposed for maintainability.
@@ -961,6 +980,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.11.1]: https://github.com/prestonbrown/helixscreen/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/prestonbrown/helixscreen/compare/v0.10.14...v0.11.0
 [0.10.14]: https://github.com/prestonbrown/helixscreen/compare/v0.10.13...v0.10.14
 [0.10.13]: https://github.com/prestonbrown/helixscreen/compare/v0.10.12...v0.10.13
