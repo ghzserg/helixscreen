@@ -221,7 +221,7 @@ make compile_commands  # Generates compile_commands.json (requires bear)
 ## Daily Workflow
 
 1. **Edit code** in `src/` or `include/`
-2. **Edit XML** in `ui_xml/` — **no rebuild needed**, just relaunch the app
+2. **Edit XML** in `ui_xml/` — **no rebuild needed** (use hot reload or just relaunch)
 3. **Build** with `make -j` (only when C++ changes)
 4. **Test** with `./build/bin/helix-screen --test -vv [panel]`
 5. **Screenshot** with S key or `./scripts/screenshot.sh`
@@ -229,14 +229,22 @@ make compile_commands  # Generates compile_commands.json (requires bear)
 
 ### XML vs C++ Changes
 
-| Change Type | Location | Rebuild? |
-|-------------|----------|----------|
-| Layout, styling, colors | `ui_xml/*.xml` | **No** — just restart the app |
-| Logic, bindings, handlers | `src/*.cpp`, `include/*.h` | Yes (`make -j`) |
-| Theme colors | `config/themes/*.json` | No — just restart |
-| Translations | `config/strings/*.yaml` | Yes (code generation step) |
+| Change Type | Location | Rebuild? | Hot Reload? |
+|-------------|----------|----------|-------------|
+| Layout, styling, colors | `ui_xml/*.xml` | **No** | **Yes** — auto-detected |
+| Logic, bindings, handlers | `src/*.cpp`, `include/*.h` | Yes (`make -j`) | No |
+| Theme colors | `config/themes/*.json` | No — just restart | No |
+| Translations | `config/strings/*.yaml` | Yes (code generation step) | No |
 
-This makes UI iteration very fast — edit XML, relaunch, see changes immediately.
+### XML Hot Reload
+
+For the fastest UI iteration, use hot reload — edit XML, save, see updates without restarting:
+
+```bash
+HELIX_HOT_RELOAD=1 ./build/bin/helix-screen --test -vv
+```
+
+When enabled, a background thread watches all XML files for changes and re-registers modified components automatically. After a file changes, navigate away from the panel and back to see the new layout. See [HELIX_HOT_RELOAD](ENVIRONMENT_VARIABLES.md#helix_hot_reload) for details and limitations.
 
 ---
 
@@ -246,7 +254,7 @@ For layout work, styling fixes, and alternate screen layouts, the **[UI Contribu
 
 Key points for UI contributors:
 
-- **XML layouts load at runtime** — no rebuild needed for layout/styling changes
+- **XML layouts load at runtime** — no rebuild needed for layout/styling changes. Use `HELIX_HOT_RELOAD=1` for live editing without restarting
 - **Design tokens are mandatory** — use `#space_md`, `#card_bg`, `<text_body>` instead of hardcoded values
 - **5 breakpoint tiers** based on screen height: tiny (≤390px), small (391–460px), medium (461–550px), large (551–700px), xlarge (>700px)
 - **Layout overrides** let you provide alternate XML for ultrawide, portrait, or tiny screens without touching the standard layouts

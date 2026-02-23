@@ -9,6 +9,7 @@
 #include <spdlog/spdlog.h>
 
 #include <cstdlib>
+#include <cstring>
 
 // Global runtime configuration instance
 static RuntimeConfig g_runtime_config;
@@ -34,6 +35,17 @@ bool RuntimeConfig::debug_subjects() {
 
 void RuntimeConfig::set_debug_subjects(bool value) {
     g_debug_subjects = value;
+}
+
+bool RuntimeConfig::hot_reload_enabled() {
+    static bool checked = false;
+    static bool enabled = false;
+    if (!checked) {
+        checked = true;
+        const char* val = std::getenv("HELIX_HOT_RELOAD");
+        enabled = (val != nullptr && std::strcmp(val, "1") == 0);
+    }
+    return enabled;
 }
 
 bool RuntimeConfig::should_show_runout_modal() const {

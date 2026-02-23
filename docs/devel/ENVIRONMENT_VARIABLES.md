@@ -13,6 +13,7 @@ This document provides a comprehensive reference for all environment variables u
 | [Mock & Testing](#mock--testing) | 14 | `HELIX_MOCK_*` |
 | [UI Automation](#ui-automation) | 3 | `HELIX_AUTO_*` |
 | [Calibration](#calibration-auto-start) | 2 | `*_AUTO_START` |
+| [Development](#development) | 1 | `HELIX_` |
 | [Debugging](#debugging) | 1 | `HELIX_DEBUG_*` |
 | [Deployment](#deployment) | 1 | `HELIX_` |
 | [Logging & Startup](#logging--startup) | 2 | `HELIX_` |
@@ -641,6 +642,48 @@ Auto-start bed screw probing when the screws tilt panel loads.
 ```bash
 # Test screws panel with auto-start
 SCREWS_AUTO_START=1 ./build/bin/helix-screen --test -p screws-tilt
+```
+
+---
+
+## Development
+
+### `HELIX_HOT_RELOAD`
+
+Enable XML hot reload for live UI editing. When enabled, a background thread polls `ui_xml/` and `ui_xml/components/` every 500ms for file changes. Modified XML components are automatically unregistered and re-registered with LVGL — no restart needed.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `1` (enable), unset (disable) |
+| **Default** | Disabled (zero overhead in production) |
+| **File** | `src/system/runtime_config.cpp`, `src/application/xml_hot_reloader.cpp` |
+
+```bash
+# Enable hot reload during development
+HELIX_HOT_RELOAD=1 ./build/bin/helix-screen --test -vv
+```
+
+**How it works:**
+1. On startup, scans `ui_xml/` and `ui_xml/components/` and records file modification times
+2. Every 500ms, checks all tracked XML files for mtime changes
+3. When a change is detected, queues an `lv_xml_component_unregister()` + `lv_xml_register_component_from_file()` on the LVGL main thread
+4. Log output confirms the reload: `[HotReload] Reloaded: home_panel (0.4ms)`
+
+**Limitations:**
+- **Existing widgets are not rebuilt.** After a reload, navigate away from the current panel and back to see the updated layout. Future versions may add automatic panel refresh.
+- **New files are not detected.** Only files present when the app starts are tracked. Adding a new XML file requires a restart.
+- **Component re-registration only.** If the XML change requires new subjects, callbacks, or C++ code, a full rebuild + restart is needed.
+
+**Typical workflow:**
+```bash
+# Terminal 1: Run with hot reload
+HELIX_HOT_RELOAD=1 ./build/bin/helix-screen --test -vv
+
+# Terminal 2: Edit XML, save, watch the log
+vim ui_xml/home_panel.xml
+# [HotReload] Reloaded: home_panel (0.3ms)
+
+# Switch panels in the UI to see the new layout
 ```
 
 ---

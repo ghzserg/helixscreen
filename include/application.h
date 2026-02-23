@@ -9,6 +9,7 @@
 #include "lvgl/lvgl.h"
 #include "main_loop_handler.h"
 #include "splash_screen_manager.h"
+#include "xml_hot_reloader.h"
 
 #include <memory>
 
@@ -117,6 +118,7 @@ class Application {
     std::unique_ptr<TemperatureHistoryManager> m_temp_history_manager;
     std::unique_ptr<helix::PanelFactory> m_panels;
     std::unique_ptr<helix::plugin::PluginManager> m_plugin_manager;
+    std::unique_ptr<helix::XmlHotReloader> m_hot_reloader;
 
     // Action prompt system (Klipper action:prompt protocol)
     std::unique_ptr<helix::ActionPromptManager> m_action_prompt_manager;

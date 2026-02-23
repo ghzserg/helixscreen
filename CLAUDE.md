@@ -2,7 +2,7 @@
 
 ## Quick Start
 
-**HelixScreen**: LVGL 9.4 touchscreen UI for Klipper 3D printers. XML engine in `lib/lvgl/src/xml/`. Pattern: XML → Subjects → C++.
+**HelixScreen**: LVGL 9.4 touchscreen UI for Klipper 3D printers. XML engine in `lib/helix-xml/` (extracted from LVGL). Pattern: XML → Subjects → C++.
 
 **Before compiling:** Check for existing build processes (`pgrep -f 'make|c\+\+'`) — concurrent compilations thrash the machine.
 
@@ -19,6 +19,8 @@ make pi-test                         # Build on thelio + deploy + run
 # Worktrees — MUST use for MAJOR work. Always in .worktrees/ (project root).
 scripts/setup-worktree.sh feature/my-branch  # Symlinks deps, builds fast
 ```
+
+**XML hot reload:** `HELIX_HOT_RELOAD=1 ./build/bin/helix-screen --test -vv` — edit XML, save, switch panels to see changes live.
 
 **Screenshots:** Press 'S' in UI, or `./scripts/screenshot.sh helix-screen output-name [panel]`
 

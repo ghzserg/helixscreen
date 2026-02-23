@@ -834,6 +834,13 @@ bool Application::register_widgets() {
 bool Application::register_xml_components() {
     helix::register_xml_components();
     spdlog::debug("[Application] XML components registered");
+
+    // Start XML hot reloader if enabled (dev-only, HELIX_HOT_RELOAD=1)
+    if (RuntimeConfig::hot_reload_enabled()) {
+        m_hot_reloader = std::make_unique<helix::XmlHotReloader>();
+        m_hot_reloader->start({"ui_xml", "ui_xml/components"});
+    }
+
     return true;
 }
 
@@ -2255,6 +2262,12 @@ void Application::shutdown() {
 
     // Uninstall crash handler (clean shutdown is not a crash)
     crash_handler::uninstall();
+
+    // Stop hot reloader thread before anything else
+    if (m_hot_reloader) {
+        m_hot_reloader->stop();
+        m_hot_reloader.reset();
+    }
 
     // Stop memory monitor first
     helix::MemoryMonitor::instance().stop();

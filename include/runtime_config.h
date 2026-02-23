@@ -117,6 +117,16 @@ struct RuntimeConfig {
     static void set_debug_subjects(bool value);
 
     /**
+     * @brief Check if XML hot reload is enabled
+     *
+     * When enabled, XML files are polled for changes and re-registered live.
+     * Enabled via HELIX_HOT_RELOAD=1 environment variable. Dev-only feature.
+     *
+     * @return true if hot reload is enabled
+     */
+    static bool hot_reload_enabled();
+
+    /**
      * @brief Check if WiFi should use mock implementation
      * @return true if test mode is enabled and real WiFi is not requested
      */
