@@ -194,7 +194,7 @@ On uninstall, GuppyScreen is restored.
 - Prebuilt `cc1` binaries are included in GitHub releases
 - No installer script support yet — manual deployment only
 
-**If you're testing on this printer**, please report your results via [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues) or [Discord](https://discord.gg/rZ9dB74V).
+**If you're testing on this printer**, please report your results via [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues) or [Discord](https://discord.gg/RZCT2StKhr).
 
 ---
 
@@ -871,7 +871,7 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for solutions to:
 
 ### Still Stuck?
 
-1. Ask in the [HelixScreen Discord](https://discord.gg/rZ9dB74V) for quick help
+1. Ask in the [HelixScreen Discord](https://discord.gg/RZCT2StKhr) for quick help
 2. Check [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues) for known problems
 3. Open a new issue with:
    - Your hardware (Pi model, display type)

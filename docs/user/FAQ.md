@@ -428,7 +428,7 @@ See the [Development Guide](../DEVELOPMENT.md) for build instructions, dependenc
 
 ### Where can I get help?
 
-Join the [HelixScreen Discord](https://discord.gg/rZ9dB74V) for community support, setup help, and feature discussions.
+Join the [HelixScreen Discord](https://discord.gg/RZCT2StKhr) for community support, setup help, and feature discussions.
 
 ### Where can I report bugs?
 

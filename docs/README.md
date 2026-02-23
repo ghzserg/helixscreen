@@ -168,7 +168,7 @@ moonraker-plugin/
 
 ## Community
 
-**[Join the HelixScreen Discord](https://discord.gg/rZ9dB74V)** — Get help, share your setup, and follow development.
+**[Join the HelixScreen Discord](https://discord.gg/RZCT2StKhr)** — Get help, share your setup, and follow development.
 
 **Bug Reports & Feature Requests:** [GitHub Issues](https://github.com/prestonbrown/helixscreen/issues)
 
