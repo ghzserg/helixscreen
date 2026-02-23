@@ -105,15 +105,21 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
     }
 
     // If firmware_restart is NOT already in the list (user disabled it),
-    // conditionally inject it as the LAST widget when Klipper is in SHUTDOWN.
-    // This ensures the restart button is always reachable during a shutdown.
+    // conditionally inject it as the LAST widget when Klipper is in SHUTDOWN or ERROR.
+    // This ensures the restart button is always reachable during a shutdown or error.
     bool has_firmware_restart = std::find(enabled_widgets.begin(), enabled_widgets.end(),
                                           "panel_widget_firmware_restart") != enabled_widgets.end();
     if (!has_firmware_restart) {
         lv_subject_t* klippy = lv_xml_get_subject(nullptr, "klippy_state");
-        if (klippy && lv_subject_get_int(klippy) == 2) {
-            enabled_widgets.push_back("panel_widget_firmware_restart");
-            spdlog::debug("[PanelWidgetManager] Injected firmware_restart (Klipper SHUTDOWN)");
+        if (klippy) {
+            int state = lv_subject_get_int(klippy);
+            if (state == static_cast<int>(KlippyState::SHUTDOWN) ||
+                state == static_cast<int>(KlippyState::ERROR)) {
+                enabled_widgets.push_back("panel_widget_firmware_restart");
+                spdlog::debug("[PanelWidgetManager] Injected firmware_restart (Klipper {})",
+                              state == static_cast<int>(KlippyState::SHUTDOWN) ? "SHUTDOWN"
+                                                                               : "ERROR");
+            }
         }
     }
 
