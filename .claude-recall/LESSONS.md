@@ -149,16 +149,16 @@
 - **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-17 | **Last**: 2026-02-22 | **Category**: i18n
 > Never wrap product names (Spoolman, Klipper, Moonraker, HelixScreen), URLs/domains, technical abbreviations used as standalone labels (AMS, QGL, ADXL), or universal terms (OK, WiFi) in lv_tr(). Add '// i18n: do not translate' comment explaining why. Sentences CONTAINING product names ARE translatable — 'Restarting HelixScreen...' is fine because 'Restarting' translates. Material names (PLA, PETG, ABS, TPU, PA) also don't get translated or translation_tag in XML.
 
-### [L072] [*----|***--] Never capture bare this in async/WebSocket callbacks
-- **Uses**: 1 | **Velocity**: 1 | **Learned**: 2026-02-22 | **Last**: 2026-02-22 | **Category**: gotcha | **Type**: constraint
+### [L072] [*----|****-] Never capture bare this in async/WebSocket callbacks
+- **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-22 | **Last**: 2026-02-23 | **Category**: gotcha | **Type**: constraint
 > Callbacks passed to execute_gcode(), send_jsonrpc(), or any Moonraker API call fire from the WebSocket thread AFTER the widget/panel may be destroyed. NEVER capture [this] — use weak_ptr<bool> alive guard or capture value copies only. Pattern: `std::weak_ptr<bool> weak = alive_; api->call([weak, name_copy]() { if (weak.expired()) return; ... });`
 
 ### [L073] [*----|****-] ObserverGuard release vs reset
 - **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-22 | **Last**: 2026-02-22 | **Category**: gotcha | **Type**: constraint
 > Use obs.reset() when subjects are ALIVE (normal cleanup, repopulate) — properly unsubscribes. Use obs.release() ONLY when subjects may already be DESTROYED (shutdown, pre-deinit) — avoids double-free. Wrong choice = crash: reset() on dead subject = double-free, release() on live subject = dangling observer = use-after-free.
 
-### [L074] [*----|***--] Generation counter for deferred observer callbacks
-- **Uses**: 1 | **Velocity**: 1 | **Learned**: 2026-02-22 | **Last**: 2026-02-22 | **Category**: pattern | **Type**: informational
+### [L074] [*----|****-] Generation counter for deferred observer callbacks
+- **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-22 | **Last**: 2026-02-23 | **Category**: pattern | **Type**: informational
 > When repopulating dynamic widget lists with observers, bump a generation counter BEFORE cleanup. Capture the counter in observer callbacks and check `if (gen != self->gen_) return;` to skip stale deferred callbacks that fire after the old widgets are deleted. Prevents use-after-free from observe_int_sync's deferred dispatch.
 
 ### [L075] [*----|***--] Validate lv_obj before accessing children
