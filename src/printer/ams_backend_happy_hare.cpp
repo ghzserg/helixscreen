@@ -9,6 +9,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <sstream>
 
 using namespace helix;
@@ -94,6 +95,16 @@ AmsSystemInfo AmsBackendHappyHare::get_system_info() const {
     info.has_hardware_bypass_sensor = system_info_.has_hardware_bypass_sensor;
     info.tip_method = system_info_.tip_method;
     info.supports_purge = system_info_.supports_purge;
+
+    // Happy Hare v4 extended fields
+    info.spoolman_mode = system_info_.spoolman_mode;
+    info.pending_spool_id = system_info_.pending_spool_id;
+    info.espooler_state = system_info_.espooler_state;
+    info.sync_feedback_state = system_info_.sync_feedback_state;
+    info.sync_drive = system_info_.sync_drive;
+    info.clog_detection = system_info_.clog_detection;
+    info.encoder_flow_rate = system_info_.encoder_flow_rate;
+    info.toolchange_purge_volume = system_info_.toolchange_purge_volume;
 
     // Copy unit-level metadata not managed by registry
     for (size_t u = 0; u < info.units.size() && u < system_info_.units.size(); ++u) {
@@ -318,6 +329,13 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
         }
     }
 
+    // Parse bowden_progress: printer.mmu.bowden_progress (v4)
+    // 0-100 = loading progress percentage, -1 = not applicable
+    if (mmu_data.contains("bowden_progress") && mmu_data["bowden_progress"].is_number_integer()) {
+        bowden_progress_ = std::clamp(mmu_data["bowden_progress"].get<int>(), -1, 100);
+        spdlog::trace("[AMS HappyHare] Bowden progress: {}%", bowden_progress_);
+    }
+
     // Parse has_bypass: printer.mmu.has_bypass
     // Not all MMU types support bypass (e.g., ERCF/Tradrack do, BoxTurtle does not)
     if (mmu_data.contains("has_bypass") && mmu_data["has_bypass"].is_boolean()) {
@@ -331,6 +349,58 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
         if (num_units_ < 1)
             num_units_ = 1;
         spdlog::trace("[AMS HappyHare] Number of units: {}", num_units_);
+    }
+
+    // Parse num_gates for dissimilar multi-unit (v4)
+    // Can be a string like "6,4" for 6-gate ERCF + 4-gate Box Turtle, or plain int
+    if (mmu_data.contains("num_gates")) {
+        const auto& ng = mmu_data["num_gates"];
+        if (ng.is_string()) {
+            // Parse comma-separated per-unit gate counts (v4 dissimilar multi-MMU)
+            std::string ng_str = ng.get<std::string>();
+            std::vector<int> counts;
+            std::istringstream iss(ng_str);
+            std::string token;
+            while (std::getline(iss, token, ',')) {
+                try {
+                    int count = std::stoi(token);
+                    if (count > 0) {
+                        counts.push_back(count);
+                    } else {
+                        spdlog::warn("[AMS HappyHare] Ignoring non-positive gate count {} in "
+                                     "num_gates string",
+                                     count);
+                    }
+                } catch (...) {
+                    spdlog::warn("[AMS HappyHare] Ignoring invalid token in num_gates string");
+                }
+            }
+            if (!counts.empty()) {
+                per_unit_gate_counts_ = counts;
+                spdlog::debug("[AMS HappyHare] Per-unit gate counts from num_gates string: {}",
+                              ng_str);
+            }
+        }
+    }
+
+    // Parse unit_gate_counts array if present (future-proof for v4)
+    if (mmu_data.contains("unit_gate_counts") && mmu_data["unit_gate_counts"].is_array()) {
+        std::vector<int> counts;
+        for (const auto& c : mmu_data["unit_gate_counts"]) {
+            if (c.is_number_integer()) {
+                counts.push_back(c.get<int>());
+            }
+        }
+        if (!counts.empty()) {
+            per_unit_gate_counts_ = counts;
+            spdlog::debug("[AMS HappyHare] Per-unit gate counts from unit_gate_counts array");
+        }
+    }
+
+    // Parse active unit: printer.mmu.unit (v4)
+    if (mmu_data.contains("unit") && mmu_data["unit"].is_number_integer()) {
+        active_unit_ = mmu_data["unit"].get<int>();
+        spdlog::trace("[AMS HappyHare] Active unit: {}", active_unit_);
     }
 
     // Parse gate_status array: printer.mmu.gate_status
@@ -391,6 +461,97 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
                 }
             }
         }
+    }
+
+    // === Happy Hare v4 extended status fields ===
+
+    // Parse espooler_active: printer.mmu.espooler_active (v4)
+    if (mmu_data.contains("espooler_active") && mmu_data["espooler_active"].is_string()) {
+        system_info_.espooler_state = mmu_data["espooler_active"].get<std::string>();
+        spdlog::trace("[AMS HappyHare] eSpooler state: {}", system_info_.espooler_state);
+    }
+
+    // Parse sync_feedback_state: printer.mmu.sync_feedback_state (v4)
+    if (mmu_data.contains("sync_feedback_state") && mmu_data["sync_feedback_state"].is_string()) {
+        system_info_.sync_feedback_state = mmu_data["sync_feedback_state"].get<std::string>();
+        spdlog::trace("[AMS HappyHare] Sync feedback: {}", system_info_.sync_feedback_state);
+    }
+
+    // Parse sync_drive: printer.mmu.sync_drive (v4)
+    if (mmu_data.contains("sync_drive") && mmu_data["sync_drive"].is_boolean()) {
+        system_info_.sync_drive = mmu_data["sync_drive"].get<bool>();
+        spdlog::trace("[AMS HappyHare] Sync drive: {}", system_info_.sync_drive);
+    }
+
+    // Parse clog_detection_enabled: printer.mmu.clog_detection_enabled (v4)
+    // 0=off, 1=manual, 2=auto
+    if (mmu_data.contains("clog_detection_enabled") &&
+        mmu_data["clog_detection_enabled"].is_number_integer()) {
+        system_info_.clog_detection = mmu_data["clog_detection_enabled"].get<int>();
+        spdlog::trace("[AMS HappyHare] Clog detection: {}", system_info_.clog_detection);
+    }
+
+    // Parse encoder.flow_rate: printer.mmu.encoder.flow_rate (v4, nested)
+    if (mmu_data.contains("encoder") && mmu_data["encoder"].is_object()) {
+        const auto& encoder = mmu_data["encoder"];
+        if (encoder.contains("flow_rate") && encoder["flow_rate"].is_number_integer()) {
+            system_info_.encoder_flow_rate = encoder["flow_rate"].get<int>();
+            spdlog::trace("[AMS HappyHare] Encoder flow rate: {}", system_info_.encoder_flow_rate);
+        }
+    }
+
+    // Parse toolchange_purge_volume: printer.mmu.toolchange_purge_volume (v4)
+    if (mmu_data.contains("toolchange_purge_volume") &&
+        mmu_data["toolchange_purge_volume"].is_number()) {
+        system_info_.toolchange_purge_volume = mmu_data["toolchange_purge_volume"].get<float>();
+        spdlog::trace("[AMS HappyHare] Toolchange purge volume: {:.1f}",
+                      system_info_.toolchange_purge_volume);
+    }
+
+    // Parse spoolman_support: printer.mmu.spoolman_support (v4)
+    if (mmu_data.contains("spoolman_support") && mmu_data["spoolman_support"].is_string()) {
+        system_info_.spoolman_mode =
+            spoolman_mode_from_string(mmu_data["spoolman_support"].get<std::string>());
+        spdlog::trace("[AMS HappyHare] Spoolman mode: {}",
+                      spoolman_mode_to_string(system_info_.spoolman_mode));
+    }
+
+    // Parse pending_spool_id: printer.mmu.pending_spool_id (v4)
+    if (mmu_data.contains("pending_spool_id") && mmu_data["pending_spool_id"].is_number_integer()) {
+        system_info_.pending_spool_id = mmu_data["pending_spool_id"].get<int>();
+        spdlog::trace("[AMS HappyHare] Pending spool ID: {}", system_info_.pending_spool_id);
+    }
+
+    // Parse gate_temperature array: printer.mmu.gate_temperature (v4)
+    // Per-gate nozzle temperature recommendations
+    if (mmu_data.contains("gate_temperature") && mmu_data["gate_temperature"].is_array()) {
+        const auto& gate_temps = mmu_data["gate_temperature"];
+        for (size_t i = 0; i < gate_temps.size(); ++i) {
+            if (gate_temps[i].is_number()) {
+                auto* entry = slots_.get_mut(static_cast<int>(i));
+                if (entry) {
+                    int temp = gate_temps[i].get<int>();
+                    entry->info.nozzle_temp_min = temp;
+                    entry->info.nozzle_temp_max = temp;
+                }
+            }
+        }
+        spdlog::trace("[AMS HappyHare] Parsed gate_temperature for {} gates", gate_temps.size());
+    }
+
+    // Parse gate_name array: printer.mmu.gate_name (v4)
+    // Per-gate filament names
+    if (mmu_data.contains("gate_name") && mmu_data["gate_name"].is_array()) {
+        const auto& gate_names = mmu_data["gate_name"];
+        for (size_t i = 0; i < gate_names.size(); ++i) {
+            if (gate_names[i].is_string()) {
+                auto* entry = slots_.get_mut(static_cast<int>(i));
+                if (entry) {
+                    entry->info.color_name = gate_names[i].get<std::string>();
+                }
+            }
+        }
+        spdlog::trace("[AMS HappyHare] Parsed gate_name for {} gates", gate_names.size());
     }
 
     // Parse ttg_map (tool-to-gate mapping) if available
@@ -456,6 +617,35 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
         }
     }
 
+    // Parse drying_state: printer.mmu.drying_state (v4 - KMS/EMU hardware)
+    if (mmu_data.contains("drying_state") && mmu_data["drying_state"].is_object()) {
+        const auto& drying = mmu_data["drying_state"];
+        dryer_info_.supported = true;
+
+        if (drying.contains("active") && drying["active"].is_boolean()) {
+            dryer_info_.active = drying["active"].get<bool>();
+        }
+        if (drying.contains("current_temp") && drying["current_temp"].is_number()) {
+            dryer_info_.current_temp_c = drying["current_temp"].get<float>();
+        }
+        if (drying.contains("target_temp") && drying["target_temp"].is_number()) {
+            dryer_info_.target_temp_c = drying["target_temp"].get<float>();
+        }
+        if (drying.contains("remaining_min") && drying["remaining_min"].is_number_integer()) {
+            dryer_info_.remaining_min = drying["remaining_min"].get<int>();
+        }
+        if (drying.contains("duration_min") && drying["duration_min"].is_number_integer()) {
+            dryer_info_.duration_min = drying["duration_min"].get<int>();
+        }
+        if (drying.contains("fan_pct") && drying["fan_pct"].is_number_integer()) {
+            dryer_info_.fan_pct = drying["fan_pct"].get<int>();
+        }
+
+        spdlog::trace("[AMS HappyHare] Dryer state: active={}, temp={:.1f}→{:.1f}°C, {}min left",
+                      dryer_info_.active, dryer_info_.current_temp_c, dryer_info_.target_temp_c,
+                      dryer_info_.remaining_min);
+    }
+
     // Parse endless_spool_groups if available
     if (mmu_data.contains("endless_spool_groups") && mmu_data["endless_spool_groups"].is_array()) {
         const auto& es_groups = mmu_data["endless_spool_groups"];
@@ -475,13 +665,40 @@ void AmsBackendHappyHare::initialize_slots(int gate_count) {
 
     system_info_.units.clear();
 
-    int gates_per_unit = (num_units_ > 1) ? (gate_count / num_units_) : gate_count;
-    int remaining_gates = gate_count;
-    int global_offset = 0;
+    // Determine per-unit gate counts:
+    // 1. Use per_unit_gate_counts_ if available (v4 dissimilar multi-MMU)
+    // 2. Fall back to even split (v3 or identical units)
+    std::vector<int> unit_counts;
+    if (!per_unit_gate_counts_.empty() &&
+        static_cast<int>(per_unit_gate_counts_.size()) == num_units_) {
+        // Verify total matches
+        int total = 0;
+        for (int c : per_unit_gate_counts_)
+            total += c;
+        if (total == gate_count) {
+            unit_counts = per_unit_gate_counts_;
+            spdlog::info("[AMS HappyHare] Using dissimilar per-unit gate counts");
+        } else {
+            spdlog::warn(
+                "[AMS HappyHare] Per-unit gate counts sum ({}) != gate_count ({}), falling back",
+                total, gate_count);
+        }
+    }
 
+    // Fallback: even split
+    if (unit_counts.empty()) {
+        int gates_per_unit = (num_units_ > 1) ? (gate_count / num_units_) : gate_count;
+        int remaining = gate_count;
+        for (int u = 0; u < num_units_; ++u) {
+            int count = (u == num_units_ - 1) ? remaining : gates_per_unit;
+            unit_counts.push_back(count);
+            remaining -= count;
+        }
+    }
+
+    int global_offset = 0;
     for (int u = 0; u < num_units_; ++u) {
-        // Last unit gets any remainder gates
-        int unit_gates = (u == num_units_ - 1) ? remaining_gates : gates_per_unit;
+        int unit_gates = unit_counts[u];
 
         AmsUnit unit;
         unit.unit_index = u;
@@ -511,7 +728,6 @@ void AmsBackendHappyHare::initialize_slots(int gate_count) {
 
         system_info_.units.push_back(unit);
         global_offset += unit_gates;
-        remaining_gates -= unit_gates;
     }
 
     system_info_.total_slots = gate_count;
@@ -523,14 +739,12 @@ void AmsBackendHappyHare::initialize_slots(int gate_count) {
         system_info_.tool_to_slot_map.push_back(i);
     }
 
-    // Initialize SlotRegistry alongside legacy state
+    // Initialize SlotRegistry alongside legacy state (uses same unit_counts)
     {
-        std::vector<std::pair<std::string, std::vector<std::string>>> units;
-        int sr_gates_per_unit = gate_count / std::max(1, num_units_);
-        int sr_remainder = gate_count % std::max(1, num_units_);
+        std::vector<std::pair<std::string, std::vector<std::string>>> sr_units;
         int sr_offset = 0;
         for (int u = 0; u < num_units_; ++u) {
-            int count = sr_gates_per_unit + (u == num_units_ - 1 ? sr_remainder : 0);
+            int count = unit_counts[u];
             std::vector<std::string> names;
             for (int g = 0; g < count; ++g) {
                 names.push_back(std::to_string(sr_offset + g));
@@ -539,10 +753,10 @@ void AmsBackendHappyHare::initialize_slots(int gate_count) {
             if (num_units_ == 1) {
                 unit_name = "MMU";
             }
-            units.push_back({unit_name, names});
+            sr_units.push_back({unit_name, names});
             sr_offset += count;
         }
-        slots_.initialize_units(units);
+        slots_.initialize_units(sr_units);
     }
 }
 
@@ -1109,6 +1323,44 @@ std::vector<int> AmsBackendHappyHare::get_tool_mapping() const {
 }
 
 // ============================================================================
+// Dryer Control (v4 - KMS/EMU hardware)
+// ============================================================================
+
+DryerInfo AmsBackendHappyHare::get_dryer_info() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return dryer_info_;
+}
+
+AmsError AmsBackendHappyHare::start_drying(float temp_c, int duration_min, int fan_pct) {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!dryer_info_.supported) {
+            return AmsErrorHelper::not_supported("Dryer not available on this hardware");
+        }
+    }
+
+    std::string cmd = fmt::format("MMU_HEATER DRY=1 TEMP={:.0f} DURATION={}", temp_c, duration_min);
+    if (fan_pct >= 0) {
+        cmd += fmt::format(" FAN={}", fan_pct);
+    }
+
+    spdlog::info("[AMS HappyHare] Starting dryer: {:.0f}°C for {} min", temp_c, duration_min);
+    return execute_gcode(cmd);
+}
+
+AmsError AmsBackendHappyHare::stop_drying() {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!dryer_info_.supported) {
+            return AmsErrorHelper::not_supported("Dryer not available on this hardware");
+        }
+    }
+
+    spdlog::info("[AMS HappyHare] Stopping dryer");
+    return execute_gcode("MMU_HEATER DRY=0");
+}
+
+// ============================================================================
 // Device Management
 // ============================================================================
 
@@ -1124,36 +1376,50 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
                                                     const std::any& value) {
     spdlog::info("[AMS HappyHare] Executing device action: {}", action_id);
 
-    // --- Setup: Calibration buttons ---
-    if (action_id == "calibrate_bowden") {
-        return execute_gcode("MMU_CALIBRATE_BOWDEN");
-    } else if (action_id == "calibrate_encoder") {
-        return execute_gcode("MMU_CALIBRATE_ENCODER");
-    } else if (action_id == "calibrate_gear") {
-        return execute_gcode("MMU_CALIBRATE_GEAR");
-    } else if (action_id == "calibrate_gates") {
-        return execute_gcode("MMU_CALIBRATE_GATES");
-    } else if (action_id == "calibrate_servo") {
-        return execute_gcode("MMU_SERVO");
-    }
-
-    // --- Setup: LED mode dropdown ---
-    if (action_id == "led_mode") {
+    // Helper to extract a typed value from std::any with uniform error handling
+    auto require_string = [&](const char* label) -> std::pair<std::string, AmsError> {
         if (!value.has_value()) {
-            return AmsError(AmsResult::WRONG_STATE, "LED mode value required", "Missing value",
-                            "Select an LED mode");
+            return {"", AmsError(AmsResult::WRONG_STATE, fmt::format("{} value required", label),
+                                 "Missing value", fmt::format("Select a {}", label))};
         }
         try {
-            auto mode = std::any_cast<std::string>(value);
-            // Happy Hare LED effect: MMU_LED EXIT_EFFECT=<mode>
-            return execute_gcode("MMU_LED EXIT_EFFECT=" + mode);
+            return {std::any_cast<std::string>(value), AmsErrorHelper::success()};
         } catch (const std::bad_any_cast&) {
-            return AmsError(AmsResult::WRONG_STATE, "Invalid LED mode type", "Invalid value type",
-                            "Select a valid LED mode");
+            return {"", AmsError(AmsResult::WRONG_STATE, fmt::format("Invalid {} type", label),
+                                 "Invalid value type", fmt::format("Select a valid {}", label))};
+        }
+    };
+
+    // --- Simple button actions (no value required) ---
+    // clang-format off
+    static const std::pair<const char*, const char*> button_actions[] = {
+        {"calibrate_bowden",    "MMU_CALIBRATE_BOWDEN"},
+        {"calibrate_encoder",   "MMU_CALIBRATE_ENCODER"},
+        {"calibrate_gear",      "MMU_CALIBRATE_GEAR"},
+        {"calibrate_gates",     "MMU_CALIBRATE_GATES"},
+        {"calibrate_servo",     "MMU_SERVO"},
+        {"test_grip",           "MMU_TEST_GRIP"},
+        {"test_load",           "MMU_TEST_LOAD"},
+        {"servo_buzz",          "MMU_SERVO BUZZ=1"},
+        {"reset_servo_counter", "MMU_STATS COUNTER=servo RESET=1"},
+        {"reset_blade_counter", "MMU_STATS COUNTER=cutter RESET=1"},
+    };
+    // clang-format on
+    for (const auto& [id, gcode] : button_actions) {
+        if (action_id == id) {
+            return execute_gcode(gcode);
         }
     }
 
-    // --- Speed: Slider actions ---
+    // --- LED mode dropdown ---
+    if (action_id == "led_mode") {
+        auto [mode, err] = require_string("LED mode");
+        if (!err)
+            return err;
+        return execute_gcode("MMU_LED EXIT_EFFECT=" + mode);
+    }
+
+    // --- Speed sliders ---
     if (action_id == "gear_load_speed" || action_id == "gear_unload_speed" ||
         action_id == "selector_speed") {
         if (!value.has_value()) {
@@ -1166,14 +1432,11 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
                 return AmsError(AmsResult::WRONG_STATE, "Speed must be 10-300 mm/s",
                                 "Invalid value", "Enter a speed between 10 and 300 mm/s");
             }
-            // Happy Hare uses MMU_TEST_CONFIG to set speeds at runtime
-            std::string param;
+            const char* param = "SELECTOR_MOVE_SPEED";
             if (action_id == "gear_load_speed")
                 param = "GEAR_FROM_BUFFER_SPEED";
             else if (action_id == "gear_unload_speed")
                 param = "GEAR_UNLOAD_SPEED";
-            else
-                param = "SELECTOR_MOVE_SPEED";
             return execute_gcode(fmt::format("MMU_TEST_CONFIG {}={:.0f}", param, speed));
         } catch (const std::bad_any_cast&) {
             return AmsError(AmsResult::WRONG_STATE, "Invalid speed type", "Invalid value type",
@@ -1181,20 +1444,28 @@ AmsError AmsBackendHappyHare::execute_device_action(const std::string& action_id
         }
     }
 
-    // --- Maintenance: Button actions ---
-    if (action_id == "test_grip") {
-        return execute_gcode("MMU_TEST_GRIP");
-    } else if (action_id == "test_load") {
-        return execute_gcode("MMU_TEST_LOAD");
-    } else if (action_id == "servo_buzz") {
-        return execute_gcode("MMU_SERVO BUZZ=1");
-    } else if (action_id == "reset_servo_counter") {
-        return execute_gcode("MMU_STATS COUNTER=servo RESET=1");
-    } else if (action_id == "reset_blade_counter") {
-        return execute_gcode("MMU_STATS COUNTER=cutter RESET=1");
+    // --- eSpooler mode dropdown ---
+    if (action_id == "espooler_mode") {
+        auto [mode, err] = require_string("eSpooler mode");
+        if (!err)
+            return err;
+        return execute_gcode("MMU_ESPOOLER OPERATION=" + mode);
     }
 
-    // --- Maintenance: Motors toggle ---
+    // --- Clog detection dropdown ---
+    if (action_id == "clog_detection") {
+        auto [mode_str, err] = require_string("clog detection mode");
+        if (!err)
+            return err;
+        int mode_int = 0;
+        if (mode_str == "Manual")
+            mode_int = 1;
+        else if (mode_str == "Auto")
+            mode_int = 2;
+        return execute_gcode(fmt::format("MMU_TEST_CONFIG CLOG_DETECTION={}", mode_int));
+    }
+
+    // --- Motors toggle ---
     if (action_id == "motors_toggle") {
         if (!value.has_value()) {
             return AmsError(AmsResult::WRONG_STATE, "Motor state value required", "Missing value",

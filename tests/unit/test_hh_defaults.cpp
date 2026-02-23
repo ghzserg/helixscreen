@@ -17,7 +17,7 @@ using namespace helix::printer;
 
 TEST_CASE("HH default sections: count", "[ams][hh_defaults]") {
     auto sections = hh_default_sections();
-    REQUIRE(sections.size() == 3);
+    REQUIRE(sections.size() == 4);
 }
 
 TEST_CASE("HH default sections: required fields", "[ams][hh_defaults]") {
@@ -37,6 +37,7 @@ TEST_CASE("HH default sections: known IDs", "[ams][hh_defaults]") {
     }
     REQUIRE(ids.count("setup") == 1);
     REQUIRE(ids.count("speed") == 1);
+    REQUIRE(ids.count("accessories") == 1);
     REQUIRE(ids.count("maintenance") == 1);
 }
 
@@ -62,7 +63,7 @@ TEST_CASE("HH default sections: unique IDs", "[ams][hh_defaults]") {
 
 TEST_CASE("HH default actions: count", "[ams][hh_defaults]") {
     auto actions = hh_default_actions();
-    REQUIRE(actions.size() == 15);
+    REQUIRE(actions.size() == 17);
 }
 
 TEST_CASE("HH default actions: required fields", "[ams][hh_defaults]") {
@@ -99,6 +100,9 @@ TEST_CASE("HH default actions: known IDs", "[ams][hh_defaults]") {
     REQUIRE(ids.count("gear_load_speed") == 1);
     REQUIRE(ids.count("gear_unload_speed") == 1);
     REQUIRE(ids.count("selector_speed") == 1);
+    // Accessories
+    REQUIRE(ids.count("espooler_mode") == 1);
+    REQUIRE(ids.count("clog_detection") == 1);
     // Maintenance
     REQUIRE(ids.count("test_grip") == 1);
     REQUIRE(ids.count("test_load") == 1);

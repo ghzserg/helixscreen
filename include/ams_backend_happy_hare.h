@@ -54,6 +54,9 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     [[nodiscard]] SlotInfo get_slot_info(int slot_index) const override;
 
     // Path visualization
+    [[nodiscard]] int get_bowden_progress() const override {
+        return bowden_progress_;
+    }
     [[nodiscard]] PathTopology get_topology() const override;
     [[nodiscard]] PathSegment get_filament_segment() const override;
     [[nodiscard]] PathSegment get_slot_filament_segment(int slot_index) const override;
@@ -114,6 +117,11 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
      * @return AmsError with not_supported result
      */
     AmsError reset_endless_spool() override;
+
+    // Dryer support (v4 - KMS/EMU hardware with heaters)
+    [[nodiscard]] DryerInfo get_dryer_info() const override;
+    AmsError start_drying(float temp_c, int duration_min, int fan_pct = -1) override;
+    AmsError stop_drying() override;
 
     [[nodiscard]] bool has_firmware_spool_persistence() const override {
         return true; // Happy Hare persists via MMU_GATE_MAP SPOOLID
@@ -202,12 +210,18 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     std::shared_ptr<std::atomic<bool>> alive_ = std::make_shared<std::atomic<bool>>(true);
 
     // Cached MMU state
-    helix::printer::SlotRegistry slots_; ///< Single source of truth for per-slot state
-    int num_units_{1};                   ///< Number of physical units (default 1)
+    helix::printer::SlotRegistry slots_;    ///< Single source of truth for per-slot state
+    int num_units_{1};                      ///< Number of physical units (default 1)
+    std::vector<int> per_unit_gate_counts_; ///< Per-unit gate counts for dissimilar multi-MMU (v4)
+    int active_unit_{0};                    ///< Currently active MMU unit (v4)
 
     // Path visualization state
-    int filament_pos_{0};                          ///< Happy Hare filament_pos value
+    int filament_pos_{0};     ///< Happy Hare filament_pos value
+    int bowden_progress_{-1}; ///< Bowden loading progress 0-100% (-1=unavailable, v4)
     PathSegment error_segment_{PathSegment::NONE}; ///< Inferred error location
+
+    // Dryer state (v4 - KMS/EMU hardware)
+    DryerInfo dryer_info_;
 
     // Error state tracking
     std::string reason_for_pause_; ///< Last reason_for_pause from MMU (descriptive error text)

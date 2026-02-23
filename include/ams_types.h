@@ -276,8 +276,12 @@ inline AmsAction ams_action_from_string(std::string_view action_str) {
         return AmsAction::SELECTING;
     if (action_str == "Homing" || action_str == "Resetting")
         return AmsAction::RESETTING;
-    if (action_str == "Cutting")
+    if (action_str == "Cutting" || action_str == "Cutting Tip" || action_str == "Cutting Filament")
         return AmsAction::CUTTING;
+    if (action_str == "Loading Ext")
+        return AmsAction::LOADING;
+    if (action_str == "Exiting Ext")
+        return AmsAction::UNLOADING;
     if (action_str == "Forming Tip")
         return AmsAction::FORMING_TIP;
     if (action_str == "Heating")
@@ -476,6 +480,8 @@ inline PathSegment path_segment_from_happy_hare_pos(int filament_pos) {
         return PathSegment::TOOLHEAD; // At extruder
     case 7:
     case 8:
+    case 9: // v4: in-nozzle positions
+    case 10:
         return PathSegment::NOZZLE; // Loaded
     default:
         return PathSegment::NONE;
@@ -674,6 +680,56 @@ struct AmsUnit {
     }
 };
 
+// ============================================================================
+// Spoolman Integration Mode (Happy Hare v4)
+// ============================================================================
+
+/**
+ * @brief Spoolman integration mode for Happy Hare v4
+ *
+ * Happy Hare v4 supports 4 Spoolman integration modes:
+ * - OFF: No Spoolman integration
+ * - READONLY: Reads spool data but doesn't update
+ * - PUSH: Pushes gate changes to Spoolman (sets active spool)
+ * - PULL: Pulls spool assignments from Spoolman (Spoolman is source of truth)
+ */
+enum class SpoolmanMode { OFF = 0, READONLY = 1, PUSH = 2, PULL = 3 };
+
+/**
+ * @brief Convert SpoolmanMode to display string
+ */
+inline const char* spoolman_mode_to_string(SpoolmanMode mode) {
+    switch (mode) {
+    case SpoolmanMode::OFF:
+        return "Off";
+    case SpoolmanMode::READONLY:
+        return "Read Only";
+    case SpoolmanMode::PUSH:
+        return "Push";
+    case SpoolmanMode::PULL:
+        return "Pull";
+    default:
+        return "Unknown";
+    }
+}
+
+/**
+ * @brief Parse SpoolmanMode from Happy Hare string value
+ * @param str String from printer.mmu.spoolman_support
+ * @return Corresponding SpoolmanMode
+ */
+inline SpoolmanMode spoolman_mode_from_string(std::string_view str) {
+    if (str == "off" || str == "Off")
+        return SpoolmanMode::OFF;
+    if (str == "readonly" || str == "Read Only")
+        return SpoolmanMode::READONLY;
+    if (str == "push" || str == "Push")
+        return SpoolmanMode::PUSH;
+    if (str == "pull" || str == "Pull")
+        return SpoolmanMode::PULL;
+    return SpoolmanMode::OFF;
+}
+
 /**
  * @brief Complete AMS system state
  *
@@ -703,6 +759,16 @@ struct AmsSystemInfo {
     bool has_hardware_bypass_sensor = false; ///< true=auto-detect sensor, false=virtual/manual
     TipMethod tip_method = TipMethod::CUT;   ///< How filament tip is handled during unload
     bool supports_purge = false;             ///< Has purge capability after load
+
+    // Happy Hare v4 extended status fields
+    SpoolmanMode spoolman_mode = SpoolmanMode::OFF; ///< Spoolman integration mode
+    int pending_spool_id = -1;                      ///< Pending spool assignment (v4)
+    std::string espooler_state;                     ///< eSpooler state: "rewind"/"assist"/""
+    std::string sync_feedback_state; ///< Sync feedback: "compressed"/"tension"/"neutral"/"disabled"
+    bool sync_drive = false;         ///< Gear synced to extruder motor
+    int clog_detection = 0;          ///< Clog detection: 0=off, 1=manual, 2=auto
+    int encoder_flow_rate = -1;      ///< Encoder flow rate (-1=unavailable)
+    float toolchange_purge_volume = 0; ///< Slicer purge volume for toolchanges
 
     // Tool-to-slot mapping (Happy Hare uses "gate" internally)
     std::vector<int> tool_to_slot_map; ///< tool_to_slot_map[tool] = slot

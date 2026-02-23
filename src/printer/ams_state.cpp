@@ -709,7 +709,12 @@ void AmsState::sync_from_backend() {
     lv_subject_set_int(&path_active_slot_, info.current_slot);
     lv_subject_set_int(&path_filament_segment_, static_cast<int>(backend->get_filament_segment()));
     lv_subject_set_int(&path_error_segment_, static_cast<int>(backend->infer_error_segment()));
-    // Note: path_anim_progress_ is controlled by UI animation, not synced from backend
+    // If backend provides bowden progress (v4), use it to drive animation progress.
+    // Otherwise, path_anim_progress_ stays under UI animation control.
+    int bowden_progress = backend->get_bowden_progress();
+    if (bowden_progress >= 0) {
+        lv_subject_set_int(&path_anim_progress_, bowden_progress);
+    }
 
     // Update per-slot subjects
     for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
@@ -954,11 +959,48 @@ void AmsState::sync_current_loaded_from_backend() {
 
     // Check for bypass mode (slot_index == -2)
     if (slot_index == -2 && backend->is_bypass_active()) {
-        lv_subject_copy_string(&current_material_text_, "External");
         lv_subject_copy_string(&current_slot_text_, "Current: Bypass");
-        lv_subject_copy_string(&current_weight_text_, "");
-        lv_subject_set_int(&current_has_weight_, 0);
-        lv_subject_set_int(&current_color_, 0x888888);
+
+        // Show actual spool info if external spool is assigned
+        auto ext_spool = get_external_spool_info();
+        if (ext_spool.has_value()) {
+            const auto& ext = ext_spool.value();
+            lv_subject_set_int(&current_color_, static_cast<int>(ext.color_rgb));
+
+            // Build label from spool info
+            std::string color_label;
+            if (ext.spoolman_id > 0 && !ext.color_name.empty()) {
+                color_label = ext.color_name;
+            } else {
+                color_label = helix::get_color_name_from_hex(ext.color_rgb);
+            }
+            std::string label;
+            if (!color_label.empty() && !ext.material.empty()) {
+                label = color_label + " " + ext.material;
+            } else if (!color_label.empty()) {
+                label = color_label;
+            } else if (!ext.material.empty()) {
+                label = ext.material;
+            } else {
+                label = "External";
+            }
+            lv_subject_copy_string(&current_material_text_, label.c_str());
+
+            if (ext.total_weight_g > 0.0f && ext.remaining_weight_g >= 0.0f) {
+                snprintf(current_weight_text_buf_, sizeof(current_weight_text_buf_), "%.0fg",
+                         ext.remaining_weight_g);
+                lv_subject_copy_string(&current_weight_text_, current_weight_text_buf_);
+                lv_subject_set_int(&current_has_weight_, 1);
+            } else {
+                lv_subject_copy_string(&current_weight_text_, "");
+                lv_subject_set_int(&current_has_weight_, 0);
+            }
+        } else {
+            lv_subject_copy_string(&current_material_text_, "External");
+            lv_subject_copy_string(&current_weight_text_, "");
+            lv_subject_set_int(&current_has_weight_, 0);
+            lv_subject_set_int(&current_color_, 0x888888);
+        }
     } else if (slot_index >= 0 && filament_loaded) {
         // Filament is loaded - show slot info
         SlotInfo slot_info = backend->get_slot_info(slot_index);
