@@ -5,6 +5,43 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-02-23
+
+A major infrastructure release — LVGL is upgraded to v9.5.0, and the XML layout engine has been extracted into its own library (`helix-xml`) for independent development. The Android port lands with initial build system and CI pipeline support. Developer experience improves with XML hot reload for live UI editing.
+
+### Added
+- Android port: build system, APK packaging, asset extraction, CI builds, and release pipeline
+- XML hot reload for live UI editing during development (`HELIX_HOT_RELOAD=1`)
+- Klipper ERROR state recovery dialog with firmware restart option
+- AMS unit names are now pretty-printed for readability
+- Widget-safe async callback utilities for thread-safe UI updates
+
+### Fixed
+- Use-after-free in deferred observer callbacks (#174)
+- Modal use-after-free crash during navigation
+- USB drive callback crash from background thread (now marshaled to main thread)
+- AMS crash on quit from unjoinable scenario/dryer threads
+- Spoolman weight polling skipped when filament backend already tracks weight
+- Spoolman active spool management for Happy Hare and AFC backends
+- AFC Unload button re-enables after lane scan resets filament state
+- AFC mixed topology: correct tool count, hub sensor detection, and status display
+- AMS current slot label accuracy for multi-unit and tool changer setups
+- AMS overview right column capped at 200px to prevent layout overflow
+- Keyboard restores screen position when dismissed via backdrop click
+- Firmware restart widget shown for all non-READY Klippy states
+- Responsive tokens applied to picker layouts, fan name widths, and panel widget spacing
+- Font clipping and padding on panel widgets
+- Gcode viewer segfault
+- Update check errors now visible in the UI
+- Installer uses printf for ANSI escape compatibility
+
+### Changed
+- LVGL upgraded from 9.4-pre to v9.5.0
+- XML engine extracted to `lib/helix-xml/`, decoupled from LVGL internals
+- MoonrakerAPI decomposed into domain-specific modules (Rest, Job, Motion, File, FileTransfer, Timelapse, Advanced)
+- Z-offset utilities extracted into shared module
+- Wi-Fi status polling refactored to async with responsive connect/disconnect updates
+
 ## [0.11.1] - 2026-02-22
 
 ### Added
@@ -980,6 +1017,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[0.12.0]: https://github.com/prestonbrown/helixscreen/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/prestonbrown/helixscreen/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/prestonbrown/helixscreen/compare/v0.10.14...v0.11.0
 [0.10.14]: https://github.com/prestonbrown/helixscreen/compare/v0.10.13...v0.10.14
