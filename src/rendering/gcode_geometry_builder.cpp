@@ -190,6 +190,19 @@ void GeometryBuilder::BuildStats::log() const {
 
 GeometryBuilder::GeometryBuilder() {
     stats_ = {};
+
+    auto* config = Config::get_instance();
+    if (config) {
+        tube_sides_ = config->get<int>("/gcode_viewer/tube_sides", 16);
+        if (tube_sides_ != 4 && tube_sides_ != 8 && tube_sides_ != 16) {
+            spdlog::warn(
+                "[GCode Geometry] Invalid tube_sides={} (must be 4, 8, or 16), defaulting to 16",
+                tube_sides_);
+            tube_sides_ = 16;
+        }
+        spdlog::info("[GCode Geometry] G-code tube geometry: N={} sides (elliptical cross-section)",
+                     tube_sides_);
+    }
 }
 
 // ============================================================================
@@ -251,7 +264,11 @@ uint8_t GeometryBuilder::add_to_color_palette(RibbonGeometry& geometry, uint32_t
 
     // Not in cache - add to palette
     if (geometry.color_palette.size() >= 256) {
-        spdlog::warn("[GCode Geometry] Color palette full (256 entries), reusing last entry");
+        static bool color_warned = false;
+        if (!color_warned) {
+            spdlog::warn("[GCode Geometry] Color palette full (256 entries), reusing last entry");
+            color_warned = true;
+        }
         return 255;
     }
 
@@ -395,6 +412,12 @@ RibbonGeometry GeometryBuilder::build(const ParsedGCodeFile& gcode,
         int z_key = static_cast<int>(std::round(segment.start.z * 100.0f));
         uint16_t layer_idx = 0;
         auto it = z_to_layer_index.find(z_key);
+        if (it == z_to_layer_index.end()) {
+            it = z_to_layer_index.find(z_key + 1);
+        }
+        if (it == z_to_layer_index.end()) {
+            it = z_to_layer_index.find(z_key - 1);
+        }
         if (it != z_to_layer_index.end()) {
             layer_idx = it->second;
         }
@@ -421,7 +444,7 @@ RibbonGeometry GeometryBuilder::build(const ParsedGCodeFile& gcode,
             dist = glm::distance(segment.start, prev_end_pos);
             // Use width-based tolerance: if gap is less than extrusion width, consider them
             // connected
-            connection_tolerance = segment.width * 1.5f; //  50% overlap tolerance
+            connection_tolerance = segment.width * 0.5f;
             can_share = (dist < connection_tolerance) &&
                         (segment.is_extrusion == simplified[i - 1].is_extrusion);
 
@@ -603,8 +626,9 @@ GeometryBuilder::simplify_segments(const std::vector<ToolpathSegment>& segments,
         bool same_type = (current.is_extrusion == next.is_extrusion);
         bool endpoints_connect = glm::distance2(current.end, next.start) < 0.0001f;
         bool same_object = (current.object_name == next.object_name);
+        bool same_width = (std::abs(current.width - next.width) < 0.001f);
 
-        if (same_type && endpoints_connect && same_object) {
+        if (same_type && endpoints_connect && same_object && same_width) {
             // Check if current.start, current.end, next.end are collinear
             bool collinear =
                 are_collinear(current.start, current.end, next.end, options.tolerance_mm);
@@ -664,25 +688,7 @@ GeometryBuilder::TubeCap
 GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, RibbonGeometry& geometry,
                                           const QuantizationParams& quant,
                                           std::optional<TubeCap> prev_start_cap) {
-    // Read tube cross-section configuration
-    static int tube_sides = -1; // Cache config value (read once)
-    if (tube_sides == -1) {
-        tube_sides = Config::get_instance()->get<int>("/gcode_viewer/tube_sides", 16);
-
-        // Validate: only 4, 8, or 16 sides supported
-        if (tube_sides != 4 && tube_sides != 8 && tube_sides != 16) {
-            spdlog::warn(
-                "[GCode Geometry] Invalid tube_sides={} (must be 4, 8, or 16), defaulting to 16",
-                tube_sides);
-            tube_sides = 16;
-        }
-
-        spdlog::info("[GCode Geometry] G-code tube geometry: N={} sides (elliptical cross-section)",
-                     tube_sides);
-    }
-
-    // All phases complete - use configured N value
-    const int N = tube_sides;
+    const int N = tube_sides_;
 
     // Determine tube dimensions
     float width;
@@ -729,10 +735,13 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
     // Record tool → palette index mapping for per-tool recoloring (AMS overrides)
     if (segment.tool_index >= 0) {
         auto tool_idx = static_cast<size_t>(segment.tool_index);
-        if (tool_idx >= geometry.tool_palette_map.size()) {
-            geometry.tool_palette_map.resize(tool_idx + 1, 0);
+        constexpr size_t MAX_TOOLS = 256;
+        if (tool_idx < MAX_TOOLS) {
+            if (tool_idx >= geometry.tool_palette_map.size()) {
+                geometry.tool_palette_map.resize(tool_idx + 1, 0);
+            }
+            geometry.tool_palette_map[tool_idx] = color_idx;
         }
-        geometry.tool_palette_map[tool_idx] = color_idx;
     }
 
     // Face colors: one color per face (N faces total)
@@ -787,7 +796,12 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
         float face_angle = (i + 0.5f) * angle_step; // Midpoint between vertices i and i+1
         glm::vec3 face_center_offset = half_width * std::cos(face_angle) * right +
                                        half_height * std::sin(face_angle) * perp_up;
-        face_normals[static_cast<size_t>(i)] = glm::normalize(face_center_offset);
+        float len = glm::length(face_center_offset);
+        if (len > 1e-6f) {
+            face_normals[static_cast<size_t>(i)] = face_center_offset / len;
+        } else {
+            face_normals[static_cast<size_t>(i)] = glm::vec3(0.0f, 0.0f, 1.0f);
+        }
     }
 
     // Phase 3: N-based vertex generation (replaces hardcoded N=4 logic)
@@ -956,8 +970,14 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
 
     // Create N end cap vertices with axial normals
     for (int i = 0; i < N; i++) {
-        geometry.vertices.push_back({geometry.vertices[end_cap[static_cast<size_t>(i)]].position,
-                                     end_cap_normal_idx, end_cap_color_idx});
+        uint32_t src_idx = end_cap[static_cast<size_t>(i)];
+        if (src_idx >= geometry.vertices.size()) {
+            spdlog::error("[GCode Geometry] End cap vertex index {} out of bounds (size={})",
+                          src_idx, geometry.vertices.size());
+            continue;
+        }
+        geometry.vertices.push_back(
+            {geometry.vertices[src_idx].position, end_cap_normal_idx, end_cap_color_idx});
     }
     idx_start += static_cast<uint32_t>(N);
 

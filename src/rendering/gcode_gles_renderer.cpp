@@ -529,6 +529,14 @@ bool GCodeGLESRenderer::compile_shaders() {
     u_use_vertex_color_ = glGetUniformLocation(program_, "u_use_vertex_color");
     u_color_scale_ = glGetUniformLocation(program_, "u_color_scale");
 
+    if (a_position_ < 0 || a_normal_ < 0) {
+        spdlog::error("[GCode GLES] Required attribute not found: a_position={}, a_normal={}",
+                      a_position_, a_normal_);
+        glDeleteProgram(program_);
+        program_ = 0;
+        return false;
+    }
+
     spdlog::debug("[GCode GLES] Shaders compiled and linked (program={})", program_);
     return true;
 }
@@ -542,17 +550,35 @@ bool GCodeGLESRenderer::create_fbo(int width, int height) {
 
     glGenFramebuffers(1, &fbo_);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        spdlog::error("[GCode GLES] glGenFramebuffers/glBindFramebuffer failed: 0x{:X}", err);
+        destroy_fbo();
+        return false;
+    }
 
-    // Color renderbuffer (RGBA8)
+    // Color renderbuffer (RGBA4)
     glGenRenderbuffers(1, &color_rbo_);
     glBindRenderbuffer(GL_RENDERBUFFER, color_rbo_);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA4, width, height);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        spdlog::error("[GCode GLES] Color renderbuffer creation failed: 0x{:X}", err);
+        destroy_fbo();
+        return false;
+    }
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, color_rbo_);
 
     // Depth renderbuffer (16-bit)
     glGenRenderbuffers(1, &depth_rbo_);
     glBindRenderbuffer(GL_RENDERBUFFER, depth_rbo_);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
+    err = glGetError();
+    if (err != GL_NO_ERROR) {
+        spdlog::error("[GCode GLES] Depth renderbuffer creation failed: 0x{:X}", err);
+        destroy_fbo();
+        return false;
+    }
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_rbo_);
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -761,7 +787,18 @@ void GCodeGLESRenderer::upload_geometry(const RibbonGeometry& geom, std::vector<
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(total_verts * kVertexStride),
                      buf.data(), GL_STATIC_DRAW);
+        GLenum err = glGetError();
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        if (err != GL_NO_ERROR) {
+            spdlog::error("[GCode GLES] VBO creation failed for layer {}: 0x{:X}", layer, err);
+            if (vbo) {
+                glDeleteBuffers(1, &vbo);
+            }
+            vbos[layer].vbo = 0;
+            vbos[layer].vertex_count = 0;
+            continue;
+        }
 
         vbos[layer].vbo = vbo;
         vbos[layer].vertex_count = total_verts;
@@ -905,11 +942,11 @@ void GCodeGLESRenderer::render_to_fbo(const ParsedGCodeFile& /*gcode*/, const GC
     glUniformMatrix4fv(u_mvp_, 1, GL_FALSE, glm::value_ptr(mvp));
     glUniformMatrix3fv(u_normal_matrix_, 1, GL_FALSE, glm::value_ptr(normal_mat));
 
-    // Lighting — transform light directions from world space to view space
-    // (normals are in view space via u_normal_matrix, so lights must match)
-    glm::mat3 view_rot = glm::mat3(view);
-    glm::vec3 light_dirs[2] = {glm::normalize(view_rot * kLightTopDir),
-                               glm::normalize(view_rot * kLightFrontDir)};
+    // Lighting — transform light directions from world space to view-model space
+    // (normals are in view-model space via u_normal_matrix, so lights must match)
+    glm::mat3 view_model_rot = glm::mat3(view * model);
+    glm::vec3 light_dirs[2] = {glm::normalize(view_model_rot * kLightTopDir),
+                               glm::normalize(view_model_rot * kLightFrontDir)};
     glm::vec3 light_colors[2] = {kLightTopColor, kLightFrontColor};
     glUniform3fv(u_light_dir_, 2, glm::value_ptr(light_dirs[0]));
     glUniform3fv(u_light_color_, 2, glm::value_ptr(light_colors[0]));
@@ -966,6 +1003,14 @@ void GCodeGLESRenderer::draw_layers(const std::vector<LayerVBO>& vbos, int layer
 
     constexpr size_t kStride = 9 * sizeof(float);
 
+    // Enable vertex attributes once before the loop (a_position_ and a_normal_
+    // are validated >= 0 during compile_shaders)
+    glEnableVertexAttribArray(static_cast<GLuint>(a_position_));
+    glEnableVertexAttribArray(static_cast<GLuint>(a_normal_));
+    if (a_color_ >= 0) {
+        glEnableVertexAttribArray(static_cast<GLuint>(a_color_));
+    }
+
     for (int layer = layer_start; layer <= layer_end; ++layer) {
         if (layer < 0 || layer >= static_cast<int>(vbos.size()))
             continue;
@@ -975,17 +1020,14 @@ void GCodeGLESRenderer::draw_layers(const std::vector<LayerVBO>& vbos, int layer
 
         glBindBuffer(GL_ARRAY_BUFFER, lv.vbo);
 
-        glEnableVertexAttribArray(static_cast<GLuint>(a_position_));
         glVertexAttribPointer(static_cast<GLuint>(a_position_), 3, GL_FLOAT, GL_FALSE,
                               static_cast<GLsizei>(kStride), reinterpret_cast<void*>(0));
 
-        glEnableVertexAttribArray(static_cast<GLuint>(a_normal_));
         glVertexAttribPointer(static_cast<GLuint>(a_normal_), 3, GL_FLOAT, GL_FALSE,
                               static_cast<GLsizei>(kStride),
                               reinterpret_cast<void*>(3 * sizeof(float)));
 
         if (a_color_ >= 0) {
-            glEnableVertexAttribArray(static_cast<GLuint>(a_color_));
             glVertexAttribPointer(static_cast<GLuint>(a_color_), 3, GL_FLOAT, GL_FALSE,
                                   static_cast<GLsizei>(kStride),
                                   reinterpret_cast<void*>(6 * sizeof(float)));
@@ -1039,6 +1081,10 @@ void GCodeGLESRenderer::blit_to_lvgl(lv_layer_t* layer, const lv_area_t* widget_
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Convert GL RGBA → LVGL RGB888 (BGR byte order), flip Y, and scale if needed
+    if (!draw_buf_->data) {
+        spdlog::error("[GCode GLES] draw_buf_ data is null");
+        return;
+    }
     auto* dest = static_cast<uint8_t*>(draw_buf_->data);
     bool needs_scale = (fbo_width_ != widget_w || fbo_height_ != widget_h);
 
@@ -1056,6 +1102,9 @@ void GCodeGLESRenderer::blit_to_lvgl(lv_layer_t* layer, const lv_area_t* widget_
             int gl_row = fbo_height_ - 1 - sy;
             size_t src_idx = static_cast<size_t>((gl_row * fbo_width_ + sx) * 4);
             size_t dst_idx = static_cast<size_t>((dy * widget_w + dx) * 3);
+
+            if (src_idx + 3 >= rgba.size())
+                continue;
 
             dest[dst_idx + 0] = rgba[src_idx + 2]; // B (LVGL RGB888 = BGR byte order)
             dest[dst_idx + 1] = rgba[src_idx + 1]; // G
@@ -1077,10 +1126,13 @@ void GCodeGLESRenderer::blit_to_lvgl(lv_layer_t* layer, const lv_area_t* widget_
 // ============================================================
 
 bool GCodeGLESRenderer::CachedRenderState::operator==(const CachedRenderState& o) const {
-    return azimuth == o.azimuth && elevation == o.elevation && distance == o.distance &&
-           target == o.target && progress_layer == o.progress_layer &&
-           layer_start == o.layer_start && layer_end == o.layer_end &&
-           highlight_count == o.highlight_count && exclude_count == o.exclude_count;
+    constexpr float kEps = 1e-5f;
+    auto near = [](float a, float b) { return std::abs(a - b) < kEps; };
+    return near(azimuth, o.azimuth) && near(elevation, o.elevation) && near(distance, o.distance) &&
+           near(target.x, o.target.x) && near(target.y, o.target.y) && near(target.z, o.target.z) &&
+           progress_layer == o.progress_layer && layer_start == o.layer_start &&
+           layer_end == o.layer_end && highlight_count == o.highlight_count &&
+           exclude_count == o.exclude_count;
 }
 
 // ============================================================
@@ -1154,8 +1206,7 @@ void GCodeGLESRenderer::set_tool_color_overrides(const std::vector<uint32_t>& am
     }
 }
 
-void GCodeGLESRenderer::set_smooth_shading(bool enable) {
-    smooth_shading_ = enable;
+void GCodeGLESRenderer::set_smooth_shading(bool /*enable*/) {
     frame_dirty_ = true;
 }
 
@@ -1301,6 +1352,16 @@ size_t GCodeGLESRenderer::get_memory_usage() const {
     }
     if (draw_buf_) {
         total += static_cast<size_t>(draw_buf_width_ * draw_buf_height_ * 3);
+    }
+    // Approximate GPU VRAM usage (VBOs + FBO)
+    for (const auto& lv : layer_vbos_) {
+        if (lv.vbo) {
+            total += lv.vertex_count * 9 * sizeof(float);
+        }
+    }
+    if (fbo_) {
+        // Color RBO (RGBA4 = 2 bytes/pixel) + Depth RBO (16-bit = 2 bytes/pixel)
+        total += static_cast<size_t>(fbo_width_ * fbo_height_ * 4);
     }
     return total;
 }

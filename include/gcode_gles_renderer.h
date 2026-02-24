@@ -245,7 +245,6 @@ class GCodeGLESRenderer {
     float specular_intensity_ = 0.075f;                   // Match OrcaSlicer (0.125 * 0.6)
     float specular_shininess_ = 20.0f;
     float extrusion_width_ = 0.5f;
-    bool smooth_shading_ = false;
     bool debug_face_colors_ = false;
     bool show_travels_ = false;
     bool show_extrusions_ = true;

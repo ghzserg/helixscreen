@@ -435,7 +435,13 @@ class GCodeLayerRenderer {
     using TransformParams = helix::gcode::ProjectionParams;
 
     /**
-     * @brief Capture current transformation parameters (thread-safe snapshot)
+     * @brief Capture current transformation parameters as a thread-safe snapshot
+     *
+     * The background ghost render thread calls this ONCE at thread start to
+     * snapshot all transform state (scale, offset, canvas size, etc.). Each
+     * field is a plain float/int read, and the main thread only modifies these
+     * between render() calls, so no additional synchronization is needed.
+     *
      * @return TransformParams struct with current values
      */
     TransformParams capture_transform_params() const;
@@ -544,6 +550,8 @@ class GCodeLayerRenderer {
     // Note: We only use draw buffers (no canvas widgets) to avoid clip area
     // contamination from overlays/toasts on lv_layer_top().
     lv_draw_buf_t* ghost_buf_ = nullptr;
+    int ghost_cached_width_ = 0;
+    int ghost_cached_height_ = 0;
     bool ghost_cache_valid_ = false;
     bool ghost_mode_enabled_ = true; // Enable ghost mode by default
     int ghost_rendered_up_to_ = -1;  // Progress tracker for progressive ghost rendering

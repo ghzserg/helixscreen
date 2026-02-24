@@ -127,10 +127,11 @@ void ui_gcode_viewer_set_load_callback(lv_obj_t* obj, gcode_viewer_load_callback
 /**
  * @brief Set G-code data directly (already parsed)
  * @param obj Viewer widget
- * @param gcode_data Parsed G-code file (widget takes ownership)
+ * @param gcode_data Parsed G-code file (widget takes ownership, must be heap-allocated)
  *
  * Use this when you've already parsed the file elsewhere.
- * Widget will NOT free the data - caller retains ownership.
+ * The widget takes ownership of the data and will free it on clear/destroy.
+ * Caller must NOT use or free gcode_data after this call.
  */
 void ui_gcode_viewer_set_gcode_data(lv_obj_t* obj, void* gcode_data);
 

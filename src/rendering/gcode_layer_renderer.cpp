@@ -602,19 +602,19 @@ void GCodeLayerRenderer::destroy_ghost_cache() {
         }
         ghost_buf_ = nullptr;
     }
+    ghost_cached_width_ = 0;
+    ghost_cached_height_ = 0;
     ghost_cache_valid_ = false;
     ghost_rendered_up_to_ = -1;
 }
 
 void GCodeLayerRenderer::ensure_ghost_cache(int width, int height) {
-    // Recreate if dimensions changed
-    if (ghost_buf_ && (cached_width_ != width || cached_height_ != height)) {
+    // Recreate if dimensions changed (tracked independently from solid cache)
+    if (ghost_buf_ && (ghost_cached_width_ != width || ghost_cached_height_ != height)) {
         destroy_ghost_cache();
     }
 
     if (!ghost_buf_) {
-        // Create the draw buffer (no canvas widget - avoids clip area contamination
-        // from overlays/toasts on lv_layer_top())
         ghost_buf_ = lv_draw_buf_create(width, height, LV_COLOR_FORMAT_ARGB8888, LV_STRIDE_AUTO);
         if (!ghost_buf_) {
             spdlog::error("[GCodeLayerRenderer] Failed to create ghost buffer {}x{}", width,
@@ -623,7 +623,8 @@ void GCodeLayerRenderer::ensure_ghost_cache(int width, int height) {
         }
 
         lv_draw_buf_clear(ghost_buf_, nullptr);
-
+        ghost_cached_width_ = width;
+        ghost_cached_height_ = height;
         ghost_cache_valid_ = false;
         spdlog::debug("[GCodeLayerRenderer] Created ghost cache buffer: {}x{}", width, height);
         helix::MemoryMonitor::log_now("gcode_ghost_buffer_created");
@@ -642,8 +643,8 @@ void GCodeLayerRenderer::render_ghost_layers(int from_layer, int to_layer) {
     ghost_layer.color_format = LV_COLOR_FORMAT_ARGB8888;
     ghost_layer.buf_area.x1 = 0;
     ghost_layer.buf_area.y1 = 0;
-    ghost_layer.buf_area.x2 = cached_width_ - 1;
-    ghost_layer.buf_area.y2 = cached_height_ - 1;
+    ghost_layer.buf_area.x2 = ghost_cached_width_ - 1;
+    ghost_layer.buf_area.y2 = ghost_cached_height_ - 1;
     ghost_layer._clip_area = ghost_layer.buf_area; // Full buffer as clip area
     ghost_layer.phy_clip_area = ghost_layer.buf_area;
 
@@ -693,8 +694,9 @@ void GCodeLayerRenderer::blit_ghost_cache(lv_layer_t* target) {
     dsc.src = ghost_buf_;
     dsc.opa = LV_OPA_40; // 40% opacity for ghost
 
-    lv_area_t coords = {widget_offset_x_, widget_offset_y_, widget_offset_x_ + cached_width_ - 1,
-                        widget_offset_y_ + cached_height_ - 1};
+    lv_area_t coords = {widget_offset_x_, widget_offset_y_,
+                        widget_offset_x_ + ghost_cached_width_ - 1,
+                        widget_offset_y_ + ghost_cached_height_ - 1};
 
     lv_draw_image(target, &dsc, &coords);
 }
@@ -1219,8 +1221,8 @@ void GCodeLayerRenderer::start_background_ghost_render() {
     // Allocate raw buffer if dimensions changed or not allocated
     int width = canvas_width_;
     int height = canvas_height_;
-    size_t stride = width * 4; // ARGB8888 = 4 bytes per pixel
-    size_t buffer_size = stride * height;
+    size_t stride = static_cast<size_t>(width) * 4; // ARGB8888 = 4 bytes per pixel
+    size_t buffer_size = stride * static_cast<size_t>(height);
 
     if (ghost_raw_width_ != width || ghost_raw_height_ != height || !ghost_raw_buffer_) {
         ghost_raw_buffer_ = std::make_unique<uint8_t[]>(buffer_size);
@@ -1238,7 +1240,13 @@ void GCodeLayerRenderer::start_background_ghost_render() {
     ghost_thread_running_.store(true);
 
     // Launch background thread
-    ghost_thread_ = std::thread(&GCodeLayerRenderer::background_ghost_render_thread, this);
+    try {
+        ghost_thread_ = std::thread(&GCodeLayerRenderer::background_ghost_render_thread, this);
+    } catch (const std::system_error& e) {
+        spdlog::error("[GCodeLayerRenderer] Failed to start ghost render thread: {}", e.what());
+        ghost_thread_running_.store(false);
+        return;
+    }
 
     spdlog::debug("[GCodeLayerRenderer] Started background ghost render thread ({}x{})", width,
                   height);
@@ -1437,7 +1445,7 @@ void GCodeLayerRenderer::copy_raw_to_ghost_buf() {
 
     if (static_cast<int>(lvgl_stride) == ghost_raw_stride_) {
         // Fast path: strides match, single memcpy
-        size_t buffer_size = ghost_raw_stride_ * ghost_raw_height_;
+        size_t buffer_size = static_cast<size_t>(ghost_raw_stride_) * ghost_raw_height_;
         std::memcpy(ghost_buf_->data, ghost_raw_buffer_.get(), buffer_size);
     } else {
         // Slow path: strides differ, copy row by row

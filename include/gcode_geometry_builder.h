@@ -437,6 +437,7 @@ class GeometryBuilder {
         highlighted_objects_;                     ///< Object names to highlight (empty = none)
     bool debug_face_colors_ = false;              ///< Enable per-face debug coloring
     std::vector<std::string> tool_color_palette_; ///< Hex colors per tool (multi-color prints)
+    int tube_sides_ = 16;                         ///< Tube cross-section sides (valid: 4, 8, 16)
 
     // Build statistics
     BuildStats stats_;

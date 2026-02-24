@@ -615,10 +615,13 @@ static void gcode_viewer_press_cb(lv_event_t* e) {
         // Cancel any existing timer
         if (st->long_press_timer_) {
             lv_timer_delete(st->long_press_timer_);
+            st->long_press_timer_ = nullptr;
         }
         // Start new timer for long-press detection
         st->long_press_timer_ = lv_timer_create(long_press_timer_cb, LONG_PRESS_THRESHOLD_MS, obj);
-        lv_timer_set_repeat_count(st->long_press_timer_, 1); // One-shot timer
+        if (st->long_press_timer_) {
+            lv_timer_set_repeat_count(st->long_press_timer_, 1); // One-shot timer
+        }
     }
 
     spdlog::trace("[GCode Viewer] Press at ({}, {})", point.x, point.y);
@@ -971,6 +974,8 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
     if (st->loading_container) {
         helix::ui::safe_delete(st->loading_container);
         st->loading_container = nullptr;
+        st->loading_spinner = nullptr;
+        st->loading_label = nullptr;
     }
 
     // =========================================================================
@@ -1040,6 +1045,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                 // Clean up loading UI
                 if (st->loading_container) {
                     helix::ui::safe_delete(st->loading_container);
+                    st->loading_container = nullptr;
                     st->loading_spinner = nullptr;
                     st->loading_label = nullptr;
                 }
@@ -1259,6 +1265,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                 // Clean up loading UI
                 if (st->loading_container) {
                     helix::ui::safe_delete(st->loading_container);
+                    st->loading_container = nullptr;
                     st->loading_spinner = nullptr;
                     st->loading_label = nullptr;
                 }
