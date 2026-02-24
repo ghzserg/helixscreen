@@ -44,8 +44,12 @@ void on_progress_bar_draw(lv_event_t* e) {
         return;
     }
 
+    // Suppress style refresh during draw phase to prevent lv_inv_area assertions.
+    // Same pattern LVGL uses internally in lv_obj_class_create_obj() and lv_obj_delete().
+    lv_obj_enable_style_refresh(false);
     lv_obj_set_style_bg_main_stop(bar, main_stop, LV_PART_INDICATOR);
     lv_obj_set_style_bg_grad_stop(bar, grad_stop, LV_PART_INDICATOR);
+    lv_obj_enable_style_refresh(true);
 }
 
 } // namespace
