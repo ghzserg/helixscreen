@@ -20,6 +20,8 @@ class TempStackWidget : public PanelWidget {
     TempStackWidget(PrinterState& printer_state, TempControlPanel* temp_panel);
     ~TempStackWidget() override;
 
+    void set_config(const nlohmann::json& config) override;
+    std::string get_component_name() const override;
     void attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) override;
     void detach() override;
     const char* id() const override {
@@ -29,6 +31,7 @@ class TempStackWidget : public PanelWidget {
   private:
     PrinterState& printer_state_;
     TempControlPanel* temp_control_panel_;
+    nlohmann::json config_;
 
     lv_obj_t* widget_obj_ = nullptr;
     lv_obj_t* parent_screen_ = nullptr;
@@ -50,11 +53,19 @@ class TempStackWidget : public PanelWidget {
 
     std::shared_ptr<bool> alive_ = std::make_shared<bool>(false);
 
+    // Long-press click suppression flag
+    bool long_pressed_ = false;
+
     // Observers
     ObserverGuard nozzle_temp_observer_;
     ObserverGuard nozzle_target_observer_;
     ObserverGuard bed_temp_observer_;
     ObserverGuard bed_target_observer_;
+
+    bool is_carousel_mode() const;
+    void attach_stack(lv_obj_t* widget_obj);
+    void attach_carousel(lv_obj_t* widget_obj);
+    void toggle_display_mode();
 
     void on_nozzle_temp_changed(int temp_centi);
     void on_nozzle_target_changed(int target_centi);
@@ -70,6 +81,13 @@ class TempStackWidget : public PanelWidget {
     static void temp_stack_nozzle_cb(lv_event_t* e);
     static void temp_stack_bed_cb(lv_event_t* e);
     static void temp_stack_chamber_cb(lv_event_t* e);
+
+    // Long-press callbacks for toggling display mode
+    static void temp_stack_long_press_cb(lv_event_t* e);
+    static void temp_carousel_long_press_cb(lv_event_t* e);
+
+    // Carousel page click callback
+    static void temp_carousel_page_cb(lv_event_t* e);
 };
 
 } // namespace helix
