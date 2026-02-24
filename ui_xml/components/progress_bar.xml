@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<!-- Shared progress bar component with consistent gradient indicator -->
-<!-- Usage: <progress_bar bind_value="my_subject" size="sm|md|lg"/> -->
+<!-- Shared progress bar component with gradient indicator -->
+<!-- Indicator: secondary → tertiary gradient, 15% blend zone at leading edge -->
+<!-- C++ dynamically adjusts gradient stops on draw -->
+<!-- Usage: <progress_bar bind_value="my_subject"/> -->
 <component>
   <api>
     <prop name="bind_value" type="string" default=""/>
@@ -10,18 +12,15 @@
     <prop name="max_value" type="string" default="100"/>
     <prop name="value" type="string" default="0"/>
   </api>
-  <styles>
-    <!-- Indicator gradient: secondary solid for 0-90%, blending to tertiary in last 10% -->
-    <style name="indicator_gradient"
-           bg_color="#secondary" bg_grad_color="#tertiary"
-           bg_grad_dir="horizontal" bg_main_stop="230" bg_grad_stop="255"
-           bg_opa="255" radius="#space_xs"/>
-  </styles>
   <view extends="lv_bar"
         width="100%" height="12" style_bg_color="#overlay_bg" style_bg_opa="255"
         style_radius="#space_xs" style_border_width="0"
-        min_value="$min_value" max_value="$max_value" value="$value" bind_value="$bind_value">
-    <!-- Apply gradient style to indicator part -->
-    <lv_obj-style name="indicator_gradient" selector="indicator"/>
+        min_value="$min_value" max_value="$max_value" value="$value" bind_value="$bind_value"
+        style_bg_color-indicator="#secondary"
+        style_bg_grad_color-indicator="#tertiary"
+        style_bg_grad_dir-indicator="hor"
+        style_bg_opa-indicator="255">
+    <!-- C++ handles gradient stops dynamically on each draw -->
+    <event_cb trigger="draw_main_begin" callback="on_progress_bar_draw"/>
   </view>
 </component>

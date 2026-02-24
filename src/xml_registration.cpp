@@ -17,6 +17,7 @@
 #include "ui_markdown.h"
 #include "ui_notification_badge.h"
 #include "ui_panel_settings.h"
+#include "ui_progress_bar.h"
 #include "ui_spinner.h"
 #include "ui_spool_canvas.h"
 #include "ui_switch.h"
@@ -212,6 +213,7 @@ void register_xml_components() {
     register_xml("ui_multiselect.xml");
 
     // Shared progress bar component (gradient indicator)
+    ui_progress_bar_init();
     register_xml("components/progress_bar.xml");
 
     // Beta feature indicators (badge before wrapper - dependency order)
@@ -254,6 +256,7 @@ void register_xml_components() {
     register_xml("components/panel_widget_ams.xml");
     register_xml("components/panel_widget_temperature.xml");
     register_xml("components/panel_widget_temp_stack.xml");
+    register_xml("components/panel_widget_temp_carousel.xml");
     register_xml("components/panel_widget_led.xml");
     register_xml("components/panel_widget_humidity.xml");
     register_xml("components/panel_widget_width_sensor.xml");
@@ -261,6 +264,7 @@ void register_xml_components() {
     register_xml("components/panel_widget_filament.xml");
     register_xml("components/panel_widget_thermistor.xml");
     register_xml("components/panel_widget_fan_stack.xml");
+    register_xml("components/panel_widget_fan_carousel.xml");
     register_xml("components/panel_widget_favorite_macro_1.xml");
     register_xml("components/panel_widget_favorite_macro_2.xml");
     register_xml("thermistor_sensor_picker.xml");
