@@ -5,6 +5,10 @@
 
 #include "lvgl/lvgl.h"
 
+#include <string>
+
+#include "hv/json.hpp"
+
 namespace helix {
 
 /// Base class for home widgets that need C++ behavioral wiring.
@@ -16,6 +20,19 @@ class PanelWidget {
     /// Called BEFORE lv_xml_create() — create and register any LVGL subjects
     /// that XML bindings depend on. Default is no-op.
     virtual void init_subjects() {}
+
+    /// Set per-widget config from PanelWidgetEntry. Called after factory
+    /// creation, before get_component_name() and attach().
+    virtual void set_config(const nlohmann::json& config) {
+        (void)config;
+    }
+
+    /// Return the XML component name to use for this widget. Allows widgets
+    /// to select different XML layouts based on their config (e.g. carousel
+    /// vs stack mode). Default returns "panel_widget_<id>".
+    virtual std::string get_component_name() const {
+        return std::string("panel_widget_") + id();
+    }
 
     /// Called after XML obj is created. Wire observers, animators, callbacks.
     /// @param widget_obj  The root lv_obj from lv_xml_create()

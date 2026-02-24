@@ -8,6 +8,7 @@
         style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center" clickable="true">
     <bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
     <event_cb trigger="clicked" callback="on_fan_stack_clicked"/>
+    <event_cb trigger="long_pressed" callback="fan_stack_long_press_cb"/>
 
     <!-- Part fan row -->
     <lv_obj name="fan_stack_part_row"

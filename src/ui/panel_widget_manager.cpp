@@ -85,8 +85,17 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
 
     auto& widget_config = get_widget_config(panel_id);
 
-    // Collect enabled + hardware-available widget component names
-    std::vector<std::string> enabled_widgets;
+    // Resolved widget slot: holds the widget ID, resolved XML component name,
+    // per-widget config, and optionally a pre-created PanelWidget instance.
+    struct WidgetSlot {
+        std::string widget_id;
+        std::string component_name;
+        nlohmann::json config;
+        std::unique_ptr<PanelWidget> instance; // nullptr for pure-XML widgets
+    };
+
+    // Collect enabled + hardware-available widgets
+    std::vector<WidgetSlot> enabled_widgets;
     for (const auto& entry : widget_config.entries()) {
         if (!entry.enabled) {
             continue;
@@ -103,15 +112,38 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
             }
         }
 
-        enabled_widgets.push_back("panel_widget_" + entry.id);
+        WidgetSlot slot;
+        slot.widget_id = entry.id;
+        slot.config = entry.config;
+
+        // If this widget has a factory, create the instance early so it can
+        // resolve the XML component name (e.g. carousel vs stack mode).
+        if (def && def->factory) {
+            slot.instance = def->factory();
+            if (slot.instance) {
+                slot.instance->set_config(entry.config);
+                slot.component_name = slot.instance->get_component_name();
+            } else {
+                slot.component_name = "panel_widget_" + entry.id;
+            }
+        } else {
+            slot.component_name = "panel_widget_" + entry.id;
+        }
+
+        enabled_widgets.push_back(std::move(slot));
     }
 
     // If firmware_restart is NOT already in the list (user disabled it),
     // conditionally inject it as the LAST widget when Klipper is NOT READY.
     // This ensures the restart button is always reachable during shutdown, error,
     // or startup (e.g., stuck trying to connect to an MCU).
-    bool has_firmware_restart = std::find(enabled_widgets.begin(), enabled_widgets.end(),
-                                          "panel_widget_firmware_restart") != enabled_widgets.end();
+    bool has_firmware_restart = false;
+    for (const auto& slot : enabled_widgets) {
+        if (slot.widget_id == "firmware_restart") {
+            has_firmware_restart = true;
+            break;
+        }
+    }
     if (!has_firmware_restart) {
         lv_subject_t* klippy = lv_xml_get_subject(nullptr, "klippy_state");
         if (klippy) {
@@ -119,7 +151,10 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
             if (state != static_cast<int>(KlippyState::READY)) {
                 const char* state_names[] = {"READY", "STARTUP", "SHUTDOWN", "ERROR"};
                 const char* name = (state >= 0 && state <= 3) ? state_names[state] : "UNKNOWN";
-                enabled_widgets.push_back("panel_widget_firmware_restart");
+                WidgetSlot slot;
+                slot.widget_id = "firmware_restart";
+                slot.component_name = "panel_widget_firmware_restart";
+                enabled_widgets.push_back(std::move(slot));
                 spdlog::debug("[PanelWidgetManager] Injected firmware_restart (Klipper {})", name);
             }
         }
@@ -163,35 +198,31 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
                 lv_xml_create(row, "divider_vertical", div_attrs);
             }
 
+            auto& slot = enabled_widgets[i];
             auto* widget =
-                static_cast<lv_obj_t*>(lv_xml_create(row, enabled_widgets[i].c_str(), nullptr));
+                static_cast<lv_obj_t*>(lv_xml_create(row, slot.component_name.c_str(), nullptr));
             if (widget) {
                 first = false;
-                spdlog::debug("[PanelWidgetManager] Created widget: {}", enabled_widgets[i]);
+                spdlog::debug("[PanelWidgetManager] Created widget: {} (component: {})",
+                              slot.widget_id, slot.component_name);
 
-                // If this widget def has a factory, create and attach the PanelWidget instance
-                const std::string widget_id =
-                    enabled_widgets[i].substr(13); // strip "panel_widget_" prefix
-                const auto* def = find_widget_def(widget_id);
-                if (def && def->factory) {
-                    auto hw = def->factory();
-                    if (hw) {
-                        hw->attach(widget, lv_scr_act());
-                        hw->set_row_density(count);
-                        result.push_back(std::move(hw));
-                    }
+                // Attach the pre-created PanelWidget instance if present
+                if (slot.instance) {
+                    slot.instance->attach(widget, lv_scr_act());
+                    slot.instance->set_row_density(count);
+                    result.push_back(std::move(slot.instance));
                 }
 
                 // Propagate row density to AMS mini status (pure XML widget, no PanelWidget)
-                if (enabled_widgets[i] == "panel_widget_ams") {
+                if (slot.widget_id == "ams") {
                     lv_obj_t* ams_child = lv_obj_get_child(widget, 0);
                     if (ams_child && ui_ams_mini_status_is_valid(ams_child)) {
                         ui_ams_mini_status_set_row_density(ams_child, static_cast<int>(count));
                     }
                 }
             } else {
-                spdlog::warn("[PanelWidgetManager] Failed to create widget: {}",
-                             enabled_widgets[i]);
+                spdlog::warn("[PanelWidgetManager] Failed to create widget: {} (component: {})",
+                             slot.widget_id, slot.component_name);
             }
         }
     };
