@@ -94,7 +94,7 @@
       <lv_obj name="right_column"
               width="28%" style_max_width="200" height="100%" style_pad_all="0" scrollable="false" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
-        <ams_sidebar name="sidebar"/>
+        <ams_sidebar name="ams_operation_sidebar"/>
       </lv_obj>
     </lv_obj>
   </view>

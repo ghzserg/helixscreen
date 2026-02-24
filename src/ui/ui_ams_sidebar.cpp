@@ -59,12 +59,17 @@ void AmsOperationSidebar::register_callbacks_static() {
 AmsOperationSidebar* AmsOperationSidebar::get_instance_from_event(lv_event_t* e) {
     auto* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
 
-    // Traverse parent chain to find ams_sidebar component root with user_data
+    // Find the ams_sidebar component root by name, then get our instance from its user_data.
+    // Cannot walk parents checking any user_data — ui_button and other widgets set their own
+    // user_data, which would be miscast as AmsOperationSidebar* (L069).
     lv_obj_t* obj = target;
     while (obj) {
-        void* user_data = lv_obj_get_user_data(obj);
-        if (user_data) {
-            return static_cast<AmsOperationSidebar*>(user_data);
+        const char* name = lv_obj_get_name(obj);
+        if (name && strcmp(name, "ams_operation_sidebar") == 0) {
+            void* user_data = lv_obj_get_user_data(obj);
+            if (user_data) {
+                return static_cast<AmsOperationSidebar*>(user_data);
+            }
         }
         obj = lv_obj_get_parent(obj);
     }
@@ -126,7 +131,7 @@ bool AmsOperationSidebar::setup(lv_obj_t* panel) {
         return false;
     }
 
-    sidebar_root_ = lv_obj_find_by_name(panel, "sidebar");
+    sidebar_root_ = lv_obj_find_by_name(panel, "ams_operation_sidebar");
     if (!sidebar_root_) {
         spdlog::error("[AmsSidebar] sidebar component not found in panel");
         return false;

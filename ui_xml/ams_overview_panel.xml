@@ -69,7 +69,7 @@
       <lv_obj name="right_column"
               height="100%" width="240" style_pad_all="#space_sm" style_pad_gap="#space_sm" flex_flow="column"
               style_flex_main_place="start" style_flex_cross_place="start" scrollable="false">
-        <ams_sidebar name="sidebar"/>
+        <ams_sidebar name="ams_operation_sidebar"/>
       </lv_obj>
     </lv_obj>
   </view>
