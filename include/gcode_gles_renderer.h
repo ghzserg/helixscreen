@@ -181,6 +181,7 @@ class GCodeGLESRenderer {
     void set_excluded_objects(const std::unordered_set<std::string>& names);
     void set_global_opacity(lv_opa_t opacity);
     void reset_colors();
+    void clear_cached_frame();
     RenderingOptions get_options() const;
 
     // ====== Object Picking ======

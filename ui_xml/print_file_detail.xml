@@ -27,11 +27,20 @@
                height="100%" flex_grow="5" style_radius="#border_radius" style_pad_all="0" style_clip_corner="true"
                style_margin_left="#space_sm">
         <!-- Pre-rendered gradient background (source updated by C++ on theme switch) -->
-        <lv_image name="gradient_bg" width="100%" height="100%" src="A:assets/images/gradient-panel-medium-dark.bin"/>
-        <!-- Thumbnail with reactive binding - uses cached PNG for better upscaling quality -->
+        <!-- Hidden in 3D mode (value=1) so 3D viewer has clean black background -->
+        <lv_image name="gradient_bg" width="100%" height="100%" src="A:assets/images/gradient-panel-medium-dark.bin">
+          <bind_flag_if_eq subject="detail_gcode_viewer_mode" flag="hidden" ref_value="1"/>
+        </lv_image>
+        <!-- 3D/2D G-code viewer (hidden in thumbnail mode=0) -->
+        <gcode_viewer name="detail_gcode_viewer" width="100%" height="100%">
+          <bind_flag_if_eq subject="detail_gcode_viewer_mode" flag="hidden" ref_value="0"/>
+        </gcode_viewer>
+        <!-- Thumbnail with reactive binding - hidden when viewer is active (mode > 0) -->
         <lv_image name="detail_thumbnail"
                   width="100%" height="100%" bind_src="selected_detail_thumbnail" align="center" inner_align="contain"
-                  style_translate_y="#preview_offset_y"/>
+                  style_translate_y="#preview_offset_y">
+          <bind_flag_if_gt subject="detail_gcode_viewer_mode" flag="hidden" ref_value="0"/>
+        </lv_image>
         <!-- No-thumbnail placeholder - shown when file has no real thumbnail -->
         <icon name="detail_no_thumbnail_icon"
               src="cube_outline" size="xl" variant="tertiary" align="center" style_translate_y="-20" hidden="true"/>

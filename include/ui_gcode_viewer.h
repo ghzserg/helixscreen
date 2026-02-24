@@ -617,6 +617,16 @@ void ui_gcode_viewer_register(void);
 void ui_gcode_viewer_set_tool_colors(lv_obj_t* obj, const std::vector<uint32_t>& colors);
 
 /**
+ * @brief Apply AMS filament colors to the viewer from AmsState
+ * @param obj Viewer widget
+ * @return true if AMS colors were applied, false if no AMS backend or all defaults
+ *
+ * Reads the current AMS tool-to-slot mapping and applies slot colors.
+ * Shared by print status panel and print file detail view.
+ */
+bool ui_gcode_viewer_apply_ams_tool_colors(lv_obj_t* obj);
+
+/**
  * @brief Set highlighted objects (multi-select support)
  * @param obj Viewer widget
  * @param object_names Set of object names to highlight (empty to clear all)

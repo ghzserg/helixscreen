@@ -6,6 +6,7 @@
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
+#include "ams_state.h"
 #include "gcode_camera.h"
 #include "gcode_layer_renderer.h"
 #include "gcode_parser.h"
@@ -1438,7 +1439,15 @@ void ui_gcode_viewer_clear(lv_obj_t* obj) {
     st->streaming_controller_.reset();       // Clear streaming controller (Phase 6)
     st->layer_renderer_2d_.reset();          // Clear 2D renderer to avoid dangling pointer
     st->has_external_color_override = false; // Clear external color override
+    st->tool_color_overrides.clear();        // Clear per-tool AMS colors
     st->viewer_state = GcodeViewerState::Empty;
+
+    // Clear cached framebuffer so stale frames aren't blitted on next show
+#ifdef ENABLE_3D_RENDERER
+    if (st->renderer_) {
+        st->renderer_->clear_cached_frame();
+    }
+#endif
 
     lv_obj_invalidate(obj);
     spdlog::debug("[GCode Viewer] Cleared");
@@ -1811,6 +1820,52 @@ void ui_gcode_viewer_set_tool_colors(lv_obj_t* obj, const std::vector<uint32_t>&
 
     lv_obj_invalidate(obj);
     spdlog::debug("[GCode Viewer] Applied {} per-tool AMS color overrides", colors.size());
+}
+
+bool ui_gcode_viewer_apply_ams_tool_colors(lv_obj_t* obj) {
+    if (!obj) {
+        return false;
+    }
+
+    auto* backend = AmsState::instance().get_backend();
+    if (!backend) {
+        spdlog::debug("[GCode Viewer] apply_ams_tool_colors: no AMS backend");
+        return false;
+    }
+
+    const auto& info = backend->get_system_info();
+    const auto& tool_map = info.tool_to_slot_map;
+    if (tool_map.empty()) {
+        spdlog::debug("[GCode Viewer] apply_ams_tool_colors: tool_to_slot_map empty");
+        return false;
+    }
+
+    std::vector<uint32_t> tool_colors;
+    tool_colors.reserve(tool_map.size());
+    bool all_default = true;
+
+    for (size_t tool = 0; tool < tool_map.size(); ++tool) {
+        int slot_index = tool_map[tool];
+        const auto* slot = info.get_slot_global(slot_index);
+        if (slot && slot->color_rgb != AMS_DEFAULT_SLOT_COLOR && slot->color_rgb != 0x000000) {
+            tool_colors.push_back(slot->color_rgb);
+            all_default = false;
+            spdlog::debug("[GCode Viewer] Tool {} -> slot {} -> color 0x{:06X}", tool, slot_index,
+                          slot->color_rgb);
+        } else {
+            tool_colors.push_back(AMS_DEFAULT_SLOT_COLOR);
+            spdlog::debug("[GCode Viewer] Tool {} -> slot {} -> default", tool, slot_index);
+        }
+    }
+
+    if (all_default) {
+        spdlog::debug("[GCode Viewer] apply_ams_tool_colors: all colors are default, skipping");
+        return false;
+    }
+
+    ui_gcode_viewer_set_tool_colors(obj, tool_colors);
+    spdlog::debug("[GCode Viewer] Applied {} AMS tool colors", tool_colors.size());
+    return true;
 }
 
 void ui_gcode_viewer_set_travel_color(lv_obj_t* obj, lv_color_t color) {

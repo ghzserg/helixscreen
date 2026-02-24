@@ -875,13 +875,15 @@ void GCodeGLESRenderer::render(lv_layer_t* layer, const ParsedGCodeFile& gcode,
         render_defer_frames_ = 3;
     }
 
-    // If deferring, just blit the cached buffer (or skip) and count down
+    // If deferring, blit the cached buffer and count down.
+    // If no cached buffer exists, skip the defer entirely — nothing to show.
     if (render_defer_frames_ > 0) {
-        render_defer_frames_--;
         if (draw_buf_) {
+            render_defer_frames_--;
             blit_to_lvgl(layer, widget_coords);
+            return;
         }
-        return;
+        render_defer_frames_ = 0;
     }
     // Build current render state for frame-skip check
     CachedRenderState current_state;
@@ -1352,6 +1354,17 @@ void GCodeGLESRenderer::reset_colors() {
     palette_.has_override = false;
     filament_color_ = kDefaultFilamentColor;
     frame_dirty_ = true;
+}
+
+void GCodeGLESRenderer::clear_cached_frame() {
+    // Free the cached draw buffer so stale frames aren't blitted during render deferral
+    if (draw_buf_) {
+        lv_draw_buf_destroy(draw_buf_);
+        draw_buf_ = nullptr;
+        draw_buf_width_ = 0;
+        draw_buf_height_ = 0;
+    }
+    render_defer_frames_ = 0;
 }
 
 RenderingOptions GCodeGLESRenderer::get_options() const {

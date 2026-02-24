@@ -2131,50 +2131,7 @@ bool PrintStatusPanel::build_and_apply_tool_colors() {
         return false;
     }
 
-    auto* backend = AmsState::instance().get_backend();
-    if (!backend) {
-        spdlog::debug("[{}] build_and_apply_tool_colors: no AMS backend", get_name());
-        return false;
-    }
-
-    const auto& info = backend->get_system_info();
-    const auto& tool_map = info.tool_to_slot_map;
-    if (tool_map.empty()) {
-        spdlog::debug("[{}] build_and_apply_tool_colors: tool_to_slot_map is empty", get_name());
-        return false;
-    }
-
-    // Build per-tool color vector from AMS slot colors
-    std::vector<uint32_t> tool_colors;
-    tool_colors.reserve(tool_map.size());
-    bool all_default = true;
-
-    for (size_t tool = 0; tool < tool_map.size(); ++tool) {
-        int slot_index = tool_map[tool];
-        const auto* slot = info.get_slot_global(slot_index);
-        if (slot && slot->color_rgb != AMS_DEFAULT_SLOT_COLOR && slot->color_rgb != 0x000000) {
-            tool_colors.push_back(slot->color_rgb);
-            all_default = false;
-            spdlog::debug("[{}] Tool {} → slot {} → color 0x{:06X}", get_name(), tool, slot_index,
-                          slot->color_rgb);
-        } else {
-            // No slot info or default color — use a placeholder that won't override
-            tool_colors.push_back(AMS_DEFAULT_SLOT_COLOR);
-            spdlog::debug("[{}] Tool {} → slot {} → default (no slot or default color)", get_name(),
-                          tool, slot_index);
-        }
-    }
-
-    // Skip if all colors are defaults (no real AMS info available)
-    if (all_default) {
-        spdlog::trace("[{}] All AMS slot colors are default — skipping tool color overrides",
-                      get_name());
-        return false;
-    }
-
-    ui_gcode_viewer_set_tool_colors(gcode_viewer_, tool_colors);
-    spdlog::debug("[{}] Applied {} per-tool AMS color overrides", get_name(), tool_colors.size());
-    return true;
+    return ui_gcode_viewer_apply_ams_tool_colors(gcode_viewer_);
 }
 
 // ============================================================================

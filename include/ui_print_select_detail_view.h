@@ -114,7 +114,7 @@ class PrintSelectDetailView : public OverlayBase {
     /**
      * @brief Called when overlay is being hidden
      *
-     * Closes any open modals. Async scans will check alive_ flag.
+     * Closes any open modals, pauses gcode viewer. Async scans will check alive_ flag.
      */
     void on_deactivate() override;
 
@@ -283,6 +283,7 @@ class PrintSelectDetailView : public OverlayBase {
     lv_obj_t* parent_screen_ = nullptr;
     lv_obj_t* confirmation_dialog_widget_ = nullptr;
     lv_obj_t* print_button_ = nullptr;
+    lv_obj_t* gcode_viewer_ = nullptr;
 
     // Pre-print option checkboxes
     lv_obj_t* bed_mesh_checkbox_ = nullptr;
@@ -300,6 +301,11 @@ class PrintSelectDetailView : public OverlayBase {
     lv_obj_t* history_status_row_ = nullptr;
     lv_obj_t* history_status_icon_ = nullptr;
     lv_obj_t* history_status_label_ = nullptr;
+
+    // G-code viewer visibility mode (0=thumbnail, 1=3D, 2=2D)
+    lv_subject_t detail_gcode_viewer_mode_{};
+    std::string temp_gcode_path_; // Cached downloaded gcode file path
+    bool gcode_loaded_ = false;   // Whether gcode file has been loaded into viewer
 
     // Pre-print option subjects (1 = checked/enabled, 0 = unchecked/disabled)
     // Enable switches default ON, add-on switches default OFF
@@ -330,6 +336,30 @@ class PrintSelectDetailView : public OverlayBase {
     DeleteConfirmedCallback on_delete_confirmed_;
 
     // === Internal Methods ===
+
+    /**
+     * @brief Load gcode file for 3D/2D preview
+     *
+     * Downloads gcode via Moonraker API and loads into gcode_viewer widget.
+     * Shows all layers with no ghost (progress = -1). Falls back to thumbnail
+     * on failure, disabled config, or oversized files.
+     */
+    void load_gcode_for_preview();
+
+    /**
+     * @brief Show or hide the gcode viewer
+     *
+     * Sets detail_gcode_viewer_mode_ subject to control XML visibility bindings.
+     * @param show true to show viewer, false to revert to thumbnail
+     */
+    void show_gcode_viewer(bool show);
+
+    /**
+     * @brief Apply tool colors to the gcode viewer
+     *
+     * Reads AMS slot colors when available, falls back to file metadata colors.
+     */
+    void apply_tool_colors();
 
     /**
      * @brief Static callback for delete confirmation
