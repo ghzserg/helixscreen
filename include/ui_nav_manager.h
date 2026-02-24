@@ -264,6 +264,12 @@ class NavigationManager {
     bool is_panel_in_stack(lv_obj_t* panel) const;
 
     /**
+     * @brief Check if any overlays are currently open
+     * @return true if there are overlay panels on the stack
+     */
+    bool has_open_overlays() const;
+
+    /**
      * @brief Shutdown navigation system during application exit
      *
      * Deactivates current overlay/panel and clears all registries.

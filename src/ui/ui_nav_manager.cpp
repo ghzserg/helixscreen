@@ -659,9 +659,10 @@ void NavigationManager::nav_button_clicked_cb(lv_event_t* event) {
                   static_cast<int>(code), panel_id, static_cast<int>(mgr.active_panel_));
 
     if (code == LV_EVENT_CLICKED) {
-        // Skip if already on this panel
-        if (panel_id == static_cast<int>(mgr.active_panel_)) {
-            spdlog::info("[NavigationManager] Skipping - already on panel {}", panel_id);
+        // Skip if already on this panel AND no overlays are open
+        if (panel_id == static_cast<int>(mgr.active_panel_) && !mgr.has_open_overlays()) {
+            spdlog::info("[NavigationManager] Skipping - already on panel {} with no overlays",
+                         panel_id);
             return;
         }
 
@@ -1380,6 +1381,10 @@ bool NavigationManager::is_panel_in_stack(lv_obj_t* panel) const {
         return false;
     }
     return std::find(panel_stack_.begin(), panel_stack_.end(), panel) != panel_stack_.end();
+}
+
+bool NavigationManager::has_open_overlays() const {
+    return !overlay_instances_.empty() || panel_stack_.size() > 1;
 }
 
 void NavigationManager::shutdown() {
