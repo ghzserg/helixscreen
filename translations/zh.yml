@@ -163,6 +163,7 @@ translations:
   Checking for plugin...: 正在检查插件...
   Checking slots...: 正在检查料仓...
   Checking timelapse plugin...: 正在检查延时摄影插件...
+  Chm: 腔体
   Choose 12-hour or 24-hour time display: 选择 12 小时制或 24 小时制
   Choose an existing filament, or tap + New to create one.: 选择已有耗材，或点击 + 新建来创建。
   Choose display language: 选择显示语言
@@ -171,7 +172,6 @@ translations:
   Choose rendering mode for bed mesh visualization: 选择热床网格可视化的渲染模式
   Choose sound style: 选择声音风格
   Clean Nozzle: 清洁喷嘴
-  Chm: 腔体
   Clear: 清除
   Clear All: 全部清除
   Clear All Events: 清除所有事件
@@ -399,9 +399,9 @@ translations:
   Gray: 灰色
   Guides and reference: 指南与参考
   H: 头
+  HE: 喷头
   HELP & SUPPORT: 帮助与支持
   Happy Hare MMU: Happy Hare MMU
-  HE: 喷头
   Hardware: 硬件
   Hardware Health: 硬件状态
   Hardware Issues: 硬件问题
@@ -421,6 +421,7 @@ translations:
   Heating...: 正在加热...
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen 崩溃
+  HelixScreen is detecting your display orientation: ''
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen 将与您的耗材更换器集成，用于多料盘/多色打印操作。
   Help improve HelixScreen?: 帮助改进 HelixScreen？
   Higher = faster: 越高 = 越快
@@ -474,6 +475,7 @@ translations:
   Keyboard Test (Gboard-style): 键盘测试（Gboard 风格）
   Klipper: Klipper
   'Klipper firmware has disconnected from the host. ': 'Klipper 固件已与主机断开连接。 '
+  'Klipper has entered an error state. This is typically caused by an MCU ': ''
   'Klipper has entered shutdown state. This may be due to an emergency stop, ': Klipper 已进入关机状态。这可能是由于紧急停止、
   Klipper will restart to apply changes: Klipper 将重启以应用更改
   Klipper will restart to apply changes.: Klipper 将重启以应用更改。
@@ -666,9 +668,9 @@ translations:
   PRE-PRINT STEPS: 打印前步骤
   PRINTER: 打印机
   Paper Test Calibration: 纸张测试校准
+  Part: 零件
   Part Cooling Fan: 零件冷却风扇
   Part Fan: 零件风扇
-  Part: 零件
   Password: 密码
   Password cannot be empty: 密码不能为空
   Pause: 暂停
@@ -701,6 +703,7 @@ translations:
   Power: 电源
   Power Control: 电源控制
   Power Devices: 电源设备
+  Preparing: ''
   Preparing Print: 准备打印
   Preset: 预设
   Presets: 预设
@@ -806,6 +809,7 @@ translations:
   Restarting HelixScreen...: 正在重启 HelixScreen…
   Restarting Klipper...: 正在重启 Klipper...
   Restarting Moonraker...: 正在重启 Moonraker...
+  Restarting...: ''
   Resume: 恢复
   Resume Print: 恢复打印
   Retract: 回抽
@@ -817,6 +821,7 @@ translations:
   Review detected hardware validation issues: 查看检测到的硬件验证问题
   Review your changes: 查看您的更改
   'Role:': 角色：
+  'Rotation: %d\xc2\xb0 - %ds remaining (or wait to retry)': ''
   Run: 运行
   Run Macro: 运行宏
   Runout Sensor: 断料传感器
@@ -844,6 +849,7 @@ translations:
   Saving config... Klipper will restart.: 正在保存配置... Klipper 将重启。
   Saving will restart Klipper and CANCEL any active print!: 保存将重启 Klipper 并取消任何正在进行的打印！
   Scanning for networks...: 正在扫描网络...
+  'Score: 0': ''
   Screen Dim: 屏幕变暗
   Screen dims to lower brightness after period of inactivity: 一段时间不活动后屏幕会降低亮度
   Screen will dim after the selected period of inactivity: 在选定的不活动时间后屏幕将变暗
@@ -947,6 +953,8 @@ translations:
   THEME COLORS: 主题颜色
   TPU: TPU
   Takes 3-5 min. Do not interrupt.: 需要 3-5 分钟。请勿中断。
+  Tap again to confirm this orientation: ''
+  Tap anywhere if this text is right-side up: ''
   Tap to show keyboard...: 点击显示键盘...
   Target Temperature: 目标温度
   Telemetry Data: 遥测数据
@@ -960,6 +968,7 @@ translations:
   Test Network: 测试网络
   Test Sound: 测试声音
   Test probe repeatability: 测试探针重复性
+  'Testing rotation: %d\xc2\xb0 (%d/%d) - %ds remaining': ''
   Thanks! Anonymous usage data helps improve HelixScreen.: 感谢！匿名使用数据有助于改进 HelixScreen。
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: 感谢！完全匿名的使用数据有助于改进 HelixScreen。
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints.

@@ -163,6 +163,7 @@ translations:
   Checking for plugin...: Recherche du plugin...
   Checking slots...: Vérification des slots...
   Checking timelapse plugin...: Vérification du plugin timelapse...
+  Chm: Chb
   Choose 12-hour or 24-hour time display: Choisir l'affichage 12 heures ou 24 heures
   Choose an existing filament, or tap + New to create one.: Choisissez un filament existant, ou appuyez sur + Nouveau pour en créer un.
   Choose display language: Choisir la langue d'affichage
@@ -171,7 +172,6 @@ translations:
   Choose rendering mode for bed mesh visualization: Choisir le mode de rendu pour la visualisation du maillage du plateau
   Choose sound style: Choisir le style de son
   Clean Nozzle: Nettoyer la buse
-  Chm: Chb
   Clear: Effacer
   Clear All: Tout effacer
   Clear All Events: Effacer tous les événements
@@ -399,9 +399,9 @@ translations:
   Gray: Gris
   Guides and reference: Guides et référence
   H: H
+  HE: HE
   HELP & SUPPORT: AIDE & SUPPORT
   Happy Hare MMU: Happy Hare MMU
-  HE: HE
   Hardware: Matériel
   Hardware Health: État du matériel
   Hardware Issues: Problèmes matériels
@@ -421,6 +421,7 @@ translations:
   Heating...: Chauffage...
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen a planté
+  HelixScreen is detecting your display orientation: ''
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen s'intégrera avec votre changeur de filament pour les opérations d'impression multi-bobines/couleurs.
   Help improve HelixScreen?: Aider à améliorer HelixScreen ?
   Higher = faster: Plus élevé = plus rapide
@@ -474,6 +475,7 @@ translations:
   Keyboard Test (Gboard-style): Test clavier (style Gboard)
   Klipper: Klipper
   'Klipper firmware has disconnected from the host. ': 'Le firmware Klipper s''est déconnecté de l''hôte. '
+  'Klipper has entered an error state. This is typically caused by an MCU ': ''
   'Klipper has entered shutdown state. This may be due to an emergency stop, ': 'Klipper est passé en état d''arrêt. Cela peut être dû à un arrêt d''urgence, '
   Klipper will restart to apply changes: Klipper redémarrera pour appliquer les modifications
   Klipper will restart to apply changes.: Klipper redémarrera pour appliquer les modifications.
@@ -666,9 +668,9 @@ translations:
   PRE-PRINT STEPS: ÉTAPES PRÉ-IMPRESSION
   PRINTER: IMPRIMANTE
   Paper Test Calibration: Calibration par test papier
+  Part: Pièce
   Part Cooling Fan: Ventilateur de refroidissement pièce
   Part Fan: Ventilateur pièce
-  Part: Pièce
   Password: Mot de passe
   Password cannot be empty: Le mot de passe ne peut pas être vide
   Pause: Pause
@@ -701,6 +703,7 @@ translations:
   Power: Alimentation
   Power Control: Contrôle d'alimentation
   Power Devices: Appareils électriques
+  Preparing: ''
   Preparing Print: Préparation de l'impression
   Preset: Préréglage
   Presets: Préréglages
@@ -806,6 +809,7 @@ translations:
   Restarting HelixScreen...: Redémarrage de HelixScreen...
   Restarting Klipper...: Redémarrage de Klipper...
   Restarting Moonraker...: Redémarrage de Moonraker...
+  Restarting...: ''
   Resume: Reprendre
   Resume Print: Reprendre l'impression
   Retract: Rétracter
@@ -817,6 +821,7 @@ translations:
   Review detected hardware validation issues: Examiner les problèmes de validation matérielle détectés
   Review your changes: Examiner vos modifications
   'Role:': 'Rôle :'
+  'Rotation: %d\xc2\xb0 - %ds remaining (or wait to retry)': ''
   Run: Exécuter
   Run Macro: Exécuter la macro
   Runout Sensor: Capteur de fin de filament
@@ -844,6 +849,7 @@ translations:
   Saving config... Klipper will restart.: Enregistrement de la config... Klipper va redémarrer.
   Saving will restart Klipper and CANCEL any active print!: L'enregistrement redémarrera Klipper et ANNULERA toute impression active !
   Scanning for networks...: Recherche de réseaux...
+  'Score: 0': ''
   Screen Dim: Atténuation de l'écran
   Screen dims to lower brightness after period of inactivity: L'écran s'atténue après une période d'inactivité
   Screen will dim after the selected period of inactivity: L'écran s'atténuera après la période d'inactivité sélectionnée
@@ -947,6 +953,8 @@ translations:
   THEME COLORS: COULEURS DU THÈME
   TPU: TPU
   Takes 3-5 min. Do not interrupt.: Prend 3-5 min. Ne pas interrompre.
+  Tap again to confirm this orientation: ''
+  Tap anywhere if this text is right-side up: ''
   Tap to show keyboard...: Appuyez pour afficher le clavier...
   Target Temperature: Température cible
   Telemetry Data: Données de télémétrie
@@ -960,6 +968,7 @@ translations:
   Test Network: Tester le réseau
   Test Sound: Son de test
   Test probe repeatability: Tester la répétabilité de la sonde
+  'Testing rotation: %d\xc2\xb0 (%d/%d) - %ds remaining': ''
   Thanks! Anonymous usage data helps improve HelixScreen.: Merci ! Les données d'utilisation anonymes aident à améliorer HelixScreen.
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: Merci ! Les données d'utilisation TOTALEMENT anonymes aident à améliorer HelixScreen.
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints.

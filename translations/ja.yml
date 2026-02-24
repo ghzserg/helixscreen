@@ -163,6 +163,7 @@ translations:
   Checking for plugin...: プラグインを確認中...
   Checking slots...: スロットを確認中...
   Checking timelapse plugin...: タイムラプスプラグインを確認中...
+  Chm: ﾁｬﾝ
   Choose 12-hour or 24-hour time display: 12時間表示または24時間表示を選択
   Choose an existing filament, or tap + New to create one.: 既存のフィラメントを選択するか、+ 新規をタップして作成してください。
   Choose display language: 表示言語を選択
@@ -171,7 +172,6 @@ translations:
   Choose rendering mode for bed mesh visualization: ベッドメッシュの視覚化レンダリングモードを選択
   Choose sound style: サウンドスタイルを選択
   Clean Nozzle: ノズル清掃
-  Chm: ﾁｬﾝ
   Clear: クリア
   Clear All: すべてクリア
   Clear All Events: すべてのイベントをクリア
@@ -399,9 +399,9 @@ translations:
   Gray: グレー
   Guides and reference: ガイドとリファレンス
   H: H
+  HE: HE
   HELP & SUPPORT: ヘルプとサポート
   Happy Hare MMU: Happy Hare MMU
-  HE: HE
   Hardware: ハードウェア
   Hardware Health: ハードウェア状態
   Hardware Issues: ハードウェアの問題
@@ -421,6 +421,7 @@ translations:
   Heating...: 加熱中...
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
+  HelixScreen is detecting your display orientation: ''
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。
   Help improve HelixScreen?: HelixScreenの改善に協力しますか？
   Higher = faster: 高い = 速い
@@ -474,6 +475,7 @@ translations:
   Keyboard Test (Gboard-style): キーボードテスト（Gboard風）
   Klipper: Klipper
   'Klipper firmware has disconnected from the host. ': 'Klipper ファームウェアがホストから切断されました。 '
+  'Klipper has entered an error state. This is typically caused by an MCU ': ''
   'Klipper has entered shutdown state. This may be due to an emergency stop, ': 'Klipper がシャットダウン状態になりました。緊急停止が原因の可能性があります。 '
   Klipper will restart to apply changes: 変更を適用するために Klipper が再起動します
   Klipper will restart to apply changes.: 変更を適用するために Klipper が再起動します。
@@ -666,9 +668,9 @@ translations:
   PRE-PRINT STEPS: 印刷前の手順
   PRINTER: プリンター
   Paper Test Calibration: 紙テストキャリブレーション
+  Part: ﾊﾟｰﾂ
   Part Cooling Fan: パーツ冷却ファン
   Part Fan: パーツファン
-  Part: ﾊﾟｰﾂ
   Password: パスワード
   Password cannot be empty: パスワードを入力してください
   Pause: 一時停止
@@ -701,6 +703,7 @@ translations:
   Power: 電源
   Power Control: 電源制御
   Power Devices: 電源デバイス
+  Preparing: ''
   Preparing Print: 印刷準備中
   Preset: プリセット
   Presets: プリセット
@@ -806,6 +809,7 @@ translations:
   Restarting HelixScreen...: HelixScreenを再起動中...
   Restarting Klipper...: Klipper を再起動中...
   Restarting Moonraker...: Moonrakerを再起動中...
+  Restarting...: ''
   Resume: 再開
   Resume Print: 印刷を再開
   Retract: 引き戻し
@@ -817,6 +821,7 @@ translations:
   Review detected hardware validation issues: 検出されたハードウェア検証の問題を確認
   Review your changes: 変更を確認
   'Role:': '役割:'
+  'Rotation: %d\xc2\xb0 - %ds remaining (or wait to retry)': ''
   Run: 実行
   Run Macro: マクロを実行
   Runout Sensor: フィラメント切れセンサー
@@ -844,6 +849,7 @@ translations:
   Saving config... Klipper will restart.: 設定を保存中... Klipper が再起動します。
   Saving will restart Klipper and CANCEL any active print!: 保存すると Klipper が再起動し、アクティブな印刷がキャンセルされます！
   Scanning for networks...: ネットワークをスキャン中...
+  'Score: 0': ''
   Screen Dim: 画面減光
   Screen dims to lower brightness after period of inactivity: 一定時間操作がないと画面の明るさが下がります
   Screen will dim after the selected period of inactivity: 選択した時間操作がないと画面が減光します
@@ -947,6 +953,8 @@ translations:
   THEME COLORS: テーマカラー
   TPU: TPU
   Takes 3-5 min. Do not interrupt.: 3〜5分かかります。中断しないでください。
+  Tap again to confirm this orientation: ''
+  Tap anywhere if this text is right-side up: ''
   Tap to show keyboard...: タップしてキーボードを表示...
   Target Temperature: 目標温度
   Telemetry Data: テレメトリデータ
@@ -960,6 +968,7 @@ translations:
   Test Network: ネットワークテスト
   Test Sound: テストサウンド
   Test probe repeatability: プローブの再現性をテスト
+  'Testing rotation: %d\xc2\xb0 (%d/%d) - %ds remaining': ''
   Thanks! Anonymous usage data helps improve HelixScreen.: ご協力ありがとうございます！匿名の使用データが HelixScreen の改善に役立ちます。
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: ご協力ありがとうございます！完全匿名の使用データが HelixScreen の改善に役立ちます。
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints.
