@@ -133,39 +133,9 @@ endif
 $(LIBHV_LIB):
 	$(Q)$(MAKE) libhv-build
 
-# Build TinyGL if not present (dependency rule)
-# Only build if ENABLE_TINYGL_3D=yes
-# Output: $(BUILD_DIR)/lib/libTinyGL.a for architecture isolation
-# Note: TinyGL builds in-tree, so we must clean before cross-compilation
-ifeq ($(ENABLE_TINYGL_3D),yes)
-# Track TinyGL source files so incremental builds detect changes
-TINYGL_SOURCES := $(wildcard $(TINYGL_DIR)/src/*.c $(TINYGL_DIR)/src/*.h $(TINYGL_DIR)/include/*.h $(TINYGL_DIR)/include/GL/*.h)
-
-$(TINYGL_LIB): $(TINYGL_SOURCES)
-	$(ECHO) "$(CYAN)$(BOLD)Building TinyGL...$(RESET)"
-	$(Q)mkdir -p $(BUILD_DIR)/lib
-ifneq ($(CROSS_COMPILE),)
-	# Cross-compilation mode - clean in-tree artifacts first
-	$(Q)if [ -f "$(TINYGL_DIR)/lib/libTinyGL.a" ]; then \
-		echo "$(YELLOW)→ Cleaning TinyGL in-tree artifacts for cross-compilation...$(RESET)"; \
-		cd $(TINYGL_DIR) && $(MAKE) clean; \
-	fi
-	# Pass CC and CFLAGS_LIB to override TinyGL's defaults for cross-compilation
-	# Build only the library (skip Raw_Demos which use -march=native and fail with cross-compiler)
-	$(Q)cd $(TINYGL_DIR) && CC="$(CC)" CFLAGS_LIB="-Wall -O3 -std=c99 -pedantic -DNDEBUG -Wno-unused-function $(TARGET_CFLAGS)" $(MAKE) lib/libTinyGL.a
-else ifeq ($(UNAME_S),Darwin)
-	$(Q)cd $(TINYGL_DIR) && MACOSX_DEPLOYMENT_TARGET=$(MACOS_MIN_VERSION) $(MAKE)
-else
-	$(Q)cd $(TINYGL_DIR) && $(MAKE)
-endif
-	# Copy to architecture-specific output directory
-	$(Q)cp $(TINYGL_DIR)/lib/libTinyGL.a $(BUILD_DIR)/lib/libTinyGL.a
-	$(ECHO) "$(GREEN)✓ TinyGL built: $(BUILD_DIR)/lib/libTinyGL.a$(RESET)"
-endif
-
 # Link binary (SDL2_LIB is empty if using system SDL2)
 # Note: Filter out library archives from $^ to avoid duplicate linking, then add via LDFLAGS
-$(TARGET): $(SDL2_LIB) $(LIBHV_LIB) $(TINYGL_LIB) $(APP_C_OBJS) $(APP_OBJS) $(APP_MODULE_OBJS) $(OBJCPP_OBJS) $(LVGL_OBJS) $(HELIX_XML_OBJS) $(THORVG_OBJS) $(LVGL_OPENGLES_OBJS) $(LV_MARKDOWN_OBJS) $(FONT_OBJS) $(TRANS_OBJS) $(WPA_DEPS)
+$(TARGET): $(SDL2_LIB) $(LIBHV_LIB) $(APP_C_OBJS) $(APP_OBJS) $(APP_MODULE_OBJS) $(OBJCPP_OBJS) $(LVGL_OBJS) $(HELIX_XML_OBJS) $(THORVG_OBJS) $(LVGL_OPENGLES_OBJS) $(LV_MARKDOWN_OBJS) $(FONT_OBJS) $(TRANS_OBJS) $(WPA_DEPS)
 	$(Q)mkdir -p $(BIN_DIR)
 	$(ECHO) "$(MAGENTA)$(BOLD)[LD]$(RESET) $@"
 	$(Q)$(CXX) $(CXXFLAGS) $(filter-out %.a,$^) -o $@ $(LDFLAGS) || { \
@@ -381,12 +351,6 @@ clean:
 		echo "$(YELLOW)→ Cleaning libhv build artifacts...$(RESET)"; \
 		find $(LIBHV_DIR) -type f \( -name '*.o' -o -name '*.a' -o -name '*.so' -o -name '*.dylib' \) -delete; \
 	fi
-ifeq ($(ENABLE_TINYGL_3D),yes)
-	$(Q)if [ -d "$(TINYGL_DIR)" ] && [ -f "$(TINYGL_DIR)/lib/libTinyGL.a" ]; then \
-		echo "$(YELLOW)→ Cleaning TinyGL...$(RESET)"; \
-		cd $(TINYGL_DIR) && $(MAKE) clean; \
-	fi
-endif
 ifneq ($(UNAME_S),Darwin)
 	$(Q)if [ -d "$(WPA_DIR)/wpa_supplicant" ] && [ -f "$(WPA_DIR)/wpa_supplicant/libwpa_client.a" ]; then \
 		echo "$(YELLOW)→ Cleaning wpa_supplicant...$(RESET)"; \
@@ -413,12 +377,6 @@ distclean: clean
 		echo "$(YELLOW)→ Cleaning SDL2 submodule build...$(RESET)"; \
 		rm -rf lib/sdl2/build; \
 	fi
-ifeq ($(ENABLE_TINYGL_3D),yes)
-	$(Q)if [ -d "$(TINYGL_DIR)" ] && [ -f "$(TINYGL_DIR)/Makefile" ]; then \
-		echo "$(YELLOW)→ Cleaning TinyGL...$(RESET)"; \
-		cd $(TINYGL_DIR) && $(MAKE) clean 2>/dev/null || true; \
-	fi
-endif
 ifneq ($(UNAME_S),Darwin)
 	$(Q)if [ -d "$(WPA_DIR)/wpa_supplicant" ]; then \
 		echo "$(YELLOW)→ Cleaning wpa_supplicant...$(RESET)"; \

@@ -45,7 +45,7 @@ ifeq ($(PLATFORM_TARGET),pi)
     DISPLAY_BACKEND := drm
     ENABLE_OPENGLES := yes
     ENABLE_SDL := no
-    ENABLE_TINYGL_3D := yes
+    ENABLE_GLES_3D := yes
     ENABLE_EVDEV := yes
     # SSL enabled for HTTPS/WSS support
     ENABLE_SSL := yes
@@ -72,7 +72,7 @@ else ifeq ($(PLATFORM_TARGET),pi32)
     DISPLAY_BACKEND := drm
     ENABLE_OPENGLES := yes
     ENABLE_SDL := no
-    ENABLE_TINYGL_3D := yes
+    ENABLE_GLES_3D := yes
     ENABLE_EVDEV := yes
     ENABLE_SSL := yes
     HELIX_HAS_SYSTEMD := yes
@@ -111,9 +111,7 @@ else ifeq ($(PLATFORM_TARGET),ad5m)
     ENABLE_SSL := yes
     DISPLAY_BACKEND := fbdev
     ENABLE_SDL := no
-    # Disable TinyGL for AD5M - CPU too weak for software 3D (3-4 FPS)
-    # Uses 2D layer preview fallback instead
-    ENABLE_TINYGL_3D := no
+    ENABLE_GLES_3D := no
     ENABLE_EVDEV := yes
     BUILD_SUBDIR := ad5m
     # Strip binary for size on memory-constrained device
@@ -151,9 +149,7 @@ else ifeq ($(PLATFORM_TARGET),cc1)
     ENABLE_SSL := yes
     DISPLAY_BACKEND := fbdev
     ENABLE_SDL := no
-    # Disable TinyGL for CC1 - CPU too weak for software 3D (Cortex-A7 dual-core)
-    # Uses 2D layer preview fallback instead
-    ENABLE_TINYGL_3D := no
+    ENABLE_GLES_3D := no
     ENABLE_EVDEV := yes
     BUILD_SUBDIR := cc1
     # Strip binary for size on memory-constrained device
@@ -206,9 +202,7 @@ else ifeq ($(PLATFORM_TARGET),k1)
     ENABLE_SSL := no
     DISPLAY_BACKEND := fbdev
     ENABLE_SDL := no
-    # Disable TinyGL for K1 - CPU may be too weak for software 3D
-    # Uses 2D layer preview fallback instead
-    ENABLE_TINYGL_3D := no
+    ENABLE_GLES_3D := no
     ENABLE_EVDEV := yes
     BUILD_SUBDIR := k1
     # Strip binary for size on memory-constrained device
@@ -242,7 +236,7 @@ else ifeq ($(PLATFORM_TARGET),k1-dynamic)
     ENABLE_SSL := no
     DISPLAY_BACKEND := fbdev
     ENABLE_SDL := no
-    ENABLE_TINYGL_3D := no
+    ENABLE_GLES_3D := no
     ENABLE_EVDEV := yes
     BUILD_SUBDIR := k1-dynamic
     STRIP_BINARY := yes
@@ -273,8 +267,7 @@ else ifeq ($(PLATFORM_TARGET),k2)
     ENABLE_SSL := no
     DISPLAY_BACKEND := fbdev
     ENABLE_SDL := no
-    # Disable TinyGL for now - untested, enable after hardware validation
-    ENABLE_TINYGL_3D := no
+    ENABLE_GLES_3D := no
     ENABLE_EVDEV := yes
     BUILD_SUBDIR := k2
     STRIP_BINARY := yes
@@ -295,7 +288,7 @@ else ifeq ($(PLATFORM_TARGET),snapmaker-u1)
     ENABLE_SSL := yes
     DISPLAY_BACKEND := fbdev
     ENABLE_SDL := no
-    ENABLE_TINYGL_3D := no
+    ENABLE_GLES_3D := no
     ENABLE_EVDEV := yes
     BUILD_SUBDIR := snapmaker-u1
     STRIP_BINARY := yes
@@ -310,7 +303,6 @@ else ifeq ($(PLATFORM_TARGET),native)
     TARGET_CFLAGS :=
     DISPLAY_BACKEND := sdl
     ENABLE_SDL := yes
-    # TinyGL controlled by main Makefile default
     ENABLE_EVDEV := no
     BUILD_SUBDIR :=
 
