@@ -16,8 +16,10 @@
 
 #include <filesystem>
 
-#ifdef ENABLE_TINYGL_3D
-#include "gcode_tinygl_renderer.h"
+#ifdef ENABLE_GLES_3D
+#include "gcode_gles_renderer.h"
+#define ENABLE_3D_RENDERER
+using GCode3DRenderer = helix::gcode::GCodeGLESRenderer;
 #else
 #include "gcode_renderer.h"
 #endif
@@ -52,12 +54,12 @@ class GCodeViewerState {
   public:
     GCodeViewerState() {
         camera_ = std::make_unique<helix::gcode::GCodeCamera>();
-#ifdef ENABLE_TINYGL_3D
-        renderer_ = std::make_unique<helix::gcode::GCodeTinyGLRenderer>();
-        spdlog::debug("[GCode Viewer] TinyGL 3D renderer available");
+#ifdef ENABLE_3D_RENDERER
+        renderer_ = std::make_unique<GCode3DRenderer>();
+        spdlog::debug("[GCode Viewer] 3D renderer available");
 #else
         renderer_ = std::make_unique<helix::gcode::GCodeRenderer>();
-        spdlog::debug("[GCode Viewer] Using LVGL 2D renderer (TinyGL disabled)");
+        spdlog::debug("[GCode Viewer] Using LVGL 2D renderer (3D disabled)");
 #endif
 
         // Check HELIX_GCODE_MODE env var for render mode override
@@ -65,11 +67,12 @@ class GCodeViewerState {
         const char* mode_env = std::getenv("HELIX_GCODE_MODE");
         if (mode_env) {
             if (std::strcmp(mode_env, "3D") == 0) {
-#ifdef ENABLE_TINYGL_3D
+#ifdef ENABLE_3D_RENDERER
                 render_mode_ = GcodeViewerRenderMode::Render3D;
-                spdlog::info("[GCode Viewer] HELIX_GCODE_MODE=3D: forcing 3D TinyGL renderer");
+                spdlog::info("[GCode Viewer] HELIX_GCODE_MODE=3D: forcing 3D renderer");
 #else
-                spdlog::warn("[GCode Viewer] HELIX_GCODE_MODE=3D ignored: TinyGL not available");
+                spdlog::warn(
+                    "[GCode Viewer] HELIX_GCODE_MODE=3D ignored: 3D renderer not available");
                 render_mode_ = GcodeViewerRenderMode::Layer2D;
 #endif
             } else if (std::strcmp(mode_env, "2D") == 0) {
@@ -164,8 +167,8 @@ class GCodeViewerState {
 
     // Rendering components (exposed for callbacks)
     std::unique_ptr<helix::gcode::GCodeCamera> camera_;
-#ifdef ENABLE_TINYGL_3D
-    std::unique_ptr<helix::gcode::GCodeTinyGLRenderer> renderer_;
+#ifdef ENABLE_3D_RENDERER
+    std::unique_ptr<GCode3DRenderer> renderer_;
 #else
     std::unique_ptr<helix::gcode::GCodeRenderer> renderer_;
 #endif
@@ -890,7 +893,7 @@ lv_obj_t* ui_gcode_viewer_create(lv_obj_t* parent) {
 // Result structure for async geometry building
 struct AsyncBuildResult {
     std::unique_ptr<helix::gcode::ParsedGCodeFile> gcode_file;
-#ifdef ENABLE_TINYGL_3D
+#ifdef ENABLE_3D_RENDERER
     std::unique_ptr<helix::gcode::RibbonGeometry> geometry;        ///< Full detail geometry
     std::unique_ptr<helix::gcode::RibbonGeometry> coarse_geometry; ///< Coarse LOD for interaction
 #endif
@@ -1148,7 +1151,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                               result->gcode_file->layers.size(),
                               result->gcode_file->total_segments);
 
-#ifdef ENABLE_TINYGL_3D
+#ifdef ENABLE_3D_RENDERER
                 // PHASE 2: Build 3D geometry (slow, 1-5s for large files)
                 // This is thread-safe - no OpenGL calls, just CPU work
                 // SKIP entirely for 2D mode - 2D renderer uses ParsedGCodeFile directly
@@ -1295,7 +1298,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
 
                 // Set pre-built geometry on renderer
                 // On memory-constrained systems, we only have coarse geometry
-#ifdef ENABLE_TINYGL_3D
+#ifdef ENABLE_3D_RENDERER
                     if (r->geometry) {
                         // Normal case: full + coarse geometry
                         spdlog::debug("[GCode Viewer] Setting full + coarse geometry");
@@ -1323,7 +1326,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
 
                 // Auto-apply filament color if enabled, but ONLY for single-color prints
                 // Multicolor prints have multiple colors in the geometry's color palette
-#ifdef ENABLE_TINYGL_3D
+#ifdef ENABLE_3D_RENDERER
                     size_t color_count = st->renderer_->get_geometry_color_count();
                     bool is_multicolor = (color_count > 1); // >1 means multiple tool colors
 #else
@@ -1641,7 +1644,7 @@ void ui_gcode_viewer_set_debug_colors(lv_obj_t* obj, bool enable) {
     if (!st)
         return;
 
-#ifdef ENABLE_TINYGL_3D
+#ifdef ENABLE_3D_RENDERER
     st->renderer_->set_debug_face_colors(enable);
     lv_obj_invalidate(obj);
 #else
@@ -2126,7 +2129,7 @@ void ui_gcode_viewer_set_specular(lv_obj_t* obj, float intensity, float shinines
     if (!st)
         return;
 
-#ifdef ENABLE_TINYGL_3D
+#ifdef ENABLE_3D_RENDERER
     st->renderer_->set_specular(intensity, shininess);
     lv_obj_invalidate(obj); // Request redraw
 #else

@@ -215,9 +215,13 @@ OBJ_DIR ?= $(BUILD_DIR)/obj
 LVGL_DIR := lib/lvgl
 # Use -isystem to suppress warnings from third-party headers in strict mode
 LVGL_INC := -isystem $(LVGL_DIR) -isystem $(LVGL_DIR)/src
-# Add GLAD include path only when OpenGL ES is enabled (provides KHR/khrplatform.h, EGL headers)
+# Add GLAD include path for desktop OpenGL ES (SDL) builds only.
+# DRM+EGL builds use system EGL/GLES2 headers directly — GLAD's stub headers
+# shadow them (define include guards but emit no types when LV_USE_OPENGLES=0).
 ifeq ($(ENABLE_OPENGLES),yes)
+  ifneq ($(DISPLAY_BACKEND),drm)
     LVGL_INC += -isystem $(LVGL_DIR)/src/drivers/opengles/glad/include
+  endif
 endif
 # Exclude XML and expat sources from LVGL — those are now in lib/helix-xml
 LVGL_SRCS := $(filter-out $(wildcard $(LVGL_DIR)/src/xml/*.c $(LVGL_DIR)/src/xml/parsers/*.c $(LVGL_DIR)/src/libs/expat/*.c),$(shell find $(LVGL_DIR)/src -name "*.c" 2>/dev/null))
@@ -268,6 +272,9 @@ LV_MARKDOWN_OBJS := $(patsubst $(LV_MARKDOWN_DIR)/%.c,$(OBJ_DIR)/lv_markdown/%.o
 LVGL_DEMO_SRCS := $(shell find $(LVGL_DIR)/demos -name "*.c" 2>/dev/null)
 LVGL_DEMO_OBJS := $(patsubst $(LVGL_DIR)/%.c,$(OBJ_DIR)/lvgl/%.o,$(LVGL_DEMO_SRCS))
 
+# 3D G-code Rendering default (must be set before APP_SRCS filtering below)
+ENABLE_GLES_3D ?= yes
+
 # Application C sources
 APP_C_SRCS := $(wildcard $(SRC_DIR)/*.c)
 APP_C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(APP_C_SRCS))
@@ -277,6 +284,11 @@ APP_C_OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(APP_C_SRCS))
 APP_SRCS := $(filter-out $(SRC_DIR)/test_dynamic_cards.cpp $(SRC_DIR)/test_responsive_theme.cpp $(SRC_DIR)/test_tinygl_triangle.cpp $(SRC_DIR)/test_gcode_geometry.cpp $(SRC_DIR)/test_gcode_analysis.cpp $(SRC_DIR)/test_sdf_reconstruction.cpp $(SRC_DIR)/test_sparse_grid.cpp $(SRC_DIR)/test_partial_extraction.cpp $(SRC_DIR)/test_render_comparison.cpp $(SRC_DIR)/test_network_tester.cpp $(SRC_DIR)/helix_splash.cpp $(SRC_DIR)/helix_watchdog.cpp $(SRC_DIR)/lvgl-demo/main.cpp,$(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/*/*.cpp) $(wildcard $(SRC_DIR)/*/*/*.cpp))
 # Exclude src/tools/ — standalone build tools have their own rules in tools.mk
 APP_SRCS := $(filter-out $(wildcard $(SRC_DIR)/tools/*.cpp),$(APP_SRCS))
+# Exclude 3D renderer implementations that aren't active
+APP_SRCS := $(filter-out $(SRC_DIR)/rendering/gcode_tinygl_renderer.cpp,$(APP_SRCS))
+ifneq ($(ENABLE_GLES_3D),yes)
+    APP_SRCS := $(filter-out $(SRC_DIR)/rendering/gcode_gles_renderer.cpp,$(APP_SRCS))
+endif
 APP_OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(APP_SRCS))
 
 # Objective-C++ sources (macOS only - .mm files)
@@ -415,22 +427,14 @@ ifneq ($(UNAME_S),Darwin)
     endif
 endif
 
-# TinyGL (software 3D rasterizer for G-code visualization)
-# Set ENABLE_TINYGL_3D=no to build without 3D rendering support
-ENABLE_TINYGL_3D ?= yes
+# 3D G-code Rendering
+# ENABLE_GLES_3D: GPU-accelerated OpenGL ES 2.0 via EGL (Pi + desktop Linux)
+# (default set earlier, before APP_SRCS filtering)
 
-ifeq ($(ENABLE_TINYGL_3D),yes)
-    TINYGL_DIR := lib/tinygl
-    # Output to $(BUILD_DIR)/lib/ for architecture isolation (native/pi/ad5m)
-    TINYGL_LIB := $(BUILD_DIR)/lib/libTinyGL.a
-    # Use -isystem to suppress warnings from third-party headers in strict mode
-    TINYGL_INC := -isystem $(TINYGL_DIR)/include
-    TINYGL_DEFINES := -DENABLE_TINYGL_3D
+ifeq ($(ENABLE_GLES_3D),yes)
+    GLES3D_DEFINES := -DENABLE_GLES_3D
 else
-    TINYGL_DIR :=
-    TINYGL_LIB :=
-    TINYGL_INC :=
-    TINYGL_DEFINES :=
+    GLES3D_DEFINES :=
 endif
 
 # wpa_supplicant (WiFi control via wpa_ctrl interface)
@@ -451,10 +455,10 @@ PCH_FLAGS := -include $(PCH_HEADER)
 # This allows `make strict` to catch issues in project code while ignoring third-party header warnings
 # stb_image headers are in tinygl/include-demo (used for thumbnail processing)
 STB_INC := -isystem lib/tinygl/include-demo
-INCLUDES := -I. -I$(INC_DIR) -Isrc/generated -isystem lib -isystem lib/glm $(LVGL_INC) $(LIBHV_INC) $(SPDLOG_INC) $(TINYGL_INC) $(STB_INC) $(LV_MARKDOWN_INC) $(WPA_INC) $(SDL2_INC)
+INCLUDES := -I. -I$(INC_DIR) -Isrc/generated -isystem lib -isystem lib/glm $(LVGL_INC) $(LIBHV_INC) $(SPDLOG_INC) $(STB_INC) $(LV_MARKDOWN_INC) $(WPA_INC) $(SDL2_INC)
 
 # Common linker flags (used by both macOS and Linux)
-LDFLAGS_COMMON := $(SDL2_LIBS) $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) -lz -lm -lpthread
+LDFLAGS_COMMON := $(SDL2_LIBS) $(LIBHV_LIBS) $(FMT_LIBS) -lz -lm -lpthread
 
 # Platform-specific configuration
 # Cross-compilation targets (pi, ad5m, k1) are Linux-based embedded systems
@@ -473,18 +477,18 @@ ifneq ($(CROSS_COMPILE),)
         # Project libraries linked statically, system libraries linked dynamically
         # -lstdc++fs: GCC 7.5 requires separate library for <experimental/filesystem>
         LDFLAGS := -Wl,-Bstatic \
-            $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) -lstdc++fs \
+            $(LIBHV_LIBS) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) -lstdc++fs \
             -Wl,-Bdynamic \
             -lstdc++ -lz -lm -lpthread -lrt -ldl -latomic -lgcc_s
     else ifeq ($(PLATFORM_TARGET),k1)
         # K1 uses musl - fully static, no system library paths needed
         # -latomic: Required for 64-bit atomics on 32-bit MIPS (std::atomic<int64_t>)
-        LDFLAGS := $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) -latomic -ldl -lz -lm -lpthread
+        LDFLAGS := $(LIBHV_LIBS) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) -latomic -ldl -lz -lm -lpthread
     else ifeq ($(PLATFORM_TARGET),k2)
         # K2 uses musl - fully static, no system library paths needed (same as K1)
-        LDFLAGS := $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) -ldl -lz -lm -lpthread
+        LDFLAGS := $(LIBHV_LIBS) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) -ldl -lz -lm -lpthread
     else
-        LDFLAGS := -L/usr/lib/$(TARGET_TRIPLE) $(LIBHV_LIBS) $(TINYGL_LIB) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) $(SYSTEMD_LIBS) -ldl -lz -lm -lpthread
+        LDFLAGS := -L/usr/lib/$(TARGET_TRIPLE) $(LIBHV_LIBS) $(FMT_LIBS) $(WPA_CLIENT_LIB) $(LIBNL_LIBS) $(SYSTEMD_LIBS) -ldl -lz -lm -lpthread
     endif
     ifeq ($(ENABLE_SSL),yes)
         ifneq (,$(filter pi pi32,$(PLATFORM_TARGET)))
@@ -537,13 +541,17 @@ else
     NPROC := $(shell nproc 2>/dev/null || echo 4)
     # Note: -lstdc++fs needed for std::experimental::filesystem on GCC < 9
     LDFLAGS := $(LDFLAGS_COMMON) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -lssl -lcrypto -ldl -lstdc++fs
+    # GPU-accelerated 3D G-code rendering via EGL/OpenGL ES 2.0
+    ifeq ($(ENABLE_GLES_3D),yes)
+        LDFLAGS += -lEGL -lGLESv2 -lgbm
+    endif
     PLATFORM := Linux
     WPA_DEPS := $(WPA_CLIENT_LIB)
 endif
 
-# Add TinyGL defines to compiler flags
-CFLAGS += $(TINYGL_DEFINES)
-CXXFLAGS += $(TINYGL_DEFINES)
+# Add 3D renderer defines to compiler flags
+CFLAGS += $(GLES3D_DEFINES)
+CXXFLAGS += $(GLES3D_DEFINES)
 
 # Add systemd defines to C++ compiler flags (for logging_init.cpp)
 CXXFLAGS += $(SYSTEMD_CXXFLAGS)

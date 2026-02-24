@@ -17,7 +17,9 @@ LVGL_PATCHED_FILES := \
 	src/stdlib/clib/lv_string_clib.c \
 	src/stdlib/builtin/lv_string_builtin.c \
 	src/draw/sw/blend/lv_draw_sw_blend.c \
-	src/draw/sw/lv_draw_sw_letter.c
+	src/draw/sw/lv_draw_sw_letter.c \
+	src/drivers/display/drm/lv_linux_drm.h \
+	src/drivers/display/drm/lv_linux_drm_egl.c
 
 # Files modified by libhv patches
 LIBHV_PATCHED_FILES := \
@@ -176,6 +178,17 @@ $(PATCHES_STAMP): $(PATCH_FILES) $(LVGL_HEAD) $(LIBHV_HEAD)
 		fi \
 	else \
 		echo "$(GREEN)✓ LVGL label draw NULL font guard patch already applied$(RESET)"; \
+	fi
+	$(Q)if git -C $(LVGL_DIR) diff --quiet src/drivers/display/drm/lv_linux_drm.h 2>/dev/null; then \
+		echo "$(YELLOW)→ Applying LVGL DRM EGL getters patch...$(RESET)"; \
+		if git -C $(LVGL_DIR) apply --check ../../patches/lvgl-drm-egl-getters.patch 2>/dev/null; then \
+			git -C $(LVGL_DIR) apply ../../patches/lvgl-drm-egl-getters.patch && \
+			echo "$(GREEN)✓ DRM EGL getters patch applied$(RESET)"; \
+		else \
+			echo "$(YELLOW)⚠ Cannot apply patch (already applied or conflicts)$(RESET)"; \
+		fi \
+	else \
+		echo "$(GREEN)✓ LVGL DRM EGL getters patch already applied$(RESET)"; \
 	fi
 	$(ECHO) "$(CYAN)Checking libhv patches...$(RESET)"
 	$(Q)if git -C $(LIBHV_DIR) diff --quiet http/client/requests.h 2>/dev/null; then \
