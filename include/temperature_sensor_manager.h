@@ -274,6 +274,9 @@ class TemperatureSensorManager : public ISensorManager {
     // Recursive mutex for thread-safe state access
     mutable std::recursive_mutex mutex_;
 
+    // Alive guard for async callback safety (L072: never access state after shutdown)
+    std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
+
     // Configuration
     std::vector<TemperatureSensorConfig> sensors_;
 

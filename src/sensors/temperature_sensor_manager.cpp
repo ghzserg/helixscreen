@@ -226,8 +226,15 @@ void TemperatureSensorManager::update_from_status(const nlohmann::json& status) 
             } else {
                 spdlog::trace(
                     "[TemperatureSensorManager] async_mode: deferring via ui_queue_update");
-                helix::ui::queue_update(
-                    [] { TemperatureSensorManager::instance().update_subjects_on_main_thread(); });
+                std::weak_ptr<bool> weak = alive_;
+                helix::ui::queue_update([weak] {
+                    if (weak.expired()) {
+                        spdlog::trace("[TemperatureSensorManager] Skipping queued update — "
+                                      "manager shut down");
+                        return;
+                    }
+                    TemperatureSensorManager::instance().update_subjects_on_main_thread();
+                });
             }
         }
     }
@@ -339,11 +346,25 @@ void TemperatureSensorManager::deinit_subjects() {
 
     spdlog::trace("[TemperatureSensorManager] Deinitializing subjects");
 
-    // Clear dynamic subjects (their destructors handle lv_subject_deinit)
-    temp_subjects_.clear();
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
 
-    subjects_.deinit_all();
-    subjects_initialized_ = false;
+        // Invalidate alive guard FIRST — expires weak_ptrs in queued callbacks
+        // so they won't access state after we clear it (L072, L054)
+        *alive_ = false;
+
+        // Clear all collections under mutex to prevent background thread access
+        // to stale iterators during shutdown race
+        sensors_.clear();
+        states_.clear();
+
+        // Clear dynamic subjects (their destructors handle lv_subject_deinit)
+        temp_subjects_.clear();
+
+        subjects_.deinit_all();
+        subjects_initialized_ = false;
+    }
+
     spdlog::trace("[TemperatureSensorManager] Subjects deinitialized");
 }
 
