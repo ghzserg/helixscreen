@@ -24,6 +24,12 @@
 #include "backlight_backend.h"
 #include "config.h"
 #include "display_backend.h"
+#ifdef HELIX_DISPLAY_DRM
+#include "display_backend_drm.h"
+#endif
+#ifdef HELIX_DISPLAY_FBDEV
+#include "display_backend_fbdev.h"
+#endif
 #include "logging_init.h"
 
 #include <spdlog/spdlog.h>
@@ -241,6 +247,28 @@ static bool parse_args(int argc, char** argv, WatchdogArgs& args) {
 
 // Global splash PID for cleanup
 static volatile pid_t g_splash_pid = 0;
+
+/**
+ * @brief Check if the display backend will use DRM
+ *
+ * The external splash process uses fbdev, which conflicts with DRM — both
+ * backends fight over the same display hardware, causing mmap failures on
+ * DRM dumb buffer allocation. When DRM will be used (forced or auto-detected),
+ * skip the external splash and let the main app show its internal LVGL splash.
+ */
+static bool would_use_drm() {
+    const char* env = std::getenv("HELIX_DISPLAY_BACKEND");
+    if (env != nullptr) {
+        return strcmp(env, "drm") == 0;
+    }
+    // Auto mode: DRM is tried first in create_auto(), check if it's available
+#ifdef HELIX_DISPLAY_DRM
+    DisplayBackendDRM drm;
+    return drm.is_available();
+#else
+    return false;
+#endif
+}
 
 /**
  * @brief Start splash screen process
@@ -697,14 +725,28 @@ static DialogChoice show_crash_dialog(int width, int height, int rotation, const
     // Initialize LVGL
     lv_init();
 
-    // Create display backend
+    // Create display backend (with fbdev fallback for crash resilience)
     auto backend = DisplayBackend::create();
     if (!backend) {
         spdlog::error("[Watchdog] Failed to create display backend");
-        return DialogChoice::RESTART_APP; // Fallback: restart app
+        return DialogChoice::RESTART_APP;
     }
 
     lv_display_t* display = backend->create_display(width, height);
+#ifdef HELIX_DISPLAY_FBDEV
+    if (!display) {
+        // DRM may fail (e.g., mmap contention). Try fbdev as fallback so the
+        // crash recovery screen is visible instead of looping silently.
+        spdlog::warn("[Watchdog] Primary display failed, trying fbdev fallback");
+        backend = std::make_unique<DisplayBackendFbdev>();
+        if (backend->is_available()) {
+            display = backend->create_display(width, height);
+            if (display) {
+                spdlog::info("[Watchdog] Crash dialog using fbdev fallback");
+            }
+        }
+    }
+#endif
     if (!display) {
         spdlog::error("[Watchdog] Failed to create display");
         return DialogChoice::RESTART_APP;
@@ -787,8 +829,15 @@ static int run_watchdog(const WatchdogArgs& args) {
         // On first launch, prefer an externally-started splash (args.splash_pid)
         // over starting a new one. On restarts, always start fresh (the original
         // PID is stale).
+        //
+        // Skip the external splash entirely when DRM will be used — the fbdev-based
+        // splash conflicts with DRM (both fight over display hardware, causing mmap
+        // failures). The main app will show its internal LVGL splash instead.
         pid_t splash_pid = 0;
-        if (first_launch && args.splash_pid > 0) {
+        bool use_drm = would_use_drm();
+        if (use_drm) {
+            spdlog::info("[Watchdog] DRM backend detected, skipping external splash");
+        } else if (first_launch && args.splash_pid > 0) {
             // Adopt externally-started splash (e.g. from init script)
             splash_pid = args.splash_pid;
             g_splash_pid = splash_pid;
