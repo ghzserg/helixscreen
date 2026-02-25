@@ -148,3 +148,105 @@ TEST_CASE("Mock backend supports toolchange simulation", "[afc][toolchange][mock
         REQUIRE(info.number_of_toolchanges == 0);
     }
 }
+
+// ============================================================================
+// AmsState subject tests (require LVGL)
+// ============================================================================
+
+#include "ui_update_queue.h"
+
+#include "ams_state.h"
+#include "static_subject_registry.h"
+
+#include <lvgl.h>
+
+// LVGL test fixture - init/deinit per test case
+struct LvglFixture {
+    LvglFixture() {
+        lv_init();
+        helix::ui::UpdateQueue::instance().init();
+    }
+    ~LvglFixture() {
+        AmsState::instance().deinit_subjects();
+        helix::ui::UpdateQueue::instance().shutdown();
+        lv_deinit();
+    }
+};
+
+TEST_CASE("AmsState toolchange subjects reflect backend data", "[afc][toolchange][subjects]") {
+    LvglFixture lv;
+    auto& state = AmsState::instance();
+    state.init_subjects(false);
+
+    auto* vis_subj = state.get_toolchange_visible_subject();
+    auto* text_subj = state.get_toolchange_text_subject();
+
+    SECTION("initially hidden") {
+        REQUIRE(lv_subject_get_int(vis_subj) == 0);
+        REQUIRE(std::string(lv_subject_get_string(text_subj)).empty());
+    }
+}
+
+TEST_CASE("AmsState toolchange text formatting", "[afc][toolchange][format]") {
+    LvglFixture lv;
+    auto& state = AmsState::instance();
+    state.init_subjects(false);
+
+    // Create and set a mock backend
+    auto mock = std::make_unique<AmsBackendMock>(4);
+    auto* mock_ptr = mock.get();
+    state.set_backend(std::move(mock));
+
+    auto* vis_subj = state.get_toolchange_visible_subject();
+    auto* text_subj = state.get_toolchange_text_subject();
+
+    SECTION("mid-print: shows 1-based 'N / M'") {
+        mock_ptr->set_toolchange_progress(2, 5); // 0-based: 3rd swap of 5
+        state.sync_from_backend();
+        helix::ui::UpdateQueue::instance().drain();
+
+        REQUIRE(lv_subject_get_int(vis_subj) == 1);
+        REQUIRE(std::string(lv_subject_get_string(text_subj)) == "3 / 5");
+    }
+
+    SECTION("before first swap: shows '0 / N'") {
+        mock_ptr->set_toolchange_progress(-1, 5);
+        state.sync_from_backend();
+        helix::ui::UpdateQueue::instance().drain();
+
+        REQUIRE(lv_subject_get_int(vis_subj) == 1);
+        REQUIRE(std::string(lv_subject_get_string(text_subj)) == "0 / 5");
+    }
+
+    SECTION("first swap complete: shows '1 / 5'") {
+        mock_ptr->set_toolchange_progress(0, 5);
+        state.sync_from_backend();
+        helix::ui::UpdateQueue::instance().drain();
+
+        REQUIRE(lv_subject_get_int(vis_subj) == 1);
+        REQUIRE(std::string(lv_subject_get_string(text_subj)) == "1 / 5");
+    }
+
+    SECTION("no swaps expected: hidden") {
+        mock_ptr->set_toolchange_progress(-1, 0);
+        state.sync_from_backend();
+        helix::ui::UpdateQueue::instance().drain();
+
+        REQUIRE(lv_subject_get_int(vis_subj) == 0);
+        REQUIRE(std::string(lv_subject_get_string(text_subj)).empty());
+    }
+
+    SECTION("print ends, AFC resets: hidden") {
+        // Mid-print
+        mock_ptr->set_toolchange_progress(3, 5);
+        state.sync_from_backend();
+        helix::ui::UpdateQueue::instance().drain();
+        REQUIRE(lv_subject_get_int(vis_subj) == 1);
+
+        // Print complete - AFC resets
+        mock_ptr->set_toolchange_progress(0, 0);
+        state.sync_from_backend();
+        helix::ui::UpdateQueue::instance().drain();
+        REQUIRE(lv_subject_get_int(vis_subj) == 0);
+    }
+}
