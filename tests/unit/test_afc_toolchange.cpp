@@ -74,6 +74,64 @@ TEST_CASE("AFC backend parses toolchange fields from status update", "[afc][tool
     }
 }
 
+#include "ams_backend_happy_hare.h"
+
+// Test helper for HH toolchange — reuses the pattern from test_ams_backend_happy_hare.cpp
+class HHToolchangeTestHelper : public AmsBackendHappyHare {
+  public:
+    HHToolchangeTestHelper() : AmsBackendHappyHare(nullptr, nullptr) {}
+
+    void feed_mmu_state(const nlohmann::json& mmu_data) {
+        nlohmann::json notification;
+        nlohmann::json params;
+        params["mmu"] = mmu_data;
+        notification["params"] = nlohmann::json::array({params, 0.0});
+        handle_status_update(notification);
+    }
+
+    const AmsSystemInfo& info() const {
+        return system_info_;
+    }
+};
+
+TEST_CASE("Happy Hare backend parses toolchange fields", "[hh][toolchange]") {
+    HHToolchangeTestHelper hh;
+
+    SECTION("num_toolchanges maps to current_toolchange (count-1)") {
+        // num_toolchanges=3 means 3 swaps done => 0-based index = 2
+        hh.feed_mmu_state(
+            {{"num_toolchanges", 3}, {"slicer_tool_map", {{"total_toolchanges", 8}}}});
+        REQUIRE(hh.info().current_toolchange == 2);
+        REQUIRE(hh.info().number_of_toolchanges == 8);
+    }
+
+    SECTION("num_toolchanges=0 before first swap") {
+        hh.feed_mmu_state(
+            {{"num_toolchanges", 0}, {"slicer_tool_map", {{"total_toolchanges", 5}}}});
+        REQUIRE(hh.info().current_toolchange == -1);
+        REQUIRE(hh.info().number_of_toolchanges == 5);
+    }
+
+    SECTION("slicer_tool_map.total_toolchanges is null") {
+        hh.feed_mmu_state(
+            {{"num_toolchanges", 2}, {"slicer_tool_map", {{"total_toolchanges", nullptr}}}});
+        REQUIRE(hh.info().current_toolchange == 1);
+        REQUIRE(hh.info().number_of_toolchanges == 0);
+    }
+
+    SECTION("slicer_tool_map missing entirely") {
+        hh.feed_mmu_state({{"num_toolchanges", 2}});
+        REQUIRE(hh.info().current_toolchange == 1);
+        REQUIRE(hh.info().number_of_toolchanges == 0);
+    }
+
+    SECTION("fields missing keeps defaults") {
+        hh.feed_mmu_state({{"action", "Idle"}});
+        REQUIRE(hh.info().current_toolchange == -1);
+        REQUIRE(hh.info().number_of_toolchanges == 0);
+    }
+}
+
 #include "ams_backend_mock.h"
 
 TEST_CASE("Mock backend supports toolchange simulation", "[afc][toolchange][mock]") {

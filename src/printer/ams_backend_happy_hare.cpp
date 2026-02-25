@@ -515,6 +515,26 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
                       system_info_.toolchange_purge_volume);
     }
 
+    // Parse num_toolchanges: printer.mmu.num_toolchanges
+    // Count of completed tool changes (1 = first swap done). Convert to 0-based index.
+    if (mmu_data.contains("num_toolchanges") && mmu_data["num_toolchanges"].is_number_integer()) {
+        int count = mmu_data["num_toolchanges"].get<int>();
+        system_info_.current_toolchange = (count > 0) ? (count - 1) : -1;
+        spdlog::trace("[AMS HappyHare] Toolchange count: {} -> index: {}", count,
+                      system_info_.current_toolchange);
+    }
+
+    // Parse slicer_tool_map.total_toolchanges: printer.mmu.slicer_tool_map
+    // Contains total_toolchanges (int or null) from slicer metadata
+    if (mmu_data.contains("slicer_tool_map") && mmu_data["slicer_tool_map"].is_object()) {
+        const auto& stm = mmu_data["slicer_tool_map"];
+        if (stm.contains("total_toolchanges") && stm["total_toolchanges"].is_number_integer()) {
+            system_info_.number_of_toolchanges = stm["total_toolchanges"].get<int>();
+            spdlog::trace("[AMS HappyHare] Total toolchanges from slicer: {}",
+                          system_info_.number_of_toolchanges);
+        }
+    }
+
     // Parse spoolman_support: printer.mmu.spoolman_support (v4)
     if (mmu_data.contains("spoolman_support") && mmu_data["spoolman_support"].is_string()) {
         system_info_.spoolman_mode =
