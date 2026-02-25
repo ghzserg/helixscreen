@@ -37,7 +37,7 @@
 > Text-only buttons: use `align="center"` on child. Icon+text buttons with flex_flow="row": need ALL THREE flex properties - style_flex_main_place="center" (horizontal), style_flex_cross_place="center" (vertical align items), style_flex_track_place="center" (vertical position of row). Missing track_place causes content to sit at top.
 
 ### [L031] [***--|*****] XML no recompile
-- **Uses**: 42 | **Velocity**: 22.0075 | **Learned**: 2025-12-27 | **Last**: 2026-02-24 | **Category**: gotcha | **Type**: constraint
+- **Uses**: 46 | **Velocity**: 26.0075 | **Learned**: 2025-12-27 | **Last**: 2026-02-24 | **Category**: gotcha | **Type**: constraint
 > XML files are loaded at RUNTIME - never rebuild after XML-only changes. Just relaunch the app. This includes layout changes, styling, bindings, event callbacks - anything in ui_xml/*.xml. Only rebuild when C++ code changes.
 
 ### [L039] [*----|-----] Unique XML callback names
@@ -45,7 +45,7 @@
 > All XML event_cb callback names must be globally unique using on_<component>_<action> pattern. LVGL's XML callback registry is a flat global namespace with no scoping. Generic names like on_modal_ok_clicked cause collisions when multiple components register handlers.
 
 ### [L040] [**---|****-] Inline XML attrs override bind_style
-- **Uses**: 5 | **Velocity**: 2 | **Learned**: 2025-12-30 | **Last**: 2026-02-24 | **Category**: gotcha | **Type**: constraint
+- **Uses**: 6 | **Velocity**: 3 | **Learned**: 2025-12-30 | **Last**: 2026-02-24 | **Category**: gotcha | **Type**: constraint
 > When using bind_style for reactive visual changes, inline style attributes (style_bg_color, style_text_color, etc.) have higher priority in LVGL's style cascade. bind_style cannot override them. Solution: use TWO bind_styles (one per state) with NO inline styling for properties you want to change reactively.
 
 ### [L042] [*----|-----] XML bind_flag exclusive visibility
@@ -97,7 +97,7 @@
 > Always use lv_obj_safe_delete() instead of raw lv_obj_delete() - it guards against shutdown race conditions by checking lv_is_initialized() and lv_display_get_next() before deletion, and auto-nulls the pointer to prevent use-after-free
 
 ### [L060] [***--|*****] Interactive UI testing requires user
-- **Uses**: 14 | **Velocity**: 13.01 | **Learned**: 2026-02-01 | **Last**: 2026-02-24 | **Category**: correction | **Type**: constraint
+- **Uses**: 17 | **Velocity**: 16.009999999999998 | **Learned**: 2026-02-01 | **Last**: 2026-02-24 | **Category**: correction | **Type**: constraint
 > NEVER use timed delays expecting automatic navigation. THE EXACT PATTERN THAT WORKS:
 > **Step 1** - Start app with Bash tool using `run_in_background: true`:
 > ```bash
@@ -113,8 +113,8 @@
 - **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-07 | **Last**: 2026-02-24 | **Category**: system
 > AD5M (192.168.1.67, root@) runs armv7l Linux 5.4.61 (BusyBox). Key gotchas: (1) No curl, only wget - and wget has NO HTTPS support (compiled without SSL). (2) No sftp-server - use 'scp -O' (legacy protocol) instead of default scp. (3) Logging: default level is WARN, app logs to BOTH /tmp/helixscreen.log AND syslog (/var/log/messages) - syslog has the CURRENT session, /tmp/helixscreen.log may be stale from previous session. (4) No CA certificate bundle shipped - /etc/ssl/certs/ is empty, breaks ALL outbound HTTPS (libhv, wget). Must ship ca-certificates.crt with install. (5) No openssl CLI command. (6) No inotify support. (7) No WiFi (wpa_supplicant present but no interfaces). (8) OpenSSL 1.1 libs exist at /usr/lib/libssl.so.1.1. (9) Binary at /opt/helixscreen/, config at /opt/helixscreen/config/helixconfig.json. (10) ldd may return empty for statically-linked ARM binaries.
 
-### [L062] [*----|***--] AD5M build and deploy targets
-- **Uses**: 1 | **Velocity**: 1 | **Learned**: 2026-02-07 | **Last**: 2026-02-24 | **Category**: build
+### [L062] [*----|****-] AD5M build and deploy targets
+- **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-07 | **Last**: 2026-02-24 | **Category**: build
 > AD5M cross-compilation uses 'make ad5m-docker' (Docker-based ARM cross-compile), NOT 'make pi-test' (which targets Raspberry Pi). Deploy with 'AD5M_HOST=192.168.1.67 make ad5m-deploy'. The pi-test target is for a different device entirely.
 
 ### [L064] [*----|****-] Commit generated translation artifacts
