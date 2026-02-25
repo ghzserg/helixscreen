@@ -131,5 +131,13 @@ void ui_component_header_bar_setup(lv_obj_t* header, lv_obj_t* screen) {
     lv_coord_t header_height = ui_get_responsive_header_height(lv_obj_get_height(screen));
     lv_obj_set_height(header, header_height);
 
+    // Extend back button's click area for easier touch targeting.
+    // Use half the header height so the hit area spans the full header vertically
+    // and is generously wide (~header_height total width beyond the icon).
+    lv_obj_t* back_btn = lv_obj_find_by_name(header, "back_button");
+    if (back_btn) {
+        lv_obj_set_ext_click_area(back_btn, header_height / 2);
+    }
+
     spdlog::trace("[HeaderBar] Setup complete: height={}px", header_height);
 }
