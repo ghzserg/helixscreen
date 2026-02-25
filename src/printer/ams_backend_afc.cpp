@@ -1852,7 +1852,18 @@ AmsError AmsBackendAfc::load_filament(int slot_index) {
         }
     }
 
-    // Send CHANGE_TOOL LANE={name} command
+    // Toolchanger mode: use AFC_SELECT_TOOL with extruder name
+    if (num_extruders_ > 1) {
+        const auto* entry = slots_.get(slot_index);
+        int tool = entry ? entry->info.mapped_tool : slot_index;
+        if (tool >= 0 && tool < static_cast<int>(extruders_.size())) {
+            std::string cmd = "AFC_SELECT_TOOL TOOL=" + extruders_[tool].name;
+            spdlog::info("[AMS AFC] Loading slot {} via toolchanger: {}", slot_index, cmd);
+            return execute_gcode(cmd);
+        }
+    }
+
+    // Standard mode: CHANGE_TOOL LANE={name}
     std::ostringstream cmd;
     cmd << "CHANGE_TOOL LANE=" << lane_name;
 
@@ -1873,6 +1884,11 @@ AmsError AmsBackendAfc::unload_filament() {
             return AmsError(AmsResult::WRONG_STATE, "No filament loaded", "No filament to unload",
                             "Load filament first");
         }
+    }
+
+    if (num_extruders_ > 1) {
+        spdlog::info("[AMS AFC] Unloading via toolchanger: AFC_UNSELECT_TOOL");
+        return execute_gcode("AFC_UNSELECT_TOOL");
     }
 
     spdlog::info("[AMS AFC] Unloading filament");
@@ -1922,12 +1938,17 @@ AmsError AmsBackendAfc::change_tool(int tool_number) {
         }
     }
 
-    // Send T{n} command for standard tool change
-    std::ostringstream cmd;
-    cmd << "T" << tool_number;
+    std::string cmd;
+    if (num_extruders_ > 1 && tool_number < static_cast<int>(extruders_.size())) {
+        // Toolchanger mode: use AFC_SELECT_TOOL with extruder name
+        cmd = "AFC_SELECT_TOOL TOOL=" + extruders_[tool_number].name;
+    } else {
+        // Standard mode: use T{n}
+        cmd = "T" + std::to_string(tool_number);
+    }
 
-    spdlog::info("[AMS AFC] Tool change to T{}", tool_number);
-    return execute_gcode(cmd.str());
+    spdlog::info("[AMS AFC] Tool change: {}", cmd);
+    return execute_gcode(cmd);
 }
 
 // ============================================================================

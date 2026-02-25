@@ -153,6 +153,13 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
         system_info_.units.push_back(unit);
         system_info_.total_slots = count;
         slots_.initialize("Box Turtle 1", names);
+
+        // Set mapped_tool on registry entries to match unit slot info
+        for (int i = 0; i < count; ++i) {
+            auto* s = get_mutable_slot(i);
+            if (s)
+                s->mapped_tool = i;
+        }
     }
 
     SlotInfo* get_mutable_slot(int slot_index) {
@@ -353,6 +360,17 @@ class AmsBackendAfcTestHelper : public AmsBackendAfc {
 
     AmsSystemInfo& get_system_info_mutable() {
         return system_info_;
+    }
+
+    // Toolchanger mode setup: configures num_extruders_ and extruders_
+    void setup_toolchanger(int num_extruders) {
+        num_extruders_ = num_extruders;
+        extruders_.clear();
+        for (int i = 0; i < num_extruders; ++i) {
+            AfcExtruderInfo ext;
+            ext.name = (i == 0) ? "extruder" : "extruder" + std::to_string(i);
+            extruders_.push_back(std::move(ext));
+        }
     }
 };
 
@@ -2539,4 +2557,102 @@ TEST_CASE("AFC get_type returns AFC", "[ams][afc][spoolman]") {
 TEST_CASE("AFC backend reports tracks_weight_locally=true", "[ams][afc][spoolman]") {
     AmsBackendAfcTestHelper helper;
     REQUIRE(helper.tracks_weight_locally() == true);
+}
+
+// ============================================================================
+// Toolchanger mode: AFC_SELECT_TOOL / AFC_UNSELECT_TOOL
+// ============================================================================
+
+TEST_CASE("AFC change_tool sends AFC_SELECT_TOOL in toolchanger mode", "[ams][afc][toolchanger]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.set_running(true);
+    helper.setup_toolchanger(2);
+
+    auto result = helper.change_tool(1);
+
+    REQUIRE(result);
+    REQUIRE(helper.has_gcode("AFC_SELECT_TOOL TOOL=extruder1"));
+}
+
+TEST_CASE("AFC change_tool sends T{n} in single-extruder mode", "[ams][afc][toolchanger]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.set_running(true);
+    // num_extruders_ defaults to 1, no setup_toolchanger call
+
+    auto result = helper.change_tool(1);
+
+    REQUIRE(result);
+    REQUIRE(helper.has_gcode("T1"));
+    REQUIRE_FALSE(helper.has_gcode_starting_with("AFC_SELECT_TOOL"));
+}
+
+TEST_CASE("AFC change_tool sends AFC_SELECT_TOOL with first extruder name",
+          "[ams][afc][toolchanger]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.set_running(true);
+    helper.setup_toolchanger(3);
+
+    auto result = helper.change_tool(0);
+
+    REQUIRE(result);
+    REQUIRE(helper.has_gcode("AFC_SELECT_TOOL TOOL=extruder"));
+}
+
+TEST_CASE("AFC load_filament sends AFC_SELECT_TOOL in toolchanger mode",
+          "[ams][afc][toolchanger]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.set_running(true);
+    helper.setup_toolchanger(2);
+
+    auto result = helper.load_filament(1);
+
+    REQUIRE(result);
+    REQUIRE(helper.has_gcode("AFC_SELECT_TOOL TOOL=extruder1"));
+    REQUIRE_FALSE(helper.has_gcode_starting_with("CHANGE_TOOL"));
+}
+
+TEST_CASE("AFC load_filament sends CHANGE_TOOL in single-extruder mode",
+          "[ams][afc][toolchanger]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.set_running(true);
+
+    auto result = helper.load_filament(1);
+
+    REQUIRE(result);
+    REQUIRE(helper.has_gcode("CHANGE_TOOL LANE=lane2"));
+    REQUIRE_FALSE(helper.has_gcode_starting_with("AFC_SELECT_TOOL"));
+}
+
+TEST_CASE("AFC unload_filament sends AFC_UNSELECT_TOOL in toolchanger mode",
+          "[ams][afc][toolchanger]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.set_running(true);
+    helper.set_filament_loaded(true);
+    helper.setup_toolchanger(2);
+
+    auto result = helper.unload_filament();
+
+    REQUIRE(result);
+    REQUIRE(helper.has_gcode("AFC_UNSELECT_TOOL"));
+    REQUIRE_FALSE(helper.has_gcode("TOOL_UNLOAD"));
+}
+
+TEST_CASE("AFC unload_filament sends TOOL_UNLOAD in single-extruder mode",
+          "[ams][afc][toolchanger]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+    helper.set_running(true);
+    helper.set_filament_loaded(true);
+
+    auto result = helper.unload_filament();
+
+    REQUIRE(result);
+    REQUIRE(helper.has_gcode("TOOL_UNLOAD"));
+    REQUIRE_FALSE(helper.has_gcode("AFC_UNSELECT_TOOL"));
 }
