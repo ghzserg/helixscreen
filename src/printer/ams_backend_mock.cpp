@@ -1275,6 +1275,10 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
         system_info_.filament_loaded = true;
         filament_segment_ = PathSegment::NOZZLE;
 
+        // Simulate mid-print tool change progress (3rd of 5 swaps)
+        system_info_.current_toolchange = 2;
+        system_info_.number_of_toolchanges = 5;
+
         // AFC device sections and actions — use all defaults
         mock_device_sections_ = helix::printer::afc_default_sections();
         mock_device_actions_ = helix::printer::afc_default_actions();
