@@ -49,7 +49,7 @@ jobs:
     name: Build (${{ matrix.display_name }})
     needs: [validate-shell]
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -96,7 +96,7 @@ jobs:
     - name: Configure ccache
       run: |
         mkdir -p /tmp/.ccache-${{ matrix.platform }}
-        printf 'max_size = 300M\ncompression = true\n' > /tmp/.ccache-${{ matrix.platform }}/ccache.conf
+        printf 'max_size = 1G\ncompression = true\n' > /tmp/.ccache-${{ matrix.platform }}/ccache.conf
 
     - name: Build ${{ matrix.platform }} toolchain image
       run: |
