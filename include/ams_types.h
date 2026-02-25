@@ -745,6 +745,8 @@ struct AmsSystemInfo {
     int current_tool = -1;              ///< Active tool (-1=none, -2=bypass for HH)
     int current_slot = -1;              ///< Active slot (-1=none, -2=bypass for HH)
     int pending_target_slot = -1;       ///< Target slot during tool change (-1=none)
+    int current_toolchange = -1;        ///< Current tool change number (-1=none yet, 0-based)
+    int number_of_toolchanges = 0;      ///< Total expected tool changes this print
     bool filament_loaded = false;       ///< Filament at extruder
     AmsAction action = AmsAction::IDLE; ///< Current operation
     std::string operation_detail;       ///< Detailed operation string

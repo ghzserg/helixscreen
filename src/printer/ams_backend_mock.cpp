@@ -313,6 +313,8 @@ AmsSystemInfo AmsBackendMock::get_system_info() const {
     info.current_slot = system_info_.current_slot;
     info.current_tool = system_info_.current_tool;
     info.pending_target_slot = system_info_.pending_target_slot;
+    info.current_toolchange = system_info_.current_toolchange;
+    info.number_of_toolchanges = system_info_.number_of_toolchanges;
     info.filament_loaded = system_info_.filament_loaded;
     info.supports_endless_spool = system_info_.supports_endless_spool;
     info.supports_tool_mapping = system_info_.supports_tool_mapping;
@@ -913,6 +915,12 @@ void AmsBackendMock::set_has_hardware_bypass_sensor(bool has_sensor) {
     std::lock_guard<std::mutex> lock(mutex_);
     system_info_.has_hardware_bypass_sensor = has_sensor;
     spdlog::debug("[AmsBackendMock] Hardware bypass sensor set to {}", has_sensor);
+}
+
+void AmsBackendMock::set_toolchange_progress(int current, int total) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    system_info_.current_toolchange = current;
+    system_info_.number_of_toolchanges = total;
 }
 
 void AmsBackendMock::set_dryer_enabled(bool enabled) {

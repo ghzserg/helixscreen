@@ -88,6 +88,8 @@ AmsSystemInfo AmsBackendHappyHare::get_system_info() const {
     info.current_slot = system_info_.current_slot;
     info.current_tool = system_info_.current_tool;
     info.pending_target_slot = system_info_.pending_target_slot;
+    info.current_toolchange = system_info_.current_toolchange;
+    info.number_of_toolchanges = system_info_.number_of_toolchanges;
     info.filament_loaded = system_info_.filament_loaded;
     info.supports_endless_spool = system_info_.supports_endless_spool;
     info.supports_tool_mapping = system_info_.supports_tool_mapping;

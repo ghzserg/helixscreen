@@ -153,6 +153,8 @@ AmsSystemInfo AmsBackendAfc::get_system_info() const {
     info.current_slot = system_info_.current_slot;
     info.current_tool = system_info_.current_tool;
     info.pending_target_slot = system_info_.pending_target_slot;
+    info.current_toolchange = system_info_.current_toolchange;
+    info.number_of_toolchanges = system_info_.number_of_toolchanges;
     info.filament_loaded = system_info_.filament_loaded;
     info.supports_endless_spool = system_info_.supports_endless_spool;
     info.supports_tool_mapping = system_info_.supports_tool_mapping;
@@ -566,6 +568,18 @@ void AmsBackendAfc::parse_afc_state(const nlohmann::json& afc_data,
         system_info_.operation_detail = state_str;
         spdlog::trace("[AMS AFC] Current state: {} ({})", ams_action_to_string(system_info_.action),
                       state_str);
+    }
+
+    // Parse tool change progress (AFC tracks swap count during multi-color prints)
+    if (afc_data.contains("current_toolchange") &&
+        afc_data["current_toolchange"].is_number_integer()) {
+        system_info_.current_toolchange = afc_data["current_toolchange"].get<int>();
+        spdlog::trace("[AMS AFC] Current toolchange: {}", system_info_.current_toolchange);
+    }
+    if (afc_data.contains("number_of_toolchanges") &&
+        afc_data["number_of_toolchanges"].is_number_integer()) {
+        system_info_.number_of_toolchanges = afc_data["number_of_toolchanges"].get<int>();
+        spdlog::trace("[AMS AFC] Total toolchanges: {}", system_info_.number_of_toolchanges);
     }
 
     // Parse message object for operation detail, error events, and toast notifications

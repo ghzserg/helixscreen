@@ -330,6 +330,13 @@ class AmsBackendMock : public AmsBackend {
     void clear_last_executed_action();
 
     /**
+     * @brief Set tool change progress for testing swap count display
+     * @param current Current tool change number (0-based, -1=none yet)
+     * @param total Total expected tool changes this print
+     */
+    void set_toolchange_progress(int current, int total);
+
+    /**
      * @brief Set callback for injecting gcode response lines
      *
      * Used by the mock to simulate Klipper gcode responses (e.g., action:prompt

@@ -283,6 +283,7 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     friend class AfcErrorHandlingHelper;
     friend class AfcErrorStateHelper;
     friend class AfcCharHelper;
+    friend class AfcToolchangeTestHelper;
 
     // --- AmsSubscriptionBackend hooks ---
     void on_started() override;
