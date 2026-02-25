@@ -10,6 +10,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <vector>
+
 namespace helix {
 
 // Default screen dimensions used when invalid values are provided
@@ -74,6 +77,7 @@ Point TouchCalibrationPanel::compute_target_position(int step) const {
 void TouchCalibrationPanel::start() {
     state_ = State::POINT_1;
     calibration_.valid = false;
+    reset_samples();
 
     // Calculate screen target positions using named constants
     screen_points_[0] = compute_target_position(0);
@@ -115,6 +119,64 @@ void TouchCalibrationPanel::capture_point(Point raw) {
     }
 }
 
+bool TouchCalibrationPanel::is_saturated_sample(const Point& sample) {
+    return sample.x == 4095 || sample.y == 4095 || sample.x == 65535 || sample.y == 65535;
+}
+
+void TouchCalibrationPanel::reset_samples() {
+    sample_count_ = 0;
+}
+
+bool TouchCalibrationPanel::compute_median_point(Point& out) {
+    std::vector<int> valid_x, valid_y;
+    for (int i = 0; i < sample_count_; i++) {
+        Point p{sample_buffer_[i].x, sample_buffer_[i].y};
+        if (!is_saturated_sample(p)) {
+            valid_x.push_back(p.x);
+            valid_y.push_back(p.y);
+        }
+    }
+
+    if (static_cast<int>(valid_x.size()) < MIN_VALID_SAMPLES) {
+        spdlog::warn("[TouchCalibrationPanel] Only {}/{} valid samples (need {})", valid_x.size(),
+                     sample_count_, MIN_VALID_SAMPLES);
+        return false;
+    }
+
+    std::sort(valid_x.begin(), valid_x.end());
+    std::sort(valid_y.begin(), valid_y.end());
+    size_t mid = valid_x.size() / 2;
+    out.x = valid_x[mid];
+    out.y = valid_y[mid];
+
+    spdlog::debug("[TouchCalibrationPanel] Median from {}/{} valid samples: ({}, {})",
+                  valid_x.size(), sample_count_, out.x, out.y);
+    return true;
+}
+
+void TouchCalibrationPanel::add_sample(Point raw) {
+    if (state_ != State::POINT_1 && state_ != State::POINT_2 && state_ != State::POINT_3) {
+        return;
+    }
+
+    if (sample_count_ < SAMPLES_REQUIRED) {
+        sample_buffer_[sample_count_] = {raw.x, raw.y};
+        sample_count_++;
+    }
+
+    if (sample_count_ >= SAMPLES_REQUIRED) {
+        Point median;
+        if (compute_median_point(median)) {
+            capture_point(median);
+        } else {
+            if (failure_callback_) {
+                failure_callback_("Touch was noisy, please tap again.");
+            }
+        }
+        reset_samples();
+    }
+}
+
 void TouchCalibrationPanel::accept() {
     stop_countdown_timer();
 
@@ -137,6 +199,7 @@ void TouchCalibrationPanel::retry() {
 
     state_ = State::POINT_1;
     calibration_.valid = false;
+    reset_samples();
 
     // Recalculate screen points using named constants
     screen_points_[0] = compute_target_position(0);

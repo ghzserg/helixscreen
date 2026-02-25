@@ -131,6 +131,17 @@ class TouchCalibrationPanel {
     void capture_point(Point raw);
 
     /**
+     * @brief Add a raw touch sample to the current capture buffer
+     *
+     * Collects multiple samples per calibration point. When SAMPLES_REQUIRED
+     * samples have been collected, filters out ADC-saturated values, computes
+     * the median, and advances the state machine via capture_point().
+     *
+     * @param raw Raw touch coordinates from touch controller
+     */
+    void add_sample(Point raw);
+
+    /**
      * @brief Accept the computed calibration
      *
      * Only valid in VERIFY state.
@@ -194,6 +205,26 @@ class TouchCalibrationPanel {
     Point screen_points_[3]; ///< Target screen positions
     Point touch_points_[3];  ///< Captured raw touch positions
     TouchCalibration calibration_;
+
+    // Multi-sample filtering
+    static constexpr int SAMPLES_REQUIRED = 7;
+    static constexpr int MIN_VALID_SAMPLES = 3;
+
+    struct RawSample {
+        int x = 0;
+        int y = 0;
+    };
+    RawSample sample_buffer_[SAMPLES_REQUIRED]{};
+    int sample_count_ = 0;
+
+    /// Check if a sample has ADC-saturated values
+    static bool is_saturated_sample(const Point& sample);
+
+    /// Compute median from valid samples in the buffer
+    bool compute_median_point(Point& out);
+
+    /// Reset sample buffer for new point capture
+    void reset_samples();
 
     /// Calculate target position for a given step using screen dimensions
     Point compute_target_position(int step) const;
