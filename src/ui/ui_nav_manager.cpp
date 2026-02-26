@@ -18,6 +18,7 @@
 #include "printer_state.h" // For KlippyState enum
 #include "sound_manager.h"
 #include "static_subject_registry.h"
+#include "system/telemetry_manager.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -1079,6 +1080,9 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
         }
 
         bool is_first_overlay = (mgr.panel_stack_.size() == 1);
+
+        // Track overlay opens for telemetry panel_usage event
+        TelemetryManager::instance().notify_overlay_opened();
 
         // Lifecycle: Deactivate what's currently visible before showing new overlay
         if (is_first_overlay) {
