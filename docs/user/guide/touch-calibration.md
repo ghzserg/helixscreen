@@ -223,7 +223,7 @@ For power users and developers. These override config file settings and are usef
 | `HELIX_TOUCH_MAX_X` | Maximum raw X value (linear calibration) | `3580` |
 | `HELIX_TOUCH_MIN_Y` | Minimum raw Y value (linear calibration) | `3200` |
 | `HELIX_TOUCH_MAX_Y` | Maximum raw Y value (linear calibration) | `900` |
-| `HELIX_TOUCH_SWAP_AXES` | Swap X and Y axes | `1` |
+| `HELIX_TOUCH_SWAP_AXES` | Swap X and Y axes (auto-detected during calibration; use this to force it) | `1` |
 | `HELIX_DISPLAY_ROTATION` | Display rotation (touch auto-adjusts) | `90`, `180`, `270` |
 | `HELIX_DEBUG_TOUCHES` | Draw ripple at each touch point | `1` |
 | `HELIX_TOUCH_JITTER` | Touch jitter filter dead zone (pixels) | `15` |

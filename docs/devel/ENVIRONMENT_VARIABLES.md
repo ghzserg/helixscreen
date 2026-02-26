@@ -264,13 +264,13 @@ Simple axis range mapping via LVGL's built-in calibration. Use for devices with 
 | `HELIX_TOUCH_MAX_X` | Maximum raw X value (maps to screen right) | Auto-detect |
 | `HELIX_TOUCH_MIN_Y` | Minimum raw Y value (maps to screen top) | Auto-detect |
 | `HELIX_TOUCH_MAX_Y` | Maximum raw Y value (maps to screen bottom) | Auto-detect |
-| `HELIX_TOUCH_SWAP_AXES` | Swap X/Y axes (set to "1" to enable) | Disabled |
+| `HELIX_TOUCH_SWAP_AXES` | Swap X/Y axes (set to "1" to enable). Overrides auto-detection. | Disabled (auto-detected) |
 
 **Usage Notes:**
 - All four min/max variables must be set together for calibration to apply
 - To invert an axis, swap the min/max values (e.g., `MIN_Y=3200 MAX_Y=900` inverts Y)
 - These values override the kernel-reported axis ranges from `EVIOCGABS`
-- `HELIX_TOUCH_SWAP_AXES` is now primarily a manual override — touch auto-rotation handles most rotation scenarios automatically (see `HELIX_DISPLAY_ROTATION` above)
+- `HELIX_TOUCH_SWAP_AXES` is now primarily a manual override — the calibration wizard auto-detects swapped axes and saves the flag to config (`/input/calibration/swap_axes`). The env var takes priority over auto-detection if both are set
 
 **Example:**
 ```bash
