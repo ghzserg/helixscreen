@@ -461,6 +461,19 @@ TEST_CASE("PrinterImageManager get_invalid_custom_images returns failed imports"
         }
     }
 
+    SECTION("non-image files like .DS_Store and .tmp are excluded") {
+        std::ofstream(custom_dir + ".DS_Store") << "junk";
+        std::ofstream(custom_dir + "notes.txt") << "hello";
+        std::ofstream(custom_dir + "backup.tmp") << "data";
+
+        auto invalid = pim.get_invalid_custom_images();
+        for (const auto& img : invalid) {
+            CHECK(img.id != "invalid:.DS_Store");
+            CHECK(img.id != "invalid:notes");
+            CHECK(img.id != "invalid:backup");
+        }
+    }
+
     SECTION("results are sorted by id") {
         std::string a_path = custom_dir + "zzz-image.gif";
         std::string b_path = custom_dir + "aaa-image.gif";
@@ -475,48 +488,45 @@ TEST_CASE("PrinterImageManager get_invalid_custom_images returns failed imports"
     }
 }
 
-TEST_CASE("PrinterImageManager lazy import in get_active_image_path", "[printer_image_manager]") {
+TEST_CASE("PrinterImageManager import creates .bin from raw image in custom dir",
+          "[printer_image_manager]") {
     TempDir tmp;
     auto& pim = helix::PrinterImageManager::instance();
     pim.init(tmp.str());
 
     std::string custom_dir = pim.get_custom_dir();
 
-    SECTION("imports raw PNG when .bin is missing") {
-        // Place a valid image in custom_images/
-        std::string raw_image = custom_dir + "my-printer.bmp";
-        write_test_png(raw_image);
+    // Place a valid image in custom_images/
+    std::string raw_image = custom_dir + "my-printer.bmp";
+    write_test_png(raw_image);
 
-        // .bin doesn't exist yet — get_active_image_path should lazy-import
-        std::string bin_300 = custom_dir + "my-printer-300.bin";
-        REQUIRE_FALSE(fs::exists(bin_300));
+    // .bin doesn't exist yet
+    std::string bin_300 = custom_dir + "my-printer-300.bin";
+    REQUIRE_FALSE(fs::exists(bin_300));
 
-        // We can't easily set the config to "custom:my-printer" without Config singleton,
-        // so test the import_image path directly and verify .bin is created
-        auto result = pim.import_image(raw_image);
-        REQUIRE(result.success);
-        CHECK(fs::exists(bin_300));
-    }
+    // import_image should convert it
+    auto result = pim.import_image(raw_image);
+    REQUIRE(result.success);
+    CHECK(fs::exists(bin_300));
+}
 
-    SECTION("case insensitive extension matching") {
-        // Create image with uppercase extension
-        std::string upper_image = custom_dir + "upper-case.BMP";
-        write_test_png(upper_image);
+TEST_CASE("PrinterImageManager scan_for_images finds PNG/JPG case-insensitively",
+          "[printer_image_manager]") {
+    TempDir tmp;
+    auto& pim = helix::PrinterImageManager::instance();
+    pim.init(tmp.str());
 
-        // scan_for_images should find it (case-insensitive)
-        auto found = pim.scan_for_images(custom_dir);
-        bool has_upper = false;
-        for (const auto& f : found) {
-            if (f.find("upper-case") != std::string::npos) {
-                has_upper = true;
-            }
-        }
-        // Note: .bmp is not in the scan list (only .png, .jpg, .jpeg)
-        // But the lazy import in get_active_image_path does a directory scan
-        // that checks extensions case-insensitively
-        // We verify the scan_for_images behavior here
-        (void)has_upper;
-    }
+    std::string custom_dir = pim.get_custom_dir();
+
+    // scan_for_images checks .png/.jpg/.jpeg — not .bmp
+    // Create files with mixed-case extensions
+    write_test_png(custom_dir + "lower.png");
+    write_test_png(custom_dir + "upper.PNG");
+    write_test_png(custom_dir + "mixed.JpG");
+
+    auto found = pim.scan_for_images(custom_dir);
+    // All three should be found (case-insensitive extension matching)
+    CHECK(found.size() == 3);
 }
 
 TEST_CASE("PrinterImageManager image_changed_subject fires on set_active_image",

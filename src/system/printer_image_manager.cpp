@@ -256,8 +256,10 @@ std::vector<PrinterImageManager::ImageInfo> PrinterImageManager::get_invalid_cus
         std::string ext = entry.path().extension().string();
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
-        // Skip .bin files themselves
-        if (ext == ".bin")
+        // Only consider image-like extensions (skip .bin, .DS_Store, .tmp, etc.)
+        static const std::set<std::string> image_exts = {".png", ".jpg", ".jpeg",
+                                                         ".bmp", ".gif", ".webp"};
+        if (image_exts.find(ext) == image_exts.end())
             continue;
 
         std::string stem = entry.path().stem().string();

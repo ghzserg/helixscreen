@@ -482,6 +482,10 @@ void PrinterImageOverlay::handle_auto_detect() {
 }
 
 void PrinterImageOverlay::handle_image_selected(const std::string& image_id) {
+    if (image_id.rfind("invalid:", 0) == 0) {
+        spdlog::warn("[{}] Ignoring selection of invalid image: {}", get_name(), image_id);
+        return;
+    }
     spdlog::info("[{}] Image selected: {}", get_name(), image_id);
     helix::PrinterImageManager::instance().set_active_image(image_id);
     update_selection_indicator(image_id);

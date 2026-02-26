@@ -44,7 +44,8 @@ class PrinterImageManager {
     /// screen_width determines 300px vs 150px variant.
     std::string get_active_image_path(int screen_width);
 
-    /// Set active image ID and persist to config
+    /// Set active image ID and persist to config.
+    /// Must be called from the UI thread (fires lv_subject notification).
     void set_active_image(const std::string& id);
 
     /** Format a filename stem into a human-readable display name.
