@@ -1731,12 +1731,15 @@ static void filament_path_draw_cb(lv_event_t* e) {
 
         const char* hub_label = (data->topology == 0) ? "SELECTOR" : "HUB";
 
-        // For LINEAR topology, hub box spans the full slot area width
+        // For LINEAR topology, hub box spans the full slot area width.
+        // get_slot_x returns slot centers, so we need to add half a slot width
+        // on each side to cover the full visual extent of the outermost slots.
         int32_t hub_w = data->hub_width;
         if (data->topology == 0 && data->slot_count > 1) {
             int32_t first_slot_x = x_off + get_slot_x(data, 0, x_off);
             int32_t last_slot_x = x_off + get_slot_x(data, data->slot_count - 1, x_off);
-            hub_w = (last_slot_x - first_slot_x) + sensor_r * 4;
+            int32_t slot_pad = LV_MAX(data->slot_width, sensor_r * 4);
+            hub_w = (last_slot_x - first_slot_x) + slot_pad;
         }
 
         draw_hub_box(layer, center_x, hub_y, hub_w, hub_h, hub_bg_tinted, hub_border_final,
