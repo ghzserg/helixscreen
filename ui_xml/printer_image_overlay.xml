@@ -54,8 +54,8 @@
 
         <!-- Info note -->
         <info_note icon="info"
-                   text="Place PNG or JPEG files in config/custom_images/ to add custom images. Max image size: 2048×2048 pixels."
-                   translation_tag="Place PNG or JPEG files in config/custom_images/ to add custom images. Max image size: 2048×2048 pixels."/>
+                   text="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels."
+                   translation_tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels."/>
       </lv_obj>
 
       <!-- RIGHT: Preview area -->

@@ -123,7 +123,8 @@ std::string PrinterImageManager::get_active_image_path(int screen_width) {
                     continue;
                 std::string ext = entry.path().extension().string();
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-                if (ext != ".png" && ext != ".jpg" && ext != ".jpeg")
+                if (ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".bmp" &&
+                    ext != ".gif")
                     continue;
 
                 std::string raw_path = entry.path().string();
@@ -323,7 +324,7 @@ std::vector<std::string> PrinterImageManager::scan_for_images(const std::string&
         std::string ext = entry.path().extension().string();
         // Case-insensitive extension check
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg") {
+        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".gif") {
             results.push_back(entry.path().string());
         }
     }

@@ -415,8 +415,7 @@ void PrinterImageOverlay::populate_usb_images(const std::string& mount_path) {
     spdlog::debug("[{}] Found {} importable images on USB", get_name(), image_paths.size());
 
     if (image_paths.empty()) {
-        lv_subject_copy_string(&usb_status_subject_,
-                               lv_tr("No PNG or JPEG images found on USB drive"));
+        lv_subject_copy_string(&usb_status_subject_, lv_tr("No images found on USB drive"));
         return;
     }
 
