@@ -3,6 +3,7 @@
 
 #include "klipper_config_editor.h"
 
+#include "klipper_config_includes.h"
 #include "moonraker_api.h"
 
 #include <spdlog/spdlog.h>
@@ -317,71 +318,7 @@ std::optional<std::string> KlipperConfigEditor::remove_key(const std::string& co
     return join_lines(lines, trailing);
 }
 
-namespace {
-
-/// Get the directory portion of a file path (everything before the last '/')
-std::string get_directory(const std::string& path) {
-    auto pos = path.rfind('/');
-    if (pos == std::string::npos)
-        return "";
-    return path.substr(0, pos);
-}
-
-/// Resolve a relative include path against the directory of the including file
-std::string resolve_path(const std::string& current_file, const std::string& include_path) {
-    std::string dir = get_directory(current_file);
-    if (dir.empty())
-        return include_path;
-    return dir + "/" + include_path;
-}
-
-/// Simple glob pattern matching for Klipper include patterns (supports '*' wildcard)
-bool glob_match(const std::string& pattern, const std::string& text) {
-    size_t pi = 0, ti = 0;
-    size_t star_pi = std::string::npos, star_ti = 0;
-
-    while (ti < text.size()) {
-        if (pi < pattern.size() && (pattern[pi] == text[ti] || pattern[pi] == '?')) {
-            ++pi;
-            ++ti;
-        } else if (pi < pattern.size() && pattern[pi] == '*') {
-            star_pi = pi;
-            star_ti = ti;
-            ++pi;
-        } else if (star_pi != std::string::npos) {
-            pi = star_pi + 1;
-            ++star_ti;
-            ti = star_ti;
-        } else {
-            return false;
-        }
-    }
-
-    while (pi < pattern.size() && pattern[pi] == '*')
-        ++pi;
-
-    return pi == pattern.size();
-}
-
-/// Find all files in the map that match a glob pattern (resolved relative to current file)
-std::vector<std::string> match_glob(const std::map<std::string, std::string>& files,
-                                    const std::string& current_file,
-                                    const std::string& include_pattern) {
-    std::string resolved = resolve_path(current_file, include_pattern);
-    std::vector<std::string> matches;
-
-    for (const auto& [filename, _] : files) {
-        if (glob_match(resolved, filename)) {
-            matches.push_back(filename);
-        }
-    }
-
-    // Sort for deterministic ordering
-    std::sort(matches.begin(), matches.end());
-    return matches;
-}
-
-} // namespace
+// Path/glob utilities are now in klipper_config_includes.h
 
 std::map<std::string, SectionLocation>
 KlipperConfigEditor::resolve_includes(const std::map<std::string, std::string>& files,
@@ -416,15 +353,16 @@ KlipperConfigEditor::resolve_includes(const std::map<std::string, std::string>& 
 
         // Process includes first (so the current file's sections override included ones)
         for (const auto& include_pattern : structure.includes) {
-            bool has_wildcard = include_pattern.find('*') != std::string::npos;
+            bool has_wildcard = include_pattern.find('*') != std::string::npos ||
+                                include_pattern.find('?') != std::string::npos;
 
             if (has_wildcard) {
-                auto matched = match_glob(files, file_path, include_pattern);
+                auto matched = config_match_glob(files, file_path, include_pattern);
                 for (const auto& match : matched) {
                     process_file(match, depth + 1);
                 }
             } else {
-                std::string resolved = resolve_path(file_path, include_pattern);
+                std::string resolved = config_resolve_path(file_path, include_pattern);
                 process_file(resolved, depth + 1);
             }
         }
@@ -489,12 +427,6 @@ void KlipperConfigEditor::download_with_includes(MoonrakerAPI& api, const std::s
             auto structure = parse_structure(content);
 
             if (!structure.includes.empty()) {
-                // Resolve include paths relative to the current file's directory
-                std::string dir;
-                auto slash = file_path.rfind('/');
-                if (slash != std::string::npos)
-                    dir = file_path.substr(0, slash);
-
                 // Collect non-glob includes to download
                 for (const auto& include : structure.includes) {
                     // Skip glob patterns — they require listing files from Moonraker
@@ -502,7 +434,7 @@ void KlipperConfigEditor::download_with_includes(MoonrakerAPI& api, const std::s
                     if (include.find('*') != std::string::npos)
                         continue;
 
-                    std::string resolved = dir.empty() ? include : dir + "/" + include;
+                    std::string resolved = config_resolve_path(file_path, include);
 
                     // Check if already cached
                     {

@@ -3,6 +3,7 @@
 
 #include "print_start_analyzer.h"
 
+#include "klipper_config_includes.h"
 #include "moonraker_api.h"
 #include "moonraker_types.h"
 #include "operation_patterns.h"
@@ -12,6 +13,7 @@
 #include <algorithm>
 #include <memory>
 #include <regex>
+#include <set>
 #include <sstream>
 
 namespace helix {
@@ -220,23 +222,23 @@ void PrintStartAnalyzer::analyze(MoonrakerAPI* api, AnalysisCallback on_complete
         return;
     }
 
-    spdlog::debug("[PrintStartAnalyzer] Listing config files to find macro location...");
+    spdlog::debug("[PrintStartAnalyzer] Resolving active config files to find macro location...");
 
-    // List all files in config directory to find which one contains the macro
-    api->files().list_files(
-        "config", "", false,
-        [api, on_complete, on_error](const std::vector<FileInfo>& files) {
-            // Filter to .cfg files only
+    // Resolve only the active config files (those in the include chain from printer.cfg)
+    // This avoids searching backup files like printer-backup.cfg or macros-old.cfg
+    helix::system::resolve_active_config_files(
+        *api,
+        [api, on_complete, on_error](const std::set<std::string>& active_files) {
+            // Filter to .cfg files only (should already be .cfg, but be safe)
             std::vector<std::string> cfg_files;
-            for (const auto& f : files) {
-                if (!f.is_dir && f.filename.size() > 4 &&
-                    f.filename.substr(f.filename.size() - 4) == ".cfg") {
-                    cfg_files.push_back(get_config_file_path(f));
+            for (const auto& f : active_files) {
+                if (f.size() > 4 && f.substr(f.size() - 4) == ".cfg") {
+                    cfg_files.push_back(f);
                 }
             }
 
             if (cfg_files.empty()) {
-                spdlog::debug("[PrintStartAnalyzer] No .cfg files found in config directory");
+                spdlog::debug("[PrintStartAnalyzer] No active .cfg files found");
                 PrintStartAnalysis result;
                 result.found = false;
                 if (on_complete) {
@@ -245,7 +247,8 @@ void PrintStartAnalyzer::analyze(MoonrakerAPI* api, AnalysisCallback on_complete
                 return;
             }
 
-            spdlog::debug("[PrintStartAnalyzer] Found {} config files to search", cfg_files.size());
+            spdlog::debug("[PrintStartAnalyzer] Found {} active config files to search",
+                          cfg_files.size());
 
             // Create shared state for async search
             auto state = std::make_shared<ConfigFileSearchState>();
@@ -257,7 +260,14 @@ void PrintStartAnalyzer::analyze(MoonrakerAPI* api, AnalysisCallback on_complete
             // Start searching files
             search_next_file(state);
         },
-        on_error);
+        [on_error](const std::string& error_msg) {
+            if (on_error) {
+                MoonrakerError err;
+                err.type = MoonrakerErrorType::CONNECTION_LOST;
+                err.message = error_msg;
+                on_error(err);
+            }
+        });
 }
 
 PrintStartAnalysis PrintStartAnalyzer::parse_macro(const std::string& macro_name,
