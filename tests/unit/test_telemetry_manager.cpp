@@ -1136,3 +1136,85 @@ TEST_CASE_METHOD(TelemetryTestFixture,
         REQUIRE(batch[0]["filament_used_mm"].get<float>() == Catch::Approx(fmm));
     }
 }
+
+// ============================================================================
+// Update Failed Event [telemetry][update]
+// ============================================================================
+
+TEST_CASE_METHOD(TelemetryTestFixture, "Update failed event: has required envelope fields",
+                 "[telemetry][update]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    tm.record_update_failure("download_failed", "0.14.0", "ad5m");
+
+    REQUIRE(tm.queue_size() == 1);
+    auto snapshot = tm.get_queue_snapshot();
+    auto event = snapshot[0];
+
+    REQUIRE(event["schema_version"] == 2);
+    REQUIRE(event["event"] == "update_failed");
+    REQUIRE(event.contains("device_id"));
+    REQUIRE(event.contains("timestamp"));
+    REQUIRE(event["reason"] == "download_failed");
+    REQUIRE(event["version"] == "0.14.0");
+    REQUIRE(event["platform"] == "ad5m");
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture,
+                 "Update failed event: includes optional fields when provided",
+                 "[telemetry][update]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    tm.record_update_failure("corrupt_download", "0.14.0", "pi", 200, 1048576);
+
+    auto snapshot = tm.get_queue_snapshot();
+    auto event = snapshot[0];
+
+    REQUIRE(event["reason"] == "corrupt_download");
+    REQUIRE(event["http_code"] == 200);
+    REQUIRE(event["file_size"] == 1048576);
+    REQUIRE_FALSE(event.contains("exit_code"));
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture,
+                 "Update failed event: includes exit_code for install failures",
+                 "[telemetry][update]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    tm.record_update_failure("install_failed", "0.14.0", "ad5m", -1, -1, 127);
+
+    auto snapshot = tm.get_queue_snapshot();
+    auto event = snapshot[0];
+
+    REQUIRE(event["reason"] == "install_failed");
+    REQUIRE(event["exit_code"] == 127);
+    REQUIRE_FALSE(event.contains("http_code"));
+    REQUIRE_FALSE(event.contains("file_size"));
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture, "Update failed event: not recorded when telemetry disabled",
+                 "[telemetry][update]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(false);
+
+    tm.record_update_failure("download_failed", "0.14.0", "pi");
+
+    REQUIRE(tm.queue_size() == 0);
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture, "Update failed event: from_version included when available",
+                 "[telemetry][update]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    tm.record_update_failure("download_failed", "0.14.0", "pi");
+
+    auto snapshot = tm.get_queue_snapshot();
+    auto event = snapshot[0];
+
+    // from_version should be current HELIX_VERSION
+    REQUIRE(event.contains("from_version"));
+}

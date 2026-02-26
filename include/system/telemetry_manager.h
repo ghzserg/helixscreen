@@ -168,6 +168,25 @@ class TelemetryManager {
                               float filament_used_mm, const std::string& filament_type,
                               int nozzle_temp, int bed_temp);
 
+    /**
+     * @brief Record an update failure event
+     *
+     * Call when an in-app update fails at any stage (download, verify, install).
+     * No-op if telemetry is disabled.
+     *
+     * Thread-safe: may be called from any thread.
+     *
+     * @param reason Short failure reason (e.g., "download_failed", "corrupt_download")
+     * @param version Target version being installed
+     * @param platform Platform key (e.g., "pi", "ad5m")
+     * @param http_code HTTP status code (-1 to omit)
+     * @param file_size Downloaded file size in bytes (-1 to omit)
+     * @param exit_code install.sh exit code (-1 to omit)
+     */
+    void record_update_failure(const std::string& reason, const std::string& version,
+                               const std::string& platform, int http_code = -1,
+                               int64_t file_size = -1, int exit_code = -1);
+
     // =========================================================================
     // CRASH REPORTING (Phase 5)
     // =========================================================================
@@ -439,6 +458,10 @@ class TelemetryManager {
                                              int phases_completed, float filament_used_mm,
                                              const std::string& filament_type, int nozzle_temp,
                                              int bed_temp) const;
+
+    nlohmann::json build_update_failed_event(const std::string& reason, const std::string& version,
+                                             const std::string& platform, int http_code,
+                                             int64_t file_size, int exit_code) const;
 
     /**
      * @brief Get the double-hashed device identifier

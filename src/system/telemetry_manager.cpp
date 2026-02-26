@@ -421,6 +421,21 @@ void TelemetryManager::record_print_outcome(const std::string& outcome, int dura
     save_queue();
 }
 
+void TelemetryManager::record_update_failure(const std::string& reason, const std::string& version,
+                                             const std::string& platform, int http_code,
+                                             int64_t file_size, int exit_code) {
+    if (!enabled_.load() || !initialized_.load()) {
+        return;
+    }
+
+    spdlog::info("[TelemetryManager] Recording update failure: reason={} version={}", reason,
+                 version);
+    auto event =
+        build_update_failed_event(reason, version, platform, http_code, file_size, exit_code);
+    enqueue_event(std::move(event));
+    save_queue();
+}
+
 // =============================================================================
 // Queue Management
 // =============================================================================
@@ -1022,6 +1037,34 @@ nlohmann::json TelemetryManager::build_print_outcome_event(const std::string& ou
     event["filament_type"] = filament_type;
     event["nozzle_temp"] = nozzle_temp;
     event["bed_temp"] = bed_temp;
+
+    return event;
+}
+
+nlohmann::json TelemetryManager::build_update_failed_event(const std::string& reason,
+                                                           const std::string& version,
+                                                           const std::string& platform,
+                                                           int http_code, int64_t file_size,
+                                                           int exit_code) const {
+    json event;
+    event["schema_version"] = SCHEMA_VERSION;
+    event["event"] = "update_failed";
+    event["device_id"] = get_hashed_device_id();
+    event["timestamp"] = get_timestamp();
+    event["reason"] = reason;
+    event["version"] = version;
+    event["from_version"] = HELIX_VERSION;
+    event["platform"] = platform;
+
+    if (http_code >= 0) {
+        event["http_code"] = http_code;
+    }
+    if (file_size >= 0) {
+        event["file_size"] = file_size;
+    }
+    if (exit_code >= 0) {
+        event["exit_code"] = exit_code;
+    }
 
     return event;
 }
