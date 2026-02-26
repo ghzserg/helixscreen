@@ -156,10 +156,28 @@ bool DisplayManager::init(const Config& config) {
         m_backend->set_splash_active(true);
     }
 
-    // Create LVGL display - this opens /dev/fb0 and keeps it open
+    // Create LVGL display
     m_display = m_backend->create_display(m_width, m_height);
+
+    // If the primary backend failed to create a display, try falling back
+    // to a different backend in-process (e.g., DRM passed is_available()
+    // but mode setting or buffer allocation failed → try fbdev).
+    if (!m_display && m_backend->type() != DisplayBackendType::FBDEV) {
+        spdlog::warn("[DisplayManager] {} backend failed to create display, "
+                     "attempting fbdev fallback",
+                     m_backend->name());
+        m_backend.reset();
+        m_backend = DisplayBackend::create(DisplayBackendType::FBDEV);
+        if (m_backend && m_backend->is_available()) {
+            m_display = m_backend->create_display(m_width, m_height);
+            if (m_display) {
+                spdlog::info("[DisplayManager] Fbdev fallback succeeded");
+            }
+        }
+    }
+
     if (!m_display) {
-        spdlog::error("[DisplayManager] Failed to create display");
+        spdlog::error("[DisplayManager] Failed to create display (all backends exhausted)");
         m_backend.reset();
         lv_xml_deinit();
         lv_deinit();
