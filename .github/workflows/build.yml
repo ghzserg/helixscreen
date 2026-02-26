@@ -87,7 +87,7 @@ jobs:
     - name: Setup Python venv for translations
       run: make venv-setup
 
-    - name: Build HelixScreen (includes all dependencies)
+    - name: Build HelixScreen and tests
       timeout-minutes: 45
       env:
         CC: ccache clang
@@ -96,13 +96,13 @@ jobs:
         # The Makefile handles all dependency builds automatically:
         # - libhv (HTTP/WebSocket library)
         # - wpa_supplicant client library (WiFi on Linux)
-
         # - Font generation
         # - LVGL patches
         # Dependencies are cached and will only rebuild if source changed
         # ccache speeds up recompilation of unchanged source files
         make -j$(nproc)
-        echo "HelixScreen and all dependencies built successfully"
+        make test -j$(nproc)
+        echo "HelixScreen and tests built successfully"
         ccache -s  # Show ccache stats
 
     - name: Run unit tests
@@ -182,7 +182,7 @@ jobs:
     - name: Setup Python venv for translations
       run: make venv-setup
 
-    - name: Build HelixScreen (includes all dependencies)
+    - name: Build HelixScreen and tests
       timeout-minutes: 30
       env:
         CC: ccache clang
@@ -190,13 +190,13 @@ jobs:
       run: |
         # The Makefile handles all dependency builds automatically:
         # - libhv (HTTP/WebSocket library)
-
         # - Font generation
         # - LVGL patches
         # Dependencies are cached and will only rebuild if source changed
         # ccache speeds up recompilation of unchanged source files
         make -j$(sysctl -n hw.ncpu)
-        echo "HelixScreen and all dependencies built successfully"
+        make test -j$(sysctl -n hw.ncpu)
+        echo "HelixScreen and tests built successfully"
         ccache -s  # Show ccache stats
 
     - name: Run unit tests
