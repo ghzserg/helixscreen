@@ -305,13 +305,13 @@ bool WizardTouchCalibrationStep::commit_calibration() {
 bool WizardTouchCalibrationStep::should_skip() const {
     // Force show if explicitly requested (for visual testing on SDL)
     if (g_force_touch_calibration_step) {
-        spdlog::debug("[{}] Force-showing: --wizard-step 0 requested", get_name());
+        spdlog::info("[{}] Force-showing: --wizard-step 0 requested", get_name());
         return false;
     }
 
     // Skip if not on framebuffer display
 #ifndef HELIX_DISPLAY_FBDEV
-    spdlog::debug("[{}] Skipping: not on framebuffer display", get_name());
+    spdlog::info("[{}] Skipping touch calibration: not a framebuffer build", get_name());
     return true;
 #endif
 
@@ -319,18 +319,18 @@ bool WizardTouchCalibrationStep::should_skip() const {
     // USB HID touchscreens (HDMI displays) report mapped coordinates natively
     DisplayManager* dm = DisplayManager::instance();
     if (dm && !dm->needs_touch_calibration()) {
-        spdlog::debug("[{}] Skipping: touch device doesn't require calibration (USB HID)",
-                      get_name());
+        spdlog::info("[{}] Skipping touch calibration: device doesn't require it", get_name());
         return true;
     }
 
     // Skip if already calibrated
     Config* config = Config::get_instance();
     if (config && config->get<bool>("/input/calibration/valid", false)) {
-        spdlog::debug("[{}] Skipping: already calibrated", get_name());
+        spdlog::info("[{}] Skipping touch calibration: already calibrated", get_name());
         return true;
     }
 
+    spdlog::info("[{}] Touch calibration needed — showing wizard step", get_name());
     return false;
 }
 

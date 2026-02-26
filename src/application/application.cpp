@@ -812,7 +812,18 @@ void Application::run_rotation_probe_and_layout() {
             bool probed = m_config->get<bool>("/display/rotation_probed", false);
             bool has_rotate_key = m_config->exists("/display/rotate");
             should_probe = !probed && !has_rotate_key;
+            if (!should_probe) {
+                spdlog::info("[Application] Rotation probe skipped: probed={}, has_rotate_key={}",
+                             probed, has_rotate_key);
+            }
+        } else {
+            spdlog::info(
+                "[Application] Rotation probe skipped: cli_rotation={}, env={}", m_args.rotation,
+                std::getenv("HELIX_DISPLAY_ROTATION") ? std::getenv("HELIX_DISPLAY_ROTATION")
+                                                      : "unset");
         }
+#else
+        spdlog::debug("[Application] Rotation probe skipped: not fbdev build");
 #endif
 
         if (should_probe) {

@@ -844,7 +844,8 @@ void DisplayManager::install_sleep_aware_input_wrapper() {
 
 void DisplayManager::run_rotation_probe() {
     if (!m_display || !m_pointer) {
-        spdlog::debug("[DisplayManager] Rotation probe skipped: no display or pointer");
+        spdlog::info("[DisplayManager] Rotation probe skipped: display={}, pointer={}",
+                     m_display ? "ok" : "null", m_pointer ? "ok" : "null");
         return;
     }
 

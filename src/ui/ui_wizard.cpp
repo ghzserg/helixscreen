@@ -432,21 +432,21 @@ void ui_wizard_navigate_to_step(int step) {
         if (get_wizard_touch_calibration_step()->should_skip()) {
             touch_cal_step_skipped = true;
             step = 1;
-            spdlog::debug("[Wizard] Skipping touch calibration step");
+            spdlog::info("[Wizard] Skipping touch calibration step");
         }
 
         // Auto-skip language step if language already set
         if (step == 1 && get_wizard_language_chooser_step()->should_skip()) {
             language_step_skipped = true;
             step = 2;
-            spdlog::debug("[Wizard] Skipping language step");
+            spdlog::info("[Wizard] Skipping language step (already configured)");
         }
 
         // Auto-skip WiFi step on Android (WiFi managed by OS)
         if (step == 2 && helix::is_android_platform()) {
             wifi_step_skipped = true;
             step = 3;
-            spdlog::debug("[Wizard] Skipping WiFi step (Android platform)");
+            spdlog::info("[Wizard] Skipping WiFi step (Android platform)");
         }
     }
 
@@ -539,13 +539,13 @@ static void ui_wizard_precalculate_skips() {
     // AMS skip (step 7)
     if (!ams_step_skipped && get_wizard_ams_identify_step()->should_skip()) {
         ams_step_skipped = true;
-        spdlog::debug("[Wizard] Pre-calculated: AMS step will be skipped");
+        spdlog::info("[Wizard] Pre-skip: AMS step will be skipped");
     }
 
     // LED skip (step 8)
     if (!led_step_skipped && get_wizard_led_select_step()->should_skip()) {
         led_step_skipped = true;
-        spdlog::debug("[Wizard] Pre-calculated: LED step will be skipped");
+        spdlog::info("[Wizard] Pre-skip: LED step will be skipped");
     }
 
     // Ensure FilamentSensorManager is populated before skip checks
@@ -561,19 +561,19 @@ static void ui_wizard_precalculate_skips() {
     // Filament sensor skip (step 9)
     if (!filament_step_skipped && get_wizard_filament_sensor_select_step()->should_skip()) {
         filament_step_skipped = true;
-        spdlog::debug("[Wizard] Pre-calculated: Filament sensor step will be skipped");
+        spdlog::info("[Wizard] Pre-skip: Filament sensor step will be skipped");
     }
 
     // Probe sensor skip (step 10)
     if (!probe_step_skipped && get_wizard_probe_sensor_select_step()->should_skip()) {
         probe_step_skipped = true;
-        spdlog::debug("[Wizard] Pre-calculated: Probe sensor step will be skipped");
+        spdlog::info("[Wizard] Pre-skip: Probe sensor step will be skipped");
     }
 
     // Input shaper skip (step 11)
     if (!input_shaper_step_skipped && get_wizard_input_shaper_step()->should_skip()) {
         input_shaper_step_skipped = true;
-        spdlog::debug("[Wizard] Pre-calculated: Input shaper step will be skipped");
+        spdlog::info("[Wizard] Pre-skip: Input shaper step will be skipped");
     }
 
     int total_skipped = (touch_cal_step_skipped ? 1 : 0) + (language_step_skipped ? 1 : 0) +
