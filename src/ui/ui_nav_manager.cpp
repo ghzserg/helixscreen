@@ -1324,10 +1324,20 @@ bool NavigationManager::go_back() {
                 }
                 if (!is_main && !lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN)) {
                     lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
-                    lv_obj_set_style_translate_x(child, 0, LV_PART_MAIN);
-                    lv_obj_set_style_translate_y(child, 0, LV_PART_MAIN);
-                    lv_obj_set_style_transform_scale(child, 256, LV_PART_MAIN);
-                    lv_obj_set_style_opa(child, LV_OPA_COVER, LV_PART_MAIN);
+                    // [Perf] Skip style resets if already at defaults — each set_style
+                    // call triggers a style invalidation, costing 4-20ms total on ARM.
+                    bool needs_reset =
+                        lv_obj_get_style_translate_x(child, LV_PART_MAIN) != 0 ||
+                        lv_obj_get_style_translate_y(child, LV_PART_MAIN) != 0 ||
+                        lv_obj_get_style_transform_scale_x(child, LV_PART_MAIN) != 256 ||
+                        lv_obj_get_style_transform_scale_y(child, LV_PART_MAIN) != 256 ||
+                        lv_obj_get_style_opa(child, LV_PART_MAIN) != LV_OPA_COVER;
+                    if (needs_reset) {
+                        lv_obj_set_style_translate_x(child, 0, LV_PART_MAIN);
+                        lv_obj_set_style_translate_y(child, 0, LV_PART_MAIN);
+                        lv_obj_set_style_transform_scale(child, 256, LV_PART_MAIN);
+                        lv_obj_set_style_opa(child, LV_OPA_COVER, LV_PART_MAIN);
+                    }
                 }
             }
         }

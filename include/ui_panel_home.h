@@ -78,6 +78,9 @@ class HomePanel : public PanelBase {
     lv_draw_buf_t* cached_printer_snapshot_ = nullptr;
     lv_timer_t* snapshot_timer_ = nullptr;
 
+    // Cached image path for skipping redundant refresh_printer_image() calls
+    std::string last_printer_image_path_;
+
     // Active PanelWidget instances (factory-created, lifecycle-managed)
     std::vector<std::unique_ptr<helix::PanelWidget>> active_widgets_;
 
