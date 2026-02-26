@@ -89,7 +89,7 @@ class DisplayBackendDRM : public DisplayBackend {
     }
 
   private:
-    std::string drm_device_ = "/dev/dri/card0";
+    std::string drm_device_;
     lv_display_t* display_ = nullptr;
     lv_indev_t* pointer_ = nullptr;
     bool using_egl_ = false; ///< Track if GPU-accelerated path is active

@@ -239,6 +239,45 @@ TEST_CASE("Backend fallback: simulate full DRM->fbdev fallback sequence",
     REQUIRE(fallback->create_display_called_);
 }
 
+// ============================================================================
+// DRM Auto-Detection Fallback Tests
+// ============================================================================
+// When no suitable DRM device exists, auto_detect_drm_device() returns empty
+// and is_available() rejects it, allowing create_auto() to fall through to fbdev.
+
+#ifdef HELIX_DISPLAY_DRM
+#include "display_backend_drm.h"
+
+TEST_CASE("DRM backend: empty device string reports unavailable",
+          "[display][drm][crash_hardening]") {
+    // Simulates auto_detect_drm_device() returning empty (no /dev/dri/ or no suitable device)
+    DisplayBackendDRM backend("");
+    REQUIRE_FALSE(backend.is_available());
+}
+
+TEST_CASE("DRM backend: nonexistent device reports unavailable",
+          "[display][drm][crash_hardening]") {
+    DisplayBackendDRM backend("/dev/dri/card99");
+    REQUIRE_FALSE(backend.is_available());
+}
+
+TEST_CASE("DRM backend: empty device string prevents create_display attempt",
+          "[display][drm][crash_hardening]") {
+    // When is_available() is false, DisplayManager skips create_display()
+    // and falls through to fbdev. Verify the guard works.
+    DisplayBackendDRM backend("");
+    REQUIRE_FALSE(backend.is_available());
+    REQUIRE(backend.type() == DisplayBackendType::DRM);
+
+    // The fallback condition in DisplayManager:
+    //   if (!m_display && m_backend->type() != DisplayBackendType::FBDEV)
+    // Would trigger fbdev fallback since type is DRM and display would be null
+    bool should_fallback = (!backend.is_available() && backend.type() != DisplayBackendType::FBDEV);
+    REQUIRE(should_fallback);
+}
+
+#endif // HELIX_DISPLAY_DRM
+
 TEST_CASE("Backend fallback: all backends exhausted returns failure",
           "[display][fallback][crash_hardening]") {
     // When both DRM and fbdev fail, init() should return false

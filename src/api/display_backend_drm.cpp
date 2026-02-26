@@ -145,8 +145,8 @@ std::string auto_detect_drm_device() {
     // Scan /dev/dri/card* in order
     DIR* dir = opendir("/dev/dri");
     if (!dir) {
-        spdlog::warn("[DRM Backend] Cannot open /dev/dri, falling back to card0");
-        return "/dev/dri/card0";
+        spdlog::info("[DRM Backend] /dev/dri not found, DRM not available");
+        return {};
     }
 
     std::vector<std::string> candidates;
@@ -169,8 +169,8 @@ std::string auto_detect_drm_device() {
         }
     }
 
-    spdlog::warn("[DRM Backend] No suitable DRM device found, falling back to card0");
-    return "/dev/dri/card0";
+    spdlog::info("[DRM Backend] No suitable DRM device found");
+    return {};
 }
 
 } // namespace
@@ -180,6 +180,11 @@ DisplayBackendDRM::DisplayBackendDRM() : drm_device_(auto_detect_drm_device()) {
 DisplayBackendDRM::DisplayBackendDRM(const std::string& drm_device) : drm_device_(drm_device) {}
 
 bool DisplayBackendDRM::is_available() const {
+    if (drm_device_.empty()) {
+        spdlog::debug("[DRM Backend] No DRM device configured");
+        return false;
+    }
+
     struct stat st;
 
     // Check if DRM device exists
