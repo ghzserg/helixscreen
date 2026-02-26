@@ -460,43 +460,40 @@ void AmsPanel::clear_unit_scope() {
 // ============================================================================
 
 void AmsPanel::setup_system_header() {
-    // Find the system logo image in the header
-    lv_obj_t* system_logo = lv_obj_find_by_name(panel_, "system_logo");
-    if (!system_logo) {
-        spdlog::warn("[{}] system_logo not found in XML", get_name());
+    // System logo + name in header bar are declaratively bound to
+    // ams_system_logo / ams_system_name subjects (updated by AmsState::sync_from_backend).
+    //
+    // Only the scoped-unit case needs imperative override, since subjects
+    // hold system-level info, not per-unit info.
+    if (scoped_unit_index_ < 0) {
         return;
     }
 
-    // Get AMS system info from backend
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend) {
-        spdlog::debug("[{}] No backend, hiding logo", get_name());
-        lv_obj_add_flag(system_logo, LV_OBJ_FLAG_HIDDEN);
         return;
     }
 
     const auto& info = backend->get_system_info();
-
-    // When scoped to a unit, show unit-specific name and logo
-    if (scoped_unit_index_ >= 0 && scoped_unit_index_ < static_cast<int>(info.units.size())) {
-        const AmsUnit& unit = info.units[scoped_unit_index_];
-
-        // Try unit-specific logo first, fall back to system logo
-        ams_draw::apply_logo(system_logo, unit, info);
-
-        // Override the header title with unit name
-        lv_obj_t* title_label = lv_obj_find_by_name(panel_, "system_name");
-        if (title_label) {
-            std::string display_name = ams_draw::get_unit_display_name(unit, scoped_unit_index_);
-            lv_label_set_text(title_label, display_name.c_str());
-        }
-
-        spdlog::info("[{}] Scoped to unit {}: '{}'", get_name(), scoped_unit_index_, unit.name);
+    if (scoped_unit_index_ >= static_cast<int>(info.units.size())) {
         return;
     }
 
-    // Default: show system-level logo (existing behavior)
-    ams_draw::apply_logo(system_logo, info.type_name);
+    const AmsUnit& unit = info.units[scoped_unit_index_];
+
+    // Override header with unit-specific logo + name
+    lv_obj_t* system_logo = lv_obj_find_by_name(panel_, "system_logo");
+    if (system_logo) {
+        ams_draw::apply_logo(system_logo, unit, info);
+    }
+
+    lv_obj_t* name_label = lv_obj_find_by_name(panel_, "system_name_label");
+    if (name_label) {
+        std::string display_name = ams_draw::get_unit_display_name(unit, scoped_unit_index_);
+        lv_label_set_text(name_label, display_name.c_str());
+    }
+
+    spdlog::info("[{}] Scoped to unit {}: '{}'", get_name(), scoped_unit_index_, unit.name);
 }
 
 void AmsPanel::rebuild_backend_selector() {
