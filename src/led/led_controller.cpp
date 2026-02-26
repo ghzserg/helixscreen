@@ -1884,6 +1884,14 @@ bool LedController::light_is_on() const {
     return light_on_;
 }
 
+void LedController::sync_light_state(bool is_on) {
+    if (light_on_ != is_on) {
+        spdlog::debug("[LedController] Syncing light state: {} -> {}", light_on_ ? "ON" : "OFF",
+                      is_on ? "ON" : "OFF");
+        light_on_ = is_on;
+    }
+}
+
 bool LedController::get_led_on_at_start() const {
     return led_on_at_start_;
 }

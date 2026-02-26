@@ -409,6 +409,10 @@ class LedController {
     /// Get composite on/off state across all selected backends.
     [[nodiscard]] bool light_is_on() const;
 
+    /// Sync internal light state from actual hardware (e.g., from PrinterLedState subjects).
+    /// Call this when the real LED state is known so that light_toggle() sends the correct command.
+    void sync_light_state(bool is_on);
+
     // LED on at start preference
     [[nodiscard]] bool get_led_on_at_start() const;
     void set_led_on_at_start(bool enabled);

@@ -283,6 +283,7 @@ void LedWidget::on_led_state_changed(int state) {
     auto& led_ctrl = helix::led::LedController::instance();
     if (led_ctrl.light_state_trackable()) {
         light_on_ = (state != 0);
+        led_ctrl.sync_light_state(light_on_);
         spdlog::debug("[LedWidget] LED state changed: {} (from PrinterState)",
                       light_on_ ? "ON" : "OFF");
         update_light_icon();
