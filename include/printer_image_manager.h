@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <lvgl/lvgl.h>
+
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -40,7 +42,7 @@ class PrinterImageManager {
     /// Get the LVGL image path for the active image.
     /// Returns "" if auto-detect (caller uses existing printer_type logic).
     /// screen_width determines 300px vs 150px variant.
-    std::string get_active_image_path(int screen_width) const;
+    std::string get_active_image_path(int screen_width);
 
     /// Set active image ID and persist to config
     void set_active_image(const std::string& id);
@@ -60,6 +62,9 @@ class PrinterImageManager {
 
     std::vector<ImageInfo> get_shipped_images() const;
     std::vector<ImageInfo> get_custom_images() const;
+
+    /// Get raw files in custom_images/ that failed import (no corresponding .bin)
+    std::vector<ImageInfo> get_invalid_custom_images() const;
 
     /// Auto-import any raw PNG/JPEG files in custom_images/ that lack .bin variants
     int auto_import_raw_images();
@@ -89,11 +94,20 @@ class PrinterImageManager {
         return custom_dir_;
     }
 
+    /// Subject that increments each time the active image changes (observe for refresh)
+    lv_subject_t* get_image_changed_subject() {
+        return &image_changed_subject_;
+    }
+
+    void deinit_subjects();
+
   private:
     PrinterImageManager() = default;
     ~PrinterImageManager() = default;
 
-    std::string custom_dir_; // e.g., "config/custom_images/"
+    std::string custom_dir_;               // e.g., "config/custom_images/"
+    lv_subject_t image_changed_subject_{}; // Version counter bumped on set_active_image()
+    bool subjects_initialized_ = false;
 
     struct ValidationResult {
         bool valid = false;

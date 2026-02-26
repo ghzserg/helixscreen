@@ -7,12 +7,14 @@
 #include "lvgl_image_writer.h"
 #include "prerendered_images.h"
 #include "settings_manager.h"
+#include "static_subject_registry.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cstring>
 #include <filesystem>
+#include <set>
 
 // stb headers — implementations are in thumbnail_processor.cpp
 #include "stb_image.h"
@@ -39,12 +41,27 @@ PrinterImageManager& PrinterImageManager::instance() {
 void PrinterImageManager::init(const std::string& config_dir) {
     custom_dir_ = config_dir + "/custom_images/";
 
+    // Initialize image-changed subject (version counter for observers)
+    if (!subjects_initialized_) {
+        lv_subject_init_int(&image_changed_subject_, 0);
+        subjects_initialized_ = true;
+        StaticSubjectRegistry::instance().register_deinit(
+            "PrinterImageManager", []() { PrinterImageManager::instance().deinit_subjects(); });
+    }
+
     try {
         fs::create_directories(custom_dir_);
         spdlog::info("[PrinterImageManager] Initialized, custom_dir: {}", custom_dir_);
     } catch (const fs::filesystem_error& e) {
         spdlog::error("[PrinterImageManager] Failed to create custom_images dir: {}", e.what());
     }
+}
+
+void PrinterImageManager::deinit_subjects() {
+    if (!subjects_initialized_)
+        return;
+    lv_subject_deinit(&image_changed_subject_);
+    subjects_initialized_ = false;
 }
 
 // =============================================================================
@@ -66,9 +83,15 @@ void PrinterImageManager::set_active_image(const std::string& id) {
     config->save();
     spdlog::info("[PrinterImageManager] Active image set to: '{}'",
                  id.empty() ? "(auto-detect)" : id);
+
+    // Notify observers (e.g., home panel) that the image changed
+    if (subjects_initialized_) {
+        int ver = lv_subject_get_int(&image_changed_subject_);
+        lv_subject_set_int(&image_changed_subject_, ver + 1);
+    }
 }
 
-std::string PrinterImageManager::get_active_image_path(int screen_width) const {
+std::string PrinterImageManager::get_active_image_path(int screen_width) {
     std::string id = get_active_image_id();
     if (id.empty()) {
         return ""; // Auto-detect — caller uses existing printer_type logic
@@ -90,6 +113,31 @@ std::string PrinterImageManager::get_active_image_path(int screen_width) const {
         if (fs::exists(bin_path)) {
             return "A:" + bin_path;
         }
+
+        // .bin missing — scan directory for a raw source image matching this name
+        if (fs::exists(custom_dir_)) {
+            for (const auto& entry : fs::directory_iterator(custom_dir_)) {
+                if (!entry.is_regular_file())
+                    continue;
+                if (entry.path().stem().string() != name)
+                    continue;
+                std::string ext = entry.path().extension().string();
+                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+                if (ext != ".png" && ext != ".jpg" && ext != ".jpeg")
+                    continue;
+
+                std::string raw_path = entry.path().string();
+                spdlog::info("[PrinterImageManager] Lazy-importing raw image: {}", raw_path);
+                auto result = import_image(raw_path);
+                if (result.success && fs::exists(bin_path)) {
+                    return "A:" + bin_path;
+                }
+                spdlog::warn("[PrinterImageManager] Lazy-import failed for {}: {}", raw_path,
+                             result.error);
+                return "";
+            }
+        }
+
         spdlog::warn("[PrinterImageManager] Custom image not found: {}", bin_path);
         return "";
     }
@@ -173,6 +221,52 @@ std::vector<PrinterImageManager::ImageInfo> PrinterImageManager::get_custom_imag
         } else {
             info.preview_path = "A:" + entry.path().string();
         }
+        results.push_back(std::move(info));
+    }
+
+    std::sort(results.begin(), results.end(),
+              [](const ImageInfo& a, const ImageInfo& b) { return a.id < b.id; });
+
+    return results;
+}
+
+std::vector<PrinterImageManager::ImageInfo> PrinterImageManager::get_invalid_custom_images() const {
+    std::vector<ImageInfo> results;
+
+    if (custom_dir_.empty() || !fs::exists(custom_dir_)) {
+        return results;
+    }
+
+    // Collect stems that have a successful .bin conversion
+    std::set<std::string> valid_stems;
+    for (const auto& entry : fs::directory_iterator(custom_dir_)) {
+        if (!entry.is_regular_file())
+            continue;
+        std::string filename = entry.path().filename().string();
+        if (filename.size() >= 8 && filename.substr(filename.size() - 8) == "-300.bin") {
+            valid_stems.insert(filename.substr(0, filename.size() - 8));
+        }
+    }
+
+    // Find raw files that don't have a corresponding .bin
+    for (const auto& entry : fs::directory_iterator(custom_dir_)) {
+        if (!entry.is_regular_file())
+            continue;
+
+        std::string ext = entry.path().extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+        // Skip .bin files themselves
+        if (ext == ".bin")
+            continue;
+
+        std::string stem = entry.path().stem().string();
+        if (valid_stems.count(stem))
+            continue;
+
+        ImageInfo info;
+        info.id = "invalid:" + stem;
+        info.display_name = format_display_name(stem);
         results.push_back(std::move(info));
     }
 

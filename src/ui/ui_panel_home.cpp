@@ -115,6 +115,11 @@ HomePanel::HomePanel(PrinterState& printer_state, MoonrakerAPI* api)
         });
     spdlog::debug("[{}] Subscribed to filament_any_runout subject", get_name());
 
+    // Subscribe to printer image changes for immediate refresh
+    image_changed_observer_ = observe_int_sync<HomePanel>(
+        helix::PrinterImageManager::instance().get_image_changed_subject(), this,
+        [](HomePanel* self, int /*ver*/) { self->refresh_printer_image(); });
+
     // LED observers are set up lazily via ensure_led_observers() when strips become available.
     // At construction time, hardware discovery may not have completed yet, so
     // selected_strips() could be empty. The observers will be created on first

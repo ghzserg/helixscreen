@@ -169,7 +169,9 @@ To use your own printer image:
 2. Open the Printer Image picker from the Printer Manager
 3. Your custom images appear automatically — HelixScreen converts them to optimized LVGL binary format on first load
 
-**Custom image requirements:** PNG or JPEG, maximum 5MB file size, maximum 2048x2048 pixels. HelixScreen generates optimized 300px and 150px variants automatically.
+**Custom image requirements:** PNG or JPEG format, maximum 5MB file size. HelixScreen generates optimized 300px and 150px variants automatically.
+
+> **Note:** Maximum image dimensions are **2048×2048 pixels**. Images exceeding this limit will not be imported. Resize your image before placing it in the `custom_images/` directory.
 
 ---
 

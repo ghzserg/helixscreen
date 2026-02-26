@@ -220,6 +220,7 @@ class HomePanel : public PanelBase {
 
     // Filament runout observer and modal (shows when idle + runout detected)
     ObserverGuard filament_runout_observer_;
+    ObserverGuard image_changed_observer_;
     RunoutGuidanceModal runout_modal_;
     bool runout_modal_shown_ = false; // Prevent repeated modals
 
