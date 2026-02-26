@@ -37,7 +37,7 @@
 > Text-only buttons: use `align="center"` on child. Icon+text buttons with flex_flow="row": need ALL THREE flex properties - style_flex_main_place="center" (horizontal), style_flex_cross_place="center" (vertical align items), style_flex_track_place="center" (vertical position of row). Missing track_place causes content to sit at top.
 
 ### [L031] [****-|*****] XML no recompile
-- **Uses**: 51 | **Velocity**: 31.0075 | **Learned**: 2025-12-27 | **Last**: 2026-02-24 | **Category**: gotcha | **Type**: constraint
+- **Uses**: 54 | **Velocity**: 34.0075 | **Learned**: 2025-12-27 | **Last**: 2026-02-25 | **Category**: gotcha | **Type**: constraint
 > XML files are loaded at RUNTIME - never rebuild after XML-only changes. Just relaunch the app. This includes layout changes, styling, bindings, event callbacks - anything in ui_xml/*.xml. Only rebuild when C++ code changes.
 
 ### [L039] [*----|***--] Unique XML callback names
@@ -48,8 +48,8 @@
 - **Uses**: 6 | **Velocity**: 3 | **Learned**: 2025-12-30 | **Last**: 2026-02-24 | **Category**: gotcha | **Type**: constraint
 > When using bind_style for reactive visual changes, inline style attributes (style_bg_color, style_text_color, etc.) have higher priority in LVGL's style cascade. bind_style cannot override them. Solution: use TWO bind_styles (one per state) with NO inline styling for properties you want to change reactively.
 
-### [L042] [*----|-----] XML bind_flag exclusive visibility
-- **Uses**: 1 | **Velocity**: 0 | **Learned**: 2025-12-31 | **Last**: 2025-12-31 | **Category**: pattern | **Type**: informational
+### [L042] [*----|***--] XML bind_flag exclusive visibility
+- **Uses**: 2 | **Velocity**: 1 | **Learned**: 2025-12-31 | **Last**: 2026-02-25 | **Category**: pattern | **Type**: informational
 > Multiple bind_flag_if_eq on same object creates independent observers where last one wins (race condition). For 'show only when X=value' logic, use single bind_flag_if_not_eq instead. Example: bind_flag_if_not_eq ref_value="0" shows only when value IS 0.
 
 ### [L045] [*----|-----] XML dropdown options use &#10; entities
@@ -76,8 +76,8 @@
 - **Uses**: 4 | **Velocity**: 0 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
 > Test fixtures using static state (e.g., static bool queue_initialized) MUST reset that state in the destructor. Otherwise, state persists across tests causing: 1) initialization to be skipped when it shouldn't, 2) shutdown to leave stale state for next test. Pattern: destructor calls shutdown(), then resets static flag to false.
 
-### [L054] [*----|-----] Clear pending queues on shutdown
-- **Uses**: 4 | **Velocity**: 0 | **Learned**: 2026-01-10 | **Last**: 2026-01-10 | **Category**: gotcha | **Type**: constraint
+### [L054] [**---|****-] Clear pending queues on shutdown
+- **Uses**: 6 | **Velocity**: 2 | **Learned**: 2026-01-10 | **Last**: 2026-02-25 | **Category**: gotcha | **Type**: constraint
 > Singleton queues (like UpdateQueue) MUST clear pending callbacks in shutdown(), not just null the timer. Without clearing, stale callbacks remain queued and execute on next init() with pointers to destroyed objects → use-after-free. Pattern: std::queue<T>().swap(pending_) to clear, then null timer.
 
 ### [L055] [*----|***--] LVGL pad_all excludes flex gaps
@@ -97,7 +97,7 @@
 > Always use lv_obj_safe_delete() instead of raw lv_obj_delete() - it guards against shutdown race conditions by checking lv_is_initialized() and lv_display_get_next() before deletion, and auto-nulls the pointer to prevent use-after-free
 
 ### [L060] [***--|*****] Interactive UI testing requires user
-- **Uses**: 19 | **Velocity**: 18.009999999999998 | **Learned**: 2026-02-01 | **Last**: 2026-02-25 | **Category**: correction | **Type**: constraint
+- **Uses**: 27 | **Velocity**: 26.009999999999998 | **Learned**: 2026-02-01 | **Last**: 2026-02-25 | **Category**: correction | **Type**: constraint
 > NEVER use timed delays expecting automatic navigation. THE EXACT PATTERN THAT WORKS:
 > **Step 1** - Start app with Bash tool using `run_in_background: true`:
 > ```bash
@@ -113,8 +113,8 @@
 - **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-07 | **Last**: 2026-02-24 | **Category**: system
 > AD5M (192.168.1.67, root@) runs armv7l Linux 5.4.61 (BusyBox). Key gotchas: (1) No curl, only wget - and wget has NO HTTPS support (compiled without SSL). (2) No sftp-server - use 'scp -O' (legacy protocol) instead of default scp. (3) Logging: default level is WARN, app logs to BOTH /tmp/helixscreen.log AND syslog (/var/log/messages) - syslog has the CURRENT session, /tmp/helixscreen.log may be stale from previous session. (4) No CA certificate bundle shipped - /etc/ssl/certs/ is empty, breaks ALL outbound HTTPS (libhv, wget). Must ship ca-certificates.crt with install. (5) No openssl CLI command. (6) No inotify support. (7) No WiFi (wpa_supplicant present but no interfaces). (8) OpenSSL 1.1 libs exist at /usr/lib/libssl.so.1.1. (9) Binary at /opt/helixscreen/, config at /opt/helixscreen/config/helixconfig.json. (10) ldd may return empty for statically-linked ARM binaries.
 
-### [L062] [*----|****-] AD5M build and deploy targets
-- **Uses**: 3 | **Velocity**: 3 | **Learned**: 2026-02-07 | **Last**: 2026-02-24 | **Category**: build
+### [L062] [**---|*****] AD5M build and deploy targets
+- **Uses**: 5 | **Velocity**: 5 | **Learned**: 2026-02-07 | **Last**: 2026-02-25 | **Category**: build
 > AD5M cross-compilation uses 'make ad5m-docker' (Docker-based ARM cross-compile), NOT 'make pi-test' (which targets Raspberry Pi). Deploy with 'AD5M_HOST=192.168.1.67 make ad5m-deploy'. The pi-test target is for a different device entirely.
 
 ### [L064] [*----|****-] Commit generated translation artifacts
@@ -149,8 +149,8 @@
 - **Uses**: 3 | **Velocity**: 3 | **Learned**: 2026-02-17 | **Last**: 2026-02-24 | **Category**: i18n
 > Never wrap product names (Spoolman, Klipper, Moonraker, HelixScreen), URLs/domains, technical abbreviations used as standalone labels (AMS, QGL, ADXL), or universal terms (OK, WiFi) in lv_tr(). Add '// i18n: do not translate' comment explaining why. Sentences CONTAINING product names ARE translatable — 'Restarting HelixScreen...' is fine because 'Restarting' translates. Material names (PLA, PETG, ABS, TPU, PA) also don't get translated or translation_tag in XML.
 
-### [L072] [*----|****-] Never capture bare this in async/WebSocket callbacks
-- **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-22 | **Last**: 2026-02-23 | **Category**: gotcha | **Type**: constraint
+### [L072] [**---|*****] Never capture bare this in async/WebSocket callbacks
+- **Uses**: 6 | **Velocity**: 6 | **Learned**: 2026-02-22 | **Last**: 2026-02-25 | **Category**: gotcha | **Type**: constraint
 > Callbacks passed to execute_gcode(), send_jsonrpc(), or any Moonraker API call fire from the WebSocket thread AFTER the widget/panel may be destroyed. NEVER capture [this] — use weak_ptr<bool> alive guard or capture value copies only. Pattern: `std::weak_ptr<bool> weak = alive_; api->call([weak, name_copy]() { if (weak.expired()) return; ... });`
 
 ### [L073] [*----|****-] ObserverGuard release vs reset
@@ -165,8 +165,8 @@
 - **Uses**: 1 | **Velocity**: 1 | **Learned**: 2026-02-22 | **Last**: 2026-02-22 | **Category**: gotcha | **Type**: constraint
 > Before calling lv_obj_find_by_name(), lv_obj_get_child(), or lv_obj_get_child_count() on a cached widget pointer, ensure the pointer is not stale. Use null checks and alive guards (weak_ptr pattern) — NOT lv_obj_is_valid() which is O(n) recursive and can stack overflow on Pi (see L076). Use safe_delete_obj() instead of raw lv_obj_delete() to null pointers after deletion. For async callbacks, use alive guards to detect if the owning panel was destroyed.
 
-### [L076] [*----|***--] NEVER use lv_obj_is_valid() in hot paths
-- **Uses**: 1 | **Velocity**: 1 | **Learned**: 2026-02-22 | **Last**: 2026-02-22 | **Category**: gotcha
+### [L076] [*----|****-] NEVER use lv_obj_is_valid() in hot paths
+- **Uses**: 2 | **Velocity**: 2 | **Learned**: 2026-02-22 | **Last**: 2026-02-25 | **Category**: gotcha
 > lv_obj_is_valid() does a RECURSIVE O(n) walk of ALL screens and ALL children via obj_valid_child(). On Pi with thousands of widgets, this causes stack overflow SIGSEGV. NEVER use in: observer callbacks, animation callbacks (pulse_anim_cb), timer callbacks, loops, destructor paths, or safe_delete_obj(). Use simple null pointer checks instead. Only safe in one-shot event handlers (button clicks) where tree is stable and call happens once. This caused a real user crash in v0.10.14 — HeatingIconAnimator::apply_color() called lv_obj_is_valid(icon_) from observer callback during startup, recursed infinitely, SIGSEGV after 1 second.
 
 ### [L077] [-----|-----] Dynamic subject observers MUST use SubjectLifetime tokens
