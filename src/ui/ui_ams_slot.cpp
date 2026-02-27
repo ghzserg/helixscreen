@@ -674,9 +674,7 @@ static void create_spool_visualization(AmsSlotData* data) {
 
     // Move badges and indicators to front so they render on top of the spool visualization
     // (badges are created by XML before spool canvas/rings are added in C++)
-    if (data->status_badge_bg) {
-        lv_obj_move_to_index(data->status_badge_bg, -1); // -1 = move to end (front)
-    }
+    // Note: status_badge_bg is reparented to badge_layer by ams_detail_update_badges()
     if (data->tool_badge_bg) {
         lv_obj_move_to_index(data->tool_badge_bg, -1);
     }
@@ -1273,6 +1271,44 @@ void ui_ams_slot_move_label_to_layer(lv_obj_t* obj, lv_obj_t* labels_layer, int3
 
     spdlog::debug("[AmsSlot] Slot {} label moved to layer at x={}, y={} (pad_top={}, rel_y={})",
                   data->slot_index, label_x, label_y, slot_pad_top, label_relative_y);
+}
+
+void ui_ams_slot_move_badge_to_layer(lv_obj_t* obj, lv_obj_t* badge_layer, int32_t slot_center_x) {
+    auto* data = get_slot_data(obj);
+    if (!data || !badge_layer || !data->status_badge_bg || !data->spool_container) {
+        return;
+    }
+
+    // Get spool container position relative to the slot widget
+    lv_obj_update_layout(data->spool_container);
+    int32_t container_w = lv_obj_get_width(data->spool_container);
+    int32_t container_h = lv_obj_get_height(data->spool_container);
+
+    // Badge is at bottom_right of spool_container with translate offsets
+    // Compute badge position in badge_layer coords using slot_center_x
+    lv_obj_update_layout(data->status_badge_bg);
+    int32_t badge_w = lv_obj_get_width(data->status_badge_bg);
+    int32_t badge_h = lv_obj_get_height(data->status_badge_bg);
+
+    // Bottom-right of spool_container, centered on slot_center_x
+    // spool_container is centered in the slot, so its right edge is at slot_center_x +
+    // container_w/2
+    int32_t slot_pad_top = lv_obj_get_style_pad_top(obj, LV_PART_MAIN);
+    int32_t label_h = data->material_label ? lv_obj_get_height(data->material_label) : 0;
+    int32_t pad_row = lv_obj_get_style_pad_row(obj, LV_PART_MAIN);
+
+    // Spool container top Y = slot padding + label height + row gap
+    int32_t container_top_y = slot_pad_top + label_h + pad_row;
+    int32_t badge_x = slot_center_x + container_w / 2 - badge_w - 2; // -2 from translate_x
+    int32_t badge_y = container_top_y + container_h - badge_h - 2;   // -2 from translate_y
+
+    // Reparent to badge_layer
+    lv_obj_set_parent(data->status_badge_bg, badge_layer);
+    lv_obj_set_align(data->status_badge_bg, LV_ALIGN_DEFAULT);
+    lv_obj_set_pos(data->status_badge_bg, badge_x, badge_y);
+
+    spdlog::debug("[AmsSlot] Slot {} badge moved to layer at x={}, y={}", data->slot_index, badge_x,
+                  badge_y);
 }
 
 // ============================================================================

@@ -641,6 +641,9 @@ void AmsPanel::create_slots(int count) {
     // Labels overlay for 5+ slots
     ams_detail_update_labels(detail_widgets_, slot_widgets_, result.slot_count, result.layout);
 
+    // Move badges to overlay layer (in front of tray)
+    ams_detail_update_badges(detail_widgets_, slot_widgets_, result.slot_count, result.layout);
+
     // Update path canvas sizing
     if (path_canvas_) {
         ui_filament_path_canvas_set_slot_overlap(path_canvas_, result.layout.overlap);
