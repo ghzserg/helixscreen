@@ -114,5 +114,28 @@ GeometryBudgetManager::BudgetConfig GeometryBudgetManager::select_tier(size_t se
             .budget_bytes = budget_bytes};
 }
 
+GeometryBudgetManager::BudgetAction GeometryBudgetManager::check_budget(size_t current_usage_bytes,
+                                                                        size_t budget_bytes,
+                                                                        int current_tier) const {
+    if (budget_bytes == 0)
+        return BudgetAction::ABORT;
+
+    float usage_ratio = static_cast<float>(current_usage_bytes) / budget_bytes;
+    if (usage_ratio < BUDGET_THRESHOLD)
+        return BudgetAction::CONTINUE;
+
+    if (current_tier < 3) {
+        spdlog::warn("[GeometryBudget] {}MB / {}MB ({:.0f}%) — degrading from tier {}",
+                     current_usage_bytes / (1024 * 1024), budget_bytes / (1024 * 1024),
+                     usage_ratio * 100, current_tier);
+        return BudgetAction::DEGRADE;
+    }
+
+    spdlog::warn("[GeometryBudget] {}MB / {}MB ({:.0f}%) — aborting (already at tier 3)",
+                 current_usage_bytes / (1024 * 1024), budget_bytes / (1024 * 1024),
+                 usage_ratio * 100);
+    return BudgetAction::ABORT;
+}
+
 } // namespace gcode
 } // namespace helix

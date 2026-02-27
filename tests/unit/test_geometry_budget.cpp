@@ -117,3 +117,40 @@ TEST_CASE("Budget: tier 5 for zero budget", "[gcode][budget]") {
     auto config = mgr.select_tier(100000, 0);
     REQUIRE(config.tier == 5);
 }
+
+// Progressive budget checking tests
+TEST_CASE("Budget: check_budget returns CONTINUE when under budget", "[gcode][budget]") {
+    GeometryBudgetManager mgr;
+    auto action = mgr.check_budget(50 * 1024 * 1024, 256 * 1024 * 1024, 1);
+    REQUIRE(action == GeometryBudgetManager::BudgetAction::CONTINUE);
+}
+
+TEST_CASE("Budget: check_budget returns DEGRADE at 90% for tier 1", "[gcode][budget]") {
+    GeometryBudgetManager mgr;
+    auto action = mgr.check_budget(91 * 1024 * 1024, 100 * 1024 * 1024, 1);
+    REQUIRE(action == GeometryBudgetManager::BudgetAction::DEGRADE);
+}
+
+TEST_CASE("Budget: check_budget returns DEGRADE at 90% for tier 2", "[gcode][budget]") {
+    GeometryBudgetManager mgr;
+    auto action = mgr.check_budget(91 * 1024 * 1024, 100 * 1024 * 1024, 2);
+    REQUIRE(action == GeometryBudgetManager::BudgetAction::DEGRADE);
+}
+
+TEST_CASE("Budget: check_budget returns ABORT at 90% for tier 3", "[gcode][budget]") {
+    GeometryBudgetManager mgr;
+    auto action = mgr.check_budget(91 * 1024 * 1024, 100 * 1024 * 1024, 3);
+    REQUIRE(action == GeometryBudgetManager::BudgetAction::ABORT);
+}
+
+TEST_CASE("Budget: check_budget CONTINUE at 89%", "[gcode][budget]") {
+    GeometryBudgetManager mgr;
+    auto action = mgr.check_budget(89 * 1024 * 1024, 100 * 1024 * 1024, 1);
+    REQUIRE(action == GeometryBudgetManager::BudgetAction::CONTINUE);
+}
+
+TEST_CASE("Budget: check_budget handles 0 budget", "[gcode][budget]") {
+    GeometryBudgetManager mgr;
+    auto action = mgr.check_budget(1024, 0, 1);
+    REQUIRE(action == GeometryBudgetManager::BudgetAction::ABORT);
+}

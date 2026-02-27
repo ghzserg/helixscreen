@@ -30,6 +30,15 @@ class GeometryBudgetManager {
     size_t read_system_available_kb() const;
     bool is_system_memory_critical() const;
     BudgetConfig select_tier(size_t segment_count, size_t budget_bytes) const;
+
+    enum class BudgetAction { CONTINUE, DEGRADE, ABORT };
+
+    static constexpr float BUDGET_THRESHOLD = 0.9f;
+    static constexpr size_t CHECK_INTERVAL_SEGMENTS = 5000;
+    static constexpr size_t SYSTEM_CHECK_INTERVAL_SEGMENTS = 20000;
+
+    BudgetAction check_budget(size_t current_usage_bytes, size_t budget_bytes,
+                              int current_tier) const;
 };
 
 } // namespace gcode
