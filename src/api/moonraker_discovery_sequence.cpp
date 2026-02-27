@@ -85,7 +85,58 @@ void MoonrakerDiscoverySequence::start(std::function<void()> on_complete,
 }
 
 void MoonrakerDiscoverySequence::continue_discovery() {
-    // Step 1: Query available printer objects (no params required)
+    // Step 1: Check Klippy readiness via server.info before querying printer objects.
+    // When Klippy is in STARTUP state, printer.objects.list returns JSON-RPC error
+    // -32601 "Method not found", causing confusing error toasts. Gate here instead.
+    client_.send_jsonrpc(
+        "server.info", json(),
+        [this](json server_info_response) {
+            if (is_stale())
+                return;
+
+            // Extract klippy_state from response
+            std::string klippy_state = "unknown";
+            if (server_info_response.contains("result") &&
+                server_info_response["result"].contains("klippy_state")) {
+                klippy_state = server_info_response["result"]["klippy_state"].get<std::string>();
+            }
+
+            spdlog::debug("[Moonraker Client] Klippy state gate check: {}", klippy_state);
+
+            // Allow "ready" and "shutdown" — both have valid Klipper objects.
+            // Abort on "startup", "error", or unknown states.
+            if (klippy_state != "ready" && klippy_state != "shutdown") {
+                std::string reason = fmt::format("Klippy not ready (state: {})", klippy_state);
+                spdlog::warn("[Moonraker Client] {}", reason);
+                client_.emit_event(MoonrakerEventType::DISCOVERY_FAILED, reason, true);
+                if (on_error_discovery_) {
+                    auto cb = std::move(on_error_discovery_);
+                    on_complete_discovery_ = nullptr;
+                    cb(reason);
+                }
+                return;
+            }
+
+            // Klippy is ready/shutdown — proceed to query printer objects
+            continue_discovery_objects();
+        },
+        [this](const MoonrakerError& err) {
+            if (is_stale())
+                return;
+            // server.info failed — cannot determine Klippy state, abort discovery
+            spdlog::error("[Moonraker Client] server.info request failed: {}", err.message);
+            client_.emit_event(MoonrakerEventType::DISCOVERY_FAILED, err.message, true);
+            if (on_error_discovery_) {
+                auto cb = std::move(on_error_discovery_);
+                on_complete_discovery_ = nullptr;
+                cb(err.message);
+            }
+        });
+}
+
+void MoonrakerDiscoverySequence::continue_discovery_objects() {
+    // Step 2: Query available printer objects (no params required)
+    // Silent=true to suppress error toast if Klippy goes away between gate and this call
     client_.send_jsonrpc(
         "printer.objects.list", json(),
         [this](json response) {
@@ -481,7 +532,10 @@ void MoonrakerDiscoverySequence::continue_discovery() {
                 on_complete_discovery_ = nullptr;
                 cb(err.message);
             }
-        });
+        },
+        0,   // default timeout
+        true // silent — suppress error toast (Klippy gate already checked)
+    );
 }
 
 void MoonrakerDiscoverySequence::complete_discovery_subscription() {

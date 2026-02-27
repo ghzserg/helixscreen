@@ -10,6 +10,45 @@
 namespace mock_internal {
 
 void register_object_handlers(std::unordered_map<std::string, MethodHandler>& registry) {
+    // printer.objects.list - List available printer objects
+    // When Klippy is in STARTUP or ERROR state, Klipper returns JSON-RPC error -32601
+    registry["printer.objects.list"] =
+        [](MoonrakerClientMock* self, const json& /*params*/, std::function<void(json)> success_cb,
+           std::function<void(const MoonrakerError&)> error_cb) -> bool {
+        auto klippy = self->get_klippy_state();
+
+        // When Klippy is not ready (STARTUP/ERROR), Klipper returns Method not found
+        if (klippy == MoonrakerClientMock::KlippyState::STARTUP ||
+            klippy == MoonrakerClientMock::KlippyState::ERROR) {
+            spdlog::debug("[MoonrakerClientMock] printer.objects.list: Klippy not ready, "
+                          "returning error -32601");
+            if (error_cb) {
+                MoonrakerError err;
+                err.code = -32601;
+                err.message = "Method not found";
+                error_cb(err);
+            }
+            return true;
+        }
+
+        // Build the object list from the mock's discovered hardware
+        // This mirrors what rebuild_hardware() / populate_hardware() populates
+        const auto& hw = self->hardware();
+        json objects = json::array();
+        for (const auto& obj : hw.printer_objects()) {
+            objects.push_back(obj);
+        }
+
+        spdlog::debug("[MoonrakerClientMock] printer.objects.list: returning {} objects",
+                      objects.size());
+
+        if (success_cb) {
+            json response = {{"result", {{"objects", objects}}}};
+            success_cb(response);
+        }
+        return true;
+    };
+
     // printer.objects.query - Query printer object state
     registry["printer.objects.query"] =
         [](MoonrakerClientMock* self, const json& params, std::function<void(json)> success_cb,

@@ -21,12 +21,13 @@ class MoonrakerClient; // Forward declaration
  *
  * Discovery timeline:
  * 1. server.connection.identify → identified
- * 2. printer.objects.list → parse_objects() → on_hardware_discovered
- * 3. server.info → Moonraker version, klippy_state
- * 4. printer.info → hostname, software_version
- * 5. MCU queries → firmware versions
- * 6. printer.objects.subscribe → initial state dispatched
- * 7. on_discovery_complete
+ * 2. server.info → klippy_state gate (abort if not ready/shutdown)
+ * 3. printer.objects.list → parse_objects() → on_hardware_discovered (silent)
+ * 4. server.info → Moonraker version, Spoolman/webcam detection
+ * 5. printer.info → hostname, software_version
+ * 6. MCU queries → firmware versions
+ * 7. printer.objects.subscribe → initial state dispatched
+ * 8. on_discovery_complete
  */
 class MoonrakerDiscoverySequence {
   public:
@@ -39,7 +40,8 @@ class MoonrakerDiscoverySequence {
     /**
      * @brief Start the discovery sequence
      *
-     * Begins with server.connection.identify, then chains through
+     * Begins with server.connection.identify, then checks Klippy readiness
+     * via server.info gate before chaining through
      * objects.list → server.info → printer.info → MCU queries → subscribe.
      *
      * @param on_complete Called when discovery finishes successfully
@@ -177,9 +179,17 @@ class MoonrakerDiscoverySequence {
     /**
      * @brief Continue discovery after server.connection.identify
      *
-     * Chains: objects.list → server.info → printer.info → MCU queries → subscribe
+     * Calls server.info to check klippy_state (gate). If Klippy is ready
+     * or shutdown, proceeds to continue_discovery_objects(). Otherwise aborts.
      */
     void continue_discovery();
+
+    /**
+     * @brief Continue discovery after Klippy readiness gate passes
+     *
+     * Chains: objects.list → server.info → printer.info → MCU queries → subscribe
+     */
+    void continue_discovery_objects();
 
     /**
      * @brief Complete discovery by subscribing to printer objects

@@ -90,6 +90,7 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
  * @brief Register object query method handlers
  *
  * Registers handlers for:
+ * - printer.objects.list
  * - printer.objects.query
  *
  * @param registry Map to register handlers into
