@@ -207,6 +207,64 @@
       }
     },
     {
+      "id": "flashforge_ad5x",
+      "name": "FlashForge Adventurer 5X",
+      "manufacturer": "FlashForge",
+      "image": "flashforge-adventurer-5x.png",
+      "z_offset_calibration_strategy": "gcode_offset",
+      "heuristics": [
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "ad5x",
+          "confidence": 96,
+          "reason": "Hostname contains 'ad5x' (Adventurer 5X)"
+        },
+        {
+          "type": "sensor_match",
+          "field": "sensors",
+          "pattern": "tvocValue",
+          "confidence": 95,
+          "reason": "TVOC air quality sensor (FlashForge signature)"
+        },
+        {
+          "type": "sensor_match",
+          "field": "sensors",
+          "pattern": "tvoc",
+          "confidence": 95,
+          "reason": "TVOC sensor detected (FlashForge signature)"
+        },
+        {
+          "type": "sensor_match",
+          "field": "sensors",
+          "pattern": "weightValue",
+          "confidence": 80,
+          "reason": "Spool weight sensor (FlashForge signature)"
+        },
+        {
+          "type": "sensor_match",
+          "field": "sensors",
+          "pattern": "weight",
+          "confidence": 70,
+          "reason": "Weight sensor detected (FlashForge-like)"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "flashforge",
+          "confidence": 80,
+          "reason": "Hostname contains 'flashforge'"
+        },
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "corexy",
+          "confidence": 30,
+          "reason": "CoreXY kinematics"
+        }
+      ]
+    },
+    {
       "id": "voron_2_4",
       "name": "Voron 2.4",
       "manufacturer": "Voron",
