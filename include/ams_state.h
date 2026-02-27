@@ -803,6 +803,14 @@ class AmsState {
      */
     void bump_slots_version();
 
+    /**
+     * @brief Reset Spoolman circuit breaker state (for testing only)
+     *
+     * Clears failure counters, debounce timestamps, and notification flags
+     * so each test starts from a clean state.
+     */
+    void reset_spoolman_circuit_breaker();
+
   private:
     friend class AmsStateTestAccess;
 
@@ -860,6 +868,16 @@ class AmsState {
     // Spoolman weight polling
     lv_timer_t* spoolman_poll_timer_ = nullptr;
     int spoolman_poll_refcount_ = 0;
+
+    // Spoolman circuit breaker / debounce state
+    static constexpr int SPOOLMAN_CB_FAILURE_THRESHOLD = 3;   ///< Consecutive failures to trip
+    static constexpr uint32_t SPOOLMAN_CB_BACKOFF_MS = 30000; ///< Backoff when tripped (30s)
+    static constexpr uint32_t SPOOLMAN_DEBOUNCE_MS = 5000;    ///< Min interval between refreshes
+    uint32_t spoolman_last_refresh_ms_ = 0;                   ///< Tick of last actual refresh
+    int spoolman_consecutive_failures_ = 0;      ///< Failure counter for circuit breaker
+    uint32_t spoolman_cb_tripped_at_ms_ = 0;     ///< Tick when circuit breaker tripped
+    bool spoolman_cb_open_ = false;              ///< True = circuit breaker is open (blocking)
+    bool spoolman_unavailable_notified_ = false; ///< True = toast already shown this outage
 
     // Subject manager for automatic cleanup
     SubjectManager subjects_;
