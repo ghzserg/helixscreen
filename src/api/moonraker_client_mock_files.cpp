@@ -302,16 +302,22 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         [](MoonrakerClientMock* self, const json& params, std::function<void(json)> success_cb,
            std::function<void(const MoonrakerError&)> error_cb) -> bool {
         (void)self;
-        (void)error_cb;
         std::string path;
         if (params.contains("path")) {
             path = params["path"].get<std::string>();
         }
-        spdlog::info("[MoonrakerClientMock] Mock delete_file: {}", path);
-        if (success_cb) {
-            // Return success response matching Moonraker format
-            json response = {{"result", {{"item", {{"path", path}, {"root", "gcodes"}}}}}};
-            success_cb(response);
+        if (!path.empty()) {
+            spdlog::info("[MoonrakerClientMock] Mock delete_file: {}", path);
+            if (success_cb) {
+                json response = {{"result", {{"item", {{"path", path}, {"root", "gcodes"}}}}}};
+                success_cb(response);
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Missing path parameter";
+            err.method = "server.files.delete";
+            error_cb(err);
         }
         return true;
     };
@@ -321,7 +327,6 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         [](MoonrakerClientMock* self, const json& params, std::function<void(json)> success_cb,
            std::function<void(const MoonrakerError&)> error_cb) -> bool {
         (void)self;
-        (void)error_cb;
         std::string source, dest;
         if (params.contains("source")) {
             source = params["source"].get<std::string>();
@@ -329,10 +334,18 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         if (params.contains("dest")) {
             dest = params["dest"].get<std::string>();
         }
-        spdlog::info("[MoonrakerClientMock] Mock move_file: {} -> {}", source, dest);
-        if (success_cb) {
-            json response = {{"result", {{"item", {{"path", dest}, {"root", "gcodes"}}}}}};
-            success_cb(response);
+        if (!source.empty() && !dest.empty()) {
+            spdlog::info("[MoonrakerClientMock] Mock move_file: {} -> {}", source, dest);
+            if (success_cb) {
+                json response = {{"result", {{"item", {{"path", dest}, {"root", "gcodes"}}}}}};
+                success_cb(response);
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Missing source or dest parameter";
+            err.method = "server.files.move";
+            error_cb(err);
         }
         return true;
     };
@@ -342,7 +355,6 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         [](MoonrakerClientMock* self, const json& params, std::function<void(json)> success_cb,
            std::function<void(const MoonrakerError&)> error_cb) -> bool {
         (void)self;
-        (void)error_cb;
         std::string source, dest;
         if (params.contains("source")) {
             source = params["source"].get<std::string>();
@@ -350,10 +362,18 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         if (params.contains("dest")) {
             dest = params["dest"].get<std::string>();
         }
-        spdlog::info("[MoonrakerClientMock] Mock copy_file: {} -> {}", source, dest);
-        if (success_cb) {
-            json response = {{"result", {{"item", {{"path", dest}, {"root", "gcodes"}}}}}};
-            success_cb(response);
+        if (!source.empty() && !dest.empty()) {
+            spdlog::info("[MoonrakerClientMock] Mock copy_file: {} -> {}", source, dest);
+            if (success_cb) {
+                json response = {{"result", {{"item", {{"path", dest}, {"root", "gcodes"}}}}}};
+                success_cb(response);
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Missing source or dest parameter";
+            err.method = "server.files.copy";
+            error_cb(err);
         }
         return true;
     };
@@ -363,15 +383,22 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         [](MoonrakerClientMock* self, const json& params, std::function<void(json)> success_cb,
            std::function<void(const MoonrakerError&)> error_cb) -> bool {
         (void)self;
-        (void)error_cb;
         std::string path;
         if (params.contains("path")) {
             path = params["path"].get<std::string>();
         }
-        spdlog::info("[MoonrakerClientMock] Mock create_directory: {}", path);
-        if (success_cb) {
-            json response = {{"result", {{"item", {{"path", path}, {"root", "gcodes"}}}}}};
-            success_cb(response);
+        if (!path.empty()) {
+            spdlog::info("[MoonrakerClientMock] Mock create_directory: {}", path);
+            if (success_cb) {
+                json response = {{"result", {{"item", {{"path", path}, {"root", "gcodes"}}}}}};
+                success_cb(response);
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Missing path parameter";
+            err.method = "server.files.post_directory";
+            error_cb(err);
         }
         return true;
     };
@@ -381,15 +408,22 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         [](MoonrakerClientMock* self, const json& params, std::function<void(json)> success_cb,
            std::function<void(const MoonrakerError&)> error_cb) -> bool {
         (void)self;
-        (void)error_cb;
         std::string path;
         if (params.contains("path")) {
             path = params["path"].get<std::string>();
         }
-        spdlog::info("[MoonrakerClientMock] Mock delete_directory: {}", path);
-        if (success_cb) {
-            json response = {{"result", {{"item", {{"path", path}, {"root", "gcodes"}}}}}};
-            success_cb(response);
+        if (!path.empty()) {
+            spdlog::info("[MoonrakerClientMock] Mock delete_directory: {}", path);
+            if (success_cb) {
+                json response = {{"result", {{"item", {{"path", path}, {"root", "gcodes"}}}}}};
+                success_cb(response);
+            }
+        } else if (error_cb) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "Missing path parameter";
+            err.method = "server.files.delete_directory";
+            error_cb(err);
         }
         return true;
     };
