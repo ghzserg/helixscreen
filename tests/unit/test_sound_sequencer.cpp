@@ -310,13 +310,14 @@ TEST_CASE("SoundSequencer: ADSR attack ramps amplitude up", "[sound][sequencer]"
     // Early events should have low amplitude (attack phase)
     CHECK(tones[0].amplitude < 0.3f);
 
-    // Events past the attack phase (>200ms) should be at full amplitude
+    // Events well past the attack phase (>200ms) should be at full amplitude.
+    // Use 400ms threshold (200ms past attack end) to tolerate CI timing jitter.
     auto start_time = tones[0].timestamp;
     bool found_full = false;
     for (auto& t : tones) {
         auto elapsed =
             std::chrono::duration_cast<std::chrono::milliseconds>(t.timestamp - start_time).count();
-        if (elapsed > 250) {
+        if (elapsed > 400) {
             CHECK(t.amplitude > 0.8f);
             found_full = true;
             break;

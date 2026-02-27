@@ -1330,6 +1330,9 @@ TEST_CASE("get_platform_key returns a known platform", "[update_checker][platfor
 
 TEST_CASE("get_platform_key matches compiled binary architecture",
           "[update_checker][platform][arch]") {
+#ifndef __linux__
+    SKIP("Linux-only: requires /proc/self/exe and ELF binary format");
+#else
     // The platform key must agree with what we actually compiled as.
     // This catches the bug where uname() returned "aarch64" on a pi32 build.
     std::string platform = UpdateChecker::get_platform_key();
@@ -1357,4 +1360,5 @@ TEST_CASE("get_platform_key matches compiled binary architecture",
         REQUIRE(elf_class == 2); // ELFCLASS64
     }
     // Other platforms (k1, k2, ad5x, cc1) may vary — no assertion
+#endif
 }

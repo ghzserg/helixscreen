@@ -155,21 +155,20 @@ TEST_CASE("Mock backend supports toolchange simulation", "[afc][toolchange][mock
 
 #include "ui_update_queue.h"
 
+#include "../ui_test_utils.h"
 #include "ams_state.h"
 #include "static_subject_registry.h"
 
 #include <lvgl.h>
 
-// LVGL test fixture - init/deinit per test case
+// LVGL test fixture - init per test case (no lv_deinit to avoid destroying shared state)
 struct LvglFixture {
     LvglFixture() {
-        lv_init();
-        helix::ui::UpdateQueue::instance().init();
+        lv_init_safe();
     }
     ~LvglFixture() {
         AmsState::instance().deinit_subjects();
         helix::ui::UpdateQueue::instance().shutdown();
-        lv_deinit();
     }
 };
 

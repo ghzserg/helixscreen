@@ -38,6 +38,7 @@ void CoalescedTimer::schedule(std::function<void()> cb) {
 
     if (timer_) {
         lv_timer_reset(timer_);
+        lv_timer_set_repeat_count(timer_, 1); // Re-apply one-shot after reset
     } else {
         timer_ = lv_timer_create(timer_cb, period_ms_, this);
         lv_timer_set_repeat_count(timer_, 1);

@@ -1166,6 +1166,7 @@ class MacroAnalysisRetryFixture {
         client_ = std::make_unique<MoonrakerClient>(loop_thread_->loop());
         client_->set_connection_timeout(2000);
         client_->set_default_request_timeout(2000);
+        client_->setPingInterval(0);    // Disable pings - mock server doesn't respond to them
         client_->setReconnect(nullptr); // Disable auto-reconnect
 
         // Create API wrapper
