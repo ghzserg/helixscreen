@@ -2447,6 +2447,119 @@
       ]
     },
     {
+      "id": "sovol_sv08_max",
+      "name": "Sovol SV08 Max",
+      "manufacturer": "Sovol",
+      "image": "sovol-sv08-max.png",
+      "heuristics": [
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "corexy",
+          "confidence": 40,
+          "reason": "CoreXY kinematics"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "quad_gantry_level",
+          "confidence": 85,
+          "reason": "Quad Gantry Level (Voron 2.4 derived design)"
+        },
+        {
+          "type": "stepper_count",
+          "field": "steppers",
+          "pattern": "z_count_4",
+          "confidence": 80,
+          "reason": "4 independent Z steppers (Voron 2.4 style)"
+        },
+        {
+          "type": "build_volume_range",
+          "field": "bed_mesh",
+          "min_x": 480,
+          "max_x": 520,
+          "min_y": 480,
+          "max_y": 520,
+          "confidence": 85,
+          "reason": "Build volume ~500x500mm (SV08 Max size)"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "sovol",
+          "confidence": 85,
+          "reason": "Hostname contains 'sovol'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "sv08-max",
+          "confidence": 98,
+          "reason": "Hostname contains 'sv08-max'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "sv08max",
+          "confidence": 98,
+          "reason": "Hostname contains 'sv08max'"
+        }
+      ]
+    },
+    {
+      "id": "sovol_zero",
+      "name": "Sovol Zero",
+      "manufacturer": "Sovol",
+      "image": "sovol-zero.png",
+      "heuristics": [
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "corexy",
+          "confidence": 40,
+          "reason": "CoreXY kinematics (Voron 0.2 based)"
+        },
+        {
+          "type": "build_volume_range",
+          "field": "bed_mesh",
+          "min_x": 140,
+          "max_x": 165,
+          "min_y": 140,
+          "max_y": 165,
+          "confidence": 65,
+          "reason": "Build volume ~152x152mm (Sovol Zero size)"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "sovol",
+          "confidence": 85,
+          "reason": "Hostname contains 'sovol'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "sovol-zero",
+          "confidence": 98,
+          "reason": "Hostname contains 'sovol-zero'"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "zero",
+          "confidence": 70,
+          "reason": "Hostname contains 'zero'"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "probe_eddy_current",
+          "confidence": 70,
+          "reason": "Eddy current probe (Sovol Zero auto-leveling)"
+        }
+      ]
+    },
+    {
       "id": "sovol_sv06",
       "name": "Sovol SV06",
       "manufacturer": "Sovol",
@@ -3460,6 +3573,52 @@
           "pattern": "u1",
           "confidence": 90,
           "reason": "Hostname contains 'u1' (Snapmaker U1)"
+        }
+      ]
+    },
+    {
+      "id": "lemontron",
+      "name": "Lemontron",
+      "manufacturer": "Lemontron",
+      "image": "lemontron.png",
+      "heuristics": [
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "lemontron",
+          "confidence": 95,
+          "reason": "Hostname contains 'lemontron'"
+        },
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "corexy",
+          "confidence": 30,
+          "reason": "CoreXY kinematics (Positron-style inverted CoreXY)"
+        },
+        {
+          "type": "mcu_match",
+          "field": "mcu",
+          "pattern": "rp2040",
+          "confidence": 40,
+          "reason": "RP2040 MCU (SKR Pico board)"
+        },
+        {
+          "type": "build_volume_range",
+          "field": "bed_mesh",
+          "min_x": 170,
+          "max_x": 190,
+          "min_y": 170,
+          "max_y": 190,
+          "confidence": 55,
+          "reason": "Build volume ~180x180mm (Lemontron size)"
+        },
+        {
+          "type": "macro_match",
+          "field": "macros",
+          "pattern": "LEMONTRON",
+          "confidence": 99,
+          "reason": "LEMONTRON macro present (definitive Lemontron signature)"
         }
       ]
     }
