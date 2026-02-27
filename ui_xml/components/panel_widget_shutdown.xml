@@ -2,15 +2,13 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
-  <view name="panel_widget_power" extends="lv_obj"
+  <view name="panel_widget_shutdown" extends="lv_obj"
         height="100%" flex_grow="1" style_pad_all="0" scrollable="false">
-    <ui_button name="power_button"
+    <ui_button name="shutdown_button"
                width="100%" height="100%" variant="ghost" style_border_width="0" focusable="false">
-      <!-- Hardware gate (power_device_count) checked in C++ populate_widgets() -->
       <bind_state_if_not_eq subject="printer_connection_state" state="disabled" ref_value="2"/>
-      <icon name="power_icon" src="power_plug" size="#icon_size" align="center" variant="muted"/>
-      <event_cb trigger="clicked" callback="power_toggle_cb"/>
-      <event_cb trigger="long_pressed" callback="power_long_press_cb"/>
+      <icon name="shutdown_icon" src="power" size="#icon_size" align="center" variant="secondary"/>
+      <event_cb trigger="clicked" callback="shutdown_clicked_cb"/>
     </ui_button>
   </view>
 </component>

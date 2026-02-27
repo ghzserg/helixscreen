@@ -271,6 +271,20 @@ class MoonrakerAPI {
      */
     void restart_moonraker(SuccessCallback on_success, ErrorCallback on_error);
 
+    /**
+     * @brief Shut down the host machine
+     * @param on_success Success callback
+     * @param on_error Error callback
+     */
+    void machine_shutdown(SuccessCallback on_success, ErrorCallback on_error);
+
+    /**
+     * @brief Reboot the host machine
+     * @param on_success Success callback
+     * @param on_error Error callback
+     */
+    void machine_reboot(SuccessCallback on_success, ErrorCallback on_error);
+
     // ========================================================================
     // Query Operations
     // ========================================================================

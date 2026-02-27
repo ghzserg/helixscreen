@@ -5,6 +5,8 @@
     <prop name="secondary_text" type="string" default="Cancel"/>
     <prop name="primary_callback" type="string"/>
     <prop name="secondary_callback" type="string"/>
+    <prop name="primary_icon" type="string" default=""/>
+    <prop name="secondary_icon" type="string" default=""/>
     <prop name="primary_bg_color" type="string" default=""/>
     <prop name="show_secondary" type="string" default="true"/>
   </api>
@@ -14,13 +16,13 @@
     <!-- Button row -->
     <lv_obj width="100%" height="#button_height" style_pad_all="0" style_pad_gap="0" flex_flow="row">
       <!-- Secondary button -->
-      <ui_button name="btn_secondary" height="100%" flex_grow="1" style_radius="0" focusable="false" text="$secondary_text">
+      <ui_button name="btn_secondary" height="100%" flex_grow="1" style_radius="0" focusable="false" icon="$secondary_icon" text="$secondary_text">
         <event_cb trigger="clicked" callback="$secondary_callback"/>
       </ui_button>
       <!-- Vertical divider -->
       <divider_vertical/>
       <!-- Primary button -->
-      <ui_button name="btn_primary" height="100%" flex_grow="1" style_radius="0" focusable="false" text="$primary_text">
+      <ui_button name="btn_primary" height="100%" flex_grow="1" style_radius="0" focusable="false" icon="$primary_icon" text="$primary_text">
         <event_cb trigger="clicked" callback="$primary_callback"/>
       </ui_button>
     </lv_obj>

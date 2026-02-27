@@ -426,6 +426,32 @@ void MoonrakerAPI::restart_moonraker(SuccessCallback on_success, ErrorCallback o
         on_error);
 }
 
+void MoonrakerAPI::machine_shutdown(SuccessCallback on_success, ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Shutting down host machine");
+
+    client_.send_jsonrpc(
+        "machine.shutdown", json::object(),
+        [on_success](json) {
+            spdlog::info("[Moonraker API] Host shutdown initiated");
+            if (on_success)
+                on_success();
+        },
+        on_error);
+}
+
+void MoonrakerAPI::machine_reboot(SuccessCallback on_success, ErrorCallback on_error) {
+    spdlog::info("[Moonraker API] Rebooting host machine");
+
+    client_.send_jsonrpc(
+        "machine.reboot", json::object(),
+        [on_success](json) {
+            spdlog::info("[Moonraker API] Host reboot initiated");
+            if (on_success)
+                on_success();
+        },
+        on_error);
+}
+
 // ============================================================================
 // Safety Limits Configuration
 // ============================================================================

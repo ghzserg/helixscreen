@@ -19,12 +19,14 @@ void register_network_widget();
 void register_led_widget();
 void register_thermistor_widget();
 void register_favorite_macro_widgets();
+void register_shutdown_widget();
 
 // Vector order defines the default display order on the home panel.
 // NOTE: Factories are registered at runtime via init_widget_registrations(),
 // NOT during static initialization. Do not add file-scope self-registration.
 // clang-format off
 static std::vector<PanelWidgetDef> s_widget_defs = {
+    {"shutdown",         "Shutdown/Reboot",   "power",            "Shutdown or reboot the printer host",          "Shutdown/Reboot",  nullptr,             false},
     {"power",            "Power",            "power_cycle",      "Moonraker power device controls",              "Power",            "power_device_count"},
     {"network",          "Network",          "wifi_strength_4",  "Wi-Fi and ethernet connection status",         "Network",          nullptr,             false},
     {"firmware_restart", "Firmware Restart",  "refresh",          "Restart Klipper firmware",                     "Firmware Restart", nullptr,             false},
@@ -93,6 +95,7 @@ void init_widget_registrations() {
     register_fan_stack_widget();
     register_thermistor_widget();
     register_favorite_macro_widgets();
+    register_shutdown_widget();
 
     spdlog::debug("[PanelWidgetRegistry] All widget factories registered");
 }
