@@ -213,6 +213,15 @@ void ui_gcode_viewer_evaluate_render_mode(lv_obj_t* obj);
 bool ui_gcode_viewer_is_using_2d_mode(lv_obj_t* obj);
 
 /**
+ * @brief Disable streaming mode for this viewer instance.
+ *
+ * When disabled, large files will use full-load + budget system instead of
+ * streaming 2D layer renderer. Use for detail panel previews where 3D is
+ * preferred and 2D streaming is not useful.
+ */
+void ui_gcode_viewer_disable_streaming(lv_obj_t* obj);
+
+/**
  * @brief Show/hide support structures in 2D layer view
  * @param obj Viewer widget
  * @param show true to show supports, false to hide

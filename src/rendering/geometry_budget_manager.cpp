@@ -82,7 +82,7 @@ GeometryBudgetManager::BudgetConfig GeometryBudgetManager::select_tier(size_t se
                      est_n8 / (1024 * 1024), budget_bytes / (1024 * 1024));
         return {.tier = 2,
                 .tube_sides = 8,
-                .simplification_tolerance = 0.05f,
+                .simplification_tolerance = 0.2f,
                 .include_travels = true,
                 .budget_bytes = budget_bytes};
     }
@@ -91,7 +91,7 @@ GeometryBudgetManager::BudgetConfig GeometryBudgetManager::select_tier(size_t se
                      est_n4 / (1024 * 1024), budget_bytes / (1024 * 1024));
         return {.tier = 3,
                 .tube_sides = 4,
-                .simplification_tolerance = 0.5f,
+                .simplification_tolerance = 1.0f,
                 .include_travels = false,
                 .budget_bytes = budget_bytes};
     }
@@ -100,7 +100,7 @@ GeometryBudgetManager::BudgetConfig GeometryBudgetManager::select_tier(size_t se
                      est_n4 / (1024 * 1024), budget_bytes / (1024 * 1024));
         return {.tier = 3,
                 .tube_sides = 4,
-                .simplification_tolerance = 1.0f,
+                .simplification_tolerance = 2.0f,
                 .include_travels = false,
                 .budget_bytes = budget_bytes};
     }

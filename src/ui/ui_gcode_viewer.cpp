@@ -3,7 +3,6 @@
 
 #include "ui_gcode_viewer.h"
 
-#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -250,11 +249,17 @@ class GCodeViewerState {
     /// Render mode setting - configurable via HELIX_GCODE_MODE env var
     GcodeViewerRenderMode render_mode_{GcodeViewerRenderMode::Layer2D};
 
+    /// Budget system forced 2D for current file (reset on each new load)
+    bool budget_forced_2d_{false};
+
+    /// Disable streaming mode (detail panel uses full-load + budget instead)
+    bool streaming_disabled_{false};
+
     /// Helper to check if currently using 2D layer renderer
     bool is_using_2d_mode() const {
 #ifdef ENABLE_3D_RENDERER
         // With GPU-accelerated GLES: Auto defaults to 3D, only Layer2D forces 2D
-        return render_mode_ == GcodeViewerRenderMode::Layer2D;
+        return render_mode_ == GcodeViewerRenderMode::Layer2D || budget_forced_2d_;
 #else
         // Without 3D renderer: only explicit Render3D would use 3D (but it's not available)
         return render_mode_ != GcodeViewerRenderMode::Render3D;
@@ -1017,7 +1022,8 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
 
     spdlog::info("[GCode Viewer] Loading file async: {}", file_path);
     st->viewer_state = GcodeViewerState::Loading;
-    st->first_render = true; // Reset for new file
+    st->first_render = true;       // Reset for new file
+    st->budget_forced_2d_ = false; // Reset budget 2D override for new file
 
     // Bump generation so any in-flight async callbacks from a prior load are rejected
     const uint64_t gen = st->bump_generation();
@@ -1039,7 +1045,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
         file_size = 0; // Fall through to full-load mode
     }
 
-    bool use_streaming = helix::should_use_gcode_streaming(file_size);
+    bool use_streaming = !st->streaming_disabled_ && helix::should_use_gcode_streaming(file_size);
     spdlog::info("[GCode Viewer] File size: {}KB, streaming mode: {}", file_size / 1024,
                  use_streaming ? "ON" : "OFF");
 
@@ -1296,7 +1302,10 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
 
                             helix::gcode::SimplificationOptions opts{
                                 .tolerance_mm = budget_config.simplification_tolerance,
-                                .min_segment_length_mm = 0.05f};
+                                .min_segment_length_mm = 0.05f,
+                                .max_direction_change_deg = budget_config.tier >= 3   ? 45.0f
+                                                            : budget_config.tier == 2 ? 30.0f
+                                                                                      : 15.0f};
 
                             result->geometry = std::make_unique<helix::gcode::RibbonGeometry>(
                                 builder.build(*result->gcode_file, opts));
@@ -1387,8 +1396,9 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                     }
 
                     if (r->force_2d) {
-                        // Budget-forced 2D fallback
+                        // Budget-forced 2D fallback for this file only
                         spdlog::info("[GCode Viewer] Using 2D renderer (budget fallback)");
+                        st->budget_forced_2d_ = true;
                         if (!st->layer_renderer_2d_) {
                             st->layer_renderer_2d_ =
                                 std::make_unique<helix::gcode::GCodeLayerRenderer>();
@@ -1411,10 +1421,6 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
 
                         st->layer_renderer_2d_->auto_fit();
                         lv_obj_invalidate(obj);
-
-                        // Toast notification for budget-forced 2D fallback
-                        ToastManager::instance().show(
-                            ToastSeverity::INFO, lv_tr("Complex model — showing 2D layer view"));
                     }
 
                 // Set pre-built geometry on renderer
@@ -1643,6 +1649,13 @@ void ui_gcode_viewer_evaluate_render_mode(lv_obj_t* obj) {
 bool ui_gcode_viewer_is_using_2d_mode(lv_obj_t* obj) {
     gcode_viewer_state_t* st = get_state(obj);
     return st ? st->is_using_2d_mode() : false;
+}
+
+void ui_gcode_viewer_disable_streaming(lv_obj_t* obj) {
+    gcode_viewer_state_t* st = get_state(obj);
+    if (st) {
+        st->streaming_disabled_ = true;
+    }
 }
 
 void ui_gcode_viewer_set_show_supports(lv_obj_t* obj, bool show) {

@@ -21,9 +21,11 @@ class GeometryBudgetManager {
         size_t budget_bytes;
     };
 
-    static constexpr size_t BYTES_PER_SEG_N16 = 770;
-    static constexpr size_t BYTES_PER_SEG_N8 = 385;
-    static constexpr size_t BYTES_PER_SEG_N4 = 196;
+    // Empirically measured bytes per raw gcode segment (includes simplification,
+    // strip overhead, normal/color palettes). Calibrated from Pi 5 builds.
+    static constexpr size_t BYTES_PER_SEG_N16 = 1300;
+    static constexpr size_t BYTES_PER_SEG_N8 = 600;
+    static constexpr size_t BYTES_PER_SEG_N4 = 300;
 
     static size_t parse_meminfo_available_kb(const std::string& content);
     size_t calculate_budget(size_t available_kb) const;

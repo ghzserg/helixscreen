@@ -79,14 +79,16 @@ TEST_CASE("Budget: tier selection - small file gets Tier 1", "[gcode][budget]") 
 
 TEST_CASE("Budget: tier selection - medium file gets Tier 2", "[gcode][budget]") {
     GeometryBudgetManager mgr;
-    auto config = mgr.select_tier(200000, 100 * 1024 * 1024);
+    // 150K segs × 1300 = 195MB > 150MB, × 600 = 90MB < 150MB → Tier 2
+    auto config = mgr.select_tier(150000, 150 * 1024 * 1024);
     REQUIRE(config.tier == 2);
     REQUIRE(config.tube_sides == 8);
 }
 
 TEST_CASE("Budget: tier selection - large file gets Tier 3", "[gcode][budget]") {
     GeometryBudgetManager mgr;
-    auto config = mgr.select_tier(500000, 75 * 1024 * 1024);
+    // 300K segs × 600 = 180MB > 100MB, × 300 = 90MB < 100MB → Tier 3
+    auto config = mgr.select_tier(300000, 100 * 1024 * 1024);
     REQUIRE(config.tier == 3);
     REQUIRE(config.tube_sides == 4);
     REQUIRE(config.include_travels == false);
@@ -95,13 +97,15 @@ TEST_CASE("Budget: tier selection - large file gets Tier 3", "[gcode][budget]") 
 
 TEST_CASE("Budget: tier selection - massive file gets Tier 4", "[gcode][budget]") {
     GeometryBudgetManager mgr;
+    // 2M segs × 300 = 600MB >> 75MB even at N=4 → Tier 4
     auto config = mgr.select_tier(2000000, 75 * 1024 * 1024);
     REQUIRE(config.tier == 4);
     REQUIRE(config.tube_sides == 0);
 }
 
-TEST_CASE("Budget: tier selection - tiny budget forces Tier 4", "[gcode][budget]") {
+TEST_CASE("Budget: tier selection - tiny budget forces high tier", "[gcode][budget]") {
     GeometryBudgetManager mgr;
+    // 50K segs × 300 = 15MB > 10MB → aggressive Tier 3 or Tier 4
     auto config = mgr.select_tier(50000, 10 * 1024 * 1024);
     REQUIRE(config.tier >= 3);
 }

@@ -193,6 +193,7 @@ lv_obj_t* PrintSelectDetailView::create(lv_obj_t* parent_screen) {
     gcode_viewer_ = lv_obj_find_by_name(overlay_root_, "detail_gcode_viewer");
     if (gcode_viewer_) {
         spdlog::debug("[DetailView] G-code viewer widget found");
+        ui_gcode_viewer_disable_streaming(gcode_viewer_);
 
         // Apply render mode - priority: cmdline > env var > settings
         const auto* config = get_runtime_config();
