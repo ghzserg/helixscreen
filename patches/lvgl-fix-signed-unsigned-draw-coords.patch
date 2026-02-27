@@ -1,0 +1,77 @@
+diff --git a/src/draw/lv_draw.c b/src/draw/lv_draw.c
+index dc4ce2219..f0787814a 100644
+--- a/src/draw/lv_draw.c
++++ b/src/draw/lv_draw.c
+@@ -521,7 +521,8 @@ void * lv_draw_layer_alloc_buf(lv_layer_t * layer)
+ 
+ void * lv_draw_layer_go_to_xy(lv_layer_t * layer, int32_t x, int32_t y)
+ {
+-    return lv_draw_buf_goto_xy(layer->draw_buf, x, y);
++    if(x < 0 || y < 0) return NULL;
++    return lv_draw_buf_goto_xy(layer->draw_buf, (uint32_t)x, (uint32_t)y);
+ }
+ 
+ lv_draw_task_type_t lv_draw_task_get_type(const lv_draw_task_t * t)
+diff --git a/src/draw/lv_draw_buf.c b/src/draw/lv_draw_buf.c
+index 293f23d5e..fa1116744 100644
+--- a/src/draw/lv_draw_buf.c
++++ b/src/draw/lv_draw_buf.c
+@@ -378,7 +378,7 @@ void * lv_draw_buf_goto_xy(const lv_draw_buf_t * buf, uint32_t x, uint32_t y)
+     if(buf == NULL) return NULL;
+ 
+     if(x >= buf->header.w || y >= buf->header.h) {
+-        LV_LOG_ERROR("coordinates out of range, x: %" LV_PRIu32 ", y: %"LV_PRIu32", w: %"LV_PRIu32", h: %"LV_PRIu32, x, y,
++        LV_LOG_WARN("coordinates out of range, x: %" LV_PRIu32 ", y: %"LV_PRIu32", w: %"LV_PRIu32", h: %"LV_PRIu32, x, y,
+                      (uint32_t)buf->header.w, (uint32_t)buf->header.h);
+         return NULL;
+     }
+diff --git a/src/draw/sw/blend/lv_draw_sw_blend.c b/src/draw/sw/blend/lv_draw_sw_blend.c
+index 54a7294ac..730fd9be4 100644
+--- a/src/draw/sw/blend/lv_draw_sw_blend.c
++++ b/src/draw/sw/blend/lv_draw_sw_blend.c
+@@ -81,6 +81,11 @@ void lv_draw_sw_blend(lv_draw_task_t * t, const lv_draw_sw_blend_dsc_t * blend_d
+ 
+     LV_PROFILER_DRAW_BEGIN;
+     lv_layer_t * layer = t->target_layer;
++    if(layer == NULL || layer->draw_buf == NULL) {
++        LV_LOG_WARN("lv_draw_sw_blend: target layer or draw_buf is NULL, skipping");
++        LV_PROFILER_DRAW_END;
++        return;
++    }
+     uint32_t layer_stride_byte = layer->draw_buf->header.stride;
+ 
+     lv_draw_sw_blend_handler_t handler = lv_draw_sw_get_blend_handler(layer->color_format);
+@@ -108,6 +113,10 @@ void lv_draw_sw_blend(lv_draw_task_t * t, const lv_draw_sw_blend_dsc_t * blend_d
+         lv_area_move(&fill_dsc.relative_area, -layer->buf_area.x1, -layer->buf_area.y1);
+         fill_dsc.dest_buf = lv_draw_layer_go_to_xy(layer, blend_area.x1 - layer->buf_area.x1,
+                                                    blend_area.y1 - layer->buf_area.y1);
++        if(fill_dsc.dest_buf == NULL) {
++            LV_PROFILER_DRAW_END;
++            return;
++        }
+         if(fill_dsc.mask_buf) {
+             fill_dsc.mask_stride = blend_dsc->mask_stride == 0  ? lv_area_get_width(blend_dsc->mask_area) : blend_dsc->mask_stride;
+             fill_dsc.mask_buf += fill_dsc.mask_stride * (blend_area.y1 - blend_dsc->mask_area->y1) +
+@@ -164,6 +173,10 @@ void lv_draw_sw_blend(lv_draw_task_t * t, const lv_draw_sw_blend_dsc_t * blend_d
+ 
+         image_dsc.dest_buf = lv_draw_layer_go_to_xy(layer, blend_area.x1 - layer->buf_area.x1,
+                                                     blend_area.y1 - layer->buf_area.y1);
++        if(image_dsc.dest_buf == NULL) {
++            LV_PROFILER_DRAW_END;
++            return;
++        }
+ 
+         lv_draw_sw_blend_image(layer->color_format, &image_dsc);
+     }
+diff --git a/src/draw/sw/lv_draw_sw_mask_rect.c b/src/draw/sw/lv_draw_sw_mask_rect.c
+index 7abb8a3ed..a43a6f4cb 100644
+--- a/src/draw/sw/lv_draw_sw_mask_rect.c
++++ b/src/draw/sw/lv_draw_sw_mask_rect.c
+@@ -97,6 +97,7 @@ void lv_draw_sw_mask_rect(lv_draw_task_t * t, const lv_draw_mask_rect_dsc_t * ds
+ 
+         lv_color32_t * c32_buf = lv_draw_layer_go_to_xy(target_layer, draw_area.x1 - buf_area->x1,
+                                                         y - buf_area->y1);
++        if(c32_buf == NULL) continue;
+ 
+         if(res == LV_DRAW_SW_MASK_RES_TRANSP) {
+             lv_memzero(c32_buf, area_w * sizeof(lv_color32_t));

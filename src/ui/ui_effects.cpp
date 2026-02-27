@@ -137,11 +137,6 @@ lv_obj_t* create_fullscreen_backdrop(lv_obj_t* parent, lv_opa_t opacity) {
     lv_obj_add_flag(backdrop, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_remove_flag(backdrop, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Frosted-glass backdrop blur
-    lv_obj_set_style_blur_radius(backdrop, 10, LV_PART_MAIN);
-    lv_obj_set_style_blur_backdrop(backdrop, true, LV_PART_MAIN);
-    lv_obj_set_style_blur_quality(backdrop, LV_BLUR_QUALITY_SPEED, LV_PART_MAIN);
-
     spdlog::trace("[UI Effects] Created fullscreen backdrop with opacity {}", opacity);
     return backdrop;
 }
