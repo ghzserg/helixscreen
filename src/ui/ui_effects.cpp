@@ -3,6 +3,7 @@
 
 #include "ui_effects.h"
 
+#include "backdrop_blur.h"
 #include "display_settings_manager.h"
 #include "theme_manager.h"
 
@@ -126,6 +127,14 @@ lv_obj_t* create_fullscreen_backdrop(lv_obj_t* parent, lv_opa_t opacity) {
         return nullptr;
     }
 
+    // Try blurred backdrop first (snapshot + blur + image widget)
+    lv_obj_t* blurred = create_blurred_backdrop(parent, opacity);
+    if (blurred) {
+        spdlog::trace("[UI Effects] Created blurred backdrop with opacity {}", opacity);
+        return blurred;
+    }
+
+    // Fallback: plain dark rectangle
     lv_obj_t* backdrop = lv_obj_create(parent);
     lv_obj_set_size(backdrop, LV_PCT(100), LV_PCT(100));
     lv_obj_align(backdrop, LV_ALIGN_CENTER, 0, 0);
@@ -137,7 +146,7 @@ lv_obj_t* create_fullscreen_backdrop(lv_obj_t* parent, lv_opa_t opacity) {
     lv_obj_add_flag(backdrop, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_remove_flag(backdrop, LV_OBJ_FLAG_SCROLLABLE);
 
-    spdlog::trace("[UI Effects] Created fullscreen backdrop with opacity {}", opacity);
+    spdlog::trace("[UI Effects] Created plain backdrop with opacity {}", opacity);
     return backdrop;
 }
 
