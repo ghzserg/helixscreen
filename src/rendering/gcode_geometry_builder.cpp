@@ -139,6 +139,69 @@ RibbonGeometry& RibbonGeometry::operator=(RibbonGeometry&& other) noexcept {
     return *this;
 }
 
+void RibbonGeometry::prepare_interleaved_buffers() {
+    if (strips.empty() || vertices.empty()) {
+        return;
+    }
+
+    size_t num_layers = layer_strip_ranges.empty() ? 1 : layer_strip_ranges.size();
+    prepared_buffers.resize(num_layers);
+
+    // Interleaved vertex format: position(3f) + normal(3f) + color(3f) = 9 floats
+    constexpr size_t kFloatsPerVertex = 9;
+
+    for (size_t layer = 0; layer < num_layers; ++layer) {
+        size_t first_strip = 0;
+        size_t strip_count = strips.size();
+
+        if (!layer_strip_ranges.empty()) {
+            auto [fs, sc] = layer_strip_ranges[layer];
+            first_strip = fs;
+            strip_count = sc;
+        }
+
+        auto& prepared = prepared_buffers[layer];
+        if (strip_count == 0) {
+            prepared.vertex_count = 0;
+            continue;
+        }
+
+        size_t total_verts = strip_count * 6; // 2 triangles per strip
+        prepared.vertex_count = total_verts;
+        prepared.data.resize(total_verts * kFloatsPerVertex);
+
+        static constexpr int kTriIndices[6] = {0, 1, 2, 1, 3, 2};
+        size_t out_idx = 0;
+
+        for (size_t s = 0; s < strip_count; ++s) {
+            const auto& strip = strips[first_strip + s];
+
+            for (int ti = 0; ti < 6; ++ti) {
+                const auto& vert = vertices[strip[static_cast<size_t>(kTriIndices[ti])]];
+                glm::vec3 pos = quantization.dequantize_vec3(vert.position);
+                const glm::vec3& normal = normal_palette[vert.normal_index];
+
+                prepared.data[out_idx++] = pos.x;
+                prepared.data[out_idx++] = pos.y;
+                prepared.data[out_idx++] = pos.z;
+                prepared.data[out_idx++] = normal.x;
+                prepared.data[out_idx++] = normal.y;
+                prepared.data[out_idx++] = normal.z;
+
+                uint32_t rgb = 0x26A69A; // Default teal
+                if (vert.color_index < color_palette.size()) {
+                    rgb = color_palette[vert.color_index];
+                }
+                prepared.data[out_idx++] = ((rgb >> 16) & 0xFF) / 255.0f;
+                prepared.data[out_idx++] = ((rgb >> 8) & 0xFF) / 255.0f;
+                prepared.data[out_idx++] = (rgb & 0xFF) / 255.0f;
+            }
+        }
+    }
+
+    spdlog::debug("[GCode Geometry] Prepared {} layer buffers for GPU upload", num_layers);
+}
+
 void RibbonGeometry::clear() {
     vertices.clear();
     indices.clear();

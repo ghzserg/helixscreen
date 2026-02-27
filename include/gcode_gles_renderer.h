@@ -156,6 +156,11 @@ class GCodeGLESRenderer {
         return interaction_mode_;
     }
 
+    /// True while VBO upload is still in progress (caller should invalidate widget)
+    bool is_uploading() const {
+        return geometry_ && !geometry_uploaded_;
+    }
+
     // ====== Color / Material ======
 
     void set_filament_color(const std::string& hex_color);
@@ -239,6 +244,11 @@ class GCodeGLESRenderer {
     };
 
     void upload_geometry(const RibbonGeometry& geom, std::vector<LayerVBO>& vbos);
+
+    /// Upload a time-budgeted batch of layers. Returns true when all layers are done.
+    bool upload_geometry_chunk(const RibbonGeometry& geom, std::vector<LayerVBO>& vbos,
+                               size_t& next_layer, size_t total_layers);
+
     void free_vbos(std::vector<LayerVBO>& vbos);
 
     // ====== Internal Rendering ======
@@ -336,6 +346,8 @@ class GCodeGLESRenderer {
 
     std::vector<LayerVBO> layer_vbos_;
     bool geometry_uploaded_ = false;
+    size_t upload_next_layer_ = 0;   ///< Next layer to upload (incremental)
+    size_t upload_total_layers_ = 0; ///< Total layers needing upload
 
     // ====== Configuration ======
 

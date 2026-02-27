@@ -225,6 +225,23 @@ struct RibbonGeometry {
                layer_bboxes.size() * sizeof(AABB);
     }
 
+    /// Pre-computed interleaved vertex buffers for GPU upload (position+normal+color floats).
+    /// Prepared on background thread to avoid blocking UI during VBO upload.
+    struct PreparedLayerBuffer {
+        std::vector<float> data;
+        size_t vertex_count{0};
+    };
+    std::vector<PreparedLayerBuffer> prepared_buffers;
+
+    /**
+     * @brief Pre-compute interleaved vertex buffers for GPU upload.
+     *
+     * Call from background thread after build(). Expands strips into
+     * position(3f)+normal(3f)+color(3f) interleaved format per layer.
+     * The renderer can then upload directly to VBOs without CPU work.
+     */
+    void prepare_interleaved_buffers();
+
     /**
      * @brief Clear all geometry data
      */

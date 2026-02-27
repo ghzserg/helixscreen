@@ -507,6 +507,13 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
     } else {
         // 3D GLES Renderer (isometric ribbon view)
         st->renderer_->render(layer, *st->gcode_file, *st->camera_, &widget_coords);
+
+        // During chunked VBO upload, renderer returns early without drawing.
+        // Schedule widget invalidation so LVGL calls us again next frame.
+        if (st->renderer_->is_uploading()) {
+            helix::ui::async_call(
+                obj, [](void* data) { lv_obj_invalidate(static_cast<lv_obj_t*>(data)); }, obj);
+        }
     }
 
     auto render_end = std::chrono::high_resolution_clock::now();
@@ -1321,6 +1328,10 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                                              result->geometry->extrusion_triangle_count +
                                                  result->geometry->travel_triangle_count,
                                              budget_config.tier);
+                                // Pre-compute interleaved vertex buffers on background thread
+                                // so UI thread only does fast GL upload (no
+                                // dequantization/expansion)
+                                result->geometry->prepare_interleaved_buffers();
                             }
                         }
 

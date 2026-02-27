@@ -731,6 +731,8 @@ void GCodeGLESRenderer::destroy_gl() {
 
     gl_initialized_ = false;
     geometry_uploaded_ = false;
+    upload_next_layer_ = 0;
+    upload_total_layers_ = 0;
     spdlog::debug("[GCode GLES] GL resources destroyed");
 }
 
@@ -773,6 +775,31 @@ void GCodeGLESRenderer::upload_geometry(const RibbonGeometry& geom, std::vector<
         if (strip_count == 0) {
             vbos[layer].vbo = GLBufferHandle();
             vbos[layer].vertex_count = 0;
+            continue;
+        }
+
+        // Use pre-computed buffers if available (prepared on background thread)
+        if (!geom.prepared_buffers.empty() && layer < geom.prepared_buffers.size() &&
+            geom.prepared_buffers[layer].vertex_count > 0) {
+            const auto& prepared = geom.prepared_buffers[layer];
+            GLBufferHandle vbo_handle;
+            glGenBuffers(1, &vbo_handle.id);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_handle.id);
+            glBufferData(GL_ARRAY_BUFFER,
+                         static_cast<GLsizeiptr>(prepared.vertex_count * kVertexStride),
+                         prepared.data.data(), GL_STATIC_DRAW);
+            bool buf_ok = check_gl_error("glBufferData (prepared)");
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            if (!buf_ok) {
+                spdlog::error("[GCode GLES] VBO creation failed for layer {} (prepared)", layer);
+                vbos[layer].vbo = GLBufferHandle();
+                vbos[layer].vertex_count = 0;
+                continue;
+            }
+
+            vbos[layer].vbo = std::move(vbo_handle);
+            vbos[layer].vertex_count = prepared.vertex_count;
             continue;
         }
 
@@ -836,6 +863,132 @@ void GCodeGLESRenderer::upload_geometry(const RibbonGeometry& geom, std::vector<
                   geom.strips.size());
 }
 
+bool GCodeGLESRenderer::upload_geometry_chunk(const RibbonGeometry& geom,
+                                              std::vector<LayerVBO>& vbos, size_t& next_layer,
+                                              size_t total_layers) {
+    // Time budget: 8ms per frame for uploads
+    constexpr auto kTimeBudget = std::chrono::milliseconds(8);
+    auto start = std::chrono::steady_clock::now();
+
+    // Lock palette during read to prevent data races with set_tool_color_overrides
+    std::lock_guard<std::mutex> lock(palette_mutex_);
+
+    constexpr size_t kVertexStride = PackedVertex::stride();
+    constexpr size_t kFloatsPerVertex = kVertexStride / sizeof(float);
+
+    // Reuse CPU buffer for layers that don't have prepared data
+    std::vector<float> buf;
+
+    while (next_layer < total_layers) {
+        size_t layer = next_layer;
+
+        size_t first_strip = 0;
+        size_t strip_count = geom.strips.size();
+
+        if (!geom.layer_strip_ranges.empty()) {
+            auto [fs, sc] = geom.layer_strip_ranges[layer];
+            first_strip = fs;
+            strip_count = sc;
+        }
+
+        if (strip_count == 0) {
+            vbos[layer].vbo = GLBufferHandle();
+            vbos[layer].vertex_count = 0;
+            ++next_layer;
+            continue;
+        }
+
+        // Use pre-computed buffers if available (prepared on background thread)
+        if (!geom.prepared_buffers.empty() && layer < geom.prepared_buffers.size() &&
+            geom.prepared_buffers[layer].vertex_count > 0) {
+            const auto& prepared = geom.prepared_buffers[layer];
+            GLBufferHandle vbo_handle;
+            glGenBuffers(1, &vbo_handle.id);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_handle.id);
+            glBufferData(GL_ARRAY_BUFFER,
+                         static_cast<GLsizeiptr>(prepared.vertex_count * kVertexStride),
+                         prepared.data.data(), GL_STATIC_DRAW);
+            bool buf_ok = check_gl_error("glBufferData (prepared)");
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            if (!buf_ok) {
+                spdlog::error("[GCode GLES] VBO creation failed for layer {} (prepared)", layer);
+                vbos[layer].vbo = GLBufferHandle();
+                vbos[layer].vertex_count = 0;
+            } else {
+                vbos[layer].vbo = std::move(vbo_handle);
+                vbos[layer].vertex_count = prepared.vertex_count;
+            }
+        } else {
+            // CPU fallback: expand strips inline (for color re-upload case)
+            size_t total_verts = strip_count * 6;
+            size_t buf_floats = total_verts * kFloatsPerVertex;
+            if (buf.size() < buf_floats) {
+                buf.resize(buf_floats);
+            }
+
+            size_t out_idx = 0;
+            for (size_t s = 0; s < strip_count; ++s) {
+                const auto& strip = geom.strips[first_strip + s];
+                static constexpr int kTriIndices[6] = {0, 1, 2, 1, 3, 2};
+
+                for (int ti = 0; ti < 6; ++ti) {
+                    const auto& vert = geom.vertices[strip[static_cast<size_t>(kTriIndices[ti])]];
+                    glm::vec3 pos = geom.quantization.dequantize_vec3(vert.position);
+                    const glm::vec3& normal = geom.normal_palette[vert.normal_index];
+
+                    buf[out_idx++] = pos.x;
+                    buf[out_idx++] = pos.y;
+                    buf[out_idx++] = pos.z;
+                    buf[out_idx++] = normal.x;
+                    buf[out_idx++] = normal.y;
+                    buf[out_idx++] = normal.z;
+
+                    uint32_t rgb = 0x26A69A;
+                    if (vert.color_index < geom.color_palette.size()) {
+                        rgb = geom.color_palette[vert.color_index];
+                    }
+                    buf[out_idx++] = ((rgb >> 16) & 0xFF) / 255.0f;
+                    buf[out_idx++] = ((rgb >> 8) & 0xFF) / 255.0f;
+                    buf[out_idx++] = (rgb & 0xFF) / 255.0f;
+                }
+            }
+
+            GLBufferHandle vbo_handle;
+            glGenBuffers(1, &vbo_handle.id);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_handle.id);
+            glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(total_verts * kVertexStride),
+                         buf.data(), GL_STATIC_DRAW);
+            bool buf_ok = check_gl_error("glBufferData");
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            if (!buf_ok) {
+                spdlog::error("[GCode GLES] VBO creation failed for layer {}", layer);
+                vbos[layer].vbo = GLBufferHandle();
+                vbos[layer].vertex_count = 0;
+            } else {
+                vbos[layer].vbo = std::move(vbo_handle);
+                vbos[layer].vertex_count = total_verts;
+            }
+        }
+
+        ++next_layer;
+
+        // Check time budget (check every layer, glBufferData can be slow)
+        auto elapsed = std::chrono::steady_clock::now() - start;
+        if (elapsed >= kTimeBudget) {
+            break;
+        }
+    }
+
+    bool done = (next_layer >= total_layers);
+    if (done) {
+        spdlog::debug("[GCode GLES] Incremental upload complete: all {} layers uploaded",
+                      total_layers);
+    }
+    return done;
+}
+
 void GCodeGLESRenderer::free_vbos(std::vector<LayerVBO>& vbos) {
     // RAII handles (GLBufferHandle) call glDeleteBuffers in their destructors
     vbos.clear();
@@ -867,12 +1020,33 @@ void GCodeGLESRenderer::render(lv_layer_t* layer, const ParsedGCodeFile& gcode,
     if (!guard.ok())
         return;
 
-    // Upload geometry to VBOs if needed
+    // Incremental VBO upload: upload a time-budgeted batch of layers per frame
     if (!geometry_uploaded_ && geometry_) {
-        upload_geometry(*geometry_, layer_vbos_);
-        geometry_uploaded_ = true;
-        // Defer first GPU render by a few frames to avoid blocking panel animations
-        render_defer_frames_ = 3;
+        // Initialize incremental upload on first frame
+        if (upload_total_layers_ == 0) {
+            free_vbos(layer_vbos_); // Free old VBOs inside GL context
+            size_t num_layers =
+                geometry_->layer_strip_ranges.empty() ? 1 : geometry_->layer_strip_ranges.size();
+            layer_vbos_.resize(num_layers);
+            upload_total_layers_ = num_layers;
+            spdlog::info("[GCode GLES] Starting incremental VBO upload: {} layers", num_layers);
+        }
+
+        bool done = upload_geometry_chunk(*geometry_, layer_vbos_, upload_next_layer_,
+                                          upload_total_layers_);
+        if (done) {
+            geometry_uploaded_ = true;
+            upload_next_layer_ = 0;
+            upload_total_layers_ = 0;
+            // Defer first GPU render by a few frames to avoid blocking panel animations
+            render_defer_frames_ = 3;
+        } else {
+            // Still uploading -- show cached buffer if available, otherwise skip frame
+            if (draw_buf_) {
+                draw_cached_to_lvgl(layer, widget_coords);
+            }
+            return;
+        }
     }
 
     // If deferring, draw the cached buffer and count down.
@@ -1293,8 +1467,15 @@ void GCodeGLESRenderer::set_tool_color_overrides(const std::vector<uint32_t>& am
         // Per-tool overrides replace palette entries baked into vertex data,
         // so clear any single-color override that would bypass vertex colors.
         palette_.has_override = false;
+        // Clear pre-computed buffers — they have stale colors, force CPU re-expansion
+        if (geometry_) {
+            geometry_->prepared_buffers.clear();
+        }
         // Force VBO re-upload to bake new colors into vertex data
+        // (old VBOs freed inside render() where GL context is active)
         geometry_uploaded_ = false;
+        upload_next_layer_ = 0;
+        upload_total_layers_ = 0;
         frame_dirty_ = true;
         spdlog::debug("[GCode GLES] Applied {} tool color overrides, triggering VBO re-upload",
                       ams_colors.size());
@@ -1434,6 +1615,8 @@ void GCodeGLESRenderer::set_prebuilt_geometry(std::unique_ptr<RibbonGeometry> ge
     geometry_ = std::move(geometry);
     current_filename_ = filename;
     geometry_uploaded_ = false;
+    upload_next_layer_ = 0;
+    upload_total_layers_ = 0;
     frame_dirty_ = true;
     spdlog::debug("[GCode GLES] Geometry set: {} strips, {} vertices",
                   geometry_ ? geometry_->strips.size() : 0,

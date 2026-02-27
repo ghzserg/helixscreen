@@ -958,3 +958,163 @@ TEST_CASE("GeometryBuilder: budget abort returns with flag set", "[gcode][budget
     // Build should have aborted
     REQUIRE(builder.was_budget_exceeded());
 }
+
+// ============================================================================
+// prepare_interleaved_buffers() Tests
+// ============================================================================
+
+TEST_CASE("prepare_interleaved_buffers produces correct buffer count and vertex counts",
+          "[gcode][geometry][prepared_buffers]") {
+    // Build geometry from a 2-layer gcode
+    ParsedGCodeFile gcode;
+
+    // Layer 0
+    Layer layer0;
+    layer0.z_height = 0.2f;
+    for (int i = 0; i < 3; ++i) {
+        ToolpathSegment seg;
+        float x = static_cast<float>(i) * 5.0f;
+        seg.start = {x, 0.0f, 0.2f};
+        seg.end = {x + 4.0f, 0.0f, 0.2f};
+        seg.is_extrusion = true;
+        seg.width = 0.4f;
+        layer0.segments.push_back(seg);
+    }
+    gcode.layers.push_back(std::move(layer0));
+
+    // Layer 1
+    Layer layer1;
+    layer1.z_height = 0.4f;
+    for (int i = 0; i < 2; ++i) {
+        ToolpathSegment seg;
+        float x = static_cast<float>(i) * 5.0f;
+        seg.start = {x, 0.0f, 0.4f};
+        seg.end = {x + 4.0f, 0.0f, 0.4f};
+        seg.is_extrusion = true;
+        seg.width = 0.4f;
+        layer1.segments.push_back(seg);
+    }
+    gcode.layers.push_back(std::move(layer1));
+
+    gcode.total_segments = 5;
+    gcode.global_bounding_box.expand({0, 0, 0.2f});
+    gcode.global_bounding_box.expand({15, 1, 0.4f});
+
+    GeometryBuilder builder;
+    SimplificationOptions opts;
+    opts.enable_merging = false;
+    auto geom = builder.build(gcode, opts);
+
+    REQUIRE(!geom.layer_strip_ranges.empty());
+
+    geom.prepare_interleaved_buffers();
+
+    // Buffer count matches number of layers
+    REQUIRE(geom.prepared_buffers.size() == geom.layer_strip_ranges.size());
+
+    // Each buffer's vertex_count == strip_count * 6 (2 triangles = 6 verts per strip)
+    for (size_t i = 0; i < geom.layer_strip_ranges.size(); ++i) {
+        size_t strip_count = geom.layer_strip_ranges[i].second;
+        REQUIRE(geom.prepared_buffers[i].vertex_count == strip_count * 6);
+        // Data vector should hold 9 floats per vertex
+        REQUIRE(geom.prepared_buffers[i].data.size() == geom.prepared_buffers[i].vertex_count * 9);
+    }
+}
+
+TEST_CASE("prepare_interleaved_buffers data matches manual expansion",
+          "[gcode][geometry][prepared_buffers]") {
+    // Minimal geometry: 1 layer, 1 segment
+    ParsedGCodeFile gcode;
+    Layer layer;
+    layer.z_height = 0.2f;
+    ToolpathSegment seg;
+    seg.start = {10.0f, 10.0f, 0.2f};
+    seg.end = {20.0f, 10.0f, 0.2f};
+    seg.is_extrusion = true;
+    seg.width = 0.4f;
+    layer.segments.push_back(seg);
+    gcode.layers.push_back(std::move(layer));
+    gcode.total_segments = 1;
+    gcode.global_bounding_box.expand({10, 10, 0.2f});
+    gcode.global_bounding_box.expand({20, 10, 0.2f});
+
+    GeometryBuilder builder;
+    SimplificationOptions opts;
+    opts.enable_merging = false;
+    auto geom = builder.build(gcode, opts);
+
+    REQUIRE(!geom.strips.empty());
+    REQUIRE(!geom.vertices.empty());
+
+    geom.prepare_interleaved_buffers();
+
+    REQUIRE(geom.prepared_buffers.size() >= 1);
+    auto& buf = geom.prepared_buffers[0];
+    REQUIRE(buf.vertex_count > 0);
+
+    // Manually expand the first strip and compare
+    const auto& strip = geom.strips[0];
+    static constexpr int kTriIndices[6] = {0, 1, 2, 1, 3, 2};
+
+    for (int ti = 0; ti < 6; ++ti) {
+        const auto& vert = geom.vertices[strip[static_cast<size_t>(kTriIndices[ti])]];
+        glm::vec3 pos = geom.quantization.dequantize_vec3(vert.position);
+        const glm::vec3& normal = geom.normal_palette[vert.normal_index];
+
+        uint32_t rgb = 0x26A69A; // Default teal
+        if (vert.color_index < geom.color_palette.size()) {
+            rgb = geom.color_palette[vert.color_index];
+        }
+        float r = ((rgb >> 16) & 0xFF) / 255.0f;
+        float g = ((rgb >> 8) & 0xFF) / 255.0f;
+        float b = (rgb & 0xFF) / 255.0f;
+
+        size_t base = static_cast<size_t>(ti) * 9;
+        REQUIRE(buf.data[base + 0] == Approx(pos.x).margin(0.01f));
+        REQUIRE(buf.data[base + 1] == Approx(pos.y).margin(0.01f));
+        REQUIRE(buf.data[base + 2] == Approx(pos.z).margin(0.01f));
+        REQUIRE(buf.data[base + 3] == Approx(normal.x).margin(0.001f));
+        REQUIRE(buf.data[base + 4] == Approx(normal.y).margin(0.001f));
+        REQUIRE(buf.data[base + 5] == Approx(normal.z).margin(0.001f));
+        REQUIRE(buf.data[base + 6] == Approx(r).margin(0.01f));
+        REQUIRE(buf.data[base + 7] == Approx(g).margin(0.01f));
+        REQUIRE(buf.data[base + 8] == Approx(b).margin(0.01f));
+    }
+}
+
+TEST_CASE("prepare_interleaved_buffers on empty geometry is no-op",
+          "[gcode][geometry][prepared_buffers]") {
+    RibbonGeometry geom;
+    geom.prepare_interleaved_buffers();
+    REQUIRE(geom.prepared_buffers.empty());
+}
+
+TEST_CASE("prepare_interleaved_buffers cleared by clearing prepared_buffers",
+          "[gcode][geometry][prepared_buffers]") {
+    // Build real geometry
+    ParsedGCodeFile gcode;
+    Layer layer;
+    layer.z_height = 0.2f;
+    ToolpathSegment seg;
+    seg.start = {5.0f, 5.0f, 0.2f};
+    seg.end = {15.0f, 5.0f, 0.2f};
+    seg.is_extrusion = true;
+    seg.width = 0.4f;
+    layer.segments.push_back(seg);
+    gcode.layers.push_back(std::move(layer));
+    gcode.total_segments = 1;
+    gcode.global_bounding_box.expand({5, 5, 0.2f});
+    gcode.global_bounding_box.expand({15, 5, 0.2f});
+
+    GeometryBuilder builder;
+    SimplificationOptions opts;
+    opts.enable_merging = false;
+    auto geom = builder.build(gcode, opts);
+
+    geom.prepare_interleaved_buffers();
+    REQUIRE(!geom.prepared_buffers.empty());
+
+    // Simulate color-override invalidation path
+    geom.prepared_buffers.clear();
+    REQUIRE(geom.prepared_buffers.empty());
+}
