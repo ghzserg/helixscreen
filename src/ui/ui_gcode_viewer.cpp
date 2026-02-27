@@ -508,12 +508,14 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
         // 3D GLES Renderer (isometric ribbon view)
         st->renderer_->render(layer, *st->gcode_file, *st->camera_, &widget_coords);
 
+#ifdef ENABLE_3D_RENDERER
         // During chunked VBO upload, renderer returns early without drawing.
         // Schedule widget invalidation so LVGL calls us again next frame.
         if (st->renderer_->is_uploading()) {
             helix::ui::async_call(
                 obj, [](void* data) { lv_obj_invalidate(static_cast<lv_obj_t*>(data)); }, obj);
         }
+#endif
     }
 
     auto render_end = std::chrono::high_resolution_clock::now();
