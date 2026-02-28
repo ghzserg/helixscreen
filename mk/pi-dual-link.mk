@@ -104,23 +104,30 @@ FBDEV_GLES_CXXFLAGS := $(filter-out -DENABLE_GLES_3D -DHELIX_DISPLAY_DRM -DHELIX
 
 FBDEV_GLES_VARIANT_SRCS := \
     src/rendering/gcode_gles_renderer.cpp \
-    src/ui/ui_gcode_viewer.cpp
+    src/ui/ui_gcode_viewer.cpp \
+    src/ui/backdrop_blur.cpp
 
 # Map source paths to fbdev variant object paths (flatten into single dir)
 FBDEV_GLES_VARIANT_OBJS := \
     $(FBDEV_GLES_VARIANT_DIR)/gcode_gles_renderer.o \
-    $(FBDEV_GLES_VARIANT_DIR)/ui_gcode_viewer.o
+    $(FBDEV_GLES_VARIANT_DIR)/ui_gcode_viewer.o \
+    $(FBDEV_GLES_VARIANT_DIR)/backdrop_blur.o
 
 # DRM-compiled originals to exclude from fbdev link
 DRM_GLES_APP_OBJS := \
     $(OBJ_DIR)/rendering/gcode_gles_renderer.o \
-    $(OBJ_DIR)/ui/ui_gcode_viewer.o
+    $(OBJ_DIR)/ui/ui_gcode_viewer.o \
+    $(OBJ_DIR)/ui/backdrop_blur.o
 
 $(FBDEV_GLES_VARIANT_DIR)/gcode_gles_renderer.o: src/rendering/gcode_gles_renderer.cpp $(LIBHV_LIB) $(PCH) | $(FBDEV_GLES_VARIANT_DIR)
 	@echo "[CXX/fbdev] $< (no GLES)"
 	$(Q)$(CXX) $(FBDEV_GLES_CXXFLAGS) $(DEPFLAGS) $(PCH_FLAGS) $(INCLUDES) $(LV_CONF) -c $< -o $@
 
 $(FBDEV_GLES_VARIANT_DIR)/ui_gcode_viewer.o: src/ui/ui_gcode_viewer.cpp $(LIBHV_LIB) $(PCH) | $(FBDEV_GLES_VARIANT_DIR)
+	@echo "[CXX/fbdev] $< (no GLES)"
+	$(Q)$(CXX) $(FBDEV_GLES_CXXFLAGS) $(DEPFLAGS) $(PCH_FLAGS) $(INCLUDES) $(LV_CONF) -c $< -o $@
+
+$(FBDEV_GLES_VARIANT_DIR)/backdrop_blur.o: src/ui/backdrop_blur.cpp $(LIBHV_LIB) $(PCH) | $(FBDEV_GLES_VARIANT_DIR)
 	@echo "[CXX/fbdev] $< (no GLES)"
 	$(Q)$(CXX) $(FBDEV_GLES_CXXFLAGS) $(DEPFLAGS) $(PCH_FLAGS) $(INCLUDES) $(LV_CONF) -c $< -o $@
 

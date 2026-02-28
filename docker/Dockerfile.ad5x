@@ -52,6 +52,23 @@ RUN TOOLCHAIN_NAME="mipsel-zmod-ad5x.tar.gz" && \
     rm "${TOOLCHAIN_NAME}"
 
 # ==============================================================================
+# zlib 1.3.2 - Static Cross-Compiled Library
+# ==============================================================================
+# Required for debug bundle gzip compression. Build from source to guarantee
+# a static libz.a is available in the sysroot for -static linking.
+WORKDIR /tmp
+RUN export PATH="/opt/mipsel-zmod-ad5x/bin:$PATH" && \
+    wget -q https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz && \
+    tar xzf zlib-1.3.2.tar.gz && \
+    cd zlib-1.3.2 && \
+    CHOST=mipsel-buildroot-linux-gnu ./configure --static \
+        --prefix=/opt/mipsel-zmod-ad5x/mipsel-buildroot-linux-gnu/sysroot/usr && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rf zlib-1.3.2 zlib-1.3.2.tar.gz
+
+# ==============================================================================
 # Cross-Compilation Environment
 # ==============================================================================
 ENV PATH="/opt/mipsel-zmod-ad5x/bin:$PATH"
